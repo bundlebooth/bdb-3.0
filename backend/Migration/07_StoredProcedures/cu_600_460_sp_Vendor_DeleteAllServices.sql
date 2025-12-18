@@ -1,19 +1,20 @@
 -- =============================================
--- Stored Procedure: sp_Vendor_DeleteAllServices
+-- Stored Procedure: vendors.sp_DeleteAllServices
 -- Description: Deletes all services for a vendor
 -- Phase: 600 (Stored Procedures)
+-- Schema: vendors
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Vendor_DeleteAllServices]'))
-    DROP PROCEDURE [dbo].[sp_Vendor_DeleteAllServices];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_DeleteAllServices]'))
+    DROP PROCEDURE [vendors].[sp_DeleteAllServices];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Vendor_DeleteAllServices]
+CREATE PROCEDURE [vendors].[sp_DeleteAllServices]
     @VendorProfileID INT
 AS
 BEGIN
     SET NOCOUNT ON;
     
-    DELETE FROM Services WHERE VendorProfileID = @VendorProfileID;
+    DELETE FROM vendors.Services WHERE VendorProfileID = @VendorProfileID;
     
     SELECT @@ROWCOUNT AS RowsDeleted;
 END

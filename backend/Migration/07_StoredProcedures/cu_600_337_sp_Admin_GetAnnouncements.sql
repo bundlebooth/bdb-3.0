@@ -1,20 +1,21 @@
 -- =============================================
--- Stored Procedure: sp_Admin_GetAnnouncements
+-- Stored Procedure: admin.sp_GetAnnouncements
 -- Description: Gets all announcements
 -- Phase: 600 (Stored Procedures)
+-- Schema: admin
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Admin_GetAnnouncements]'))
-    DROP PROCEDURE [dbo].[sp_Admin_GetAnnouncements];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_GetAnnouncements]'))
+    DROP PROCEDURE [admin].[sp_GetAnnouncements];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Admin_GetAnnouncements]
+CREATE PROCEDURE [admin].[sp_GetAnnouncements]
 AS
 BEGIN
     SET NOCOUNT ON;
     
-    IF EXISTS (SELECT 1 FROM sys.tables WHERE name = 'Announcements')
+    IF EXISTS (SELECT 1 FROM sys.tables t JOIN sys.schemas s ON t.schema_id = s.schema_id WHERE t.name = 'Announcements' AND s.name = 'admin')
     BEGIN
-        SELECT * FROM Announcements ORDER BY DisplayOrder, CreatedAt DESC;
+        SELECT * FROM admin.Announcements ORDER BY DisplayOrder, CreatedAt DESC;
     END
     ELSE
     BEGIN

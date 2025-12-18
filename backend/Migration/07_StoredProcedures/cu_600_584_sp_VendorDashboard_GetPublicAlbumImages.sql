@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_VendorDashboard_GetPublicAlbumImages
+-- Stored Procedure: vendors.sp_Dashboard_GetPublicAlbumImages
 -- Description: Gets images for a public album
 -- Phase: 600 (Stored Procedures)
+-- Schema: vendors
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_VendorDashboard_GetPublicAlbumImages]'))
-    DROP PROCEDURE [dbo].[sp_VendorDashboard_GetPublicAlbumImages];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_Dashboard_GetPublicAlbumImages]'))
+    DROP PROCEDURE [vendors].[sp_Dashboard_GetPublicAlbumImages];
 GO
 
-CREATE PROCEDURE [dbo].[sp_VendorDashboard_GetPublicAlbumImages]
+CREATE PROCEDURE [vendors].[sp_Dashboard_GetPublicAlbumImages]
     @AlbumID INT
 AS
 BEGIN
@@ -19,8 +20,9 @@ BEGIN
         Caption,
         DisplayOrder,
         CreatedAt
-    FROM VendorPortfolioImages
+    FROM vendors.VendorPortfolioImages
     WHERE AlbumID = @AlbumID
     ORDER BY DisplayOrder, CreatedAt;
 END
 GO
+

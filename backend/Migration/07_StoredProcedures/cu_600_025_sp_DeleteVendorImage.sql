@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_DeleteVendorImage]
     Phase: 600 - Stored Procedures
     Script: cu_600_025_dbo.sp_DeleteVendorImage.sql
-    Description: Creates the [dbo].[sp_DeleteVendorImage] stored procedure
+    Description: Creates the [vendors].[sp_DeleteImage] stored procedure
     
     Execution Order: 25
 */
@@ -10,23 +10,23 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_DeleteVendorImage]...';
+PRINT 'Creating stored procedure [vendors].[sp_DeleteImage]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_DeleteVendorImage]'))
-    DROP PROCEDURE [dbo].[sp_DeleteVendorImage];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_DeleteImage]'))
+    DROP PROCEDURE [vendors].[sp_DeleteImage];
 GO
 
-CREATE   PROCEDURE [dbo].[sp_DeleteVendorImage]
+CREATE   PROCEDURE [vendors].[sp_DeleteImage]
     @ImageID INT,
     @VendorProfileID INT
 AS
 BEGIN
     SET NOCOUNT ON;
 
-    IF EXISTS (SELECT 1 FROM VendorImages WHERE ImageID = @ImageID AND VendorProfileID = @VendorProfileID)
+    IF EXISTS (SELECT 1 FROM vendors.VendorImages WHERE ImageID = @ImageID AND VendorProfileID = @VendorProfileID)
     BEGIN
-        DELETE FROM VendorImages WHERE ImageID = @ImageID;
+        DELETE FROM vendors.VendorImages WHERE ImageID = @ImageID;
         SELECT 1 AS Success;
     END
     ELSE
@@ -38,5 +38,6 @@ END;
 
 GO
 
-PRINT 'Stored procedure [dbo].[sp_DeleteVendorImage] created successfully.';
+PRINT 'Stored procedure [vendors].[sp_DeleteImage] created successfully.';
 GO
+

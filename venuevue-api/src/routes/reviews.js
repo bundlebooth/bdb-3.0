@@ -22,7 +22,7 @@ router.post('/submit', async (req, res) => {
     request.input('Rating', sql.Int, rating);
     request.input('Comment', sql.NVarChar(sql.MAX), comment);
     
-    const result = await request.execute('sp_SubmitReview');
+    const result = await request.execute('vendors.sp_SubmitReview');
     
     res.json({
       success: true,
@@ -49,7 +49,7 @@ router.get('/vendor/:vendorProfileId', async (req, res) => {
     
     request.input('VendorProfileID', sql.Int, vendorProfileId);
     
-    const result = await request.execute('sp_GetVendorReviews');
+    const result = await request.execute('vendors.sp_GetVendorReviews');
     
     res.json({
       success: true,

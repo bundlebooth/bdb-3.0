@@ -1,23 +1,23 @@
 /*
-    Migration Script: Create Stored Procedure [sp_GetNearbyVendors]
+    Migration Script: Create Stored Procedure [vendors.sp_GetNearby]
     Phase: 600 - Stored Procedures
-    Script: cu_600_039_dbo.sp_GetNearbyVendors.sql
-    Description: Creates the [dbo].[sp_GetNearbyVendors] stored procedure
-    
+    Script: cu_600_039_sp_GetNearbyVendors.sql
+    Description: Creates the [vendors].[sp_GetNearby] stored procedure
+    Schema: vendors
     Execution Order: 39
 */
 
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_GetNearbyVendors]...';
+PRINT 'Creating stored procedure [vendors].[sp_GetNearby]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_GetNearbyVendors]'))
-    DROP PROCEDURE [dbo].[sp_GetNearbyVendors];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_GetNearby]'))
+    DROP PROCEDURE [vendors].[sp_GetNearby];
 GO
 
-CREATE PROCEDURE [dbo].[sp_GetNearbyVendors]
+CREATE PROCEDURE [vendors].[sp_GetNearby]
     @Latitude DECIMAL(10,8),
     @Longitude DECIMAL(11,8),
     @RadiusMiles INT = 25,
@@ -32,7 +32,7 @@ BEGIN
             COS(RADIANS(Longitude) - RADIANS(@Longitude)) +
             SIN(RADIANS(@Latitude)) * SIN(RADIANS(Latitude))
         )) AS DistanceMiles
-    FROM VendorProfiles
+    FROM vendors.VendorProfiles
     WHERE ISNULL(IsVisible, 0) = 1
       AND Latitude IS NOT NULL
       AND Longitude IS NOT NULL
@@ -45,5 +45,6 @@ BEGIN
 END
 GO
 
-PRINT 'Stored procedure [dbo].[sp_GetNearbyVendors] created successfully.';
+PRINT 'Stored procedure [vendors].[sp_GetNearby] created successfully.';
 GO
+

@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_User_GetMe
+-- Stored Procedure: users.sp_GetMe
 -- Description: Gets current user info
 -- Phase: 600 (Stored Procedures)
+-- Schema: users
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_User_GetMe]'))
-    DROP PROCEDURE [dbo].[sp_User_GetMe];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[users].[sp_GetMe]'))
+    DROP PROCEDURE [users].[sp_GetMe];
 GO
 
-CREATE PROCEDURE [dbo].[sp_User_GetMe]
+CREATE PROCEDURE [users].[sp_GetMe]
     @UserID INT
 AS
 BEGIN
@@ -19,7 +20,8 @@ BEGIN
         Email as email,
         ProfileImageURL as avatar,
         IsVendor as isVendor
-    FROM Users 
+    FROM users.Users 
     WHERE UserID = @UserID;
 END
 GO
+

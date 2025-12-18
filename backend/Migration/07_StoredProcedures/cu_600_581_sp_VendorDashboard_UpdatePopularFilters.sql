@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_VendorDashboard_UpdatePopularFilters
+-- Stored Procedure: vendors.sp_Dashboard_UpdatePopularFilters
 -- Description: Updates vendor popular filters
 -- Phase: 600 (Stored Procedures)
+-- Schema: vendors
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_VendorDashboard_UpdatePopularFilters]'))
-    DROP PROCEDURE [dbo].[sp_VendorDashboard_UpdatePopularFilters];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_Dashboard_UpdatePopularFilters]'))
+    DROP PROCEDURE [vendors].[sp_Dashboard_UpdatePopularFilters];
 GO
 
-CREATE PROCEDURE [dbo].[sp_VendorDashboard_UpdatePopularFilters]
+CREATE PROCEDURE [vendors].[sp_Dashboard_UpdatePopularFilters]
     @VendorProfileID INT,
     @IsPremium BIT,
     @IsEcoFriendly BIT,
@@ -21,7 +22,7 @@ AS
 BEGIN
     SET NOCOUNT ON;
     
-    UPDATE VendorProfiles SET 
+    UPDATE vendors.VendorProfiles SET 
         IsPremium = @IsPremium,
         IsEcoFriendly = @IsEcoFriendly,
         IsAwardWinning = @IsAwardWinning,
@@ -36,3 +37,4 @@ BEGIN
     SELECT @@ROWCOUNT AS RowsAffected;
 END
 GO
+

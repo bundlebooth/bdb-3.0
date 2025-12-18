@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Admin_AddTicketMessage
+-- Stored Procedure: admin.sp_AddTicketMessage
 -- Description: Adds a message to a support ticket
 -- Phase: 600 (Stored Procedures)
+-- Schema: admin
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Admin_AddTicketMessage]'))
-    DROP PROCEDURE [dbo].[sp_Admin_AddTicketMessage];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_AddTicketMessage]'))
+    DROP PROCEDURE [admin].[sp_AddTicketMessage];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Admin_AddTicketMessage]
+CREATE PROCEDURE [admin].[sp_AddTicketMessage]
     @TicketID INT,
     @SenderID INT,
     @SenderType NVARCHAR(50) = 'admin',
@@ -22,6 +23,7 @@ BEGIN
     OUTPUT INSERTED.MessageID
     VALUES (@TicketID, @SenderID, @SenderType, @Message, @Attachments, @IsInternal);
     
-    UPDATE SupportTickets SET UpdatedAt = GETUTCDATE() WHERE TicketID = @TicketID;
+    UPDATE admin.SupportTickets SET UpdatedAt = GETUTCDATE() WHERE TicketID = @TicketID;
 END
 GO
+

@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Admin_Upsert2FASetting
+-- Stored Procedure: admin.sp_Upsert2FASetting
 -- Description: Creates or updates a 2FA security setting
 -- Phase: 600 (Stored Procedures)
+-- Schema: admin
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Admin_Upsert2FASetting]'))
-    DROP PROCEDURE [dbo].[sp_Admin_Upsert2FASetting];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_Upsert2FASetting]'))
+    DROP PROCEDURE [admin].[sp_Upsert2FASetting];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Admin_Upsert2FASetting]
+CREATE PROCEDURE [admin].[sp_Upsert2FASetting]
     @SettingKey NVARCHAR(100),
     @SettingValue NVARCHAR(500)
 AS

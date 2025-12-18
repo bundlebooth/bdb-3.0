@@ -1,23 +1,23 @@
 /*
-    Migration Script: Create Stored Procedure [sp_GetPremiumVendors]
+    Migration Script: Create Stored Procedure [vendors.sp_GetPremium]
     Phase: 600 - Stored Procedures
-    Script: cu_600_041_dbo.sp_GetPremiumVendors.sql
-    Description: Creates the [dbo].[sp_GetPremiumVendors] stored procedure
-    
+    Script: cu_600_041_sp_GetPremiumVendors.sql
+    Description: Creates the [vendors].[sp_GetPremium] stored procedure
+    Schema: vendors
     Execution Order: 41
 */
 
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_GetPremiumVendors]...';
+PRINT 'Creating stored procedure [vendors].[sp_GetPremium]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_GetPremiumVendors]'))
-    DROP PROCEDURE [dbo].[sp_GetPremiumVendors];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_GetPremium]'))
+    DROP PROCEDURE [vendors].[sp_GetPremium];
 GO
 
-CREATE PROCEDURE [dbo].[sp_GetPremiumVendors]
+CREATE PROCEDURE [vendors].[sp_GetPremium]
     @City NVARCHAR(100) = NULL,
     @Limit INT = 10
 AS
@@ -26,10 +26,10 @@ BEGIN
     
     SELECT TOP (@Limit) vp.*,
         ISNULL(vt.ViewCount7Days, 0) AS ViewCount7Days
-    FROM VendorProfiles vp
+    FROM vendors.VendorProfiles vp
     LEFT JOIN (
         SELECT VendorProfileID, COUNT(*) AS ViewCount7Days
-        FROM VendorProfileViews
+        FROM vendors.VendorProfileViews
         WHERE ViewedAt >= DATEADD(DAY, -7, GETDATE())
         GROUP BY VendorProfileID
     ) vt ON vp.VendorProfileID = vt.VendorProfileID
@@ -40,5 +40,7 @@ BEGIN
 END
 GO
 
-PRINT 'Stored procedure [dbo].[sp_GetPremiumVendors] created successfully.';
+PRINT 'Stored procedure [vendors].[sp_GetPremium] created successfully.';
 GO
+
+

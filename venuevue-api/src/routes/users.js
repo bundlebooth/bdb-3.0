@@ -123,7 +123,7 @@ router.post('/register', async (req, res) => {
     const pool = await poolPromise;
     const checkRequest = pool.request();
     checkRequest.input('Email', sql.NVarChar(100), email);
-    const emailCheck = await checkRequest.execute('sp_User_CheckEmailExists');
+    const emailCheck = await checkRequest.execute('users.sp_CheckEmailExists');
 
     if (emailCheck.recordset.length > 0) {
       return res.status(409).json({
@@ -144,7 +144,7 @@ router.post('/register', async (req, res) => {
     request.input('IsVendor', sql.Bit, isVendorFlag);
     request.input('AuthProvider', sql.NVarChar(20), 'email');
 
-    const result = await request.execute('sp_RegisterUser');
+    const result = await request.execute('users.sp_RegisterUser');
     const userId = result.recordset[0].UserID;
 
     // Log account creation
@@ -157,7 +157,7 @@ router.post('/register', async (req, res) => {
         .input('ipAddress', sql.NVarChar, req.ip || req.headers['x-forwarded-for'] || 'Unknown')
         .input('userAgent', sql.NVarChar, req.headers['user-agent'] || 'Unknown')
         .input('details', sql.NVarChar, isVendorFlag ? 'Vendor account created' : 'Client account created')
-        .execute('sp_User_InsertSecurityLog');
+        .execute('users.sp_InsertSecurityLog');
     } catch (logErr) { console.error('Failed to log security event:', logErr.message); }
 
     // Generate JWT token
@@ -219,7 +219,7 @@ router.post('/login', async (req, res) => {
     const request = pool.request();
     request.input('Email', sql.NVarChar(100), email.toLowerCase().trim());
 
-    const result = await request.execute('sp_User_GetLoginInfo');
+    const result = await request.execute('users.sp_GetLoginInfo');
     
     if (result.recordset.length === 0) {
       return res.status(401).json({
@@ -251,7 +251,7 @@ router.post('/login', async (req, res) => {
           .input('ipAddress', sql.NVarChar, req.ip || req.headers['x-forwarded-for'] || 'Unknown')
           .input('userAgent', sql.NVarChar, req.headers['user-agent'] || 'Unknown')
           .input('details', sql.NVarChar, 'Invalid password')
-          .execute('sp_User_InsertSecurityLog');
+          .execute('users.sp_InsertSecurityLog');
       } catch (logErr) { console.error('Failed to log security event:', logErr.message); }
       
       return res.status(401).json({
@@ -276,7 +276,7 @@ router.post('/login', async (req, res) => {
       console.log('🔐 SecuritySettings table exists:', tableCheck.recordset[0].cnt > 0);
       
       if (tableCheck.recordset[0].cnt > 0) {
-        const settingsResult = await pool.request().execute('sp_User_GetSecuritySettings');
+        const settingsResult = await pool.request().execute('users.sp_GetSecuritySettings');
         
         console.log('🔐 Raw settings from DB:', settingsResult.recordset);
         
@@ -321,7 +321,7 @@ router.post('/login', async (req, res) => {
         .input('CodeHash', sql.NVarChar(255), codeHash)
         .input('Purpose', sql.NVarChar(50), 'login')
         .input('ExpiresAt', sql.DateTime, expiresAt)
-        .execute('sp_User_Insert2FACode');
+        .execute('users.sp_Insert2FACode');
       try { await sendTwoFactorCode(user.Email, raw); } catch (e) { console.error('2FA email error:', e.message); }
       const tempToken = jwt.sign(
         { id: user.UserID, email: user.Email, purpose: 'login_2fa' },
@@ -356,7 +356,7 @@ router.post('/login', async (req, res) => {
         .input('userAgent', sql.NVarChar, userAgent)
         .input('device', sql.NVarChar, device)
         .input('details', sql.NVarChar, user.IsAdmin ? 'Admin login' : (user.IsVendor ? 'Vendor login' : 'Client login'))
-        .execute('sp_User_InsertSecurityLog');
+        .execute('users.sp_InsertSecurityLog');
       console.log('✅ Security log inserted successfully');
     } catch (logErr) { 
       console.error('❌ Failed to log security event:', logErr.message); 
@@ -367,7 +367,7 @@ router.post('/login', async (req, res) => {
     try {
       await pool.request()
         .input('userId', sql.Int, user.UserID)
-        .execute('sp_User_UpdateLastLogin');
+        .execute('users.sp_UpdateLastLogin');
     } catch (updateErr) { console.error('Failed to update LastLogin:', updateErr.message); }
     
     res.json({
@@ -412,7 +412,7 @@ router.post('/login/verify-2fa', async (req, res) => {
     const rec = await pool.request()
       .input('UserID', sql.Int, decoded.id)
       .input('Purpose', sql.NVarChar(50), 'login')
-      .execute('sp_User_Get2FACode');
+      .execute('users.sp_Get2FACode');
     if (rec.recordset.length === 0) {
       return res.status(400).json({ success: false, message: 'No verification code found' });
     }
@@ -427,15 +427,15 @@ router.post('/login/verify-2fa', async (req, res) => {
     if (!ok) {
       await pool.request()
         .input('CodeID', sql.Int, row.CodeID)
-        .execute('sp_User_Increment2FAAttempts');
+        .execute('users.sp_Increment2FAAttempts');
       return res.status(400).json({ success: false, message: 'Invalid code' });
     }
     await pool.request()
       .input('CodeID', sql.Int, row.CodeID)
-      .execute('sp_User_Mark2FAUsed');
+      .execute('users.sp_Mark2FAUsed');
     const ures = await pool.request()
       .input('UserID', sql.Int, decoded.id)
-      .execute('sp_User_GetById');
+      .execute('users.sp_GetById');
     if (ures.recordset.length === 0) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
@@ -476,7 +476,7 @@ router.post('/login/resend-2fa', async (req, res) => {
       .input('CodeHash', sql.NVarChar(255), codeHash)
       .input('Purpose', sql.NVarChar(50), 'login')
       .input('ExpiresAt', sql.DateTime, expiresAt)
-      .execute('sp_User_Insert2FACode');
+      .execute('users.sp_Insert2FACode');
     try { await sendTwoFactorCode(decoded.email, raw); } catch (e) { console.error('2FA email error:', e.message); }
     res.json({ success: true, message: 'Verification code resent' });
   } catch (err) {
@@ -508,7 +508,7 @@ router.post('/social-login', async (req, res) => {
     request.input('ProfileImageURL', sql.NVarChar(255), avatar || null);
     request.input('IsVendor', sql.Bit, isVendorFlag);
 
-    const result = await request.execute('sp_RegisterSocialUser');
+    const result = await request.execute('users.sp_RegisterSocialUser');
     const user = result.recordset[0];
 
     if (!user) {
@@ -560,7 +560,7 @@ router.get('/check-email', async (req, res) => {
     const request = pool.request();
     request.input('Email', sql.NVarChar(100), email.toLowerCase().trim());
 
-    const result = await request.execute('sp_User_CheckEmail');
+    const result = await request.execute('users.sp_CheckEmail');
 
     if (result.recordset.length > 0) {
       res.json({
@@ -605,7 +605,7 @@ router.get('/me', async (req, res) => {
     const request = pool.request();
     request.input('UserID', sql.Int, decoded.id);
 
-    const result = await request.execute('sp_User_GetMe');
+    const result = await request.execute('users.sp_GetMe');
     
     if (result.recordset.length === 0) {
       return res.status(404).json({
@@ -667,7 +667,7 @@ router.get('/:id/dashboard', async (req, res) => {
     const request = pool.request();
     request.input('UserID', sql.Int, parseInt(id));
 
-    const result = await request.execute('sp_GetUserDashboard');
+    const result = await request.execute('users.sp_GetUserDashboard');
     
     if (!result.recordsets[0] || result.recordsets[0].length === 0) {
       return res.status(404).json({
@@ -713,7 +713,7 @@ router.get('/:id/bookings/all', async (req, res) => {
     const pool = await poolPromise;
     const request = pool.request();
     request.input('UserID', sql.Int, parseInt(id));
-    const result = await request.execute('sp_GetUserBookingsAll');
+    const result = await request.execute('users.sp_GetUserBookingsAll');
     
     // Fix date serialization - convert Date objects to ISO strings
     const bookings = result.recordset.map(booking => ({
@@ -738,7 +738,7 @@ router.get('/:id/reviews', async (req, res) => {
     const pool = await poolPromise;
     const request = pool.request();
     request.input('UserID', sql.Int, parseInt(id));
-    const result = await request.execute('sp_GetUserReviews');
+    const result = await request.execute('users.sp_GetUserReviews');
     res.json(result.recordset);
   } catch (err) {
     console.error('Get user reviews error:', err);
@@ -753,7 +753,7 @@ router.get('/:id/profile-details', async (req, res) => {
     const pool = await poolPromise;
     const request = pool.request();
     request.input('UserID', sql.Int, parseInt(id));
-    const result = await request.execute('sp_GetUserProfileDetails');
+    const result = await request.execute('users.sp_GetUserProfileDetails');
     if (result.recordset.length > 0) {
       res.json(result.recordset[0]);
     } else {
@@ -777,7 +777,7 @@ router.put('/:id/profile-update', async (req, res) => {
     request.input('Phone', sql.NVarChar(20), phone || null);
     request.input('Bio', sql.NVarChar(sql.MAX), bio || null);
     request.input('Avatar', sql.NVarChar(255), avatar || null);
-    await request.execute('sp_UpdateUserProfile');
+    await request.execute('users.sp_UpdateUserProfile');
     res.json({ success: true, message: 'User profile updated successfully' });
   } catch (err) {
     console.error('Update user profile error:', err);
@@ -802,7 +802,7 @@ router.put('/:id/password-update', async (req, res) => {
     const request = pool.request();
     request.input('UserID', sql.Int, parseInt(id));
     request.input('PasswordHash', sql.NVarChar(255), passwordHash);
-    await request.execute('sp_UpdateUserPassword');
+    await request.execute('users.sp_UpdateUserPassword');
     res.json({ success: true, message: 'Password updated successfully' });
   } catch (err) {
     console.error('Update user password error:', err);
@@ -841,7 +841,7 @@ router.post('/:id/location', async (req, res) => {
     request.input('State', sql.NVarChar(50), state || null);
     request.input('Country', sql.NVarChar(50), country || null);
 
-    const result = await request.execute('sp_UpdateUserLocation');
+    const result = await request.execute('users.sp_UpdateUserLocation');
     
     res.json({
       success: true,
@@ -874,7 +874,7 @@ router.get('/:id/notification-preferences', async (req, res) => {
     const request = pool.request();
     request.input('UserID', sql.Int, parseInt(id));
 
-    const result = await request.execute('sp_User_GetNotificationPrefs');
+    const result = await request.execute('users.sp_GetNotificationPrefs');
 
     if (result.recordset.length === 0) {
       return res.status(404).json({
@@ -930,7 +930,7 @@ router.put('/:id/notification-preferences', async (req, res) => {
     request.input('UserID', sql.Int, parseInt(id));
     request.input('Preferences', sql.NVarChar(sql.MAX), JSON.stringify(preferences));
 
-    await request.execute('sp_User_UpdateNotificationPrefs');
+    await request.execute('users.sp_UpdateNotificationPrefs');
 
     res.json({
       success: true,
@@ -983,7 +983,7 @@ router.post('/:id/profile-picture', upload.single('profilePicture'), async (req,
     request.input('UserID', sql.Int, parseInt(id));
     request.input('ProfileImageURL', sql.NVarChar(255), profilePictureUrl);
 
-    await request.execute('sp_User_UpdateProfileImage');
+    await request.execute('users.sp_UpdateProfileImage');
 
     res.json({
       success: true,
@@ -1018,7 +1018,7 @@ router.get('/:id', async (req, res) => {
     const request = pool.request();
     request.input('UserID', sql.Int, parseInt(id));
 
-    const result = await request.execute('sp_User_GetProfile');
+    const result = await request.execute('users.sp_GetProfile');
 
     if (result.recordset.length === 0) {
       return res.status(404).json({
@@ -1070,7 +1070,7 @@ router.put('/:id', async (req, res) => {
     if (newPassword && currentPassword) {
       const checkRequest = pool.request();
       checkRequest.input('UserID', sql.Int, parseInt(id));
-      const userResult = await checkRequest.execute('sp_User_GetPasswordHash');
+      const userResult = await checkRequest.execute('users.sp_GetPasswordHash');
 
       if (userResult.recordset.length === 0) {
         return res.status(404).json({
@@ -1094,7 +1094,7 @@ router.put('/:id', async (req, res) => {
       const passwordRequest = pool.request();
       passwordRequest.input('UserID', sql.Int, parseInt(id));
       passwordRequest.input('PasswordHash', sql.NVarChar(255), passwordHash);
-      await passwordRequest.execute('sp_User_UpdatePassword');
+      await passwordRequest.execute('users.sp_UpdatePassword');
     }
 
     // Update user profile
@@ -1103,7 +1103,7 @@ router.put('/:id', async (req, res) => {
     request.input('Name', sql.NVarChar(100), `${firstName || ''} ${lastName || ''}`.trim());
     request.input('Phone', sql.NVarChar(20), phone || null);
 
-    await request.execute('sp_User_UpdateProfile');
+    await request.execute('users.sp_UpdateProfile');
 
     res.json({
       success: true,

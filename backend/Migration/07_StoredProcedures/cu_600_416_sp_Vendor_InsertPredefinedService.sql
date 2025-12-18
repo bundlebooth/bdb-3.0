@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Vendor_InsertPredefinedService
+-- Stored Procedure: vendors.sp_InsertPredefinedService
 -- Description: Inserts a vendor's predefined service selection
 -- Phase: 600 (Stored Procedures)
+-- Schema: vendors
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Vendor_InsertPredefinedService]'))
-    DROP PROCEDURE [dbo].[sp_Vendor_InsertPredefinedService];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_InsertPredefinedService]'))
+    DROP PROCEDURE [vendors].[sp_InsertPredefinedService];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Vendor_InsertPredefinedService]
+CREATE PROCEDURE [vendors].[sp_InsertPredefinedService]
     @VendorProfileID INT,
     @PredefinedServiceID INT,
     @VendorPrice DECIMAL(10,2),

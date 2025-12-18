@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Admin_UpdatePublicFAQ
+-- Stored Procedure: admin.sp_UpdatePublicFAQ
 -- Description: Updates a public FAQ
 -- Phase: 600 (Stored Procedures)
+-- Schema: admin
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Admin_UpdatePublicFAQ]'))
-    DROP PROCEDURE [dbo].[sp_Admin_UpdatePublicFAQ];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_UpdatePublicFAQ]'))
+    DROP PROCEDURE [admin].[sp_UpdatePublicFAQ];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Admin_UpdatePublicFAQ]
+CREATE PROCEDURE [admin].[sp_UpdatePublicFAQ]
     @FAQID INT,
     @Question NVARCHAR(500),
     @Answer NVARCHAR(MAX),
@@ -18,11 +19,11 @@ AS
 BEGIN
     SET NOCOUNT ON;
     
-    UPDATE FAQs 
+    UPDATE admin.FAQs 
     SET Question = @Question, Answer = @Answer, Category = @Category, 
         DisplayOrder = @DisplayOrder, IsActive = @IsActive, UpdatedAt = GETUTCDATE()
     WHERE FAQID = @FAQID;
     
-    SELECT * FROM FAQs WHERE FAQID = @FAQID;
+    SELECT * FROM admin.FAQs WHERE FAQID = @FAQID;
 END
 GO

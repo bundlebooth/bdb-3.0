@@ -18,7 +18,7 @@ router.get('/dashboard-stats', async (req, res) => {
   try {
     const pool = await getPool();
     
-    const result = await pool.request().execute('sp_Admin_GetDashboardStats');
+    const result = await pool.request().execute('admin.sp_GetDashboardStats');
     
     res.json(result.recordset[0]);
   } catch (error) {
@@ -33,7 +33,7 @@ router.get('/environment-info', async (req, res) => {
     const pool = await getPool();
     
     // Get database info using stored procedure
-    const dbInfo = await pool.request().execute('sp_Admin_GetEnvironmentInfo');
+    const dbInfo = await pool.request().execute('admin.sp_GetEnvironmentInfo');
     
     const serverInfo = dbInfo.recordset[0];
     
@@ -83,7 +83,7 @@ router.get('/platform-health', async (req, res) => {
     const dbResponseTime = Date.now() - startTime;
     
     // Get platform health data using stored procedure
-    const result = await pool.request().execute('sp_Admin_GetPlatformHealth');
+    const result = await pool.request().execute('admin.sp_GetPlatformHealth');
     
     const dbStats = result.recordsets[0]?.[0] || {};
     const storageStats = result.recordsets[1]?.[0] || {};
@@ -126,7 +126,7 @@ router.get('/recent-activity', async (req, res) => {
     const pool = await getPool();
     
     // Get recent activity using stored procedure
-    const result = await pool.request().execute('sp_Admin_GetRecentActivity');
+    const result = await pool.request().execute('admin.sp_GetRecentActivity');
     
     // Combine recordsets and sort by timestamp
     const vendors = result.recordsets[0] || [];
@@ -155,7 +155,7 @@ router.get('/vendor-approvals', async (req, res) => {
     const request = pool.request();
     request.input('Status', sql.NVarChar(50), status);
     
-    const result = await request.execute('sp_Admin_GetVendorApprovals');
+    const result = await request.execute('admin.sp_GetVendorApprovals');
     
     res.json({ profiles: result.recordset });
   } catch (error) {
@@ -178,7 +178,7 @@ router.get('/vendor-approvals/:id', async (req, res) => {
     request.input('VendorProfileID', sql.Int, id);
     request.input('UserID', sql.Int, null);
     
-    const result = await request.execute('sp_GetVendorDetails');
+    const result = await request.execute('vendors.sp_GetDetails');
     
     if (result.recordsets.length === 0 || result.recordsets[0].length === 0) {
       return res.status(404).json({ error: 'Vendor not found' });
@@ -207,7 +207,7 @@ router.get('/vendor-approvals/:id', async (req, res) => {
     // Get owner info and visibility status using stored procedure
     const ownerRequest = pool.request();
     ownerRequest.input('VendorProfileID', sql.Int, id);
-    const ownerResult = await ownerRequest.execute('sp_Admin_GetVendorOwnerInfo');
+    const ownerResult = await ownerRequest.execute('admin.sp_GetVendorOwnerInfo');
     const ownerInfo = ownerResult.recordset[0] || {};
     console.log('Visibility status:', ownerInfo.IsVisible, 'ProfileStatus:', ownerInfo.ProfileStatus);
     
@@ -216,7 +216,7 @@ router.get('/vendor-approvals/:id', async (req, res) => {
     try {
       const serviceAreasRequest = pool.request();
       serviceAreasRequest.input('VendorProfileID', sql.Int, id);
-      const serviceAreasResult = await serviceAreasRequest.execute('sp_Admin_GetVendorServiceAreas');
+      const serviceAreasResult = await serviceAreasRequest.execute('admin.sp_GetVendorServiceAreas');
       serviceAreas = serviceAreasResult.recordset || [];
     } catch (e) {
       console.warn('Service areas query failed:', e.message);
@@ -227,7 +227,7 @@ router.get('/vendor-approvals/:id', async (req, res) => {
     try {
       const featuresRequest = pool.request();
       featuresRequest.input('VendorProfileID', sql.Int, id);
-      const featuresResult = await featuresRequest.execute('sp_Admin_GetVendorFeatures');
+      const featuresResult = await featuresRequest.execute('admin.sp_GetVendorFeatures');
       features = featuresResult.recordset || [];
       console.log('Features found:', features.length);
     } catch (e) {
@@ -258,7 +258,7 @@ router.get('/vendor-approvals/:id', async (req, res) => {
     try {
       const stripeRequest = pool.request();
       stripeRequest.input('VendorProfileID', sql.Int, id);
-      const stripeResult = await stripeRequest.execute('sp_Admin_GetVendorStripeAccount');
+      const stripeResult = await stripeRequest.execute('admin.sp_GetVendorStripeAccount');
       
       const stripeAccountId = stripeResult.recordset[0]?.StripeAccountId;
       if (stripeAccountId) {
@@ -281,7 +281,7 @@ router.get('/vendor-approvals/:id', async (req, res) => {
       try {
         const answersRequest = pool.request();
         answersRequest.input('VendorProfileID', sql.Int, id);
-        const answersResult = await answersRequest.execute('sp_Admin_GetVendorCategoryAnswers');
+        const answersResult = await answersRequest.execute('admin.sp_GetVendorCategoryAnswers');
         categoryAnswers = answersResult.recordset || [];
         console.log('Category answers found:', categoryAnswers.length);
       } catch (e) {
@@ -333,7 +333,7 @@ router.get('/vendors', async (req, res) => {
     request.input('PageNumber', sql.Int, parseInt(page));
     request.input('PageSize', sql.Int, parseInt(limit));
     
-    const result = await request.execute('sp_Admin_GetAllVendors');
+    const result = await request.execute('admin.sp_GetAllVendors');
     
     res.json({
       vendors: result.recordsets[0] || [],
@@ -359,7 +359,7 @@ router.post('/vendors/:id/approve', async (req, res) => {
     request.input('VendorProfileID', sql.Int, id);
     request.input('AdminNotes', sql.NVarChar(sql.MAX), adminNotes || null);
     
-    await request.execute('sp_Admin_ApproveVendor');
+    await request.execute('admin.sp_ApproveVendor');
     
     res.json({ success: true, message: 'Vendor approved and now visible on the platform' });
   } catch (error) {
@@ -381,7 +381,7 @@ router.post('/vendors/:id/reject', async (req, res) => {
     request.input('Reason', sql.NVarChar(sql.MAX), reason || null);
     request.input('AdminNotes', sql.NVarChar(sql.MAX), adminNotes || null);
     
-    await request.execute('sp_Admin_RejectVendor');
+    await request.execute('admin.sp_RejectVendor');
     
     res.json({ success: true, message: 'Vendor rejected and hidden from platform' });
   } catch (error) {
@@ -402,7 +402,7 @@ router.post('/vendors/:id/suspend', async (req, res) => {
     request.input('VendorProfileID', sql.Int, id);
     request.input('Reason', sql.NVarChar(sql.MAX), reason || null);
     
-    await request.execute('sp_Admin_SuspendVendor');
+    await request.execute('admin.sp_SuspendVendor');
     
     res.json({ success: true, message: 'Vendor suspended and hidden from platform' });
   } catch (error) {
@@ -421,7 +421,7 @@ router.post('/vendors/:id/toggle-visibility', async (req, res) => {
     const request = pool.request();
     request.input('VendorProfileID', sql.Int, id);
     
-    const result = await request.execute('sp_Admin_ToggleVendorVisibility');
+    const result = await request.execute('admin.sp_ToggleVendorVisibility');
     const newVisibility = result.recordset[0]?.NewVisibility;
     
     res.json({ 
@@ -449,7 +449,7 @@ router.post('/vendors/:id/visibility', async (req, res) => {
     request.input('VendorProfileID', sql.Int, id);
     request.input('Visible', sql.Bit, isVisible);
     
-    await request.execute('sp_Admin_SetVendorVisibility');
+    await request.execute('admin.sp_SetVendorVisibility');
     
     res.json({ 
       success: true, 
@@ -476,7 +476,7 @@ router.get('/users', async (req, res) => {
     request.input('PageNumber', sql.Int, parseInt(page));
     request.input('PageSize', sql.Int, parseInt(limit));
     
-    const result = await request.execute('sp_Admin_GetUsers');
+    const result = await request.execute('admin.sp_GetUsers');
     
     res.json({
       users: result.recordsets[0] || [],
@@ -499,7 +499,7 @@ router.post('/users/:id/toggle-status', async (req, res) => {
     const request = pool.request();
     request.input('UserID', sql.Int, id);
     
-    await request.execute('sp_Admin_ToggleUserStatus');
+    await request.execute('admin.sp_ToggleUserStatus');
     
     res.json({ success: true, message: 'User status toggled' });
   } catch (error) {
@@ -520,7 +520,7 @@ router.put('/users/:id', async (req, res) => {
     request.input('Name', sql.NVarChar(100), name);
     request.input('Email', sql.NVarChar(100), email);
     
-    await request.execute('sp_Admin_UpdateUser');
+    await request.execute('admin.sp_UpdateUser');
     
     res.json({ success: true, message: 'User updated' });
   } catch (error) {
@@ -538,7 +538,7 @@ router.get('/users/:id', async (req, res) => {
     const request = pool.request();
     request.input('UserID', sql.Int, id);
     
-    const result = await request.execute('sp_Admin_GetUserDetails');
+    const result = await request.execute('admin.sp_GetUserDetails');
     
     if (result.recordset.length === 0) {
       return res.status(404).json({ error: 'User not found' });
@@ -560,7 +560,7 @@ router.get('/users/:id/activity', async (req, res) => {
     const request = pool.request();
     request.input('UserID', sql.Int, id);
     
-    const result = await request.execute('sp_Admin_GetUserActivity');
+    const result = await request.execute('admin.sp_GetUserActivity');
     
     // Combine recordsets and sort by date
     const bookings = result.recordsets[0] || [];
@@ -596,7 +596,7 @@ router.get('/bookings', async (req, res) => {
     request.input('PageNumber', sql.Int, parseInt(page));
     request.input('PageSize', sql.Int, parseInt(limit));
     
-    const result = await request.execute('sp_Admin_GetAllBookings');
+    const result = await request.execute('admin.sp_GetAllBookings');
     
     console.log(`Admin: Fetched ${result.recordsets[0]?.length || 0} bookings out of ${result.recordsets[1]?.[0]?.total || 0} total`);
     
@@ -621,7 +621,7 @@ router.get('/bookings/:id', async (req, res) => {
     const request = pool.request();
     request.input('BookingID', sql.Int, id);
     
-    const result = await request.execute('sp_Admin_GetBookingDetails');
+    const result = await request.execute('admin.sp_GetBookingDetails');
     
     if (result.recordset.length === 0) {
       return res.status(404).json({ error: 'Booking not found' });
@@ -649,7 +649,7 @@ router.put('/bookings/:id', async (req, res) => {
     request.input('TotalAmount', sql.Decimal(10,2), totalAmount || null);
     request.input('SpecialRequests', sql.NVarChar(sql.MAX), specialRequests || null);
     
-    await request.execute('sp_Admin_UpdateBooking');
+    await request.execute('admin.sp_UpdateBooking');
     
     res.json({ success: true, message: 'Booking updated' });
   } catch (error) {
@@ -669,7 +669,7 @@ router.post('/bookings/:id/cancel', async (req, res) => {
     request.input('BookingID', sql.Int, id);
     request.input('Reason', sql.NVarChar(sql.MAX), reason || null);
     
-    await request.execute('sp_Admin_CancelBooking');
+    await request.execute('admin.sp_CancelBooking');
     
     res.json({ success: true, message: 'Booking cancelled' });
   } catch (error) {
@@ -694,7 +694,7 @@ router.get('/reviews', async (req, res) => {
     request.input('PageNumber', sql.Int, parseInt(page));
     request.input('PageSize', sql.Int, parseInt(limit));
     
-    const result = await request.execute('sp_Admin_GetAllReviews');
+    const result = await request.execute('admin.sp_GetAllReviews');
     
     res.json({
       reviews: result.recordsets[0] || [],
@@ -720,7 +720,7 @@ router.post('/reviews/:id/flag', async (req, res) => {
     request.input('IsFlagged', sql.Bit, flagged);
     request.input('FlagReason', sql.NVarChar(sql.MAX), reason || null);
     
-    await request.execute('sp_Admin_FlagReview');
+    await request.execute('admin.sp_FlagReview');
     
     res.json({ success: true, message: flagged ? 'Review flagged' : 'Review unflagged' });
   } catch (error) {
@@ -738,7 +738,7 @@ router.post('/reviews/:id/unflag', async (req, res) => {
     const request = pool.request();
     request.input('ReviewID', sql.Int, id);
     
-    await request.execute('sp_Admin_UnflagReview');
+    await request.execute('admin.sp_UnflagReview');
     
     res.json({ success: true, message: 'Review unflagged' });
   } catch (error) {
@@ -758,7 +758,7 @@ router.post('/reviews/:id/note', async (req, res) => {
     request.input('ReviewID', sql.Int, id);
     request.input('AdminNotes', sql.NVarChar(sql.MAX), note);
     
-    await request.execute('sp_Admin_AddReviewNote');
+    await request.execute('admin.sp_AddReviewNote');
     
     res.json({ success: true, message: 'Note saved' });
   } catch (error) {
@@ -776,7 +776,7 @@ router.delete('/reviews/:id', async (req, res) => {
     const request = pool.request();
     request.input('ReviewID', sql.Int, id);
     
-    await request.execute('sp_Admin_DeleteReview');
+    await request.execute('admin.sp_DeleteReview');
     
     res.json({ success: true, message: 'Review deleted' });
   } catch (error) {
@@ -792,7 +792,7 @@ router.get('/categories', async (req, res) => {
   try {
     const pool = await getPool();
     
-    const result = await pool.request().execute('sp_Admin_GetCategories');
+    const result = await pool.request().execute('admin.sp_GetCategories');
     
     // Transform to expected format
     const categories = result.recordset.map((cat, index) => ({
@@ -823,7 +823,7 @@ router.post('/categories', async (req, res) => {
     request.input('Description', sql.NVarChar(sql.MAX), description || null);
     request.input('IconClass', sql.NVarChar(100), iconClass || null);
     
-    const result = await request.execute('sp_Admin_CreateCategory');
+    const result = await request.execute('admin.sp_CreateCategory');
     
     res.json({ success: true, categoryId: result.recordset[0].CategoryID });
   } catch (error) {
@@ -846,7 +846,7 @@ router.put('/categories/:id', async (req, res) => {
     request.input('IconClass', sql.NVarChar(100), iconClass || null);
     request.input('IsActive', sql.Bit, isActive !== false);
     
-    await request.execute('sp_Admin_UpdateCategory');
+    await request.execute('admin.sp_UpdateCategory');
     
     res.json({ success: true, message: 'Category updated' });
   } catch (error) {
@@ -864,7 +864,7 @@ router.delete('/categories/:id', async (req, res) => {
     const request = pool.request();
     request.input('CategoryID', sql.Int, id);
     
-    await request.execute('sp_Admin_DeleteCategory');
+    await request.execute('admin.sp_DeleteCategory');
     
     res.json({ success: true, message: 'Category deleted' });
   } catch (error) {
@@ -884,7 +884,7 @@ router.get('/analytics', async (req, res) => {
     const request = pool.request();
     request.input('Range', sql.NVarChar(10), range);
     
-    const result = await request.execute('sp_Admin_GetAnalytics');
+    const result = await request.execute('admin.sp_GetAnalytics');
     
     const stats = result.recordsets[0]?.[0] || {};
     const topCategories = result.recordsets[1] || [];
@@ -910,7 +910,7 @@ router.get('/payments/stats', async (req, res) => {
   try {
     const pool = await getPool();
     
-    const result = await pool.request().execute('sp_Admin_GetPaymentStats');
+    const result = await pool.request().execute('admin.sp_GetPaymentStats');
     
     res.json(result.recordset[0]);
   } catch (error) {
@@ -924,7 +924,7 @@ router.get('/payments/vendor-balances', async (req, res) => {
   try {
     const pool = await getPool();
     
-    const result = await pool.request().execute('sp_Admin_GetVendorBalances');
+    const result = await pool.request().execute('admin.sp_GetVendorBalances');
     
     res.json({ balances: result.recordset });
   } catch (error) {
@@ -944,7 +944,7 @@ router.get('/payments/transactions', async (req, res) => {
     request.input('PageNumber', sql.Int, parseInt(page));
     request.input('PageSize', sql.Int, parseInt(limit));
     
-    const result = await request.execute('sp_Admin_GetTransactions');
+    const result = await request.execute('admin.sp_GetTransactions');
     
     res.json({ 
       transactions: result.recordsets[0] || [], 
@@ -967,7 +967,7 @@ router.get('/payments/payouts', async (req, res) => {
     request.input('PageNumber', sql.Int, parseInt(page));
     request.input('PageSize', sql.Int, parseInt(limit));
     
-    const result = await request.execute('sp_Admin_GetPayouts');
+    const result = await request.execute('admin.sp_GetPayouts');
     
     res.json({ 
       payouts: result.recordsets[0] || [], 
@@ -996,7 +996,7 @@ router.get('/security/logs', async (req, res) => {
     request.input('PageNumber', sql.Int, pageNum);
     request.input('PageSize', sql.Int, limitNum);
     
-    const result = await request.execute('sp_Admin_GetSecurityLogs');
+    const result = await request.execute('admin.sp_GetSecurityLogs');
     
     res.json({ 
       logs: result.recordsets[0] || [], 
@@ -1027,7 +1027,7 @@ router.post('/security/log', async (req, res) => {
     request.input('Device', sql.NVarChar(100), device || null);
     request.input('Details', sql.NVarChar(sql.MAX), details || null);
     
-    await request.execute('sp_Admin_LogSecurityEvent');
+    await request.execute('admin.sp_LogSecurityEvent');
     
     res.json({ success: true });
   } catch (error) {
@@ -1050,7 +1050,7 @@ router.get('/chats', async (req, res) => {
     request.input('PageNumber', sql.Int, parseInt(page));
     request.input('PageSize', sql.Int, parseInt(limit));
     
-    const result = await request.execute('sp_Admin_GetAllChats');
+    const result = await request.execute('admin.sp_GetAllChats');
     
     console.log(`Admin: Fetched ${result.recordsets[0]?.length || 0} conversations out of ${result.recordsets[1]?.[0]?.total || 0} total`);
     
@@ -1075,7 +1075,7 @@ router.get('/chats/:id/messages', async (req, res) => {
     const request = pool.request();
     request.input('ConversationID', sql.Int, id);
     
-    const result = await request.execute('sp_Admin_GetChatMessages');
+    const result = await request.execute('admin.sp_GetChatMessages');
     
     res.json({ messages: result.recordsets[1] || [] });
   } catch (error) {
@@ -1095,7 +1095,7 @@ router.post('/chats/:id/system-message', async (req, res) => {
     request.input('ConversationID', sql.Int, id);
     request.input('Message', sql.NVarChar(sql.MAX), message);
     
-    await request.execute('sp_Admin_SendSystemMessage');
+    await request.execute('admin.sp_SendSystemMessage');
     
     res.json({ success: true, message: 'System message sent' });
   } catch (error) {
@@ -1115,7 +1115,7 @@ router.post('/chats/:id/notes', async (req, res) => {
     request.input('ConversationID', sql.Int, id);
     request.input('Note', sql.NVarChar(sql.MAX), note);
     
-    await request.execute('sp_Admin_AddChatNote');
+    await request.execute('admin.sp_AddChatNote');
     
     res.json({ success: true, message: 'Note added' });
   } catch (error) {
@@ -1160,7 +1160,7 @@ router.get('/support/search', async (req, res) => {
     const request = pool.request();
     request.input('Search', sql.NVarChar(100), q || '');
     
-    const result = await request.execute('sp_Admin_SearchUsers');
+    const result = await request.execute('admin.sp_SearchUsers');
     
     res.json({ results: result.recordset });
   } catch (error) {
@@ -1183,7 +1183,7 @@ router.get('/support/tickets', async (req, res) => {
     request.input('PageNumber', sql.Int, parseInt(page));
     request.input('PageSize', sql.Int, parseInt(limit));
     
-    const result = await request.execute('sp_Admin_GetSupportTickets');
+    const result = await request.execute('admin.sp_GetSupportTickets');
     
     res.json({ 
       tickets: result.recordsets[0] || [], 
@@ -1218,7 +1218,7 @@ router.post('/support/tickets', async (req, res) => {
     request.input('Source', sql.NVarChar(50), source || 'chat');
     request.input('ConversationID', sql.Int, conversationId || null);
     
-    const result = await request.execute('sp_Admin_CreateSupportTicket');
+    const result = await request.execute('admin.sp_CreateSupportTicket');
     
     res.json({ success: true, ticketId: result.recordset[0].TicketID, ticketNumber: result.recordset[0].TicketNumber });
   } catch (error) {
@@ -1241,7 +1241,7 @@ router.put('/support/tickets/:id', async (req, res) => {
     request.input('AssignedTo', sql.Int, assignedTo || null);
     request.input('Category', sql.NVarChar(50), category || null);
     
-    await request.execute('sp_Admin_UpdateSupportTicket');
+    await request.execute('admin.sp_UpdateSupportTicket');
     
     res.json({ success: true });
   } catch (error) {
@@ -1259,7 +1259,7 @@ router.get('/support/tickets/:id/messages', async (req, res) => {
     const request = pool.request();
     request.input('TicketID', sql.Int, id);
     
-    const result = await request.execute('sp_Admin_GetTicketMessages');
+    const result = await request.execute('admin.sp_GetTicketMessages');
     
     res.json({ messages: result.recordset });
   } catch (error) {
@@ -1283,7 +1283,7 @@ router.post('/support/tickets/:id/messages', async (req, res) => {
     request.input('Attachments', sql.NVarChar(sql.MAX), attachments ? JSON.stringify(attachments) : null);
     request.input('IsInternal', sql.Bit, isInternal || false);
     
-    const result = await request.execute('sp_Admin_AddTicketMessage');
+    const result = await request.execute('admin.sp_AddTicketMessage');
     
     res.json({ success: true, messageId: result.recordset[0].MessageID });
   } catch (error) {
@@ -1299,7 +1299,7 @@ router.get('/content/banners', async (req, res) => {
   try {
     const pool = await getPool();
     
-    const result = await pool.request().execute('sp_Admin_GetBanners');
+    const result = await pool.request().execute('admin.sp_GetBanners');
     
     res.json({ items: result.recordset || [] });
   } catch (error) {
@@ -1329,7 +1329,7 @@ router.post('/content/banners', async (req, res) => {
     request.input('EndDate', sql.DateTime2, endDate || null);
     request.input('IsActive', sql.Bit, isActive !== false);
     
-    const result = await request.execute('sp_Admin_UpsertBanner');
+    const result = await request.execute('admin.sp_UpsertBanner');
     
     res.json({ success: true, id: id || result.recordset[0]?.BannerID });
   } catch (error) {
@@ -1347,7 +1347,7 @@ router.delete('/content/banners/:id', async (req, res) => {
     const request = pool.request();
     request.input('BannerID', sql.Int, id);
     
-    await request.execute('sp_Admin_DeleteBanner');
+    await request.execute('admin.sp_DeleteBanner');
     
     res.json({ success: true });
   } catch (error) {
@@ -1361,7 +1361,7 @@ router.get('/content/announcements', async (req, res) => {
   try {
     const pool = await getPool();
     
-    const result = await pool.request().execute('sp_Admin_GetAnnouncements');
+    const result = await pool.request().execute('admin.sp_GetAnnouncements');
     
     res.json({ items: result.recordset || [] });
   } catch (error) {
@@ -1401,7 +1401,7 @@ router.post('/content/announcements', async (req, res) => {
     request.input('IsDismissible', sql.Bit, isDismissible !== false);
     request.input('DisplayOrder', sql.Int, displayOrder || 0);
     
-    const result = await request.execute('sp_Admin_UpsertAnnouncement');
+    const result = await request.execute('admin.sp_UpsertAnnouncement');
     
     res.json({ success: true, id: id || result.recordset[0]?.AnnouncementID });
   } catch (error) {
@@ -1419,7 +1419,7 @@ router.delete('/content/announcements/:id', async (req, res) => {
     const request = pool.request();
     request.input('AnnouncementID', sql.Int, id);
     
-    await request.execute('sp_Admin_DeleteAnnouncement');
+    await request.execute('admin.sp_DeleteAnnouncement');
     
     res.json({ success: true });
   } catch (error) {
@@ -1433,7 +1433,7 @@ router.get('/content/faqs', async (req, res) => {
   try {
     const pool = await getPool();
     
-    const result = await pool.request().execute('sp_Admin_GetFAQs');
+    const result = await pool.request().execute('admin.sp_GetFAQs');
     
     res.json({ items: result.recordset || [] });
   } catch (error) {
@@ -1456,7 +1456,7 @@ router.post('/content/faqs', async (req, res) => {
     request.input('DisplayOrder', sql.Int, displayOrder || 0);
     request.input('IsActive', sql.Bit, isActive !== false);
     
-    const result = await request.execute('sp_Admin_UpsertFAQ');
+    const result = await request.execute('admin.sp_UpsertFAQ');
     
     res.json({ success: true, id: id || result.recordset[0]?.FAQID });
   } catch (error) {
@@ -1474,7 +1474,7 @@ router.delete('/content/faqs/:id', async (req, res) => {
     const request = pool.request();
     request.input('FAQID', sql.Int, id);
     
-    await request.execute('sp_Admin_DeleteFAQ');
+    await request.execute('admin.sp_DeleteFAQ');
     
     res.json({ success: true });
   } catch (error) {
@@ -1500,7 +1500,7 @@ router.get('/notifications/templates', async (req, res) => {
   try {
     const pool = await getPool();
     
-    const result = await pool.request().execute('sp_Admin_GetEmailTemplates');
+    const result = await pool.request().execute('admin.sp_GetEmailTemplates');
     
     res.json({ templates: result.recordset });
   } catch (error) {
@@ -1518,7 +1518,7 @@ router.get('/notifications/template/:id', async (req, res) => {
     const request = pool.request();
     request.input('TemplateID', sql.Int, id);
     
-    const result = await request.execute('sp_Admin_GetEmailTemplate');
+    const result = await request.execute('admin.sp_GetEmailTemplate');
     
     if (result.recordset.length === 0) {
       return res.status(404).json({ error: 'Template not found' });
@@ -1548,7 +1548,7 @@ router.put('/notifications/template/:id', async (req, res) => {
     request.input('BodyHtml', sql.NVarChar(sql.MAX), bodyHtml || null);
     request.input('IsActive', sql.Bit, isActive !== false);
     
-    await request.execute('sp_Admin_UpdateEmailTemplate');
+    await request.execute('admin.sp_UpdateEmailTemplate');
     
     res.json({ success: true });
   } catch (error) {
@@ -1569,7 +1569,7 @@ router.get('/notifications/logs', async (req, res) => {
     request.input('PageNumber', sql.Int, parseInt(page));
     request.input('PageSize', sql.Int, parseInt(limit));
     
-    const result = await request.execute('sp_Admin_GetEmailLogs');
+    const result = await request.execute('admin.sp_GetEmailLogs');
     
     res.json({ 
       logs: result.recordsets[0] || [], 
@@ -1606,7 +1606,7 @@ router.post('/notifications/send', async (req, res) => {
     const request = pool.request();
     request.input('RecipientType', sql.NVarChar(50), recipientType);
     
-    const result = await request.execute('sp_Admin_GetNotificationRecipients');
+    const result = await request.execute('admin.sp_GetNotificationRecipients');
     const recipients = result.recordset.map(r => r.Email).filter(e => e);
     
     // Log notification (in real implementation, send actual emails)
@@ -1715,7 +1715,7 @@ router.post('/bookings/:id/refund', async (req, res) => {
     // Get booking details using stored procedure
     const getRequest = pool.request();
     getRequest.input('BookingID', sql.Int, id);
-    const bookingResult = await getRequest.execute('sp_Admin_GetBookingForRefund');
+    const bookingResult = await getRequest.execute('admin.sp_GetBookingForRefund');
     
     if (bookingResult.recordset.length === 0) {
       return res.status(404).json({ error: 'Booking not found' });
@@ -1729,7 +1729,7 @@ router.post('/bookings/:id/refund', async (req, res) => {
     refundRequest.input('RefundAmount', sql.Decimal(10,2), amount);
     refundRequest.input('Reason', sql.NVarChar(sql.MAX), reason);
     
-    await refundRequest.execute('sp_Admin_ProcessRefund');
+    await refundRequest.execute('admin.sp_ProcessRefund');
     
     // Log the refund action
     console.log(`Refund processed: Booking #${id}, Amount: $${amount}, Reason: ${reason}`);
@@ -1758,7 +1758,7 @@ router.post('/bookings/:id/resolve-dispute', async (req, res) => {
     // Get booking details using stored procedure
     const getRequest = pool.request();
     getRequest.input('BookingID', sql.Int, id);
-    const bookingResult = await getRequest.execute('sp_Admin_GetBookingForRefund');
+    const bookingResult = await getRequest.execute('admin.sp_GetBookingForRefund');
     
     if (bookingResult.recordset.length === 0) {
       return res.status(404).json({ error: 'Booking not found' });
@@ -1794,7 +1794,7 @@ router.post('/bookings/:id/resolve-dispute', async (req, res) => {
     resolveRequest.input('RefundAmount', sql.Decimal(10,2), refundAmount);
     resolveRequest.input('Resolution', sql.NVarChar(sql.MAX), resolution);
     
-    await resolveRequest.execute('sp_Admin_ResolveDispute');
+    await resolveRequest.execute('admin.sp_ResolveDispute');
     
     res.json({ 
       success: true, 
@@ -1818,7 +1818,7 @@ router.get('/bookings/export', async (req, res) => {
     const request = pool.request();
     request.input('Status', sql.NVarChar(50), status && status !== 'all' ? status : null);
     
-    const result = await request.execute('sp_Admin_GetDisputes');
+    const result = await request.execute('admin.sp_GetDisputes');
     
     // Convert to CSV
     const bookings = result.recordset;
@@ -1865,7 +1865,7 @@ router.get('/categories/:id/services', async (req, res) => {
     const request = pool.request();
     request.input('CategoryID', sql.Int, id);
     
-    const result = await request.execute('sp_Admin_GetCategoryServices');
+    const result = await request.execute('admin.sp_GetCategoryServices');
     
     res.json({ services: result.recordset });
   } catch (error) {
@@ -1902,7 +1902,7 @@ router.delete('/services/:id', async (req, res) => {
     const request = pool.request();
     request.input('ServiceID', sql.Int, id);
     
-    await request.execute('sp_Admin_DeleteService');
+    await request.execute('admin.sp_DeleteService');
     
     res.json({ success: true, message: 'Service deleted' });
   } catch (error) {
@@ -1923,7 +1923,7 @@ router.post('/payments/manual-payout', async (req, res) => {
     const request = pool.request();
     request.input('VendorProfileID', sql.Int, vendorId);
     
-    const vendorResult = await request.execute('sp_Admin_GetVendorForPayout');
+    const vendorResult = await request.execute('admin.sp_GetVendorForPayout');
     
     if (vendorResult.recordset.length === 0) {
       return res.status(404).json({ error: 'Vendor not found' });
@@ -1955,7 +1955,7 @@ router.post('/payments/refund', async (req, res) => {
     // Get booking/transaction details using stored procedure
     const getRequest = pool.request();
     getRequest.input('BookingID', sql.Int, transactionId);
-    const bookingResult = await getRequest.execute('sp_Admin_GetBookingForRefund');
+    const bookingResult = await getRequest.execute('admin.sp_GetBookingForRefund');
     
     if (bookingResult.recordset.length === 0) {
       return res.status(404).json({ error: 'Transaction not found' });
@@ -1967,7 +1967,7 @@ router.post('/payments/refund', async (req, res) => {
     refundRequest.input('RefundAmount', sql.Decimal(10,2), amount);
     refundRequest.input('Reason', sql.NVarChar(sql.MAX), reason);
     
-    await refundRequest.execute('sp_Admin_ProcessRefund');
+    await refundRequest.execute('admin.sp_ProcessRefund');
     
     res.json({ 
       success: true, 
@@ -2005,7 +2005,7 @@ router.get('/analytics/revenue', async (req, res) => {
     request.input('StartDate', sql.Date, startDate);
     request.input('EndDate', sql.Date, new Date());
     
-    const dailyRevenue = await request.execute('sp_Admin_GetRevenueReport');
+    const dailyRevenue = await request.execute('admin.sp_GetRevenueReport');
     
     res.json({ dailyRevenue: dailyRevenue.recordset });
   } catch (error) {
@@ -2020,7 +2020,7 @@ router.get('/analytics/users', async (req, res) => {
     const pool = await getPool();
     
     // Use stored procedure for dashboard stats
-    const result = await pool.request().execute('sp_Admin_GetDashboardStats');
+    const result = await pool.request().execute('admin.sp_GetDashboardStats');
     
     res.json(result.recordset[0]);
   } catch (error) {
@@ -2037,7 +2037,7 @@ router.get('/public/banners', async (req, res) => {
   try {
     const pool = await getPool();
     
-    const result = await pool.request().execute('sp_Admin_GetPublicBanners');
+    const result = await pool.request().execute('admin.sp_GetPublicBanners');
     
     res.json({ banners: result.recordset || [] });
   } catch (error) {
@@ -2055,7 +2055,7 @@ router.get('/public/announcements', async (req, res) => {
     const request = pool.request();
     request.input('Audience', sql.NVarChar(50), audience);
     
-    const result = await request.execute('sp_Admin_GetPublicAnnouncements');
+    const result = await request.execute('admin.sp_GetPublicAnnouncements');
     
     res.json({ announcements: result.recordset || [] });
   } catch (error) {
@@ -2073,7 +2073,7 @@ router.post('/public/announcements/:id/dismiss', async (req, res) => {
     const request = pool.request();
     request.input('AnnouncementID', sql.Int, id);
     
-    await request.execute('sp_Admin_DismissAnnouncement');
+    await request.execute('admin.sp_DismissAnnouncement');
     
     res.json({ success: true });
   } catch (error) {
@@ -2089,7 +2089,7 @@ router.get('/faqs', async (req, res) => {
   try {
     const pool = await getPool();
     
-    const result = await pool.request().execute('sp_Admin_GetPublicFAQs');
+    const result = await pool.request().execute('admin.sp_GetPublicFAQs');
     
     res.json({ faqs: result.recordset || [] });
   } catch (error) {
@@ -2110,7 +2110,7 @@ router.post('/faqs', async (req, res) => {
     request.input('Category', sql.NVarChar(100), category || 'General');
     request.input('DisplayOrder', sql.Int, displayOrder || 0);
     
-    const result = await request.execute('sp_Admin_CreatePublicFAQ');
+    const result = await request.execute('admin.sp_CreatePublicFAQ');
     
     res.json({ success: true, faq: result.recordset[0] });
   } catch (error) {
@@ -2134,7 +2134,7 @@ router.put('/faqs/:id', async (req, res) => {
     request.input('DisplayOrder', sql.Int, displayOrder);
     request.input('IsActive', sql.Bit, isActive);
     
-    await request.execute('sp_Admin_UpdatePublicFAQ');
+    await request.execute('admin.sp_UpdatePublicFAQ');
     
     res.json({ success: true });
   } catch (error) {
@@ -2152,7 +2152,7 @@ router.delete('/faqs/:id', async (req, res) => {
     const request = pool.request();
     request.input('FAQID', sql.Int, id);
     
-    await request.execute('sp_Admin_DeleteFAQ');
+    await request.execute('admin.sp_DeleteFAQ');
     
     res.json({ success: true });
   } catch (error) {
@@ -2168,7 +2168,7 @@ router.get('/commission-settings', async (req, res) => {
   try {
     const pool = await getPool();
     
-    const result = await pool.request().execute('sp_Admin_GetCommissionSettings');
+    const result = await pool.request().execute('admin.sp_GetCommissionSettings');
     
     res.json({ settings: result.recordset || [] });
   } catch (error) {
@@ -2189,7 +2189,7 @@ router.put('/commission-settings/:key', async (req, res) => {
     request.input('SettingValue', sql.NVarChar(255), value);
     request.input('Description', sql.NVarChar(500), description || null);
     
-    await request.execute('sp_Admin_UpdateCommissionSetting');
+    await request.execute('admin.sp_UpdateCommissionSetting');
     
     res.json({ success: true });
   } catch (error) {
@@ -2212,7 +2212,7 @@ router.post('/commission-settings', async (req, res) => {
     request.input('MinValue', sql.Decimal(10, 2), minValue || null);
     request.input('MaxValue', sql.Decimal(10, 2), maxValue || null);
     
-    const result = await request.execute('sp_Admin_CreateCommissionSetting');
+    const result = await request.execute('admin.sp_CreateCommissionSetting');
     
     res.json({ success: true, setting: result.recordset[0] });
   } catch (error) {
@@ -2242,7 +2242,7 @@ router.put('/commission-settings', async (req, res) => {
         request.input('SettingValue', sql.NVarChar(255), String(update.value));
         request.input('Description', sql.NVarChar(500), null);
         
-        await request.execute('sp_Admin_UpdateCommissionSetting');
+        await request.execute('admin.sp_UpdateCommissionSetting');
       }
     }
     
@@ -2267,7 +2267,7 @@ router.get('/payment-calculator', async (req, res) => {
     let stripeFixedFee = 0.30;
     
     try {
-      const settings = await pool.request().execute('sp_Admin_GetPaymentCalculatorSettings');
+      const settings = await pool.request().execute('admin.sp_GetPaymentCalculatorSettings');
       
       settings.recordset.forEach(s => {
         if (s.SettingKey === 'platform_commission_rate') platformCommission = parseFloat(s.SettingValue);
@@ -2316,7 +2316,7 @@ router.get('/security/2fa-settings', async (req, res) => {
     
     // Use stored procedure to get 2FA settings
     try {
-      const result = await pool.request().execute('sp_Admin_Get2FASettings');
+      const result = await pool.request().execute('admin.sp_Get2FASettings');
       
       const settings = {};
       result.recordset.forEach(s => {
@@ -2368,7 +2368,7 @@ router.post('/security/2fa-settings', async (req, res) => {
       const request = pool.request();
       request.input('SettingKey', sql.NVarChar(100), setting.key);
       request.input('SettingValue', sql.NVarChar(500), setting.value);
-      await request.execute('sp_Admin_Upsert2FASetting');
+      await request.execute('admin.sp_Upsert2FASetting');
     }
     
     // Log admin action using stored procedure
@@ -2380,7 +2380,7 @@ router.post('/security/2fa-settings', async (req, res) => {
       logRequest.input('ActionStatus', sql.NVarChar(50), 'Success');
       logRequest.input('Details', sql.NVarChar(sql.MAX), JSON.stringify({ require2FAForAdmins, require2FAForVendors, sessionTimeout, failedLoginLockout }));
       logRequest.input('IPAddress', sql.NVarChar(50), null);
-      await logRequest.execute('sp_Admin_LogSecurityEvent');
+      await logRequest.execute('admin.sp_LogSecurityEvent');
     } catch (logErr) { console.error('Failed to log admin action:', logErr.message); }
     
     res.json({ success: true, message: '2FA settings updated successfully' });
@@ -2395,7 +2395,7 @@ router.get('/security/admin-2fa-status', async (req, res) => {
   try {
     const pool = await getPool();
     
-    const result = await pool.request().execute('sp_Admin_GetUsersWithTwoFactor');
+    const result = await pool.request().execute('admin.sp_GetUsersWithTwoFactor');
     
     res.json({ success: true, admins: result.recordset });
   } catch (error) {
@@ -2413,7 +2413,7 @@ router.post('/security/reset-2fa/:userId', async (req, res) => {
     // Reset 2FA for user using stored procedure
     const request = pool.request();
     request.input('UserID', sql.Int, userId);
-    await request.execute('sp_Admin_ResetUser2FA');
+    await request.execute('admin.sp_ResetUser2FA');
     
     // Log admin action using stored procedure
     try {
@@ -2424,7 +2424,7 @@ router.post('/security/reset-2fa/:userId', async (req, res) => {
       logRequest.input('ActionStatus', sql.NVarChar(50), 'Success');
       logRequest.input('Details', sql.NVarChar(sql.MAX), `Reset 2FA for user ID: ${userId}`);
       logRequest.input('IPAddress', sql.NVarChar(50), null);
-      await logRequest.execute('sp_Admin_LogSecurityEvent');
+      await logRequest.execute('admin.sp_LogSecurityEvent');
     } catch (logErr) { console.error('Failed to log admin action:', logErr.message); }
     
     res.json({ success: true, message: '2FA reset successfully' });
@@ -2440,7 +2440,7 @@ router.get('/security/flagged-items', async (req, res) => {
     const pool = await getPool();
     
     // Get flagged items using stored procedure
-    const result = await pool.request().execute('sp_Admin_GetSecurityAudit');
+    const result = await pool.request().execute('admin.sp_GetSecurityAudit');
     
     const flaggedItems = result.recordset.map(item => ({
       id: Math.random().toString(36).substr(2, 9),

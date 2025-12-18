@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Vendor_GetServiceByName
+-- Stored Procedure: vendors.sp_GetServiceByName
 -- Description: Gets a predefined service by name
 -- Phase: 600 (Stored Procedures)
+-- Schema: vendors
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Vendor_GetServiceByName]'))
-    DROP PROCEDURE [dbo].[sp_Vendor_GetServiceByName];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_GetServiceByName]'))
+    DROP PROCEDURE [vendors].[sp_GetServiceByName];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Vendor_GetServiceByName]
+CREATE PROCEDURE [vendors].[sp_GetServiceByName]
     @ServiceName NVARCHAR(100)
 AS
 BEGIN
@@ -18,7 +19,8 @@ BEGIN
         ServiceName,
         Category,
         ServiceDescription
-    FROM PredefinedServices 
+    FROM admin.PredefinedServices 
     WHERE ServiceName = @ServiceName;
 END
 GO
+

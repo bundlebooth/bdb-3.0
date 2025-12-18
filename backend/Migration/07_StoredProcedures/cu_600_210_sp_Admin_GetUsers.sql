@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Admin_GetUsers
+-- Stored Procedure: admin.sp_GetUsers
 -- Description: Gets all users with filters for admin panel
 -- Phase: 600 (Stored Procedures)
+-- Schema: admin
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Admin_GetUsers]'))
-    DROP PROCEDURE [dbo].[sp_Admin_GetUsers];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_GetUsers]'))
+    DROP PROCEDURE [admin].[sp_GetUsers];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Admin_GetUsers]
+CREATE PROCEDURE [admin].[sp_GetUsers]
     @Status NVARCHAR(50) = NULL,
     @Search NVARCHAR(100) = NULL,
     @PageNumber INT = 1,
@@ -27,8 +28,8 @@ BEGIN
         u.IsActive,
         u.CreatedAt,
         u.LastLogin as LastLoginAt,
-        (SELECT COUNT(*) FROM Bookings WHERE UserID = u.UserID) as BookingCount
-    FROM Users u
+        (SELECT COUNT(*) FROM bookings.Bookings WHERE UserID = u.UserID) as BookingCount
+    FROM users.Users u
     WHERE 
         (@Status IS NULL OR @Status = 'all' OR
          (@Status = 'active' AND u.IsActive = 1) OR
@@ -41,7 +42,7 @@ BEGIN
     
     -- Return total count
     SELECT COUNT(*) as total
-    FROM Users u
+    FROM users.Users u
     WHERE 
         (@Status IS NULL OR @Status = 'all' OR
          (@Status = 'active' AND u.IsActive = 1) OR
@@ -51,3 +52,5 @@ BEGIN
         AND (@Search IS NULL OR u.Email LIKE '%' + @Search + '%' OR u.Name LIKE '%' + @Search + '%');
 END
 GO
+
+

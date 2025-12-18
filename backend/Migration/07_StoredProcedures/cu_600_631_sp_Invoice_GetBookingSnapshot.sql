@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Invoice_GetBookingSnapshot
+-- Stored Procedure: invoices.sp_GetBookingSnapshot
 -- Description: Gets booking core data for invoice snapshot
 -- Phase: 600 (Stored Procedures)
+-- Schema: invoices
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Invoice_GetBookingSnapshot]'))
-    DROP PROCEDURE [dbo].[sp_Invoice_GetBookingSnapshot];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[invoices].[sp_GetBookingSnapshot]'))
+    DROP PROCEDURE [invoices].[sp_GetBookingSnapshot];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Invoice_GetBookingSnapshot]
+CREATE PROCEDURE [invoices].[sp_GetBookingSnapshot]
     @BookingID INT
 AS
 BEGIN
@@ -19,9 +20,12 @@ BEGIN
       b.EventName, b.EventType, b.EventLocation, b.TimeZone, b.ServiceID,
       u.Name AS ClientName, u.Email AS ClientEmail,
       vp.BusinessName AS VendorName
-    FROM Bookings b
-    LEFT JOIN Users u ON b.UserID = u.UserID
-    LEFT JOIN VendorProfiles vp ON b.VendorProfileID = vp.VendorProfileID
+    FROM bookings.Bookings b
+    LEFT JOIN users.Users u ON b.UserID = u.UserID
+    LEFT JOIN vendors.VendorProfiles vp ON b.VendorProfileID = vp.VendorProfileID
     WHERE b.BookingID = @BookingID;
 END
 GO
+
+
+

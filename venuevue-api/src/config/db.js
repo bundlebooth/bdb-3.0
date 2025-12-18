@@ -12,7 +12,10 @@ let config;
 
 if (useWindowsAuth) {
   // Windows local development with Windows Authentication
-  const connectionString = `Driver={ODBC Driver 17 for SQL Server};Server=${process.env.DB_SERVER || 'localhost'};Database=${process.env.DB_NAME};Trusted_Connection=yes;`;
+  // For named instances, use format: Server\Instance
+  const serverName = process.env.DB_SERVER || 'localhost';
+  const connectionString = `Driver={ODBC Driver 17 for SQL Server};Server=${serverName};Database=${process.env.DB_NAME};Trusted_Connection=yes;`;
+  console.log('Connection string (sanitized):', `Driver={ODBC Driver 17 for SQL Server};Server=${serverName};Database=${process.env.DB_NAME};Trusted_Connection=yes;`);
   config = {
     connectionString: connectionString,
     driver: 'msnodesqlv8',

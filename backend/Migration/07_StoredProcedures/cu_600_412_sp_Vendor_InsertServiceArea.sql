@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Vendor_InsertServiceArea
+-- Stored Procedure: vendors.sp_InsertServiceArea
 -- Description: Inserts a service area for a vendor
 -- Phase: 600 (Stored Procedures)
+-- Schema: vendors
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Vendor_InsertServiceArea]'))
-    DROP PROCEDURE [dbo].[sp_Vendor_InsertServiceArea];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_InsertServiceArea]'))
+    DROP PROCEDURE [vendors].[sp_InsertServiceArea];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Vendor_InsertServiceArea]
+CREATE PROCEDURE [vendors].[sp_InsertServiceArea]
     @VendorProfileID INT,
     @GooglePlaceID NVARCHAR(100),
     @CityName NVARCHAR(100),

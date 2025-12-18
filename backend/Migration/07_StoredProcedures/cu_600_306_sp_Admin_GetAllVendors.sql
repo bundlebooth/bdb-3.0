@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Admin_GetAllVendors
+-- Stored Procedure: admin.sp_GetAllVendors
 -- Description: Gets all vendors with filters for admin panel
 -- Phase: 600 (Stored Procedures)
+-- Schema: admin
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Admin_GetAllVendors]'))
-    DROP PROCEDURE [dbo].[sp_Admin_GetAllVendors];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_GetAllVendors]'))
+    DROP PROCEDURE [admin].[sp_GetAllVendors];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Admin_GetAllVendors]
+CREATE PROCEDURE [admin].[sp_GetAllVendors]
     @Status NVARCHAR(50) = NULL,
     @Search NVARCHAR(100) = NULL,
     @PageNumber INT = 1,
@@ -34,9 +35,9 @@ BEGIN
         u.UserID,
         u.Name as OwnerName,
         u.Email as OwnerEmail,
-        (SELECT TOP 1 Category FROM VendorCategories WHERE VendorProfileID = vp.VendorProfileID) as PrimaryCategory
-    FROM VendorProfiles vp
-    LEFT JOIN Users u ON vp.UserID = u.UserID
+        (SELECT TOP 1 Category FROM vendors.VendorCategories WHERE VendorProfileID = vp.VendorProfileID) as PrimaryCategory
+    FROM vendors.VendorProfiles vp
+    LEFT JOIN users.Users u ON vp.UserID = u.UserID
     WHERE 
         (@Status IS NULL OR @Status = 'all' OR
          (@Status = 'pending' AND vp.ProfileStatus = 'pending_review') OR
@@ -52,8 +53,8 @@ BEGIN
     
     -- Count query
     SELECT COUNT(*) as total
-    FROM VendorProfiles vp
-    LEFT JOIN Users u ON vp.UserID = u.UserID
+    FROM vendors.VendorProfiles vp
+    LEFT JOIN users.Users u ON vp.UserID = u.UserID
     WHERE 
         (@Status IS NULL OR @Status = 'all' OR
          (@Status = 'pending' AND vp.ProfileStatus = 'pending_review') OR
@@ -66,3 +67,6 @@ BEGIN
         AND (@Search IS NULL OR vp.BusinessName LIKE '%' + @Search + '%' OR u.Email LIKE '%' + @Search + '%');
 END
 GO
+
+
+

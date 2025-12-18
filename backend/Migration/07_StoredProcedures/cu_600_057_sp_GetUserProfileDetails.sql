@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_GetUserProfileDetails]
     Phase: 600 - Stored Procedures
     Script: cu_600_057_dbo.sp_GetUserProfileDetails.sql
-    Description: Creates the [dbo].[sp_GetUserProfileDetails] stored procedure
+    Description: Creates the [users].[sp_GetProfileDetails] stored procedure
     
     Execution Order: 57
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_GetUserProfileDetails]...';
+PRINT 'Creating stored procedure [users].[sp_GetProfileDetails]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_GetUserProfileDetails]'))
-    DROP PROCEDURE [dbo].[sp_GetUserProfileDetails];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[users].[sp_GetProfileDetails]'))
+    DROP PROCEDURE [users].[sp_GetProfileDetails];
 GO
 
-CREATE   PROCEDURE [dbo].[sp_GetUserProfileDetails]
+CREATE   PROCEDURE [users].[sp_GetProfileDetails]
     @UserID INT
 AS
 BEGIN
@@ -31,11 +31,12 @@ BEGIN
         Bio,
         ProfileImageURL,
         IsVendor
-    FROM Users
+    FROM users.Users
     WHERE UserID = @UserID;
 END;
 
 GO
 
-PRINT 'Stored procedure [dbo].[sp_GetUserProfileDetails] created successfully.';
+PRINT 'Stored procedure [users].[sp_GetProfileDetails] created successfully.';
 GO
+

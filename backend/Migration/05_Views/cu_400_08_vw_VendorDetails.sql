@@ -2,7 +2,7 @@
     Migration Script: Create View [vw_VendorDetails]
     Phase: 400 - Views
     Script: cu_400_08_dbo.vw_VendorDetails.sql
-    Description: Creates the [dbo].[vw_VendorDetails] view
+    Description: Creates the [vendors].[vw_VendorDetails] view
     
     Execution Order: 8
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating view [dbo].[vw_VendorDetails]...';
+PRINT 'Creating view [vendors].[vw_VendorDetails]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.views WHERE object_id = OBJECT_ID(N'[dbo].[vw_VendorDetails]'))
-    DROP VIEW [dbo].[vw_VendorDetails];
+IF EXISTS (SELECT 1 FROM sys.views WHERE object_id = OBJECT_ID(N'[vendors].[vw_VendorDetails]'))
+    DROP VIEW [vendors].[vw_VendorDetails];
 GO
 
-CREATE VIEW [dbo].[vw_VendorDetails] AS
+CREATE VIEW [vendors].[vw_VendorDetails] AS
 SELECT 
     v.VendorProfileID,
     v.UserID,
@@ -54,16 +54,16 @@ SELECT
     v.LogoURL,
     v.BookingLink,
     v.AcceptingBookings,
-    (SELECT COUNT(*) FROM Favorites f WHERE f.VendorProfileID = v.VendorProfileID) AS FavoriteCount,
-    (SELECT AVG(CAST(r.Rating AS DECIMAL(3,1))) FROM Reviews r WHERE r.VendorProfileID = v.VendorProfileID AND r.IsApproved = 1) AS AverageRating,
-    (SELECT COUNT(*) FROM Reviews r WHERE r.VendorProfileID = v.VendorProfileID AND r.IsApproved = 1) AS ReviewCount,
-    (SELECT COUNT(*) FROM Bookings b WHERE b.VendorProfileID = v.VendorProfileID) AS BookingCount,
-    (SELECT STRING_AGG(vc.Category, ', ') FROM VendorCategories vc WHERE vc.VendorProfileID = v.VendorProfileID) AS Categories,
-    (SELECT TOP 1 vi.ImageURL FROM VendorImages vi WHERE vi.VendorProfileID = v.VendorProfileID AND vi.IsPrimary = 1) AS PrimaryImage
-FROM VendorProfiles v
-JOIN Users u ON v.UserID = u.UserID
+    (SELECT COUNT(*) FROM users.Favorites f WHERE f.VendorProfileID = v.VendorProfileID) AS FavoriteCount,
+    (SELECT AVG(CAST(r.Rating AS DECIMAL(3,1))) FROM vendors.Reviews r WHERE r.VendorProfileID = v.VendorProfileID AND r.IsApproved = 1) AS AverageRating,
+    (SELECT COUNT(*) FROM vendors.Reviews r WHERE r.VendorProfileID = v.VendorProfileID AND r.IsApproved = 1) AS ReviewCount,
+    (SELECT COUNT(*) FROM bookings.Bookings b WHERE b.VendorProfileID = v.VendorProfileID) AS BookingCount,
+    (SELECT STRING_AGG(vc.Category, ', ') FROM vendors.VendorCategories vc WHERE vc.VendorProfileID = v.VendorProfileID) AS Categories,
+    (SELECT TOP 1 vi.ImageURL FROM vendors.VendorImages vi WHERE vi.VendorProfileID = v.VendorProfileID AND vi.IsPrimary = 1) AS PrimaryImage
+FROM vendors.VendorProfiles v
+JOIN users.Users u ON v.UserID = u.UserID
 WHERE u.IsActive = 1;
 GO
 
-PRINT 'View [dbo].[vw_VendorDetails] created successfully.';
+PRINT 'View [vendors].[vw_VendorDetails] created successfully.';
 GO

@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_CreateConversation]
     Phase: 600 - Stored Procedures
     Script: cu_600_018_dbo.sp_CreateConversation.sql
-    Description: Creates the [dbo].[sp_CreateConversation] stored procedure
+    Description: Creates the [messages].[sp_CreateConversation] stored procedure
     
     Execution Order: 18
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_CreateConversation]...';
+PRINT 'Creating stored procedure [messages].[sp_CreateConversation]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_CreateConversation]'))
-    DROP PROCEDURE [dbo].[sp_CreateConversation];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[messages].[sp_CreateConversation]'))
+    DROP PROCEDURE [messages].[sp_CreateConversation];
 GO
 
-CREATE   PROCEDURE [dbo].[sp_CreateConversation]
+CREATE   PROCEDURE [messages].[sp_CreateConversation]
     @UserID INT,
     @VendorProfileID INT,
     @BookingID INT = NULL,
@@ -30,13 +30,13 @@ BEGIN
         BEGIN TRANSACTION;
         
         -- Validate participants
-        IF NOT EXISTS (SELECT 1 FROM Users WHERE UserID = @UserID AND IsActive = 1)
+        IF NOT EXISTS (SELECT 1 FROM users.Users WHERE UserID = @UserID AND IsActive = 1)
         BEGIN
             RAISERROR('User not found or inactive', 16, 1);
             RETURN;
         END
         
-        IF NOT EXISTS (SELECT 1 FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID AND IsVerified = 1)
+        IF NOT EXISTS (SELECT 1 FROM vendors.VendorProfiles WHERE VendorProfileID = @VendorProfileID AND IsVerified = 1)
         BEGIN
             RAISERROR('Vendor not found or not verified', 16, 1);
             RETURN;
@@ -46,7 +46,7 @@ BEGIN
         IF @BookingID IS NOT NULL
         BEGIN
             IF NOT EXISTS (
-                SELECT 1 FROM Bookings 
+                SELECT 1 FROM bookings.Bookings 
                 WHERE BookingID = @BookingID 
                 AND (UserID = @UserID OR VendorProfileID = @VendorProfileID)
             )
@@ -66,7 +66,7 @@ BEGIN
         END
         
         -- Create conversation
-        INSERT INTO Conversations (
+        INSERT INTO messages.Conversations (
             UserID,
             VendorProfileID,
             BookingID,
@@ -91,18 +91,18 @@ BEGIN
             u.ProfileImageURL AS UserAvatar,
             c.VendorProfileID,
             v.BusinessName AS VendorName,
-            (SELECT TOP 1 vi.ImageURL FROM VendorImages vi WHERE vi.VendorProfileID = v.VendorProfileID AND vi.IsPrimary = 1) AS VendorImage,
+            (SELECT TOP 1 vi.ImageURL FROM vendors.VendorImages vi WHERE vi.VendorProfileID = v.VendorProfileID AND vi.IsPrimary = 1) AS VendorImage,
             c.BookingID,
             b.ServiceID,
             s.Name AS ServiceName,
             c.Subject,
             c.LastMessageAt,
             c.CreatedAt
-        FROM Conversations c
-        JOIN Users u ON c.UserID = u.UserID
-        JOIN VendorProfiles v ON c.VendorProfileID = v.VendorProfileID
-        LEFT JOIN Bookings b ON c.BookingID = b.BookingID
-        LEFT JOIN Services s ON b.ServiceID = s.ServiceID
+        FROM messages.Conversations c
+        JOIN users.Users u ON c.UserID = u.UserID
+        JOIN vendors.VendorProfiles v ON c.VendorProfileID = v.VendorProfileID
+        LEFT JOIN bookings.Bookings b ON c.BookingID = b.BookingID
+        LEFT JOIN vendors.Services s ON b.ServiceID = s.ServiceID
         WHERE c.ConversationID = @ConversationID;
         
         COMMIT TRANSACTION;
@@ -115,5 +115,11 @@ END;
 
 GO
 
-PRINT 'Stored procedure [dbo].[sp_CreateConversation] created successfully.';
+PRINT 'Stored procedure [messages].[sp_CreateConversation] created successfully.';
 GO
+
+
+
+
+
+

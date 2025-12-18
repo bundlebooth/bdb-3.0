@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Vendor_InsertBusinessHourSimple
+-- Stored Procedure: vendors.sp_InsertBusinessHourSimple
 -- Description: Inserts a business hour for a vendor (simple version)
 -- Phase: 600 (Stored Procedures)
+-- Schema: vendors
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Vendor_InsertBusinessHourSimple]'))
-    DROP PROCEDURE [dbo].[sp_Vendor_InsertBusinessHourSimple];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_InsertBusinessHourSimple]'))
+    DROP PROCEDURE [vendors].[sp_InsertBusinessHourSimple];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Vendor_InsertBusinessHourSimple]
+CREATE PROCEDURE [vendors].[sp_InsertBusinessHourSimple]
     @VendorProfileID INT,
     @DayOfWeek TINYINT,
     @OpenTime TIME = NULL,
@@ -17,9 +18,10 @@ AS
 BEGIN
     SET NOCOUNT ON;
     
-    INSERT INTO VendorBusinessHours (VendorProfileID, DayOfWeek, OpenTime, CloseTime, IsAvailable)
+    INSERT INTO vendors.VendorBusinessHours (VendorProfileID, DayOfWeek, OpenTime, CloseTime, IsAvailable)
     VALUES (@VendorProfileID, @DayOfWeek, @OpenTime, @CloseTime, @IsAvailable);
     
     SELECT SCOPE_IDENTITY() AS BusinessHourID;
 END
 GO
+

@@ -2,7 +2,7 @@
     Migration Script: Create Table [VendorPortfolioAlbums]
     Phase: 100 - Tables
     Script: cu_100_27_dbo.VendorPortfolioAlbums.sql
-    Description: Creates the [dbo].[VendorPortfolioAlbums] table
+    Description: Creates the [vendors].[VendorPortfolioAlbums] table
     
     Execution Order: 27
 */
@@ -10,12 +10,12 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating table [dbo].[VendorPortfolioAlbums]...';
+PRINT 'Creating table [vendors].[VendorPortfolioAlbums]...';
 GO
 
-IF NOT EXISTS (SELECT 1 FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[VendorPortfolioAlbums]') AND type in (N'U'))
+IF NOT EXISTS (SELECT 1 FROM sys.objects WHERE object_id = OBJECT_ID(N'[vendors].[VendorPortfolioAlbums]') AND type in (N'U'))
 BEGIN
-    CREATE TABLE [dbo].[VendorPortfolioAlbums](
+    CREATE TABLE [vendors].[VendorPortfolioAlbums](
 	[AlbumID] [int] IDENTITY(1,1) NOT NULL,
 	[VendorProfileID] [int] NOT NULL,
 	[AlbumName] [nvarchar](100) NOT NULL,
@@ -31,10 +31,10 @@ BEGIN
 	[AlbumID] ASC
 )WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
     );
-    PRINT 'Table [dbo].[VendorPortfolioAlbums] created successfully.';
+    PRINT 'Table [vendors].[VendorPortfolioAlbums] created successfully.';
 END
 ELSE
 BEGIN
-    PRINT 'Table [dbo].[VendorPortfolioAlbums] already exists. Skipping.';
+    PRINT 'Table [vendors].[VendorPortfolioAlbums] already exists. Skipping.';
 END
 GO

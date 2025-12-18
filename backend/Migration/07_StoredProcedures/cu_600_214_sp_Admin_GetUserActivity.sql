@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Admin_GetUserActivity
+-- Stored Procedure: admin.sp_GetUserActivity
 -- Description: Gets user activity log for admin panel
 -- Phase: 600 (Stored Procedures)
+-- Schema: admin
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Admin_GetUserActivity]'))
-    DROP PROCEDURE [dbo].[sp_Admin_GetUserActivity];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_GetUserActivity]'))
+    DROP PROCEDURE [admin].[sp_GetUserActivity];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Admin_GetUserActivity]
+CREATE PROCEDURE [admin].[sp_GetUserActivity]
     @UserID INT
 AS
 BEGIN
@@ -20,8 +21,8 @@ BEGIN
         'Booking #' + CAST(b.BookingID as NVARCHAR) + ' - ' + vp.BusinessName as description,
         b.Status,
         b.CreatedAt as date
-    FROM Bookings b
-    JOIN VendorProfiles vp ON b.VendorProfileID = vp.VendorProfileID
+    FROM bookings.Bookings b
+    JOIN vendors.VendorProfiles vp ON b.VendorProfileID = vp.VendorProfileID
     WHERE b.UserID = @UserID
     ORDER BY b.CreatedAt DESC;
     
@@ -32,9 +33,12 @@ BEGIN
         'Review for ' + vp.BusinessName + ' (' + CAST(r.Rating as NVARCHAR) + ' stars)' as description,
         'completed' as Status,
         r.CreatedAt as date
-    FROM Reviews r
-    JOIN VendorProfiles vp ON r.VendorProfileID = vp.VendorProfileID
+    FROM vendors.Reviews r
+    JOIN vendors.VendorProfiles vp ON r.VendorProfileID = vp.VendorProfileID
     WHERE r.UserID = @UserID
     ORDER BY r.CreatedAt DESC;
 END
 GO
+
+
+

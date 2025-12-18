@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Payment_GetBookingForCheckout
+-- Stored Procedure: payments.sp_GetBookingForCheckout
 -- Description: Gets booking details for checkout session
 -- Phase: 600 (Stored Procedures)
+-- Schema: payments
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Payment_GetBookingForCheckout]'))
-    DROP PROCEDURE [dbo].[sp_Payment_GetBookingForCheckout];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[payments].[sp_GetBookingForCheckout]'))
+    DROP PROCEDURE [payments].[sp_GetBookingForCheckout];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Payment_GetBookingForCheckout]
+CREATE PROCEDURE [payments].[sp_GetBookingForCheckout]
     @BookingID INT
 AS
 BEGIN
@@ -17,9 +18,12 @@ BEGIN
            b.UserID, b.VendorProfileID, b.ServiceID,
            u.Name AS ClientName, u.Email AS ClientEmail, u.Phone AS ClientPhone,
            vp.BusinessName AS VendorName, vp.StripeAccountID
-    FROM Bookings b
-    LEFT JOIN Users u ON b.UserID = u.UserID
-    LEFT JOIN VendorProfiles vp ON b.VendorProfileID = vp.VendorProfileID
+    FROM bookings.Bookings b
+    LEFT JOIN users.Users u ON b.UserID = u.UserID
+    LEFT JOIN vendors.VendorProfiles vp ON b.VendorProfileID = vp.VendorProfileID
     WHERE b.BookingID = @BookingID;
 END
 GO
+
+
+

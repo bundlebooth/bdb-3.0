@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Vendor_UpdateExtraFields
+-- Stored Procedure: vendors.sp_UpdateExtraFields
 -- Description: Updates extra vendor profile fields (lat/long, tagline, etc.)
 -- Phase: 600 (Stored Procedures)
+-- Schema: vendors
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Vendor_UpdateExtraFields]'))
-    DROP PROCEDURE [dbo].[sp_Vendor_UpdateExtraFields];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_UpdateExtraFields]'))
+    DROP PROCEDURE [vendors].[sp_UpdateExtraFields];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Vendor_UpdateExtraFields]
+CREATE PROCEDURE [vendors].[sp_UpdateExtraFields]
     @VendorProfileID INT,
     @Latitude DECIMAL(10,8) = NULL,
     @Longitude DECIMAL(11,8) = NULL,
@@ -18,7 +19,7 @@ AS
 BEGIN
     SET NOCOUNT ON;
     
-    UPDATE VendorProfiles SET
+    UPDATE vendors.VendorProfiles SET
         Latitude = @Latitude,
         Longitude = @Longitude,
         Tagline = @Tagline,
@@ -29,3 +30,4 @@ BEGIN
     SELECT @@ROWCOUNT AS RowsAffected;
 END
 GO
+

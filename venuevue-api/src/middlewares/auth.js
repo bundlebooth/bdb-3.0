@@ -15,7 +15,7 @@ const authenticate = async (req, res, next) => {
     const pool = await poolPromise;
     const result = await pool.request()
       .input('UserID', sql.Int, decoded.id)
-      .query('SELECT UserID, IsAdmin, IsVendor FROM Users WHERE UserID = @UserID');
+      .query('SELECT UserID, IsAdmin, IsVendor FROM users.Users WHERE UserID = @UserID');
       
     if (result.recordset.length === 0) {
       return res.status(401).json({ message: 'User not found' });

@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Admin_GetEmailLogs
+-- Stored Procedure: admin.sp_GetEmailLogs
 -- Description: Gets email send logs with filters
 -- Phase: 600 (Stored Procedures)
+-- Schema: admin
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Admin_GetEmailLogs]'))
-    DROP PROCEDURE [dbo].[sp_Admin_GetEmailLogs];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_GetEmailLogs]'))
+    DROP PROCEDURE [admin].[sp_GetEmailLogs];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Admin_GetEmailLogs]
+CREATE PROCEDURE [admin].[sp_GetEmailLogs]
     @TemplateKey NVARCHAR(100) = NULL,
     @Status NVARCHAR(50) = NULL,
     @PageNumber INT = 1,

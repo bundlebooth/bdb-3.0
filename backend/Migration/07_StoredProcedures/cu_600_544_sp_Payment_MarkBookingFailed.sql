@@ -1,23 +1,25 @@
 -- =============================================
--- Stored Procedure: sp_Payment_MarkBookingFailed
+-- Stored Procedure: payments.sp_MarkBookingFailed
 -- Description: Marks booking as payment failed
 -- Phase: 600 (Stored Procedures)
+-- Schema: payments
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Payment_MarkBookingFailed]'))
-    DROP PROCEDURE [dbo].[sp_Payment_MarkBookingFailed];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[payments].[sp_MarkBookingFailed]'))
+    DROP PROCEDURE [payments].[sp_MarkBookingFailed];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Payment_MarkBookingFailed]
+CREATE PROCEDURE [payments].[sp_MarkBookingFailed]
     @BookingID INT,
     @Status NVARCHAR(20) = 'payment_failed'
 AS
 BEGIN
     SET NOCOUNT ON;
     
-    UPDATE Bookings 
+    UPDATE bookings.Bookings 
     SET Status = @Status, UpdatedAt = GETDATE()
     WHERE BookingID = @BookingID;
     
     SELECT @@ROWCOUNT AS RowsAffected;
 END
 GO
+

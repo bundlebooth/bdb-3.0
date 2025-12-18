@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Admin_GetBanners
+-- Stored Procedure: admin.sp_GetBanners
 -- Description: Gets all content banners
 -- Phase: 600 (Stored Procedures)
+-- Schema: admin
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Admin_GetBanners]'))
-    DROP PROCEDURE [dbo].[sp_Admin_GetBanners];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_GetBanners]'))
+    DROP PROCEDURE [admin].[sp_GetBanners];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Admin_GetBanners]
+CREATE PROCEDURE [admin].[sp_GetBanners]
 AS
 BEGIN
     SET NOCOUNT ON;

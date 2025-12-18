@@ -2,7 +2,7 @@
     Migration Script: Create Table [Reviews]
     Phase: 100 - Tables
     Script: cu_100_46_dbo.Reviews.sql
-    Description: Creates the [dbo].[Reviews] table
+    Description: Creates the [vendors].[Reviews] table
     
     Execution Order: 46
 */
@@ -10,12 +10,12 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating table [dbo].[Reviews]...';
+PRINT 'Creating table [vendors].[Reviews]...';
 GO
 
-IF NOT EXISTS (SELECT 1 FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Reviews]') AND type in (N'U'))
+IF NOT EXISTS (SELECT 1 FROM sys.objects WHERE object_id = OBJECT_ID(N'[vendors].[Reviews]') AND type in (N'U'))
 BEGIN
-    CREATE TABLE [dbo].[Reviews](
+    CREATE TABLE [vendors].[Reviews](
 	[ReviewID] [int] IDENTITY(1,1) NOT NULL,
 	[UserID] [int] NULL,
 	[VendorProfileID] [int] NULL,
@@ -38,10 +38,10 @@ PRIMARY KEY CLUSTERED
 	[ReviewID] ASC
 )WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
     );
-    PRINT 'Table [dbo].[Reviews] created successfully.';
+    PRINT 'Table [vendors].[Reviews] created successfully.';
 END
 ELSE
 BEGIN
-    PRINT 'Table [dbo].[Reviews] already exists. Skipping.';
+    PRINT 'Table [vendors].[Reviews] already exists. Skipping.';
 END
 GO

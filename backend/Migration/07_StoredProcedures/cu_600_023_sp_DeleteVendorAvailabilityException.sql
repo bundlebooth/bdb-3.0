@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_DeleteVendorAvailabilityException]
     Phase: 600 - Stored Procedures
     Script: cu_600_023_dbo.sp_DeleteVendorAvailabilityException.sql
-    Description: Creates the [dbo].[sp_DeleteVendorAvailabilityException] stored procedure
+    Description: Creates the [vendors].[sp_DeleteAvailabilityException] stored procedure
     
     Execution Order: 23
 */
@@ -10,23 +10,23 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_DeleteVendorAvailabilityException]...';
+PRINT 'Creating stored procedure [vendors].[sp_DeleteAvailabilityException]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_DeleteVendorAvailabilityException]'))
-    DROP PROCEDURE [dbo].[sp_DeleteVendorAvailabilityException];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_DeleteAvailabilityException]'))
+    DROP PROCEDURE [vendors].[sp_DeleteAvailabilityException];
 GO
 
-CREATE   PROCEDURE [dbo].[sp_DeleteVendorAvailabilityException]
+CREATE   PROCEDURE [vendors].[sp_DeleteAvailabilityException]
     @ExceptionID INT,
     @VendorProfileID INT
 AS
 BEGIN
     SET NOCOUNT ON;
 
-    IF EXISTS (SELECT 1 FROM VendorAvailabilityExceptions WHERE ExceptionID = @ExceptionID AND VendorProfileID = @VendorProfileID)
+    IF EXISTS (SELECT 1 FROM vendors.VendorAvailabilityExceptions WHERE ExceptionID = @ExceptionID AND VendorProfileID = @VendorProfileID)
     BEGIN
-        DELETE FROM VendorAvailabilityExceptions WHERE ExceptionID = @ExceptionID;
+        DELETE FROM vendors.VendorAvailabilityExceptions WHERE ExceptionID = @ExceptionID;
         SELECT 1 AS Success;
     END
     ELSE
@@ -38,5 +38,6 @@ END;
 
 GO
 
-PRINT 'Stored procedure [dbo].[sp_DeleteVendorAvailabilityException] created successfully.';
+PRINT 'Stored procedure [vendors].[sp_DeleteAvailabilityException] created successfully.';
 GO
+

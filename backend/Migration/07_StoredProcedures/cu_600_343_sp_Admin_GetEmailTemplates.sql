@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Admin_GetEmailTemplates
+-- Stored Procedure: admin.sp_GetEmailTemplates
 -- Description: Gets all email templates with components
 -- Phase: 600 (Stored Procedures)
+-- Schema: admin
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Admin_GetEmailTemplates]'))
-    DROP PROCEDURE [dbo].[sp_Admin_GetEmailTemplates];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_GetEmailTemplates]'))
+    DROP PROCEDURE [admin].[sp_GetEmailTemplates];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Admin_GetEmailTemplates]
+CREATE PROCEDURE [admin].[sp_GetEmailTemplates]
 AS
 BEGIN
     SET NOCOUNT ON;

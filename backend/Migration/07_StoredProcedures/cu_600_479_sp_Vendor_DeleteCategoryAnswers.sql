@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Vendor_DeleteCategoryAnswers
+-- Stored Procedure: vendors.sp_DeleteCategoryAnswers
 -- Description: Deletes all category answers for a vendor
 -- Phase: 600 (Stored Procedures)
+-- Schema: vendors
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Vendor_DeleteCategoryAnswers]'))
-    DROP PROCEDURE [dbo].[sp_Vendor_DeleteCategoryAnswers];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_DeleteCategoryAnswers]'))
+    DROP PROCEDURE [vendors].[sp_DeleteCategoryAnswers];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Vendor_DeleteCategoryAnswers]
+CREATE PROCEDURE [vendors].[sp_DeleteCategoryAnswers]
     @VendorProfileID INT
 AS
 BEGIN

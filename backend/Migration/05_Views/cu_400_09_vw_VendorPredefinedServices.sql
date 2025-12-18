@@ -2,7 +2,7 @@
     Migration Script: Create View [vw_VendorPredefinedServices]
     Phase: 400 - Views
     Script: cu_400_09_dbo.vw_VendorPredefinedServices.sql
-    Description: Creates the [dbo].[vw_VendorPredefinedServices] view
+    Description: Creates the [vendors].[vw_VendorPredefinedServices] view
     
     Execution Order: 9
 */
@@ -10,15 +10,15 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating view [dbo].[vw_VendorPredefinedServices]...';
+PRINT 'Creating view [vendors].[vw_VendorPredefinedServices]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.views WHERE object_id = OBJECT_ID(N'[dbo].[vw_VendorPredefinedServices]'))
-    DROP VIEW [dbo].[vw_VendorPredefinedServices];
+IF EXISTS (SELECT 1 FROM sys.views WHERE object_id = OBJECT_ID(N'[vendors].[vw_VendorPredefinedServices]'))
+    DROP VIEW [vendors].[vw_VendorPredefinedServices];
 GO
 
 -- Create view for easy querying of vendor services with predefined service details (legacy)
-CREATE VIEW [dbo].[vw_VendorPredefinedServices] AS
+CREATE VIEW [vendors].[vw_VendorPredefinedServices] AS
 SELECT 
     vss.VendorSelectedServiceID,
     vss.VendorProfileID,
@@ -33,11 +33,11 @@ SELECT
     vss.IsActive AS VendorServiceActive,
     ps.IsActive AS PredefinedServiceActive,
     vss.CreatedAt AS SelectedAt
-FROM VendorSelectedServices vss
-JOIN PredefinedServices ps ON vss.PredefinedServiceID = ps.PredefinedServiceID
-JOIN VendorProfiles vp ON vss.VendorProfileID = vp.VendorProfileID
+FROM vendors.VendorSelectedServices vss
+JOIN admin.PredefinedServices ps ON vss.PredefinedServiceID = ps.PredefinedServiceID
+JOIN vendors.VendorProfiles vp ON vss.VendorProfileID = vp.VendorProfileID
 WHERE vss.IsActive = 1 AND ps.IsActive = 1;
 GO
 
-PRINT 'View [dbo].[vw_VendorPredefinedServices] created successfully.';
+PRINT 'View [vendors].[vw_VendorPredefinedServices] created successfully.';
 GO

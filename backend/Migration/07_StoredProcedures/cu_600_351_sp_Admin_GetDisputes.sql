@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Admin_GetDisputes
+-- Stored Procedure: admin.sp_GetDisputes
 -- Description: Gets booking disputes with optional status filter
 -- Phase: 600 (Stored Procedures)
+-- Schema: admin
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Admin_GetDisputes]'))
-    DROP PROCEDURE [dbo].[sp_Admin_GetDisputes];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_GetDisputes]'))
+    DROP PROCEDURE [admin].[sp_GetDisputes];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Admin_GetDisputes]
+CREATE PROCEDURE [admin].[sp_GetDisputes]
     @Status NVARCHAR(50) = NULL
 AS
 BEGIN
@@ -22,10 +23,13 @@ BEGIN
         b.Status,
         b.CreatedAt,
         b.EventDate
-    FROM Bookings b
-    JOIN Users u ON b.UserID = u.UserID
-    JOIN VendorProfiles vp ON b.VendorProfileID = vp.VendorProfileID
+    FROM bookings.Bookings b
+    JOIN users.Users u ON b.UserID = u.UserID
+    JOIN vendors.VendorProfiles vp ON b.VendorProfileID = vp.VendorProfileID
     WHERE (@Status IS NULL OR b.Status = @Status)
     ORDER BY b.CreatedAt DESC;
 END
 GO
+
+
+

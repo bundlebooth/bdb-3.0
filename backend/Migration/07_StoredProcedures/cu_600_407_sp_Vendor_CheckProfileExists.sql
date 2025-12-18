@@ -1,18 +1,20 @@
 -- =============================================
--- Stored Procedure: sp_Vendor_CheckProfileExists
+-- Stored Procedure: vendors.sp_CheckProfileExists
 -- Description: Checks if vendor profile exists for a user
 -- Phase: 600 (Stored Procedures)
+-- Schema: vendors
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Vendor_CheckProfileExists]'))
-    DROP PROCEDURE [dbo].[sp_Vendor_CheckProfileExists];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_CheckProfileExists]'))
+    DROP PROCEDURE [vendors].[sp_CheckProfileExists];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Vendor_CheckProfileExists]
+CREATE PROCEDURE [vendors].[sp_CheckProfileExists]
     @UserID INT
 AS
 BEGIN
     SET NOCOUNT ON;
     
-    SELECT VendorProfileID FROM VendorProfiles WHERE UserID = @UserID;
+    SELECT VendorProfileID FROM vendors.VendorProfiles WHERE UserID = @UserID;
 END
 GO
+

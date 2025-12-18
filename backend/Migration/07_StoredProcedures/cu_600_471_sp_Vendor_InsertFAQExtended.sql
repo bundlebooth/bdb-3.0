@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Vendor_InsertFAQExtended
+-- Stored Procedure: vendors.sp_InsertFAQExtended
 -- Description: Inserts a FAQ with extended fields for a vendor
 -- Phase: 600 (Stored Procedures)
+-- Schema: vendors
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Vendor_InsertFAQExtended]'))
-    DROP PROCEDURE [dbo].[sp_Vendor_InsertFAQExtended];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_InsertFAQExtended]'))
+    DROP PROCEDURE [vendors].[sp_InsertFAQExtended];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Vendor_InsertFAQExtended]
+CREATE PROCEDURE [vendors].[sp_InsertFAQExtended]
     @VendorProfileID INT,
     @Question NVARCHAR(500),
     @Answer NVARCHAR(MAX),

@@ -1,22 +1,24 @@
 -- =============================================
--- Stored Procedure: sp_Notification_MarkRead
+-- Stored Procedure: notifications.sp_MarkRead
 -- Description: Marks a notification as read
 -- Phase: 600 (Stored Procedures)
+-- Schema: notifications
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Notification_MarkRead]'))
-    DROP PROCEDURE [dbo].[sp_Notification_MarkRead];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[notifications].[sp_MarkRead]'))
+    DROP PROCEDURE [notifications].[sp_MarkRead];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Notification_MarkRead]
+CREATE PROCEDURE [notifications].[sp_MarkRead]
     @NotificationID INT
 AS
 BEGIN
     SET NOCOUNT ON;
     
-    UPDATE Notifications 
+    UPDATE notifications.Notifications 
     SET IsRead = 1, ReadAt = GETDATE()
     WHERE NotificationID = @NotificationID;
     
     SELECT @@ROWCOUNT AS RowsAffected;
 END
 GO
+

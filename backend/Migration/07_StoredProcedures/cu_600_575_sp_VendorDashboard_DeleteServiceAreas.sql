@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_VendorDashboard_DeleteServiceAreas
+-- Stored Procedure: vendors.sp_Dashboard_DeleteServiceAreas
 -- Description: Deletes all service areas for vendor
 -- Phase: 600 (Stored Procedures)
+-- Schema: vendors
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_VendorDashboard_DeleteServiceAreas]'))
-    DROP PROCEDURE [dbo].[sp_VendorDashboard_DeleteServiceAreas];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_Dashboard_DeleteServiceAreas]'))
+    DROP PROCEDURE [vendors].[sp_Dashboard_DeleteServiceAreas];
 GO
 
-CREATE PROCEDURE [dbo].[sp_VendorDashboard_DeleteServiceAreas]
+CREATE PROCEDURE [vendors].[sp_Dashboard_DeleteServiceAreas]
     @VendorProfileID INT
 AS
 BEGIN

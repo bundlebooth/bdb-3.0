@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_UpdateVendorPolicies]
     Phase: 600 - Stored Procedures
     Script: cu_600_105_dbo.sp_UpdateVendorPolicies.sql
-    Description: Creates the [dbo].[sp_UpdateVendorPolicies] stored procedure
+    Description: Creates the [vendors].[sp_UpdatePolicies] stored procedure
     
     Execution Order: 105
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_UpdateVendorPolicies]...';
+PRINT 'Creating stored procedure [vendors].[sp_UpdatePolicies]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_UpdateVendorPolicies]'))
-    DROP PROCEDURE [dbo].[sp_UpdateVendorPolicies];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_UpdatePolicies]'))
+    DROP PROCEDURE [vendors].[sp_UpdatePolicies];
 GO
 
-CREATE   PROCEDURE [dbo].[sp_UpdateVendorPolicies]
+CREATE   PROCEDURE [vendors].[sp_UpdatePolicies]
     @VendorProfileID INT,
     @DepositRequirements NVARCHAR(MAX),
     @CancellationPolicy NVARCHAR(MAX),
@@ -29,7 +29,7 @@ BEGIN
     SET NOCOUNT ON;
     
     BEGIN TRY
-        UPDATE VendorProfiles 
+        UPDATE vendors.VendorProfiles 
         SET DepositRequirements = @DepositRequirements,
             CancellationPolicy = @CancellationPolicy,
             ReschedulingPolicy = @ReschedulingPolicy,
@@ -49,5 +49,6 @@ END;
 
 GO
 
-PRINT 'Stored procedure [dbo].[sp_UpdateVendorPolicies] created successfully.';
+PRINT 'Stored procedure [vendors].[sp_UpdatePolicies] created successfully.';
 GO
+

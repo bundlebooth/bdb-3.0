@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_GetAlbumImages]
     Phase: 600 - Stored Procedures
     Script: cu_600_028_dbo.sp_GetAlbumImages.sql
-    Description: Creates the [dbo].[sp_GetAlbumImages] stored procedure
+    Description: Creates the [vendors].[sp_GetAlbumImages] stored procedure
     
     Execution Order: 28
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_GetAlbumImages]...';
+PRINT 'Creating stored procedure [vendors].[sp_GetAlbumImages]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_GetAlbumImages]'))
-    DROP PROCEDURE [dbo].[sp_GetAlbumImages];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_GetAlbumImages]'))
+    DROP PROCEDURE [vendors].[sp_GetAlbumImages];
 GO
 
-CREATE   PROCEDURE [dbo].[sp_GetAlbumImages]
+CREATE   PROCEDURE [vendors].[sp_GetAlbumImages]
     @AlbumID INT,
     @VendorProfileID INT = NULL
 AS
@@ -45,12 +45,13 @@ BEGIN
         Caption,
         DisplayOrder,
         CreatedAt
-    FROM VendorPortfolioImages
+    FROM vendors.VendorPortfolioImages
     WHERE AlbumID = @AlbumID
     ORDER BY DisplayOrder, CreatedAt;
 END;
 
 GO
 
-PRINT 'Stored procedure [dbo].[sp_GetAlbumImages] created successfully.';
+PRINT 'Stored procedure [vendors].[sp_GetAlbumImages] created successfully.';
 GO
+

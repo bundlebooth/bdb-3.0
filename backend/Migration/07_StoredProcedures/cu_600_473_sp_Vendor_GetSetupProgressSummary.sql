@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Vendor_GetSetupProgressSummary
+-- Stored Procedure: vendors.sp_GetSetupProgressSummary
 -- Description: Gets vendor setup progress summary with counts
 -- Phase: 600 (Stored Procedures)
+-- Schema: vendors
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Vendor_GetSetupProgressSummary]'))
-    DROP PROCEDURE [dbo].[sp_Vendor_GetSetupProgressSummary];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_GetSetupProgressSummary]'))
+    DROP PROCEDURE [vendors].[sp_GetSetupProgressSummary];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Vendor_GetSetupProgressSummary]
+CREATE PROCEDURE [vendors].[sp_GetSetupProgressSummary]
     @VendorProfileID INT
 AS
 BEGIN
@@ -21,12 +22,17 @@ BEGIN
         v.Address,
         v.LogoURL,
         v.AcceptingBookings,
-        (SELECT COUNT(*) FROM VendorCategories WHERE VendorProfileID = @VendorProfileID) as CategoriesCount,
-        (SELECT COUNT(*) FROM VendorImages WHERE VendorProfileID = @VendorProfileID) as ImagesCount,
-        (SELECT COUNT(*) FROM Services WHERE CategoryID IN (SELECT CategoryID FROM ServiceCategories WHERE VendorProfileID = @VendorProfileID)) as ServicesCount,
-        (SELECT COUNT(*) FROM VendorSocialMedia WHERE VendorProfileID = @VendorProfileID) as SocialMediaCount,
-        (SELECT COUNT(*) FROM VendorBusinessHours WHERE VendorProfileID = @VendorProfileID) as BusinessHoursCount
-    FROM VendorProfiles v
+        (SELECT COUNT(*) FROM vendors.VendorCategories WHERE VendorProfileID = @VendorProfileID) as CategoriesCount,
+        (SELECT COUNT(*) FROM vendors.VendorImages WHERE VendorProfileID = @VendorProfileID) as ImagesCount,
+        (SELECT COUNT(*) FROM vendors.Services WHERE CategoryID IN (SELECT CategoryID FROM vendors.ServiceCategories WHERE VendorProfileID = @VendorProfileID)) as ServicesCount,
+        (SELECT COUNT(*) FROM vendors.VendorSocialMedia WHERE VendorProfileID = @VendorProfileID) as SocialMediaCount,
+        (SELECT COUNT(*) FROM vendors.VendorBusinessHours WHERE VendorProfileID = @VendorProfileID) as BusinessHoursCount
+    FROM vendors.VendorProfiles v
     WHERE v.VendorProfileID = @VendorProfileID;
 END
 GO
+
+
+
+
+

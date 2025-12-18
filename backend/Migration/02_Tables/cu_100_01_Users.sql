@@ -2,7 +2,8 @@
     Migration Script: Create Table [Users]
     Phase: 100 - Tables
     Script: cu_100_01_Users.sql
-    Description: Creates the [dbo].[Users] table
+    Description: Creates the [users].[Users] table
+    Schema: users
     
     Execution Order: 1
 */
@@ -10,12 +11,12 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating table [dbo].[Users]...';
+PRINT 'Creating table [users].[Users]...';
 GO
 
-IF NOT EXISTS (SELECT 1 FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Users]') AND type in (N'U'))
+IF NOT EXISTS (SELECT 1 FROM sys.objects WHERE object_id = OBJECT_ID(N'[users].[Users]') AND type in (N'U'))
 BEGIN
-    CREATE TABLE [dbo].[Users](
+    CREATE TABLE [users].[Users](
 	[UserID] [int] IDENTITY(1,1) NOT NULL,
 	[Name] [nvarchar](100) NOT NULL,
 	[Email] [nvarchar](100) NOT NULL,
@@ -38,10 +39,10 @@ PRIMARY KEY CLUSTERED
 	[UserID] ASC
 )WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
     );
-    PRINT 'Table [dbo].[Users] created successfully.';
+    PRINT 'Table [users].[Users] created successfully.';
 END
 ELSE
 BEGIN
-    PRINT 'Table [dbo].[Users] already exists. Skipping.';
+    PRINT 'Table [users].[Users] already exists. Skipping.';
 END
 GO

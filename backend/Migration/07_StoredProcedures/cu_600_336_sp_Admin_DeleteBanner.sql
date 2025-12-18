@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Admin_DeleteBanner
+-- Stored Procedure: admin.sp_DeleteBanner
 -- Description: Deletes a content banner
 -- Phase: 600 (Stored Procedures)
+-- Schema: admin
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Admin_DeleteBanner]'))
-    DROP PROCEDURE [dbo].[sp_Admin_DeleteBanner];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_DeleteBanner]'))
+    DROP PROCEDURE [admin].[sp_DeleteBanner];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Admin_DeleteBanner]
+CREATE PROCEDURE [admin].[sp_DeleteBanner]
     @BannerID INT
 AS
 BEGIN

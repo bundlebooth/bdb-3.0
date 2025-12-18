@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Admin_GetPublicBanners
+-- Stored Procedure: admin.sp_GetPublicBanners
 -- Description: Gets active public banners for display
 -- Phase: 600 (Stored Procedures)
+-- Schema: admin
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Admin_GetPublicBanners]'))
-    DROP PROCEDURE [dbo].[sp_Admin_GetPublicBanners];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_GetPublicBanners]'))
+    DROP PROCEDURE [admin].[sp_GetPublicBanners];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Admin_GetPublicBanners]
+CREATE PROCEDURE [admin].[sp_GetPublicBanners]
 AS
 BEGIN
     SET NOCOUNT ON;

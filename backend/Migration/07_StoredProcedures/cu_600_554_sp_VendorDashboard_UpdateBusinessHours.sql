@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_VendorDashboard_UpdateBusinessHours
+-- Stored Procedure: vendors.sp_Dashboard_UpdateBusinessHours
 -- Description: Updates existing business hours
 -- Phase: 600 (Stored Procedures)
+-- Schema: vendors
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_VendorDashboard_UpdateBusinessHours]'))
-    DROP PROCEDURE [dbo].[sp_VendorDashboard_UpdateBusinessHours];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_Dashboard_UpdateBusinessHours]'))
+    DROP PROCEDURE [vendors].[sp_Dashboard_UpdateBusinessHours];
 GO
 
-CREATE PROCEDURE [dbo].[sp_VendorDashboard_UpdateBusinessHours]
+CREATE PROCEDURE [vendors].[sp_Dashboard_UpdateBusinessHours]
     @HoursID INT,
     @VendorProfileID INT,
     @OpenTime VARCHAR(8),
@@ -18,7 +19,7 @@ AS
 BEGIN
     SET NOCOUNT ON;
     
-    UPDATE VendorBusinessHours
+    UPDATE vendors.VendorBusinessHours
     SET OpenTime = @OpenTime, CloseTime = @CloseTime, IsAvailable = @IsAvailable, 
         Timezone = @Timezone, UpdatedAt = GETUTCDATE()
     WHERE HoursID = @HoursID AND VendorProfileID = @VendorProfileID;
@@ -26,3 +27,4 @@ BEGIN
     SELECT @@ROWCOUNT AS RowsAffected;
 END
 GO
+

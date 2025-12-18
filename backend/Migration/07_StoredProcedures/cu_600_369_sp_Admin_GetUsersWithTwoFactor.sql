@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Admin_GetUsersWithTwoFactor
+-- Stored Procedure: admin.sp_GetUsersWithTwoFactor
 -- Description: Gets users with 2FA enabled
 -- Phase: 600 (Stored Procedures)
+-- Schema: admin
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Admin_GetUsersWithTwoFactor]'))
-    DROP PROCEDURE [dbo].[sp_Admin_GetUsersWithTwoFactor];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_GetUsersWithTwoFactor]'))
+    DROP PROCEDURE [admin].[sp_GetUsersWithTwoFactor];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Admin_GetUsersWithTwoFactor]
+CREATE PROCEDURE [admin].[sp_GetUsersWithTwoFactor]
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -23,8 +24,9 @@ BEGIN
         CAST(0 AS BIT) as TwoFactorEnabled,
         u.CreatedAt,
         u.LastLogin
-    FROM Users u
+    FROM users.Users u
     WHERE 1 = 0  -- No 2FA support yet
     ORDER BY u.Name;
 END
 GO
+

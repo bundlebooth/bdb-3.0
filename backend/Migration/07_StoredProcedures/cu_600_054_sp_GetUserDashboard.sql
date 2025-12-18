@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_GetUserDashboard]
     Phase: 600 - Stored Procedures
     Script: cu_600_054_dbo.sp_GetUserDashboard.sql
-    Description: Creates the [dbo].[sp_GetUserDashboard] stored procedure
+    Description: Creates the [users].[sp_GetDashboard] stored procedure
     
     Execution Order: 54
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_GetUserDashboard]...';
+PRINT 'Creating stored procedure [users].[sp_GetDashboard]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_GetUserDashboard]'))
-    DROP PROCEDURE [dbo].[sp_GetUserDashboard];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[users].[sp_GetDashboard]'))
+    DROP PROCEDURE [users].[sp_GetDashboard];
 GO
 
-CREATE   PROCEDURE [dbo].[sp_GetUserDashboard]
+CREATE   PROCEDURE [users].[sp_GetDashboard]
     @UserID INT
 AS
 BEGIN
@@ -31,7 +31,7 @@ BEGIN
         ProfileImageURL,
         Phone,
         IsVendor
-    FROM Users
+    FROM users.Users
     WHERE UserID = @UserID;
     
     -- Upcoming bookings
@@ -56,12 +56,14 @@ BEGIN
     
     -- Unread notifications
     SELECT COUNT(*) AS UnreadNotifications
-    FROM Notifications
+    FROM notifications.Notifications
     WHERE UserID = @UserID
     AND IsRead = 0;
 END;
 
 GO
 
-PRINT 'Stored procedure [dbo].[sp_GetUserDashboard] created successfully.';
+PRINT 'Stored procedure [users].[sp_GetDashboard] created successfully.';
 GO
+
+

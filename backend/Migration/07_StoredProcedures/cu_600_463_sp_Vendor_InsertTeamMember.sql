@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Vendor_InsertTeamMember
+-- Stored Procedure: vendors.sp_InsertTeamMember
 -- Description: Inserts a team member for a vendor
 -- Phase: 600 (Stored Procedures)
+-- Schema: vendors
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Vendor_InsertTeamMember]'))
-    DROP PROCEDURE [dbo].[sp_Vendor_InsertTeamMember];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_InsertTeamMember]'))
+    DROP PROCEDURE [vendors].[sp_InsertTeamMember];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Vendor_InsertTeamMember]
+CREATE PROCEDURE [vendors].[sp_InsertTeamMember]
     @VendorProfileID INT,
     @Name NVARCHAR(100),
     @Role NVARCHAR(100) = NULL,

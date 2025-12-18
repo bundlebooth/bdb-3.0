@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_SearchVendorsByPredefinedServices]
     Phase: 600 - Stored Procedures
     Script: cu_600_091_dbo.sp_SearchVendorsByPredefinedServices.sql
-    Description: Creates the [dbo].[sp_SearchVendorsByPredefinedServices] stored procedure
+    Description: Creates the [vendors].[sp_SearchByPredefinedServices] stored procedure
     
     Execution Order: 91
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_SearchVendorsByPredefinedServices]...';
+PRINT 'Creating stored procedure [vendors].[sp_SearchByPredefinedServices]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_SearchVendorsByPredefinedServices]'))
-    DROP PROCEDURE [dbo].[sp_SearchVendorsByPredefinedServices];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_SearchByPredefinedServices]'))
+    DROP PROCEDURE [vendors].[sp_SearchByPredefinedServices];
 GO
 
-CREATE   PROCEDURE [dbo].[sp_SearchVendorsByPredefinedServices]
+CREATE   PROCEDURE [vendors].[sp_SearchByPredefinedServices]
     @ServiceIds NVARCHAR(500), -- Comma-separated list of predefined service IDs
     @Budget DECIMAL(10, 2) = NULL,
     @EventDate DATE = NULL,
@@ -100,18 +100,18 @@ BEGIN
                     vss.VendorPrice
                 )
             ) as TotalEstimatedPrice,
-            (SELECT AVG(CAST(r.Rating AS DECIMAL(3,1))) FROM Reviews r WHERE r.VendorProfileID = v.VendorProfileID AND r.IsApproved = 1) AS AverageRating,
-            (SELECT COUNT(*) FROM Reviews r WHERE r.VendorProfileID = v.VendorProfileID AND r.IsApproved = 1) AS ReviewCount,
-            (SELECT COUNT(*) FROM Favorites f WHERE f.VendorProfileID = v.VendorProfileID) AS FavoriteCount,
-            (SELECT COUNT(*) FROM Bookings b WHERE b.VendorProfileID = v.VendorProfileID) AS BookingCount,
-            (SELECT TOP 1 vi.ImageURL FROM VendorImages vi WHERE vi.VendorProfileID = v.VendorProfileID AND vi.IsPrimary = 1) AS ImageURL,
+            (SELECT AVG(CAST(r.Rating AS DECIMAL(3,1))) FROM vendors.Reviews r WHERE r.VendorProfileID = v.VendorProfileID AND r.IsApproved = 1) AS AverageRating,
+            (SELECT COUNT(*) FROM vendors.Reviews r WHERE r.VendorProfileID = v.VendorProfileID AND r.IsApproved = 1) AS ReviewCount,
+            (SELECT COUNT(*) FROM users.Favorites f WHERE f.VendorProfileID = v.VendorProfileID) AS FavoriteCount,
+            (SELECT COUNT(*) FROM bookings.Bookings b WHERE b.VendorProfileID = v.VendorProfileID) AS BookingCount,
+            (SELECT TOP 1 vi.ImageURL FROM vendors.VendorImages vi WHERE vi.VendorProfileID = v.VendorProfileID AND vi.IsPrimary = 1) AS ImageURL,
             STRING_AGG(ps.ServiceName, '', '') AS MatchingServiceNames'
             + @DistanceCalculation + '
-        FROM VendorProfiles v
-        JOIN Users u ON v.UserID = u.UserID
-        JOIN VendorSelectedServices vss ON v.VendorProfileID = vss.VendorProfileID
-        JOIN PredefinedServices ps ON vss.PredefinedServiceID = ps.PredefinedServiceID
-        LEFT JOIN Services s ON s.VendorProfileID = v.VendorProfileID AND s.LinkedPredefinedServiceID = vss.PredefinedServiceID AND s.IsActive = 1
+        FROM vendors.VendorProfiles v
+        JOIN users.Users u ON v.UserID = u.UserID
+        JOIN vendors.VendorSelectedServices vss ON v.VendorProfileID = vss.VendorProfileID
+        JOIN admin.PredefinedServices ps ON vss.PredefinedServiceID = ps.PredefinedServiceID
+        LEFT JOIN vendors.Services s ON s.VendorProfileID = v.VendorProfileID AND s.LinkedPredefinedServiceID = vss.PredefinedServiceID AND s.IsActive = 1
         WHERE u.IsActive = 1
         AND v.IsVerified = 1
         AND vss.PredefinedServiceID IN (' + @ServiceIds + ')
@@ -138,7 +138,7 @@ BEGIN
         AND (
             @EventDate IS NULL OR EXISTS (
                 SELECT 1
-                FROM VendorBusinessHours vbh
+                FROM vendors.VendorBusinessHours vbh
                 WHERE vbh.VendorProfileID = v.VendorProfileID
                   AND vbh.IsAvailable = 1
                   AND vbh.DayOfWeek = CASE DATENAME(WEEKDAY, @EventDate)
@@ -202,7 +202,7 @@ BEGIN
                 vi.DisplayOrder,
                 vi.ImageType,
                 vi.Caption
-            FROM VendorImages vi 
+            FROM vendors.VendorImages vi 
             WHERE vi.VendorProfileID = vsm.VendorProfileID
             ORDER BY vi.IsPrimary DESC, vi.DisplayOrder
             FOR JSON PATH
@@ -236,9 +236,9 @@ BEGIN
                 s.PricePerPerson,
                 s.MinimumAttendees,
                 s.MaximumAttendees
-            FROM VendorSelectedServices vss
-            JOIN PredefinedServices ps ON vss.PredefinedServiceID = ps.PredefinedServiceID
-            LEFT JOIN Services s ON s.VendorProfileID = vsm.VendorProfileID AND s.LinkedPredefinedServiceID = vss.PredefinedServiceID AND s.IsActive = 1
+            FROM vendors.VendorSelectedServices vss
+            JOIN admin.PredefinedServices ps ON vss.PredefinedServiceID = ps.PredefinedServiceID
+            LEFT JOIN vendors.Services s ON s.VendorProfileID = vsm.VendorProfileID AND s.LinkedPredefinedServiceID = vss.PredefinedServiceID AND s.IsActive = 1
             WHERE vss.VendorProfileID = vsm.VendorProfileID
             AND vss.PredefinedServiceID IN (' + @ServiceIds + ')
             FOR JSON PATH
@@ -274,5 +274,14 @@ END;
 
 GO
 
-PRINT 'Stored procedure [dbo].[sp_SearchVendorsByPredefinedServices] created successfully.';
+PRINT 'Stored procedure [vendors].[sp_SearchByPredefinedServices] created successfully.';
 GO
+
+
+
+
+
+
+
+
+

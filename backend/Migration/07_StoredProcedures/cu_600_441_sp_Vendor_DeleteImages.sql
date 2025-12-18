@@ -1,20 +1,22 @@
 -- =============================================
--- Stored Procedure: sp_Vendor_DeleteImages
+-- Stored Procedure: vendors.sp_DeleteImages
 -- Description: Deletes all images for a vendor
 -- Phase: 600 (Stored Procedures)
+-- Schema: vendors
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Vendor_DeleteImages]'))
-    DROP PROCEDURE [dbo].[sp_Vendor_DeleteImages];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_DeleteImages]'))
+    DROP PROCEDURE [vendors].[sp_DeleteImages];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Vendor_DeleteImages]
+CREATE PROCEDURE [vendors].[sp_DeleteImages]
     @VendorProfileID INT
 AS
 BEGIN
     SET NOCOUNT ON;
     
-    DELETE FROM VendorImages WHERE VendorProfileID = @VendorProfileID;
+    DELETE FROM vendors.VendorImages WHERE VendorProfileID = @VendorProfileID;
     
     SELECT @@ROWCOUNT AS RowsDeleted;
 END
 GO
+

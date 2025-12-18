@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Admin_CreateCategory
+-- Stored Procedure: admin.sp_CreateCategory
 -- Description: Creates a new category
 -- Phase: 600 (Stored Procedures)
+-- Schema: admin
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Admin_CreateCategory]'))
-    DROP PROCEDURE [dbo].[sp_Admin_CreateCategory];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_CreateCategory]'))
+    DROP PROCEDURE [admin].[sp_CreateCategory];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Admin_CreateCategory]
+CREATE PROCEDURE [admin].[sp_CreateCategory]
     @CategoryName NVARCHAR(100),
     @Description NVARCHAR(MAX) = NULL,
     @IconClass NVARCHAR(100) = NULL

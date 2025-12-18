@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_AddVendorAvailability]
     Phase: 600 - Stored Procedures
     Script: cu_600_005_dbo.sp_AddVendorAvailability.sql
-    Description: Creates the [dbo].[sp_AddVendorAvailability] stored procedure
+    Description: Creates the [vendors].[sp_AddAvailability] stored procedure
     
     Execution Order: 5
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_AddVendorAvailability]...';
+PRINT 'Creating stored procedure [vendors].[sp_AddAvailability]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_AddVendorAvailability]'))
-    DROP PROCEDURE [dbo].[sp_AddVendorAvailability];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_AddAvailability]'))
+    DROP PROCEDURE [vendors].[sp_AddAvailability];
 GO
 
-CREATE   PROCEDURE [dbo].[sp_AddVendorAvailability]
+CREATE   PROCEDURE [vendors].[sp_AddAvailability]
     @VendorProfileID INT,
     @DayOfWeek TINYINT,
     @StartTime TIME,
@@ -37,7 +37,7 @@ BEGIN
         VALUES (source.VendorProfileID, source.DayOfWeek, source.OpenTime, source.CloseTime, 1);
     
     -- Update progress
-    UPDATE VendorProfiles SET AvailabilityCompleted = 1, SetupStep = 4
+    UPDATE vendors.VendorProfiles SET AvailabilityCompleted = 1, SetupStep = 4
     WHERE VendorProfileID = @VendorProfileID;
     
     SELECT 1 AS Success, 'Availability added successfully' AS Message;
@@ -45,5 +45,6 @@ END;
 
 GO
 
-PRINT 'Stored procedure [dbo].[sp_AddVendorAvailability] created successfully.';
+PRINT 'Stored procedure [vendors].[sp_AddAvailability] created successfully.';
 GO
+

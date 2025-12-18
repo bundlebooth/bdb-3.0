@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_VendorDashboard_InsertBusinessHours
+-- Stored Procedure: vendors.sp_Dashboard_InsertBusinessHours
 -- Description: Inserts new business hours
 -- Phase: 600 (Stored Procedures)
+-- Schema: vendors
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_VendorDashboard_InsertBusinessHours]'))
-    DROP PROCEDURE [dbo].[sp_VendorDashboard_InsertBusinessHours];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_Dashboard_InsertBusinessHours]'))
+    DROP PROCEDURE [vendors].[sp_Dashboard_InsertBusinessHours];
 GO
 
-CREATE PROCEDURE [dbo].[sp_VendorDashboard_InsertBusinessHours]
+CREATE PROCEDURE [vendors].[sp_Dashboard_InsertBusinessHours]
     @VendorProfileID INT,
     @DayOfWeek TINYINT,
     @OpenTime VARCHAR(8),
@@ -18,8 +19,9 @@ AS
 BEGIN
     SET NOCOUNT ON;
     
-    INSERT INTO VendorBusinessHours (VendorProfileID, DayOfWeek, OpenTime, CloseTime, IsAvailable, Timezone, CreatedAt, UpdatedAt)
+    INSERT INTO vendors.VendorBusinessHours (VendorProfileID, DayOfWeek, OpenTime, CloseTime, IsAvailable, Timezone, CreatedAt, UpdatedAt)
     OUTPUT INSERTED.HoursID
     VALUES (@VendorProfileID, @DayOfWeek, @OpenTime, @CloseTime, @IsAvailable, @Timezone, GETUTCDATE(), GETUTCDATE());
 END
 GO
+

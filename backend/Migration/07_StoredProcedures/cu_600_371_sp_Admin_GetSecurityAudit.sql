@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Admin_GetSecurityAudit
+-- Stored Procedure: admin.sp_GetSecurityAudit
 -- Description: Gets security audit information including failed logins
 -- Phase: 600 (Stored Procedures)
+-- Schema: admin
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Admin_GetSecurityAudit]'))
-    DROP PROCEDURE [dbo].[sp_Admin_GetSecurityAudit];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_GetSecurityAudit]'))
+    DROP PROCEDURE [admin].[sp_GetSecurityAudit];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Admin_GetSecurityAudit]
+CREATE PROCEDURE [admin].[sp_GetSecurityAudit]
 AS
 BEGIN
     SET NOCOUNT ON;

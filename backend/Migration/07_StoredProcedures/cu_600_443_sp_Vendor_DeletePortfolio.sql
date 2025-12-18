@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Vendor_DeletePortfolio
+-- Stored Procedure: vendors.sp_DeletePortfolio
 -- Description: Deletes all portfolio items for a vendor
 -- Phase: 600 (Stored Procedures)
+-- Schema: vendors
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Vendor_DeletePortfolio]'))
-    DROP PROCEDURE [dbo].[sp_Vendor_DeletePortfolio];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_DeletePortfolio]'))
+    DROP PROCEDURE [vendors].[sp_DeletePortfolio];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Vendor_DeletePortfolio]
+CREATE PROCEDURE [vendors].[sp_DeletePortfolio]
     @VendorProfileID INT
 AS
 BEGIN

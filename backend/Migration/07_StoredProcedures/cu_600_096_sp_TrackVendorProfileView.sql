@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_TrackVendorProfileView]
     Phase: 600 - Stored Procedures
     Script: cu_600_096_dbo.sp_TrackVendorProfileView.sql
-    Description: Creates the [dbo].[sp_TrackVendorProfileView] stored procedure
+    Description: Creates the [vendors].[sp_TrackProfileView] stored procedure
     
     Execution Order: 96
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_TrackVendorProfileView]...';
+PRINT 'Creating stored procedure [vendors].[sp_TrackProfileView]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_TrackVendorProfileView]'))
-    DROP PROCEDURE [dbo].[sp_TrackVendorProfileView];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_TrackProfileView]'))
+    DROP PROCEDURE [vendors].[sp_TrackProfileView];
 GO
 
-CREATE   PROCEDURE [dbo].[sp_TrackVendorProfileView]
+CREATE   PROCEDURE [vendors].[sp_TrackProfileView]
     @VendorProfileID INT,
     @ViewerUserID INT = NULL,
     @IPAddress VARCHAR(45) = NULL,
@@ -29,14 +29,14 @@ BEGIN
     SET NOCOUNT ON;
 
     -- Validate vendor exists
-    IF NOT EXISTS (SELECT 1 FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID)
+    IF NOT EXISTS (SELECT 1 FROM vendors.VendorProfiles WHERE VendorProfileID = @VendorProfileID)
     BEGIN
         RAISERROR('Vendor not found', 16, 1);
         RETURN;
     END
 
     -- Insert the view record
-    INSERT INTO VendorProfileViews (
+    INSERT INTO vendors.VendorProfileViews (
         VendorProfileID, 
         ViewerUserID, 
         ViewedAt, 
@@ -62,5 +62,7 @@ END
 
 GO
 
-PRINT 'Stored procedure [dbo].[sp_TrackVendorProfileView] created successfully.';
+PRINT 'Stored procedure [vendors].[sp_TrackProfileView] created successfully.';
 GO
+
+

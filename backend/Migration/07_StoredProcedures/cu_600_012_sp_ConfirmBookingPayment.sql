@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_ConfirmBookingPayment]
     Phase: 600 - Stored Procedures
     Script: cu_600_012_dbo.sp_ConfirmBookingPayment.sql
-    Description: Creates the [dbo].[sp_ConfirmBookingPayment] stored procedure
+    Description: Creates the [payments].[sp_ConfirmBookingPayment] stored procedure
     
     Execution Order: 12
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_ConfirmBookingPayment]...';
+PRINT 'Creating stored procedure [payments].[sp_ConfirmBookingPayment]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_ConfirmBookingPayment]'))
-    DROP PROCEDURE [dbo].[sp_ConfirmBookingPayment];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[payments].[sp_ConfirmBookingPayment]'))
+    DROP PROCEDURE [payments].[sp_ConfirmBookingPayment];
 GO
 
-CREATE   PROCEDURE [dbo].[sp_ConfirmBookingPayment]
+CREATE   PROCEDURE [payments].[sp_ConfirmBookingPayment]
     @BookingID INT,
     @PaymentIntentID NVARCHAR(100),
     @Amount DECIMAL(10, 2),
@@ -32,27 +32,27 @@ BEGIN
         
         -- Update booking payment status
         DECLARE @IsDeposit BIT = CASE 
-            WHEN @Amount < (SELECT TotalAmount FROM Bookings WHERE BookingID = @BookingID) 
+            WHEN @Amount < (SELECT TotalAmount FROM bookings.Bookings WHERE BookingID = @BookingID) 
             THEN 1 ELSE 0 END;
         
         IF @IsDeposit = 1
         BEGIN
-            UPDATE Bookings
+            UPDATE bookings.Bookings
             SET DepositPaid = 1
             WHERE BookingID = @BookingID;
         END
         ELSE
         BEGIN
-            UPDATE Bookings
+            UPDATE bookings.Bookings
             SET FullAmountPaid = 1
             WHERE BookingID = @BookingID;
         END
         
         -- Record transaction
-        DECLARE @UserID INT = (SELECT UserID FROM Bookings WHERE BookingID = @BookingID);
-        DECLARE @VendorProfileID INT = (SELECT VendorProfileID FROM Bookings WHERE BookingID = @BookingID);
+        DECLARE @UserID INT = (SELECT UserID FROM bookings.Bookings WHERE BookingID = @BookingID);
+        DECLARE @VendorProfileID INT = (SELECT VendorProfileID FROM bookings.Bookings WHERE BookingID = @BookingID);
         
-        INSERT INTO Transactions (
+        INSERT INTO payments.Transactions (
             UserID,
             VendorProfileID,
             BookingID,
@@ -80,7 +80,7 @@ BEGIN
         -- Create notification
         IF @IsDeposit = 1
         BEGIN
-            INSERT INTO Notifications (
+            INSERT INTO notifications.Notifications (
                 UserID,
                 Type,
                 Title,
@@ -90,7 +90,7 @@ BEGIN
                 ActionURL
             )
             VALUES (
-                (SELECT UserID FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID),
+                (SELECT UserID FROM vendors.VendorProfiles WHERE VendorProfileID = @VendorProfileID),
                 'payment',
                 'Deposit Received',
                 'A deposit payment has been received for booking #' + CAST(@BookingID AS NVARCHAR(10)),
@@ -101,7 +101,7 @@ BEGIN
         END
         ELSE
         BEGIN
-            INSERT INTO Notifications (
+            INSERT INTO notifications.Notifications (
                 UserID,
                 Type,
                 Title,
@@ -111,7 +111,7 @@ BEGIN
                 ActionURL
             )
             VALUES (
-                (SELECT UserID FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID),
+                (SELECT UserID FROM vendors.VendorProfiles WHERE VendorProfileID = @VendorProfileID),
                 'payment',
                 'Payment Received',
                 'Full payment has been received for booking #' + CAST(@BookingID AS NVARCHAR(10)),
@@ -133,5 +133,9 @@ END;
 
 GO
 
-PRINT 'Stored procedure [dbo].[sp_ConfirmBookingPayment] created successfully.';
+PRINT 'Stored procedure [payments].[sp_ConfirmBookingPayment] created successfully.';
 GO
+
+
+
+

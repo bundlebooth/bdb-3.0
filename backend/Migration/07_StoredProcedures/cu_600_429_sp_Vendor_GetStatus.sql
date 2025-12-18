@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Vendor_GetStatus
+-- Stored Procedure: vendors.sp_GetStatus
 -- Description: Gets vendor registration status for a user
 -- Phase: 600 (Stored Procedures)
+-- Schema: vendors
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Vendor_GetStatus]'))
-    DROP PROCEDURE [dbo].[sp_Vendor_GetStatus];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_GetStatus]'))
+    DROP PROCEDURE [vendors].[sp_GetStatus];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Vendor_GetStatus]
+CREATE PROCEDURE [vendors].[sp_GetStatus]
     @UserID INT
 AS
 BEGIN
@@ -23,7 +24,8 @@ BEGIN
             WHEN vp.Address IS NULL THEN 0
             ELSE 1
         END AS IsProfileComplete
-    FROM VendorProfiles vp
+    FROM vendors.VendorProfiles vp
     WHERE vp.UserID = @UserID;
 END
 GO
+

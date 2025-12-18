@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Vendor_UpdateProfileFull
+-- Stored Procedure: vendors.sp_UpdateProfileFull
 -- Description: Updates vendor profile with all fields
 -- Phase: 600 (Stored Procedures)
+-- Schema: vendors
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Vendor_UpdateProfileFull]'))
-    DROP PROCEDURE [dbo].[sp_Vendor_UpdateProfileFull];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_UpdateProfileFull]'))
+    DROP PROCEDURE [vendors].[sp_UpdateProfileFull];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Vendor_UpdateProfileFull]
+CREATE PROCEDURE [vendors].[sp_UpdateProfileFull]
     @VendorProfileID INT,
     @BusinessName NVARCHAR(100),
     @BusinessDescription NVARCHAR(MAX) = NULL,
@@ -26,7 +27,7 @@ AS
 BEGIN
     SET NOCOUNT ON;
     
-    UPDATE VendorProfiles 
+    UPDATE vendors.VendorProfiles 
     SET 
         BusinessName = @BusinessName,
         BusinessDescription = @BusinessDescription,
@@ -47,3 +48,4 @@ BEGIN
     SELECT @@ROWCOUNT AS RowsAffected;
 END
 GO
+

@@ -1,20 +1,22 @@
 -- =============================================
--- Stored Procedure: sp_Payment_GetVendorStripeAccount
+-- Stored Procedure: payments.sp_GetVendorStripeAccount
 -- Description: Gets vendor's Stripe account ID
 -- Phase: 600 (Stored Procedures)
+-- Schema: payments
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Payment_GetVendorStripeAccount]'))
-    DROP PROCEDURE [dbo].[sp_Payment_GetVendorStripeAccount];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[payments].[sp_GetVendorStripeAccount]'))
+    DROP PROCEDURE [payments].[sp_GetVendorStripeAccount];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Payment_GetVendorStripeAccount]
+CREATE PROCEDURE [payments].[sp_GetVendorStripeAccount]
     @VendorProfileID INT
 AS
 BEGIN
     SET NOCOUNT ON;
     
     SELECT StripeAccountID 
-    FROM VendorProfiles 
+    FROM vendors.VendorProfiles 
     WHERE VendorProfileID = @VendorProfileID;
 END
 GO
+

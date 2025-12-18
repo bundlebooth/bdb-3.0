@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_AddReview]
     Phase: 600 - Stored Procedures
     Script: cu_600_003_dbo.sp_AddReview.sql
-    Description: Creates the [dbo].[sp_AddReview] stored procedure
+    Description: Creates the [vendors].[sp_AddReview] stored procedure
     
     Execution Order: 3
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_AddReview]...';
+PRINT 'Creating stored procedure [vendors].[sp_AddReview]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_AddReview]'))
-    DROP PROCEDURE [dbo].[sp_AddReview];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_AddReview]'))
+    DROP PROCEDURE [vendors].[sp_AddReview];
 GO
 
-CREATE   PROCEDURE [dbo].[sp_AddReview]
+CREATE   PROCEDURE [vendors].[sp_AddReview]
     @UserID INT,
     @VendorProfileID INT,
     @BookingID INT,
@@ -33,7 +33,7 @@ BEGIN
         BEGIN TRANSACTION;
         
         -- Add review
-        INSERT INTO Reviews (
+        INSERT INTO vendors.Reviews (
             UserID,
             VendorProfileID,
             BookingID,
@@ -57,13 +57,13 @@ BEGIN
         DECLARE @ReviewID INT = SCOPE_IDENTITY();
         
         -- Update vendor rating
-        UPDATE VendorProfiles
+        UPDATE vendors.VendorProfiles
         SET 
             AverageResponseTime = ISNULL((
                 SELECT AVG(DATEDIFF(MINUTE, m.CreatedAt, m2.CreatedAt))
-                FROM Messages m
-                JOIN Messages m2 ON m.ConversationID = m2.ConversationID AND m2.MessageID > m.MessageID
-                JOIN Conversations c ON m.ConversationID = c.ConversationID
+                FROM messages.Messages m
+                JOIN messages.Messages m2 ON m.ConversationID = m2.ConversationID AND m2.MessageID > m.MessageID
+                JOIN messages.Conversations c ON m.ConversationID = c.ConversationID
                 WHERE c.VendorProfileID = @VendorProfileID
                 AND m.SenderID != @UserID
                 AND m2.SenderID = @UserID
@@ -71,13 +71,13 @@ BEGIN
             ResponseRate = ISNULL((
                 SELECT CAST(COUNT(DISTINCT CASE WHEN r.Response IS NOT NULL THEN r.ReviewID END) AS FLOAT) / 
                        NULLIF(COUNT(DISTINCT r.ReviewID), 0)
-                FROM Reviews r
+                FROM vendors.Reviews r
                 WHERE r.VendorProfileID = @VendorProfileID
             ), ResponseRate)
         WHERE VendorProfileID = @VendorProfileID;
         
         -- Create notification for vendor
-        INSERT INTO Notifications (
+        INSERT INTO notifications.Notifications (
             UserID,
             Type,
             Title,
@@ -87,7 +87,7 @@ BEGIN
             ActionURL
         )
         VALUES (
-            (SELECT UserID FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID),
+            (SELECT UserID FROM vendors.VendorProfiles WHERE VendorProfileID = @VendorProfileID),
             'review',
             'New Review',
             'You have received a new ' + CAST(@Rating AS NVARCHAR(10)) + ' star review',
@@ -108,5 +108,10 @@ END;
 
 GO
 
-PRINT 'Stored procedure [dbo].[sp_AddReview] created successfully.';
+PRINT 'Stored procedure [vendors].[sp_AddReview] created successfully.';
 GO
+
+
+
+
+

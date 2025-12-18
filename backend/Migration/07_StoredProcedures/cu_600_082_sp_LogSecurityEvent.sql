@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_LogSecurityEvent]
     Phase: 600 - Stored Procedures
     Script: cu_600_082_dbo.sp_LogSecurityEvent.sql
-    Description: Creates the [dbo].[sp_LogSecurityEvent] stored procedure
+    Description: Creates the [admin].[sp_LogSecurityEvent] stored procedure
     
     Execution Order: 82
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_LogSecurityEvent]...';
+PRINT 'Creating stored procedure [admin].[sp_LogSecurityEvent]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_LogSecurityEvent]'))
-    DROP PROCEDURE [dbo].[sp_LogSecurityEvent];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_LogSecurityEvent]'))
+    DROP PROCEDURE [admin].[sp_LogSecurityEvent];
 GO
 
-CREATE   PROCEDURE [dbo].[sp_LogSecurityEvent]
+CREATE   PROCEDURE [admin].[sp_LogSecurityEvent]
     @UserID INT = NULL,
     @Email NVARCHAR(255) = NULL,
     @Action NVARCHAR(50),
@@ -38,5 +38,5 @@ BEGIN
 END;
 GO
 
-PRINT 'Stored procedure [dbo].[sp_LogSecurityEvent] created successfully.';
+PRINT 'Stored procedure [admin].[sp_LogSecurityEvent] created successfully.';
 GO

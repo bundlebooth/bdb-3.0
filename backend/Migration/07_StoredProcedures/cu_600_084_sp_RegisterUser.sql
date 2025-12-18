@@ -1,23 +1,23 @@
 /*
-    Migration Script: Create Stored Procedure [sp_RegisterUser]
+    Migration Script: Create Stored Procedure [users.sp_Register]
     Phase: 600 - Stored Procedures
-    Script: cu_600_084_dbo.sp_RegisterUser.sql
-    Description: Creates the [dbo].[sp_RegisterUser] stored procedure
-    
+    Script: cu_600_084_sp_RegisterUser.sql
+    Description: Creates the [users].[sp_Register] stored procedure
+    Schema: users
     Execution Order: 84
 */
 
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_RegisterUser]...';
+PRINT 'Creating stored procedure [users].[sp_Register]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_RegisterUser]'))
-    DROP PROCEDURE [dbo].[sp_RegisterUser];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[users].[sp_Register]'))
+    DROP PROCEDURE [users].[sp_Register];
 GO
 
-CREATE PROCEDURE [dbo].[sp_RegisterUser]
+CREATE PROCEDURE [users].[sp_Register]
     @Name NVARCHAR(100),
     @Email NVARCHAR(100),
     @PasswordHash NVARCHAR(255),
@@ -31,7 +31,7 @@ BEGIN
         BEGIN TRANSACTION;
         
         -- Insert user
-        INSERT INTO Users (Name, Email, PasswordHash, IsVendor, AuthProvider)
+        INSERT INTO users.Users (Name, Email, PasswordHash, IsVendor, AuthProvider)
         VALUES (@Name, @Email, @PasswordHash, @IsVendor, @AuthProvider);
         
         DECLARE @UserID INT = SCOPE_IDENTITY();
@@ -39,7 +39,7 @@ BEGIN
         -- If vendor, create vendor profile
         IF @IsVendor = 1
         BEGIN
-            INSERT INTO VendorProfiles (UserID, BusinessName)
+            INSERT INTO vendors.VendorProfiles (UserID, BusinessName)
             VALUES (@UserID, @Name);
         END
         
@@ -54,5 +54,7 @@ BEGIN
 END;
 GO
 
-PRINT 'Stored procedure [dbo].[sp_RegisterUser] created successfully.';
+PRINT 'Stored procedure [users].[sp_Register] created successfully.';
 GO
+
+

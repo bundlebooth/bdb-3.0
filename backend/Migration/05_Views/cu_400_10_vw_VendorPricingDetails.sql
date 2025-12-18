@@ -2,7 +2,7 @@
     Migration Script: Create View [vw_VendorPricingDetails]
     Phase: 400 - Views
     Script: cu_400_10_dbo.vw_VendorPricingDetails.sql
-    Description: Creates the [dbo].[vw_VendorPricingDetails] view
+    Description: Creates the [vendors].[vw_VendorPricingDetails] view
     
     Execution Order: 10
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating view [dbo].[vw_VendorPricingDetails]...';
+PRINT 'Creating view [vendors].[vw_VendorPricingDetails]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.views WHERE object_id = OBJECT_ID(N'[dbo].[vw_VendorPricingDetails]'))
-    DROP VIEW [dbo].[vw_VendorPricingDetails];
+IF EXISTS (SELECT 1 FROM sys.views WHERE object_id = OBJECT_ID(N'[vendors].[vw_VendorPricingDetails]'))
+    DROP VIEW [vendors].[vw_VendorPricingDetails];
 GO
 
-CREATE VIEW [dbo].[vw_VendorPricingDetails] AS
+CREATE VIEW [vendors].[vw_VendorPricingDetails] AS
 SELECT 
     s.ServiceID,
     s.VendorProfileID,
@@ -48,11 +48,11 @@ SELECT
     
     s.CreatedAt,
     s.UpdatedAt
-FROM Services s
-JOIN VendorProfiles vp ON s.VendorProfileID = vp.VendorProfileID
-LEFT JOIN PredefinedServices ps ON s.LinkedPredefinedServiceID = ps.PredefinedServiceID
+FROM vendors.Services s
+JOIN vendors.VendorProfiles vp ON s.VendorProfileID = vp.VendorProfileID
+LEFT JOIN admin.PredefinedServices ps ON s.LinkedPredefinedServiceID = ps.PredefinedServiceID
 WHERE s.IsActive = 1;
 GO
 
-PRINT 'View [dbo].[vw_VendorPricingDetails] created successfully.';
+PRINT 'View [vendors].[vw_VendorPricingDetails] created successfully.';
 GO

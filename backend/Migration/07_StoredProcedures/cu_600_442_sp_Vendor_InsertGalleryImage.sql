@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Vendor_InsertGalleryImage
+-- Stored Procedure: vendors.sp_InsertGalleryImage
 -- Description: Inserts a gallery image for a vendor
 -- Phase: 600 (Stored Procedures)
+-- Schema: vendors
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Vendor_InsertGalleryImage]'))
-    DROP PROCEDURE [dbo].[sp_Vendor_InsertGalleryImage];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_InsertGalleryImage]'))
+    DROP PROCEDURE [vendors].[sp_InsertGalleryImage];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Vendor_InsertGalleryImage]
+CREATE PROCEDURE [vendors].[sp_InsertGalleryImage]
     @VendorProfileID INT,
     @ImageURL NVARCHAR(500),
     @IsPrimary BIT = 0,
@@ -17,9 +18,10 @@ AS
 BEGIN
     SET NOCOUNT ON;
     
-    INSERT INTO VendorImages (VendorProfileID, ImageURL, IsPrimary, DisplayOrder, Caption)
+    INSERT INTO vendors.VendorImages (VendorProfileID, ImageURL, IsPrimary, DisplayOrder, Caption)
     VALUES (@VendorProfileID, @ImageURL, @IsPrimary, @DisplayOrder, @Caption);
     
     SELECT SCOPE_IDENTITY() AS ImageID;
 END
 GO
+

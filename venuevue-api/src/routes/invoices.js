@@ -42,7 +42,7 @@ function resolveInvoiceId(idParam) {
 async function getCommissionSettings() {
   try {
     const pool = await poolPromise;
-    const result = await pool.request().execute('sp_Invoice_GetCommissionSettings');
+    const result = await pool.request().execute('invoices.sp_GetCommissionSettings');
     
     const settings = {};
     result.recordset.forEach(row => {
@@ -72,14 +72,14 @@ async function loadBookingSnapshot(pool, bookingId) {
   const request = pool.request();
   request.input('BookingID', sql.Int, bookingId);
   // Booking core
-  const bookingRes = await request.execute('sp_Invoice_GetBookingSnapshot');
+  const bookingRes = await request.execute('invoices.sp_GetBookingSnapshot');
   if (!bookingRes.recordset.length) {
     throw new Error('Booking not found');
   }
   const booking = bookingRes.recordset[0];
 
   // Services
-  const servicesRes = await request.execute('sp_Invoice_GetBookingServices');
+  const servicesRes = await request.execute('invoices.sp_GetBookingServices');
   let services = servicesRes.recordset || [];
 
   if ((!services || services.length === 0)) {
@@ -88,7 +88,7 @@ async function loadBookingSnapshot(pool, bookingId) {
       if (booking.ServiceID) {
         const nameRes = await pool.request()
           .input('ServiceID', sql.Int, booking.ServiceID)
-          .execute('sp_Invoice_GetServiceName');
+          .execute('invoices.sp_GetServiceName');
         svcName = nameRes.recordset[0]?.Name || null;
       }
       const price = toCurrency(booking.TotalAmount || 0);
@@ -107,7 +107,7 @@ async function loadBookingSnapshot(pool, bookingId) {
   // Expenses
   let expenses = [];
   try {
-    const expensesRes = await request.execute('sp_Invoice_GetBookingExpenses');
+    const expensesRes = await request.execute('invoices.sp_GetBookingExpenses');
     expenses = expensesRes.recordset || [];
   } catch (err) {
     const msg = String(err?.message || '');
@@ -119,7 +119,7 @@ async function loadBookingSnapshot(pool, bookingId) {
     }
   }
 
-  const txRes = await request.execute('sp_Invoice_GetBookingTransactions');
+  const txRes = await request.execute('invoices.sp_GetBookingTransactions');
   let transactions = txRes.recordset || [];
   if (transactions && transactions.length > 0) {
     const seen = new Set();
@@ -165,7 +165,7 @@ async function upsertInvoiceForBooking(pool, bookingId, opts = {}) {
     const commissionSettings = await getCommissionSettings();
 
     // Check if invoice exists
-    const existing = await r.execute('sp_Invoice_GetExistingInvoice');
+    const existing = await r.execute('invoices.sp_GetExistingInvoice');
     let invoiceId = existing.recordset[0]?.InvoiceID || null;
 
     // Build snapshot
@@ -217,7 +217,7 @@ async function upsertInvoiceForBooking(pool, bookingId, opts = {}) {
         transactions: snap.transactions
       }));
 
-      const ins = await r.execute('sp_Invoice_Create');
+      const ins = await r.execute('invoices.sp_Create');
       invoiceId = ins.recordset[0].InvoiceID;
     } else {
       // Update
@@ -238,10 +238,10 @@ async function upsertInvoiceForBooking(pool, bookingId, opts = {}) {
         expenses: snap.expenses,
         transactions: snap.transactions
       }));
-      await r.execute('sp_Invoice_Update');
+      await r.execute('invoices.sp_Update');
       // Wipe items if regenerating
       if (forceRegenerate) {
-        await r.execute('sp_Invoice_DeleteItems');
+        await r.execute('invoices.sp_DeleteItems');
       }
     }
 
@@ -260,7 +260,7 @@ async function upsertInvoiceForBooking(pool, bookingId, opts = {}) {
           .input('UnitPrice', sql.Decimal(10,2), Number(s.PriceAtBooking || 0))
           .input('Amount', sql.Decimal(10,2), toCurrency(Number(s.Quantity || 1) * Number(s.PriceAtBooking || 0)))
           .input('IsPayable', sql.Bit, 1);
-        await reqItem.execute('sp_Invoice_InsertItem');
+        await reqItem.execute('invoices.sp_InsertItem');
       }
 
       // Insert expense items
@@ -276,7 +276,7 @@ async function upsertInvoiceForBooking(pool, bookingId, opts = {}) {
           .input('UnitPrice', sql.Decimal(10,2), toCurrency(Number(e.Amount || 0)))
           .input('Amount', sql.Decimal(10,2), toCurrency(Number(e.Amount || 0)))
           .input('IsPayable', sql.Bit, 1);
-        await reqItem.execute('sp_Invoice_InsertItem');
+        await reqItem.execute('invoices.sp_InsertItem');
       }
     } catch (err) {
       // InvoiceItems table may not exist, continue without items
@@ -301,7 +301,7 @@ router.post('/booking/:bookingId/generate', async (req, res) => {
     if (!requesterUserId) return res.status(400).json({ success: false, message: 'userId is required' });
     const pool = await poolPromise;
     // Access control: only client or vendor user can generate
-    const br = await pool.request().input('BookingID', sql.Int, bookingId).execute('sp_Invoice_GetBookingAccess');
+    const br = await pool.request().input('BookingID', sql.Int, bookingId).execute('invoices.sp_GetBookingAccess');
     if (!br.recordset.length) return res.status(404).json({ success: false, message: 'Booking not found' });
     const row = br.recordset[0];
     if (requesterUserId !== row.ClientUserID && requesterUserId !== row.VendorUserID) {
@@ -319,11 +319,11 @@ router.post('/booking/:bookingId/generate', async (req, res) => {
 async function getInvoiceCore(pool, invoiceId) {
   const r = pool.request();
   r.input('InvoiceID', sql.Int, invoiceId);
-  const invRes = await r.execute('sp_Invoice_GetById');
+  const invRes = await r.execute('invoices.sp_GetById');
   if (!invRes.recordset.length) return null;
   const invoice = invRes.recordset[0];
   try {
-    const itemsRes = await r.execute('sp_Invoice_GetItems');
+    const itemsRes = await r.execute('invoices.sp_GetItems');
     invoice.items = itemsRes.recordset || [];
   } catch (err) {
     const msg = String(err?.message || '');
@@ -335,7 +335,7 @@ async function getInvoiceCore(pool, invoiceId) {
   }
   // Load payments linked to the booking for this invoice
   try {
-    const payRes = await r.execute('sp_Invoice_GetPayments');
+    const payRes = await r.execute('invoices.sp_GetPayments');
     const rows = payRes.recordset || [];
     const seen = new Set();
     const dedup = [];
@@ -353,7 +353,7 @@ async function getInvoiceCore(pool, invoiceId) {
   // Enrich with booking/vendor/client for ease of frontend
   const bookReq = pool.request();
   bookReq.input('BookingID', sql.Int, invoice.BookingID);
-  const bookRes = await bookReq.execute('sp_Invoice_GetBookingDetails');
+  const bookRes = await bookReq.execute('invoices.sp_GetBookingDetails');
   invoice.booking = bookRes.recordset[0] || null;
   return invoice;
 }
@@ -361,11 +361,11 @@ async function getInvoiceCore(pool, invoiceId) {
 async function getInvoiceByBooking(pool, bookingId, autoGenerateIfMissing = true) {
   const r = pool.request();
   r.input('BookingID', sql.Int, bookingId);
-  const invRes = await r.execute('sp_Invoice_GetByBookingId');
+  const invRes = await r.execute('invoices.sp_GetByBookingId');
   if (!invRes.recordset.length) {
     if (!autoGenerateIfMissing) return null;
     await upsertInvoiceForBooking(pool, bookingId, { forceRegenerate: true });
-    const check = await r.execute('sp_Invoice_GetByBookingId');
+    const check = await r.execute('invoices.sp_GetByBookingId');
     if (!check.recordset.length) return null;
     return await getInvoiceCore(pool, check.recordset[0].InvoiceID);
   }
@@ -381,7 +381,7 @@ router.get('/booking/:bookingId', async (req, res) => {
     if (!requesterUserId) return res.status(400).json({ success: false, message: 'userId is required' });
     const pool = await poolPromise;
     // Access control: only client or vendor user can view
-    const br = await pool.request().input('BookingID', sql.Int, bookingId).execute('sp_Invoice_GetBookingAccess');
+    const br = await pool.request().input('BookingID', sql.Int, bookingId).execute('invoices.sp_GetBookingAccess');
     if (!br.recordset.length) return res.status(404).json({ success: false, message: 'Booking not found' });
     const row = br.recordset[0];
     if (requesterUserId !== row.ClientUserID && requesterUserId !== row.VendorUserID) {
@@ -393,13 +393,13 @@ router.get('/booking/:bookingId', async (req, res) => {
       await upsertInvoiceForBooking(pool, bookingId, { forceRegenerate: true });
     } else {
       // If existing invoice uses old policy or has fee_* items, regenerate once
-      const chk = await pool.request().input('BookingID', sql.Int, bookingId).execute('sp_Invoice_GetWithFeesFlag');
+      const chk = await pool.request().input('BookingID', sql.Int, bookingId).execute('invoices.sp_GetWithFeesFlag');
       if (chk.recordset.length) {
         const invRow = chk.recordset[0];
         let needsRegen = invRow.FeesIncludedInTotal === 0;
         if (!needsRegen) {
           try {
-            const feeItems = await pool.request().input('InvoiceID', sql.Int, invRow.InvoiceID).execute('sp_Invoice_CheckFeeItems');
+            const feeItems = await pool.request().input('InvoiceID', sql.Int, invRow.InvoiceID).execute('invoices.sp_CheckFeeItems');
             needsRegen = feeItems.recordset.length > 0;
           } catch (_) { /* ignore */ }
         }

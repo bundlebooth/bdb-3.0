@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Admin_GetCommissionSettings
+-- Stored Procedure: admin.sp_GetCommissionSettings
 -- Description: Gets commission settings
 -- Phase: 600 (Stored Procedures)
+-- Schema: admin
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Admin_GetCommissionSettings]'))
-    DROP PROCEDURE [dbo].[sp_Admin_GetCommissionSettings];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_GetCommissionSettings]'))
+    DROP PROCEDURE [admin].[sp_GetCommissionSettings];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Admin_GetCommissionSettings]
+CREATE PROCEDURE [admin].[sp_GetCommissionSettings]
 AS
 BEGIN
     SET NOCOUNT ON;

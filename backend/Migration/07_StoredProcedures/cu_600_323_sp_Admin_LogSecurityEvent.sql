@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Admin_LogSecurityEvent
+-- Stored Procedure: admin.sp_LogSecurityEvent
 -- Description: Logs a security event
 -- Phase: 600 (Stored Procedures)
+-- Schema: admin
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Admin_LogSecurityEvent]'))
-    DROP PROCEDURE [dbo].[sp_Admin_LogSecurityEvent];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_LogSecurityEvent]'))
+    DROP PROCEDURE [admin].[sp_LogSecurityEvent];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Admin_LogSecurityEvent]
+CREATE PROCEDURE [admin].[sp_LogSecurityEvent]
     @UserID INT = NULL,
     @Email NVARCHAR(255),
     @Action NVARCHAR(100),

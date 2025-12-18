@@ -1,19 +1,20 @@
 -- =============================================
--- Stored Procedure: sp_Admin_UnflagReview
+-- Stored Procedure: admin.sp_UnflagReview
 -- Description: Removes flag from a review
 -- Phase: 600 (Stored Procedures)
+-- Schema: admin
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Admin_UnflagReview]'))
-    DROP PROCEDURE [dbo].[sp_Admin_UnflagReview];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_UnflagReview]'))
+    DROP PROCEDURE [admin].[sp_UnflagReview];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Admin_UnflagReview]
+CREATE PROCEDURE [admin].[sp_UnflagReview]
     @ReviewID INT
 AS
 BEGIN
     SET NOCOUNT ON;
     
-    UPDATE Reviews 
+    UPDATE vendors.Reviews 
     SET IsFlagged = 0, 
         FlagReason = NULL
     WHERE ReviewID = @ReviewID;
@@ -21,3 +22,4 @@ BEGIN
     SELECT @@ROWCOUNT AS RowsAffected;
 END
 GO
+

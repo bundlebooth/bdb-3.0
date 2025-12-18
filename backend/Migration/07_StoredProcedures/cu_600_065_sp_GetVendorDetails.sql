@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_GetVendorDetails]
     Phase: 600 - Stored Procedures
     Script: cu_600_065_dbo.sp_GetVendorDetails.sql
-    Description: Creates the [dbo].[sp_GetVendorDetails] stored procedure
+    Description: Creates the [vendors].[sp_GetDetails] stored procedure
     
     Execution Order: 65
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_GetVendorDetails]...';
+PRINT 'Creating stored procedure [vendors].[sp_GetDetails]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_GetVendorDetails]'))
-    DROP PROCEDURE [dbo].[sp_GetVendorDetails];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_GetDetails]'))
+    DROP PROCEDURE [vendors].[sp_GetDetails];
 GO
 
-CREATE   PROCEDURE [dbo].[sp_GetVendorDetails]
+CREATE   PROCEDURE [vendors].[sp_GetDetails]
     @VendorProfileID INT,
     @UserID INT = NULL
 AS
@@ -52,17 +52,17 @@ BEGIN
         -- Google Reviews Integration fields
         vp.GooglePlaceId,
         vp.GoogleBusinessUrl,
-        (SELECT COUNT(*) FROM Favorites f WHERE f.VendorProfileID = vp.VendorProfileID) AS FavoriteCount,
-        (SELECT AVG(CAST(r.Rating AS DECIMAL(3,1))) FROM Reviews r WHERE r.VendorProfileID = vp.VendorProfileID AND r.IsApproved = 1) AS AverageRating,
-        (SELECT COUNT(*) FROM Reviews r WHERE r.VendorProfileID = vp.VendorProfileID AND r.IsApproved = 1) AS ReviewCount,
-        (SELECT COUNT(*) FROM Bookings b WHERE b.VendorProfileID = vp.VendorProfileID) AS BookingCount
-    FROM VendorProfiles vp
+        (SELECT COUNT(*) FROM users.Favorites f WHERE f.VendorProfileID = vp.VendorProfileID) AS FavoriteCount,
+        (SELECT AVG(CAST(r.Rating AS DECIMAL(3,1))) FROM vendors.Reviews r WHERE r.VendorProfileID = vp.VendorProfileID AND r.IsApproved = 1) AS AverageRating,
+        (SELECT COUNT(*) FROM vendors.Reviews r WHERE r.VendorProfileID = vp.VendorProfileID AND r.IsApproved = 1) AS ReviewCount,
+        (SELECT COUNT(*) FROM bookings.Bookings b WHERE b.VendorProfileID = vp.VendorProfileID) AS BookingCount
+    FROM vendors.VendorProfiles vp
     WHERE vp.VendorProfileID = @VendorProfileID;
     
     -- Vendor categories (recordset 2)
-    SELECT Category FROM VendorCategories WHERE VendorProfileID = @VendorProfileID ORDER BY Category;
+    SELECT Category FROM vendors.VendorCategories WHERE VendorProfileID = @VendorProfileID ORDER BY Category;
     
-    -- Services and packages (recordset 3) - UPDATED TO QUERY FROM Services TABLE
+    -- Services and packages (recordset 3) - UPDATED TO QUERY FROM vendors.Services TABLE
     SELECT 
         s.ServiceID AS VendorSelectedServiceID,
         s.LinkedPredefinedServiceID AS PredefinedServiceID,
@@ -98,8 +98,8 @@ BEGIN
         s.PricePerPerson,
         s.MinimumAttendees,
         s.MaximumAttendees AS Capacity
-    FROM Services s
-    LEFT JOIN PredefinedServices ps ON ps.PredefinedServiceID = s.LinkedPredefinedServiceID
+    FROM vendors.Services s
+    LEFT JOIN admin.PredefinedServices ps ON ps.PredefinedServiceID = s.LinkedPredefinedServiceID
     WHERE s.VendorProfileID = @VendorProfileID 
         AND s.LinkedPredefinedServiceID IS NOT NULL 
         AND s.IsActive = 1
@@ -131,19 +131,19 @@ BEGIN
 
     -- Vendor social media (recordset 8)
     SELECT SocialID, Platform, URL, DisplayOrder
-    FROM VendorSocialMedia 
+    FROM vendors.VendorSocialMedia 
     WHERE VendorProfileID = @VendorProfileID
     ORDER BY DisplayOrder;
 
     -- Vendor business hours (recordset 9)
     SELECT DayOfWeek, OpenTime, CloseTime, IsAvailable, Timezone
-    FROM VendorBusinessHours
+    FROM vendors.VendorBusinessHours
     WHERE VendorProfileID = @VendorProfileID
     ORDER BY DayOfWeek;
 
     -- Vendor images (recordset 10)
     SELECT ImageID, ImageURL, IsPrimary, DisplayOrder, ImageType
-    FROM VendorImages
+    FROM vendors.VendorImages
     WHERE VendorProfileID = @VendorProfileID
     ORDER BY IsPrimary DESC, DisplayOrder;
 
@@ -156,7 +156,7 @@ BEGIN
     -- Is favorite for current user (recordset 12)
     IF @UserID IS NOT NULL
     BEGIN
-        SELECT CAST(CASE WHEN EXISTS (SELECT 1 FROM Favorites WHERE UserID = @UserID AND VendorProfileID = @VendorProfileID) THEN 1 ELSE 0 END AS BIT) AS IsFavorite;
+        SELECT CAST(CASE WHEN EXISTS (SELECT 1 FROM users.Favorites WHERE UserID = @UserID AND VendorProfileID = @VendorProfileID) THEN 1 ELSE 0 END AS BIT) AS IsFavorite;
     END
 
     -- Available time slots (recordset 13)
@@ -171,7 +171,7 @@ BEGIN
         ts.StartTime,
         ts.EndTime,
         ts.MaxCapacity,
-        (SELECT COUNT(*) FROM Bookings b 
+        (SELECT COUNT(*) FROM bookings.Bookings b 
          WHERE b.ServiceID = ts.ServiceID 
          AND b.Status NOT IN ('cancelled', 'rejected')
          AND (
@@ -181,8 +181,8 @@ BEGIN
          )
          AND CONVERT(TIME, b.EventDate) BETWEEN ts.StartTime AND ts.EndTime
         ) AS BookedCount
-    FROM TimeSlots ts
-    JOIN Services s ON ts.ServiceID = s.ServiceID
+    FROM bookings.TimeSlots ts
+    JOIN vendors.Services s ON ts.ServiceID = s.ServiceID
     WHERE s.VendorProfileID = @VendorProfileID
     AND ts.IsAvailable = 1
     AND (
@@ -197,5 +197,14 @@ BEGIN
 END;
 GO
 
-PRINT 'Stored procedure [dbo].[sp_GetVendorDetails] created successfully.';
+PRINT 'Stored procedure [vendors].[sp_GetDetails] created successfully.';
 GO
+
+
+
+
+
+
+
+
+

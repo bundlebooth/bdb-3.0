@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Vendor_GetUserWithProfile
+-- Stored Procedure: vendors.sp_GetUserWithProfile
 -- Description: Gets user info with vendor profile ID
 -- Phase: 600 (Stored Procedures)
+-- Schema: vendors
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Vendor_GetUserWithProfile]'))
-    DROP PROCEDURE [dbo].[sp_Vendor_GetUserWithProfile];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_GetUserWithProfile]'))
+    DROP PROCEDURE [vendors].[sp_GetUserWithProfile];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Vendor_GetUserWithProfile]
+CREATE PROCEDURE [vendors].[sp_GetUserWithProfile]
     @UserID INT
 AS
 BEGIN
@@ -19,8 +20,10 @@ BEGIN
         u.Email,
         u.IsVendor,
         vp.VendorProfileID
-    FROM Users u
-    LEFT JOIN VendorProfiles vp ON u.UserID = vp.UserID
+    FROM users.Users u
+    LEFT JOIN vendors.VendorProfiles vp ON u.UserID = vp.UserID
     WHERE u.UserID = @UserID AND u.IsActive = 1;
 END
 GO
+
+

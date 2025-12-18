@@ -1,18 +1,20 @@
 -- =============================================
--- Stored Procedure: sp_User_CheckEmailExists
+-- Stored Procedure: users.sp_CheckEmailExists
 -- Description: Checks if email already exists
 -- Phase: 600 (Stored Procedures)
+-- Schema: users
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_User_CheckEmailExists]'))
-    DROP PROCEDURE [dbo].[sp_User_CheckEmailExists];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[users].[sp_CheckEmailExists]'))
+    DROP PROCEDURE [users].[sp_CheckEmailExists];
 GO
 
-CREATE PROCEDURE [dbo].[sp_User_CheckEmailExists]
+CREATE PROCEDURE [users].[sp_CheckEmailExists]
     @Email NVARCHAR(100)
 AS
 BEGIN
     SET NOCOUNT ON;
     
-    SELECT 1 AS EmailExists FROM Users WHERE Email = @Email;
+    SELECT 1 AS EmailExists FROM users.Users WHERE Email = @Email;
 END
 GO
+

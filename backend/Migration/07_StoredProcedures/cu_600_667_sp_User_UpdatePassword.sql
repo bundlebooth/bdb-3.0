@@ -1,19 +1,21 @@
 -- =============================================
--- Stored Procedure: sp_User_UpdatePassword
+-- Stored Procedure: users.sp_UpdatePassword
 -- Description: Updates user password hash
 -- Phase: 600 (Stored Procedures)
+-- Schema: users
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_User_UpdatePassword]'))
-    DROP PROCEDURE [dbo].[sp_User_UpdatePassword];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[users].[sp_UpdatePassword]'))
+    DROP PROCEDURE [users].[sp_UpdatePassword];
 GO
 
-CREATE PROCEDURE [dbo].[sp_User_UpdatePassword]
+CREATE PROCEDURE [users].[sp_UpdatePassword]
     @UserID INT,
     @PasswordHash NVARCHAR(255)
 AS
 BEGIN
     SET NOCOUNT ON;
     
-    UPDATE Users SET PasswordHash = @PasswordHash WHERE UserID = @UserID;
+    UPDATE users.Users SET PasswordHash = @PasswordHash WHERE UserID = @UserID;
 END
 GO
+

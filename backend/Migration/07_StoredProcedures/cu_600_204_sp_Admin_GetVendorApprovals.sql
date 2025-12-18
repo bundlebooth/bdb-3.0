@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Admin_GetVendorApprovals
+-- Stored Procedure: admin.sp_GetVendorApprovals
 -- Description: Gets vendor profiles for approval review
 -- Phase: 600 (Stored Procedures)
+-- Schema: admin
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Admin_GetVendorApprovals]'))
-    DROP PROCEDURE [dbo].[sp_Admin_GetVendorApprovals];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_GetVendorApprovals]'))
+    DROP PROCEDURE [admin].[sp_GetVendorApprovals];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Admin_GetVendorApprovals]
+CREATE PROCEDURE [admin].[sp_GetVendorApprovals]
     @Status NVARCHAR(50) = 'pending'
 AS
 BEGIN
@@ -36,12 +37,12 @@ BEGIN
         u.Name as OwnerName,
         u.Email as OwnerEmail,
         u.Phone as OwnerPhone,
-        (SELECT TOP 1 ImageURL FROM VendorImages WHERE VendorProfileID = vp.VendorProfileID AND IsPrimary = 1) as PrimaryImage,
-        (SELECT TOP 1 Category FROM VendorCategories WHERE VendorProfileID = vp.VendorProfileID) as Categories,
-        (SELECT COUNT(*) FROM VendorImages WHERE VendorProfileID = vp.VendorProfileID) as ImageCount,
-        (SELECT COUNT(*) FROM VendorServices WHERE VendorProfileID = vp.VendorProfileID) as ServiceCount
-    FROM VendorProfiles vp
-    LEFT JOIN Users u ON vp.UserID = u.UserID
+        (SELECT TOP 1 ImageURL FROM vendors.VendorImages WHERE VendorProfileID = vp.VendorProfileID AND IsPrimary = 1) as PrimaryImage,
+        (SELECT TOP 1 Category FROM vendors.VendorCategories WHERE VendorProfileID = vp.VendorProfileID) as Categories,
+        (SELECT COUNT(*) FROM vendors.VendorImages WHERE VendorProfileID = vp.VendorProfileID) as ImageCount,
+        (SELECT COUNT(*) FROM vendors.VendorServices WHERE VendorProfileID = vp.VendorProfileID) as ServiceCount
+    FROM vendors.VendorProfiles vp
+    LEFT JOIN users.Users u ON vp.UserID = u.UserID
     WHERE 
         (@Status = 'all') OR
         (@Status = 'pending' AND vp.ProfileStatus = 'pending_review') OR
@@ -50,3 +51,8 @@ BEGIN
     ORDER BY vp.CreatedAt DESC;
 END
 GO
+
+
+
+
+

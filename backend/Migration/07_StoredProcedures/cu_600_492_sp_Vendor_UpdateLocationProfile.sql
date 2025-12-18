@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Vendor_UpdateLocationProfile
+-- Stored Procedure: vendors.sp_UpdateLocationProfile
 -- Description: Updates vendor profile location
 -- Phase: 600 (Stored Procedures)
+-- Schema: vendors
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Vendor_UpdateLocationProfile]'))
-    DROP PROCEDURE [dbo].[sp_Vendor_UpdateLocationProfile];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_UpdateLocationProfile]'))
+    DROP PROCEDURE [vendors].[sp_UpdateLocationProfile];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Vendor_UpdateLocationProfile]
+CREATE PROCEDURE [vendors].[sp_UpdateLocationProfile]
     @VendorProfileID INT,
     @Address NVARCHAR(255) = NULL,
     @City NVARCHAR(100) = '',
@@ -20,7 +21,7 @@ AS
 BEGIN
     SET NOCOUNT ON;
     
-    UPDATE VendorProfiles
+    UPDATE vendors.VendorProfiles
     SET Address = @Address, City = @City, State = @State, Country = @Country,
         PostalCode = @PostalCode, Latitude = @Latitude, Longitude = @Longitude,
         UpdatedAt = GETDATE()
@@ -29,3 +30,4 @@ BEGIN
     SELECT @@ROWCOUNT AS RowsAffected;
 END
 GO
+

@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_GetConversationMessages]
     Phase: 600 - Stored Procedures
     Script: cu_600_035_dbo.sp_GetConversationMessages.sql
-    Description: Creates the [dbo].[sp_GetConversationMessages] stored procedure
+    Description: Creates the [messages].[sp_GetConversationMessages] stored procedure
     
     Execution Order: 35
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_GetConversationMessages]...';
+PRINT 'Creating stored procedure [messages].[sp_GetConversationMessages]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_GetConversationMessages]'))
-    DROP PROCEDURE [dbo].[sp_GetConversationMessages];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[messages].[sp_GetConversationMessages]'))
+    DROP PROCEDURE [messages].[sp_GetConversationMessages];
 GO
 
-CREATE   PROCEDURE [dbo].[sp_GetConversationMessages]
+CREATE   PROCEDURE [messages].[sp_GetConversationMessages]
     @ConversationID INT,
     @UserID INT
 AS
@@ -26,10 +26,10 @@ BEGIN
     
     -- Verify user has access to conversation
     IF EXISTS (
-        SELECT 1 FROM Conversations c
+        SELECT 1 FROM messages.Conversations c
         WHERE c.ConversationID = @ConversationID
         AND (c.UserID = @UserID OR 
-             (SELECT v.UserID FROM VendorProfiles v WHERE v.VendorProfileID = c.VendorProfileID) = @UserID)
+             (SELECT v.UserID FROM vendors.VendorProfiles v WHERE v.VendorProfileID = c.VendorProfileID) = @UserID)
     )
     BEGIN
         -- Get messages
@@ -53,8 +53,8 @@ BEGIN
                 WHERE ma.MessageID = m.MessageID
                 FOR JSON PATH
             ) AS Attachments
-        FROM Messages m
-        JOIN Users u ON m.SenderID = u.UserID
+        FROM messages.Messages m
+        JOIN users.Users u ON m.SenderID = u.UserID
         WHERE m.ConversationID = @ConversationID
         ORDER BY m.CreatedAt;
         
@@ -62,8 +62,8 @@ BEGIN
         UPDATE m
         SET m.IsRead = 1,
             m.ReadAt = GETDATE()
-        FROM Messages m
-        JOIN Conversations c ON m.ConversationID = c.ConversationID
+        FROM messages.Messages m
+        JOIN messages.Conversations c ON m.ConversationID = c.ConversationID
         WHERE m.ConversationID = @ConversationID
         AND m.SenderID != @UserID
         AND m.IsRead = 0;
@@ -77,5 +77,9 @@ END;
 
 GO
 
-PRINT 'Stored procedure [dbo].[sp_GetConversationMessages] created successfully.';
+PRINT 'Stored procedure [messages].[sp_GetConversationMessages] created successfully.';
 GO
+
+
+
+

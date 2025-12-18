@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Admin_GetAllReviews
+-- Stored Procedure: admin.sp_GetAllReviews
 -- Description: Gets all reviews with filters for admin panel
 -- Phase: 600 (Stored Procedures)
+-- Schema: admin
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Admin_GetAllReviews]'))
-    DROP PROCEDURE [dbo].[sp_Admin_GetAllReviews];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_GetAllReviews]'))
+    DROP PROCEDURE [admin].[sp_GetAllReviews];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Admin_GetAllReviews]
+CREATE PROCEDURE [admin].[sp_GetAllReviews]
     @Filter NVARCHAR(50) = NULL,
     @Search NVARCHAR(100) = NULL,
     @PageNumber INT = 1,
@@ -31,9 +32,9 @@ BEGIN
         u.Email as ReviewerEmail,
         vp.BusinessName as VendorName,
         vp.VendorProfileID
-    FROM Reviews r
-    JOIN Users u ON r.UserID = u.UserID
-    JOIN VendorProfiles vp ON r.VendorProfileID = vp.VendorProfileID
+    FROM vendors.Reviews r
+    JOIN users.Users u ON r.UserID = u.UserID
+    JOIN vendors.VendorProfiles vp ON r.VendorProfileID = vp.VendorProfileID
     WHERE 
         (@Filter IS NULL OR
          (@Filter = 'flagged' AND r.IsFlagged = 1) OR
@@ -44,8 +45,8 @@ BEGIN
     
     -- Count query
     SELECT COUNT(*) as total
-    FROM Reviews r
-    JOIN VendorProfiles vp ON r.VendorProfileID = vp.VendorProfileID
+    FROM vendors.Reviews r
+    JOIN vendors.VendorProfiles vp ON r.VendorProfileID = vp.VendorProfileID
     WHERE 
         (@Filter IS NULL OR
          (@Filter = 'flagged' AND r.IsFlagged = 1) OR
@@ -53,3 +54,6 @@ BEGIN
         AND (@Search IS NULL OR r.Comment LIKE '%' + @Search + '%' OR vp.BusinessName LIKE '%' + @Search + '%');
 END
 GO
+
+
+

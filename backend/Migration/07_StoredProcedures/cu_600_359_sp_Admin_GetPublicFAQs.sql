@@ -1,21 +1,22 @@
 -- =============================================
--- Stored Procedure: sp_Admin_GetPublicFAQs
+-- Stored Procedure: admin.sp_GetPublicFAQs
 -- Description: Gets FAQs for public display
 -- Phase: 600 (Stored Procedures)
+-- Schema: admin
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Admin_GetPublicFAQs]'))
-    DROP PROCEDURE [dbo].[sp_Admin_GetPublicFAQs];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_GetPublicFAQs]'))
+    DROP PROCEDURE [admin].[sp_GetPublicFAQs];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Admin_GetPublicFAQs]
+CREATE PROCEDURE [admin].[sp_GetPublicFAQs]
 AS
 BEGIN
     SET NOCOUNT ON;
     
-    IF EXISTS (SELECT 1 FROM sys.tables WHERE name = 'FAQs')
+    IF EXISTS (SELECT 1 FROM sys.tables t JOIN sys.schemas s ON t.schema_id = s.schema_id WHERE t.name = 'FAQs' AND s.name = 'admin')
     BEGIN
         SELECT FAQID, Question, Answer, Category, DisplayOrder, IsActive, CreatedAt, UpdatedAt
-        FROM FAQs
+        FROM admin.FAQs
         ORDER BY DisplayOrder, CreatedAt;
     END
     ELSE

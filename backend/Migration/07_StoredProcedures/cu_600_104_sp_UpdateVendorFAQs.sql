@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_UpdateVendorFAQs]
     Phase: 600 - Stored Procedures
     Script: cu_600_104_dbo.sp_UpdateVendorFAQs.sql
-    Description: Creates the [dbo].[sp_UpdateVendorFAQs] stored procedure
+    Description: Creates the [vendors].[sp_UpdateFAQs] stored procedure
     
     Execution Order: 104
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_UpdateVendorFAQs]...';
+PRINT 'Creating stored procedure [vendors].[sp_UpdateFAQs]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_UpdateVendorFAQs]'))
-    DROP PROCEDURE [dbo].[sp_UpdateVendorFAQs];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_UpdateFAQs]'))
+    DROP PROCEDURE [vendors].[sp_UpdateFAQs];
 GO
 
-CREATE   PROCEDURE [dbo].[sp_UpdateVendorFAQs]
+CREATE   PROCEDURE [vendors].[sp_UpdateFAQs]
     @VendorProfileID INT,
     @FAQs NVARCHAR(MAX) -- JSON array of FAQs
 AS
@@ -51,7 +51,7 @@ BEGIN
         FROM OPENJSON(@FAQs);
         
         -- Mark step 8 as completed
-        UPDATE VendorProfiles 
+        UPDATE vendors.VendorProfiles 
         SET SetupStep8Completed = 1,
             UpdatedAt = GETDATE()
         WHERE VendorProfileID = @VendorProfileID;
@@ -69,5 +69,6 @@ END;
 
 GO
 
-PRINT 'Stored procedure [dbo].[sp_UpdateVendorFAQs] created successfully.';
+PRINT 'Stored procedure [vendors].[sp_UpdateFAQs] created successfully.';
 GO
+

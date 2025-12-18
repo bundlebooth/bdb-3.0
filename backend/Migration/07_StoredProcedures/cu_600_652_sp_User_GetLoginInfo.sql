@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_User_GetLoginInfo
+-- Stored Procedure: users.sp_GetLoginInfo
 -- Description: Gets user info for login
 -- Phase: 600 (Stored Procedures)
+-- Schema: users
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_User_GetLoginInfo]'))
-    DROP PROCEDURE [dbo].[sp_User_GetLoginInfo];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[users].[sp_GetLoginInfo]'))
+    DROP PROCEDURE [users].[sp_GetLoginInfo];
 GO
 
-CREATE PROCEDURE [dbo].[sp_User_GetLoginInfo]
+CREATE PROCEDURE [users].[sp_GetLoginInfo]
     @Email NVARCHAR(100)
 AS
 BEGIN
@@ -22,8 +23,10 @@ BEGIN
         u.IsAdmin,
         u.IsActive,
         v.VendorProfileID
-    FROM Users u
-    LEFT JOIN VendorProfiles v ON u.UserID = v.UserID
+    FROM users.Users u
+    LEFT JOIN vendors.VendorProfiles v ON u.UserID = v.UserID
     WHERE u.Email = @Email;
 END
 GO
+
+

@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Booking_GetUserRequests
+-- Stored Procedure: bookings.sp_GetUserRequests
 -- Description: Gets booking requests for a user
 -- Phase: 600 (Stored Procedures)
+-- Schema: bookings
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Booking_GetUserRequests]'))
-    DROP PROCEDURE [dbo].[sp_Booking_GetUserRequests];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[bookings].[sp_GetUserRequests]'))
+    DROP PROCEDURE [bookings].[sp_GetUserRequests];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Booking_GetUserRequests]
+CREATE PROCEDURE [bookings].[sp_GetUserRequests]
     @UserID INT
 AS
 BEGIN
@@ -32,9 +33,11 @@ BEGIN
         br.CreatedAt,
         br.ExpiresAt,
         br.ResponseMessage
-    FROM BookingRequests br
-    LEFT JOIN VendorProfiles vp ON br.VendorProfileID = vp.VendorProfileID
+    FROM bookings.BookingRequests br
+    LEFT JOIN vendors.VendorProfiles vp ON br.VendorProfileID = vp.VendorProfileID
     WHERE br.UserID = @UserID
     ORDER BY br.CreatedAt DESC;
 END
 GO
+
+

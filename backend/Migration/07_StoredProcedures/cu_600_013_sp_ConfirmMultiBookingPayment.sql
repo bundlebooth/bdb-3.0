@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_ConfirmMultiBookingPayment]
     Phase: 600 - Stored Procedures
     Script: cu_600_013_dbo.sp_ConfirmMultiBookingPayment.sql
-    Description: Creates the [dbo].[sp_ConfirmMultiBookingPayment] stored procedure
+    Description: Creates the [payments].[sp_ConfirmMultiBookingPayment] stored procedure
     
     Execution Order: 13
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_ConfirmMultiBookingPayment]...';
+PRINT 'Creating stored procedure [payments].[sp_ConfirmMultiBookingPayment]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_ConfirmMultiBookingPayment]'))
-    DROP PROCEDURE [dbo].[sp_ConfirmMultiBookingPayment];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[payments].[sp_ConfirmMultiBookingPayment]'))
+    DROP PROCEDURE [payments].[sp_ConfirmMultiBookingPayment];
 GO
 
-CREATE   PROCEDURE [dbo].[sp_ConfirmMultiBookingPayment]
+CREATE   PROCEDURE [payments].[sp_ConfirmMultiBookingPayment]
     @PaymentIntentID NVARCHAR(100),
     @RequestIDs NVARCHAR(500), -- Comma-separated list of approved request IDs
     @TotalAmount DECIMAL(10, 2)
@@ -52,7 +52,7 @@ BEGIN
         SELECT br.RequestID, br.UserID, br.VendorProfileID, br.Services, 
                br.EventDate, br.EventTime, br.EventEndTime, br.EventLocation, br.AttendeeCount, br.SpecialRequests,
                br.EventName, br.EventType, br.TimeZone
-        FROM BookingRequests br
+        FROM bookings.BookingRequests br
         JOIN @RequestTable rt ON br.RequestID = rt.RequestID
         WHERE br.Status = 'approved';
         
@@ -76,7 +76,7 @@ BEGIN
             DECLARE @BookingResult TABLE (BookingID INT, ConversationID INT);
             
             INSERT INTO @BookingResult
-            EXEC sp_CreateBookingWithServices
+            EXEC bookings.sp_CreateWithServices
                 @UserID = @UserID,
                 @VendorProfileID = @VendorProfileID,
                 @EventDate = @StartDateTime,
@@ -95,7 +95,7 @@ BEGIN
             SELECT BookingID, @VendorProfileID, @UserID FROM @BookingResult;
             
             -- Update request status to confirmed
-            UPDATE BookingRequests 
+            UPDATE bookings.BookingRequests 
             SET Status = 'confirmed', 
                 ConfirmedAt = GETDATE(),
                 PaymentIntentID = @PaymentIntentID
@@ -115,7 +115,7 @@ BEGIN
             vp.BusinessName,
             cb.UserID
         FROM @CreatedBookings cb
-        JOIN VendorProfiles vp ON cb.VendorProfileID = vp.VendorProfileID;
+        JOIN vendors.VendorProfiles vp ON cb.VendorProfileID = vp.VendorProfileID;
         
         COMMIT TRANSACTION;
         
@@ -130,5 +130,7 @@ END;
 
 GO
 
-PRINT 'Stored procedure [dbo].[sp_ConfirmMultiBookingPayment] created successfully.';
+PRINT 'Stored procedure [payments].[sp_ConfirmMultiBookingPayment] created successfully.';
 GO
+
+

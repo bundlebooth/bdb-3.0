@@ -1,19 +1,21 @@
 -- =============================================
--- Stored Procedure: sp_Booking_GetInvoiceTotals
+-- Stored Procedure: bookings.sp_GetInvoiceTotals
 -- Description: Gets invoice totals for a booking
 -- Phase: 600 (Stored Procedures)
+-- Schema: bookings
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Booking_GetInvoiceTotals]'))
-    DROP PROCEDURE [dbo].[sp_Booking_GetInvoiceTotals];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[bookings].[sp_GetInvoiceTotals]'))
+    DROP PROCEDURE [bookings].[sp_GetInvoiceTotals];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Booking_GetInvoiceTotals]
+CREATE PROCEDURE [bookings].[sp_GetInvoiceTotals]
     @BookingID INT
 AS
 BEGIN
     SET NOCOUNT ON;
     
     SELECT TOP 1 InvoiceID, TotalAmount, PlatformFee, Subtotal, TaxAmount 
-    FROM Invoices WHERE BookingID=@BookingID ORDER BY IssueDate DESC;
+    FROM invoices.Invoices WHERE BookingID=@BookingID ORDER BY IssueDate DESC;
 END
 GO
+

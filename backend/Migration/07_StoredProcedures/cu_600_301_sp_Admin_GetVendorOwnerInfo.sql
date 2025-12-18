@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Admin_GetVendorOwnerInfo
+-- Stored Procedure: admin.sp_GetVendorOwnerInfo
 -- Description: Gets vendor owner info and visibility status
 -- Phase: 600 (Stored Procedures)
+-- Schema: admin
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Admin_GetVendorOwnerInfo]'))
-    DROP PROCEDURE [dbo].[sp_Admin_GetVendorOwnerInfo];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_GetVendorOwnerInfo]'))
+    DROP PROCEDURE [admin].[sp_GetVendorOwnerInfo];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Admin_GetVendorOwnerInfo]
+CREATE PROCEDURE [admin].[sp_GetVendorOwnerInfo]
     @VendorProfileID INT
 AS
 BEGIN
@@ -22,8 +23,10 @@ BEGIN
         vp.ProfileStatus, 
         vp.AcceptingBookings, 
         vp.IsVerified
-    FROM VendorProfiles vp
-    LEFT JOIN Users u ON vp.UserID = u.UserID
+    FROM vendors.VendorProfiles vp
+    LEFT JOIN users.Users u ON vp.UserID = u.UserID
     WHERE vp.VendorProfileID = @VendorProfileID;
 END
 GO
+
+

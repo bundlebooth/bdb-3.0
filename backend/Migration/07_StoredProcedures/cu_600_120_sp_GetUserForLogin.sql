@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_GetUserForLogin
+-- Stored Procedure: users.sp_GetForLogin
 -- Description: Gets user details for login authentication
 -- Phase: 600 (Stored Procedures)
+-- Schema: users
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_GetUserForLogin]'))
-    DROP PROCEDURE [dbo].[sp_GetUserForLogin];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[users].[sp_GetForLogin]'))
+    DROP PROCEDURE [users].[sp_GetForLogin];
 GO
 
-CREATE PROCEDURE [dbo].[sp_GetUserForLogin]
+CREATE PROCEDURE [users].[sp_GetForLogin]
     @Email NVARCHAR(100)
 AS
 BEGIN
@@ -21,8 +22,10 @@ BEGIN
         u.IsAdmin,
         u.IsActive,
         v.VendorProfileID
-    FROM Users u
-    LEFT JOIN VendorProfiles v ON u.UserID = v.UserID
+    FROM users.Users u
+    LEFT JOIN vendors.VendorProfiles v ON u.UserID = v.UserID
     WHERE u.Email = @Email;
 END
 GO
+
+

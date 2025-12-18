@@ -1,24 +1,24 @@
 /*
-    Migration Script: Create Stored Procedure [sp_GetUserTickets]
+    Migration Script: Create Stored Procedure [users.sp_GetTickets]
     Phase: 600 - Stored Procedures
-    Script: cu_600_059_dbo.sp_GetUserTickets.sql
-    Description: Creates the [dbo].[sp_GetUserTickets] stored procedure
-    
+    Script: cu_600_059_sp_GetUserTickets.sql
+    Description: Creates the [users].[sp_GetTickets] stored procedure
+    Schema: users
     Execution Order: 59
 */
 
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_GetUserTickets]...';
+PRINT 'Creating stored procedure [users].[sp_GetTickets]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_GetUserTickets]'))
-    DROP PROCEDURE [dbo].[sp_GetUserTickets];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[users].[sp_GetTickets]'))
+    DROP PROCEDURE [users].[sp_GetTickets];
 GO
 
 -- Procedure to get user's tickets
-CREATE PROCEDURE [dbo].[sp_GetUserTickets]
+CREATE PROCEDURE [users].[sp_GetTickets]
     @UserID INT
 AS
 BEGIN
@@ -35,11 +35,12 @@ BEGIN
         t.UpdatedAt,
         t.ResolvedAt,
         (SELECT COUNT(*) FROM SupportTicketMessages WHERE TicketID = t.TicketID) AS MessageCount
-    FROM SupportTickets t
+    FROM admin.SupportTickets t
     WHERE t.UserID = @UserID
     ORDER BY t.CreatedAt DESC;
 END;
 GO
 
-PRINT 'Stored procedure [dbo].[sp_GetUserTickets] created successfully.';
+PRINT 'Stored procedure [users].[sp_GetTickets] created successfully.';
 GO
+

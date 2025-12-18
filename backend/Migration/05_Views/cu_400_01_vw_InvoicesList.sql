@@ -2,7 +2,7 @@
     Migration Script: Create View [vw_InvoicesList]
     Phase: 400 - Views
     Script: cu_400_01_dbo.vw_InvoicesList.sql
-    Description: Creates the [dbo].[vw_InvoicesList] view
+    Description: Creates the [invoices].[vw_InvoicesList] view
     
     Execution Order: 1
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating view [dbo].[vw_InvoicesList]...';
+PRINT 'Creating view [invoices].[vw_InvoicesList]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.views WHERE object_id = OBJECT_ID(N'[dbo].[vw_InvoicesList]'))
-    DROP VIEW [dbo].[vw_InvoicesList];
+IF EXISTS (SELECT 1 FROM sys.views WHERE object_id = OBJECT_ID(N'[invoices].[vw_InvoicesList]'))
+    DROP VIEW [invoices].[vw_InvoicesList];
 GO
 
-CREATE VIEW [dbo].[vw_InvoicesList] AS
+CREATE VIEW [invoices].[vw_InvoicesList] AS
 SELECT 
     i.InvoiceID,
     i.InvoiceNumber,
@@ -62,16 +62,16 @@ SELECT
             SELECT STRING_AGG(x.ServiceName, ', ')
             FROM (
                 SELECT DISTINCT s2.Name AS ServiceName
-                FROM BookingServices bs
-                JOIN Services s2 ON s2.ServiceID = bs.ServiceID
+                FROM bookings.BookingServices bs
+                JOIN vendors.Services s2 ON s2.ServiceID = bs.ServiceID
                 WHERE bs.BookingID = b.BookingID
             ) x
         ),
-        (SELECT s3.Name FROM Services s3 WHERE s3.ServiceID = b.ServiceID)
+        (SELECT s3.Name FROM vendors.Services s3 WHERE s3.ServiceID = b.ServiceID)
     ) AS ServicesSummary
-FROM Invoices i
-JOIN Bookings b ON i.BookingID = b.BookingID
-LEFT JOIN BookingRequests br
+FROM invoices.Invoices i
+JOIN bookings.Bookings b ON i.BookingID = b.BookingID
+LEFT JOIN bookings.BookingRequests br
   ON br.PaymentIntentID = b.StripePaymentIntentID
  AND br.UserID = b.UserID
  AND br.VendorProfileID = b.VendorProfileID
@@ -104,9 +104,9 @@ OUTER APPLY (
         ) AS ServiceNames
     FROM OPENJSON(br.Services) js
 ) svc
-LEFT JOIN VendorProfiles vp ON b.VendorProfileID = vp.VendorProfileID
-LEFT JOIN Users u ON b.UserID = u.UserID;
+LEFT JOIN vendors.VendorProfiles vp ON b.VendorProfileID = vp.VendorProfileID
+LEFT JOIN users.Users u ON b.UserID = u.UserID;
 GO
 
-PRINT 'View [dbo].[vw_InvoicesList] created successfully.';
+PRINT 'View [invoices].[vw_InvoicesList] created successfully.';
 GO

@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_VendorDashboard_CheckAlbumPublic
+-- Stored Procedure: vendors.sp_Dashboard_CheckAlbumPublic
 -- Description: Checks if album is public
 -- Phase: 600 (Stored Procedures)
+-- Schema: vendors
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_VendorDashboard_CheckAlbumPublic]'))
-    DROP PROCEDURE [dbo].[sp_VendorDashboard_CheckAlbumPublic];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_Dashboard_CheckAlbumPublic]'))
+    DROP PROCEDURE [vendors].[sp_Dashboard_CheckAlbumPublic];
 GO
 
-CREATE PROCEDURE [dbo].[sp_VendorDashboard_CheckAlbumPublic]
+CREATE PROCEDURE [vendors].[sp_Dashboard_CheckAlbumPublic]
     @AlbumID INT,
     @VendorProfileID INT
 AS

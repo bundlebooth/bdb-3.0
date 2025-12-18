@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Admin_GetVendors
+-- Stored Procedure: admin.sp_GetVendors
 -- Description: Gets all vendors with filters for admin panel
 -- Phase: 600 (Stored Procedures)
+-- Schema: admin
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Admin_GetVendors]'))
-    DROP PROCEDURE [dbo].[sp_Admin_GetVendors];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_GetVendors]'))
+    DROP PROCEDURE [admin].[sp_GetVendors];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Admin_GetVendors]
+CREATE PROCEDURE [admin].[sp_GetVendors]
     @Status NVARCHAR(50) = NULL,
     @Search NVARCHAR(100) = NULL,
     @PageNumber INT = 1,
@@ -38,13 +39,13 @@ BEGIN
         vp.CreatedAt,
         u.Email as OwnerEmail,
         u.Name as OwnerName,
-        (SELECT TOP 1 ImageURL FROM VendorImages WHERE VendorProfileID = vp.VendorProfileID AND IsPrimary = 1) as PrimaryImage,
+        (SELECT TOP 1 ImageURL FROM vendors.VendorImages WHERE VendorProfileID = vp.VendorProfileID AND IsPrimary = 1) as PrimaryImage,
         vp.AvgRating as AverageRating,
         vp.TotalReviews as ReviewCount,
         vp.TotalBookings as BookingCount,
-        (SELECT TOP 1 Category FROM VendorCategories WHERE VendorProfileID = vp.VendorProfileID) as Categories
-    FROM VendorProfiles vp
-    LEFT JOIN Users u ON vp.UserID = u.UserID
+        (SELECT TOP 1 Category FROM vendors.VendorCategories WHERE VendorProfileID = vp.VendorProfileID) as Categories
+    FROM vendors.VendorProfiles vp
+    LEFT JOIN users.Users u ON vp.UserID = u.UserID
     WHERE 
         (@Status IS NULL OR @Status = 'all' OR
          (@Status = 'pending' AND vp.ProfileStatus = 'pending_review') OR
@@ -59,8 +60,8 @@ BEGIN
     
     -- Return total count
     SELECT COUNT(*) as total
-    FROM VendorProfiles vp
-    LEFT JOIN Users u ON vp.UserID = u.UserID
+    FROM vendors.VendorProfiles vp
+    LEFT JOIN users.Users u ON vp.UserID = u.UserID
     WHERE 
         (@Status IS NULL OR @Status = 'all' OR
          (@Status = 'pending' AND vp.ProfileStatus = 'pending_review') OR
@@ -72,3 +73,7 @@ BEGIN
         AND (@Search IS NULL OR vp.BusinessName LIKE '%' + @Search + '%' OR u.Email LIKE '%' + @Search + '%');
 END
 GO
+
+
+
+

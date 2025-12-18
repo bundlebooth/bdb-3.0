@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Admin_GetRevenueReport
+-- Stored Procedure: admin.sp_GetRevenueReport
 -- Description: Gets daily revenue report for a date range
 -- Phase: 600 (Stored Procedures)
+-- Schema: admin
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Admin_GetRevenueReport]'))
-    DROP PROCEDURE [dbo].[sp_Admin_GetRevenueReport];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_GetRevenueReport]'))
+    DROP PROCEDURE [admin].[sp_GetRevenueReport];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Admin_GetRevenueReport]
+CREATE PROCEDURE [admin].[sp_GetRevenueReport]
     @StartDate DATE = NULL,
     @EndDate DATE = NULL
 AS
@@ -22,9 +23,10 @@ BEGIN
         COUNT(*) as bookings,
         ISNULL(SUM(TotalAmount), 0) as revenue,
         ISNULL(SUM(TotalAmount * 0.1), 0) as platformFees
-    FROM Bookings
+    FROM bookings.Bookings
     WHERE CreatedAt >= @StartDate AND CreatedAt <= @EndDate
     GROUP BY CAST(CreatedAt as DATE)
     ORDER BY date;
 END
 GO
+

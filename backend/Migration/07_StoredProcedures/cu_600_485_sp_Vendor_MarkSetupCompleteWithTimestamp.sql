@@ -1,19 +1,20 @@
 -- =============================================
--- Stored Procedure: sp_Vendor_MarkSetupCompleteWithTimestamp
+-- Stored Procedure: vendors.sp_MarkSetupCompleteWithTimestamp
 -- Description: Marks vendor setup as complete with timestamp
 -- Phase: 600 (Stored Procedures)
+-- Schema: vendors
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Vendor_MarkSetupCompleteWithTimestamp]'))
-    DROP PROCEDURE [dbo].[sp_Vendor_MarkSetupCompleteWithTimestamp];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_MarkSetupCompleteWithTimestamp]'))
+    DROP PROCEDURE [vendors].[sp_MarkSetupCompleteWithTimestamp];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Vendor_MarkSetupCompleteWithTimestamp]
+CREATE PROCEDURE [vendors].[sp_MarkSetupCompleteWithTimestamp]
     @VendorProfileID INT
 AS
 BEGIN
     SET NOCOUNT ON;
     
-    UPDATE VendorProfiles 
+    UPDATE vendors.VendorProfiles 
     SET IsCompleted = 1,
         SetupCompletedAt = GETUTCDATE(),
         UpdatedAt = GETUTCDATE()
@@ -22,3 +23,4 @@ BEGIN
     SELECT @@ROWCOUNT AS RowsAffected;
 END
 GO
+

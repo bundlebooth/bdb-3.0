@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Admin_GetUserDetails
+-- Stored Procedure: admin.sp_GetUserDetails
 -- Description: Gets single user details for admin panel
 -- Phase: 600 (Stored Procedures)
+-- Schema: admin
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Admin_GetUserDetails]'))
-    DROP PROCEDURE [dbo].[sp_Admin_GetUserDetails];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_GetUserDetails]'))
+    DROP PROCEDURE [admin].[sp_GetUserDetails];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Admin_GetUserDetails]
+CREATE PROCEDURE [admin].[sp_GetUserDetails]
     @UserID INT
 AS
 BEGIN
@@ -24,9 +25,12 @@ BEGIN
         u.CreatedAt,
         u.LastLogin,
         u.EmailVerified,
-        (SELECT COUNT(*) FROM Bookings WHERE UserID = u.UserID) as BookingCount,
-        (SELECT COUNT(*) FROM Reviews WHERE UserID = u.UserID) as ReviewCount
-    FROM Users u
+        (SELECT COUNT(*) FROM bookings.Bookings WHERE UserID = u.UserID) as BookingCount,
+        (SELECT COUNT(*) FROM vendors.Reviews WHERE UserID = u.UserID) as ReviewCount
+    FROM users.Users u
     WHERE u.UserID = @UserID;
 END
 GO
+
+
+

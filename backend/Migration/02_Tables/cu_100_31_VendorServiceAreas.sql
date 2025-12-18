@@ -2,7 +2,7 @@
     Migration Script: Create Table [VendorServiceAreas]
     Phase: 100 - Tables
     Script: cu_100_31_dbo.VendorServiceAreas.sql
-    Description: Creates the [dbo].[VendorServiceAreas] table
+    Description: Creates the [vendors].[VendorServiceAreas] table
     
     Execution Order: 31
 */
@@ -10,12 +10,12 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating table [dbo].[VendorServiceAreas]...';
+PRINT 'Creating table [vendors].[VendorServiceAreas]...';
 GO
 
-IF NOT EXISTS (SELECT 1 FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[VendorServiceAreas]') AND type in (N'U'))
+IF NOT EXISTS (SELECT 1 FROM sys.objects WHERE object_id = OBJECT_ID(N'[vendors].[VendorServiceAreas]') AND type in (N'U'))
 BEGIN
-    CREATE TABLE [dbo].[VendorServiceAreas](
+    CREATE TABLE [vendors].[VendorServiceAreas](
 	[VendorServiceAreaID] [int] IDENTITY(1,1) NOT NULL,
 	[VendorProfileID] [int] NOT NULL,
 	[GooglePlaceID] [nvarchar](100) NOT NULL,
@@ -42,10 +42,10 @@ PRIMARY KEY CLUSTERED
 	[VendorServiceAreaID] ASC
 )WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
     );
-    PRINT 'Table [dbo].[VendorServiceAreas] created successfully.';
+    PRINT 'Table [vendors].[VendorServiceAreas] created successfully.';
 END
 ELSE
 BEGIN
-    PRINT 'Table [dbo].[VendorServiceAreas] already exists. Skipping.';
+    PRINT 'Table [vendors].[VendorServiceAreas] already exists. Skipping.';
 END
 GO

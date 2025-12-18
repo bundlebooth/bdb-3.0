@@ -1,18 +1,19 @@
 -- =============================================
--- Stored Procedure: sp_Payment_GetServiceName
+-- Stored Procedure: payments.sp_GetServiceName
 -- Description: Gets service name by ID
 -- Phase: 600 (Stored Procedures)
+-- Schema: payments
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Payment_GetServiceName]'))
-    DROP PROCEDURE [dbo].[sp_Payment_GetServiceName];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[payments].[sp_GetServiceName]'))
+    DROP PROCEDURE [payments].[sp_GetServiceName];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Payment_GetServiceName]
+CREATE PROCEDURE [payments].[sp_GetServiceName]
     @ServiceID INT
 AS
 BEGIN
     SET NOCOUNT ON;
     
-    SELECT Name FROM Services WHERE ServiceID = @ServiceID;
+    SELECT Name FROM vendors.Services WHERE ServiceID = @ServiceID;
 END
 GO

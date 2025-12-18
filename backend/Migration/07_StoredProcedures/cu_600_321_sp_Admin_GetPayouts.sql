@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Admin_GetPayouts
+-- Stored Procedure: admin.sp_GetPayouts
 -- Description: Gets vendor payouts with pagination
 -- Phase: 600 (Stored Procedures)
+-- Schema: admin
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Admin_GetPayouts]'))
-    DROP PROCEDURE [dbo].[sp_Admin_GetPayouts];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_GetPayouts]'))
+    DROP PROCEDURE [admin].[sp_GetPayouts];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Admin_GetPayouts]
+CREATE PROCEDURE [admin].[sp_GetPayouts]
     @Filter NVARCHAR(50) = NULL,
     @PageNumber INT = 1,
     @PageSize INT = 20
@@ -24,15 +25,18 @@ BEGIN
         ISNULL(SUM(b.TotalAmount * 0.9), 0) as Amount,
         'completed' as Status,
         MAX(b.CreatedAt) as ProcessedAt
-    FROM VendorProfiles vp
-    LEFT JOIN Users u ON vp.UserID = u.UserID
-    LEFT JOIN Bookings b ON vp.VendorProfileID = b.VendorProfileID AND b.Status IN ('Completed', 'completed')
+    FROM vendors.VendorProfiles vp
+    LEFT JOIN users.Users u ON vp.UserID = u.UserID
+    LEFT JOIN bookings.Bookings b ON vp.VendorProfileID = b.VendorProfileID AND b.Status IN ('Completed', 'completed')
     WHERE vp.ProfileStatus = 'approved'
     GROUP BY vp.VendorProfileID, vp.BusinessName, u.Email
     HAVING SUM(b.TotalAmount) > 0
     ORDER BY MAX(b.CreatedAt) DESC
     OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY;
     
-    SELECT COUNT(*) as total FROM VendorProfiles WHERE ProfileStatus = 'approved';
+    SELECT COUNT(*) as total FROM vendors.VendorProfiles WHERE ProfileStatus = 'approved';
 END
 GO
+
+
+

@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_GetUserBookingsAll]
     Phase: 600 - Stored Procedures
     Script: cu_600_053_dbo.sp_GetUserBookingsAll.sql
-    Description: Creates the [dbo].[sp_GetUserBookingsAll] stored procedure
+    Description: Creates the [users].[sp_GetBookingsAll] stored procedure
     
     Execution Order: 53
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_GetUserBookingsAll]...';
+PRINT 'Creating stored procedure [users].[sp_GetBookingsAll]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_GetUserBookingsAll]'))
-    DROP PROCEDURE [dbo].[sp_GetUserBookingsAll];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[users].[sp_GetBookingsAll]'))
+    DROP PROCEDURE [users].[sp_GetBookingsAll];
 GO
 
-CREATE   PROCEDURE [dbo].[sp_GetUserBookingsAll]
+CREATE   PROCEDURE [users].[sp_GetBookingsAll]
     @UserID INT
 AS
 BEGIN
@@ -31,5 +31,5 @@ END;
 
 GO
 
-PRINT 'Stored procedure [dbo].[sp_GetUserBookingsAll] created successfully.';
+PRINT 'Stored procedure [users].[sp_GetBookingsAll] created successfully.';
 GO

@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_GetVendorProfileDetails]
     Phase: 600 - Stored Procedures
     Script: cu_600_071_dbo.sp_GetVendorProfileDetails.sql
-    Description: Creates the [dbo].[sp_GetVendorProfileDetails] stored procedure
+    Description: Creates the [vendors].[sp_GetProfileDetails] stored procedure
     
     Execution Order: 71
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_GetVendorProfileDetails]...';
+PRINT 'Creating stored procedure [vendors].[sp_GetProfileDetails]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_GetVendorProfileDetails]'))
-    DROP PROCEDURE [dbo].[sp_GetVendorProfileDetails];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_GetProfileDetails]'))
+    DROP PROCEDURE [vendors].[sp_GetProfileDetails];
 GO
 
-CREATE   PROCEDURE [dbo].[sp_GetVendorProfileDetails]
+CREATE   PROCEDURE [vendors].[sp_GetProfileDetails]
     @VendorProfileID INT
 AS
 BEGIN
@@ -30,5 +30,5 @@ END;
 
 GO
 
-PRINT 'Stored procedure [dbo].[sp_GetVendorProfileDetails] created successfully.';
+PRINT 'Stored procedure [vendors].[sp_GetProfileDetails] created successfully.';
 GO

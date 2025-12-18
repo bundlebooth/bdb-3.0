@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Admin_GetVendorServiceAreas
+-- Stored Procedure: admin.sp_GetVendorServiceAreas
 -- Description: Gets vendor service areas
 -- Phase: 600 (Stored Procedures)
+-- Schema: admin
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Admin_GetVendorServiceAreas]'))
-    DROP PROCEDURE [dbo].[sp_Admin_GetVendorServiceAreas];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_GetVendorServiceAreas]'))
+    DROP PROCEDURE [admin].[sp_GetVendorServiceAreas];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Admin_GetVendorServiceAreas]
+CREATE PROCEDURE [admin].[sp_GetVendorServiceAreas]
     @VendorProfileID INT
 AS
 BEGIN

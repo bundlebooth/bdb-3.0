@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Payment_GetBookingPaymentStatus
+-- Stored Procedure: payments.sp_GetBookingPaymentStatus
 -- Description: Gets booking payment status
 -- Phase: 600 (Stored Procedures)
+-- Schema: payments
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Payment_GetBookingPaymentStatus]'))
-    DROP PROCEDURE [dbo].[sp_Payment_GetBookingPaymentStatus];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[payments].[sp_GetBookingPaymentStatus]'))
+    DROP PROCEDURE [payments].[sp_GetBookingPaymentStatus];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Payment_GetBookingPaymentStatus]
+CREATE PROCEDURE [payments].[sp_GetBookingPaymentStatus]
     @BookingID INT
 AS
 BEGIN
@@ -28,9 +29,12 @@ BEGIN
         u.Name AS ClientName,
         u.Email AS ClientEmail,
         vp.BusinessName AS VendorName
-    FROM Bookings b
-    LEFT JOIN Users u ON b.UserID = u.UserID
-    LEFT JOIN VendorProfiles vp ON b.VendorProfileID = vp.VendorProfileID
+    FROM bookings.Bookings b
+    LEFT JOIN users.Users u ON b.UserID = u.UserID
+    LEFT JOIN vendors.VendorProfiles vp ON b.VendorProfileID = vp.VendorProfileID
     WHERE b.BookingID = @BookingID;
 END
 GO
+
+
+

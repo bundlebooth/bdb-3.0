@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_GetEmailLogs]
     Phase: 600 - Stored Procedures
     Script: cu_600_036_dbo.sp_GetEmailLogs.sql
-    Description: Creates the [dbo].[sp_GetEmailLogs] stored procedure
+    Description: Creates the [admin].[sp_GetEmailLogs] stored procedure
     
     Execution Order: 36
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_GetEmailLogs]...';
+PRINT 'Creating stored procedure [admin].[sp_GetEmailLogs]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_GetEmailLogs]'))
-    DROP PROCEDURE [dbo].[sp_GetEmailLogs];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_GetEmailLogs]'))
+    DROP PROCEDURE [admin].[sp_GetEmailLogs];
 GO
 
-CREATE   PROCEDURE [dbo].[sp_GetEmailLogs]
+CREATE   PROCEDURE [admin].[sp_GetEmailLogs]
     @TemplateKey NVARCHAR(50) = NULL, @RecipientEmail NVARCHAR(255) = NULL, @Status NVARCHAR(20) = NULL,
     @UserID INT = NULL, @StartDate DATETIME = NULL, @EndDate DATETIME = NULL, @PageNumber INT = 1, @PageSize INT = 50
 AS
@@ -38,5 +38,5 @@ END
 
 GO
 
-PRINT 'Stored procedure [dbo].[sp_GetEmailLogs] created successfully.';
+PRINT 'Stored procedure [admin].[sp_GetEmailLogs] created successfully.';
 GO

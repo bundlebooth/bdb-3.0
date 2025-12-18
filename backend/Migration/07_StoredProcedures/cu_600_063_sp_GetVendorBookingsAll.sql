@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_GetVendorBookingsAll]
     Phase: 600 - Stored Procedures
     Script: cu_600_063_dbo.sp_GetVendorBookingsAll.sql
-    Description: Creates the [dbo].[sp_GetVendorBookingsAll] stored procedure
+    Description: Creates the [vendors].[sp_GetBookingsAll] stored procedure
     
     Execution Order: 63
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_GetVendorBookingsAll]...';
+PRINT 'Creating stored procedure [vendors].[sp_GetBookingsAll]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_GetVendorBookingsAll]'))
-    DROP PROCEDURE [dbo].[sp_GetVendorBookingsAll];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_GetBookingsAll]'))
+    DROP PROCEDURE [vendors].[sp_GetBookingsAll];
 GO
 
-CREATE   PROCEDURE [dbo].[sp_GetVendorBookingsAll]
+CREATE   PROCEDURE [vendors].[sp_GetBookingsAll]
     @VendorProfileID INT
 AS
 BEGIN
@@ -31,5 +31,5 @@ END;
 
 GO
 
-PRINT 'Stored procedure [dbo].[sp_GetVendorBookingsAll] created successfully.';
+PRINT 'Stored procedure [vendors].[sp_GetBookingsAll] created successfully.';
 GO

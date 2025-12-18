@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Vendor_GetDebugServiceIds
+-- Stored Procedure: vendors.sp_GetDebugServiceIds
 -- Description: Gets all predefined service IDs for debugging
 -- Phase: 600 (Stored Procedures)
+-- Schema: vendors
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Vendor_GetDebugServiceIds]'))
-    DROP PROCEDURE [dbo].[sp_Vendor_GetDebugServiceIds];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_GetDebugServiceIds]'))
+    DROP PROCEDURE [vendors].[sp_GetDebugServiceIds];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Vendor_GetDebugServiceIds]
+CREATE PROCEDURE [vendors].[sp_GetDebugServiceIds]
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -17,7 +18,8 @@ BEGIN
         ServiceName,
         Category,
         ServiceDescription
-    FROM PredefinedServices 
+    FROM admin.PredefinedServices 
     ORDER BY Category, DisplayOrder, ServiceName;
 END
 GO
+

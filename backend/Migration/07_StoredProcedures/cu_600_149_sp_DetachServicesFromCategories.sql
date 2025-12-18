@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_DetachServicesFromCategories
+-- Stored Procedure: vendors.sp_DetachServicesFromCategories
 -- Description: Detaches services from categories for a vendor
 -- Phase: 600 (Stored Procedures)
+-- Schema: vendors
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_DetachServicesFromCategories]'))
-    DROP PROCEDURE [dbo].[sp_DetachServicesFromCategories];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_DetachServicesFromCategories]'))
+    DROP PROCEDURE [vendors].[sp_DetachServicesFromCategories];
 GO
 
-CREATE PROCEDURE [dbo].[sp_DetachServicesFromCategories]
+CREATE PROCEDURE [vendors].[sp_DetachServicesFromCategories]
     @VendorProfileID INT
 AS
 BEGIN
@@ -15,7 +16,7 @@ BEGIN
     UPDATE Services
     SET CategoryID = NULL
     WHERE CategoryID IN (
-        SELECT CategoryID FROM ServiceCategories WHERE VendorProfileID = @VendorProfileID
+        SELECT CategoryID FROM vendors.ServiceCategories WHERE VendorProfileID = @VendorProfileID
     );
 END
 GO

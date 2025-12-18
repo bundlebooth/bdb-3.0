@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_UpsertVendorAvailabilityException]
     Phase: 600 - Stored Procedures
     Script: cu_600_116_dbo.sp_UpsertVendorAvailabilityException.sql
-    Description: Creates the [dbo].[sp_UpsertVendorAvailabilityException] stored procedure
+    Description: Creates the [vendors].[sp_UpsertAvailabilityException] stored procedure
     
     Execution Order: 116
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_UpsertVendorAvailabilityException]...';
+PRINT 'Creating stored procedure [vendors].[sp_UpsertAvailabilityException]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_UpsertVendorAvailabilityException]'))
-    DROP PROCEDURE [dbo].[sp_UpsertVendorAvailabilityException];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_UpsertAvailabilityException]'))
+    DROP PROCEDURE [vendors].[sp_UpsertAvailabilityException];
 GO
 
-CREATE   PROCEDURE [dbo].[sp_UpsertVendorAvailabilityException]
+CREATE   PROCEDURE [vendors].[sp_UpsertAvailabilityException]
     @ExceptionID INT = NULL, -- NULL for new, ID for update
     @VendorProfileID INT,
     @Date DATE,
@@ -31,13 +31,13 @@ BEGIN
 
     IF @ExceptionID IS NULL -- Insert new
     BEGIN
-        INSERT INTO VendorAvailabilityExceptions (VendorProfileID, Date, StartTime, EndTime, IsAvailable, Reason, CreatedAt, UpdatedAt)
+        INSERT INTO vendors.VendorAvailabilityExceptions (VendorProfileID, Date, StartTime, EndTime, IsAvailable, Reason, CreatedAt, UpdatedAt)
         VALUES (@VendorProfileID, @Date, @StartTime, @EndTime, @IsAvailable, @Reason, GETUTCDATE(), GETUTCDATE());
         SELECT SCOPE_IDENTITY() AS ExceptionID;
     END
     ELSE -- Update existing
     BEGIN
-        UPDATE VendorAvailabilityExceptions
+        UPDATE vendors.VendorAvailabilityExceptions
         SET
             Date = @Date,
             StartTime = @StartTime,
@@ -52,5 +52,6 @@ END;
 
 GO
 
-PRINT 'Stored procedure [dbo].[sp_UpsertVendorAvailabilityException] created successfully.';
+PRINT 'Stored procedure [vendors].[sp_UpsertAvailabilityException] created successfully.';
 GO
+

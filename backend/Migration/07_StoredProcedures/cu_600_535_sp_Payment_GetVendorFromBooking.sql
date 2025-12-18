@@ -1,18 +1,20 @@
 -- =============================================
--- Stored Procedure: sp_Payment_GetVendorFromBooking
+-- Stored Procedure: payments.sp_GetVendorFromBooking
 -- Description: Gets vendor profile ID from booking
 -- Phase: 600 (Stored Procedures)
+-- Schema: payments
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Payment_GetVendorFromBooking]'))
-    DROP PROCEDURE [dbo].[sp_Payment_GetVendorFromBooking];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[payments].[sp_GetVendorFromBooking]'))
+    DROP PROCEDURE [payments].[sp_GetVendorFromBooking];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Payment_GetVendorFromBooking]
+CREATE PROCEDURE [payments].[sp_GetVendorFromBooking]
     @BookingID INT
 AS
 BEGIN
     SET NOCOUNT ON;
     
-    SELECT VendorProfileID FROM Bookings WHERE BookingID = @BookingID;
+    SELECT VendorProfileID FROM bookings.Bookings WHERE BookingID = @BookingID;
 END
 GO
+

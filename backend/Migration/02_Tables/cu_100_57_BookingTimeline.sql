@@ -2,7 +2,7 @@
     Migration Script: Create Table [BookingTimeline]
     Phase: 100 - Tables
     Script: cu_100_57_dbo.BookingTimeline.sql
-    Description: Creates the [dbo].[BookingTimeline] table
+    Description: Creates the [bookings].[BookingTimeline] table
     
     Execution Order: 57
 */
@@ -10,12 +10,12 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating table [dbo].[BookingTimeline]...';
+PRINT 'Creating table [bookings].[BookingTimeline]...';
 GO
 
-IF NOT EXISTS (SELECT 1 FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[BookingTimeline]') AND type in (N'U'))
+IF NOT EXISTS (SELECT 1 FROM sys.objects WHERE object_id = OBJECT_ID(N'[bookings].[BookingTimeline]') AND type in (N'U'))
 BEGIN
-    CREATE TABLE [dbo].[BookingTimeline](
+    CREATE TABLE [bookings].[BookingTimeline](
 	[TimelineID] [int] IDENTITY(1,1) NOT NULL,
 	[BookingID] [int] NULL,
 	[Status] [nvarchar](50) NOT NULL,
@@ -27,10 +27,10 @@ PRIMARY KEY CLUSTERED
 	[TimelineID] ASC
 )WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
     );
-    PRINT 'Table [dbo].[BookingTimeline] created successfully.';
+    PRINT 'Table [bookings].[BookingTimeline] created successfully.';
 END
 ELSE
 BEGIN
-    PRINT 'Table [dbo].[BookingTimeline] already exists. Skipping.';
+    PRINT 'Table [bookings].[BookingTimeline] already exists. Skipping.';
 END
 GO

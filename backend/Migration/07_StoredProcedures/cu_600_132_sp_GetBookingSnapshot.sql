@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_GetBookingSnapshot
+-- Stored Procedure: bookings.sp_GetSnapshot
 -- Description: Gets complete booking snapshot with services and transactions
 -- Phase: 600 (Stored Procedures)
+-- Schema: bookings
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_GetBookingSnapshot]'))
-    DROP PROCEDURE [dbo].[sp_GetBookingSnapshot];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[bookings].[sp_GetSnapshot]'))
+    DROP PROCEDURE [bookings].[sp_GetSnapshot];
 GO
 
-CREATE PROCEDURE [dbo].[sp_GetBookingSnapshot]
+CREATE PROCEDURE [bookings].[sp_GetSnapshot]
     @BookingID INT
 AS
 BEGIN
@@ -20,16 +21,16 @@ BEGIN
         b.EventName, b.EventType, b.EventLocation, b.TimeZone, b.ServiceID,
         u.Name AS ClientName, u.Email AS ClientEmail,
         vp.BusinessName AS VendorName
-    FROM Bookings b
-    LEFT JOIN Users u ON b.UserID = u.UserID
-    LEFT JOIN VendorProfiles vp ON b.VendorProfileID = vp.VendorProfileID
+    FROM bookings.Bookings b
+    LEFT JOIN users.Users u ON b.UserID = u.UserID
+    LEFT JOIN vendors.VendorProfiles vp ON b.VendorProfileID = vp.VendorProfileID
     WHERE b.BookingID = @BookingID;
     
     -- Return services
     SELECT bs.BookingServiceID, bs.Quantity, bs.PriceAtBooking,
            s.ServiceID, s.Name AS ServiceName, s.DurationMinutes
-    FROM BookingServices bs
-    LEFT JOIN Services s ON bs.ServiceID = s.ServiceID
+    FROM bookings.BookingServices bs
+    LEFT JOIN vendors.Services s ON bs.ServiceID = s.ServiceID
     WHERE bs.BookingID = @BookingID;
     
     -- Return expenses (if table exists)
@@ -43,8 +44,13 @@ BEGIN
     
     -- Return transactions
     SELECT StripeChargeID, FeeAmount, Amount, CreatedAt
-    FROM Transactions
+    FROM payments.Transactions
     WHERE BookingID = @BookingID AND Status = 'succeeded'
     ORDER BY CreatedAt ASC;
 END
 GO
+
+
+
+
+

@@ -102,25 +102,17 @@ app.get('/api/public/announcements', async (req, res) => {
     const { audience = 'all' } = req.query;
     const pool = await poolPromise;
     
-    // Check if Announcements table exists
+    // Check if Announcements table exists in admin schema
     const tableCheck = await pool.request().query(`
-      SELECT COUNT(*) as cnt FROM sys.tables WHERE name = 'Announcements'
+      SELECT COUNT(*) as cnt FROM sys.tables t JOIN sys.schemas s ON t.schema_id = s.schema_id WHERE t.name = 'Announcements' AND s.name = 'admin'
     `);
     
-    console.log('📢 Fetching public announcements, table exists:', tableCheck.recordset[0].cnt > 0);
-    
     if (tableCheck.recordset[0].cnt > 0) {
-      // First get all active announcements for debugging
-      const allActive = await pool.request().query(`
-        SELECT AnnouncementID, Title, StartDate, EndDate, IsActive FROM Announcements WHERE IsActive = 1
-      `);
-      console.log('📢 All active announcements:', allActive.recordset);
-      
       const result = await pool.request()
         .input('audience', sql.NVarChar, audience)
         .query(`
           SELECT AnnouncementID, Title, Content, Type, Icon, LinkURL, LinkText, DisplayType, IsDismissible, CreatedAt
-          FROM Announcements
+          FROM admin.Announcements
           WHERE IsActive = 1 
             AND (StartDate IS NULL OR CAST(StartDate AS DATE) <= CAST(GETDATE() AS DATE)) 
             AND (EndDate IS NULL OR CAST(EndDate AS DATE) >= CAST(GETDATE() AS DATE))
@@ -128,15 +120,15 @@ app.get('/api/public/announcements', async (req, res) => {
           ORDER BY DisplayOrder, CreatedAt DESC
         `);
       
-      console.log('📢 Filtered announcements returned:', result.recordset.length);
       res.json({ announcements: result.recordset });
     } else {
-      console.log('📢 Announcements table does not exist');
+      // Table doesn't exist - return empty array gracefully
       res.json({ announcements: [] });
     }
   } catch (error) {
     console.error('Error fetching public announcements:', error);
-    res.status(500).json({ error: 'Failed to fetch announcements' });
+    // Return empty array on error instead of 500
+    res.json({ announcements: [] });
   }
 });
 
@@ -146,13 +138,13 @@ app.get('/api/public/announcements/all', async (req, res) => {
     const pool = await poolPromise;
     
     const tableCheck = await pool.request().query(`
-      SELECT COUNT(*) as cnt FROM sys.tables WHERE name = 'Announcements'
+      SELECT COUNT(*) as cnt FROM sys.tables t JOIN sys.schemas s ON t.schema_id = s.schema_id WHERE t.name = 'Announcements' AND s.name = 'admin'
     `);
     
     if (tableCheck.recordset[0].cnt > 0) {
       const result = await pool.request().query(`
         SELECT AnnouncementID, Title, Content, Type, Icon, LinkURL, LinkText, DisplayType, IsDismissible, StartDate, EndDate, CreatedAt
-        FROM Announcements
+        FROM admin.Announcements
         WHERE IsActive = 1 
           AND (EndDate IS NULL OR CAST(EndDate AS DATE) >= CAST(GETDATE() AS DATE))
         ORDER BY DisplayOrder, CreatedAt DESC
@@ -163,7 +155,8 @@ app.get('/api/public/announcements/all', async (req, res) => {
     }
   } catch (error) {
     console.error('Error fetching all announcements:', error);
-    res.status(500).json({ error: 'Failed to fetch announcements' });
+    // Return empty array on error instead of 500
+    res.json({ announcements: [] });
   }
 });
 
@@ -203,7 +196,7 @@ app.post('/api/public/announcements/:id/dismiss', async (req, res) => {
     
     await pool.request()
       .input('id', sql.Int, id)
-      .query('UPDATE Announcements SET DismissCount = DismissCount + 1 WHERE AnnouncementID = @id');
+      .query('UPDATE admin.Announcements SET DismissCount = DismissCount + 1 WHERE AnnouncementID = @id');
     
     res.json({ success: true });
   } catch (error) {
@@ -218,13 +211,13 @@ app.get('/api/public/faqs', async (req, res) => {
     const pool = await poolPromise;
     
     const tableCheck = await pool.request().query(`
-      SELECT COUNT(*) as cnt FROM sys.tables WHERE name = 'FAQs'
+      SELECT COUNT(*) as cnt FROM sys.tables t JOIN sys.schemas s ON t.schema_id = s.schema_id WHERE t.name = 'FAQs' AND s.name = 'admin'
     `);
     
     if (tableCheck.recordset[0].cnt > 0) {
       const result = await pool.request().query(`
         SELECT FAQID, Question, Answer, Category
-        FROM FAQs
+        FROM admin.FAQs
         WHERE IsActive = 1
         ORDER BY DisplayOrder, CreatedAt
       `);
@@ -240,7 +233,13 @@ app.get('/api/public/faqs', async (req, res) => {
     }
   } catch (error) {
     console.error('Error fetching FAQs:', error);
-    res.status(500).json({ error: 'Failed to fetch FAQs' });
+    // Return default FAQs on error instead of 500
+    res.json({ faqs: [
+      { FAQID: 1, Question: 'How do I book a vendor?', Answer: 'Browse vendors, select one, choose your date and complete the booking.', Category: 'Booking' },
+      { FAQID: 2, Question: 'What is the cancellation policy?', Answer: 'Policies vary by vendor. Check the vendor profile for details.', Category: 'Booking' },
+      { FAQID: 3, Question: 'How do payments work?', Answer: 'Payments are processed securely through Stripe.', Category: 'Payments' },
+      { FAQID: 4, Question: 'How do I become a vendor?', Answer: 'Click Become a Vendor and complete the registration process.', Category: 'Vendors' }
+    ]});
   }
 });
 

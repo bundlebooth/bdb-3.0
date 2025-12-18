@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Booking_GetBookingInfo
+-- Stored Procedure: bookings.sp_GetBookingInfo
 -- Description: Gets booking info for invoice
 -- Phase: 600 (Stored Procedures)
+-- Schema: bookings
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Booking_GetBookingInfo]'))
-    DROP PROCEDURE [dbo].[sp_Booking_GetBookingInfo];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[bookings].[sp_GetBookingInfo]'))
+    DROP PROCEDURE [bookings].[sp_GetBookingInfo];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Booking_GetBookingInfo]
+CREATE PROCEDURE [bookings].[sp_GetBookingInfo]
     @BookingID INT
 AS
 BEGIN
@@ -18,9 +19,12 @@ BEGIN
            u.Name AS ClientName, u.Email AS ClientEmail, u.Phone AS ClientPhone,
            vp.BusinessName AS VendorName, vp.BusinessEmail AS VendorEmail, vp.BusinessPhone AS VendorPhone,
            vp.UserID AS VendorUserID
-    FROM Bookings b
-    JOIN Users u ON b.UserID = u.UserID
-    JOIN VendorProfiles vp ON b.VendorProfileID = vp.VendorProfileID
+    FROM bookings.Bookings b
+    JOIN users.Users u ON b.UserID = u.UserID
+    JOIN vendors.VendorProfiles vp ON b.VendorProfileID = vp.VendorProfileID
     WHERE b.BookingID = @BookingID;
 END
 GO
+
+
+

@@ -1,22 +1,24 @@
 -- =============================================
--- Stored Procedure: sp_Admin_AddChatNote
+-- Stored Procedure: admin.sp_AddChatNote
 -- Description: Adds an admin note to a conversation
 -- Phase: 600 (Stored Procedures)
+-- Schema: admin
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Admin_AddChatNote]'))
-    DROP PROCEDURE [dbo].[sp_Admin_AddChatNote];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_AddChatNote]'))
+    DROP PROCEDURE [admin].[sp_AddChatNote];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Admin_AddChatNote]
+CREATE PROCEDURE [admin].[sp_AddChatNote]
     @ConversationID INT,
     @Note NVARCHAR(MAX)
 AS
 BEGIN
     SET NOCOUNT ON;
     
-    INSERT INTO Messages (ConversationID, SenderID, Content, CreatedAt, IsRead)
+    INSERT INTO messages.Messages (ConversationID, SenderID, Content, CreatedAt, IsRead)
     VALUES (@ConversationID, 0, '[ADMIN NOTE] ' + @Note, GETDATE(), 1);
     
     SELECT SCOPE_IDENTITY() AS MessageID;
 END
 GO
+

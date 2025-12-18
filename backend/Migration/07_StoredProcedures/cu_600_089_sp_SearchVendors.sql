@@ -1,23 +1,23 @@
 /*
-    Migration Script: Create Stored Procedure [sp_SearchVendors]
+    Migration Script: Create Stored Procedure [vendors.sp_Search]
     Phase: 600 - Stored Procedures
-    Script: cu_600_089_dbo.sp_SearchVendors.sql
-    Description: Creates the [dbo].[sp_SearchVendors] stored procedure
-    
+    Script: cu_600_089_sp_SearchVendors.sql
+    Description: Creates the [vendors].[sp_Search] stored procedure
+    Schema: vendors
     Execution Order: 89
 */
 
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_SearchVendors]...';
+PRINT 'Creating stored procedure [vendors].[sp_Search]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_SearchVendors]'))
-    DROP PROCEDURE [dbo].[sp_SearchVendors];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_Search]'))
+    DROP PROCEDURE [vendors].[sp_Search];
 GO
 
-CREATE PROCEDURE [dbo].[sp_SearchVendors]
+CREATE PROCEDURE [vendors].[sp_Search]
     @SearchTerm NVARCHAR(100) = NULL,
     @Category NVARCHAR(50) = NULL,
     @City NVARCHAR(100) = NULL,
@@ -113,20 +113,20 @@ BEGIN
             v.LogoURL,
             MinSvc.MinPrice AS MinPrice,
             MinSvc.MinServiceName AS MinServiceName,
-            (SELECT AVG(CAST(r.Rating AS DECIMAL(3,1))) FROM Reviews r WHERE r.VendorProfileID = v.VendorProfileID AND r.IsApproved = 1) AS AverageRating,
-            (SELECT COUNT(*) FROM Reviews r WHERE r.VendorProfileID = v.VendorProfileID AND r.IsApproved = 1) AS ReviewCount,
-            (SELECT COUNT(*) FROM Favorites f WHERE f.VendorProfileID = v.VendorProfileID) AS FavoriteCount,
-            (SELECT COUNT(*) FROM Bookings b WHERE b.VendorProfileID = v.VendorProfileID) AS BookingCount,
-            (SELECT TOP 1 vi.ImageURL FROM VendorImages vi WHERE vi.VendorProfileID = v.VendorProfileID AND vi.IsPrimary = 1) AS ImageURL,
-            (SELECT TOP 1 vc.Category FROM VendorCategories vc WHERE vc.VendorProfileID = v.VendorProfileID) AS PrimaryCategory,
-            (SELECT STRING_AGG(vc.Category, '', '') FROM VendorCategories vc WHERE vc.VendorProfileID = v.VendorProfileID) AS Categories,
+            (SELECT AVG(CAST(r.Rating AS DECIMAL(3,1))) FROM vendors.Reviews r WHERE r.VendorProfileID = v.VendorProfileID AND r.IsApproved = 1) AS AverageRating,
+            (SELECT COUNT(*) FROM vendors.Reviews r WHERE r.VendorProfileID = v.VendorProfileID AND r.IsApproved = 1) AS ReviewCount,
+            (SELECT COUNT(*) FROM users.Favorites f WHERE f.VendorProfileID = v.VendorProfileID) AS FavoriteCount,
+            (SELECT COUNT(*) FROM bookings.Bookings b WHERE b.VendorProfileID = v.VendorProfileID) AS BookingCount,
+            (SELECT TOP 1 vi.ImageURL FROM vendors.VendorImages vi WHERE vi.VendorProfileID = v.VendorProfileID AND vi.IsPrimary = 1) AS ImageURL,
+            (SELECT TOP 1 vc.Category FROM vendors.VendorCategories vc WHERE vc.VendorProfileID = v.VendorProfileID) AS PrimaryCategory,
+            (SELECT STRING_AGG(vc.Category, '', '') FROM vendors.VendorCategories vc WHERE vc.VendorProfileID = v.VendorProfileID) AS Categories,
             CASE 
                 WHEN v.IsPremium = 1 THEN 3
-                WHEN (SELECT AVG(CAST(r.Rating AS DECIMAL(3,1))) FROM Reviews r WHERE r.VendorProfileID = v.VendorProfileID AND r.IsApproved = 1) >= 4.5 THEN 2
+                WHEN (SELECT AVG(CAST(r.Rating AS DECIMAL(3,1))) FROM vendors.Reviews r WHERE r.VendorProfileID = v.VendorProfileID AND r.IsApproved = 1) >= 4.5 THEN 2
                 ELSE 1
             END AS RecommendationScore' + @DistanceCalculation + '
-        FROM VendorProfiles v
-        JOIN Users u ON v.UserID = u.UserID
+        FROM vendors.VendorProfiles v
+        JOIN users.Users u ON v.UserID = u.UserID
         OUTER APPLY (
             SELECT TOP 1 
                 COALESCE(
@@ -143,7 +143,7 @@ BEGIN
                     0
                 ) AS MinPrice,
                 s.Name AS MinServiceName
-            FROM Services s
+            FROM vendors.Services s
             WHERE s.VendorProfileID = v.VendorProfileID AND s.IsActive = 1
             ORDER BY COALESCE(
                 CASE 
@@ -169,14 +169,14 @@ BEGIN
         SET @SQL = @SQL + '
         AND (v.BusinessName LIKE ''%' + @SearchTerm + '%'' 
              OR v.BusinessDescription LIKE ''%' + @SearchTerm + '%''
-             OR EXISTS (SELECT 1 FROM VendorCategories vc WHERE vc.VendorProfileID = v.VendorProfileID AND vc.Category LIKE ''%' + @SearchTerm + '%''))';
+             OR EXISTS (SELECT 1 FROM vendors.VendorCategories vc WHERE vc.VendorProfileID = v.VendorProfileID AND vc.Category LIKE ''%' + @SearchTerm + '%''))';
     END
     
     -- Add category filter
     IF @Category IS NOT NULL AND @Category != ''
     BEGIN
         SET @SQL = @SQL + '
-        AND EXISTS (SELECT 1 FROM VendorCategories vc WHERE vc.VendorProfileID = v.VendorProfileID AND vc.Category = ''' + @Category + ''')';
+        AND EXISTS (SELECT 1 FROM vendors.VendorCategories vc WHERE vc.VendorProfileID = v.VendorProfileID AND vc.Category = ''' + @Category + ''')';
     END
     
     -- Add city filter
@@ -200,7 +200,7 @@ BEGIN
     -- Add rating filter
     IF @MinRating IS NOT NULL
     BEGIN
-        SET @SQL = @SQL + ' AND (SELECT AVG(CAST(r.Rating AS DECIMAL(3,1))) FROM Reviews r WHERE r.VendorProfileID = v.VendorProfileID AND r.IsApproved = 1) >= ' + CAST(@MinRating AS NVARCHAR(10));
+        SET @SQL = @SQL + ' AND (SELECT AVG(CAST(r.Rating AS DECIMAL(3,1))) FROM vendors.Reviews r WHERE r.VendorProfileID = v.VendorProfileID AND r.IsApproved = 1) >= ' + CAST(@MinRating AS NVARCHAR(10));
     END
     
     -- Add feature filters
@@ -255,7 +255,7 @@ BEGIN
         BEGIN
             SET @SQL = @SQL + '
             AND EXISTS (
-                SELECT 1 FROM VendorBusinessHours vbh 
+                SELECT 1 FROM vendors.VendorBusinessHours vbh 
                 WHERE vbh.VendorProfileID = v.VendorProfileID 
                 AND vbh.DayOfWeek = ' + CAST(@DayNumber AS NVARCHAR(1)) + ' 
                 AND vbh.IsAvailable = 1';
@@ -278,13 +278,13 @@ BEGIN
         SET @SQL = @SQL + '
         AND (
             NOT EXISTS (
-                SELECT 1 FROM VendorAvailabilityExceptions vae
+                SELECT 1 FROM vendors.VendorAvailabilityExceptions vae
                 WHERE vae.VendorProfileID = v.VendorProfileID 
                 AND vae.Date = ''' + CAST(@EventDate AS NVARCHAR(20)) + '''
                 AND vae.IsAvailable = 0
             )
             OR EXISTS (
-                SELECT 1 FROM VendorAvailabilityExceptions vae
+                SELECT 1 FROM vendors.VendorAvailabilityExceptions vae
                 WHERE vae.VendorProfileID = v.VendorProfileID 
                 AND vae.Date = ''' + CAST(@EventDate AS NVARCHAR(20)) + '''
                 AND vae.IsAvailable = 1';
@@ -299,7 +299,7 @@ BEGIN
             )
         )
         AND NOT EXISTS (
-            SELECT 1 FROM Bookings b 
+            SELECT 1 FROM bookings.Bookings b 
             WHERE b.VendorProfileID = v.VendorProfileID 
             AND CAST(b.EventDate AS DATE) = ''' + CAST(@EventDate AS NVARCHAR(20)) + '''
             AND b.Status IN (''confirmed'', ''pending'')';
@@ -370,12 +370,12 @@ BEGIN
                         s.DepositPercentage,
                         s.CancellationPolicy,
                         s.IsActive
-                    FROM Services s
+                    FROM vendors.Services s
                     WHERE s.CategoryID = sc.CategoryID AND s.IsActive = 1
                     ORDER BY s.Price ASC
                     FOR JSON PATH
                 )) AS services
-            FROM ServiceCategories sc
+            FROM vendors.ServiceCategories sc
             WHERE sc.VendorProfileID = FilteredVendors.VendorProfileID
             ORDER BY sc.Name
             FOR JSON PATH
@@ -389,9 +389,9 @@ BEGIN
                 r.CreatedAt,
                 u.Name AS reviewerName,
                 u.ProfileImageURL AS reviewerAvatar,
-                (SELECT COUNT(*) FROM ReviewMedia rm WHERE rm.ReviewID = r.ReviewID) AS mediaCount
-            FROM Reviews r
-            JOIN Users u ON r.UserID = u.UserID
+                (SELECT COUNT(*) FROM vendors.ReviewMedia rm WHERE rm.ReviewID = r.ReviewID) AS mediaCount
+            FROM vendors.Reviews r
+            JOIN users.Users u ON r.UserID = u.UserID
             WHERE r.VendorProfileID = FilteredVendors.VendorProfileID AND r.IsApproved = 1
             ORDER BY r.CreatedAt DESC
             FOR JSON PATH
@@ -420,5 +420,14 @@ BEGIN
 END;
 GO
 
-PRINT 'Stored procedure [dbo].[sp_SearchVendors] created successfully.';
+PRINT 'Stored procedure [vendors].[sp_Search] created successfully.';
 GO
+
+
+
+
+
+
+
+
+

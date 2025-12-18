@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Admin_GetTicketMessages
+-- Stored Procedure: admin.sp_GetTicketMessages
 -- Description: Gets messages for a support ticket
 -- Phase: 600 (Stored Procedures)
+-- Schema: admin
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Admin_GetTicketMessages]'))
-    DROP PROCEDURE [dbo].[sp_Admin_GetTicketMessages];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_GetTicketMessages]'))
+    DROP PROCEDURE [admin].[sp_GetTicketMessages];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Admin_GetTicketMessages]
+CREATE PROCEDURE [admin].[sp_GetTicketMessages]
     @TicketID INT
 AS
 BEGIN
@@ -24,8 +25,9 @@ BEGIN
         m.IsInternal as isInternal,
         m.CreatedAt as createdAt
     FROM SupportTicketMessages m
-    LEFT JOIN Users u ON m.SenderID = u.UserID
+    LEFT JOIN users.Users u ON m.SenderID = u.UserID
     WHERE m.TicketID = @TicketID
     ORDER BY m.CreatedAt ASC;
 END
 GO
+

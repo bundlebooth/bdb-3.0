@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_VendorDashboard_GetFAQs
+-- Stored Procedure: vendors.sp_Dashboard_GetFAQs
 -- Description: Gets vendor FAQs
 -- Phase: 600 (Stored Procedures)
+-- Schema: vendors
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_VendorDashboard_GetFAQs]'))
-    DROP PROCEDURE [dbo].[sp_VendorDashboard_GetFAQs];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_Dashboard_GetFAQs]'))
+    DROP PROCEDURE [vendors].[sp_Dashboard_GetFAQs];
 GO
 
-CREATE PROCEDURE [dbo].[sp_VendorDashboard_GetFAQs]
+CREATE PROCEDURE [vendors].[sp_Dashboard_GetFAQs]
     @VendorProfileID INT
 AS
 BEGIN

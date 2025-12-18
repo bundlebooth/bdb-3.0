@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Admin_UpdateBooking
+-- Stored Procedure: admin.sp_UpdateBooking
 -- Description: Updates booking details
 -- Phase: 600 (Stored Procedures)
+-- Schema: admin
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Admin_UpdateBooking]'))
-    DROP PROCEDURE [dbo].[sp_Admin_UpdateBooking];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_UpdateBooking]'))
+    DROP PROCEDURE [admin].[sp_UpdateBooking];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Admin_UpdateBooking]
+CREATE PROCEDURE [admin].[sp_UpdateBooking]
     @BookingID INT,
     @Status NVARCHAR(20) = NULL,
     @EventDate DATETIME = NULL,
@@ -18,7 +19,7 @@ AS
 BEGIN
     SET NOCOUNT ON;
     
-    UPDATE Bookings 
+    UPDATE bookings.Bookings 
     SET Status = COALESCE(@Status, Status),
         EventDate = COALESCE(@EventDate, EventDate),
         EndDate = COALESCE(@EndDate, EndDate),
@@ -30,3 +31,4 @@ BEGIN
     SELECT @@ROWCOUNT AS RowsAffected;
 END
 GO
+

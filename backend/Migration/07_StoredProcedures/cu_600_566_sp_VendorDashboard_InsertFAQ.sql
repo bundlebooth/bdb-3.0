@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_VendorDashboard_InsertFAQ
+-- Stored Procedure: vendors.sp_Dashboard_InsertFAQ
 -- Description: Inserts a FAQ
 -- Phase: 600 (Stored Procedures)
+-- Schema: vendors
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_VendorDashboard_InsertFAQ]'))
-    DROP PROCEDURE [dbo].[sp_VendorDashboard_InsertFAQ];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_Dashboard_InsertFAQ]'))
+    DROP PROCEDURE [vendors].[sp_Dashboard_InsertFAQ];
 GO
 
-CREATE PROCEDURE [dbo].[sp_VendorDashboard_InsertFAQ]
+CREATE PROCEDURE [vendors].[sp_Dashboard_InsertFAQ]
     @VendorProfileID INT,
     @Question NVARCHAR(500),
     @Answer NVARCHAR(MAX),

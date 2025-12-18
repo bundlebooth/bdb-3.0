@@ -1,18 +1,20 @@
 -- =============================================
--- Stored Procedure: sp_Invoice_GetExistingInvoice
+-- Stored Procedure: invoices.sp_GetExistingInvoice
 -- Description: Gets existing invoice ID for booking
 -- Phase: 600 (Stored Procedures)
+-- Schema: invoices
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Invoice_GetExistingInvoice]'))
-    DROP PROCEDURE [dbo].[sp_Invoice_GetExistingInvoice];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[invoices].[sp_GetExistingInvoice]'))
+    DROP PROCEDURE [invoices].[sp_GetExistingInvoice];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Invoice_GetExistingInvoice]
+CREATE PROCEDURE [invoices].[sp_GetExistingInvoice]
     @BookingID INT
 AS
 BEGIN
     SET NOCOUNT ON;
     
-    SELECT TOP 1 InvoiceID FROM Invoices WHERE BookingID = @BookingID;
+    SELECT TOP 1 InvoiceID FROM invoices.Invoices WHERE BookingID = @BookingID;
 END
 GO
+

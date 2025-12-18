@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Messages_CreateSupportConversation
+-- Stored Procedure: messages.sp_CreateSupportConversation
 -- Description: Creates a new support conversation with welcome message
 -- Phase: 600 (Stored Procedures)
+-- Schema: messages
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Messages_CreateSupportConversation]'))
-    DROP PROCEDURE [dbo].[sp_Messages_CreateSupportConversation];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[messages].[sp_CreateSupportConversation]'))
+    DROP PROCEDURE [messages].[sp_CreateSupportConversation];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Messages_CreateSupportConversation]
+CREATE PROCEDURE [messages].[sp_CreateSupportConversation]
     @UserID INT,
     @Subject NVARCHAR(255) = 'Support Request'
 AS
@@ -18,7 +19,7 @@ BEGIN
     DECLARE @TicketID INT;
     
     -- Create the conversation (without ConversationType - use SupportConversations table instead)
-    INSERT INTO Conversations (UserID, VendorProfileID, Subject, CreatedAt, UpdatedAt)
+    INSERT INTO messages.Conversations (UserID, VendorProfileID, Subject, CreatedAt, UpdatedAt)
     VALUES (@UserID, 1, @Subject, GETDATE(), GETDATE());
     
     SET @ConversationID = SCOPE_IDENTITY();
@@ -31,9 +32,11 @@ BEGIN
     VALUES (@TicketID, @ConversationID, GETDATE());
     
     -- Add initial welcome message from support
-    INSERT INTO Messages (ConversationID, SenderID, Content, IsRead, CreatedAt)
+    INSERT INTO messages.Messages (ConversationID, SenderID, Content, IsRead, CreatedAt)
     VALUES (@ConversationID, 1, 'Hello! Welcome to VenueVue Support. How can we help you today?', 0, GETDATE());
     
     SELECT @ConversationID AS ConversationID;
 END
 GO
+
+

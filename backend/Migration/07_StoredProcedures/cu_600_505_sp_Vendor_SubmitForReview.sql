@@ -1,19 +1,20 @@
 -- =============================================
--- Stored Procedure: sp_Vendor_SubmitForReview
+-- Stored Procedure: vendors.sp_SubmitForReview
 -- Description: Submits vendor profile for admin review
 -- Phase: 600 (Stored Procedures)
+-- Schema: vendors
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Vendor_SubmitForReview]'))
-    DROP PROCEDURE [dbo].[sp_Vendor_SubmitForReview];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_SubmitForReview]'))
+    DROP PROCEDURE [vendors].[sp_SubmitForReview];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Vendor_SubmitForReview]
+CREATE PROCEDURE [vendors].[sp_SubmitForReview]
     @VendorProfileID INT
 AS
 BEGIN
     SET NOCOUNT ON;
     
-    UPDATE VendorProfiles
+    UPDATE vendors.VendorProfiles
     SET ProfileStatus = 'pending_review', 
         SubmittedForReviewAt = GETDATE(),
         UpdatedAt = GETDATE()
@@ -22,3 +23,4 @@ BEGIN
     SELECT @@ROWCOUNT AS RowsAffected;
 END
 GO
+

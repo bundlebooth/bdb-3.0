@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Booking_RespondToRequest
+-- Stored Procedure: bookings.sp_RespondToRequest
 -- Description: Vendor responds to a booking request
 -- Phase: 600 (Stored Procedures)
+-- Schema: bookings
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Booking_RespondToRequest]'))
-    DROP PROCEDURE [dbo].[sp_Booking_RespondToRequest];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[bookings].[sp_RespondToRequest]'))
+    DROP PROCEDURE [bookings].[sp_RespondToRequest];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Booking_RespondToRequest]
+CREATE PROCEDURE [bookings].[sp_RespondToRequest]
     @RequestID INT,
     @VendorProfileID INT,
     @Status NVARCHAR(50),
@@ -18,7 +19,7 @@ AS
 BEGIN
     SET NOCOUNT ON;
     
-    UPDATE BookingRequests 
+    UPDATE bookings.BookingRequests 
     SET 
         Status = @Status,
         ResponseMessage = @ResponseMessage,
@@ -28,3 +29,4 @@ BEGIN
     WHERE RequestID = @RequestID AND VendorProfileID = @VendorProfileID;
 END
 GO
+

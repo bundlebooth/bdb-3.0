@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Payment_MarkBookingPaid
+-- Stored Procedure: payments.sp_MarkBookingPaid
 -- Description: Marks booking as paid/confirmed
 -- Phase: 600 (Stored Procedures)
+-- Schema: payments
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Payment_MarkBookingPaid]'))
-    DROP PROCEDURE [dbo].[sp_Payment_MarkBookingPaid];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[payments].[sp_MarkBookingPaid]'))
+    DROP PROCEDURE [payments].[sp_MarkBookingPaid];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Payment_MarkBookingPaid]
+CREATE PROCEDURE [payments].[sp_MarkBookingPaid]
     @BookingID INT,
     @Status NVARCHAR(20) = 'confirmed',
     @StripePaymentIntentID NVARCHAR(100) = NULL
@@ -15,7 +16,7 @@ AS
 BEGIN
     SET NOCOUNT ON;
     
-    UPDATE Bookings
+    UPDATE bookings.Bookings
     SET 
         Status = @Status,
         FullAmountPaid = 1,
@@ -26,3 +27,4 @@ BEGIN
     SELECT @@ROWCOUNT AS RowsAffected;
 END
 GO
+

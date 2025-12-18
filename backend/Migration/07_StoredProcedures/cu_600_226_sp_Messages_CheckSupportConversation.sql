@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Messages_CheckSupportConversation
+-- Stored Procedure: messages.sp_CheckSupportConversation
 -- Description: Checks if user has an existing support conversation
 -- Phase: 600 (Stored Procedures)
+-- Schema: messages
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Messages_CheckSupportConversation]'))
-    DROP PROCEDURE [dbo].[sp_Messages_CheckSupportConversation];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[messages].[sp_CheckSupportConversation]'))
+    DROP PROCEDURE [messages].[sp_CheckSupportConversation];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Messages_CheckSupportConversation]
+CREATE PROCEDURE [messages].[sp_CheckSupportConversation]
     @UserID INT
 AS
 BEGIN
@@ -15,9 +16,11 @@ BEGIN
     
     -- Check for support conversation via SupportConversations table
     SELECT TOP 1 c.ConversationID 
-    FROM Conversations c
+    FROM messages.Conversations c
     INNER JOIN SupportConversations sc ON c.ConversationID = sc.ConversationID
     WHERE c.UserID = @UserID
     ORDER BY c.CreatedAt DESC;
 END
 GO
+
+

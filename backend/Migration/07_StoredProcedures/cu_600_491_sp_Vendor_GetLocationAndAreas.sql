@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Vendor_GetLocationAndAreas
+-- Stored Procedure: vendors.sp_GetLocationAndAreas
 -- Description: Gets vendor location and service areas
 -- Phase: 600 (Stored Procedures)
+-- Schema: vendors
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Vendor_GetLocationAndAreas]'))
-    DROP PROCEDURE [dbo].[sp_Vendor_GetLocationAndAreas];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_GetLocationAndAreas]'))
+    DROP PROCEDURE [vendors].[sp_GetLocationAndAreas];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Vendor_GetLocationAndAreas]
+CREATE PROCEDURE [vendors].[sp_GetLocationAndAreas]
     @VendorProfileID INT
 AS
 BEGIN
@@ -15,7 +16,7 @@ BEGIN
     
     -- Get vendor profile location
     SELECT Address, City, State, Country, PostalCode, Latitude, Longitude
-    FROM VendorProfiles
+    FROM vendors.VendorProfiles
     WHERE VendorProfileID = @VendorProfileID;
     
     -- Get service areas
@@ -25,3 +26,4 @@ BEGIN
     WHERE VendorProfileID = @VendorProfileID;
 END
 GO
+

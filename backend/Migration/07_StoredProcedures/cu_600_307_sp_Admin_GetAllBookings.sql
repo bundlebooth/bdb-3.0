@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Admin_GetAllBookings
+-- Stored Procedure: admin.sp_GetAllBookings
 -- Description: Gets all bookings with filters for admin panel
 -- Phase: 600 (Stored Procedures)
+-- Schema: admin
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Admin_GetAllBookings]'))
-    DROP PROCEDURE [dbo].[sp_Admin_GetAllBookings];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_GetAllBookings]'))
+    DROP PROCEDURE [admin].[sp_GetAllBookings];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Admin_GetAllBookings]
+CREATE PROCEDURE [admin].[sp_GetAllBookings]
     @Status NVARCHAR(50) = NULL,
     @Search NVARCHAR(100) = NULL,
     @PageNumber INT = 1,
@@ -40,9 +41,9 @@ BEGIN
         u.Name as ClientName,
         u.Email as ClientEmail,
         vp.BusinessName as VendorName
-    FROM Bookings b
-    LEFT JOIN Users u ON b.UserID = u.UserID
-    LEFT JOIN VendorProfiles vp ON b.VendorProfileID = vp.VendorProfileID
+    FROM bookings.Bookings b
+    LEFT JOIN users.Users u ON b.UserID = u.UserID
+    LEFT JOIN vendors.VendorProfiles vp ON b.VendorProfileID = vp.VendorProfileID
     WHERE 
         (@Status IS NULL OR @Status = 'all' OR b.Status = @Status)
         AND (@Search IS NULL OR u.Name LIKE '%' + @Search + '%' OR u.Email LIKE '%' + @Search + '%' OR vp.BusinessName LIKE '%' + @Search + '%')
@@ -51,11 +52,14 @@ BEGIN
     
     -- Count query
     SELECT COUNT(*) as total
-    FROM Bookings b
-    LEFT JOIN Users u ON b.UserID = u.UserID
-    LEFT JOIN VendorProfiles vp ON b.VendorProfileID = vp.VendorProfileID
+    FROM bookings.Bookings b
+    LEFT JOIN users.Users u ON b.UserID = u.UserID
+    LEFT JOIN vendors.VendorProfiles vp ON b.VendorProfileID = vp.VendorProfileID
     WHERE 
         (@Status IS NULL OR @Status = 'all' OR b.Status = @Status)
         AND (@Search IS NULL OR u.Name LIKE '%' + @Search + '%' OR u.Email LIKE '%' + @Search + '%' OR vp.BusinessName LIKE '%' + @Search + '%');
 END
 GO
+
+
+

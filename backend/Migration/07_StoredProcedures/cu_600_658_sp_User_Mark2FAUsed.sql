@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_User_Mark2FAUsed
+-- Stored Procedure: users.sp_Mark2FAUsed
 -- Description: Marks 2FA code as used
 -- Phase: 600 (Stored Procedures)
+-- Schema: users
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_User_Mark2FAUsed]'))
-    DROP PROCEDURE [dbo].[sp_User_Mark2FAUsed];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[users].[sp_Mark2FAUsed]'))
+    DROP PROCEDURE [users].[sp_Mark2FAUsed];
 GO
 
-CREATE PROCEDURE [dbo].[sp_User_Mark2FAUsed]
+CREATE PROCEDURE [users].[sp_Mark2FAUsed]
     @CodeID INT
 AS
 BEGIN

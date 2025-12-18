@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Vendor_InsertServiceAreaExtended
+-- Stored Procedure: vendors.sp_InsertServiceAreaExtended
 -- Description: Inserts a service area with extended location data
 -- Phase: 600 (Stored Procedures)
+-- Schema: vendors
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Vendor_InsertServiceAreaExtended]'))
-    DROP PROCEDURE [dbo].[sp_Vendor_InsertServiceAreaExtended];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_InsertServiceAreaExtended]'))
+    DROP PROCEDURE [vendors].[sp_InsertServiceAreaExtended];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Vendor_InsertServiceAreaExtended]
+CREATE PROCEDURE [vendors].[sp_InsertServiceAreaExtended]
     @VendorProfileID INT,
     @GooglePlaceID NVARCHAR(100) = NULL,
     @CityName NVARCHAR(100),

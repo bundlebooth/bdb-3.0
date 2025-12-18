@@ -25,13 +25,13 @@ async function getCommissionSettings() {
 
   try {
     const pool = await poolPromise;
-    const tableCheck = await pool.request().execute('sp_Payment_CheckCommissionTable');
+    const tableCheck = await pool.request().execute('payments.sp_CheckCommissionTable');
     
     if (tableCheck.recordset[0].cnt === 0) {
       return defaults;
     }
 
-    const result = await pool.request().execute('sp_Payment_GetCommissionSettings');
+    const result = await pool.request().execute('payments.sp_GetCommissionSettings');
 
     const settings = { ...defaults };
     result.recordset.forEach(row => {
@@ -79,7 +79,7 @@ router.post('/connect', async (req, res) => {
     // Check if vendor already has a Stripe account
     const vendorCheck = await pool.request()
       .input('VendorProfileID', sql.Int, vendorProfileId)
-      .execute('sp_Payment_GetVendorStripeAccount');
+      .execute('payments.sp_GetVendorStripeAccount');
 
     if (!vendorCheck.recordset.length) {
       return res.status(404).json({
@@ -107,7 +107,7 @@ router.post('/connect', async (req, res) => {
       await pool.request()
         .input('VendorProfileID', sql.Int, vendorProfileId)
         .input('StripeAccountID', sql.NVarChar(100), stripeAccountId)
-        .execute('sp_Payment_SaveStripeAccount');
+        .execute('payments.sp_SaveStripeAccount');
     }
 
     // Create account link for onboarding
@@ -139,7 +139,7 @@ async function getInvoiceTotalsCents(bookingId) {
   try { if (invoicesRouter && typeof invoicesRouter.upsertInvoiceForBooking === 'function') { await invoicesRouter.upsertInvoiceForBooking(pool, bookingId, { forceRegenerate: true }); } } catch (_) {}
   const r = pool.request();
   r.input('BookingID', sql.Int, bookingId);
-  const q = await r.execute('sp_Payment_GetInvoiceTotals');
+  const q = await r.execute('payments.sp_GetInvoiceTotals');
   if (!q.recordset.length) {
     // Fallback: compute totals directly from booking/services/expenses
     const pctPlatform = parseFloat(process.env.PLATFORM_FEE_PERCENT || '5') / 100;
@@ -150,7 +150,7 @@ async function getInvoiceTotalsCents(bookingId) {
     // Get booking core
     const bReq = pool.request();
     bReq.input('BookingID', sql.Int, bookingId);
-    const b = await bReq.execute('sp_Payment_GetBookingTotal');
+    const b = await bReq.execute('payments.sp_GetBookingTotal');
     const bookingTotal = Number(b.recordset[0]?.TotalAmount || 0);
 
     // Sum services if available
@@ -158,7 +158,7 @@ async function getInvoiceTotalsCents(bookingId) {
     try {
       const bsReq = pool.request();
       bsReq.input('BookingID', sql.Int, bookingId);
-      const bs = await bsReq.execute('sp_Payment_GetBookingServices');
+      const bs = await bsReq.execute('payments.sp_GetBookingServices');
       if (bs.recordset.length) {
         servicesSubtotal = bs.recordset.reduce((s, row) => s + (Number(row.Quantity || 1) * Number(row.PriceAtBooking || 0)), 0);
       }
@@ -170,7 +170,7 @@ async function getInvoiceTotalsCents(bookingId) {
     try {
       const exReq = pool.request();
       exReq.input('BookingID', sql.Int, bookingId);
-      const ex = await exReq.execute('sp_Payment_GetBookingExpenses');
+      const ex = await exReq.execute('payments.sp_GetBookingExpenses');
       expensesTotal = ex.recordset.reduce((s, row) => s + Number(row.Amount || 0), 0);
     } catch (err) { /* table may not exist; ignore */ }
 
@@ -208,7 +208,7 @@ async function existsRecentTransaction({ bookingId, amount, externalId = null, m
     req.input('Amount', sql.Decimal(10,2), Math.round(Number(amount || 0) * 100) / 100);
     req.input('Ext', sql.NVarChar(100), externalId || null);
     req.input('Minutes', sql.Int, minutes);
-    const q = await req.execute('sp_Payment_CheckDuplicateTransaction');
+    const q = await req.execute('payments.sp_CheckDuplicateTransaction');
     return q.recordset.length > 0;
   } catch (_) { return false; }
 }
@@ -238,7 +238,7 @@ async function recordTransaction({ bookingId, userId = null, vendorProfileId = n
   if (stripeChargeId) {
     const existsReq = pool.request();
     existsReq.input('StripeChargeID', sql.NVarChar(100), String(stripeChargeId));
-    const exists = await existsReq.execute('sp_Payment_CheckDuplicateCharge');
+    const exists = await existsReq.execute('payments.sp_CheckDuplicateCharge');
     if (exists.recordset.length) return exists.recordset[0].TransactionID;
   }
   const req = pool.request();
@@ -252,7 +252,7 @@ async function recordTransaction({ bookingId, userId = null, vendorProfileId = n
   req.input('Description', sql.NVarChar(255), description || 'Payment');
   req.input('StripeChargeID', sql.NVarChar(100), stripeChargeId || null);
   req.input('Status', sql.NVarChar(20), 'succeeded');
-  const ins = await req.execute('sp_Payment_InsertTransaction');
+  const ins = await req.execute('payments.sp_InsertTransaction');
   return ins.recordset[0]?.TransactionID || null;
 }
 
@@ -350,7 +350,7 @@ async function getVendorStripeAccountId(vendorProfileId) {
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, vendorProfileId);
     
-    const result = await request.execute('sp_Payment_GetVendorStripeAccount');
+    const result = await request.execute('payments.sp_GetVendorStripeAccount');
     
     return result.recordset.length > 0 ? result.recordset[0].StripeAccountID : null;
   } catch (error) {
@@ -367,7 +367,7 @@ async function saveStripeConnectAccountId(vendorProfileId, stripeAccountId) {
     request.input('VendorProfileID', sql.Int, vendorProfileId);
     request.input('StripeAccountID', sql.NVarChar(100), stripeAccountId);
     
-    await request.execute('sp_Payment_SaveStripeAccount');
+    await request.execute('payments.sp_SaveStripeAccount');
     
     return true;
   } catch (error) {
@@ -384,7 +384,7 @@ async function saveChargeIdToBooking(bookingId, chargeId) {
     request.input('BookingID', sql.Int, bookingId);
     request.input('StripePaymentIntentID', sql.NVarChar(100), chargeId);
     
-    await request.execute('sp_Payment_SaveChargeToBooking');
+    await request.execute('payments.sp_SaveChargeToBooking');
     
     return true;
   } catch (error) {
@@ -442,7 +442,7 @@ router.get('/receipt/:bookingId', async (req, res) => {
     const pool = await poolPromise;
     const r = pool.request();
     r.input('BookingID', sql.Int, bookingId);
-    const qb = await r.execute('sp_Payment_GetReceiptInfo');
+    const qb = await r.execute('payments.sp_GetReceiptInfo');
     if (!qb.recordset.length) return res.status(404).json({ success: false, message: 'Booking not found' });
 
     const piId = qb.recordset[0]?.StripePaymentIntentID || null;
@@ -462,7 +462,7 @@ router.get('/receipt/:bookingId', async (req, res) => {
     if (!receiptUrl) {
       const tx = await pool.request()
         .input('BookingID', sql.Int, bookingId)
-        .execute('sp_Payment_GetTransactionCharge');
+        .execute('payments.sp_GetTransactionCharge');
       const chId = tx.recordset[0]?.StripeChargeID || null;
       if (chId) {
         charge = await stripe.charges.retrieve(chId);
@@ -730,7 +730,7 @@ router.post('/checkout', async (req, res) => {
       const pool = await poolPromise;
       const check = await pool.request()
         .input('BookingID', sql.Int, bookingId)
-        .execute('sp_Payment_CheckBookingPaid');
+        .execute('payments.sp_CheckBookingPaid');
       if (check.recordset.length === 0) {
         return res.status(404).json({ success: false, message: 'Booking not found' });
       }
@@ -846,7 +846,7 @@ router.post('/payment-intent', async (req, res) => {
       const pool = await poolPromise;
       const check = await pool.request()
         .input('BookingID', sql.Int, bookingId)
-        .execute('sp_Payment_CheckBookingPaid');
+        .execute('payments.sp_CheckBookingPaid');
       if (check.recordset.length === 0) {
         return res.status(404).json({ success: false, message: 'Booking not found' });
       }
@@ -928,7 +928,7 @@ async function getVendorProfileIdFromBooking(bookingId) {
     const request = new sql.Request(pool);
     request.input('BookingID', sql.Int, bookingId);
     
-    const result = await request.execute('sp_Payment_GetVendorFromBooking');
+    const result = await request.execute('payments.sp_GetVendorFromBooking');
     
     return result.recordset.length > 0 ? result.recordset[0].VendorProfileID : null;
   } catch (error) {
@@ -961,7 +961,7 @@ router.post('/checkout-session', async (req, res) => {
     // Server-side safety: prevent creating a Checkout Session for an already-paid booking
     const bookingCheck = await pool.request()
       .input('BookingID', sql.Int, bookingId)
-      .execute('sp_Payment_GetBookingForCheckout');
+      .execute('payments.sp_GetBookingForCheckout');
     
     if (bookingCheck.recordset.length === 0) {
       return res.status(404).json({ success: false, message: 'Booking not found' });
@@ -989,7 +989,7 @@ router.post('/checkout-session', async (req, res) => {
     // Get booking services for detailed line items
     const servicesResult = await pool.request()
       .input('BookingID', sql.Int, bookingId)
-      .execute('sp_Payment_GetBookingServicesDetailed');
+      .execute('payments.sp_GetBookingServicesDetailed');
     
     let services = servicesResult.recordset || [];
     
@@ -999,7 +999,7 @@ router.post('/checkout-session', async (req, res) => {
       if (booking.ServiceID) {
         const svcRes = await pool.request()
           .input('ServiceID', sql.Int, booking.ServiceID)
-          .execute('sp_Payment_GetServiceName');
+          .execute('payments.sp_GetServiceName');
         serviceName = svcRes.recordset[0]?.Name || 'Service';
       }
       services = [{
@@ -1145,7 +1145,7 @@ router.post('/checkout-session', async (req, res) => {
     await pool.request()
       .input('BookingID', sql.Int, bookingId)
       .input('StripeSessionID', sql.NVarChar(255), session.id)
-      .execute('sp_Payment_SaveSessionToBooking');
+      .execute('payments.sp_SaveSessionToBooking');
 
     console.log('[CheckoutSession] Created', { sessionId: session.id, url: session.url });
 
@@ -1269,13 +1269,13 @@ router.get('/verify-session', async (req, res) => {
     request.input('BookingID', sql.Int, bookingId);
     request.input('Status', sql.NVarChar(20), 'confirmed');
     request.input('StripePaymentIntentID', sql.NVarChar(100), paymentIntentId);
-    await request.execute('sp_Payment_MarkBookingPaid');
+    await request.execute('payments.sp_MarkBookingPaid');
 
     // Record a transaction row and regenerate the invoice snapshot
     try {
       const binfoReq = pool.request();
       binfoReq.input('BookingID', sql.Int, bookingId);
-      const binfo = await binfoReq.execute('sp_Payment_GetBookingUserVendor');
+      const binfo = await binfoReq.execute('payments.sp_GetBookingUserVendor');
       const row = binfo.recordset[0] || {};
       const paidAmount = ((pi && typeof pi.amount_received === 'number') ? pi.amount_received : (pi && typeof pi.amount === 'number' ? pi.amount : 0)) / 100;
       const exists = await existsRecentTransaction({ bookingId, amount: paidAmount || row.TotalAmount, externalId: paymentIntentId, minutes: 240 });
@@ -1299,7 +1299,7 @@ router.get('/verify-session', async (req, res) => {
     // Fetch booking details to return in response
     const bookingDetailsResult = await pool.request()
       .input('BookingID', sql.Int, bookingId)
-      .execute('sp_Payment_GetBookingDetails');
+      .execute('payments.sp_GetBookingDetails');
     
     const bookingDetails = bookingDetailsResult.recordset[0] || null;
 
@@ -1311,7 +1311,7 @@ router.get('/verify-session', async (req, res) => {
         .input('UserID', sql.Int, userId)
         .input('VendorProfileID', sql.Int, vendorProfileId)
         .input('StripePaymentIntentID', sql.NVarChar(100), paymentIntentId)
-        .execute('sp_Payment_ConfirmBookingRequest');
+        .execute('payments.sp_ConfirmBookingRequest');
     }
 
     res.json({ success: true, bookingId, paymentIntentId, booking: bookingDetails });
@@ -1351,13 +1351,13 @@ router.get('/verify-intent', async (req, res) => {
     request.input('BookingID', sql.Int, bookingId);
     request.input('Status', sql.NVarChar(20), 'confirmed');
     request.input('StripePaymentIntentID', sql.NVarChar(100), paymentIntentId);
-    await request.execute('sp_Payment_MarkBookingPaid');
+    await request.execute('payments.sp_MarkBookingPaid');
 
     // Record transaction and regenerate invoice
     try {
       const binfoReq = pool.request();
       binfoReq.input('BookingID', sql.Int, bookingId);
-      const binfo = await binfoReq.execute('sp_Payment_GetBookingUserVendor');
+      const binfo = await binfoReq.execute('payments.sp_GetBookingUserVendor');
       const row = binfo.recordset[0] || {};
       const paidAmount = ((pi && typeof pi.amount_received === 'number') ? pi.amount_received : (pi && typeof pi.amount === 'number' ? pi.amount : 0)) / 100;
       const exists = await existsRecentTransaction({ bookingId, amount: paidAmount, externalId: paymentIntentId, minutes: 240 });
@@ -1381,7 +1381,7 @@ router.get('/verify-intent', async (req, res) => {
     // Also update related booking request if exists (most recent for this user/vendor)
     const bookingInfoReq = pool.request();
     bookingInfoReq.input('BookingID', sql.Int, bookingId);
-    const bookingInfo = await bookingInfoReq.execute('sp_Payment_GetBookingUserVendor');
+    const bookingInfo = await bookingInfoReq.execute('payments.sp_GetBookingUserVendor');
     if (bookingInfo.recordset.length > 0) {
       const userId = bookingInfo.recordset[0].UserID;
       const vendorProfileId = bookingInfo.recordset[0].VendorProfileID;
@@ -1389,7 +1389,7 @@ router.get('/verify-intent', async (req, res) => {
         .input('UserID', sql.Int, userId)
         .input('VendorProfileID', sql.Int, vendorProfileId)
         .input('StripePaymentIntentID', sql.NVarChar(100), paymentIntentId)
-        .execute('sp_Payment_ConfirmBookingRequest');
+        .execute('payments.sp_ConfirmBookingRequest');
     }
 
     return res.json({ success: true, bookingId, paymentIntentId });
@@ -1437,12 +1437,12 @@ const webhook = async (req, res) => {
             request.input('BookingID', sql.Int, bookingId);
             request.input('Status', sql.NVarChar(20), 'confirmed');
             request.input('StripePaymentIntentID', sql.NVarChar(100), paymentIntent.id);
-            await request.execute('sp_Payment_MarkBookingPaid');
+            await request.execute('payments.sp_MarkBookingPaid');
 
             try {
               const binfoReq2 = pool.request();
               binfoReq2.input('BookingID', sql.Int, bookingId);
-              const binfo = await binfoReq2.execute('sp_Payment_GetBookingUserVendor');
+              const binfo = await binfoReq2.execute('payments.sp_GetBookingUserVendor');
               const row = binfo.recordset[0] || {};
               const exists = await existsRecentTransaction({ bookingId, amount: row.TotalAmount, externalId: paymentIntent.id, minutes: 240 });
               if (!exists) {
@@ -1464,7 +1464,7 @@ const webhook = async (req, res) => {
             // Also update related booking request if exists (most recent for this user/vendor)
             const bookingInfoReq2 = pool.request();
             bookingInfoReq2.input('BookingID', sql.Int, bookingId);
-            const bookingInfo = await bookingInfoReq2.execute('sp_Payment_GetBookingUserVendor');
+            const bookingInfo = await bookingInfoReq2.execute('payments.sp_GetBookingUserVendor');
             if (bookingInfo.recordset.length > 0) {
               const userId = bookingInfo.recordset[0].UserID;
               const vendorProfileId = bookingInfo.recordset[0].VendorProfileID;
@@ -1472,7 +1472,7 @@ const webhook = async (req, res) => {
                 .input('UserID', sql.Int, userId)
                 .input('VendorProfileID', sql.Int, vendorProfileId)
                 .input('StripePaymentIntentID', sql.NVarChar(100), paymentIntent.id)
-                .execute('sp_Payment_ConfirmBookingRequest');
+                .execute('payments.sp_ConfirmBookingRequest');
             }
           }
         } catch (piErr) {
@@ -1494,12 +1494,12 @@ const webhook = async (req, res) => {
               request.input('BookingID', sql.Int, bookingId);
               request.input('Status', sql.NVarChar(20), 'confirmed');
               request.input('StripePaymentIntentID', sql.NVarChar(100), paymentIntentId);
-              await request.execute('sp_Payment_MarkBookingPaid');
+              await request.execute('payments.sp_MarkBookingPaid');
 
               // Also update related booking request if exists (most recent for this user/vendor)
               const bookingInfoReq3 = pool.request();
               bookingInfoReq3.input('BookingID', sql.Int, bookingId);
-              const bookingInfo = await bookingInfoReq3.execute('sp_Payment_GetBookingUserVendor');
+              const bookingInfo = await bookingInfoReq3.execute('payments.sp_GetBookingUserVendor');
               if (bookingInfo.recordset.length > 0) {
                 const userId = bookingInfo.recordset[0].UserID;
                 const vendorProfileId = bookingInfo.recordset[0].VendorProfileID;
@@ -1507,7 +1507,7 @@ const webhook = async (req, res) => {
                   .input('UserID', sql.Int, userId)
                   .input('VendorProfileID', sql.Int, vendorProfileId)
                   .input('StripePaymentIntentID', sql.NVarChar(100), paymentIntentId)
-                  .execute('sp_Payment_ConfirmBookingRequest');
+                  .execute('payments.sp_ConfirmBookingRequest');
               }
             }
           }
@@ -1539,12 +1539,12 @@ const webhook = async (req, res) => {
             request.input('BookingID', sql.Int, bookingIdFromCharge);
             request.input('Status', sql.NVarChar(20), 'confirmed');
             request.input('StripePaymentIntentID', sql.NVarChar(100), charge.payment_intent || null);
-            await request.execute('sp_Payment_MarkBookingPaid');
+            await request.execute('payments.sp_MarkBookingPaid');
 
             try {
               const binfoReq3 = pool.request();
               binfoReq3.input('BookingID', sql.Int, bookingIdFromCharge);
-              const binfo = await binfoReq3.execute('sp_Payment_GetBookingUserVendor');
+              const binfo = await binfoReq3.execute('payments.sp_GetBookingUserVendor');
               const row = binfo.recordset[0] || {};
               const fee = typeof charge.balance_transaction === 'object' && charge.balance_transaction?.fee
                 ? (charge.balance_transaction.fee / 100)
@@ -1570,7 +1570,7 @@ const webhook = async (req, res) => {
             // Also update related booking request if exists (most recent for this user/vendor)
             const bookingInfoReq4 = pool.request();
             bookingInfoReq4.input('BookingID', sql.Int, bookingIdFromCharge);
-            const bookingInfo = await bookingInfoReq4.execute('sp_Payment_GetBookingUserVendor');
+            const bookingInfo = await bookingInfoReq4.execute('payments.sp_GetBookingUserVendor');
             if (bookingInfo.recordset.length > 0) {
               const userId = bookingInfo.recordset[0].UserID;
               const vendorProfileId = bookingInfo.recordset[0].VendorProfileID;
@@ -1578,7 +1578,7 @@ const webhook = async (req, res) => {
                 .input('UserID', sql.Int, userId)
                 .input('VendorProfileID', sql.Int, vendorProfileId)
                 .input('StripePaymentIntentID', sql.NVarChar(100), charge.payment_intent || null)
-                .execute('sp_Payment_ConfirmBookingRequest');
+                .execute('payments.sp_ConfirmBookingRequest');
             }
           }
         } catch (chErr) {
@@ -1597,7 +1597,7 @@ const webhook = async (req, res) => {
           request.input('BookingID', sql.Int, failedCharge.metadata.booking_id);
           request.input('Status', sql.NVarChar(20), 'payment_failed');
           
-          await request.execute('sp_Payment_MarkBookingFailed');
+          await request.execute('payments.sp_MarkBookingFailed');
         }
         break;
 
@@ -1613,7 +1613,7 @@ const webhook = async (req, res) => {
           request.input('RefundAmount', sql.Decimal(10, 2), refundedCharge.amount_refunded / 100);
           request.input('Status', sql.NVarChar(20), 'refunded');
           
-          await request.execute('sp_Payment_MarkBookingRefunded');
+          await request.execute('payments.sp_MarkBookingRefunded');
         }
         break;
 
@@ -1645,7 +1645,7 @@ router.get('/booking/:bookingId/status', async (req, res) => {
     const request = new sql.Request(pool);
     request.input('BookingID', sql.Int, bookingId);
     
-    const result = await request.execute('sp_Payment_GetBookingPaymentStatus');
+    const result = await request.execute('payments.sp_GetBookingPaymentStatus');
     
     if (result.recordset.length === 0) {
       return res.status(404).json({
@@ -1661,7 +1661,7 @@ router.get('/booking/:bookingId/status', async (req, res) => {
     // Get invoice total (which includes all fees) if available
     let invoiceTotal = null;
     try {
-      const invResult = await request.execute('sp_Payment_GetInvoiceTotals');
+      const invResult = await request.execute('payments.sp_GetInvoiceTotals');
       if (invResult.recordset.length > 0) {
         invoiceTotal = invResult.recordset[0].TotalAmount;
       }

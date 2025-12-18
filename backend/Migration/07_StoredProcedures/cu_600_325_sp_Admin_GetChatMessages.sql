@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Admin_GetChatMessages
+-- Stored Procedure: admin.sp_GetChatMessages
 -- Description: Gets all messages for a specific conversation
 -- Phase: 600 (Stored Procedures)
+-- Schema: admin
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Admin_GetChatMessages]'))
-    DROP PROCEDURE [dbo].[sp_Admin_GetChatMessages];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_GetChatMessages]'))
+    DROP PROCEDURE [admin].[sp_GetChatMessages];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Admin_GetChatMessages]
+CREATE PROCEDURE [admin].[sp_GetChatMessages]
     @ConversationID INT
 AS
 BEGIN
@@ -24,10 +25,10 @@ BEGIN
         u.Email as ClientEmail,
         vp.BusinessName as VendorName,
         vu.Email as VendorEmail
-    FROM Conversations c
-    LEFT JOIN Users u ON c.UserID = u.UserID
-    LEFT JOIN VendorProfiles vp ON c.VendorProfileID = vp.VendorProfileID
-    LEFT JOIN Users vu ON vp.UserID = vu.UserID
+    FROM messages.Conversations c
+    LEFT JOIN users.Users u ON c.UserID = u.UserID
+    LEFT JOIN vendors.VendorProfiles vp ON c.VendorProfileID = vp.VendorProfileID
+    LEFT JOIN users.Users vu ON vp.UserID = vu.UserID
     WHERE c.ConversationID = @ConversationID;
     
     -- Get messages
@@ -41,10 +42,14 @@ BEGIN
         u.Name as SenderName,
         u.Email as SenderEmail,
         CASE WHEN m.SenderID = c.UserID THEN 'client' ELSE 'vendor' END as SenderType
-    FROM Messages m
-    JOIN Conversations c ON m.ConversationID = c.ConversationID
-    LEFT JOIN Users u ON m.SenderID = u.UserID
+    FROM messages.Messages m
+    JOIN messages.Conversations c ON m.ConversationID = c.ConversationID
+    LEFT JOIN users.Users u ON m.SenderID = u.UserID
     WHERE m.ConversationID = @ConversationID
     ORDER BY m.CreatedAt ASC;
 END
 GO
+
+
+
+

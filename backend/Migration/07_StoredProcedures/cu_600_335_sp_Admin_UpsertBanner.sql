@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Admin_UpsertBanner
+-- Stored Procedure: admin.sp_UpsertBanner
 -- Description: Creates or updates a content banner
 -- Phase: 600 (Stored Procedures)
+-- Schema: admin
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Admin_UpsertBanner]'))
-    DROP PROCEDURE [dbo].[sp_Admin_UpsertBanner];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_UpsertBanner]'))
+    DROP PROCEDURE [admin].[sp_UpsertBanner];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Admin_UpsertBanner]
+CREATE PROCEDURE [admin].[sp_UpsertBanner]
     @BannerID INT = NULL,
     @Title NVARCHAR(255),
     @Subtitle NVARCHAR(500) = NULL,

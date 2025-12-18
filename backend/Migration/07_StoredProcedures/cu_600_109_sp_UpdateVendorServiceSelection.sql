@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_UpdateVendorServiceSelection]
     Phase: 600 - Stored Procedures
     Script: cu_600_109_dbo.sp_UpdateVendorServiceSelection.sql
-    Description: Creates the [dbo].[sp_UpdateVendorServiceSelection] stored procedure
+    Description: Creates the [vendors].[sp_UpdateServiceSelection] stored procedure
     
     Execution Order: 109
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_UpdateVendorServiceSelection]...';
+PRINT 'Creating stored procedure [vendors].[sp_UpdateServiceSelection]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_UpdateVendorServiceSelection]'))
-    DROP PROCEDURE [dbo].[sp_UpdateVendorServiceSelection];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_UpdateServiceSelection]'))
+    DROP PROCEDURE [vendors].[sp_UpdateServiceSelection];
 GO
 
-CREATE   PROCEDURE [dbo].[sp_UpdateVendorServiceSelection]
+CREATE   PROCEDURE [vendors].[sp_UpdateServiceSelection]
     @VendorProfileID INT,
     @PredefinedServiceID INT,
     @VendorPrice DECIMAL(10, 2),
@@ -30,12 +30,12 @@ BEGIN
     
     BEGIN TRY
         -- Check if selection already exists
-        IF EXISTS (SELECT 1 FROM VendorSelectedServices 
+        IF EXISTS (SELECT 1 FROM vendors.VendorSelectedServices 
                    WHERE VendorProfileID = @VendorProfileID 
                    AND PredefinedServiceID = @PredefinedServiceID)
         BEGIN
             -- Update existing selection
-            UPDATE VendorSelectedServices
+            UPDATE vendors.VendorSelectedServices
             SET VendorPrice = @VendorPrice,
                 VendorDurationMinutes = @VendorDurationMinutes,
                 VendorDescription = @VendorDescription,
@@ -47,7 +47,7 @@ BEGIN
         ELSE
         BEGIN
             -- Insert new selection
-            INSERT INTO VendorSelectedServices (
+            INSERT INTO vendors.VendorSelectedServices (
                 VendorProfileID, 
                 PredefinedServiceID, 
                 VendorPrice, 
@@ -74,5 +74,6 @@ END
 
 GO
 
-PRINT 'Stored procedure [dbo].[sp_UpdateVendorServiceSelection] created successfully.';
+PRINT 'Stored procedure [vendors].[sp_UpdateServiceSelection] created successfully.';
 GO
+

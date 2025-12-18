@@ -1,20 +1,22 @@
 -- =============================================
--- Stored Procedure: sp_Invoice_DeleteItems
+-- Stored Procedure: invoices.sp_DeleteItems
 -- Description: Deletes invoice items for regeneration
 -- Phase: 600 (Stored Procedures)
+-- Schema: invoices
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Invoice_DeleteItems]'))
-    DROP PROCEDURE [dbo].[sp_Invoice_DeleteItems];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[invoices].[sp_DeleteItems]'))
+    DROP PROCEDURE [invoices].[sp_DeleteItems];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Invoice_DeleteItems]
+CREATE PROCEDURE [invoices].[sp_DeleteItems]
     @InvoiceID INT
 AS
 BEGIN
     SET NOCOUNT ON;
     
-    DELETE FROM InvoiceItems WHERE InvoiceID = @InvoiceID;
+    DELETE FROM invoices.InvoiceItems WHERE InvoiceID = @InvoiceID;
     
     SELECT @@ROWCOUNT AS RowsDeleted;
 END
 GO
+

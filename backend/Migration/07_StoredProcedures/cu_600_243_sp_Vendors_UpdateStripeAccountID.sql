@@ -1,23 +1,25 @@
 -- =============================================
--- Stored Procedure: sp_Vendors_UpdateStripeAccountID
+-- Stored Procedure: vendors.sp_UpdateStripeAccountID
 -- Description: Updates Stripe account ID for a vendor
 -- Phase: 600 (Stored Procedures)
+-- Schema: vendors
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Vendors_UpdateStripeAccountID]'))
-    DROP PROCEDURE [dbo].[sp_Vendors_UpdateStripeAccountID];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_UpdateStripeAccountID]'))
+    DROP PROCEDURE [vendors].[sp_UpdateStripeAccountID];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Vendors_UpdateStripeAccountID]
+CREATE PROCEDURE [vendors].[sp_UpdateStripeAccountID]
     @VendorProfileID INT,
     @StripeAccountID NVARCHAR(100)
 AS
 BEGIN
     SET NOCOUNT ON;
     
-    UPDATE VendorProfiles 
+    UPDATE vendors.VendorProfiles 
     SET StripeAccountID = @StripeAccountID, UpdatedAt = GETDATE()
     WHERE VendorProfileID = @VendorProfileID;
     
     SELECT @@ROWCOUNT AS RowsAffected;
 END
 GO
+

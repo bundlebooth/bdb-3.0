@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_UpsertVendorBusinessHour]
     Phase: 600 - Stored Procedures
     Script: cu_600_117_dbo.sp_UpsertVendorBusinessHour.sql
-    Description: Creates the [dbo].[sp_UpsertVendorBusinessHour] stored procedure
+    Description: Creates the [vendors].[sp_UpsertBusinessHour] stored procedure
     
     Execution Order: 117
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_UpsertVendorBusinessHour]...';
+PRINT 'Creating stored procedure [vendors].[sp_UpsertBusinessHour]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_UpsertVendorBusinessHour]'))
-    DROP PROCEDURE [dbo].[sp_UpsertVendorBusinessHour];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_UpsertBusinessHour]'))
+    DROP PROCEDURE [vendors].[sp_UpsertBusinessHour];
 GO
 
-CREATE   PROCEDURE [dbo].[sp_UpsertVendorBusinessHour]
+CREATE   PROCEDURE [vendors].[sp_UpsertBusinessHour]
     @HoursID INT = NULL, -- NULL for new, ID for update
     @VendorProfileID INT,
     @DayOfWeek TINYINT,
@@ -30,13 +30,13 @@ BEGIN
 
     IF @HoursID IS NULL -- Insert new
     BEGIN
-        INSERT INTO VendorBusinessHours (VendorProfileID, DayOfWeek, OpenTime, CloseTime, IsAvailable)
+        INSERT INTO vendors.VendorBusinessHours (VendorProfileID, DayOfWeek, OpenTime, CloseTime, IsAvailable)
         VALUES (@VendorProfileID, @DayOfWeek, @OpenTime, @CloseTime, @IsAvailable);
         SELECT SCOPE_IDENTITY() AS HoursID;
     END
     ELSE -- Update existing
     BEGIN
-        UPDATE VendorBusinessHours
+        UPDATE vendors.VendorBusinessHours
         SET
             OpenTime = @OpenTime,
             CloseTime = @CloseTime,
@@ -48,5 +48,6 @@ END;
 
 GO
 
-PRINT 'Stored procedure [dbo].[sp_UpsertVendorBusinessHour] created successfully.';
+PRINT 'Stored procedure [vendors].[sp_UpsertBusinessHour] created successfully.';
 GO
+

@@ -2,7 +2,7 @@
     Migration Script: Create Table [VendorProfileViews]
     Phase: 100 - Tables
     Script: cu_100_33_dbo.VendorProfileViews.sql
-    Description: Creates the [dbo].[VendorProfileViews] table
+    Description: Creates the [vendors].[VendorProfileViews] table
     
     Execution Order: 33
 */
@@ -10,12 +10,12 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating table [dbo].[VendorProfileViews]...';
+PRINT 'Creating table [vendors].[VendorProfileViews]...';
 GO
 
-IF NOT EXISTS (SELECT 1 FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[VendorProfileViews]') AND type in (N'U'))
+IF NOT EXISTS (SELECT 1 FROM sys.objects WHERE object_id = OBJECT_ID(N'[vendors].[VendorProfileViews]') AND type in (N'U'))
 BEGIN
-    CREATE TABLE [dbo].[VendorProfileViews](
+    CREATE TABLE [vendors].[VendorProfileViews](
 	[ViewID] [int] IDENTITY(1,1) NOT NULL,
 	[VendorProfileID] [int] NOT NULL,
 	[ViewerUserID] [int] NULL,
@@ -29,10 +29,10 @@ PRIMARY KEY CLUSTERED
 	[ViewID] ASC
 )WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
     );
-    PRINT 'Table [dbo].[VendorProfileViews] created successfully.';
+    PRINT 'Table [vendors].[VendorProfileViews] created successfully.';
 END
 ELSE
 BEGIN
-    PRINT 'Table [dbo].[VendorProfileViews] already exists. Skipping.';
+    PRINT 'Table [vendors].[VendorProfileViews] already exists. Skipping.';
 END
 GO

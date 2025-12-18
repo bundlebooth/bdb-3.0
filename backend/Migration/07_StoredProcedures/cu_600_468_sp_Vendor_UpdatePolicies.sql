@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Vendor_UpdatePolicies
+-- Stored Procedure: vendors.sp_UpdatePolicies
 -- Description: Updates vendor policies and preferences
 -- Phase: 600 (Stored Procedures)
+-- Schema: vendors
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Vendor_UpdatePolicies]'))
-    DROP PROCEDURE [dbo].[sp_Vendor_UpdatePolicies];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_UpdatePolicies]'))
+    DROP PROCEDURE [vendors].[sp_UpdatePolicies];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Vendor_UpdatePolicies]
+CREATE PROCEDURE [vendors].[sp_UpdatePolicies]
     @VendorProfileID INT,
     @DepositRequirements NVARCHAR(MAX) = NULL,
     @CancellationPolicy NVARCHAR(MAX) = NULL,
@@ -18,7 +19,7 @@ AS
 BEGIN
     SET NOCOUNT ON;
     
-    UPDATE VendorProfiles 
+    UPDATE vendors.VendorProfiles 
     SET DepositRequirements = @DepositRequirements,
         CancellationPolicy = @CancellationPolicy,
         ReschedulingPolicy = @ReschedulingPolicy,
@@ -30,3 +31,4 @@ BEGIN
     SELECT @@ROWCOUNT AS RowsAffected;
 END
 GO
+

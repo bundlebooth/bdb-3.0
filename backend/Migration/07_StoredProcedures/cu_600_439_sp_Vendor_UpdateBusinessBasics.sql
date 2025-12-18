@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Vendor_UpdateBusinessBasics
+-- Stored Procedure: vendors.sp_UpdateBusinessBasics
 -- Description: Updates vendor business basics (step 1)
 -- Phase: 600 (Stored Procedures)
+-- Schema: vendors
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Vendor_UpdateBusinessBasics]'))
-    DROP PROCEDURE [dbo].[sp_Vendor_UpdateBusinessBasics];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_UpdateBusinessBasics]'))
+    DROP PROCEDURE [vendors].[sp_UpdateBusinessBasics];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Vendor_UpdateBusinessBasics]
+CREATE PROCEDURE [vendors].[sp_UpdateBusinessBasics]
     @VendorProfileID INT,
     @BusinessName NVARCHAR(100),
     @DisplayName NVARCHAR(100),
@@ -22,7 +23,7 @@ AS
 BEGIN
     SET NOCOUNT ON;
     
-    UPDATE VendorProfiles 
+    UPDATE vendors.VendorProfiles 
     SET BusinessName = @BusinessName, DisplayName = @DisplayName, 
         BusinessEmail = @BusinessEmail, BusinessPhone = @BusinessPhone,
         Website = @Website, BusinessDescription = @BusinessDescription,
@@ -34,3 +35,4 @@ BEGIN
     SELECT @@ROWCOUNT AS RowsAffected;
 END
 GO
+

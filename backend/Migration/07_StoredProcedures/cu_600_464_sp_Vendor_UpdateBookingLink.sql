@@ -1,23 +1,25 @@
 -- =============================================
--- Stored Procedure: sp_Vendor_UpdateBookingLink
+-- Stored Procedure: vendors.sp_UpdateBookingLink
 -- Description: Updates vendor booking link
 -- Phase: 600 (Stored Procedures)
+-- Schema: vendors
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Vendor_UpdateBookingLink]'))
-    DROP PROCEDURE [dbo].[sp_Vendor_UpdateBookingLink];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_UpdateBookingLink]'))
+    DROP PROCEDURE [vendors].[sp_UpdateBookingLink];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Vendor_UpdateBookingLink]
+CREATE PROCEDURE [vendors].[sp_UpdateBookingLink]
     @VendorProfileID INT,
     @BookingLink NVARCHAR(500)
 AS
 BEGIN
     SET NOCOUNT ON;
     
-    UPDATE VendorProfiles 
+    UPDATE vendors.VendorProfiles 
     SET BookingLink = @BookingLink, UpdatedAt = GETDATE()
     WHERE VendorProfileID = @VendorProfileID;
     
     SELECT @@ROWCOUNT AS RowsAffected;
 END
 GO
+

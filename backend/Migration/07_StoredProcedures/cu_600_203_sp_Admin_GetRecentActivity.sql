@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Admin_GetRecentActivity
+-- Stored Procedure: admin.sp_GetRecentActivity
 -- Description: Gets recent platform activity for admin panel
 -- Phase: 600 (Stored Procedures)
+-- Schema: admin
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Admin_GetRecentActivity]'))
-    DROP PROCEDURE [dbo].[sp_Admin_GetRecentActivity];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_GetRecentActivity]'))
+    DROP PROCEDURE [admin].[sp_GetRecentActivity];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Admin_GetRecentActivity]
+CREATE PROCEDURE [admin].[sp_GetRecentActivity]
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -19,7 +20,7 @@ BEGIN
         CreatedAt as timestamp,
         'fa-user-plus' as icon,
         '#2dce89' as color
-    FROM VendorProfiles
+    FROM vendors.VendorProfiles
     ORDER BY CreatedAt DESC;
     
     -- Recent bookings
@@ -29,7 +30,7 @@ BEGIN
         CreatedAt as timestamp,
         'fa-calendar-check' as icon,
         '#5e72e4' as color
-    FROM Bookings
+    FROM bookings.Bookings
     ORDER BY CreatedAt DESC;
     
     -- Recent reviews
@@ -39,7 +40,10 @@ BEGIN
         r.CreatedAt as timestamp,
         'fa-star' as icon,
         '#fb6340' as color
-    FROM Reviews r
+    FROM vendors.Reviews r
     ORDER BY r.CreatedAt DESC;
 END
 GO
+
+
+

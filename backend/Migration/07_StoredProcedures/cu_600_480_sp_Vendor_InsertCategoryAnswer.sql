@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Vendor_InsertCategoryAnswer
+-- Stored Procedure: vendors.sp_InsertCategoryAnswer
 -- Description: Inserts a category answer for a vendor
 -- Phase: 600 (Stored Procedures)
+-- Schema: vendors
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Vendor_InsertCategoryAnswer]'))
-    DROP PROCEDURE [dbo].[sp_Vendor_InsertCategoryAnswer];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_InsertCategoryAnswer]'))
+    DROP PROCEDURE [vendors].[sp_InsertCategoryAnswer];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Vendor_InsertCategoryAnswer]
+CREATE PROCEDURE [vendors].[sp_InsertCategoryAnswer]
     @VendorProfileID INT,
     @QuestionID INT,
     @Answer NVARCHAR(MAX)

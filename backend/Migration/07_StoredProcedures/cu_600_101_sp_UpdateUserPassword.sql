@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_UpdateUserPassword]
     Phase: 600 - Stored Procedures
     Script: cu_600_101_dbo.sp_UpdateUserPassword.sql
-    Description: Creates the [dbo].[sp_UpdateUserPassword] stored procedure
+    Description: Creates the [users].[sp_UpdatePassword] stored procedure
     
     Execution Order: 101
 */
@@ -10,21 +10,21 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_UpdateUserPassword]...';
+PRINT 'Creating stored procedure [users].[sp_UpdatePassword]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_UpdateUserPassword]'))
-    DROP PROCEDURE [dbo].[sp_UpdateUserPassword];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[users].[sp_UpdatePassword]'))
+    DROP PROCEDURE [users].[sp_UpdatePassword];
 GO
 
-CREATE   PROCEDURE [dbo].[sp_UpdateUserPassword]
+CREATE   PROCEDURE [users].[sp_UpdatePassword]
     @UserID INT,
     @PasswordHash NVARCHAR(255)
 AS
 BEGIN
     SET NOCOUNT ON;
 
-    UPDATE Users
+    UPDATE users.Users
     SET 
         PasswordHash = @PasswordHash,
         UpdatedAt = GETDATE()
@@ -35,5 +35,6 @@ END;
 
 GO
 
-PRINT 'Stored procedure [dbo].[sp_UpdateUserPassword] created successfully.';
+PRINT 'Stored procedure [users].[sp_UpdatePassword] created successfully.';
 GO
+

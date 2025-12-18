@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Invoice_Create
+-- Stored Procedure: invoices.sp_Create
 -- Description: Creates a new invoice
 -- Phase: 600 (Stored Procedures)
+-- Schema: invoices
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Invoice_Create]'))
-    DROP PROCEDURE [dbo].[sp_Invoice_Create];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[invoices].[sp_Create]'))
+    DROP PROCEDURE [invoices].[sp_Create];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Invoice_Create]
+CREATE PROCEDURE [invoices].[sp_Create]
     @BookingID INT,
     @UserID INT,
     @VendorProfileID INT,
@@ -28,7 +29,7 @@ AS
 BEGIN
     SET NOCOUNT ON;
     
-    INSERT INTO Invoices (
+    INSERT INTO invoices.Invoices (
         BookingID, UserID, VendorProfileID, InvoiceNumber, IssueDate, DueDate, Status,
         Currency, Subtotal, VendorExpensesTotal, PlatformFee, StripeFee, TaxAmount, TotalAmount, 
         FeesIncludedInTotal, SnapshotJSON, CreatedAt, UpdatedAt
@@ -41,3 +42,4 @@ BEGIN
     SELECT SCOPE_IDENTITY() AS InvoiceID;
 END
 GO
+

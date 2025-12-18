@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_GetSupportTickets]
     Phase: 600 - Stored Procedures
     Script: cu_600_048_dbo.sp_GetSupportTickets.sql
-    Description: Creates the [dbo].[sp_GetSupportTickets] stored procedure
+    Description: Creates the [admin].[sp_GetSupportTickets] stored procedure
     
     Execution Order: 48
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_GetSupportTickets]...';
+PRINT 'Creating stored procedure [admin].[sp_GetSupportTickets]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_GetSupportTickets]'))
-    DROP PROCEDURE [dbo].[sp_GetSupportTickets];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_GetSupportTickets]'))
+    DROP PROCEDURE [admin].[sp_GetSupportTickets];
 GO
 
-CREATE   PROCEDURE [dbo].[sp_GetSupportTickets]
+CREATE   PROCEDURE [admin].[sp_GetSupportTickets]
     @Status NVARCHAR(20) = NULL,
     @Priority NVARCHAR(20) = NULL,
     @Category NVARCHAR(50) = NULL,
@@ -50,8 +50,8 @@ BEGIN
         t.ResolvedAt,
         t.ClosedAt,
         (SELECT COUNT(*) FROM SupportTicketMessages WHERE TicketID = t.TicketID) AS MessageCount
-    FROM SupportTickets t
-    LEFT JOIN Users a ON t.AssignedTo = a.UserID
+    FROM admin.SupportTickets t
+    LEFT JOIN users.Users a ON t.AssignedTo = a.UserID
     WHERE (@Status IS NULL OR t.Status = @Status)
         AND (@Priority IS NULL OR t.Priority = @Priority)
         AND (@Category IS NULL OR t.Category = @Category)
@@ -62,7 +62,7 @@ BEGIN
     OFFSET @Offset ROWS FETCH NEXT @Limit ROWS ONLY;
     
     SELECT COUNT(*) AS Total
-    FROM SupportTickets t
+    FROM admin.SupportTickets t
     WHERE (@Status IS NULL OR t.Status = @Status)
         AND (@Priority IS NULL OR t.Priority = @Priority)
         AND (@Category IS NULL OR t.Category = @Category)
@@ -70,5 +70,7 @@ BEGIN
 END;
 GO
 
-PRINT 'Stored procedure [dbo].[sp_GetSupportTickets] created successfully.';
+PRINT 'Stored procedure [admin].[sp_GetSupportTickets] created successfully.';
 GO
+
+

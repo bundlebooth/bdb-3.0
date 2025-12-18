@@ -1,20 +1,22 @@
 -- =============================================
--- Stored Procedure: sp_Booking_GetRequestDetails
+-- Stored Procedure: bookings.sp_GetRequestDetails
 -- Description: Gets booking request details
 -- Phase: 600 (Stored Procedures)
+-- Schema: bookings
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Booking_GetRequestDetails]'))
-    DROP PROCEDURE [dbo].[sp_Booking_GetRequestDetails];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[bookings].[sp_GetRequestDetails]'))
+    DROP PROCEDURE [bookings].[sp_GetRequestDetails];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Booking_GetRequestDetails]
+CREATE PROCEDURE [bookings].[sp_GetRequestDetails]
     @RequestID INT
 AS
 BEGIN
     SET NOCOUNT ON;
     
     SELECT EventDate, EventTime, EventLocation, AttendeeCount, Budget, Services, SpecialRequests
-    FROM BookingRequests 
+    FROM bookings.BookingRequests 
     WHERE RequestID = @RequestID;
 END
 GO
+

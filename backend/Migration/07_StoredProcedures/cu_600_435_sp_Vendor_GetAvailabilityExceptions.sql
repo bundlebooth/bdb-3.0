@@ -1,22 +1,24 @@
 -- =============================================
--- Stored Procedure: sp_Vendor_GetAvailabilityExceptions
+-- Stored Procedure: vendors.sp_GetAvailabilityExceptions
 -- Description: Gets availability exceptions for a vendor
 -- Phase: 600 (Stored Procedures)
+-- Schema: vendors
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Vendor_GetAvailabilityExceptions]'))
-    DROP PROCEDURE [dbo].[sp_Vendor_GetAvailabilityExceptions];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_GetAvailabilityExceptions]'))
+    DROP PROCEDURE [vendors].[sp_GetAvailabilityExceptions];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Vendor_GetAvailabilityExceptions]
+CREATE PROCEDURE [vendors].[sp_GetAvailabilityExceptions]
     @VendorProfileID INT
 AS
 BEGIN
     SET NOCOUNT ON;
     
     SELECT Date, IsAvailable, Reason
-    FROM VendorAvailabilityExceptions
+    FROM vendors.VendorAvailabilityExceptions
     WHERE VendorProfileID = @VendorProfileID
     AND Date >= CAST(GETDATE() AS DATE)
     ORDER BY Date;
 END
 GO
+

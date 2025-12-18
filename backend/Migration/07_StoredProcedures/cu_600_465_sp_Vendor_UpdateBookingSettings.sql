@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Vendor_UpdateBookingSettings
+-- Stored Procedure: vendors.sp_UpdateBookingSettings
 -- Description: Updates vendor booking settings
 -- Phase: 600 (Stored Procedures)
+-- Schema: vendors
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Vendor_UpdateBookingSettings]'))
-    DROP PROCEDURE [dbo].[sp_Vendor_UpdateBookingSettings];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_UpdateBookingSettings]'))
+    DROP PROCEDURE [vendors].[sp_UpdateBookingSettings];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Vendor_UpdateBookingSettings]
+CREATE PROCEDURE [vendors].[sp_UpdateBookingSettings]
     @VendorProfileID INT,
     @AcceptingBookings BIT = 0,
     @AverageResponseTime INT = 24
@@ -15,7 +16,7 @@ AS
 BEGIN
     SET NOCOUNT ON;
     
-    UPDATE VendorProfiles 
+    UPDATE vendors.VendorProfiles 
     SET AcceptingBookings = @AcceptingBookings, 
         AverageResponseTime = @AverageResponseTime,
         UpdatedAt = GETDATE()
@@ -24,3 +25,4 @@ BEGIN
     SELECT @@ROWCOUNT AS RowsAffected;
 END
 GO
+

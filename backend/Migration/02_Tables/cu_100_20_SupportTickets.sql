@@ -2,7 +2,7 @@
     Migration Script: Create Table [SupportTickets]
     Phase: 100 - Tables
     Script: cu_100_20_dbo.SupportTickets.sql
-    Description: Creates the [dbo].[SupportTickets] table
+    Description: Creates the [admin].[SupportTickets] table
     
     Execution Order: 20
 */
@@ -10,12 +10,12 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating table [dbo].[SupportTickets]...';
+PRINT 'Creating table [admin].[SupportTickets]...';
 GO
 
-IF NOT EXISTS (SELECT 1 FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[SupportTickets]') AND type in (N'U'))
+IF NOT EXISTS (SELECT 1 FROM sys.objects WHERE object_id = OBJECT_ID(N'[admin].[SupportTickets]') AND type in (N'U'))
 BEGIN
-    CREATE TABLE [dbo].[SupportTickets](
+    CREATE TABLE [admin].[SupportTickets](
 	[TicketID] [int] IDENTITY(1,1) NOT NULL,
 	[TicketNumber] [nvarchar](20) NOT NULL,
 	[UserID] [int] NULL,
@@ -39,10 +39,10 @@ PRIMARY KEY CLUSTERED
 	[TicketID] ASC
 )WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
     );
-    PRINT 'Table [dbo].[SupportTickets] created successfully.';
+    PRINT 'Table [admin].[SupportTickets] created successfully.';
 END
 ELSE
 BEGIN
-    PRINT 'Table [dbo].[SupportTickets] already exists. Skipping.';
+    PRINT 'Table [admin].[SupportTickets] already exists. Skipping.';
 END
 GO

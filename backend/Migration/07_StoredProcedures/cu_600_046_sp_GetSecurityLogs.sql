@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_GetSecurityLogs]
     Phase: 600 - Stored Procedures
     Script: cu_600_046_dbo.sp_GetSecurityLogs.sql
-    Description: Creates the [dbo].[sp_GetSecurityLogs] stored procedure
+    Description: Creates the [admin].[sp_GetSecurityLogs] stored procedure
     
     Execution Order: 46
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_GetSecurityLogs]...';
+PRINT 'Creating stored procedure [admin].[sp_GetSecurityLogs]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_GetSecurityLogs]'))
-    DROP PROCEDURE [dbo].[sp_GetSecurityLogs];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_GetSecurityLogs]'))
+    DROP PROCEDURE [admin].[sp_GetSecurityLogs];
 GO
 
-CREATE   PROCEDURE [dbo].[sp_GetSecurityLogs]
+CREATE   PROCEDURE [admin].[sp_GetSecurityLogs]
     @LogType NVARCHAR(50) = 'all', -- 'all', 'login', 'admin', 'flagged'
     @Status NVARCHAR(20) = NULL,
     @Search NVARCHAR(100) = NULL,
@@ -64,5 +64,5 @@ BEGIN
 END;
 GO
 
-PRINT 'Stored procedure [dbo].[sp_GetSecurityLogs] created successfully.';
+PRINT 'Stored procedure [admin].[sp_GetSecurityLogs] created successfully.';
 GO

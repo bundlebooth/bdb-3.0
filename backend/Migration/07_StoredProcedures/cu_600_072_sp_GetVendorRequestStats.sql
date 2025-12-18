@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_GetVendorRequestStats]
     Phase: 600 - Stored Procedures
     Script: cu_600_072_dbo.sp_GetVendorRequestStats.sql
-    Description: Creates the [dbo].[sp_GetVendorRequestStats] stored procedure
+    Description: Creates the [vendors].[sp_GetRequestStats] stored procedure
     
     Execution Order: 72
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_GetVendorRequestStats]...';
+PRINT 'Creating stored procedure [vendors].[sp_GetRequestStats]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_GetVendorRequestStats]'))
-    DROP PROCEDURE [dbo].[sp_GetVendorRequestStats];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_GetRequestStats]'))
+    DROP PROCEDURE [vendors].[sp_GetRequestStats];
 GO
 
-CREATE   PROCEDURE [dbo].[sp_GetVendorRequestStats]
+CREATE   PROCEDURE [vendors].[sp_GetRequestStats]
     @VendorProfileID INT,
     @StartDate DATE = NULL,
     @EndDate DATE = NULL
@@ -44,7 +44,7 @@ BEGIN
             THEN (SUM(CASE WHEN Status IN ('approved', 'confirmed') THEN 1 ELSE 0 END) * 100.0 / COUNT(*))
             ELSE 0 END AS DECIMAL(5,2)
         ) AS ApprovalRate
-    FROM BookingRequests
+    FROM bookings.BookingRequests
     WHERE VendorProfileID = @VendorProfileID
         AND CreatedAt >= @StartDate
         AND CreatedAt <= @EndDate;
@@ -52,5 +52,6 @@ END;
 
 GO
 
-PRINT 'Stored procedure [dbo].[sp_GetVendorRequestStats] created successfully.';
+PRINT 'Stored procedure [vendors].[sp_GetRequestStats] created successfully.';
 GO
+

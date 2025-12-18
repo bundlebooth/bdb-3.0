@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Admin_CreateCommissionSetting
+-- Stored Procedure: admin.sp_CreateCommissionSetting
 -- Description: Creates a new commission setting
 -- Phase: 600 (Stored Procedures)
+-- Schema: admin
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Admin_CreateCommissionSetting]'))
-    DROP PROCEDURE [dbo].[sp_Admin_CreateCommissionSetting];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_CreateCommissionSetting]'))
+    DROP PROCEDURE [admin].[sp_CreateCommissionSetting];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Admin_CreateCommissionSetting]
+CREATE PROCEDURE [admin].[sp_CreateCommissionSetting]
     @SettingKey NVARCHAR(100),
     @SettingValue NVARCHAR(255),
     @Description NVARCHAR(500) = NULL,

@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_CreateBookingPaymentIntent]
     Phase: 600 - Stored Procedures
     Script: cu_600_015_dbo.sp_CreateBookingPaymentIntent.sql
-    Description: Creates the [dbo].[sp_CreateBookingPaymentIntent] stored procedure
+    Description: Creates the [payments].[sp_CreateBookingPaymentIntent] stored procedure
     
     Execution Order: 15
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_CreateBookingPaymentIntent]...';
+PRINT 'Creating stored procedure [payments].[sp_CreateBookingPaymentIntent]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_CreateBookingPaymentIntent]'))
-    DROP PROCEDURE [dbo].[sp_CreateBookingPaymentIntent];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[payments].[sp_CreateBookingPaymentIntent]'))
+    DROP PROCEDURE [payments].[sp_CreateBookingPaymentIntent];
 GO
 
-CREATE   PROCEDURE [dbo].[sp_CreateBookingPaymentIntent]
+CREATE   PROCEDURE [payments].[sp_CreateBookingPaymentIntent]
     @BookingID INT,
     @Amount DECIMAL(10, 2),
     @Currency NVARCHAR(3) = 'USD',
@@ -34,7 +34,7 @@ BEGIN
     -- This is a simplified version for demo purposes
     
     -- Update booking with payment intent
-    UPDATE Bookings
+    UPDATE bookings.Bookings
     SET StripePaymentIntentID = @PaymentIntentID
     WHERE BookingID = @BookingID;
     
@@ -45,5 +45,6 @@ END;
 
 GO
 
-PRINT 'Stored procedure [dbo].[sp_CreateBookingPaymentIntent] created successfully.';
+PRINT 'Stored procedure [payments].[sp_CreateBookingPaymentIntent] created successfully.';
 GO
+

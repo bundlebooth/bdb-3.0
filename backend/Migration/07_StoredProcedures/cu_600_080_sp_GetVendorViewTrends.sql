@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_GetVendorViewTrends]
     Phase: 600 - Stored Procedures
     Script: cu_600_080_dbo.sp_GetVendorViewTrends.sql
-    Description: Creates the [dbo].[sp_GetVendorViewTrends] stored procedure
+    Description: Creates the [vendors].[sp_GetViewTrends] stored procedure
     
     Execution Order: 80
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_GetVendorViewTrends]...';
+PRINT 'Creating stored procedure [vendors].[sp_GetViewTrends]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_GetVendorViewTrends]'))
-    DROP PROCEDURE [dbo].[sp_GetVendorViewTrends];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_GetViewTrends]'))
+    DROP PROCEDURE [vendors].[sp_GetViewTrends];
 GO
 
-CREATE   PROCEDURE [dbo].[sp_GetVendorViewTrends]
+CREATE   PROCEDURE [vendors].[sp_GetViewTrends]
     @VendorProfileID INT
 AS
 BEGIN
@@ -32,7 +32,7 @@ BEGIN
         'Last 7 Days' AS Period,
         COUNT(*) AS ViewCount,
         COUNT(DISTINCT ViewerUserID) AS UniqueViewers
-    FROM VendorProfileViews
+    FROM vendors.VendorProfileViews
     WHERE VendorProfileID = @VendorProfileID
       AND ViewedAt >= @ThisWeekStart
     UNION ALL
@@ -40,7 +40,7 @@ BEGIN
         'Previous 7 Days' AS Period,
         COUNT(*) AS ViewCount,
         COUNT(DISTINCT ViewerUserID) AS UniqueViewers
-    FROM VendorProfileViews
+    FROM vendors.VendorProfileViews
     WHERE VendorProfileID = @VendorProfileID
       AND ViewedAt >= @LastWeekStart
       AND ViewedAt < @LastWeekEnd;
@@ -54,7 +54,7 @@ BEGIN
         'Last 30 Days' AS Period,
         COUNT(*) AS ViewCount,
         COUNT(DISTINCT ViewerUserID) AS UniqueViewers
-    FROM VendorProfileViews
+    FROM vendors.VendorProfileViews
     WHERE VendorProfileID = @VendorProfileID
       AND ViewedAt >= @ThisMonthStart
     UNION ALL
@@ -62,7 +62,7 @@ BEGIN
         'Previous 30 Days' AS Period,
         COUNT(*) AS ViewCount,
         COUNT(DISTINCT ViewerUserID) AS UniqueViewers
-    FROM VendorProfileViews
+    FROM vendors.VendorProfileViews
     WHERE VendorProfileID = @VendorProfileID
       AND ViewedAt >= @LastMonthStart
       AND ViewedAt < @LastMonthEnd;
@@ -70,5 +70,6 @@ END
 
 GO
 
-PRINT 'Stored procedure [dbo].[sp_GetVendorViewTrends] created successfully.';
+PRINT 'Stored procedure [vendors].[sp_GetViewTrends] created successfully.';
 GO
+

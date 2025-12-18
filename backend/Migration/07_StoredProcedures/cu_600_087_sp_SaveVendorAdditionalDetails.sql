@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_SaveVendorAdditionalDetails]
     Phase: 600 - Stored Procedures
     Script: cu_600_087_dbo.sp_SaveVendorAdditionalDetails.sql
-    Description: Creates the [dbo].[sp_SaveVendorAdditionalDetails] stored procedure
+    Description: Creates the [vendors].[sp_SaveAdditionalDetails] stored procedure
     
     Execution Order: 87
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_SaveVendorAdditionalDetails]...';
+PRINT 'Creating stored procedure [vendors].[sp_SaveAdditionalDetails]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_SaveVendorAdditionalDetails]'))
-    DROP PROCEDURE [dbo].[sp_SaveVendorAdditionalDetails];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_SaveAdditionalDetails]'))
+    DROP PROCEDURE [vendors].[sp_SaveAdditionalDetails];
 GO
 
-CREATE   PROCEDURE [dbo].[sp_SaveVendorAdditionalDetails]
+CREATE   PROCEDURE [vendors].[sp_SaveAdditionalDetails]
     @VendorProfileID INT,
     @AdditionalDetailsJSON NVARCHAR(MAX)
 AS
@@ -39,7 +39,7 @@ BEGIN
         FROM OPENJSON(@AdditionalDetailsJSON);
         
         -- Update setup step completion
-        UPDATE VendorProfiles 
+        UPDATE vendors.VendorProfiles 
         SET SetupStep4Completed = 1,
             UpdatedAt = GETDATE()
         WHERE VendorProfileID = @VendorProfileID;
@@ -56,5 +56,6 @@ END;
 
 GO
 
-PRINT 'Stored procedure [dbo].[sp_SaveVendorAdditionalDetails] created successfully.';
+PRINT 'Stored procedure [vendors].[sp_SaveAdditionalDetails] created successfully.';
 GO
+

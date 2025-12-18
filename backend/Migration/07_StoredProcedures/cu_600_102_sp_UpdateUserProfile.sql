@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_UpdateUserProfile]
     Phase: 600 - Stored Procedures
     Script: cu_600_102_dbo.sp_UpdateUserProfile.sql
-    Description: Creates the [dbo].[sp_UpdateUserProfile] stored procedure
+    Description: Creates the [users].[sp_UpdateProfile] stored procedure
     
     Execution Order: 102
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_UpdateUserProfile]...';
+PRINT 'Creating stored procedure [users].[sp_UpdateProfile]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_UpdateUserProfile]'))
-    DROP PROCEDURE [dbo].[sp_UpdateUserProfile];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[users].[sp_UpdateProfile]'))
+    DROP PROCEDURE [users].[sp_UpdateProfile];
 GO
 
-CREATE   PROCEDURE [dbo].[sp_UpdateUserProfile]
+CREATE   PROCEDURE [users].[sp_UpdateProfile]
     @UserID INT,
     @Name NVARCHAR(100) = NULL,
     @Phone NVARCHAR(20) = NULL,
@@ -27,7 +27,7 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    UPDATE Users
+    UPDATE users.Users
     SET 
         Name = ISNULL(@Name, Name),
         Phone = ISNULL(@Phone, Phone),
@@ -41,5 +41,6 @@ END;
 
 GO
 
-PRINT 'Stored procedure [dbo].[sp_UpdateUserProfile] created successfully.';
+PRINT 'Stored procedure [users].[sp_UpdateProfile] created successfully.';
 GO
+

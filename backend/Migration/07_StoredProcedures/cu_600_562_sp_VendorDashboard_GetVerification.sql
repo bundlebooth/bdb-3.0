@@ -1,19 +1,21 @@
 -- =============================================
--- Stored Procedure: sp_VendorDashboard_GetVerification
+-- Stored Procedure: vendors.sp_Dashboard_GetVerification
 -- Description: Gets vendor verification info
 -- Phase: 600 (Stored Procedures)
+-- Schema: vendors
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_VendorDashboard_GetVerification]'))
-    DROP PROCEDURE [dbo].[sp_VendorDashboard_GetVerification];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_Dashboard_GetVerification]'))
+    DROP PROCEDURE [vendors].[sp_Dashboard_GetVerification];
 GO
 
-CREATE PROCEDURE [dbo].[sp_VendorDashboard_GetVerification]
+CREATE PROCEDURE [vendors].[sp_Dashboard_GetVerification]
     @VendorProfileID INT
 AS
 BEGIN
     SET NOCOUNT ON;
     
     SELECT LicenseNumber, InsuranceVerified, Awards, Certifications, IsEcoFriendly, IsPremium, IsAwardWinning, IsLastMinute
-    FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID;
+    FROM vendors.VendorProfiles WHERE VendorProfileID = @VendorProfileID;
 END
 GO
+

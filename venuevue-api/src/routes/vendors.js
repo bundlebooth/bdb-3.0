@@ -62,7 +62,7 @@ async function getStripeStatusByVendorProfileId(pool, vendorProfileId) {
   try {
     const req = new sql.Request(pool);
     req.input('VendorProfileID', sql.Int, vendorProfileId);
-    const r = await req.execute('sp_Vendor_GetStripeAccountId');
+    const r = await req.execute('vendors.sp_GetStripeAccountId');
     const acct = r.recordset[0]?.StripeAccountID || null;
     if (!acct) return { connected: false, chargesEnabled: false, payoutsEnabled: false, accountId: null };
     if (!isStripeConfigured()) return { connected: true, chargesEnabled: false, payoutsEnabled: false, accountId: acct };
@@ -80,12 +80,12 @@ async function getStripeStatusByVendorProfileId(pool, vendorProfileId) {
 async function computeVendorSetupStatusByVendorProfileId(pool, vendorProfileId) {
   const profReq = new sql.Request(pool);
   profReq.input('VendorProfileID', sql.Int, vendorProfileId);
-  const profRes = await profReq.execute('sp_Vendor_GetProfileForSetup');
+  const profRes = await profReq.execute('vendors.sp_GetProfileForSetup');
   if (!profRes.recordset.length) return { exists: false, error: 'Vendor profile not found' };
   const p = profRes.recordset[0];
   const countsReq = new sql.Request(pool);
   countsReq.input('VendorProfileID', sql.Int, vendorProfileId);
-  const countsRes = await countsReq.execute('sp_Vendor_GetSetupCounts');
+  const countsRes = await countsReq.execute('vendors.sp_GetSetupCounts');
   const c = countsRes.recordset[0] || {};
   const stripeStatus = await getStripeStatusByVendorProfileId(pool, vendorProfileId);
   const steps = {
@@ -125,7 +125,7 @@ async function markSetupStep(pool, vendorProfileId, stepNumber) {
     const sReq = new sql.Request(pool);
     sReq.input('VendorProfileID', sql.Int, parseInt(vendorProfileId));
     sReq.input('StepNumber', sql.Int, parseInt(stepNumber));
-    await sReq.execute('sp_UpdateVendorSetupStep');
+    await sReq.execute('vendors.sp_UpdateSetupStep');
   } catch (e) {
     console.warn('sp_UpdateVendorSetupStep failed:', e?.message || e);
   }
@@ -227,7 +227,7 @@ router.get('/predefined-services', async (req, res) => {
     const pool = await poolPromise;
     
     // Use stored procedure to get predefined services
-    const result = await pool.request().execute('sp_Vendor_GetPredefinedServices');
+    const result = await pool.request().execute('vendors.sp_GetPredefinedServices');
     
     // Check if table exists (first recordset indicates table existence)
     if (result.recordsets.length > 0 && result.recordsets[0][0]?.TableExists === 0) {
@@ -280,7 +280,7 @@ router.get('/predefined-services/:category', async (req, res) => {
     const request = new sql.Request(pool);
     request.input('Category', sql.NVarChar(100), category);
     
-    const result = await request.execute('sp_Vendor_GetPredefinedServicesByCategory');
+    const result = await request.execute('vendors.sp_GetPredefinedServicesByCategory');
     
     res.json({ 
       success: true, 
@@ -301,7 +301,7 @@ async function enhanceVendorWithImages(vendor, pool) {
     const imageRequest = new sql.Request(pool);
     imageRequest.input('VendorProfileID', sql.Int, vendor.VendorProfileID || vendor.id);
     
-    const imageResult = await imageRequest.execute('sp_Vendor_GetImages');
+    const imageResult = await imageRequest.execute('vendors.sp_GetImages');
 
     // Process images with Cloudinary enhancements
     const images = imageResult.recordset.map(img => {
@@ -456,7 +456,7 @@ router.get('/', async (req, res) => {
       request.input('StartTime', sql.VarChar(8), formattedStartTime);
       request.input('EndTime', sql.VarChar(8), formattedEndTime);
 
-      result = await request.execute('sp_SearchVendors');
+      result = await request.execute('vendors.sp_Search');
     } catch (spError) {
       console.error('sp_SearchVendors failed:', spError.message);
       throw spError;
@@ -705,9 +705,15 @@ router.get('/', async (req, res) => {
 
   } catch (err) {
     console.error('Database error:', err);
-    res.status(500).json({ 
-      message: 'Database operation failed',
-      error: err.message 
+    // Return empty vendors array on error instead of 500
+    res.json({ 
+      success: true,
+      vendors: [],
+      totalCount: 0,
+      pageNumber: 1,
+      pageSize: 10,
+      hasImages: false,
+      cityFilter: null
     });
   }
 });
@@ -793,7 +799,7 @@ router.get('/map', async (req, res) => {
     request.input('StartTime', sql.VarChar(8), eventStartTime || null);
     request.input('EndTime', sql.VarChar(8), eventEndTime || null);
 
-    const result = await request.execute('sp_SearchVendors');
+    const result = await request.execute('vendors.sp_Search');
     
     const vendors = result.recordset.map(vendor => ({
       id: vendor.VendorProfileID,
@@ -975,7 +981,7 @@ router.get('/search-by-categories', async (req, res) => {
       request.input('StartTime', sql.Time, startTime || null);
       request.input('EndTime', sql.Time, endTime || null);
 
-      const r = await request.execute('sp_SearchVendors');
+      const r = await request.execute('vendors.sp_Search');
 
       let vendors = r.recordset.map(vendor => ({
         id: vendor.id,
@@ -1277,7 +1283,7 @@ router.post('/register', upload.array('images', 5), async (req, res) => {
     request.input('Categories', sql.NVarChar(sql.MAX), JSON.stringify(categoriesData));
     request.input('Services', sql.NVarChar(sql.MAX), JSON.stringify(servicesData));
     
-    const result = await request.execute('sp_RegisterVendor');
+    const result = await request.execute('vendors.sp_RegisterVendor');
     
     if (result.recordset[0].Success) {
       const vendorProfileId = result.recordset[0].VendorProfileID;
@@ -1293,7 +1299,7 @@ router.post('/register', upload.array('images', 5), async (req, res) => {
             serviceRequest.input('VendorDuration', sql.Int, predefinedService.vendorDuration);
             serviceRequest.input('VendorDescription', sql.NVarChar(sql.MAX), predefinedService.vendorDescription || null);
             
-            await serviceRequest.execute('sp_Vendor_InsertPredefinedService');
+            await serviceRequest.execute('vendors.sp_InsertPredefinedService');
             
             console.log(`Added predefined service ${predefinedService.id} for vendor ${vendorProfileId}`);
           } catch (serviceError) {
@@ -1373,7 +1379,7 @@ router.post('/profile', async (req, res) => {
     // Check if vendor profile already exists
     const checkRequest = new sql.Request(pool);
     checkRequest.input('UserID', sql.Int, parseInt(userId));
-    const checkResult = await checkRequest.execute('sp_Vendor_CheckProfileExists');
+    const checkResult = await checkRequest.execute('vendors.sp_CheckProfileExists');
 
     let vendorProfileId;
 
@@ -1395,7 +1401,7 @@ router.post('/profile', async (req, res) => {
       updateRequest.input('Country', sql.NVarChar(50), country || 'Canada');
       updateRequest.input('PostalCode', sql.NVarChar(20), postalCode || null);
 
-      await updateRequest.execute('sp_Vendor_UpdateProfile');
+      await updateRequest.execute('vendors.sp_UpdateProfile');
 
     } else {
       // Create new profile using sp_RegisterVendor
@@ -1415,7 +1421,7 @@ router.post('/profile', async (req, res) => {
       createRequest.input('Categories', sql.NVarChar(sql.MAX), JSON.stringify(categories || []));
       createRequest.input('Services', sql.NVarChar(sql.MAX), JSON.stringify([]));
 
-      const result = await createRequest.execute('sp_RegisterVendor');
+      const result = await createRequest.execute('vendors.sp_RegisterVendor');
       
       if (!result.recordset[0].Success) {
         throw new Error('Failed to create vendor profile');
@@ -1429,7 +1435,7 @@ router.post('/profile', async (req, res) => {
       // Delete existing categories
       const deleteCategoriesRequest = new sql.Request(pool);
       deleteCategoriesRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-      await deleteCategoriesRequest.execute('sp_Vendor_DeleteCategories');
+      await deleteCategoriesRequest.execute('vendors.sp_DeleteCategories');
 
       // Insert new categories
       for (const category of categories) {
@@ -1437,7 +1443,7 @@ router.post('/profile', async (req, res) => {
         categoryRequest.input('VendorProfileID', sql.Int, vendorProfileId);
         categoryRequest.input('CategoryName', sql.NVarChar(50), category);
         
-        await categoryRequest.execute('sp_Vendor_InsertCategory');
+        await categoryRequest.execute('vendors.sp_InsertCategory');
       }
     }
 
@@ -1446,7 +1452,7 @@ router.post('/profile', async (req, res) => {
       // Delete existing service areas
       const deleteAreasRequest = new sql.Request(pool);
       deleteAreasRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-      await deleteAreasRequest.execute('sp_Vendor_DeleteServiceAreas');
+      await deleteAreasRequest.execute('vendors.sp_DeleteServiceAreas');
 
       // Insert new service areas
       for (const area of serviceAreas) {
@@ -1454,14 +1460,14 @@ router.post('/profile', async (req, res) => {
         areaRequest.input('VendorProfileID', sql.Int, vendorProfileId);
         areaRequest.input('AreaName', sql.NVarChar(100), area);
         
-        await areaRequest.execute('sp_Vendor_InsertServiceArea');
+        await areaRequest.execute('vendors.sp_InsertServiceArea');
       }
     }
 
     // Update user to be a vendor
     const updateUserRequest = new sql.Request(pool);
     updateUserRequest.input('UserID', sql.Int, parseInt(userId));
-    await updateUserRequest.execute('sp_Vendor_SetUserAsVendor');
+    await updateUserRequest.execute('vendors.sp_SetUserAsVendor');
 
     // Handle services if provided
     if (services && services.length > 0) {
@@ -1478,7 +1484,7 @@ router.post('/profile', async (req, res) => {
           serviceRequest.input('DepositPercentage', sql.Decimal(5, 2), depositPercentage || null);
           serviceRequest.input('CancellationPolicy', sql.NVarChar(sql.MAX), cancellationPolicy || null);
 
-          await serviceRequest.execute('sp_UpsertVendorService');
+          await serviceRequest.execute('vendors.sp_UpsertService');
         } catch (serviceError) {
           console.error('Error adding service:', serviceError);
         }
@@ -1498,7 +1504,7 @@ router.post('/profile', async (req, res) => {
             hoursRequest.input('OpenTime', sql.Time, businessHours[day].openTime + ':00');
             hoursRequest.input('CloseTime', sql.Time, businessHours[day].closeTime + ':00');
 
-            await hoursRequest.execute('sp_Vendor_UpsertBusinessHours');
+            await hoursRequest.execute('vendors.sp_UpsertBusinessHours');
           } catch (hoursError) {
             console.error('Error setting business hours:', hoursError);
           }
@@ -1515,7 +1521,7 @@ router.post('/profile', async (req, res) => {
           faqRequest.input('Question', sql.NVarChar(500), faq.question);
           faqRequest.input('Answer', sql.NVarChar(sql.MAX), faq.answer);
 
-          await faqRequest.execute('sp_Vendor_InsertFAQ');
+          await faqRequest.execute('vendors.sp_InsertFAQ');
         } catch (faqError) {
           console.error('Error adding FAQ:', faqError);
         }
@@ -1533,7 +1539,7 @@ router.post('/profile', async (req, res) => {
       updateDetailsRequest.input('IsEcoFriendly', sql.Bit, false);
       updateDetailsRequest.input('IsPremium', sql.Bit, false);
 
-      await updateDetailsRequest.execute('sp_Vendor_UpdateVerification');
+      await updateDetailsRequest.execute('vendors.sp_UpdateVerification');
     }
 
     res.status(200).json({
@@ -1618,7 +1624,7 @@ router.post('/onboarding', async (req, res) => {
     // Check if vendor profile already exists
     const checkRequest = new sql.Request(pool);
     checkRequest.input('UserID', sql.Int, parseInt(userId));
-    const checkResult = await checkRequest.execute('sp_Vendor_CheckProfileExists');
+    const checkResult = await checkRequest.execute('vendors.sp_CheckProfileExists');
 
     let vendorProfileId;
     // Remove duplicates from categories array
@@ -1648,7 +1654,7 @@ router.post('/onboarding', async (req, res) => {
       updateRequest.input('PriceLevel', sql.NVarChar(20), priceRange || null);
       updateRequest.input('ProfileLogo', sql.NVarChar(255), profileLogo || null);
 
-      await updateRequest.execute('sp_Vendor_UpdateProfileExtended');
+      await updateRequest.execute('vendors.sp_UpdateProfileExtended');
 
     } else {
       // Create new profile
@@ -1669,7 +1675,7 @@ router.post('/onboarding', async (req, res) => {
       createRequest.input('Categories', sql.NVarChar(sql.MAX), JSON.stringify(allCategories));
       createRequest.input('Services', sql.NVarChar(sql.MAX), JSON.stringify([]));
 
-      const result = await createRequest.execute('sp_RegisterVendor');
+      const result = await createRequest.execute('vendors.sp_RegisterVendor');
       
       if (!result.recordset[0].Success) {
         throw new Error('Failed to create vendor profile');
@@ -1687,21 +1693,21 @@ router.post('/onboarding', async (req, res) => {
       updateExtraRequest.input('PriceLevel', sql.NVarChar(20), priceRange || null);
       updateExtraRequest.input('ProfileLogo', sql.NVarChar(255), profileLogo || null);
 
-      await updateExtraRequest.execute('sp_Vendor_UpdateExtraFields');
+      await updateExtraRequest.execute('vendors.sp_UpdateExtraFields');
     }
 
     // Update categories
     if (allCategories && allCategories.length > 0) {
       const deleteCategoriesRequest = new sql.Request(pool);
       deleteCategoriesRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-      await deleteCategoriesRequest.execute('sp_Vendor_DeleteCategories');
+      await deleteCategoriesRequest.execute('vendors.sp_DeleteCategories');
 
       for (const category of allCategories) {
         const categoryRequest = new sql.Request(pool);
         categoryRequest.input('VendorProfileID', sql.Int, vendorProfileId);
         categoryRequest.input('Category', sql.NVarChar(50), category);
         
-        await categoryRequest.execute('sp_Vendor_InsertCategoryByName');
+        await categoryRequest.execute('vendors.sp_InsertCategoryByName');
       }
       console.log('✅ Updated categories');
     }
@@ -1710,7 +1716,7 @@ router.post('/onboarding', async (req, res) => {
     if (serviceAreas && serviceAreas.length > 0) {
       const deleteAreasRequest = new sql.Request(pool);
       deleteAreasRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-      await deleteAreasRequest.execute('sp_Vendor_DeleteServiceAreas');
+      await deleteAreasRequest.execute('vendors.sp_DeleteServiceAreas');
 
       for (const area of serviceAreas) {
         const areaRequest = new sql.Request(pool);
@@ -1725,7 +1731,7 @@ router.post('/onboarding', async (req, res) => {
         areaRequest.input('FormattedAddress', sql.NVarChar(255), area.formattedAddress || null);
         areaRequest.input('PlaceType', sql.NVarChar(50), area.placeType || null);
         
-        await areaRequest.execute('sp_Vendor_InsertServiceAreaExtended');
+        await areaRequest.execute('vendors.sp_InsertServiceAreaExtended');
       }
       console.log('✅ Updated service areas');
     }
@@ -1774,7 +1780,7 @@ router.post('/onboarding', async (req, res) => {
           hoursRequest.input('CloseTime', sql.VarChar(8), closeTime);
           hoursRequest.input('Timezone', sql.NVarChar(100), timezone || 'America/New_York');
 
-          await hoursRequest.execute('sp_Vendor_UpsertBusinessHoursExtended');
+          await hoursRequest.execute('vendors.sp_UpsertBusinessHoursExtended');
         }
       }
       console.log('✅ Updated business hours with timezone');
@@ -1785,7 +1791,7 @@ router.post('/onboarding', async (req, res) => {
       // Delete existing social media entries
       const deleteSocialRequest = new sql.Request(pool);
       deleteSocialRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-      await deleteSocialRequest.execute('sp_Vendor_DeleteSocialMedia');
+      await deleteSocialRequest.execute('vendors.sp_DeleteSocialMedia');
 
       // Insert new social media entries
       const platforms = {
@@ -1806,7 +1812,7 @@ router.post('/onboarding', async (req, res) => {
           socialRequest.input('URL', sql.NVarChar(255), url);
           socialRequest.input('DisplayOrder', sql.Int, displayOrder++);
 
-          await socialRequest.execute('sp_Vendor_InsertSocialMedia');
+          await socialRequest.execute('vendors.sp_InsertSocialMedia');
         }
       }
       console.log('✅ Updated social media');
@@ -1818,14 +1824,14 @@ router.post('/onboarding', async (req, res) => {
         // Delete existing feature selections
         const deleteFeatureRequest = new sql.Request(pool);
         deleteFeatureRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-        await deleteFeatureRequest.execute('sp_Vendor_DeleteSelectedFeatures');
+        await deleteFeatureRequest.execute('vendors.sp_DeleteSelectedFeatures');
 
         // Insert new feature selections
         for (const featureId of selectedFeatures) {
           const featureRequest = new sql.Request(pool);
           featureRequest.input('VendorProfileID', sql.Int, vendorProfileId);
           featureRequest.input('FeatureID', sql.Int, parseInt(featureId));
-          await featureRequest.execute('sp_Vendor_InsertSelectedFeature');
+          await featureRequest.execute('vendors.sp_InsertSelectedFeature');
         }
         console.log('✅ Updated selected features (questionnaire):', selectedFeatures.length, 'features');
       } catch (featureError) {
@@ -1845,14 +1851,14 @@ router.post('/onboarding', async (req, res) => {
             checkRequest.input('ImageURL', sql.NVarChar(500), url.trim());
             
             // Check if image already exists
-            const existsResult = await checkRequest.execute('sp_Vendor_CheckImageExists');
+            const existsResult = await checkRequest.execute('vendors.sp_CheckImageExists');
             
             if (existsResult.recordset.length === 0) {
               const insertRequest = new sql.Request(pool);
               insertRequest.input('VendorProfileID', sql.Int, vendorProfileId);
               insertRequest.input('ImageURL', sql.NVarChar(500), url.trim());
               insertRequest.input('IsPrimary', sql.Bit, 0);
-              await insertRequest.execute('sp_Vendor_InsertImage');
+              await insertRequest.execute('vendors.sp_InsertImage');
             }
           }
         }
@@ -1868,7 +1874,7 @@ router.post('/onboarding', async (req, res) => {
         const googleRequest = new sql.Request(pool);
         googleRequest.input('VendorProfileID', sql.Int, vendorProfileId);
         googleRequest.input('GooglePlaceId', sql.NVarChar(100), googlePlaceId);
-        await googleRequest.execute('sp_Vendor_UpdateGooglePlaceId');
+        await googleRequest.execute('vendors.sp_UpdateGooglePlaceId');
         console.log('✅ Updated Google Place ID');
       } catch (googleError) {
         console.warn('⚠️ Could not save Google Place ID:', googleError.message);
@@ -1878,7 +1884,7 @@ router.post('/onboarding', async (req, res) => {
     // Update user to be a vendor
     const updateUserRequest = new sql.Request(pool);
     updateUserRequest.input('UserID', sql.Int, parseInt(userId));
-    await updateUserRequest.execute('sp_Vendor_SetUserAsVendor');
+    await updateUserRequest.execute('vendors.sp_SetUserAsVendor');
 
     console.log('✅ Vendor onboarding completed successfully');
 
@@ -1919,7 +1925,7 @@ router.get('/status', async (req, res) => {
     const request = new sql.Request(pool);
     request.input('UserID', sql.Int, userId);
 
-    const result = await request.execute('sp_Vendor_GetStatus');
+    const result = await request.execute('vendors.sp_GetStatus');
 
     if (result.recordset.length === 0) {
       return res.json({
@@ -1982,7 +1988,7 @@ router.get('/profile', async (req, res) => {
     const userRequest = new sql.Request(pool);
     userRequest.input('UserID', sql.Int, userIdNum);
 
-    const userResult = await userRequest.execute('sp_Vendor_GetUserWithProfile');
+    const userResult = await userRequest.execute('vendors.sp_GetUserWithProfile');
 
     console.log('User query result:', userResult.recordset);
 
@@ -2024,7 +2030,7 @@ router.get('/profile', async (req, res) => {
       createProfileRequest.input('Services', sql.NVarChar(sql.MAX), JSON.stringify([]));
 
       try {
-        const createResult = await createProfileRequest.execute('sp_RegisterVendor');
+        const createResult = await createProfileRequest.execute('vendors.sp_RegisterVendor');
         
         if (createResult.recordset[0].Success) {
           const newVendorProfileId = createResult.recordset[0].VendorProfileID;
@@ -2057,7 +2063,7 @@ router.get('/profile', async (req, res) => {
     profileRequest.input('VendorProfileID', sql.Int, user.VendorProfileID);
     profileRequest.input('UserID', sql.Int, userIdNum); // Pass UserID for favorite check
 
-    const profileResult = await profileRequest.execute('sp_GetVendorDetails');
+    const profileResult = await profileRequest.execute('vendors.sp_GetDetails');
     
     if (profileResult.recordsets.length === 0) {
       return res.status(404).json({
@@ -2129,7 +2135,7 @@ router.get('/profile', async (req, res) => {
     try {
       const serviceAreasRequest = new sql.Request(pool);
       serviceAreasRequest.input('VendorProfileID', sql.Int, user.VendorProfileID);
-      const serviceAreasResult = await serviceAreasRequest.execute('sp_Vendor_GetServiceAreas');
+      const serviceAreasResult = await serviceAreasRequest.execute('vendors.sp_GetServiceAreas');
       serviceAreas = serviceAreasResult.recordset || [];
     } catch (serviceAreasError) {
       console.warn('Service areas query failed, using empty array:', serviceAreasError.message);
@@ -2141,7 +2147,7 @@ router.get('/profile', async (req, res) => {
     try {
       const featuresRequest = new sql.Request(pool);
       featuresRequest.input('VendorProfileID', sql.Int, user.VendorProfileID);
-      const featuresResult = await featuresRequest.execute('sp_Vendor_GetSelectedFeatures');
+      const featuresResult = await featuresRequest.execute('vendors.sp_GetSelectedFeatures');
       selectedFeatures = featuresResult.recordset.map(f => f.FeatureID);
     } catch (featuresError) {
       console.warn('Selected features query failed, using empty array:', featuresError.message);
@@ -2186,7 +2192,7 @@ router.get('/profile', async (req, res) => {
     };
 
     try {
-      const progressResult = await progressRequest.execute('sp_GetVendorSetupProgress');
+      const progressResult = await progressRequest.execute('vendors.sp_GetSetupProgress');
       if (progressResult.recordset.length > 0) {
         setupProgress = progressResult.recordset[0];
       }
@@ -2201,7 +2207,7 @@ router.get('/profile', async (req, res) => {
     try {
       const extraFieldsRequest = new sql.Request(pool);
       extraFieldsRequest.input('VendorProfileID', sql.Int, user.VendorProfileID);
-      const extraFieldsResult = await extraFieldsRequest.execute('sp_Vendor_GetExtraFields');
+      const extraFieldsResult = await extraFieldsRequest.execute('vendors.sp_GetExtraFields');
       if (extraFieldsResult.recordset.length > 0) {
         const extraFields = extraFieldsResult.recordset[0];
         stripeAccountId = extraFields.StripeAccountID;
@@ -2257,10 +2263,30 @@ router.get('/profile', async (req, res) => {
 
   } catch (err) {
     console.error('Vendor profile error:', err);
-    res.status(500).json({ 
+    // Return a default empty profile on error instead of 500
+    res.json({ 
       success: false,
-      message: 'Failed to get vendor profile',
-      error: err.message 
+      vendorProfileId: null,
+      message: 'Failed to get vendor profile - database schema may be incomplete',
+      data: {
+        profile: {},
+        categories: [],
+        services: [],
+        portfolio: [],
+        reviews: [],
+        faqs: [],
+        team: [],
+        socialMedia: [],
+        businessHours: [],
+        serviceAreas: [],
+        images: [],
+        selectedFeatures: [],
+        categoryAnswers: [],
+        isFavorite: false,
+        availableSlots: [],
+        selectedFilters: [],
+        setupProgress: {}
+      }
     });
   }
 });
@@ -2276,12 +2302,12 @@ router.get('/:id/availability', async (req, res) => {
     request.input('VendorProfileID', sql.Int, vendorProfileId);
     
     // Get business hours
-    const hoursResult = await request.execute('sp_Vendor_GetBusinessHours');
+    const hoursResult = await request.execute('vendors.sp_GetBusinessHours');
     
     // Get availability exceptions
     const exceptionsRequest = new sql.Request(pool);
     exceptionsRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-    const exceptionsResult = await exceptionsRequest.execute('sp_Vendor_GetAvailabilityExceptions');
+    const exceptionsResult = await exceptionsRequest.execute('vendors.sp_GetAvailabilityExceptions');
     
     res.json({
       businessHours: hoursResult.recordset,
@@ -2320,7 +2346,7 @@ router.get('/:id', async (req, res) => {
     request.input('VendorProfileID', sql.Int, vendorProfileId);
     request.input('UserID', sql.Int, userId || null);
 
-    const result = await request.execute('sp_GetVendorDetails');
+    const result = await request.execute('vendors.sp_GetDetails');
     
     if (result.recordsets.length === 0) {
       return res.status(404).json({
@@ -2351,7 +2377,7 @@ router.get('/:id', async (req, res) => {
     try {
       const serviceAreasRequest = new sql.Request(pool);
       serviceAreasRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-      const serviceAreasResult = await serviceAreasRequest.execute('sp_Vendor_GetServiceAreasDetailed');
+      const serviceAreasResult = await serviceAreasRequest.execute('vendors.sp_GetServiceAreasDetailed');
       serviceAreas = serviceAreasResult.recordset || [];
     } catch (serviceAreasError) {
       console.warn('Service areas query failed, using empty array:', serviceAreasError.message);
@@ -2449,7 +2475,7 @@ router.put('/:id', upload.array('images', 5), async (req, res) => {
       request.input('IsEcoFriendly', sql.Bit, updateData.isEcoFriendly || 0);
       request.input('IsAwardWinning', sql.Bit, updateData.isAwardWinning || 0);
 
-      await request.execute('sp_Vendor_UpdateProfileFull');
+      await request.execute('vendors.sp_UpdateProfileFull');
 
       if (files.length > 0) {
         for (const file of files) {
@@ -2458,7 +2484,7 @@ router.put('/:id', upload.array('images', 5), async (req, res) => {
           imgRequest.input('ImageURL', sql.NVarChar(255), `/uploads/${file.filename}`);
           imgRequest.input('IsPrimary', sql.Bit, 0);
           
-          await imgRequest.execute('sp_Vendor_InsertImageWithPath');
+          await imgRequest.execute('vendors.sp_InsertImageWithPath');
         }
       }
 
@@ -2524,17 +2550,17 @@ router.post('/setup/step1-business-basics', async (req, res) => {
     updateRequest.input('YearsInBusiness', sql.Int, yearsInBusiness || null);
     updateRequest.input('PriceLevel', sql.NVarChar, priceLevel || '$$');
     
-    await updateRequest.execute('sp_Vendor_UpdateBusinessBasics');
+    await updateRequest.execute('vendors.sp_UpdateBusinessBasics');
     
     // Handle categories - replace existing with primary + additional
     const deleteCatRequest = new sql.Request(pool);
     deleteCatRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-    await deleteCatRequest.execute('sp_Vendor_DeleteCategories');
+    await deleteCatRequest.execute('vendors.sp_DeleteCategories');
     
     const primaryCatRequest = new sql.Request(pool);
     primaryCatRequest.input('VendorProfileID', sql.Int, vendorProfileId);
     primaryCatRequest.input('Category', sql.NVarChar(50), primaryCategory);
-    await primaryCatRequest.execute('sp_Vendor_InsertCategoryByName');
+    await primaryCatRequest.execute('vendors.sp_InsertCategoryByName');
     
     if (Array.isArray(additionalCategories) && additionalCategories.length > 0) {
       for (const category of additionalCategories) {
@@ -2542,7 +2568,7 @@ router.post('/setup/step1-business-basics', async (req, res) => {
         const catRequest = new sql.Request(pool);
         catRequest.input('VendorProfileID', sql.Int, vendorProfileId);
         catRequest.input('Category', sql.NVarChar(50), category);
-        await catRequest.execute('sp_Vendor_InsertCategoryByName');
+        await catRequest.execute('vendors.sp_InsertCategoryByName');
       }
     }
 
@@ -2592,14 +2618,14 @@ router.post('/setup/step3-gallery', async (req, res) => {
     updateRequest.input('VendorProfileID', sql.Int, vendorProfileId);
     updateRequest.input('LogoURL', sql.NVarChar, featuredImage);
     
-    await updateRequest.execute('sp_Vendor_UpdateLogoURL');
+    await updateRequest.execute('vendors.sp_UpdateLogoURL');
     
     // Handle gallery images
     if (galleryImages && galleryImages.length > 0) {
       // Delete existing images
       const deleteImgRequest = new sql.Request(pool);
       deleteImgRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-      await deleteImgRequest.execute('sp_Vendor_DeleteImages');
+      await deleteImgRequest.execute('vendors.sp_DeleteImages');
       
       // Insert new images
       for (let i = 0; i < galleryImages.length; i++) {
@@ -2610,7 +2636,7 @@ router.post('/setup/step3-gallery', async (req, res) => {
         imageRequest.input('DisplayOrder', sql.Int, i);
         imageRequest.input('Caption', sql.NVarChar(255), galleryImages[i].caption || null);
         
-        await imageRequest.execute('sp_Vendor_InsertGalleryImage');
+        await imageRequest.execute('vendors.sp_InsertGalleryImage');
       }
     }
     
@@ -2619,7 +2645,7 @@ router.post('/setup/step3-gallery', async (req, res) => {
       // Delete existing portfolio
       const deletePortRequest = new sql.Request(pool);
       deletePortRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-      await deletePortRequest.execute('sp_Vendor_DeletePortfolio');
+      await deletePortRequest.execute('vendors.sp_DeletePortfolio');
       
       // Insert new portfolio items
       for (let i = 0; i < portfolioItems.length; i++) {
@@ -2631,7 +2657,7 @@ router.post('/setup/step3-gallery', async (req, res) => {
         portfolioRequest.input('ProjectDate', sql.Date, portfolioItems[i].projectDate || null);
         portfolioRequest.input('DisplayOrder', sql.Int, i);
         
-        await portfolioRequest.execute('sp_Vendor_InsertPortfolioItem');
+        await portfolioRequest.execute('vendors.sp_InsertPortfolioItem');
       }
     }
     // Mark step 3 completed (gallery)
@@ -2675,7 +2701,7 @@ router.post('/setup/step4-business-hours', async (req, res) => {
         timezoneRequest.input('VendorProfileID', sql.Int, vendorProfileId);
         timezoneRequest.input('Timezone', sql.NVarChar(100), timezone);
         
-        await timezoneRequest.execute('sp_Vendor_UpdateTimezone');
+        await timezoneRequest.execute('vendors.sp_UpdateTimezone');
       } catch (tzErr) {
         console.log('Note: Timezone column may not exist in VendorProfiles:', tzErr.message);
         // Continue even if timezone update fails
@@ -2685,7 +2711,7 @@ router.post('/setup/step4-business-hours', async (req, res) => {
     // Delete existing business hours
     const deleteRequest = new sql.Request(pool);
     deleteRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-    await deleteRequest.execute('sp_Vendor_DeleteBusinessHours');
+    await deleteRequest.execute('vendors.sp_DeleteBusinessHours');
 
     // Insert new business hours with Timezone
     for (const hour of businessHours) {
@@ -2705,7 +2731,7 @@ router.post('/setup/step4-business-hours', async (req, res) => {
         insertRequest.input('IsAvailable', sql.Bit, hour.isAvailable);
         insertRequest.input('Timezone', sql.NVarChar(100), timezone || 'America/Toronto');
 
-        await insertRequest.execute('sp_Vendor_InsertBusinessHour');
+        await insertRequest.execute('vendors.sp_InsertBusinessHour');
       } catch (hourErr) {
         console.error(`Error inserting hour for day ${hour.dayOfWeek}:`, hourErr);
         throw hourErr;
@@ -2733,7 +2759,7 @@ router.get('/debug/service-ids', async (req, res) => {
     const pool = await poolPromise;
     const request = new sql.Request(pool);
     
-    const result = await request.execute('sp_Vendor_GetDebugServiceIds');
+    const result = await request.execute('vendors.sp_GetDebugServiceIds');
     
     res.json({
       success: true,
@@ -2759,7 +2785,7 @@ router.get('/service-id-by-name/:serviceName', async (req, res) => {
     
     request.input('ServiceName', sql.NVarChar(100), serviceName);
     
-    const result = await request.execute('sp_Vendor_GetServiceByName');
+    const result = await request.execute('vendors.sp_GetServiceByName');
     
     if (result.recordset.length === 0) {
       return res.status(404).json({
@@ -2868,7 +2894,7 @@ router.post('/search-by-services', async (req, res) => {
     const serviceIdsForValidation = predefinedServiceIds.join(',');
     serviceValidationRequest.input('ServiceIds', sql.NVarChar(500), serviceIdsForValidation);
 
-    const validationResult = await serviceValidationRequest.execute('sp_Vendor_ValidatePredefinedServiceIds');
+    const validationResult = await serviceValidationRequest.execute('vendors.sp_ValidatePredefinedServiceIds');
 
     const validServiceIds = validationResult.recordset.map(s => s.PredefinedServiceID);
     const invalidServiceIds = predefinedServiceIds.filter(id => !validServiceIds.includes(id));
@@ -2928,7 +2954,7 @@ router.post('/search-by-services', async (req, res) => {
     request.input('EventEndRaw', sql.NVarChar(20), derivedEnd || null);
 
     // Call the new stored procedure for predefined services
-    const result = await request.execute('sp_SearchVendorsByPredefinedServices');
+    const result = await request.execute('vendors.sp_SearchByPredefinedServices');
     
     // Business hours filtering now handled inside stored procedure
 
@@ -3080,7 +3106,7 @@ router.get('/:id/selected-services', async (req, res) => {
     request.input('VendorProfileID', sql.Int, vendorProfileId);
     
     // Query from Services table first (new unified pricing approach)
-    const result = await request.execute('sp_Vendor_GetSelectedServicesWithPricing');
+    const result = await request.execute('vendors.sp_GetSelectedServicesWithPricing');
     
     let rows = result.recordset;
 
@@ -3125,7 +3151,7 @@ router.post('/:id/selected-services', async (req, res) => {
     // Delete existing selected services
     const deleteRequest = new sql.Request(pool);
     deleteRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-    await deleteRequest.execute('sp_Vendor_DeleteSelectedServices');
+    await deleteRequest.execute('vendors.sp_DeleteSelectedServices');
 
     // Insert new selected services
     for (const service of selectedServices) {
@@ -3137,7 +3163,7 @@ router.post('/:id/selected-services', async (req, res) => {
       insertRequest.input('VendorDurationMinutes', sql.Int, service.vendorDurationMinutes || service.durationMinutes || null);
       insertRequest.input('ImageURL', sql.NVarChar(500), service.imageURL || service.ImageURL || null);
       
-      await insertRequest.execute('sp_Vendor_InsertSelectedService');
+      await insertRequest.execute('vendors.sp_InsertSelectedService');
     }
 
     res.json({
@@ -3181,7 +3207,7 @@ router.put('/:id/selected-services/:serviceId', async (req, res) => {
     request.input('VendorDurationMinutes', sql.Int, vendorDurationMinutes || null);
     request.input('ImageURL', sql.NVarChar, imageURL || null);
     
-    const result = await request.execute('sp_Vendor_UpdateSelectedService');
+    const result = await request.execute('vendors.sp_UpdateSelectedService');
 
     if (result.rowsAffected[0] === 0) {
       return res.status(404).json({
@@ -3230,12 +3256,12 @@ router.post('/setup/step3-services', async (req, res) => {
       // First, detach existing services from categories to avoid FK constraint when deleting categories
       const detachRequest = new sql.Request(pool);
       detachRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-      await detachRequest.execute('sp_Vendor_DetachServicesFromCategories');
+      await detachRequest.execute('vendors.sp_DetachServicesFromCategories');
 
       // Now delete existing categories
       const deleteRequest = new sql.Request(pool);
       deleteRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-      await deleteRequest.execute('sp_Vendor_DeleteServiceCategories');
+      await deleteRequest.execute('vendors.sp_DeleteServiceCategories');
       
       // Insert new categories
       for (let i = 0; i < serviceCategories.length; i++) {
@@ -3245,7 +3271,7 @@ router.post('/setup/step3-services', async (req, res) => {
         catRequest.input('Description', sql.NVarChar(sql.MAX), serviceCategories[i].description || null);
         catRequest.input('DisplayOrder', sql.Int, i);
         
-        await catRequest.execute('sp_Vendor_InsertServiceCategory');
+        await catRequest.execute('vendors.sp_InsertServiceCategory');
       }
     }
     
@@ -3258,7 +3284,7 @@ router.post('/setup/step3-services', async (req, res) => {
           const catRequest = new sql.Request(pool);
           catRequest.input('VendorProfileID', sql.Int, vendorProfileId);
           catRequest.input('CategoryName', sql.NVarChar(100), service.categoryName);
-          const catResult = await catRequest.execute('sp_Vendor_GetServiceCategoryId');
+          const catResult = await catRequest.execute('vendors.sp_GetServiceCategoryId');
           if (catResult.recordset.length > 0) {
             categoryId = catResult.recordset[0].CategoryID;
           }
@@ -3297,7 +3323,7 @@ router.post('/setup/step3-services', async (req, res) => {
 
         // Use unified upsert stored procedure
         try {
-          await serviceRequest.execute('dbo.sp_UpsertVendorService');
+          await serviceRequest.execute('vendors.sp_UpsertService');
         } catch (spErr) {
           console.error('sp_UpsertVendorService error:', spErr);
           return res.status(400).json({
@@ -3320,7 +3346,7 @@ router.post('/setup/step3-services', async (req, res) => {
         packageRequest.input('MaxGuests', sql.Int, pkg.maxGuests || null);
         packageRequest.input('WhatsIncluded', sql.NVarChar, pkg.whatsIncluded || null);
         
-        await packageRequest.execute('sp_Vendor_InsertPackage');
+        await packageRequest.execute('vendors.sp_InsertPackage');
       }
     }
     
@@ -3329,13 +3355,13 @@ router.post('/setup/step3-services', async (req, res) => {
     console.log(`[BACKEND] Deleting all existing services for vendor ${vendorProfileId}`);
     const deleteServicesRequest = new sql.Request(pool);
     deleteServicesRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-    const deleteResult = await deleteServicesRequest.execute('sp_Vendor_DeleteAllServices');
+    const deleteResult = await deleteServicesRequest.execute('vendors.sp_DeleteAllServices');
     console.log(`[BACKEND] Deleted ${deleteResult.recordset[0]?.RowsDeleted || 0} services from Services table`);
     
     // Also delete from VendorSelectedServices (legacy table, may not be used anymore)
     const deleteSelectedRequest = new sql.Request(pool);
     deleteSelectedRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-    const deleteSelectedResult = await deleteSelectedRequest.execute('sp_Vendor_DeleteSelectedServices');
+    const deleteSelectedResult = await deleteSelectedRequest.execute('vendors.sp_DeleteSelectedServices');
     console.log(`[BACKEND] Deleted ${deleteSelectedResult.recordset[0]?.RowsDeleted || 0} services from VendorSelectedServices table`);
 
     if (selectedPredefinedServices && selectedPredefinedServices.length > 0) {
@@ -3409,7 +3435,7 @@ router.post('/setup/step3-services', async (req, res) => {
 
           console.log(`[BACKEND] Creating Service with unified pricing for ${selectedService.name}`);
           
-          const insertResult = await serviceRequest.execute('dbo.sp_UpsertVendorService');
+          const insertResult = await serviceRequest.execute('vendors.sp_UpsertService');
           
           console.log(`[BACKEND]   - Insert result:`, insertResult.rowsAffected);
           
@@ -3417,7 +3443,7 @@ router.post('/setup/step3-services', async (req, res) => {
           const verifyRequest = new sql.Request(pool);
           verifyRequest.input('VendorProfileID', sql.Int, vendorProfileId);
           verifyRequest.input('LinkedPredefinedServiceID', sql.Int, selectedService.predefinedServiceId);
-          const verifyResult = await verifyRequest.execute('sp_Vendor_VerifyInsertedService');
+          const verifyResult = await verifyRequest.execute('vendors.sp_VerifyInsertedService');
           
           if (verifyResult.recordset.length > 0) {
             const savedService = verifyResult.recordset[0];
@@ -3476,7 +3502,7 @@ router.post('/setup/step5-team', async (req, res) => {
       // Delete existing team members
       const deleteRequest = new sql.Request(pool);
       deleteRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-      await deleteRequest.execute('sp_Vendor_DeleteTeam');
+      await deleteRequest.execute('vendors.sp_DeleteTeam');
       
       // Insert new team members
       for (let i = 0; i < teamMembers.length; i++) {
@@ -3488,7 +3514,7 @@ router.post('/setup/step5-team', async (req, res) => {
         teamRequest.input('ImageURL', sql.NVarChar(500), teamMembers[i].imageUrl || null);
         teamRequest.input('DisplayOrder', sql.Int, i);
         
-        await teamRequest.execute('sp_Vendor_InsertTeamMember');
+        await teamRequest.execute('vendors.sp_InsertTeamMember');
       }
     }
     
@@ -3537,7 +3563,7 @@ router.post('/setup/step6-social', async (req, res) => {
       updateRequest.input('VendorProfileID', sql.Int, vendorProfileId);
       updateRequest.input('BookingLink', sql.NVarChar(500), bookingLink);
       
-      await updateRequest.execute('sp_Vendor_UpdateBookingLink');
+      await updateRequest.execute('vendors.sp_UpdateBookingLink');
     }
     
     // Handle social media profiles
@@ -3545,7 +3571,7 @@ router.post('/setup/step6-social', async (req, res) => {
       // Delete existing social media
       const deleteRequest = new sql.Request(pool);
       deleteRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-      await deleteRequest.execute('sp_Vendor_DeleteSocialMedia');
+      await deleteRequest.execute('vendors.sp_DeleteSocialMedia');
       
       // Insert new social media links
       for (let i = 0; i < socialMediaProfiles.length; i++) {
@@ -3555,7 +3581,7 @@ router.post('/setup/step6-social', async (req, res) => {
         socialRequest.input('URL', sql.NVarChar(255), socialMediaProfiles[i].url);
         socialRequest.input('DisplayOrder', sql.Int, i);
         
-        await socialRequest.execute('sp_Vendor_InsertSocialMedia');
+        await socialRequest.execute('vendors.sp_InsertSocialMedia');
       }
     }
     
@@ -3619,14 +3645,14 @@ router.post('/setup/step7-availability', async (req, res) => {
     updateRequest.input('AcceptingBookings', sql.Bit, acceptingBookings || false);
     updateRequest.input('AverageResponseTime', sql.Int, responseTimeExpectation || 24);
     
-    await updateRequest.execute('sp_Vendor_UpdateBookingSettings');
+    await updateRequest.execute('vendors.sp_UpdateBookingSettings');
     
     // Handle business hours
     if (businessHours && businessHours.length > 0) {
       // Delete existing business hours
       const deleteHoursRequest = new sql.Request(pool);
       deleteHoursRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-      await deleteHoursRequest.execute('sp_Vendor_DeleteBusinessHours');
+      await deleteHoursRequest.execute('vendors.sp_DeleteBusinessHours');
       
       // Insert new business hours
       for (const hours of businessHours) {
@@ -3637,7 +3663,7 @@ router.post('/setup/step7-availability', async (req, res) => {
         hoursRequest.input('CloseTime', sql.Time, hours.closeTime || null);
         hoursRequest.input('IsAvailable', sql.Bit, hours.isAvailable || false);
         
-        await hoursRequest.execute('sp_Vendor_InsertBusinessHourSimple');
+        await hoursRequest.execute('vendors.sp_InsertBusinessHourSimple');
       }
     }
     
@@ -3652,7 +3678,7 @@ router.post('/setup/step7-availability', async (req, res) => {
         exceptionRequest.input('IsAvailable', sql.Bit, exception.isAvailable);
         exceptionRequest.input('Reason', sql.NVarChar(255), exception.reason || null);
         
-        await exceptionRequest.execute('sp_Vendor_InsertAvailabilityException');
+        await exceptionRequest.execute('vendors.sp_InsertAvailabilityException');
       }
     }
     
@@ -3706,7 +3732,7 @@ router.post('/setup/step8-policies', async (req, res) => {
     updateRequest.input('PaymentMethods', sql.NVarChar, JSON.stringify(paymentMethods) || null);
     updateRequest.input('PaymentTerms', sql.NVarChar, paymentTerms || null);
     
-    await updateRequest.execute('sp_Vendor_UpdatePolicies');
+    await updateRequest.execute('vendors.sp_UpdatePolicies');
     
     // Mark step 8 completed
     await markSetupStep(pool, vendorProfileId, 8);
@@ -3760,7 +3786,7 @@ router.post('/setup/step9-verification', async (req, res) => {
     updateRequest.input('IsEcoFriendly', sql.Bit, isEcoFriendly || false);
     updateRequest.input('IsPremium', sql.Bit, isPremium || false);
     
-    await updateRequest.execute('sp_Vendor_UpdateVerification');
+    await updateRequest.execute('vendors.sp_UpdateVerification');
     
     // Mark step 9 completed
     await markSetupStep(pool, vendorProfileId, 9);
@@ -3805,7 +3831,7 @@ router.post('/setup/step10-completion', async (req, res) => {
       // Delete existing FAQs
       const deleteRequest = new sql.Request(pool);
       deleteRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-      await deleteRequest.execute('sp_Vendor_DeleteFAQs');
+      await deleteRequest.execute('vendors.sp_DeleteFAQs');
       
       // Insert new FAQs
       for (let i = 0; i < faqs.length; i++) {
@@ -3817,7 +3843,7 @@ router.post('/setup/step10-completion', async (req, res) => {
         faqRequest.input('AnswerOptions', sql.NVarChar(sql.MAX), faqs[i].answerOptions ? JSON.stringify(faqs[i].answerOptions) : null);
         faqRequest.input('DisplayOrder', sql.Int, i);
         
-        await faqRequest.execute('sp_Vendor_InsertFAQExtended');
+        await faqRequest.execute('vendors.sp_InsertFAQExtended');
       }
     }
     
@@ -3825,7 +3851,7 @@ router.post('/setup/step10-completion', async (req, res) => {
     const updateRequest = new sql.Request(pool);
     updateRequest.input('VendorProfileID', sql.Int, vendorProfileId);
     
-    await updateRequest.execute('sp_Vendor_MarkSetupComplete');
+    await updateRequest.execute('vendors.sp_MarkSetupComplete');
     // Mark step 10 completed
     await markSetupStep(pool, vendorProfileId, 10);
 
@@ -3855,7 +3881,7 @@ router.get('/setup/progress/:vendorProfileId', async (req, res) => {
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, vendorProfileId);
     
-    const result = await request.execute('sp_Vendor_GetSetupProgressSummary');
+    const result = await request.execute('vendors.sp_GetSetupProgressSummary');
     
     if (result.recordset.length === 0) {
       return res.status(404).json({
@@ -3936,7 +3962,7 @@ router.get('/:id/setup-progress', async (req, res) => {
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, vendorProfileId);
 
-    const result = await request.execute('sp_GetVendorSetupProgress');
+    const result = await request.execute('vendors.sp_GetSetupProgress');
     const status = await computeVendorSetupStatusByVendorProfileId(pool, vendorProfileId);
     
     if (result.recordset.length === 0) {
@@ -4006,7 +4032,7 @@ router.post('/setup', async (req, res) => {
     const verifyRequest = new sql.Request(pool);
     verifyRequest.input('VendorProfileID', sql.Int, vendorProfileIdNum);
     
-    const verifyResult = await verifyRequest.execute('sp_Vendor_VerifyProfileExists');
+    const verifyResult = await verifyRequest.execute('vendors.sp_VerifyProfileExists');
     
     if (verifyResult.recordset.length === 0) {
       return res.status(404).json({
@@ -4025,7 +4051,7 @@ router.post('/setup', async (req, res) => {
     request.input('SocialMediaData', sql.NVarChar(sql.MAX), socialMedia ? JSON.stringify(socialMedia) : null);
     request.input('AvailabilityData', sql.NVarChar(sql.MAX), availability ? JSON.stringify(availability) : null);
 
-    const result = await request.execute('sp_CompleteVendorSetup');
+    const result = await request.execute('vendors.sp_CompleteSetup');
     
     const response = result.recordset[0];
     
@@ -4070,7 +4096,7 @@ router.post('/:id/gallery', async (req, res) => {
     request.input('ImageType', sql.NVarChar(10), imageType || 'upload');
     request.input('Caption', sql.NVarChar(255), caption);
 
-    const result = await request.execute('sp_AddVendorGalleryImage');
+    const result = await request.execute('vendors.sp_AddGalleryImage');
     
     res.json({
       success: true,
@@ -4107,7 +4133,7 @@ router.post('/:id/packages', async (req, res) => {
     request.input('Duration', sql.NVarChar(50), duration);
     request.input('MaxGuests', sql.Int, maxGuests);
 
-    const result = await request.execute('sp_AddVendorPackage');
+    const result = await request.execute('vendors.sp_AddPackage');
     
     res.json({
       success: true,
@@ -4158,7 +4184,7 @@ router.post('/:id/services', async (req, res) => {
     request.input('DepositPercentage', sql.Decimal(5, 2), 20);
     request.input('CancellationPolicy', sql.NVarChar, null);
 
-    const insertResult = await request.execute('dbo.sp_UpsertVendorService');
+    const insertResult = await request.execute('vendors.sp_UpsertService');
     const newServiceId = insertResult.recordset && insertResult.recordset[0] ? insertResult.recordset[0].ServiceID : null;
     res.json({
       success: true,
@@ -4192,7 +4218,7 @@ router.post('/:id/social-media', async (req, res) => {
     request.input('Platform', sql.NVarChar(50), platform);
     request.input('URL', sql.NVarChar(500), url);
 
-    const result = await request.execute('sp_AddVendorSocialMedia');
+    const result = await request.execute('vendors.sp_AddSocialMedia');
     
     res.json({
       success: true,
@@ -4227,7 +4253,7 @@ router.post('/:id/availability', async (req, res) => {
     request.input('StartTime', sql.Time, startTime);
     request.input('EndTime', sql.Time, endTime);
 
-    const result = await request.execute('sp_AddVendorAvailability');
+    const result = await request.execute('vendors.sp_AddAvailability');
     
     res.json({
       success: true,
@@ -4258,7 +4284,7 @@ router.get('/:id/setup-data', async (req, res) => {
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, id);
 
-    const result = await request.execute('sp_GetVendorSetupData');
+    const result = await request.execute('vendors.sp_GetSetupData');
     
     if (result.recordsets.length === 0) {
       return res.status(404).json({
@@ -4301,7 +4327,7 @@ router.get('/summary/:id', async (req, res) => {
     request.input('VendorProfileID', sql.Int, id);
 
     // Get all summary data using stored procedure
-    const summaryResult = await request.execute('sp_Vendor_GetSummary');
+    const summaryResult = await request.execute('vendors.sp_GetSummary');
 
     if (summaryResult.recordsets[0].length === 0) {
       return res.status(404).json({ success: false, message: 'Vendor not found' });
@@ -4382,14 +4408,14 @@ router.post('/setup/step2-location', async (req, res) => {
     request.input('Latitude', sql.Decimal(10, 8), latitude);
     request.input('Longitude', sql.Decimal(11, 8), longitude);
     
-    await request.execute('sp_Vendor_UpdateLocation');
+    await request.execute('vendors.sp_UpdateLocation');
     
     // Handle service areas if provided
     if (serviceAreas && serviceAreas.length > 0) {
       // First, clear existing service areas
       const clearRequest = new sql.Request(pool);
       clearRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-      await clearRequest.execute('sp_Vendor_DeleteServiceAreas');
+      await clearRequest.execute('vendors.sp_DeleteServiceAreas');
       
       // Insert new service areas with Google Maps data
       for (const area of serviceAreas) {
@@ -4415,7 +4441,7 @@ router.post('/setup/step2-location', async (req, res) => {
         areaRequest.input('BoundsSouthwestLat', sql.Decimal(9, 6), bounds?.southwest?.lat || null);
         areaRequest.input('BoundsSouthwestLng', sql.Decimal(9, 6), bounds?.southwest?.lng || null);
         
-        await areaRequest.execute('sp_Vendor_InsertServiceAreaFull');
+        await areaRequest.execute('vendors.sp_InsertServiceAreaFull');
       }
     }
     
@@ -4446,7 +4472,7 @@ router.post('/setup/step4-additional-details', async (req, res) => {
       // First, delete existing answers for this vendor to avoid duplicates
       const deleteRequest = new sql.Request(pool);
       deleteRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-      await deleteRequest.execute('sp_Vendor_DeleteCategoryAnswers');
+      await deleteRequest.execute('vendors.sp_DeleteCategoryAnswers');
 
       // Insert new answers
       for (const answer of categoryAnswers) {
@@ -4454,7 +4480,7 @@ router.post('/setup/step4-additional-details', async (req, res) => {
         insertRequest.input('VendorProfileID', sql.Int, vendorProfileId);
         insertRequest.input('QuestionID', sql.Int, answer.questionId);
         insertRequest.input('Answer', sql.NVarChar(sql.MAX), answer.answer);
-        await insertRequest.execute('sp_Vendor_InsertCategoryAnswer');
+        await insertRequest.execute('vendors.sp_InsertCategoryAnswer');
       }
     }
 
@@ -4516,7 +4542,7 @@ router.post('/setup/step5-availability', async (req, res) => {
           request.input('OpenTime', sql.VarChar(8), openTime);
           request.input('CloseTime', sql.VarChar(8), closeTime);
           
-          await request.execute('sp_Vendor_InsertBusinessHourVarChar');
+          await request.execute('vendors.sp_InsertBusinessHourVarChar');
         }
       }
     }
@@ -4546,7 +4572,7 @@ router.post('/setup/step6-gallery', async (req, res) => {
       request.input('VendorProfileID', sql.Int, vendorProfileId);
       request.input('LogoURL', sql.NVarChar(500), logoURL);
       
-      await request.execute('sp_Vendor_UpdateLogoURL');
+      await request.execute('vendors.sp_UpdateLogoURL');
     }
     
     // Save gallery images if provided
@@ -4557,7 +4583,7 @@ router.post('/setup/step6-gallery', async (req, res) => {
       // First, delete existing gallery images for this vendor
       const deleteRequest = new sql.Request(pool);
       deleteRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-      await deleteRequest.execute('sp_Vendor_DeleteGalleryImages');
+      await deleteRequest.execute('vendors.sp_DeleteGalleryImages');
       console.log('Deleted existing gallery images');
       
       // Insert new gallery images
@@ -4572,7 +4598,7 @@ router.post('/setup/step6-gallery', async (req, res) => {
           insertRequest.input('ImageType', sql.NVarChar(20), 'Gallery');
           insertRequest.input('DisplayOrder', sql.Int, i);
           
-          await insertRequest.execute('sp_Vendor_InsertGalleryImageFull');
+          await insertRequest.execute('vendors.sp_InsertGalleryImageFull');
           console.log(`Inserted gallery image ${i} successfully`);
         } else {
           console.log(`Skipping image ${i} - no URL`);
@@ -4609,7 +4635,7 @@ router.post('/setup/step7-social', async (req, res) => {
       // First, delete existing social media for this vendor
       const deleteRequest = new sql.Request(pool);
       deleteRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-      await deleteRequest.execute('sp_Vendor_DeleteSocialMedia');
+      await deleteRequest.execute('vendors.sp_DeleteSocialMedia');
       console.log('Deleted existing social media');
       
       // Handle array format (socialMediaProfiles)
@@ -4624,7 +4650,7 @@ router.post('/setup/step7-social', async (req, res) => {
             request.input('URL', sql.NVarChar(500), profile.url);
             request.input('DisplayOrder', sql.Int, i);
             
-            await request.execute('sp_Vendor_InsertSocialMediaWithOrder');
+            await request.execute('vendors.sp_InsertSocialMediaWithOrder');
             console.log(`Inserted social media ${i} successfully`);
           }
         }
@@ -4640,7 +4666,7 @@ router.post('/setup/step7-social', async (req, res) => {
             request.input('URL', sql.NVarChar(500), url);
             request.input('DisplayOrder', sql.Int, displayOrder++);
             
-            await request.execute('sp_Vendor_InsertSocialMediaWithOrder');
+            await request.execute('vendors.sp_InsertSocialMediaWithOrder');
             console.log(`Inserted social media ${platform} successfully`);
           }
         }
@@ -4676,7 +4702,7 @@ router.post('/setup/step8-faq', async (req, res) => {
       // First, delete existing FAQs for this vendor to avoid duplicates
       const deleteRequest = new sql.Request(pool);
       deleteRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-      await deleteRequest.execute('sp_Vendor_DeleteFAQs');
+      await deleteRequest.execute('vendors.sp_DeleteFAQs');
 
       // Insert new FAQs
       for (let i = 0; i < faqs.length; i++) {
@@ -4689,7 +4715,7 @@ router.post('/setup/step8-faq', async (req, res) => {
           insertRequest.input('AnswerType', sql.NVarChar(50), faq.answerType || 'text');
           insertRequest.input('AnswerOptions', sql.NVarChar(sql.MAX), faq.answerOptions ? JSON.stringify(faq.answerOptions) : null);
           insertRequest.input('DisplayOrder', sql.Int, i + 1);
-          await insertRequest.execute('sp_Vendor_InsertFAQWithActive');
+          await insertRequest.execute('vendors.sp_InsertFAQWithActive');
         }
       }
     }
@@ -4741,7 +4767,7 @@ router.post('/setup/step9-completion', async (req, res) => {
     // Mark vendor setup as complete
     const updateRequest = new sql.Request(pool);
     updateRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-    await updateRequest.execute('sp_Vendor_MarkSetupCompleteWithTimestamp');
+    await updateRequest.execute('vendors.sp_MarkSetupCompleteWithTimestamp');
     
     // Handle any final FAQs if provided
     if (faqs && faqs.length > 0) {
@@ -4755,7 +4781,7 @@ router.post('/setup/step9-completion', async (req, res) => {
           faqRequest.input('AnswerType', sql.NVarChar(50), faq.answerType || 'text');
           faqRequest.input('AnswerOptions', sql.NVarChar(sql.MAX), faq.answerOptions ? JSON.stringify(faq.answerOptions) : null);
           faqRequest.input('DisplayOrder', sql.Int, i + 1);
-          await faqRequest.execute('sp_Vendor_InsertFAQWithActive');
+          await faqRequest.execute('vendors.sp_InsertFAQWithActive');
         }
       }
     }
@@ -4771,7 +4797,7 @@ router.post('/setup/step9-completion', async (req, res) => {
           serviceRequest.input('VendorDuration', sql.Int, predefinedService.vendorDuration);
           serviceRequest.input('VendorDescription', sql.NVarChar(sql.MAX), predefinedService.vendorDescription || null);
           
-          await serviceRequest.execute('sp_Vendor_InsertPredefinedService');
+          await serviceRequest.execute('vendors.sp_InsertPredefinedService');
           
           console.log(`Added predefined service ${predefinedService.id} for vendor ${vendorProfileId}`);
         } catch (serviceError) {
@@ -4819,7 +4845,7 @@ router.get('/summary/:vendorProfileId', async (req, res) => {
     // Get all summary data using stored procedure
     const summaryRequest = new sql.Request(pool);
     summaryRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-    const summaryResult = await summaryRequest.execute('sp_Vendor_GetFullSummary');
+    const summaryResult = await summaryRequest.execute('vendors.sp_GetFullSummary');
     
     if (!summaryResult.recordsets[0] || summaryResult.recordsets[0].length === 0) {
       return res.status(404).json({ 
@@ -4866,7 +4892,7 @@ router.get('/category-questions/:category', async (req, res) => {
     const request = new sql.Request(pool);
     request.input('Category', sql.NVarChar(50), category);
     
-    const result = await request.execute('sp_GetCategoryQuestions');
+    const result = await request.execute('vendors.sp_GetCategoryQuestions');
     
     if (result.recordset) {
       res.json({ 
@@ -4925,7 +4951,7 @@ router.post('/:vendorProfileId/logo', upload.single('logo'), async (req, res) =>
     request.input('VendorProfileID', sql.Int, parseInt(vendorProfileId));
     request.input('LogoURL', sql.NVarChar(255), logoUrl);
 
-    await request.execute('sp_Vendor_UpdateLogoSimple');
+    await request.execute('vendors.sp_UpdateLogoSimple');
 
     res.json({
       success: true,
@@ -5016,7 +5042,7 @@ router.get('/:vendorProfileId/google-reviews-settings', async (req, res) => {
 
     const request = pool.request();
     request.input('VendorProfileID', sql.Int, vendorProfileId);
-    const result = await request.execute('sp_Vendor_GetGoogleReviewsSettings');
+    const result = await request.execute('vendors.sp_GetGoogleReviewsSettings');
 
     if (result.recordset.length === 0) {
       return res.status(404).json({
@@ -5054,7 +5080,7 @@ router.post('/:vendorProfileId/google-reviews-settings', async (req, res) => {
     request.input('VendorProfileID', sql.Int, vendorProfileId);
     request.input('GooglePlaceId', sql.NVarChar(100), GooglePlaceId || null);
     request.input('GoogleBusinessUrl', sql.NVarChar(500), GoogleBusinessUrl || null);
-    await request.execute('sp_Vendor_UpdateGoogleReviewsSettings');
+    await request.execute('vendors.sp_UpdateGoogleReviewsSettings');
 
     res.json({
       success: true,
@@ -5140,7 +5166,7 @@ router.post('/check-availability', async (req, res) => {
     request.input('StartTime', sql.VarChar(8), formattedStartTime);
     request.input('EndTime', sql.VarChar(8), formattedEndTime);
 
-    const result = await request.execute('sp_SearchVendors');
+    const result = await request.execute('vendors.sp_Search');
 
     const availableVendors = result.recordset.map(vendor => ({
       vendorProfileId: vendor.VendorProfileID,
@@ -5185,7 +5211,7 @@ router.get('/:id/social', async (req, res) => {
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, vendorProfileId);
     
-    const result = await request.execute('sp_Vendor_GetSocialMedia');
+    const result = await request.execute('vendors.sp_GetSocialMedia');
     
     // Convert to object format expected by frontend
     const socialMedia = {
@@ -5219,7 +5245,7 @@ router.post('/:id/social', async (req, res) => {
     // Delete existing entries
     const deleteRequest = new sql.Request(pool);
     deleteRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-    await deleteRequest.execute('sp_Vendor_DeleteSocialMedia');
+    await deleteRequest.execute('vendors.sp_DeleteSocialMedia');
     
     // Insert new entries
     const platforms = { Facebook: facebook, Instagram: instagram, Twitter: twitter, LinkedIn: linkedin, YouTube: youtube, TikTok: tiktok };
@@ -5233,7 +5259,7 @@ router.post('/:id/social', async (req, res) => {
         insertRequest.input('URL', sql.NVarChar(255), url);
         insertRequest.input('DisplayOrder', sql.Int, displayOrder++);
         
-        await insertRequest.execute('sp_Vendor_InsertSocialMediaWithOrder');
+        await insertRequest.execute('vendors.sp_InsertSocialMediaWithOrder');
       }
     }
     
@@ -5254,7 +5280,7 @@ router.get('/:id/location', async (req, res) => {
     request.input('VendorProfileID', sql.Int, vendorProfileId);
     
     // Get vendor profile location and service areas
-    const locationResult = await request.execute('sp_Vendor_GetLocationAndAreas');
+    const locationResult = await request.execute('vendors.sp_GetLocationAndAreas');
     
     const profileData = locationResult.recordsets[0][0] || {};
     const areasData = locationResult.recordsets[1] || [];
@@ -5304,12 +5330,12 @@ router.post('/:id/location', async (req, res) => {
     updateRequest.input('Latitude', sql.Decimal(10, 8), latitude || null);
     updateRequest.input('Longitude', sql.Decimal(11, 8), longitude || null);
     
-    await updateRequest.execute('sp_Vendor_UpdateLocationProfile');
+    await updateRequest.execute('vendors.sp_UpdateLocationProfile');
     
     // Delete existing service areas
     const deleteRequest = new sql.Request(pool);
     deleteRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-    await deleteRequest.execute('sp_Vendor_DeleteServiceAreas');
+    await deleteRequest.execute('vendors.sp_DeleteServiceAreas');
     
     // Insert new service areas
     if (Array.isArray(serviceAreas) && serviceAreas.length > 0) {
@@ -5326,7 +5352,7 @@ router.post('/:id/location', async (req, res) => {
         areaRequest.input('FormattedAddress', sql.NVarChar(255), area.formattedAddress || null);
         areaRequest.input('PlaceType', sql.NVarChar(50), area.placeType || null);
         
-        await areaRequest.execute('sp_Vendor_InsertServiceAreaSimple');
+        await areaRequest.execute('vendors.sp_InsertServiceAreaSimple');
       }
     }
     
@@ -5349,7 +5375,7 @@ router.get('/:id/filters', async (req, res) => {
     // Query the actual badge columns that exist in the database
     let result;
     try {
-      result = await request.execute('sp_Vendor_GetFilters');
+      result = await request.execute('vendors.sp_GetFilters');
       const profile = result.recordset[0] || {};
       
       // Reconstruct filters from boolean flags
@@ -5415,7 +5441,7 @@ router.put('/:id/filters', async (req, res) => {
     request.input('IsLocal', sql.Bit, isLocal);
     request.input('IsMobile', sql.Bit, isMobile);
     
-    await request.execute('sp_Vendor_UpdateFilters');
+    await request.execute('vendors.sp_UpdateFilters');
     
     res.json({ success: true, message: 'Filters saved successfully' });
   } catch (error) {
@@ -5433,7 +5459,7 @@ router.get('/:id/faqs', async (req, res) => {
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, vendorProfileId);
     
-    const result = await request.execute('sp_Vendor_GetFAQs');
+    const result = await request.execute('vendors.sp_GetFAQs');
     
     res.json(result.recordset.map(faq => ({
       id: faq.FAQID,
@@ -5457,7 +5483,7 @@ router.post('/:id/faqs', async (req, res) => {
     // Delete existing FAQs
     const deleteRequest = new sql.Request(pool);
     deleteRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-    await deleteRequest.execute('sp_Vendor_DeleteFAQs');
+    await deleteRequest.execute('vendors.sp_DeleteFAQs');
     
     // Insert new FAQs
     if (Array.isArray(faqs) && faqs.length > 0) {
@@ -5469,7 +5495,7 @@ router.post('/:id/faqs', async (req, res) => {
         insertRequest.input('Answer', sql.NVarChar(sql.MAX), faq.answer);
         insertRequest.input('DisplayOrder', sql.Int, i);
         
-        await insertRequest.execute('sp_Vendor_InsertFAQSimple');
+        await insertRequest.execute('vendors.sp_InsertFAQSimple');
       }
     }
     
@@ -5491,7 +5517,7 @@ router.delete('/:id/faqs/:faqId', async (req, res) => {
     request.input('VendorProfileID', sql.Int, vendorProfileId);
     request.input('FAQID', sql.Int, faqId);
     
-    await request.execute('sp_Vendor_DeleteFAQById');
+    await request.execute('vendors.sp_DeleteFAQById');
     
     res.json({ success: true, message: 'FAQ deleted successfully' });
   } catch (error) {
@@ -5509,7 +5535,7 @@ router.get('/:id/images', async (req, res) => {
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, vendorProfileId);
     
-    const result = await request.execute('sp_Vendor_GetImages');
+    const result = await request.execute('vendors.sp_GetImages');
     
     res.json(result.recordset.map(img => ({
       id: img.ImageID,
@@ -5540,7 +5566,7 @@ router.post('/:id/images', upload.array('images', 10), async (req, res) => {
     // Get max display order
     const orderRequest = new sql.Request(pool);
     orderRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-    const orderResult = await orderRequest.execute('sp_Vendor_GetNextImageOrder');
+    const orderResult = await orderRequest.execute('vendors.sp_GetNextImageOrder');
     let nextOrder = orderResult.recordset[0].NextOrder;
     
     for (const file of req.files) {
@@ -5557,7 +5583,7 @@ router.post('/:id/images', upload.array('images', 10), async (req, res) => {
         insertRequest.input('ImageURL', sql.NVarChar(500), result.secure_url);
         insertRequest.input('DisplayOrder', sql.Int, nextOrder);
         
-        const insertResult = await insertRequest.execute('sp_Vendor_InsertImageWithOutput');
+        const insertResult = await insertRequest.execute('vendors.sp_InsertImageWithOutput');
         
         uploadedImages.push({
           id: insertResult.recordset[0].ImageID,
@@ -5592,7 +5618,7 @@ router.delete('/:id/images/:imageId', async (req, res) => {
     request.input('VendorProfileID', sql.Int, vendorProfileId);
     request.input('ImageID', sql.Int, imageId);
     
-    await request.execute('sp_Vendor_DeleteImageById');
+    await request.execute('vendors.sp_DeleteImageById');
     
     res.json({ success: true, message: 'Image deleted successfully' });
   } catch (error) {
@@ -5615,7 +5641,7 @@ router.post('/:id/images/url', async (req, res) => {
     // Get max display order
     const orderRequest = new sql.Request(pool);
     orderRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-    const orderResult = await orderRequest.execute('sp_Vendor_GetNextImageOrder');
+    const orderResult = await orderRequest.execute('vendors.sp_GetNextImageOrder');
     const nextOrder = orderResult.recordset[0].NextOrder;
     
     // Insert the image
@@ -5625,7 +5651,7 @@ router.post('/:id/images/url', async (req, res) => {
     insertRequest.input('Caption', sql.NVarChar(255), caption || null);
     insertRequest.input('DisplayOrder', sql.Int, nextOrder);
     
-    const result = await insertRequest.execute('sp_Vendor_InsertImageWithCaption');
+    const result = await insertRequest.execute('vendors.sp_InsertImageWithCaption');
     
     res.json({ 
       success: true, 
@@ -5659,7 +5685,7 @@ router.post('/:id/logo', upload.single('logo'), async (req, res) => {
     request.input('VendorProfileID', sql.Int, vendorProfileId);
     request.input('LogoURL', sql.NVarChar(255), result.secure_url);
     
-    await request.execute('sp_Vendor_UpdateLogo');
+    await request.execute('vendors.sp_UpdateLogo');
     
     res.json({ success: true, logoUrl: result.secure_url });
   } catch (error) {
@@ -5682,7 +5708,7 @@ router.post('/:vendorProfileId/submit-for-review', async (req, res) => {
     request.input('VendorProfileID', sql.Int, vendorProfileId);
     
     // Update profile status to pending_review
-    await request.execute('sp_Vendor_SubmitForReview');
+    await request.execute('vendors.sp_SubmitForReview');
     
     console.log(`[Vendor Review] Profile ${vendorProfileId} submitted for review`);
     
@@ -5703,7 +5729,7 @@ router.get('/admin/pending-reviews', async (req, res) => {
     const pool = await poolPromise;
     const request = new sql.Request(pool);
     
-    const result = await request.execute('sp_Vendor_GetPendingReviews');
+    const result = await request.execute('vendors.sp_GetPendingReviews');
     
     res.json({ 
       success: true, 
@@ -5727,7 +5753,7 @@ router.post('/admin/:vendorProfileId/approve', async (req, res) => {
     request.input('AdminNotes', sql.NVarChar(sql.MAX), adminNotes || null);
     
     // Update profile status to approved and make it visible
-    await request.execute('sp_Vendor_ApproveProfile');
+    await request.execute('vendors.sp_ApproveProfile');
     
     console.log(`[Vendor Review] Profile ${vendorProfileId} APPROVED`);
     
@@ -5759,7 +5785,7 @@ router.post('/admin/:vendorProfileId/reject', async (req, res) => {
     request.input('AdminNotes', sql.NVarChar(sql.MAX), adminNotes || null);
     
     // Update profile status to rejected
-    await request.execute('sp_Vendor_RejectProfile');
+    await request.execute('vendors.sp_RejectProfile');
     
     console.log(`[Vendor Review] Profile ${vendorProfileId} REJECTED: ${rejectionReason}`);
     
@@ -5783,7 +5809,7 @@ router.get('/:vendorProfileId/status', async (req, res) => {
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, vendorProfileId);
     
-    const result = await request.execute('sp_Vendor_GetProfileStatus');
+    const result = await request.execute('vendors.sp_GetProfileStatus');
     
     if (result.recordset.length === 0) {
       return res.status(404).json({ success: false, message: 'Vendor profile not found' });

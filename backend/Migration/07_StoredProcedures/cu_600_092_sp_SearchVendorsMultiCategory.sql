@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_SearchVendorsMultiCategory]
     Phase: 600 - Stored Procedures
     Script: cu_600_092_dbo.sp_SearchVendorsMultiCategory.sql
-    Description: Creates the [dbo].[sp_SearchVendorsMultiCategory] stored procedure
+    Description: Creates the [vendors].[sp_SearchMultiCategory] stored procedure
     
     Execution Order: 92
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_SearchVendorsMultiCategory]...';
+PRINT 'Creating stored procedure [vendors].[sp_SearchMultiCategory]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_SearchVendorsMultiCategory]'))
-    DROP PROCEDURE [dbo].[sp_SearchVendorsMultiCategory];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_SearchMultiCategory]'))
+    DROP PROCEDURE [vendors].[sp_SearchMultiCategory];
 GO
 
-CREATE   PROCEDURE [dbo].[sp_SearchVendorsMultiCategory]
+CREATE   PROCEDURE [vendors].[sp_SearchMultiCategory]
     @Categories NVARCHAR(500), -- Comma-separated list of categories
     @Budget DECIMAL(10, 2) = NULL,
     @EventDate DATE = NULL,
@@ -79,13 +79,13 @@ BEGIN
             COUNT(DISTINCT vc.Category) AS CategoryMatchCount,
             SUM(ISNULL((
                 SELECT MIN(s.Price) 
-                FROM Services s 
-                JOIN ServiceCategories sc ON s.CategoryID = sc.CategoryID 
+                FROM vendors.Services s 
+                JOIN vendors.ServiceCategories sc ON s.CategoryID = sc.CategoryID 
                 WHERE sc.VendorProfileID = v.VendorProfileID 
                 AND sc.Name = vc.Category
             ), 0)) AS TotalEstimatedPrice
-        FROM VendorProfiles v
-        JOIN VendorCategories vc ON v.VendorProfileID = vc.VendorProfileID
+        FROM vendors.VendorProfiles v
+        JOIN vendors.VendorCategories vc ON v.VendorProfileID = vc.VendorProfileID
         JOIN @CategoryTable ct ON vc.Category = ct.Category
         WHERE v.IsVerified = 1
         GROUP BY v.VendorProfileID
@@ -114,15 +114,15 @@ BEGIN
             v.LogoURL,
             vcm.CategoryMatchCount,
             vcm.TotalEstimatedPrice,
-            (SELECT AVG(CAST(r.Rating AS DECIMAL(3,1))) FROM Reviews r WHERE r.VendorProfileID = v.VendorProfileID AND r.IsApproved = 1) AS AverageRating,
-            (SELECT COUNT(*) FROM Reviews r WHERE r.VendorProfileID = v.VendorProfileID AND r.IsApproved = 1) AS ReviewCount,
-            (SELECT COUNT(*) FROM Favorites f WHERE f.VendorProfileID = v.VendorProfileID) AS FavoriteCount,
-            (SELECT COUNT(*) FROM Bookings b WHERE b.VendorProfileID = v.VendorProfileID) AS BookingCount,
-            (SELECT TOP 1 vi.ImageURL FROM VendorImages vi WHERE vi.VendorProfileID = v.VendorProfileID AND vi.IsPrimary = 1) AS ImageURL,
-            (SELECT STRING_AGG(vc.Category, '', '') FROM VendorCategories vc WHERE vc.VendorProfileID = v.VendorProfileID) AS Categories'
+            (SELECT AVG(CAST(r.Rating AS DECIMAL(3,1))) FROM vendors.Reviews r WHERE r.VendorProfileID = v.VendorProfileID AND r.IsApproved = 1) AS AverageRating,
+            (SELECT COUNT(*) FROM vendors.Reviews r WHERE r.VendorProfileID = v.VendorProfileID AND r.IsApproved = 1) AS ReviewCount,
+            (SELECT COUNT(*) FROM users.Favorites f WHERE f.VendorProfileID = v.VendorProfileID) AS FavoriteCount,
+            (SELECT COUNT(*) FROM bookings.Bookings b WHERE b.VendorProfileID = v.VendorProfileID) AS BookingCount,
+            (SELECT TOP 1 vi.ImageURL FROM vendors.VendorImages vi WHERE vi.VendorProfileID = v.VendorProfileID AND vi.IsPrimary = 1) AS ImageURL,
+            (SELECT STRING_AGG(vc.Category, '', '') FROM vendors.VendorCategories vc WHERE vc.VendorProfileID = v.VendorProfileID) AS Categories'
             + @DistanceCalculation + '
-        FROM VendorProfiles v
-        JOIN Users u ON v.UserID = u.UserID
+        FROM vendors.VendorProfiles v
+        JOIN users.Users u ON v.UserID = u.UserID
         JOIN VendorCategoryMatches vcm ON v.VendorProfileID = vcm.VendorProfileID
         WHERE u.IsActive = 1
         AND v.IsVerified = 1
@@ -188,7 +188,7 @@ BEGIN
                 vi.DisplayOrder,
                 vi.ImageType,
                 vi.Caption
-            FROM VendorImages vi 
+            FROM vendors.VendorImages vi 
             WHERE vi.VendorProfileID = v.VendorProfileID
             ORDER BY vi.IsPrimary DESC, vi.DisplayOrder
             FOR JSON PATH
@@ -208,11 +208,11 @@ BEGIN
                         s.MaxAttendees,
                         s.RequiresDeposit,
                         s.DepositPercentage
-                    FROM Services s
+                    FROM vendors.Services s
                     WHERE s.CategoryID = sc.CategoryID AND s.IsActive = 1
                     FOR JSON PATH
                 )) AS services
-            FROM ServiceCategories sc
+            FROM vendors.ServiceCategories sc
             WHERE sc.VendorProfileID = v.VendorProfileID
             FOR JSON PATH
         )) AS services
@@ -236,5 +236,12 @@ END;
 
 GO
 
-PRINT 'Stored procedure [dbo].[sp_SearchVendorsMultiCategory] created successfully.';
+PRINT 'Stored procedure [vendors].[sp_SearchMultiCategory] created successfully.';
 GO
+
+
+
+
+
+
+

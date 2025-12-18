@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_GetVendorSetupData]
     Phase: 600 - Stored Procedures
     Script: cu_600_078_dbo.sp_GetVendorSetupData.sql
-    Description: Creates the [dbo].[sp_GetVendorSetupData] stored procedure
+    Description: Creates the [vendors].[sp_GetSetupData] stored procedure
     
     Execution Order: 78
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_GetVendorSetupData]...';
+PRINT 'Creating stored procedure [vendors].[sp_GetSetupData]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_GetVendorSetupData]'))
-    DROP PROCEDURE [dbo].[sp_GetVendorSetupData];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_GetSetupData]'))
+    DROP PROCEDURE [vendors].[sp_GetSetupData];
 GO
 
-CREATE   PROCEDURE [dbo].[sp_GetVendorSetupData]
+CREATE   PROCEDURE [vendors].[sp_GetSetupData]
     @VendorProfileID INT
 AS
 BEGIN
@@ -29,21 +29,21 @@ BEGIN
         BusinessName,
         ISNULL(SetupStep, 1) AS SetupStep,
         ISNULL(SetupCompleted, 0) AS SetupCompleted
-    FROM VendorProfiles 
+    FROM vendors.VendorProfiles 
     WHERE VendorProfileID = @VendorProfileID;
     
-    -- Gallery images from VendorImages
+    -- Gallery images FROM vendors.VendorImages
     SELECT 
         ImageID,
         ImageURL,
         ISNULL(ImageType, 'upload') AS ImageType,
         Caption,
         DisplayOrder AS SortOrder
-    FROM VendorImages 
+    FROM vendors.VendorImages 
     WHERE VendorProfileID = @VendorProfileID
     ORDER BY DisplayOrder;
     
-    -- Packages from Services table (Packages category)
+    -- Packages FROM vendors.Services table (Packages category)
     SELECT 
         s.ServiceID AS PackageID,
         s.Name AS PackageName,
@@ -52,12 +52,12 @@ BEGIN
         CAST(s.DurationMinutes/60 AS NVARCHAR(10)) + ' hours' AS Duration,
         s.MaxAttendees AS MaxGuests,
         s.IsActive
-    FROM Services s
-    JOIN ServiceCategories sc ON s.CategoryID = sc.CategoryID
+    FROM vendors.Services s
+    JOIN vendors.ServiceCategories sc ON s.CategoryID = sc.CategoryID
     WHERE sc.VendorProfileID = @VendorProfileID AND s.ServiceType = 'Package' AND s.IsActive = 1
     ORDER BY s.CreatedAt;
     
-    -- Services from Services table (non-Packages categories)
+    -- Services FROM vendors.Services table (non-Packages categories)
     SELECT 
         s.ServiceID,
         s.Name AS ServiceName,
@@ -66,33 +66,37 @@ BEGIN
         s.DurationMinutes,
         sc.Name AS CategoryName,
         s.IsActive
-    FROM Services s
-    JOIN ServiceCategories sc ON s.CategoryID = sc.CategoryID
+    FROM vendors.Services s
+    JOIN vendors.ServiceCategories sc ON s.CategoryID = sc.CategoryID
     WHERE sc.VendorProfileID = @VendorProfileID AND s.ServiceType = 'Service' AND s.IsActive = 1
     ORDER BY s.CreatedAt;
     
-    -- Social Media from VendorSocialMedia
+    -- Social Media FROM vendors.VendorSocialMedia
     SELECT 
         SocialID AS SocialMediaSetupID,
         Platform,
         URL
-    FROM VendorSocialMedia 
+    FROM vendors.VendorSocialMedia 
     WHERE VendorProfileID = @VendorProfileID
     ORDER BY Platform;
     
-    -- Availability from VendorBusinessHours
+    -- Availability FROM vendors.VendorBusinessHours
     SELECT 
         HoursID AS AvailabilitySetupID,
         DayOfWeek,
         OpenTime AS StartTime,
         CloseTime AS EndTime,
         IsAvailable
-    FROM VendorBusinessHours 
+    FROM vendors.VendorBusinessHours 
     WHERE VendorProfileID = @VendorProfileID AND IsAvailable = 1
     ORDER BY DayOfWeek;
 END;
 
 GO
 
-PRINT 'Stored procedure [dbo].[sp_GetVendorSetupData] created successfully.';
+PRINT 'Stored procedure [vendors].[sp_GetSetupData] created successfully.';
 GO
+
+
+
+

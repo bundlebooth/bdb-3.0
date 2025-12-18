@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Booking_InsertExpense
+-- Stored Procedure: bookings.sp_InsertExpense
 -- Description: Inserts an expense for a booking
 -- Phase: 600 (Stored Procedures)
+-- Schema: bookings
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Booking_InsertExpense]'))
-    DROP PROCEDURE [dbo].[sp_Booking_InsertExpense];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[bookings].[sp_InsertExpense]'))
+    DROP PROCEDURE [bookings].[sp_InsertExpense];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Booking_InsertExpense]
+CREATE PROCEDURE [bookings].[sp_InsertExpense]
     @BookingID INT,
     @VendorProfileID INT,
     @Title NVARCHAR(255),

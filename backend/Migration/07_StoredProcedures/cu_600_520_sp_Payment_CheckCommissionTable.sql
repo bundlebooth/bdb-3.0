@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Payment_CheckCommissionTable
+-- Stored Procedure: payments.sp_CheckCommissionTable
 -- Description: Checks if CommissionSettings table exists
 -- Phase: 600 (Stored Procedures)
+-- Schema: payments
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Payment_CheckCommissionTable]'))
-    DROP PROCEDURE [dbo].[sp_Payment_CheckCommissionTable];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[payments].[sp_CheckCommissionTable]'))
+    DROP PROCEDURE [payments].[sp_CheckCommissionTable];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Payment_CheckCommissionTable]
+CREATE PROCEDURE [payments].[sp_CheckCommissionTable]
 AS
 BEGIN
     SET NOCOUNT ON;

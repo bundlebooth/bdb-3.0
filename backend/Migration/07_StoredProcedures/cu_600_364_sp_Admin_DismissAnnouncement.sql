@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Admin_DismissAnnouncement
+-- Stored Procedure: admin.sp_DismissAnnouncement
 -- Description: Increments dismiss count for an announcement
 -- Phase: 600 (Stored Procedures)
+-- Schema: admin
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Admin_DismissAnnouncement]'))
-    DROP PROCEDURE [dbo].[sp_Admin_DismissAnnouncement];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_DismissAnnouncement]'))
+    DROP PROCEDURE [admin].[sp_DismissAnnouncement];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Admin_DismissAnnouncement]
+CREATE PROCEDURE [admin].[sp_DismissAnnouncement]
     @AnnouncementID INT
 AS
 BEGIN

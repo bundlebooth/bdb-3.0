@@ -1,23 +1,23 @@
 /*
-    Migration Script: Create Stored Procedure [sp_GetResponsiveVendors]
+    Migration Script: Create Stored Procedure [vendors.sp_GetResponsive]
     Phase: 600 - Stored Procedures
-    Script: cu_600_045_dbo.sp_GetResponsiveVendors.sql
-    Description: Creates the [dbo].[sp_GetResponsiveVendors] stored procedure
-    
+    Script: cu_600_045_sp_GetResponsiveVendors.sql
+    Description: Creates the [vendors].[sp_GetResponsive] stored procedure
+    Schema: vendors
     Execution Order: 45
 */
 
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_GetResponsiveVendors]...';
+PRINT 'Creating stored procedure [vendors].[sp_GetResponsive]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_GetResponsiveVendors]'))
-    DROP PROCEDURE [dbo].[sp_GetResponsiveVendors];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_GetResponsive]'))
+    DROP PROCEDURE [vendors].[sp_GetResponsive];
 GO
 
-CREATE PROCEDURE [dbo].[sp_GetResponsiveVendors]
+CREATE PROCEDURE [vendors].[sp_GetResponsive]
     @City NVARCHAR(100) = NULL,
     @Limit INT = 10
 AS
@@ -26,13 +26,13 @@ BEGIN
     
     SELECT TOP (@Limit) vp.*,
         vrt.AvgResponseMinutes
-    FROM VendorProfiles vp
+    FROM vendors.VendorProfiles vp
     INNER JOIN (
         SELECT c.VendorProfileID, 
                AVG(DATEDIFF(MINUTE, m_user.CreatedAt, m_vendor.CreatedAt)) AS AvgResponseMinutes
-        FROM Conversations c
-        INNER JOIN Messages m_user ON c.ConversationID = m_user.ConversationID AND m_user.SenderID = c.UserID
-        INNER JOIN Messages m_vendor ON c.ConversationID = m_vendor.ConversationID AND m_vendor.SenderID != c.UserID
+        FROM messages.Conversations c
+        INNER JOIN messages.Messages m_user ON c.ConversationID = m_user.ConversationID AND m_user.SenderID = c.UserID
+        INNER JOIN messages.Messages m_vendor ON c.ConversationID = m_vendor.ConversationID AND m_vendor.SenderID != c.UserID
         WHERE m_vendor.CreatedAt > m_user.CreatedAt
         GROUP BY c.VendorProfileID
         HAVING AVG(DATEDIFF(MINUTE, m_user.CreatedAt, m_vendor.CreatedAt)) <= 120
@@ -43,5 +43,8 @@ BEGIN
 END
 GO
 
-PRINT 'Stored procedure [dbo].[sp_GetResponsiveVendors] created successfully.';
+PRINT 'Stored procedure [vendors].[sp_GetResponsive] created successfully.';
 GO
+
+
+

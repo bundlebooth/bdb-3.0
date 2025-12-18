@@ -2,7 +2,7 @@
     Migration Script: Create Table [ServiceCategories]
     Phase: 100 - Tables
     Script: cu_100_34_dbo.ServiceCategories.sql
-    Description: Creates the [dbo].[ServiceCategories] table
+    Description: Creates the [vendors].[ServiceCategories] table
     
     Execution Order: 34
 */
@@ -10,12 +10,12 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating table [dbo].[ServiceCategories]...';
+PRINT 'Creating table [vendors].[ServiceCategories]...';
 GO
 
-IF NOT EXISTS (SELECT 1 FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[ServiceCategories]') AND type in (N'U'))
+IF NOT EXISTS (SELECT 1 FROM sys.objects WHERE object_id = OBJECT_ID(N'[vendors].[ServiceCategories]') AND type in (N'U'))
 BEGIN
-    CREATE TABLE [dbo].[ServiceCategories](
+    CREATE TABLE [vendors].[ServiceCategories](
 	[CategoryID] [int] IDENTITY(1,1) NOT NULL,
 	[VendorProfileID] [int] NULL,
 	[Name] [nvarchar](100) NOT NULL,
@@ -28,10 +28,10 @@ PRIMARY KEY CLUSTERED
 	[CategoryID] ASC
 )WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
     );
-    PRINT 'Table [dbo].[ServiceCategories] created successfully.';
+    PRINT 'Table [vendors].[ServiceCategories] created successfully.';
 END
 ELSE
 BEGIN
-    PRINT 'Table [dbo].[ServiceCategories] already exists. Skipping.';
+    PRINT 'Table [vendors].[ServiceCategories] already exists. Skipping.';
 END
 GO

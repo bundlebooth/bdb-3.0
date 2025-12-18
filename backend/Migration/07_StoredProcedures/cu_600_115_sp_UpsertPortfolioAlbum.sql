@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_UpsertPortfolioAlbum]
     Phase: 600 - Stored Procedures
     Script: cu_600_115_dbo.sp_UpsertPortfolioAlbum.sql
-    Description: Creates the [dbo].[sp_UpsertPortfolioAlbum] stored procedure
+    Description: Creates the [vendors].[sp_UpsertPortfolioAlbum] stored procedure
     
     Execution Order: 115
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_UpsertPortfolioAlbum]...';
+PRINT 'Creating stored procedure [vendors].[sp_UpsertPortfolioAlbum]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_UpsertPortfolioAlbum]'))
-    DROP PROCEDURE [dbo].[sp_UpsertPortfolioAlbum];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_UpsertPortfolioAlbum]'))
+    DROP PROCEDURE [vendors].[sp_UpsertPortfolioAlbum];
 GO
 
-CREATE   PROCEDURE [dbo].[sp_UpsertPortfolioAlbum]
+CREATE   PROCEDURE [vendors].[sp_UpsertPortfolioAlbum]
     @AlbumID INT = NULL,
     @VendorProfileID INT,
     @AlbumName NVARCHAR(100),
@@ -64,5 +64,5 @@ END;
 
 GO
 
-PRINT 'Stored procedure [dbo].[sp_UpsertPortfolioAlbum] created successfully.';
+PRINT 'Stored procedure [vendors].[sp_UpsertPortfolioAlbum] created successfully.';
 GO

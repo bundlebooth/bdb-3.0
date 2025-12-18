@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Admin_GetSupportTickets
+-- Stored Procedure: admin.sp_GetSupportTickets
 -- Description: Gets support tickets with filters
 -- Phase: 600 (Stored Procedures)
+-- Schema: admin
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Admin_GetSupportTickets]'))
-    DROP PROCEDURE [dbo].[sp_Admin_GetSupportTickets];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_GetSupportTickets]'))
+    DROP PROCEDURE [admin].[sp_GetSupportTickets];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Admin_GetSupportTickets]
+CREATE PROCEDURE [admin].[sp_GetSupportTickets]
     @Status NVARCHAR(50) = NULL,
     @Priority NVARCHAR(50) = NULL,
     @Category NVARCHAR(50) = NULL,
@@ -42,8 +43,8 @@ BEGIN
             t.UpdatedAt as updatedAt,
             t.ResolvedAt as resolvedAt,
             (SELECT COUNT(*) FROM SupportTicketMessages WHERE TicketID = t.TicketID) as messageCount
-        FROM SupportTickets t
-        LEFT JOIN Users a ON t.AssignedTo = a.UserID
+        FROM admin.SupportTickets t
+        LEFT JOIN users.Users a ON t.AssignedTo = a.UserID
         WHERE 
             (@Status IS NULL OR t.Status = @Status)
             AND (@Priority IS NULL OR t.Priority = @Priority)
@@ -55,7 +56,7 @@ BEGIN
         OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY;
         
         SELECT COUNT(*) as total 
-        FROM SupportTickets t
+        FROM admin.SupportTickets t
         WHERE 
             (@Status IS NULL OR t.Status = @Status)
             AND (@Priority IS NULL OR t.Priority = @Priority)
@@ -69,3 +70,5 @@ BEGIN
     END
 END
 GO
+
+

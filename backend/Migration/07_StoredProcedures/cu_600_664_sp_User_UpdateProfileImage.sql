@@ -1,21 +1,23 @@
 -- =============================================
--- Stored Procedure: sp_User_UpdateProfileImage
+-- Stored Procedure: users.sp_UpdateProfileImage
 -- Description: Updates user profile image URL
 -- Phase: 600 (Stored Procedures)
+-- Schema: users
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_User_UpdateProfileImage]'))
-    DROP PROCEDURE [dbo].[sp_User_UpdateProfileImage];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[users].[sp_UpdateProfileImage]'))
+    DROP PROCEDURE [users].[sp_UpdateProfileImage];
 GO
 
-CREATE PROCEDURE [dbo].[sp_User_UpdateProfileImage]
+CREATE PROCEDURE [users].[sp_UpdateProfileImage]
     @UserID INT,
     @ProfileImageURL NVARCHAR(255)
 AS
 BEGIN
     SET NOCOUNT ON;
     
-    UPDATE Users 
+    UPDATE users.Users 
     SET ProfileImageURL = @ProfileImageURL, UpdatedAt = GETDATE()
     WHERE UserID = @UserID;
 END
 GO
+

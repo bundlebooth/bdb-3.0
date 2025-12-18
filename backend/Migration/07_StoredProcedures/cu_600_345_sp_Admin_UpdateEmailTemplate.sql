@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Admin_UpdateEmailTemplate
+-- Stored Procedure: admin.sp_UpdateEmailTemplate
 -- Description: Updates an email template and its body component
 -- Phase: 600 (Stored Procedures)
+-- Schema: admin
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Admin_UpdateEmailTemplate]'))
-    DROP PROCEDURE [dbo].[sp_Admin_UpdateEmailTemplate];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_UpdateEmailTemplate]'))
+    DROP PROCEDURE [admin].[sp_UpdateEmailTemplate];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Admin_UpdateEmailTemplate]
+CREATE PROCEDURE [admin].[sp_UpdateEmailTemplate]
     @TemplateID INT,
     @Subject NVARCHAR(500) = NULL,
     @BodyHtml NVARCHAR(MAX) = NULL,

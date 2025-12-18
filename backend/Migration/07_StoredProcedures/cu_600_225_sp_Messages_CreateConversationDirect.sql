@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Messages_CreateConversationDirect
+-- Stored Procedure: messages.sp_CreateConversationDirect
 -- Description: Creates a new conversation directly (without stored procedure)
 -- Phase: 600 (Stored Procedures)
+-- Schema: messages
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Messages_CreateConversationDirect]'))
-    DROP PROCEDURE [dbo].[sp_Messages_CreateConversationDirect];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[messages].[sp_CreateConversationDirect]'))
+    DROP PROCEDURE [messages].[sp_CreateConversationDirect];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Messages_CreateConversationDirect]
+CREATE PROCEDURE [messages].[sp_CreateConversationDirect]
     @UserID INT,
     @VendorProfileID INT,
     @Subject NVARCHAR(255) = 'New Inquiry'
@@ -15,8 +16,10 @@ AS
 BEGIN
     SET NOCOUNT ON;
     
-    INSERT INTO Conversations (UserID, VendorProfileID, Subject, CreatedAt, UpdatedAt)
+    INSERT INTO messages.Conversations (UserID, VendorProfileID, Subject, CreatedAt, UpdatedAt)
     OUTPUT INSERTED.ConversationID
     VALUES (@UserID, @VendorProfileID, @Subject, GETDATE(), GETDATE());
 END
 GO
+
+

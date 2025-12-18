@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Invoice_InsertItem
+-- Stored Procedure: invoices.sp_InsertItem
 -- Description: Inserts an invoice item
 -- Phase: 600 (Stored Procedures)
+-- Schema: invoices
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Invoice_InsertItem]'))
-    DROP PROCEDURE [dbo].[sp_Invoice_InsertItem];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[invoices].[sp_InsertItem]'))
+    DROP PROCEDURE [invoices].[sp_InsertItem];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Invoice_InsertItem]
+CREATE PROCEDURE [invoices].[sp_InsertItem]
     @InvoiceID INT,
     @ItemType NVARCHAR(50),
     @RefID INT = NULL,
@@ -21,9 +22,10 @@ AS
 BEGIN
     SET NOCOUNT ON;
     
-    INSERT INTO InvoiceItems (InvoiceID, ItemType, RefID, Title, Description, Quantity, UnitPrice, Amount, IsPayable)
+    INSERT INTO invoices.InvoiceItems (InvoiceID, ItemType, RefID, Title, Description, Quantity, UnitPrice, Amount, IsPayable)
     VALUES (@InvoiceID, @ItemType, @RefID, @Title, @Description, @Quantity, @UnitPrice, @Amount, @IsPayable);
     
     SELECT SCOPE_IDENTITY() AS InvoiceItemID;
 END
 GO
+

@@ -2,7 +2,7 @@
     Migration Script: Create Table [BookingExpenses]
     Phase: 100 - Tables
     Script: cu_100_56_dbo.BookingExpenses.sql
-    Description: Creates the [dbo].[BookingExpenses] table
+    Description: Creates the [bookings].[BookingExpenses] table
     
     Execution Order: 56
 */
@@ -10,12 +10,12 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating table [dbo].[BookingExpenses]...';
+PRINT 'Creating table [bookings].[BookingExpenses]...';
 GO
 
-IF NOT EXISTS (SELECT 1 FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[BookingExpenses]') AND type in (N'U'))
+IF NOT EXISTS (SELECT 1 FROM sys.objects WHERE object_id = OBJECT_ID(N'[bookings].[BookingExpenses]') AND type in (N'U'))
 BEGIN
-    CREATE TABLE [dbo].[BookingExpenses](
+    CREATE TABLE [bookings].[BookingExpenses](
 	[BookingExpenseID] [int] IDENTITY(1,1) NOT NULL,
 	[BookingID] [int] NOT NULL,
 	[VendorProfileID] [int] NULL,
@@ -28,10 +28,10 @@ PRIMARY KEY CLUSTERED
 	[BookingExpenseID] ASC
 )WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
     );
-    PRINT 'Table [dbo].[BookingExpenses] created successfully.';
+    PRINT 'Table [bookings].[BookingExpenses] created successfully.';
 END
 ELSE
 BEGIN
-    PRINT 'Table [dbo].[BookingExpenses] already exists. Skipping.';
+    PRINT 'Table [bookings].[BookingExpenses] already exists. Skipping.';
 END
 GO

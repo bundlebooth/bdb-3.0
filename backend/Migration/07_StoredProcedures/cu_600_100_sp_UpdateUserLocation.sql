@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_UpdateUserLocation]
     Phase: 600 - Stored Procedures
     Script: cu_600_100_dbo.sp_UpdateUserLocation.sql
-    Description: Creates the [dbo].[sp_UpdateUserLocation] stored procedure
+    Description: Creates the [users].[sp_UpdateLocation] stored procedure
     
     Execution Order: 100
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_UpdateUserLocation]...';
+PRINT 'Creating stored procedure [users].[sp_UpdateLocation]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_UpdateUserLocation]'))
-    DROP PROCEDURE [dbo].[sp_UpdateUserLocation];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[users].[sp_UpdateLocation]'))
+    DROP PROCEDURE [users].[sp_UpdateLocation];
 GO
 
-CREATE   PROCEDURE [dbo].[sp_UpdateUserLocation]
+CREATE   PROCEDURE [users].[sp_UpdateLocation]
     @UserID INT,
     @Latitude DECIMAL(10, 8),
     @Longitude DECIMAL(11, 8),
@@ -50,5 +50,5 @@ END;
 
 GO
 
-PRINT 'Stored procedure [dbo].[sp_UpdateUserLocation] created successfully.';
+PRINT 'Stored procedure [users].[sp_UpdateLocation] created successfully.';
 GO

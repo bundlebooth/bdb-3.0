@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Admin_CreateSupportTicket
+-- Stored Procedure: admin.sp_CreateSupportTicket
 -- Description: Creates a new support ticket
 -- Phase: 600 (Stored Procedures)
+-- Schema: admin
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Admin_CreateSupportTicket]'))
-    DROP PROCEDURE [dbo].[sp_Admin_CreateSupportTicket];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_CreateSupportTicket]'))
+    DROP PROCEDURE [admin].[sp_CreateSupportTicket];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Admin_CreateSupportTicket]
+CREATE PROCEDURE [admin].[sp_CreateSupportTicket]
     @TicketNumber NVARCHAR(50),
     @UserID INT = NULL,
     @UserEmail NVARCHAR(255),
@@ -22,8 +23,9 @@ AS
 BEGIN
     SET NOCOUNT ON;
     
-    INSERT INTO SupportTickets (TicketNumber, UserID, UserEmail, UserName, Subject, Description, Category, Priority, Source, ConversationID)
+    INSERT INTO admin.SupportTickets (TicketNumber, UserID, UserEmail, UserName, Subject, Description, Category, Priority, Source, ConversationID)
     OUTPUT INSERTED.TicketID, INSERTED.TicketNumber
     VALUES (@TicketNumber, @UserID, @UserEmail, @UserName, @Subject, @Description, @Category, @Priority, @Source, @ConversationID);
 END
 GO
+

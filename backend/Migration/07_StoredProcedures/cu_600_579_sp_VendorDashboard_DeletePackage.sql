@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_VendorDashboard_DeletePackage
+-- Stored Procedure: vendors.sp_Dashboard_DeletePackage
 -- Description: Deletes a package
 -- Phase: 600 (Stored Procedures)
+-- Schema: vendors
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_VendorDashboard_DeletePackage]'))
-    DROP PROCEDURE [dbo].[sp_VendorDashboard_DeletePackage];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_Dashboard_DeletePackage]'))
+    DROP PROCEDURE [vendors].[sp_Dashboard_DeletePackage];
 GO
 
-CREATE PROCEDURE [dbo].[sp_VendorDashboard_DeletePackage]
+CREATE PROCEDURE [vendors].[sp_Dashboard_DeletePackage]
     @PackageID INT,
     @VendorProfileID INT
 AS

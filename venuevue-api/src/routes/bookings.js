@@ -41,7 +41,7 @@ router.post('/', async (req, res) => {
     request.input('ServicesJSON', sql.NVarChar(sql.MAX), JSON.stringify(services));
     request.input('PaymentIntentID', sql.NVarChar(100), paymentIntentId || null);
 
-    const result = await request.execute('sp_CreateBookingWithServices');
+    const result = await request.execute('bookings.sp_CreateBookingWithServices');
     
     const bookingId = result.recordset[0].BookingID;
     const conversationId = result.recordset[0].ConversationID;
@@ -73,7 +73,7 @@ router.get('/:id', async (req, res) => {
     request.input('BookingID', sql.Int, bookingId);
     request.input('UserID', sql.Int, userId || null);
 
-    const result = await request.execute('sp_GetBookingDetails');
+    const result = await request.execute('bookings.sp_GetBookingDetails');
     
     if (result.recordset.length === 0 || result.recordset[0].CanViewDetails === 0) {
       return res.status(404).json({ message: 'Booking not found or access denied' });
@@ -112,7 +112,7 @@ router.post('/:id/payment', async (req, res) => {
     request.input('Amount', sql.Decimal(10, 2), amount);
     request.input('ChargeID', sql.NVarChar(100), chargeId);
 
-    await request.execute('sp_ConfirmBookingPayment');
+    await request.execute('bookings.sp_ConfirmBookingPayment');
     
     res.json({ success: true });
 
@@ -140,7 +140,7 @@ router.post('/create-payment-intent', async (req, res) => {
         const pool = await poolPromise;
         const result = await pool.request()
           .input('BookingID', sql.Int, bookingId)
-          .execute('sp_Booking_GetVendorFromBooking');
+          .execute('bookings.sp_GetVendorFromBooking');
         if (result.recordset.length > 0) {
           resolvedVendorProfileId = result.recordset[0].VendorProfileID;
         }
@@ -155,7 +155,7 @@ router.post('/create-payment-intent', async (req, res) => {
       const pool = await poolPromise;
       const accRes = await pool.request()
         .input('VendorProfileID', sql.Int, resolvedVendorProfileId)
-        .execute('sp_Booking_GetVendorStripeAccount');
+        .execute('bookings.sp_GetVendorStripeAccount');
       const vendorStripeAccountId = accRes.recordset.length > 0 ? accRes.recordset[0].StripeAccountID : null;
 
       if (!vendorStripeAccountId) {
@@ -168,7 +168,7 @@ router.post('/create-payment-intent', async (req, res) => {
       // Ensure invoice exists and compute totals (subtotal + platform + tax)
       try { if (invoicesRouter && typeof invoicesRouter.upsertInvoiceForBooking === 'function') { await invoicesRouter.upsertInvoiceForBooking(pool, bookingId, { forceRegenerate: true }); } } catch (_) {}
       const invRes = await pool.request().input('BookingID', sql.Int, bookingId)
-        .execute('sp_Booking_GetInvoiceTotals');
+        .execute('bookings.sp_GetInvoiceTotals');
       const invRow = invRes.recordset[0] || {};
       const amountCents = Math.round(Number(invRow.TotalAmount != null ? invRow.TotalAmount : amount) * 100);
       const platformFee = Math.round(Number(invRow.PlatformFee || 0) * 100);
@@ -325,7 +325,7 @@ router.post('/requests', async (req, res) => {
         expiresAt.setHours(expiresAt.getHours() + 24);
         request.input('ExpiresAt', sql.DateTime, expiresAt);
 
-        const result = await request.execute('sp_Booking_InsertRequest');
+        const result = await request.execute('bookings.sp_InsertRequest');
 
         if (result.recordset.length > 0) {
           requests.push({
@@ -415,7 +415,7 @@ router.get('/services/:categoryId', async (req, res) => {
     
     request.input('Category', sql.NVarChar(50), categoryKey);
     
-    const result = await request.execute('sp_Booking_GetVendorsByCategory');
+    const result = await request.execute('bookings.sp_GetVendorsByCategory');
 
     const services = result.recordset.map((vendor, index) => {
       const serviceNames = {
@@ -521,7 +521,7 @@ router.get('/requests/:userId', async (req, res) => {
     
     request.input('UserID', sql.Int, userId);
     
-    const result = await request.execute('sp_Booking_GetUserRequests');
+    const result = await request.execute('bookings.sp_GetUserRequests');
 
     res.json({
       success: true,
@@ -561,7 +561,7 @@ router.put('/requests/:requestId/respond', async (req, res) => {
     request.input('ProposedPrice', sql.Decimal(10, 2), proposedPrice || null);
     request.input('RespondedAt', sql.DateTime, new Date());
 
-    const result = await request.execute('sp_Booking_RespondToRequest');
+    const result = await request.execute('bookings.sp_RespondToRequest');
 
     if (result.recordset.length === 0) {
       return res.status(404).json({ 
@@ -603,7 +603,7 @@ router.get('/vendor/:vendorId/requests', async (req, res) => {
     if (direction === 'outbound') {
       const vu = await pool.request()
         .input('VendorProfileID', sql.Int, parseInt(vendorId))
-        .execute('sp_Booking_GetVendorUserId');
+        .execute('bookings.sp_GetVendorUserId');
       vendorUserId = vu.recordset[0]?.UserID || null;
       if (!vendorUserId) {
         return res.json({ success: true, requests: [] });
@@ -736,7 +736,7 @@ router.post('/requests/send', async (req, res) => {
     request.input('ExpiresAt', sql.DateTime, expiresAt);
 
     request.input('SpecialRequests', sql.NVarChar(sql.MAX), specialRequestText || null);
-    const result = await request.execute('sp_Booking_InsertRequest');
+    const result = await request.execute('bookings.sp_InsertRequest');
 
     if (result.recordset.length === 0) {
       throw new Error('Failed to create request');
@@ -750,7 +750,7 @@ router.post('/requests/send', async (req, res) => {
     conversationRequest.input('VendorProfileID', sql.Int, vendorProfileId);
     conversationRequest.input('Subject', sql.NVarChar(255), 'New Booking Request');
 
-    const conversationResult = await conversationRequest.execute('sp_Booking_InsertConversation');
+    const conversationResult = await conversationRequest.execute('bookings.sp_InsertConversation');
 
     const conversationId = conversationResult.recordset[0].ConversationID;
 
@@ -761,13 +761,13 @@ router.post('/requests/send', async (req, res) => {
       messageRequest.input('SenderID', sql.Int, userId);
       messageRequest.input('Content', sql.NVarChar(sql.MAX), specialRequestText);
 
-      await messageRequest.execute('sp_Booking_InsertMessage');
+      await messageRequest.execute('bookings.sp_InsertMessage');
     }
 
     // Create notification for vendor
     const vendorUserResult = await pool.request()
       .input('VendorProfileID', sql.Int, vendorProfileId)
-      .execute('sp_Booking_GetVendorUserId');
+      .execute('bookings.sp_GetVendorUserId');
 
     if (vendorUserResult.recordset.length > 0) {
       const vendorUserId = vendorUserResult.recordset[0].UserID;
@@ -780,7 +780,7 @@ router.post('/requests/send', async (req, res) => {
       notificationRequest.input('RelatedID', sql.Int, newRequest.RequestID);
       notificationRequest.input('RelatedType', sql.NVarChar(50), 'request');
 
-      await notificationRequest.execute('sp_Booking_InsertNotification');
+      await notificationRequest.execute('bookings.sp_InsertNotification');
     }
 
     res.json({
@@ -823,7 +823,7 @@ router.post('/requests/:requestId/approve', async (req, res) => {
       .input('Status', sql.NVarChar(50), 'approved')
       .input('ResponseMessage', sql.NVarChar(sql.MAX), responseMessage || null)
       .input('RespondedAt', sql.DateTime, new Date())
-      .execute('sp_Booking_ApproveRequest');
+      .execute('bookings.sp_ApproveRequest');
 
     if (updateResult.recordset.length === 0) {
       return res.status(404).json({ 
@@ -843,7 +843,7 @@ router.post('/requests/:requestId/approve', async (req, res) => {
     notificationRequest.input('RelatedID', sql.Int, requestId);
     notificationRequest.input('RelatedType', sql.NVarChar(50), 'request');
 
-    await notificationRequest.execute('sp_Booking_InsertNotification');
+    await notificationRequest.execute('bookings.sp_InsertNotification');
 
     // Ensure conversation exists and send auto-approval message
     // 1) Find/Create conversation for this user/vendor pair
@@ -851,7 +851,7 @@ router.post('/requests/:requestId/approve', async (req, res) => {
     const convLookup = await pool.request()
       .input('UserID', sql.Int, userId)
       .input('VendorProfileID', sql.Int, vendorProfileId)
-      .execute('sp_Booking_GetConversation');
+      .execute('bookings.sp_GetConversation');
 
     if (convLookup.recordset.length > 0) {
       conversationId = convLookup.recordset[0].ConversationID;
@@ -860,7 +860,7 @@ router.post('/requests/:requestId/approve', async (req, res) => {
         .input('UserID', sql.Int, userId)
         .input('VendorProfileID', sql.Int, vendorProfileId)
         .input('Subject', sql.NVarChar(255), 'Request Approved')
-        .execute('sp_Booking_InsertConversation');
+        .execute('bookings.sp_InsertConversation');
       conversationId = convCreate.recordset[0].ConversationID;
     }
 
@@ -868,7 +868,7 @@ router.post('/requests/:requestId/approve', async (req, res) => {
     let vendorUserId = null;
     const vendorUserRes = await pool.request()
       .input('VendorProfileID', sql.Int, vendorProfileId)
-      .execute('sp_Booking_GetVendorUserId');
+      .execute('bookings.sp_GetVendorUserId');
     if (vendorUserRes.recordset.length > 0) {
       vendorUserId = vendorUserRes.recordset[0].UserID;
     }
@@ -879,7 +879,7 @@ router.post('/requests/:requestId/approve', async (req, res) => {
         .input('ConversationID', sql.Int, conversationId)
         .input('SenderID', sql.Int, vendorUserId)
         .input('Content', sql.NVarChar(sql.MAX), 'Hello! Your booking request has been approved. Feel free to ask any questions about your upcoming event.')
-        .execute('sp_Booking_InsertMessage');
+        .execute('bookings.sp_InsertMessage');
     }
 
     res.json({
@@ -923,7 +923,7 @@ router.post('/requests/:requestId/decline', async (req, res) => {
       .input('Status', sql.NVarChar(50), 'declined')
       .input('ResponseMessage', sql.NVarChar(sql.MAX), responseMessage || null)
       .input('RespondedAt', sql.DateTime, new Date())
-      .execute('sp_Booking_DeclineRequest');
+      .execute('bookings.sp_DeclineRequest');
 
     if (updateResult.recordset.length === 0) {
       return res.status(404).json({ 
@@ -943,7 +943,7 @@ router.post('/requests/:requestId/decline', async (req, res) => {
     notificationRequest.input('RelatedID', sql.Int, requestId);
     notificationRequest.input('RelatedType', sql.NVarChar(50), 'request');
 
-    await notificationRequest.execute('sp_Booking_InsertNotification');
+    await notificationRequest.execute('bookings.sp_InsertNotification');
 
     res.json({
       success: true,
@@ -981,7 +981,7 @@ router.post('/requests/:requestId/cancel', async (req, res) => {
       .input('UserID', sql.Int, userId)
       .input('Status', sql.NVarChar(50), 'cancelled')
       .input('RespondedAt', sql.DateTime, new Date())
-      .execute('sp_Booking_CancelRequest');
+      .execute('bookings.sp_CancelRequest');
 
     if (updateResult.recordset.length === 0) {
       return res.status(404).json({ 
@@ -1022,7 +1022,7 @@ router.post('/confirmed', async (req, res) => {
     // Get request details to create booking
     const requestDetails = await pool.request()
       .input('RequestID', sql.Int, requestId)
-      .execute('sp_Booking_GetRequestDetails');
+      .execute('bookings.sp_GetRequestDetails');
 
     if (requestDetails.recordset.length === 0) {
       return res.status(404).json({ 
@@ -1044,7 +1044,7 @@ router.post('/confirmed', async (req, res) => {
     request.input('SpecialRequests', sql.NVarChar(sql.MAX), requestData.SpecialRequests);
     request.input('TotalAmount', sql.Decimal(10, 2), requestData.Budget || 0);
 
-    const result = await request.execute('sp_Booking_InsertConfirmedBooking');
+    const result = await request.execute('bookings.sp_InsertConfirmedBooking');
 
     const bookingId = result.recordset && result.recordset[0] ? result.recordset[0].BookingID : null;
 
@@ -1053,7 +1053,7 @@ router.post('/confirmed', async (req, res) => {
     const convLookup2 = await pool.request()
       .input('UserID', sql.Int, userId)
       .input('VendorProfileID', sql.Int, vendorProfileId)
-      .execute('sp_Booking_GetConversation');
+      .execute('bookings.sp_GetConversation');
 
     if (convLookup2.recordset.length > 0) {
       conversationId = convLookup2.recordset[0].ConversationID;
@@ -1062,7 +1062,7 @@ router.post('/confirmed', async (req, res) => {
         .input('UserID', sql.Int, userId)
         .input('VendorProfileID', sql.Int, vendorProfileId)
         .input('Subject', sql.NVarChar(255), 'Booking Confirmed')
-        .execute('sp_Booking_InsertConversation');
+        .execute('bookings.sp_InsertConversation');
       conversationId = convCreate2.recordset[0].ConversationID;
     }
 
@@ -1072,7 +1072,7 @@ router.post('/confirmed', async (req, res) => {
     let vendorUserId = null;
     const vendorUserRes = await pool.request()
       .input('VendorProfileID', sql.Int, vendorProfileId)
-      .execute('sp_Booking_GetVendorUserId');
+      .execute('bookings.sp_GetVendorUserId');
     if (vendorUserRes.recordset.length > 0) {
       vendorUserId = vendorUserRes.recordset[0].UserID;
     }
@@ -1087,7 +1087,7 @@ router.post('/confirmed', async (req, res) => {
         .input('Message', sql.NVarChar(sql.MAX), 'Your booking has been confirmed.')
         .input('RelatedID', sql.Int, bookingId)
         .input('RelatedType', sql.NVarChar(50), 'booking')
-        .execute('sp_Booking_InsertNotification');
+        .execute('bookings.sp_InsertNotification');
 
       // Notify vendor
       if (vendorUserId) {
@@ -1098,7 +1098,7 @@ router.post('/confirmed', async (req, res) => {
           .input('Message', sql.NVarChar(sql.MAX), 'A user has confirmed a booking with you.')
           .input('RelatedID', sql.Int, bookingId)
           .input('RelatedType', sql.NVarChar(50), 'booking')
-          .execute('sp_Booking_InsertNotification');
+          .execute('bookings.sp_InsertNotification');
       }
     }
 
@@ -1130,7 +1130,7 @@ router.get('/:id/invoice', async (req, res) => {
     const pool = await poolPromise;
     const bookingInfoRes = await pool.request()
       .input('BookingID', sql.Int, parseInt(id))
-      .execute('sp_Booking_GetBookingInfo');
+      .execute('bookings.sp_GetBookingInfo');
 
     if (bookingInfoRes.recordset.length === 0) {
       return res.status(404).json({ success: false, message: 'Booking not found' });
@@ -1145,17 +1145,17 @@ router.get('/:id/invoice', async (req, res) => {
     // Load services
     const servicesRes = await pool.request()
       .input('BookingID', sql.Int, parseInt(id))
-      .execute('sp_Booking_GetBookingServices');
+      .execute('bookings.sp_GetBookingServices');
 
     // Load expenses (vendor-added)
     const expensesRes = await pool.request()
       .input('BookingID', sql.Int, parseInt(id))
-      .execute('sp_Booking_GetBookingExpenses');
+      .execute('bookings.sp_GetBookingExpenses');
 
     // Load transactions (payments)
     const txRes = await pool.request()
       .input('BookingID', sql.Int, parseInt(id))
-      .execute('sp_Booking_GetTransactions');
+      .execute('bookings.sp_GetTransactions');
 
     // Compute totals
     const serviceItems = servicesRes.recordset.map(row => {
@@ -1249,17 +1249,17 @@ router.get('/:id/expenses', async (req, res) => {
     const pool = await poolPromise;
     const bres = await pool.request()
       .input('BookingID', sql.Int, parseInt(id))
-      .execute('sp_Booking_GetBookingClientVendor');
+      .execute('bookings.sp_GetBookingClientVendor');
     if (bres.recordset.length === 0) return res.status(404).json({ success: false, message: 'Booking not found' });
     const clientId = bres.recordset[0].ClientUserID;
     const vpid = bres.recordset[0].VendorProfileID;
-    const vuserRes = await pool.request().input('VendorProfileID', sql.Int, vpid).execute('sp_Booking_GetVendorUserId');
+    const vuserRes = await pool.request().input('VendorProfileID', sql.Int, vpid).execute('bookings.sp_GetVendorUserId');
     const vendorUserId = vuserRes.recordset[0]?.UserID || 0;
     if (requesterUserId !== clientId && requesterUserId !== vendorUserId) {
       return res.status(403).json({ success: false, message: 'Access denied' });
     }
 
-    const exRes = await pool.request().input('BookingID', sql.Int, parseInt(id)).execute('sp_Booking_GetBookingExpenses');
+    const exRes = await pool.request().input('BookingID', sql.Int, parseInt(id)).execute('bookings.sp_GetBookingExpenses');
     res.json({ success: true, expenses: exRes.recordset });
   } catch (err) {
     console.error('Get expenses error:', err);
@@ -1281,10 +1281,10 @@ router.post('/:id/expenses', async (req, res) => {
     const pool = await poolPromise;
     const bres = await pool.request()
       .input('BookingID', sql.Int, parseInt(id))
-      .execute('sp_Booking_GetVendorFromBooking');
+      .execute('bookings.sp_GetVendorFromBooking');
     if (bres.recordset.length === 0) return res.status(404).json({ success: false, message: 'Booking not found' });
     const vendorProfileId = bres.recordset[0].VendorProfileID;
-    const vuserRes = await pool.request().input('VendorProfileID', sql.Int, vendorProfileId).execute('sp_Booking_GetVendorUserId');
+    const vuserRes = await pool.request().input('VendorProfileID', sql.Int, vendorProfileId).execute('bookings.sp_GetVendorUserId');
     const vendorUserId = vuserRes.recordset[0]?.UserID || 0;
     if (userId !== vendorUserId) return res.status(403).json({ success: false, message: 'Only vendor can add expenses' });
 
@@ -1294,7 +1294,7 @@ router.post('/:id/expenses', async (req, res) => {
       .input('Title', sql.NVarChar(255), title.trim())
       .input('Amount', sql.Decimal(10, 2), amt)
       .input('Notes', sql.NVarChar(sql.MAX), notes || null)
-      .execute('sp_Booking_InsertExpense');
+      .execute('bookings.sp_InsertExpense');
 
     res.json({ success: true, expense: insertRes.recordset[0] });
   } catch (err) {

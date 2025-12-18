@@ -1,20 +1,21 @@
 -- =============================================
--- Stored Procedure: sp_Admin_SetVendorVisibility
+-- Stored Procedure: admin.sp_SetVendorVisibility
 -- Description: Sets vendor visibility explicitly
 -- Phase: 600 (Stored Procedures)
+-- Schema: admin
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Admin_SetVendorVisibility]'))
-    DROP PROCEDURE [dbo].[sp_Admin_SetVendorVisibility];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_SetVendorVisibility]'))
+    DROP PROCEDURE [admin].[sp_SetVendorVisibility];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Admin_SetVendorVisibility]
+CREATE PROCEDURE [admin].[sp_SetVendorVisibility]
     @VendorProfileID INT,
     @Visible BIT
 AS
 BEGIN
     SET NOCOUNT ON;
     
-    UPDATE VendorProfiles 
+    UPDATE vendors.VendorProfiles 
     SET IsVisible = @Visible,
         UpdatedAt = GETDATE()
     WHERE VendorProfileID = @VendorProfileID;
@@ -22,3 +23,4 @@ BEGIN
     SELECT @Visible AS IsVisible;
 END
 GO
+

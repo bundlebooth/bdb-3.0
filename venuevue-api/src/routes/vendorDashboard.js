@@ -14,7 +14,7 @@ async function getStripeStatus(pool, vendorProfileId) {
   try {
     const r = await new sql.Request(pool)
       .input('VendorProfileID', sql.Int, vendorProfileId)
-      .execute('sp_VendorDashboard_GetStripeAccount');
+      .execute('vendors.sp_Dashboard_GetStripeAccount');
     const acct = r.recordset[0]?.StripeAccountID || null;
     if (!acct) return { connected: false, chargesEnabled: false, payoutsEnabled: false, accountId: null };
     if (!isStripeConfigured()) return { connected: true, chargesEnabled: false, payoutsEnabled: false, accountId: acct };
@@ -33,13 +33,13 @@ async function computeSetupStatusByUserId(userId) {
   const pool = await poolPromise;
   const req = new sql.Request(pool);
   req.input('UserID', sql.Int, parseInt(userId));
-  const prof = await req.execute('sp_VendorDashboard_GetProfileByUserId');
+  const prof = await req.execute('vendors.sp_Dashboard_GetProfileByUserId');
   if (!prof.recordset.length) return { exists: false, message: 'Vendor profile not found' };
   const p = prof.recordset[0];
   const vId = p.VendorProfileID;
   const counts = await new sql.Request(pool)
     .input('VendorProfileID', sql.Int, vId)
-    .execute('sp_VendorDashboard_GetSetupCounts');
+    .execute('vendors.sp_Dashboard_GetSetupCounts');
   const c = counts.recordset[0] || {};
   const stripeStatus = await getStripeStatus(pool, vId);
 
@@ -137,7 +137,7 @@ router.get('/:id/dashboard', async (req, res) => {
     
     request.input('UserID', sql.Int, id);
 
-    const result = await request.execute('sp_GetVendorDashboard');
+    const result = await request.execute('vendors.sp_GetDashboard');
     
     // Handle case when no data is returned
     const profile = result.recordsets[0] && result.recordsets[0][0] ? result.recordsets[0][0] : null;
@@ -184,7 +184,16 @@ router.get('/:id/setup-status', async (req, res) => {
     res.json({ success: true, ...status });
   } catch (err) {
     console.error('Setup status error:', err);
-    res.status(500).json({ success: false, message: 'Failed to compute setup status', error: err.message });
+    // Return a default setup status on error instead of 500
+    res.json({ 
+      success: true, 
+      exists: false,
+      vendorProfileId: null,
+      steps: {},
+      incompleteSteps: [],
+      allRequiredComplete: false,
+      canGoPublic: false
+    });
   }
 });
 
@@ -200,7 +209,7 @@ router.get('/:id/analytics', async (req, res) => {
     request.input('VendorProfileID', sql.Int, id);
     request.input('DaysBack', sql.Int, parseInt(daysBack));
     
-    const result = await request.execute('sp_VendorDashboard_GetAnalytics');
+    const result = await request.execute('vendors.sp_Dashboard_GetAnalytics');
     
     const analytics = {
       bookingStats: result.recordsets[0]?.[0] || {},
@@ -228,7 +237,7 @@ router.get('/:id/bookings/all', async (req, res) => {
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, parseInt(id));
     
-    const result = await request.execute('sp_VendorDashboard_GetAllBookings');
+    const result = await request.execute('vendors.sp_Dashboard_GetAllBookings');
     
     // Fix date serialization - convert Date objects to ISO strings
     const bookings = result.recordset.map(booking => ({
@@ -253,7 +262,7 @@ router.get('/:id/services', async (req, res) => {
     const pool = await poolPromise;
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, parseInt(id));
-    const result = await request.execute('sp_GetVendorServices');
+    const result = await request.execute('vendors.sp_GetServices');
     res.json(result.recordset);
   } catch (err) {
     console.error('Get vendor services error:', err);
@@ -282,7 +291,7 @@ router.post('/:id/services/upsert', async (req, res) => {
     request.input('DepositPercentage', sql.Decimal(5,2), depositPercentage);
     request.input('CancellationPolicy', sql.NVarChar(sql.MAX), cancellationPolicy || null);
 
-    const result = await request.execute('sp_UpsertVendorService');
+    const result = await request.execute('vendors.sp_UpsertService');
     res.json({ success: true, serviceId: result.recordset[0].ServiceID });
   } catch (err) {
     console.error('Upsert vendor service error:', err);
@@ -298,7 +307,7 @@ router.delete('/:id/services/:serviceId', async (req, res) => {
     const request = new sql.Request(pool);
     request.input('ServiceID', sql.Int, parseInt(serviceId));
     request.input('VendorProfileID', sql.Int, parseInt(id));
-    const result = await request.execute('sp_DeleteVendorService');
+    const result = await request.execute('vendors.sp_DeleteService');
     if (result.recordset[0].Success) {
       res.json({ success: true, message: 'Service deleted successfully' });
     } else {
@@ -317,7 +326,7 @@ router.get('/:id/reviews/all', async (req, res) => {
     const pool = await poolPromise;
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, parseInt(id));
-    const result = await request.execute('sp_GetVendorReviewsAll');
+    const result = await request.execute('vendors.sp_GetReviewsAll');
     res.json(result.recordset);
   } catch (err) {
     console.error('Get all vendor reviews error:', err);
@@ -332,7 +341,7 @@ router.get('/:id/profile-details', async (req, res) => {
     const pool = await poolPromise;
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, parseInt(id));
-    const result = await request.execute('sp_GetVendorProfileDetails');
+    const result = await request.execute('vendors.sp_GetProfileDetails');
     if (result.recordset.length > 0) {
       res.json(result.recordset[0]);
     } else {
@@ -355,7 +364,7 @@ router.get('/:id/images', async (req, res) => {
     const pool = await poolPromise;
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, idNum);
-    const result = await request.execute('sp_GetVendorImages');
+    const result = await request.execute('vendors.sp_GetImages');
     res.json(result.recordset);
   } catch (err) {
     console.error('Get vendor images error:', err);
@@ -382,7 +391,7 @@ router.post('/:id/images/upsert', async (req, res) => {
     request.input('Caption', sql.NVarChar(255), caption || null);
     request.input('DisplayOrder', sql.Int, displayOrder || 0);
 
-    const result = await request.execute('sp_UpsertVendorImage');
+    const result = await request.execute('vendors.sp_UpsertImage');
     res.json({ success: true, imageId: result.recordset[0].ImageID });
   } catch (err) {
     console.error('Upsert vendor image error:', err);
@@ -398,7 +407,7 @@ router.delete('/:id/images/:imageId', async (req, res) => {
     const request = new sql.Request(pool);
     request.input('ImageID', sql.Int, parseInt(imageId));
     request.input('VendorProfileID', sql.Int, parseInt(id));
-    const result = await request.execute('sp_DeleteVendorImage');
+    const result = await request.execute('vendors.sp_DeleteImage');
     if (result.recordset[0].Success) {
       res.json({ success: true, message: 'Image deleted successfully' });
     } else {
@@ -417,7 +426,7 @@ router.get('/:id/availability', async (req, res) => {
     const pool = await poolPromise;
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, parseInt(id));
-    const result = await request.execute('sp_GetVendorAvailability');
+    const result = await request.execute('vendors.sp_GetAvailability');
     
     // Format time values - SQL Server returns TIME as Date objects
     const formatTime = (timeValue) => {
@@ -482,7 +491,7 @@ router.post('/:id/business-hours/upsert', async (req, res) => {
       const existsReq = new sql.Request(pool);
       existsReq.input('VendorProfileID', sql.Int, parseInt(id));
       existsReq.input('DayOfWeek', sql.TinyInt, dayOfWeek);
-      const existsRes = await existsReq.execute('sp_VendorDashboard_GetExistingHoursId');
+      const existsRes = await existsReq.execute('vendors.sp_Dashboard_GetExistingHoursId');
       resolvedHoursId = existsRes.recordset[0]?.HoursID || null;
     }
 
@@ -501,11 +510,11 @@ router.post('/:id/business-hours/upsert', async (req, res) => {
     let resultHoursId;
     if (resolvedHoursId) {
       // Update existing
-      await request.execute('sp_VendorDashboard_UpdateBusinessHours');
+      await request.execute('vendors.sp_Dashboard_UpdateBusinessHours');
       resultHoursId = resolvedHoursId;
     } else {
       // Insert new
-      const insertResult = await request.execute('sp_VendorDashboard_InsertBusinessHours');
+      const insertResult = await request.execute('vendors.sp_Dashboard_InsertBusinessHours');
       resultHoursId = insertResult.recordset[0].HoursID;
     }
 
@@ -524,7 +533,7 @@ router.delete('/:id/business-hours/:hoursId', async (req, res) => {
     const request = new sql.Request(pool);
     request.input('HoursID', sql.Int, parseInt(hoursId));
     request.input('VendorProfileID', sql.Int, parseInt(id));
-    const result = await request.execute('sp_DeleteVendorBusinessHour');
+    const result = await request.execute('vendors.sp_DeleteBusinessHour');
     if (result.recordset[0].Success) {
       res.json({ success: true, message: 'Business hour deleted successfully' });
     } else {
@@ -572,7 +581,7 @@ router.post('/:id/availability-exceptions/upsert', async (req, res) => {
     request.input('IsAvailable', sql.Bit, isAvailable);
     request.input('Reason', sql.NVarChar(255), reason || null);
 
-    const result = await request.execute('sp_UpsertVendorAvailabilityException');
+    const result = await request.execute('vendors.sp_UpsertAvailabilityException');
     res.json({ success: true, exceptionId: result.recordset[0].ExceptionID });
   } catch (err) {
     console.error('Upsert vendor availability exception error:', err);
@@ -588,7 +597,7 @@ router.delete('/:id/availability-exceptions/:exceptionId', async (req, res) => {
     const request = new sql.Request(pool);
     request.input('ExceptionID', sql.Int, parseInt(exceptionId));
     request.input('VendorProfileID', sql.Int, parseInt(id));
-    const result = await request.execute('sp_DeleteVendorAvailabilityException');
+    const result = await request.execute('vendors.sp_DeleteAvailabilityException');
     if (result.recordset[0].Success) {
       res.json({ success: true, message: 'Availability exception deleted successfully' });
     } else {
@@ -610,7 +619,7 @@ router.get('/:id/social', async (req, res) => {
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, parseInt(id));
 
-    const socialResult = await request.execute('sp_VendorDashboard_GetSocialMedia');
+    const socialResult = await request.execute('vendors.sp_Dashboard_GetSocialMedia');
     const bookingLinkResult = { recordset: socialResult.recordsets[1] || [] };
     const socialRecordset = socialResult.recordsets[0] || [];
 
@@ -640,12 +649,12 @@ router.post('/:id/social', async (req, res) => {
       const blReq = new sql.Request(pool);
       blReq.input('VendorProfileID', sql.Int, parseInt(id));
       blReq.input('BookingLink', sql.NVarChar, bookingLink || null);
-      await blReq.execute('sp_VendorDashboard_UpdateBookingLink');
+      await blReq.execute('vendors.sp_Dashboard_UpdateBookingLink');
     }
 
     if (Array.isArray(socialMediaProfiles)) {
       // Clear existing
-      await request.execute('sp_VendorDashboard_DeleteSocialMedia');
+      await request.execute('vendors.sp_Dashboard_DeleteSocialMedia');
       // Insert new
       for (let i = 0; i < socialMediaProfiles.length; i++) {
         const profile = socialMediaProfiles[i];
@@ -655,7 +664,7 @@ router.post('/:id/social', async (req, res) => {
         sReq.input('Platform', sql.NVarChar(50), profile.platform);
         sReq.input('URL', sql.NVarChar(500), profile.url);
         sReq.input('DisplayOrder', sql.Int, i);
-        await sReq.execute('sp_VendorDashboard_InsertSocialMedia');
+        await sReq.execute('vendors.sp_Dashboard_InsertSocialMedia');
       }
     }
 
@@ -673,7 +682,7 @@ router.get('/:id/policies', async (req, res) => {
     const pool = await poolPromise;
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, parseInt(id));
-    const result = await request.execute('sp_VendorDashboard_GetPolicies');
+    const result = await request.execute('vendors.sp_Dashboard_GetPolicies');
     if (result.recordset.length === 0) return res.status(404).json({ success: false, message: 'Vendor not found' });
     res.json({ success: true, policies: result.recordset[0] });
   } catch (err) {
@@ -695,7 +704,7 @@ router.post('/:id/policies', async (req, res) => {
     request.input('ReschedulingPolicy', sql.NVarChar, reschedulingPolicy || null);
     request.input('PaymentMethods', sql.NVarChar, paymentMethods ? JSON.stringify(paymentMethods) : null);
     request.input('PaymentTerms', sql.NVarChar, paymentTerms || null);
-    await request.execute('sp_VendorDashboard_UpdatePolicies');
+    await request.execute('vendors.sp_Dashboard_UpdatePolicies');
     res.json({ success: true, message: 'Policies saved' });
   } catch (err) {
     console.error('Save policies error:', err);
@@ -710,7 +719,7 @@ router.get('/:id/verification', async (req, res) => {
     const pool = await poolPromise;
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, parseInt(id));
-    const result = await request.execute('sp_VendorDashboard_GetVerification');
+    const result = await request.execute('vendors.sp_Dashboard_GetVerification');
     if (result.recordset.length === 0) return res.status(404).json({ success: false, message: 'Vendor not found' });
     res.json({ success: true, verification: result.recordset[0] });
   } catch (err) {
@@ -735,7 +744,7 @@ router.post('/:id/verification', async (req, res) => {
     request.input('IsPremium', sql.Bit, !!isPremium);
     request.input('IsAwardWinning', sql.Bit, !!isAwardWinning);
     request.input('IsLastMinute', sql.Bit, !!isLastMinute);
-    await request.execute('sp_VendorDashboard_UpdateVerification');
+    await request.execute('vendors.sp_Dashboard_UpdateVerification');
     res.json({ success: true, message: 'Verification info saved' });
   } catch (err) {
     console.error('Save verification error:', err);
@@ -750,7 +759,7 @@ router.get('/:id/faqs', async (req, res) => {
     const pool = await poolPromise;
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, parseInt(id));
-    const result = await request.execute('sp_VendorDashboard_GetFAQs');
+    const result = await request.execute('vendors.sp_Dashboard_GetFAQs');
     res.json({ success: true, faqs: result.recordset });
   } catch (err) {
     console.error('Get FAQs error:', err);
@@ -767,7 +776,7 @@ router.post('/:id/faqs/upsert', async (req, res) => {
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, parseInt(id));
     // Clear existing
-    await request.execute('sp_VendorDashboard_DeleteFAQs');
+    await request.execute('vendors.sp_Dashboard_DeleteFAQs');
     // Insert new
     if (Array.isArray(faqs)) {
       for (let i = 0; i < faqs.length; i++) {
@@ -784,7 +793,7 @@ router.post('/:id/faqs/upsert', async (req, res) => {
         fReq.input('AnswerType', sql.NVarChar(50), f.answerType || 'text');
         fReq.input('AnswerOptions', sql.NVarChar(sql.MAX), f.answerOptions ? JSON.stringify(f.answerOptions) : null);
         fReq.input('DisplayOrder', sql.Int, i + 1);
-        await fReq.execute('sp_VendorDashboard_InsertFAQ');
+        await fReq.execute('vendors.sp_Dashboard_InsertFAQ');
       }
     }
     res.json({ success: true, message: 'FAQs saved' });
@@ -801,7 +810,7 @@ router.get('/:id/category-answers', async (req, res) => {
     const pool = await poolPromise;
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, parseInt(id));
-    const result = await request.execute('sp_VendorDashboard_GetCategoryAnswers');
+    const result = await request.execute('vendors.sp_Dashboard_GetCategoryAnswers');
     res.json({ success: true, answers: result.recordset });
   } catch (err) {
     console.error('Get category answers error:', err);
@@ -824,7 +833,7 @@ router.post('/:id/category-answers/upsert', async (req, res) => {
     // Clear existing answers
     const delReq = new sql.Request(pool);
     delReq.input('VendorProfileID', sql.Int, parseInt(id));
-    await delReq.execute('sp_VendorDashboard_DeleteCategoryAnswers');
+    await delReq.execute('vendors.sp_Dashboard_DeleteCategoryAnswers');
 
     // Insert new answers
     for (const a of answers) {
@@ -833,7 +842,7 @@ router.post('/:id/category-answers/upsert', async (req, res) => {
       insReq.input('VendorProfileID', sql.Int, parseInt(id));
       insReq.input('QuestionID', sql.Int, parseInt(a.questionId));
       insReq.input('Answer', sql.NVarChar(sql.MAX), a.answer);
-      await insReq.execute('sp_VendorDashboard_InsertCategoryAnswer');
+      await insReq.execute('vendors.sp_Dashboard_InsertCategoryAnswer');
     }
 
     res.json({ success: true, message: 'Category answers saved' });
@@ -850,7 +859,7 @@ router.get('/:id/team', async (req, res) => {
     const pool = await poolPromise;
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, parseInt(id));
-    const result = await request.execute('sp_VendorDashboard_GetTeam');
+    const result = await request.execute('vendors.sp_Dashboard_GetTeam');
     res.json({ success: true, team: result.recordset });
   } catch (err) {
     console.error('Get team error:', err);
@@ -866,7 +875,7 @@ router.post('/:id/team/upsert', async (req, res) => {
     const pool = await poolPromise;
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, parseInt(id));
-    await request.execute('sp_VendorDashboard_DeleteTeam');
+    await request.execute('vendors.sp_Dashboard_DeleteTeam');
     if (Array.isArray(teamMembers)) {
       for (let i = 0; i < teamMembers.length; i++) {
         const t = teamMembers[i];
@@ -878,7 +887,7 @@ router.post('/:id/team/upsert', async (req, res) => {
         tReq.input('Bio', sql.NVarChar, t.bio || null);
         tReq.input('ImageURL', sql.NVarChar, t.imageUrl || null);
         tReq.input('DisplayOrder', sql.Int, i);
-        await tReq.execute('sp_VendorDashboard_InsertTeamMember');
+        await tReq.execute('vendors.sp_Dashboard_InsertTeamMember');
       }
     }
     res.json({ success: true, message: 'Team saved' });
@@ -895,7 +904,7 @@ router.get('/:id/location', async (req, res) => {
     const pool = await poolPromise;
     const pReq = new sql.Request(pool);
     pReq.input('VendorProfileID', sql.Int, parseInt(id));
-    const profileResult = await pReq.execute('sp_VendorDashboard_GetLocation');
+    const profileResult = await pReq.execute('vendors.sp_Dashboard_GetLocation');
     if (profileResult.recordset.length === 0) return res.status(404).json({ success: false, message: 'Vendor not found' });
     const aReq = new sql.Request(pool);
     aReq.input('VendorProfileID', sql.Int, parseInt(id));
@@ -922,13 +931,13 @@ router.post('/:id/location', async (req, res) => {
     uReq.input('PostalCode', sql.NVarChar(20), postalCode || null);
     uReq.input('Latitude', sql.Decimal(10, 8), latitude != null ? Number(latitude) : null);
     uReq.input('Longitude', sql.Decimal(11, 8), longitude != null ? Number(longitude) : null);
-    await uReq.execute('sp_VendorDashboard_UpdateLocation');
+    await uReq.execute('vendors.sp_Dashboard_UpdateLocation');
 
     // Replace service areas if provided
     if (Array.isArray(serviceAreas)) {
       const dReq = new sql.Request(pool);
       dReq.input('VendorProfileID', sql.Int, parseInt(id));
-      await dReq.execute('sp_VendorDashboard_DeleteServiceAreas');
+      await dReq.execute('vendors.sp_Dashboard_DeleteServiceAreas');
       for (const area of serviceAreas) {
         const aReq = new sql.Request(pool);
         aReq.input('VendorProfileID', sql.Int, parseInt(id));
@@ -948,7 +957,7 @@ router.post('/:id/location', async (req, res) => {
         aReq.input('BoundsNortheastLng', sql.Decimal(9, 6), area.bounds?.northeast?.lng != null ? Number(area.bounds.northeast.lng) : null);
         aReq.input('BoundsSouthwestLat', sql.Decimal(9, 6), area.bounds?.southwest?.lat != null ? Number(area.bounds.southwest.lat) : null);
         aReq.input('BoundsSouthwestLng', sql.Decimal(9, 6), area.bounds?.southwest?.lng != null ? Number(area.bounds.southwest.lng) : null);
-        await aReq.execute('sp_VendorDashboard_InsertServiceArea');
+        await aReq.execute('vendors.sp_Dashboard_InsertServiceArea');
       }
     }
 
@@ -966,7 +975,7 @@ router.get('/:id/packages', async (req, res) => {
     const pool = await poolPromise;
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, parseInt(id));
-    const result = await request.execute('sp_VendorDashboard_GetPackages');
+    const result = await request.execute('vendors.sp_Dashboard_GetPackages');
     res.json({ success: true, packages: result.recordset });
   } catch (err) {
     console.error('Get packages error:', err);
@@ -990,7 +999,7 @@ router.post('/:id/packages/upsert', async (req, res) => {
       uReq.input('DurationMinutes', sql.Int, durationMinutes != null ? parseInt(durationMinutes) : null);
       uReq.input('MaxGuests', sql.Int, maxGuests != null ? parseInt(maxGuests) : null);
       uReq.input('WhatsIncluded', sql.NVarChar, whatsIncluded || null);
-      await uReq.execute('sp_VendorDashboard_UpdatePackage');
+      await uReq.execute('vendors.sp_Dashboard_UpdatePackage');
       res.json({ success: true, packageId: parseInt(packageId), message: 'Package updated' });
     } else {
       const iReq = new sql.Request(pool);
@@ -1001,7 +1010,7 @@ router.post('/:id/packages/upsert', async (req, res) => {
       iReq.input('DurationMinutes', sql.Int, durationMinutes != null ? parseInt(durationMinutes) : null);
       iReq.input('MaxGuests', sql.Int, maxGuests != null ? parseInt(maxGuests) : null);
       iReq.input('WhatsIncluded', sql.NVarChar, whatsIncluded || null);
-      const result = await iReq.execute('sp_VendorDashboard_InsertPackage');
+      const result = await iReq.execute('vendors.sp_Dashboard_InsertPackage');
       res.json({ success: true, packageId: result.recordset[0].PackageID, message: 'Package created' });
     }
   } catch (err) {
@@ -1018,7 +1027,7 @@ router.delete('/:id/packages/:packageId', async (req, res) => {
     const dReq = new sql.Request(pool);
     dReq.input('VendorProfileID', sql.Int, parseInt(id));
     dReq.input('PackageID', sql.Int, parseInt(packageId));
-    await dReq.execute('sp_VendorDashboard_DeletePackage');
+    await dReq.execute('vendors.sp_Dashboard_DeletePackage');
     res.json({ success: true, message: 'Package deleted' });
   } catch (err) {
     console.error('Delete package error:', err);
@@ -1033,7 +1042,7 @@ router.get('/:id/category-answers', async (req, res) => {
     const pool = await poolPromise;
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, parseInt(id));
-    const result = await request.execute('sp_VendorDashboard_GetCategoryAnswers');
+    const result = await request.execute('vendors.sp_Dashboard_GetCategoryAnswers');
     res.json({ success: true, answers: result.recordset });
   } catch (err) {
     console.error('Get category answers error:', err);
@@ -1049,7 +1058,7 @@ router.post('/:id/category-answers/upsert', async (req, res) => {
     const pool = await poolPromise;
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, parseInt(id));
-    await request.execute('sp_VendorDashboard_DeleteCategoryAnswers');
+    await request.execute('vendors.sp_Dashboard_DeleteCategoryAnswers');
     if (Array.isArray(answers)) {
       for (const a of answers) {
         if (!a?.questionId) continue;
@@ -1057,7 +1066,7 @@ router.post('/:id/category-answers/upsert', async (req, res) => {
         aReq.input('VendorProfileID', sql.Int, parseInt(id));
         aReq.input('QuestionID', sql.Int, parseInt(a.questionId));
         aReq.input('Answer', sql.NVarChar(sql.MAX), a.answer || null);
-        await aReq.execute('sp_VendorDashboard_InsertCategoryAnswer');
+        await aReq.execute('vendors.sp_Dashboard_InsertCategoryAnswer');
       }
     }
     res.json({ success: true, message: 'Category answers saved' });
@@ -1074,7 +1083,7 @@ router.get('/:id/popular-filters', async (req, res) => {
     const pool = await poolPromise;
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, parseInt(id));
-    const result = await request.execute('sp_VendorDashboard_GetPopularFilters');
+    const result = await request.execute('vendors.sp_Dashboard_GetPopularFilters');
     if (result.recordset.length === 0) return res.status(404).json({ success: false, message: 'Vendor not found' });
     res.json({ success: true, filters: result.recordset[0] });
   } catch (err) {
@@ -1099,7 +1108,7 @@ router.post('/:id/popular-filters', async (req, res) => {
     request.input('IsInsured', sql.Bit, !!isInsured);
     request.input('IsLocal', sql.Bit, !!isLocal);
     request.input('IsMobile', sql.Bit, !!isMobile);
-    await request.execute('sp_VendorDashboard_UpdatePopularFilters');
+    await request.execute('vendors.sp_Dashboard_UpdatePopularFilters');
     res.json({ success: true, message: 'Popular filters saved' });
   } catch (err) {
     console.error('Save popular filters error:', err);
@@ -1118,7 +1127,7 @@ router.get('/:id/portfolio/albums', async (req, res) => {
     const pool = await poolPromise;
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, parseInt(id));
-    const result = await request.execute('sp_GetVendorPortfolioAlbums');
+    const result = await request.execute('vendors.sp_GetPortfolioAlbums');
     res.json({ success: true, albums: result.recordset });
   } catch (err) {
     console.error('Get portfolio albums error:', err);
@@ -1134,7 +1143,7 @@ router.get('/:id/portfolio/albums/:albumId/images', async (req, res) => {
     const request = new sql.Request(pool);
     request.input('AlbumID', sql.Int, parseInt(albumId));
     request.input('VendorProfileID', sql.Int, parseInt(id));
-    const result = await request.execute('sp_GetAlbumImages');
+    const result = await request.execute('vendors.sp_GetAlbumImages');
     res.json({ success: true, images: result.recordset });
   } catch (err) {
     console.error('Get album images error:', err);
@@ -1163,7 +1172,7 @@ router.post('/:id/portfolio/albums/upsert', async (req, res) => {
     request.input('IsPublic', sql.Bit, isPublic !== false);
     request.input('DisplayOrder', sql.Int, displayOrder || 0);
 
-    const result = await request.execute('sp_UpsertPortfolioAlbum');
+    const result = await request.execute('vendors.sp_UpsertPortfolioAlbum');
     res.json({ success: true, albumId: result.recordset[0].AlbumID });
   } catch (err) {
     console.error('Upsert album error:', err);
@@ -1192,7 +1201,7 @@ router.post('/:id/portfolio/albums/:albumId/images', async (req, res) => {
     request.input('Caption', sql.NVarChar(255), caption || null);
     request.input('DisplayOrder', sql.Int, displayOrder || 0);
 
-    const result = await request.execute('sp_AddPortfolioImage');
+    const result = await request.execute('vendors.sp_AddPortfolioImage');
     res.json({ success: true, portfolioImageId: result.recordset[0].PortfolioImageID });
   } catch (err) {
     console.error('Add portfolio image error:', err);
@@ -1208,7 +1217,7 @@ router.delete('/:id/portfolio/images/:portfolioImageId', async (req, res) => {
     const request = new sql.Request(pool);
     request.input('PortfolioImageID', sql.Int, parseInt(portfolioImageId));
     request.input('VendorProfileID', sql.Int, parseInt(id));
-    const result = await request.execute('sp_DeletePortfolioImage');
+    const result = await request.execute('vendors.sp_DeletePortfolioImage');
     if (result.recordset[0].Success) {
       res.json({ success: true, message: 'Image deleted successfully' });
     } else {
@@ -1228,7 +1237,7 @@ router.delete('/:id/portfolio/albums/:albumId', async (req, res) => {
     const request = new sql.Request(pool);
     request.input('AlbumID', sql.Int, parseInt(albumId));
     request.input('VendorProfileID', sql.Int, parseInt(id));
-    const result = await request.execute('sp_DeletePortfolioAlbum');
+    const result = await request.execute('vendors.sp_DeletePortfolioAlbum');
     if (result.recordset[0].Success) {
       res.json({ success: true, message: 'Album deleted successfully' });
     } else {
@@ -1253,7 +1262,7 @@ router.get('/:id/portfolio/albums/public', async (req, res) => {
     request.input('VendorProfileID', sql.Int, parseInt(id));
     
     // Get only public albums
-    const result = await request.execute('sp_VendorDashboard_GetPublicAlbums');
+    const result = await request.execute('vendors.sp_Dashboard_GetPublicAlbums');
     
     res.json({ success: true, albums: result.recordset });
   } catch (err) {
@@ -1272,7 +1281,7 @@ router.get('/:id/portfolio/albums/:albumId/images/public', async (req, res) => {
     request.input('AlbumID', sql.Int, parseInt(albumId));
     
     // Verify album is public and belongs to vendor
-    const albumCheck = await request.execute('sp_VendorDashboard_CheckAlbumPublic');
+    const albumCheck = await request.execute('vendors.sp_Dashboard_CheckAlbumPublic');
     
     if (albumCheck.recordset.length === 0) {
       return res.status(404).json({ success: false, message: 'Album not found' });
@@ -1283,7 +1292,7 @@ router.get('/:id/portfolio/albums/:albumId/images/public', async (req, res) => {
     }
     
     // Get images
-    const result = await request.execute('sp_VendorDashboard_GetPublicAlbumImages');
+    const result = await request.execute('vendors.sp_Dashboard_GetPublicAlbumImages');
     
     res.json({ success: true, images: result.recordset });
   } catch (err) {

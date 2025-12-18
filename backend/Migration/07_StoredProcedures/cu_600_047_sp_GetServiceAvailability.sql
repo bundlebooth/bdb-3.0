@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_GetServiceAvailability]
     Phase: 600 - Stored Procedures
     Script: cu_600_047_dbo.sp_GetServiceAvailability.sql
-    Description: Creates the [dbo].[sp_GetServiceAvailability] stored procedure
+    Description: Creates the [vendors].[sp_GetServiceAvailability] stored procedure
     
     Execution Order: 47
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_GetServiceAvailability]...';
+PRINT 'Creating stored procedure [vendors].[sp_GetServiceAvailability]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_GetServiceAvailability]'))
-    DROP PROCEDURE [dbo].[sp_GetServiceAvailability];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_GetServiceAvailability]'))
+    DROP PROCEDURE [vendors].[sp_GetServiceAvailability];
 GO
 
-CREATE   PROCEDURE [dbo].[sp_GetServiceAvailability]
+CREATE   PROCEDURE [vendors].[sp_GetServiceAvailability]
     @ServiceID INT,
     @StartDate DATE,
     @EndDate DATE
@@ -33,9 +33,9 @@ BEGIN
         sc.Name AS CategoryName,
         vp.BusinessName AS VendorName,
         vp.VendorProfileID
-    FROM Services s
-    JOIN ServiceCategories sc ON s.CategoryID = sc.CategoryID
-    JOIN VendorProfiles vp ON sc.VendorProfileID = vp.VendorProfileID
+    FROM vendors.Services s
+    JOIN vendors.ServiceCategories sc ON s.CategoryID = sc.CategoryID
+    JOIN vendors.VendorProfiles vp ON sc.VendorProfileID = vp.VendorProfileID
     WHERE s.ServiceID = @ServiceID;
     
     -- Get standard business hours
@@ -44,11 +44,11 @@ BEGIN
         OpenTime,
         CloseTime,
         IsAvailable
-    FROM VendorBusinessHours
+    FROM vendors.VendorBusinessHours
     WHERE VendorProfileID = (
         SELECT sc.VendorProfileID 
-        FROM Services s
-        JOIN ServiceCategories sc ON s.CategoryID = sc.CategoryID
+        FROM vendors.Services s
+        JOIN vendors.ServiceCategories sc ON s.CategoryID = sc.CategoryID
         WHERE s.ServiceID = @ServiceID
     )
     ORDER BY DayOfWeek;
@@ -73,7 +73,7 @@ BEGIN
         EventDate,
         EndDate,
         Status
-    FROM Bookings
+    FROM bookings.Bookings
     WHERE ServiceID = @ServiceID
     AND Status NOT IN ('cancelled', 'rejected')
     AND (
@@ -91,7 +91,7 @@ BEGIN
         ts.StartTime,
         ts.EndTime,
         ts.MaxCapacity,
-        (SELECT COUNT(*) FROM Bookings b 
+        (SELECT COUNT(*) FROM bookings.Bookings b 
          WHERE b.ServiceID = @ServiceID 
          AND b.Status NOT IN ('cancelled', 'rejected')
          AND (
@@ -101,7 +101,7 @@ BEGIN
          )
          AND CONVERT(TIME, b.EventDate) BETWEEN ts.StartTime AND ts.EndTime
         ) AS BookedCount
-    FROM TimeSlots ts
+    FROM bookings.TimeSlots ts
     WHERE ts.ServiceID = @ServiceID
     AND ts.IsAvailable = 1
     AND (
@@ -117,5 +117,8 @@ END;
 
 GO
 
-PRINT 'Stored procedure [dbo].[sp_GetServiceAvailability] created successfully.';
+PRINT 'Stored procedure [vendors].[sp_GetServiceAvailability] created successfully.';
 GO
+
+
+

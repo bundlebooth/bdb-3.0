@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Admin_UpdateCommissionSetting
+-- Stored Procedure: admin.sp_UpdateCommissionSetting
 -- Description: Updates a commission setting
 -- Phase: 600 (Stored Procedures)
+-- Schema: admin
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Admin_UpdateCommissionSetting]'))
-    DROP PROCEDURE [dbo].[sp_Admin_UpdateCommissionSetting];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_UpdateCommissionSetting]'))
+    DROP PROCEDURE [admin].[sp_UpdateCommissionSetting];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Admin_UpdateCommissionSetting]
+CREATE PROCEDURE [admin].[sp_UpdateCommissionSetting]
     @SettingKey NVARCHAR(100),
     @SettingValue NVARCHAR(255),
     @Description NVARCHAR(500) = NULL

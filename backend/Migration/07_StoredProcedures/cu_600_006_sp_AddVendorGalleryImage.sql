@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_AddVendorGalleryImage]
     Phase: 600 - Stored Procedures
     Script: cu_600_006_dbo.sp_AddVendorGalleryImage.sql
-    Description: Creates the [dbo].[sp_AddVendorGalleryImage] stored procedure
+    Description: Creates the [vendors].[sp_AddGalleryImage] stored procedure
     
     Execution Order: 6
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_AddVendorGalleryImage]...';
+PRINT 'Creating stored procedure [vendors].[sp_AddGalleryImage]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_AddVendorGalleryImage]'))
-    DROP PROCEDURE [dbo].[sp_AddVendorGalleryImage];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_AddGalleryImage]'))
+    DROP PROCEDURE [vendors].[sp_AddGalleryImage];
 GO
 
-CREATE   PROCEDURE [dbo].[sp_AddVendorGalleryImage]
+CREATE   PROCEDURE [vendors].[sp_AddGalleryImage]
     @VendorProfileID INT,
     @ImageURL NVARCHAR(500),
     @CloudinaryPublicId NVARCHAR(200) = NULL,
@@ -38,7 +38,7 @@ BEGIN
         -- If setting as primary, remove primary from others
         IF @IsPrimary = 1
         BEGIN
-            UPDATE VendorImages 
+            UPDATE vendors.VendorImages 
             SET IsPrimary = 0 
             WHERE VendorProfileID = @VendorProfileID;
         END
@@ -47,12 +47,12 @@ BEGIN
         IF @DisplayOrder IS NULL
         BEGIN
             SELECT @DisplayOrder = ISNULL(MAX(DisplayOrder), 0) + 1
-            FROM VendorImages
+            FROM vendors.VendorImages
             WHERE VendorProfileID = @VendorProfileID;
         END
         
         -- Insert new image with enhanced Cloudinary support
-        INSERT INTO VendorImages (
+        INSERT INTO vendors.VendorImages (
             VendorProfileID,
             ImageURL,
             CloudinaryPublicId,
@@ -84,14 +84,14 @@ BEGIN
         -- Update vendor featured image if this is primary
         IF @IsPrimary = 1
         BEGIN
-            UPDATE VendorProfiles 
+            UPDATE vendors.VendorProfiles 
             SET LogoURL = COALESCE(@CloudinarySecureUrl, @CloudinaryUrl, @ImageURL),
                 UpdatedAt = GETDATE()
             WHERE VendorProfileID = @VendorProfileID;
         END
         
         -- Update setup progress
-        UPDATE VendorProfiles 
+        UPDATE vendors.VendorProfiles 
         SET SetupStep6Completed = 1,
             UpdatedAt = GETDATE()
         WHERE VendorProfileID = @VendorProfileID;
@@ -109,5 +109,7 @@ END;
 
 GO
 
-PRINT 'Stored procedure [dbo].[sp_AddVendorGalleryImage] created successfully.';
+PRINT 'Stored procedure [vendors].[sp_AddGalleryImage] created successfully.';
 GO
+
+

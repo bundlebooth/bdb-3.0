@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Admin_UpdateCategory
+-- Stored Procedure: admin.sp_UpdateCategory
 -- Description: Updates a category
 -- Phase: 600 (Stored Procedures)
+-- Schema: admin
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Admin_UpdateCategory]'))
-    DROP PROCEDURE [dbo].[sp_Admin_UpdateCategory];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_UpdateCategory]'))
+    DROP PROCEDURE [admin].[sp_UpdateCategory];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Admin_UpdateCategory]
+CREATE PROCEDURE [admin].[sp_UpdateCategory]
     @CategoryID INT,
     @CategoryName NVARCHAR(100),
     @Description NVARCHAR(MAX) = NULL,

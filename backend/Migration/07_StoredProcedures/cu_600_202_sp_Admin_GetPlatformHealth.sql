@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Admin_GetPlatformHealth
+-- Stored Procedure: admin.sp_GetPlatformHealth
 -- Description: Gets platform health metrics for admin panel
 -- Phase: 600 (Stored Procedures)
+-- Schema: admin
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Admin_GetPlatformHealth]'))
-    DROP PROCEDURE [dbo].[sp_Admin_GetPlatformHealth];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_GetPlatformHealth]'))
+    DROP PROCEDURE [admin].[sp_GetPlatformHealth];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Admin_GetPlatformHealth]
+CREATE PROCEDURE [admin].[sp_GetPlatformHealth]
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -24,9 +25,13 @@ BEGIN
     
     -- Load stats
     SELECT
-        (SELECT COUNT(*) FROM VendorProfiles) as vendors,
-        (SELECT COUNT(*) FROM Users) as users,
-        (SELECT COUNT(*) FROM Bookings) as bookings,
-        (SELECT COUNT(*) FROM Reviews) as reviews;
+        (SELECT COUNT(*) FROM vendors.VendorProfiles) as vendors,
+        (SELECT COUNT(*) FROM users.Users) as users,
+        (SELECT COUNT(*) FROM bookings.Bookings) as bookings,
+        (SELECT COUNT(*) FROM vendors.Reviews) as reviews;
 END
 GO
+
+
+
+

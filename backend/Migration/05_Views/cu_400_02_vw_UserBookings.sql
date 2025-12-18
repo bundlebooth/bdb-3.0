@@ -2,7 +2,7 @@
     Migration Script: Create View [vw_UserBookings]
     Phase: 400 - Views
     Script: cu_400_02_dbo.vw_UserBookings.sql
-    Description: Creates the [dbo].[vw_UserBookings] view
+    Description: Creates the [bookings].[vw_UserBookings] view
     
     Execution Order: 2
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating view [dbo].[vw_UserBookings]...';
+PRINT 'Creating view [bookings].[vw_UserBookings]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.views WHERE object_id = OBJECT_ID(N'[dbo].[vw_UserBookings]'))
-    DROP VIEW [dbo].[vw_UserBookings];
+IF EXISTS (SELECT 1 FROM sys.views WHERE object_id = OBJECT_ID(N'[bookings].[vw_UserBookings]'))
+    DROP VIEW [bookings].[vw_UserBookings];
 GO
 
-CREATE VIEW [dbo].[vw_UserBookings] AS
+CREATE VIEW [bookings].[vw_UserBookings] AS
 SELECT 
     b.BookingID,
     b.UserID,
@@ -41,15 +41,15 @@ SELECT
     b.TimeZone,
     b.CreatedAt,
     b.UpdatedAt,
-    (SELECT TOP 1 si.ImageURL FROM ServiceImages si WHERE si.ServiceID = s.ServiceID AND si.IsPrimary = 1) AS ServiceImage,
-    (SELECT TOP 1 c.ConversationID FROM Conversations c WHERE c.BookingID = b.BookingID) AS ConversationID,
-    (SELECT COUNT(*) FROM Messages m JOIN Conversations c ON m.ConversationID = c.ConversationID 
+    (SELECT TOP 1 si.ImageURL FROM vendors.ServiceImages si WHERE si.ServiceID = s.ServiceID AND si.IsPrimary = 1) AS ServiceImage,
+    (SELECT TOP 1 c.ConversationID FROM messages.Conversations c WHERE c.BookingID = b.BookingID) AS ConversationID,
+    (SELECT COUNT(*) FROM messages.Messages m JOIN messages.Conversations c ON m.ConversationID = c.ConversationID 
       WHERE c.BookingID = b.BookingID AND m.IsRead = 0 AND m.SenderID != b.UserID) AS UnreadMessages
-FROM Bookings b
-JOIN VendorProfiles vp ON b.VendorProfileID = vp.VendorProfileID
-JOIN Services s ON b.ServiceID = s.ServiceID
-JOIN ServiceCategories sc ON s.CategoryID = sc.CategoryID;
+FROM bookings.Bookings b
+JOIN vendors.VendorProfiles vp ON b.VendorProfileID = vp.VendorProfileID
+JOIN vendors.Services s ON b.ServiceID = s.ServiceID
+JOIN vendors.ServiceCategories sc ON s.CategoryID = sc.CategoryID;
 GO
 
-PRINT 'View [dbo].[vw_UserBookings] created successfully.';
+PRINT 'View [bookings].[vw_UserBookings] created successfully.';
 GO

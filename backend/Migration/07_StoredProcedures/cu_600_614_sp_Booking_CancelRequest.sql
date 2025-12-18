@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Booking_CancelRequest
+-- Stored Procedure: bookings.sp_CancelRequest
 -- Description: Cancels a booking request by user
 -- Phase: 600 (Stored Procedures)
+-- Schema: bookings
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Booking_CancelRequest]'))
-    DROP PROCEDURE [dbo].[sp_Booking_CancelRequest];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[bookings].[sp_CancelRequest]'))
+    DROP PROCEDURE [bookings].[sp_CancelRequest];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Booking_CancelRequest]
+CREATE PROCEDURE [bookings].[sp_CancelRequest]
     @RequestID INT,
     @UserID INT,
     @Status NVARCHAR(50),
@@ -16,9 +17,10 @@ AS
 BEGIN
     SET NOCOUNT ON;
     
-    UPDATE BookingRequests 
+    UPDATE bookings.BookingRequests 
     SET Status = @Status, RespondedAt = @RespondedAt
     OUTPUT INSERTED.VendorProfileID
     WHERE RequestID = @RequestID AND UserID = @UserID AND Status IN ('pending', 'approved');
 END
 GO
+

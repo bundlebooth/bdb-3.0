@@ -1,17 +1,19 @@
 -- =============================================
--- Stored Procedure: sp_UpdateUserLastLogin
+-- Stored Procedure: users.sp_UpdateLastLogin
 -- Description: Updates user's last login timestamp
 -- Phase: 600 (Stored Procedures)
+-- Schema: users
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_UpdateUserLastLogin]'))
-    DROP PROCEDURE [dbo].[sp_UpdateUserLastLogin];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[users].[sp_UpdateLastLogin]'))
+    DROP PROCEDURE [users].[sp_UpdateLastLogin];
 GO
 
-CREATE PROCEDURE [dbo].[sp_UpdateUserLastLogin]
+CREATE PROCEDURE [users].[sp_UpdateLastLogin]
     @UserID INT
 AS
 BEGIN
     SET NOCOUNT ON;
-    UPDATE Users SET LastLogin = GETDATE() WHERE UserID = @UserID;
+    UPDATE users.Users SET LastLogin = GETDATE() WHERE UserID = @UserID;
 END
 GO
+

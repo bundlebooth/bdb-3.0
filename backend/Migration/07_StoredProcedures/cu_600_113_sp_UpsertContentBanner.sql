@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_UpsertContentBanner]
     Phase: 600 - Stored Procedures
     Script: cu_600_113_dbo.sp_UpsertContentBanner.sql
-    Description: Creates the [dbo].[sp_UpsertContentBanner] stored procedure
+    Description: Creates the [admin].[sp_UpsertContentBanner] stored procedure
     
     Execution Order: 113
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_UpsertContentBanner]...';
+PRINT 'Creating stored procedure [admin].[sp_UpsertContentBanner]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_UpsertContentBanner]'))
-    DROP PROCEDURE [dbo].[sp_UpsertContentBanner];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_UpsertContentBanner]'))
+    DROP PROCEDURE [admin].[sp_UpsertContentBanner];
 GO
 
-CREATE   PROCEDURE [dbo].[sp_UpsertContentBanner]
+CREATE   PROCEDURE [admin].[sp_UpsertContentBanner]
     @BannerID INT = NULL,
     @Title NVARCHAR(200),
     @Subtitle NVARCHAR(500) = NULL,
@@ -66,5 +66,5 @@ BEGIN
 END;
 GO
 
-PRINT 'Stored procedure [dbo].[sp_UpsertContentBanner] created successfully.';
+PRINT 'Stored procedure [admin].[sp_UpsertContentBanner] created successfully.';
 GO

@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_RespondToBookingRequest]
     Phase: 600 - Stored Procedures
     Script: cu_600_086_dbo.sp_RespondToBookingRequest.sql
-    Description: Creates the [dbo].[sp_RespondToBookingRequest] stored procedure
+    Description: Creates the [bookings].[sp_RespondToRequest] stored procedure
     
     Execution Order: 86
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_RespondToBookingRequest]...';
+PRINT 'Creating stored procedure [bookings].[sp_RespondToRequest]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_RespondToBookingRequest]'))
-    DROP PROCEDURE [dbo].[sp_RespondToBookingRequest];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[bookings].[sp_RespondToRequest]'))
+    DROP PROCEDURE [bookings].[sp_RespondToRequest];
 GO
 
-CREATE   PROCEDURE [dbo].[sp_RespondToBookingRequest]
+CREATE   PROCEDURE [bookings].[sp_RespondToRequest]
     @RequestID INT,
     @VendorUserID INT,
     @Response NVARCHAR(20), -- 'approved', 'declined', 'counter_offer'
@@ -41,8 +41,8 @@ BEGIN
             @VendorProfileID = br.VendorProfileID,
             @UserID = br.UserID,
             @CurrentStatus = br.Status
-        FROM BookingRequests br
-        JOIN VendorProfiles vp ON br.VendorProfileID = vp.VendorProfileID
+        FROM bookings.BookingRequests br
+        JOIN vendors.VendorProfiles vp ON br.VendorProfileID = vp.VendorProfileID
         WHERE br.RequestID = @RequestID AND vp.UserID = @VendorUserID;
         
         IF @VendorProfileID IS NULL
@@ -62,7 +62,7 @@ BEGIN
         END
         
         -- Update request
-        UPDATE BookingRequests 
+        UPDATE bookings.BookingRequests 
         SET 
             Status = @Response,
             ProposedPrice = @ProposedPrice,
@@ -77,7 +77,7 @@ BEGIN
         DECLARE @NotificationMessage NVARCHAR(MAX);
         DECLARE @VendorName NVARCHAR(100);
         
-        SELECT @VendorName = BusinessName FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID;
+        SELECT @VendorName = BusinessName FROM vendors.VendorProfiles WHERE VendorProfileID = @VendorProfileID;
         
         IF @Response = 'approved'
         BEGIN
@@ -95,19 +95,19 @@ BEGIN
             SET @NotificationMessage = @VendorName + ' has sent you a counter offer for your booking request.';
         END
         
-        INSERT INTO Notifications (UserID, Title, Message, Type, RelatedID, RelatedType)
+        INSERT INTO notifications.Notifications (UserID, Title, Message, Type, RelatedID, RelatedType)
         VALUES (@UserID, @NotificationTitle, @NotificationMessage, 'booking_response', @RequestID, 'request');
         
         -- Send message in conversation
         DECLARE @ConversationID INT;
         SELECT @ConversationID = ConversationID 
-        FROM Conversations 
+        FROM messages.Conversations 
         WHERE UserID = @UserID AND VendorProfileID = @VendorProfileID
         ORDER BY CreatedAt DESC;
         
         IF @ConversationID IS NOT NULL AND @ResponseMessage IS NOT NULL
         BEGIN
-            EXEC sp_SendMessage 
+            EXEC messages.sp_SendMessage 
                 @ConversationID = @ConversationID,
                 @SenderID = @VendorUserID,
                 @Content = @ResponseMessage;
@@ -133,5 +133,10 @@ END;
 
 GO
 
-PRINT 'Stored procedure [dbo].[sp_RespondToBookingRequest] created successfully.';
+PRINT 'Stored procedure [bookings].[sp_RespondToRequest] created successfully.';
 GO
+
+
+
+
+

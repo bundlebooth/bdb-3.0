@@ -1,22 +1,25 @@
 -- =============================================
--- Stored Procedure: sp_VendorDashboard_GetSocialMedia
+-- Stored Procedure: vendors.sp_Dashboard_GetSocialMedia
 -- Description: Gets vendor social media and booking link
 -- Phase: 600 (Stored Procedures)
+-- Schema: vendors
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_VendorDashboard_GetSocialMedia]'))
-    DROP PROCEDURE [dbo].[sp_VendorDashboard_GetSocialMedia];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_Dashboard_GetSocialMedia]'))
+    DROP PROCEDURE [vendors].[sp_Dashboard_GetSocialMedia];
 GO
 
-CREATE PROCEDURE [dbo].[sp_VendorDashboard_GetSocialMedia]
+CREATE PROCEDURE [vendors].[sp_Dashboard_GetSocialMedia]
     @VendorProfileID INT
 AS
 BEGIN
     SET NOCOUNT ON;
     
     -- First recordset: Social media profiles
-    SELECT Platform, URL, DisplayOrder FROM VendorSocialMedia WHERE VendorProfileID = @VendorProfileID ORDER BY DisplayOrder;
+    SELECT Platform, URL, DisplayOrder FROM vendors.VendorSocialMedia WHERE VendorProfileID = @VendorProfileID ORDER BY DisplayOrder;
     
     -- Second recordset: Booking link
-    SELECT BookingLink FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID;
+    SELECT BookingLink FROM vendors.VendorProfiles WHERE VendorProfileID = @VendorProfileID;
 END
 GO
+
+

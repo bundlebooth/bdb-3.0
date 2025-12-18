@@ -13,7 +13,7 @@ GO
 PRINT 'Adding indexes and unique constraints...';
 GO
 -- Index/Constraint 1 for [PredefinedServices]
-ALTER TABLE [dbo].[PredefinedServices] ADD  CONSTRAINT [UC_CategoryService] UNIQUE NONCLUSTERED 
+ALTER TABLE [admin].[PredefinedServices] ADD  CONSTRAINT [UC_CategoryService] UNIQUE NONCLUSTERED 
 (
 	[Category] ASC,
 	[ServiceName] ASC
@@ -21,7 +21,7 @@ ALTER TABLE [dbo].[PredefinedServices] ADD  CONSTRAINT [UC_CategoryService] UNIQ
 GO
 
 -- Index/Constraint 2 for [VendorFeatures]
-ALTER TABLE [dbo].[VendorFeatures] ADD  CONSTRAINT [UC_CategoryFeature] UNIQUE NONCLUSTERED 
+ALTER TABLE [vendors].[VendorFeatures] ADD  CONSTRAINT [UC_CategoryFeature] UNIQUE NONCLUSTERED 
 (
 	[CategoryID] ASC,
 	[FeatureName] ASC
@@ -29,7 +29,7 @@ ALTER TABLE [dbo].[VendorFeatures] ADD  CONSTRAINT [UC_CategoryFeature] UNIQUE N
 GO
 
 -- Index/Constraint 3 for [VendorCategories]
-ALTER TABLE [dbo].[VendorCategories] ADD  CONSTRAINT [UC_VendorCategory] UNIQUE NONCLUSTERED 
+ALTER TABLE [vendors].[VendorCategories] ADD  CONSTRAINT [UC_VendorCategory] UNIQUE NONCLUSTERED 
 (
 	[VendorProfileID] ASC,
 	[Category] ASC
@@ -37,7 +37,7 @@ ALTER TABLE [dbo].[VendorCategories] ADD  CONSTRAINT [UC_VendorCategory] UNIQUE 
 GO
 
 -- Index/Constraint 4 for [VendorBusinessHours]
-ALTER TABLE [dbo].[VendorBusinessHours] ADD  CONSTRAINT [UC_VendorDay] UNIQUE NONCLUSTERED 
+ALTER TABLE [vendors].[VendorBusinessHours] ADD  CONSTRAINT [UC_VendorDay] UNIQUE NONCLUSTERED 
 (
 	[VendorProfileID] ASC,
 	[DayOfWeek] ASC
@@ -45,7 +45,7 @@ ALTER TABLE [dbo].[VendorBusinessHours] ADD  CONSTRAINT [UC_VendorDay] UNIQUE NO
 GO
 
 -- Index/Constraint 5 for [VendorSelectedFeatures]
-ALTER TABLE [dbo].[VendorSelectedFeatures] ADD  CONSTRAINT [UC_VendorFeature] UNIQUE NONCLUSTERED 
+ALTER TABLE [vendors].[VendorSelectedFeatures] ADD  CONSTRAINT [UC_VendorFeature] UNIQUE NONCLUSTERED 
 (
 	[VendorProfileID] ASC,
 	[FeatureID] ASC
@@ -53,7 +53,7 @@ ALTER TABLE [dbo].[VendorSelectedFeatures] ADD  CONSTRAINT [UC_VendorFeature] UN
 GO
 
 -- Index/Constraint 6 for [VendorSelectedServices]
-ALTER TABLE [dbo].[VendorSelectedServices] ADD  CONSTRAINT [UC_VendorService] UNIQUE NONCLUSTERED 
+ALTER TABLE [vendors].[VendorSelectedServices] ADD  CONSTRAINT [UC_VendorService] UNIQUE NONCLUSTERED 
 (
 	[VendorProfileID] ASC,
 	[PredefinedServiceID] ASC
@@ -61,7 +61,7 @@ ALTER TABLE [dbo].[VendorSelectedServices] ADD  CONSTRAINT [UC_VendorService] UN
 GO
 
 -- Index/Constraint 7 for [VendorCategoryAnswers]
-ALTER TABLE [dbo].[VendorCategoryAnswers] ADD  CONSTRAINT [UC_VendorCategoryAnswer] UNIQUE NONCLUSTERED 
+ALTER TABLE [vendors].[VendorCategoryAnswers] ADD  CONSTRAINT [UC_VendorCategoryAnswer] UNIQUE NONCLUSTERED 
 (
 	[VendorProfileID] ASC,
 	[QuestionID] ASC
@@ -69,7 +69,7 @@ ALTER TABLE [dbo].[VendorCategoryAnswers] ADD  CONSTRAINT [UC_VendorCategoryAnsw
 GO
 
 -- Index/Constraint 8 for [Favorites]
-ALTER TABLE [dbo].[Favorites] ADD  CONSTRAINT [UC_Favorite] UNIQUE NONCLUSTERED 
+ALTER TABLE [users].[Favorites] ADD  CONSTRAINT [UC_Favorite] UNIQUE NONCLUSTERED 
 (
 	[UserID] ASC,
 	[VendorProfileID] ASC

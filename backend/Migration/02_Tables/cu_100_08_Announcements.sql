@@ -2,7 +2,7 @@
     Migration Script: Create Table [Announcements]
     Phase: 100 - Tables
     Script: cu_100_08_dbo.Announcements.sql
-    Description: Creates the [dbo].[Announcements] table
+    Description: Creates the [admin].[Announcements] table
     
     Execution Order: 8
 */
@@ -10,12 +10,12 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating table [dbo].[Announcements]...';
+PRINT 'Creating table [admin].[Announcements]...';
 GO
 
-IF NOT EXISTS (SELECT 1 FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Announcements]') AND type in (N'U'))
+IF NOT EXISTS (SELECT 1 FROM sys.objects WHERE object_id = OBJECT_ID(N'[admin].[Announcements]') AND type in (N'U'))
 BEGIN
-    CREATE TABLE [dbo].[Announcements](
+    CREATE TABLE [admin].[Announcements](
 	[AnnouncementID] [int] IDENTITY(1,1) NOT NULL,
 	[Title] [nvarchar](200) NOT NULL,
 	[Content] [nvarchar](max) NOT NULL,
@@ -40,10 +40,10 @@ PRIMARY KEY CLUSTERED
 	[AnnouncementID] ASC
 )WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
     );
-    PRINT 'Table [dbo].[Announcements] created successfully.';
+    PRINT 'Table [admin].[Announcements] created successfully.';
 END
 ELSE
 BEGIN
-    PRINT 'Table [dbo].[Announcements] already exists. Skipping.';
+    PRINT 'Table [admin].[Announcements] already exists. Skipping.';
 END
 GO

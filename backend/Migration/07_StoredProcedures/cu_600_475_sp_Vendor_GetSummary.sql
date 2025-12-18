@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Vendor_GetSummary
+-- Stored Procedure: vendors.sp_GetSummary
 -- Description: Gets vendor summary for Step 8 display
 -- Phase: 600 (Stored Procedures)
+-- Schema: vendors
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Vendor_GetSummary]'))
-    DROP PROCEDURE [dbo].[sp_Vendor_GetSummary];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_GetSummary]'))
+    DROP PROCEDURE [vendors].[sp_GetSummary];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Vendor_GetSummary]
+CREATE PROCEDURE [vendors].[sp_GetSummary]
     @VendorProfileID INT
 AS
 BEGIN
@@ -18,12 +19,12 @@ BEGIN
         BusinessName, DisplayName, BusinessEmail, BusinessPhone, Website,
         YearsInBusiness, BusinessDescription, Tagline, Address, City, State,
         Country, PostalCode, LogoURL
-    FROM VendorProfiles 
+    FROM vendors.VendorProfiles 
     WHERE VendorProfileID = @VendorProfileID;
     
     -- Categories
     SELECT vc.Category 
-    FROM VendorCategories vc
+    FROM vendors.VendorCategories vc
     WHERE vc.VendorProfileID = @VendorProfileID;
     
     -- Service areas
@@ -33,8 +34,8 @@ BEGIN
     
     -- Services count
     SELECT COUNT(*) as ServiceCount 
-    FROM Services s
-    INNER JOIN ServiceCategories sc ON s.CategoryID = sc.CategoryID
+    FROM vendors.Services s
+    INNER JOIN vendors.ServiceCategories sc ON s.CategoryID = sc.CategoryID
     WHERE sc.VendorProfileID = @VendorProfileID;
     
     -- Packages count
@@ -44,18 +45,23 @@ BEGIN
     
     -- Images count
     SELECT COUNT(*) as ImageCount 
-    FROM VendorImages 
+    FROM vendors.VendorImages 
     WHERE VendorProfileID = @VendorProfileID;
     
     -- Social media
     SELECT Platform, URL 
-    FROM VendorSocialMedia 
+    FROM vendors.VendorSocialMedia 
     WHERE VendorProfileID = @VendorProfileID;
     
     -- Business hours
     SELECT DayOfWeek, OpenTime, CloseTime, IsAvailable, Timezone
-    FROM VendorBusinessHours 
+    FROM vendors.VendorBusinessHours 
     WHERE VendorProfileID = @VendorProfileID
     ORDER BY DayOfWeek;
 END
 GO
+
+
+
+
+

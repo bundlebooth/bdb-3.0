@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Vendor_GetPredefinedServices
+-- Stored Procedure: vendors.sp_GetPredefinedServices
 -- Description: Gets all predefined services grouped by category
 -- Phase: 600 (Stored Procedures)
+-- Schema: vendors
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Vendor_GetPredefinedServices]'))
-    DROP PROCEDURE [dbo].[sp_Vendor_GetPredefinedServices];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_GetPredefinedServices]'))
+    DROP PROCEDURE [vendors].[sp_GetPredefinedServices];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Vendor_GetPredefinedServices]
+CREATE PROCEDURE [vendors].[sp_GetPredefinedServices]
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -28,7 +29,8 @@ BEGIN
         ServiceDescription,
         DefaultDurationMinutes,
         DisplayOrder
-    FROM PredefinedServices 
+    FROM admin.PredefinedServices 
     ORDER BY Category, DisplayOrder, ServiceName;
 END
 GO
+

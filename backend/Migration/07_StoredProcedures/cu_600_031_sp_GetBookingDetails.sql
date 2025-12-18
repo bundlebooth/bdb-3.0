@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_GetBookingDetails]
     Phase: 600 - Stored Procedures
     Script: cu_600_031_dbo.sp_GetBookingDetails.sql
-    Description: Creates the [dbo].[sp_GetBookingDetails] stored procedure
+    Description: Creates the [bookings].[sp_GetDetails] stored procedure
     
     Execution Order: 31
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_GetBookingDetails]...';
+PRINT 'Creating stored procedure [bookings].[sp_GetDetails]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_GetBookingDetails]'))
-    DROP PROCEDURE [dbo].[sp_GetBookingDetails];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[bookings].[sp_GetDetails]'))
+    DROP PROCEDURE [bookings].[sp_GetDetails];
 GO
 
-CREATE   PROCEDURE [dbo].[sp_GetBookingDetails]
+CREATE   PROCEDURE [bookings].[sp_GetDetails]
     @BookingID INT,
     @UserID INT = NULL
 AS
@@ -56,9 +56,9 @@ BEGIN
             WHEN v.UserID = @UserID THEN 1
             ELSE 0
         END AS CanViewDetails
-    FROM Bookings b
-    JOIN Users u ON b.UserID = u.UserID
-    JOIN VendorProfiles v ON b.VendorProfileID = v.VendorProfileID
+    FROM bookings.Bookings b
+    JOIN users.Users u ON b.UserID = u.UserID
+    JOIN vendors.VendorProfiles v ON b.VendorProfileID = v.VendorProfileID
     WHERE b.BookingID = @BookingID
     AND (@UserID IS NULL OR b.UserID = @UserID OR v.UserID = @UserID);
     
@@ -74,8 +74,8 @@ BEGIN
         bs.PriceAtBooking,
         bs.Notes,
         (SELECT TOP 1 si.ImageURL FROM ServiceImages si WHERE si.ServiceID = s.ServiceID AND si.IsPrimary = 1) AS ServiceImage
-    FROM BookingServices bs
-    LEFT JOIN Services s ON bs.ServiceID = s.ServiceID
+    FROM bookings.BookingServices bs
+    LEFT JOIN vendors.Services s ON bs.ServiceID = s.ServiceID
     LEFT JOIN ServiceAddOns sa ON bs.AddOnID = sa.AddOnID
     WHERE bs.BookingID = @BookingID;
     
@@ -87,19 +87,26 @@ BEGIN
         u.Name AS ChangedByName,
         bt.Notes,
         bt.CreatedAt
-    FROM BookingTimeline bt
-    LEFT JOIN Users u ON bt.ChangedBy = u.UserID
+    FROM bookings.BookingTimeline bt
+    LEFT JOIN users.Users u ON bt.ChangedBy = u.UserID
     WHERE bt.BookingID = @BookingID
     ORDER BY bt.CreatedAt DESC;
     
     -- Conversation info if exists
     SELECT TOP 1
         c.ConversationID
-    FROM Conversations c
+    FROM messages.Conversations c
     WHERE c.BookingID = @BookingID;
 END;
 
 GO
 
-PRINT 'Stored procedure [dbo].[sp_GetBookingDetails] created successfully.';
+PRINT 'Stored procedure [bookings].[sp_GetDetails] created successfully.';
 GO
+
+
+
+
+
+
+

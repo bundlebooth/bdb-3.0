@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Admin_ToggleVendorVisibility
+-- Stored Procedure: admin.sp_ToggleVendorVisibility
 -- Description: Toggles vendor visibility on the platform
 -- Phase: 600 (Stored Procedures)
+-- Schema: admin
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Admin_ToggleVendorVisibility]'))
-    DROP PROCEDURE [dbo].[sp_Admin_ToggleVendorVisibility];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_ToggleVendorVisibility]'))
+    DROP PROCEDURE [admin].[sp_ToggleVendorVisibility];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Admin_ToggleVendorVisibility]
+CREATE PROCEDURE [admin].[sp_ToggleVendorVisibility]
     @VendorProfileID INT
 AS
 BEGIN
@@ -17,12 +18,12 @@ BEGIN
     DECLARE @NewVisibility BIT;
     
     SELECT @CurrentVisibility = ISNULL(IsVisible, 0) 
-    FROM VendorProfiles 
+    FROM vendors.VendorProfiles 
     WHERE VendorProfileID = @VendorProfileID;
     
     SET @NewVisibility = CASE WHEN @CurrentVisibility = 1 THEN 0 ELSE 1 END;
     
-    UPDATE VendorProfiles 
+    UPDATE vendors.VendorProfiles 
     SET IsVisible = @NewVisibility,
         UpdatedAt = GETDATE()
     WHERE VendorProfileID = @VendorProfileID;
@@ -30,3 +31,4 @@ BEGIN
     SELECT @NewVisibility AS NewVisibility;
 END
 GO
+

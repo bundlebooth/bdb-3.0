@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_GetVendorSelectedServices]
     Phase: 600 - Stored Procedures
     Script: cu_600_076_dbo.sp_GetVendorSelectedServices.sql
-    Description: Creates the [dbo].[sp_GetVendorSelectedServices] stored procedure
+    Description: Creates the [vendors].[sp_GetSelectedServices] stored procedure
     
     Execution Order: 76
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_GetVendorSelectedServices]...';
+PRINT 'Creating stored procedure [vendors].[sp_GetSelectedServices]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_GetVendorSelectedServices]'))
-    DROP PROCEDURE [dbo].[sp_GetVendorSelectedServices];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_GetSelectedServices]'))
+    DROP PROCEDURE [vendors].[sp_GetSelectedServices];
 GO
 
-CREATE   PROCEDURE [dbo].[sp_GetVendorSelectedServices]
+CREATE   PROCEDURE [vendors].[sp_GetSelectedServices]
     @VendorProfileID INT
 AS
 BEGIN
@@ -37,8 +37,8 @@ BEGIN
         vss.VendorPrice AS FinalPrice,
         COALESCE(vss.VendorDurationMinutes, ps.DefaultDurationMinutes) AS FinalDurationMinutes,
         COALESCE(vss.VendorDescription, ps.ServiceDescription) AS FinalDescription
-    FROM VendorSelectedServices vss
-    JOIN PredefinedServices ps ON vss.PredefinedServiceID = ps.PredefinedServiceID
+    FROM vendors.VendorSelectedServices vss
+    JOIN admin.PredefinedServices ps ON vss.PredefinedServiceID = ps.PredefinedServiceID
     WHERE vss.VendorProfileID = @VendorProfileID
         AND vss.IsActive = 1
         AND ps.IsActive = 1
@@ -47,5 +47,7 @@ END
 
 GO
 
-PRINT 'Stored procedure [dbo].[sp_GetVendorSelectedServices] created successfully.';
+PRINT 'Stored procedure [vendors].[sp_GetSelectedServices] created successfully.';
 GO
+
+

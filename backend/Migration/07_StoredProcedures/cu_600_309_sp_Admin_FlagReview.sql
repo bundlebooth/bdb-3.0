@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Admin_FlagReview
+-- Stored Procedure: admin.sp_FlagReview
 -- Description: Flags or unflags a review
 -- Phase: 600 (Stored Procedures)
+-- Schema: admin
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Admin_FlagReview]'))
-    DROP PROCEDURE [dbo].[sp_Admin_FlagReview];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_FlagReview]'))
+    DROP PROCEDURE [admin].[sp_FlagReview];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Admin_FlagReview]
+CREATE PROCEDURE [admin].[sp_FlagReview]
     @ReviewID INT,
     @IsFlagged BIT,
     @FlagReason NVARCHAR(MAX) = NULL
@@ -15,7 +16,7 @@ AS
 BEGIN
     SET NOCOUNT ON;
     
-    UPDATE Reviews 
+    UPDATE vendors.Reviews 
     SET IsFlagged = @IsFlagged, 
         FlagReason = @FlagReason
     WHERE ReviewID = @ReviewID;
@@ -23,3 +24,4 @@ BEGIN
     SELECT @@ROWCOUNT AS RowsAffected;
 END
 GO
+

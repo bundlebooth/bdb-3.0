@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_UpsertAnnouncement]
     Phase: 600 - Stored Procedures
     Script: cu_600_112_dbo.sp_UpsertAnnouncement.sql
-    Description: Creates the [dbo].[sp_UpsertAnnouncement] stored procedure
+    Description: Creates the [admin].[sp_UpsertAnnouncement] stored procedure
     
     Execution Order: 112
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_UpsertAnnouncement]...';
+PRINT 'Creating stored procedure [admin].[sp_UpsertAnnouncement]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_UpsertAnnouncement]'))
-    DROP PROCEDURE [dbo].[sp_UpsertAnnouncement];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_UpsertAnnouncement]'))
+    DROP PROCEDURE [admin].[sp_UpsertAnnouncement];
 GO
 
-CREATE   PROCEDURE [dbo].[sp_UpsertAnnouncement]
+CREATE   PROCEDURE [admin].[sp_UpsertAnnouncement]
     @AnnouncementID INT = NULL,
     @Title NVARCHAR(200),
     @Content NVARCHAR(MAX),
@@ -39,14 +39,14 @@ BEGIN
     
     IF @AnnouncementID IS NULL
     BEGIN
-        INSERT INTO Announcements (Title, Content, Type, Icon, LinkURL, LinkText, DisplayType, TargetAudience, StartDate, EndDate, IsActive, IsDismissible, DisplayOrder, CreatedBy)
+        INSERT INTO admin.Announcements (Title, Content, Type, Icon, LinkURL, LinkText, DisplayType, TargetAudience, StartDate, EndDate, IsActive, IsDismissible, DisplayOrder, CreatedBy)
         VALUES (@Title, @Content, @Type, @Icon, @LinkURL, @LinkText, @DisplayType, @TargetAudience, @StartDate, @EndDate, @IsActive, @IsDismissible, @DisplayOrder, @UserID);
         
         SELECT SCOPE_IDENTITY() AS AnnouncementID;
     END
     ELSE
     BEGIN
-        UPDATE Announcements
+        UPDATE admin.Announcements
         SET Title = @Title,
             Content = @Content,
             Type = @Type,
@@ -68,5 +68,5 @@ BEGIN
 END;
 GO
 
-PRINT 'Stored procedure [dbo].[sp_UpsertAnnouncement] created successfully.';
+PRINT 'Stored procedure [admin].[sp_UpsertAnnouncement] created successfully.';
 GO

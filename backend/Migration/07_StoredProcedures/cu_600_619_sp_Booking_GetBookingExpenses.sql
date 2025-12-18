@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Booking_GetBookingExpenses
+-- Stored Procedure: bookings.sp_GetBookingExpenses
 -- Description: Gets expenses for a booking
 -- Phase: 600 (Stored Procedures)
+-- Schema: bookings
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Booking_GetBookingExpenses]'))
-    DROP PROCEDURE [dbo].[sp_Booking_GetBookingExpenses];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[bookings].[sp_GetBookingExpenses]'))
+    DROP PROCEDURE [bookings].[sp_GetBookingExpenses];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Booking_GetBookingExpenses]
+CREATE PROCEDURE [bookings].[sp_GetBookingExpenses]
     @BookingID INT
 AS
 BEGIN

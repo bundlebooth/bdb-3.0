@@ -2,7 +2,7 @@
     Migration Script: Create Table [CommissionSettings]
     Phase: 100 - Tables
     Script: cu_100_03_dbo.CommissionSettings.sql
-    Description: Creates the [dbo].[CommissionSettings] table
+    Description: Creates the [admin].[CommissionSettings] table
     
     Execution Order: 3
 */
@@ -10,12 +10,12 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating table [dbo].[CommissionSettings]...';
+PRINT 'Creating table [admin].[CommissionSettings]...';
 GO
 
-IF NOT EXISTS (SELECT 1 FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[CommissionSettings]') AND type in (N'U'))
+IF NOT EXISTS (SELECT 1 FROM sys.objects WHERE object_id = OBJECT_ID(N'[admin].[CommissionSettings]') AND type in (N'U'))
 BEGIN
-    CREATE TABLE [dbo].[CommissionSettings](
+    CREATE TABLE [admin].[CommissionSettings](
 	[SettingID] [int] IDENTITY(1,1) NOT NULL,
 	[SettingKey] [nvarchar](100) NOT NULL,
 	[SettingValue] [nvarchar](500) NOT NULL,
@@ -31,10 +31,10 @@ PRIMARY KEY CLUSTERED
 	[SettingID] ASC
 )WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
     );
-    PRINT 'Table [dbo].[CommissionSettings] created successfully.';
+    PRINT 'Table [admin].[CommissionSettings] created successfully.';
 END
 ELSE
 BEGIN
-    PRINT 'Table [dbo].[CommissionSettings] already exists. Skipping.';
+    PRINT 'Table [admin].[CommissionSettings] already exists. Skipping.';
 END
 GO

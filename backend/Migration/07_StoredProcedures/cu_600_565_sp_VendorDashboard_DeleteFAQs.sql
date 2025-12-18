@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_VendorDashboard_DeleteFAQs
+-- Stored Procedure: vendors.sp_Dashboard_DeleteFAQs
 -- Description: Deletes all FAQs for vendor
 -- Phase: 600 (Stored Procedures)
+-- Schema: vendors
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_VendorDashboard_DeleteFAQs]'))
-    DROP PROCEDURE [dbo].[sp_VendorDashboard_DeleteFAQs];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_Dashboard_DeleteFAQs]'))
+    DROP PROCEDURE [vendors].[sp_Dashboard_DeleteFAQs];
 GO
 
-CREATE PROCEDURE [dbo].[sp_VendorDashboard_DeleteFAQs]
+CREATE PROCEDURE [vendors].[sp_Dashboard_DeleteFAQs]
     @VendorProfileID INT
 AS
 BEGIN

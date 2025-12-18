@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Vendor_InsertServiceCategory
+-- Stored Procedure: vendors.sp_InsertServiceCategory
 -- Description: Inserts a service category for a vendor
 -- Phase: 600 (Stored Procedures)
+-- Schema: vendors
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Vendor_InsertServiceCategory]'))
-    DROP PROCEDURE [dbo].[sp_Vendor_InsertServiceCategory];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_InsertServiceCategory]'))
+    DROP PROCEDURE [vendors].[sp_InsertServiceCategory];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Vendor_InsertServiceCategory]
+CREATE PROCEDURE [vendors].[sp_InsertServiceCategory]
     @VendorProfileID INT,
     @Name NVARCHAR(100),
     @Description NVARCHAR(MAX) = NULL,

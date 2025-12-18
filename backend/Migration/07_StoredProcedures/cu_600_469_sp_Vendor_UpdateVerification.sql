@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Vendor_UpdateVerification
+-- Stored Procedure: vendors.sp_UpdateVerification
 -- Description: Updates vendor verification and legal info
 -- Phase: 600 (Stored Procedures)
+-- Schema: vendors
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Vendor_UpdateVerification]'))
-    DROP PROCEDURE [dbo].[sp_Vendor_UpdateVerification];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_UpdateVerification]'))
+    DROP PROCEDURE [vendors].[sp_UpdateVerification];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Vendor_UpdateVerification]
+CREATE PROCEDURE [vendors].[sp_UpdateVerification]
     @VendorProfileID INT,
     @LicenseNumber NVARCHAR(100) = NULL,
     @InsuranceVerified BIT = 0,
@@ -19,7 +20,7 @@ AS
 BEGIN
     SET NOCOUNT ON;
     
-    UPDATE VendorProfiles 
+    UPDATE vendors.VendorProfiles 
     SET LicenseNumber = @LicenseNumber,
         InsuranceVerified = @InsuranceVerified,
         Awards = @Awards,
@@ -32,3 +33,4 @@ BEGIN
     SELECT @@ROWCOUNT AS RowsAffected;
 END
 GO
+

@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_CompleteVendorSetup]
     Phase: 600 - Stored Procedures
     Script: cu_600_011_dbo.sp_CompleteVendorSetup.sql
-    Description: Creates the [dbo].[sp_CompleteVendorSetup] stored procedure
+    Description: Creates the [vendors].[sp_CompleteSetup] stored procedure
     
     Execution Order: 11
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_CompleteVendorSetup]...';
+PRINT 'Creating stored procedure [vendors].[sp_CompleteSetup]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_CompleteVendorSetup]'))
-    DROP PROCEDURE [dbo].[sp_CompleteVendorSetup];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_CompleteSetup]'))
+    DROP PROCEDURE [vendors].[sp_CompleteSetup];
 GO
 
-CREATE   PROCEDURE [dbo].[sp_CompleteVendorSetup]
+CREATE   PROCEDURE [vendors].[sp_CompleteSetup]
     @VendorProfileID INT,
     @GalleryData NVARCHAR(MAX) = NULL,
     @PackagesData NVARCHAR(MAX) = NULL,
@@ -35,10 +35,10 @@ BEGIN
         IF @GalleryData IS NOT NULL
         BEGIN
             -- Clear existing non-primary images
-            DELETE FROM VendorImages WHERE VendorProfileID = @VendorProfileID AND IsPrimary = 0;
+            DELETE FROM vendors.VendorImages WHERE VendorProfileID = @VendorProfileID AND IsPrimary = 0;
             
             -- Insert new gallery items
-            INSERT INTO VendorImages (VendorProfileID, ImageURL, ImageType, IsPrimary, DisplayOrder, Caption)
+            INSERT INTO vendors.VendorImages (VendorProfileID, ImageURL, ImageType, IsPrimary, DisplayOrder, Caption)
             SELECT 
                 @VendorProfileID,
                 JSON_VALUE(value, '$.url'),
@@ -49,7 +49,7 @@ BEGIN
             FROM OPENJSON(@GalleryData);
             
             -- Mark gallery as completed
-            UPDATE VendorProfiles SET GalleryCompleted = 1 WHERE VendorProfileID = @VendorProfileID;
+            UPDATE vendors.VendorProfiles SET GalleryCompleted = 1 WHERE VendorProfileID = @VendorProfileID;
         END
         
         -- Save packages using Services table with a "Packages" category
@@ -58,7 +58,7 @@ BEGIN
             -- Get or create a "Packages" service category
             DECLARE @PackageCategoryID INT;
             SELECT @PackageCategoryID = CategoryID 
-            FROM ServiceCategories 
+            FROM vendors.ServiceCategories 
             WHERE VendorProfileID = @VendorProfileID AND Name = 'Packages';
             
             IF @PackageCategoryID IS NULL
@@ -69,7 +69,7 @@ BEGIN
             END
             
             -- Clear existing packages
-            DELETE FROM Services WHERE CategoryID = @PackageCategoryID;
+            DELETE FROM vendors.Services WHERE CategoryID = @PackageCategoryID;
             
             -- Insert new packages as services
             INSERT INTO Services (CategoryID, Name, Description, Price, DurationMinutes, MaxAttendees, ServiceType)
@@ -88,7 +88,7 @@ BEGIN
             FROM OPENJSON(@PackagesData);
             
             -- Mark packages as completed
-            UPDATE VendorProfiles SET PackagesCompleted = 1 WHERE VendorProfileID = @VendorProfileID;
+            UPDATE vendors.VendorProfiles SET PackagesCompleted = 1 WHERE VendorProfileID = @VendorProfileID;
         END
         
         -- Save services using Services table with "General Services" category
@@ -97,7 +97,7 @@ BEGIN
             -- Get or create a "General Services" category
             DECLARE @ServicesCategoryID INT;
             SELECT @ServicesCategoryID = CategoryID 
-            FROM ServiceCategories 
+            FROM vendors.ServiceCategories 
             WHERE VendorProfileID = @VendorProfileID AND Name = 'General Services';
             
             IF @ServicesCategoryID IS NULL
@@ -123,17 +123,17 @@ BEGIN
             FROM OPENJSON(@ServicesData);
             
             -- Mark services as completed
-            UPDATE VendorProfiles SET ServicesCompleted = 1 WHERE VendorProfileID = @VendorProfileID;
+            UPDATE vendors.VendorProfiles SET ServicesCompleted = 1 WHERE VendorProfileID = @VendorProfileID;
         END
         
         -- Save social media using VendorSocialMedia table
         IF @SocialMediaData IS NOT NULL
         BEGIN
             -- Clear existing social media
-            DELETE FROM VendorSocialMedia WHERE VendorProfileID = @VendorProfileID;
+            DELETE FROM vendors.VendorSocialMedia WHERE VendorProfileID = @VendorProfileID;
             
             -- Insert new social media links
-            INSERT INTO VendorSocialMedia (VendorProfileID, Platform, URL, DisplayOrder)
+            INSERT INTO vendors.VendorSocialMedia (VendorProfileID, Platform, URL, DisplayOrder)
             SELECT 
                 @VendorProfileID,
                 [key],
@@ -143,17 +143,17 @@ BEGIN
             WHERE [value] IS NOT NULL AND [value] != '';
             
             -- Mark social media as completed
-            UPDATE VendorProfiles SET SocialMediaCompleted = 1 WHERE VendorProfileID = @VendorProfileID;
+            UPDATE vendors.VendorProfiles SET SocialMediaCompleted = 1 WHERE VendorProfileID = @VendorProfileID;
         END
         
         -- Save availability using VendorBusinessHours table
         IF @AvailabilityData IS NOT NULL
         BEGIN
             -- Clear existing availability
-            DELETE FROM VendorBusinessHours WHERE VendorProfileID = @VendorProfileID;
+            DELETE FROM vendors.VendorBusinessHours WHERE VendorProfileID = @VendorProfileID;
             
             -- Insert new availability
-            INSERT INTO VendorBusinessHours (VendorProfileID, DayOfWeek, OpenTime, CloseTime, IsAvailable)
+            INSERT INTO vendors.VendorBusinessHours (VendorProfileID, DayOfWeek, OpenTime, CloseTime, IsAvailable)
             SELECT 
                 @VendorProfileID,
                 CAST(JSON_VALUE(value, '$.day') AS TINYINT),
@@ -163,11 +163,11 @@ BEGIN
             FROM OPENJSON(@AvailabilityData);
             
             -- Mark availability as completed
-            UPDATE VendorProfiles SET AvailabilityCompleted = 1 WHERE VendorProfileID = @VendorProfileID;
+            UPDATE vendors.VendorProfiles SET AvailabilityCompleted = 1 WHERE VendorProfileID = @VendorProfileID;
         END
         
         -- Update vendor setup completion status
-        UPDATE VendorProfiles 
+        UPDATE vendors.VendorProfiles 
         SET 
             SetupCompleted = CASE 
                 WHEN GalleryCompleted = 1 AND PackagesCompleted = 1 AND ServicesCompleted = 1 
@@ -192,5 +192,9 @@ END;
 
 GO
 
-PRINT 'Stored procedure [dbo].[sp_CompleteVendorSetup] created successfully.';
+PRINT 'Stored procedure [vendors].[sp_CompleteSetup] created successfully.';
 GO
+
+
+
+

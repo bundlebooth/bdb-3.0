@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_CreateMultiBookingRequest]
     Phase: 600 - Stored Procedures
     Script: cu_600_019_dbo.sp_CreateMultiBookingRequest.sql
-    Description: Creates the [dbo].[sp_CreateMultiBookingRequest] stored procedure
+    Description: Creates the [bookings].[sp_CreateMultiRequest] stored procedure
     
     Execution Order: 19
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_CreateMultiBookingRequest]...';
+PRINT 'Creating stored procedure [bookings].[sp_CreateMultiRequest]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_CreateMultiBookingRequest]'))
-    DROP PROCEDURE [dbo].[sp_CreateMultiBookingRequest];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[bookings].[sp_CreateMultiRequest]'))
+    DROP PROCEDURE [bookings].[sp_CreateMultiRequest];
 GO
 
-CREATE   PROCEDURE [dbo].[sp_CreateMultiBookingRequest]
+CREATE   PROCEDURE [bookings].[sp_CreateMultiRequest]
     @UserID INT,
     @VendorIds NVARCHAR(500), -- Comma-separated list of vendor IDs
     @Services NVARCHAR(MAX), -- JSON string of services per vendor
@@ -62,7 +62,7 @@ BEGIN
         WHILE @@FETCH_STATUS = 0
         BEGIN
             -- Insert booking request
-            INSERT INTO BookingRequests (
+            INSERT INTO bookings.BookingRequests (
                 UserID, VendorProfileID, Services, EventDate, EventTime, 
                 EventLocation, AttendeeCount, Budget, SpecialRequests, 
                 Status, ExpiresAt, CreatedAt
@@ -78,7 +78,7 @@ BEGIN
             
             -- Create conversation for this vendor-user pair
             DECLARE @ConversationID INT;
-            EXEC sp_CreateConversation 
+            EXEC messages.sp_CreateConversation 
                 @UserID = @UserID,
                 @VendorProfileID = @VendorID,
                 @ConversationID = @ConversationID OUTPUT;
@@ -91,7 +91,7 @@ BEGIN
                     ' at ' + CONVERT(NVARCHAR(8), @EventTime, 108) + 
                     '. Please review and respond within 24 hours.';
                 
-                EXEC sp_SendMessage
+                EXEC messages.sp_SendMessage
                     @ConversationID = @ConversationID,
                     @SenderID = @UserID,
                     @MessageText = @InitialMessage,
@@ -126,5 +126,6 @@ END;
 
 GO
 
-PRINT 'Stored procedure [dbo].[sp_CreateMultiBookingRequest] created successfully.';
+PRINT 'Stored procedure [bookings].[sp_CreateMultiRequest] created successfully.';
 GO
+

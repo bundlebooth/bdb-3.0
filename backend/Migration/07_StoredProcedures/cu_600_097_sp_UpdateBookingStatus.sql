@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_UpdateBookingStatus]
     Phase: 600 - Stored Procedures
     Script: cu_600_097_dbo.sp_UpdateBookingStatus.sql
-    Description: Creates the [dbo].[sp_UpdateBookingStatus] stored procedure
+    Description: Creates the [bookings].[sp_UpdateStatus] stored procedure
     
     Execution Order: 97
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_UpdateBookingStatus]...';
+PRINT 'Creating stored procedure [bookings].[sp_UpdateStatus]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_UpdateBookingStatus]'))
-    DROP PROCEDURE [dbo].[sp_UpdateBookingStatus];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[bookings].[sp_UpdateStatus]'))
+    DROP PROCEDURE [bookings].[sp_UpdateStatus];
 GO
 
-CREATE   PROCEDURE [dbo].[sp_UpdateBookingStatus]
+CREATE   PROCEDURE [bookings].[sp_UpdateStatus]
     @BookingID INT,
     @Status NVARCHAR(20),
     @UserID INT,
@@ -30,14 +30,14 @@ BEGIN
         BEGIN TRANSACTION;
         
         -- Update booking
-        UPDATE Bookings
+        UPDATE bookings.Bookings
         SET 
             Status = @Status,
             UpdatedAt = GETDATE()
         WHERE BookingID = @BookingID;
         
         -- Add timeline entry
-        INSERT INTO BookingTimeline (
+        INSERT INTO bookings.BookingTimeline (
             BookingID,
             Status,
             ChangedBy,
@@ -61,15 +61,15 @@ BEGIN
             @ClientID = b.UserID,
             @VendorProfileID = b.VendorProfileID,
             @ServiceName = s.Name
-        FROM Bookings b
-        JOIN Services s ON b.ServiceID = s.ServiceID
+        FROM bookings.Bookings b
+        JOIN vendors.Services s ON b.ServiceID = s.ServiceID
         WHERE b.BookingID = @BookingID;
         
         -- Create appropriate notification
         IF @Status = 'confirmed'
         BEGIN
             -- Notify client
-            INSERT INTO Notifications (
+            INSERT INTO notifications.Notifications (
                 UserID,
                 Type,
                 Title,
@@ -90,14 +90,14 @@ BEGIN
             
             -- If deposit required, notify to pay
             IF EXISTS (
-                SELECT 1 FROM Bookings b
-                JOIN Services s ON b.ServiceID = s.ServiceID
+                SELECT 1 FROM bookings.Bookings b
+                JOIN vendors.Services s ON b.ServiceID = s.ServiceID
                 WHERE b.BookingID = @BookingID
                 AND s.RequiresDeposit = 1
                 AND b.DepositPaid = 0
             )
             BEGIN
-                INSERT INTO Notifications (
+                INSERT INTO notifications.Notifications (
                     UserID,
                     Type,
                     Title,
@@ -120,7 +120,7 @@ BEGIN
         ELSE IF @Status = 'cancelled'
         BEGIN
             -- Notify client
-            INSERT INTO Notifications (
+            INSERT INTO notifications.Notifications (
                 UserID,
                 Type,
                 Title,
@@ -142,7 +142,7 @@ BEGIN
         ELSE IF @Status = 'completed'
         BEGIN
             -- Notify client to leave review
-            INSERT INTO Notifications (
+            INSERT INTO notifications.Notifications (
                 UserID,
                 Type,
                 Title,
@@ -155,7 +155,7 @@ BEGIN
                 @ClientID,
                 'review',
                 'Leave a Review',
-                'How was your experience with ' + (SELECT BusinessName FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID) + '?',
+                'How was your experience with ' + (SELECT BusinessName FROM vendors.VendorProfiles WHERE VendorProfileID = @VendorProfileID) + '?',
                 @BookingID,
                 'booking',
                 '/bookings/' + CAST(@BookingID AS NVARCHAR(10)) + '/review'
@@ -172,5 +172,9 @@ END;
 
 GO
 
-PRINT 'Stored procedure [dbo].[sp_UpdateBookingStatus] created successfully.';
+PRINT 'Stored procedure [bookings].[sp_UpdateStatus] created successfully.';
 GO
+
+
+
+

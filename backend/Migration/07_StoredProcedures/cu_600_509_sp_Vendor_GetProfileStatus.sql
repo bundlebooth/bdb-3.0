@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Vendor_GetProfileStatus
+-- Stored Procedure: vendors.sp_GetProfileStatus
 -- Description: Gets vendor profile status
 -- Phase: 600 (Stored Procedures)
+-- Schema: vendors
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Vendor_GetProfileStatus]'))
-    DROP PROCEDURE [dbo].[sp_Vendor_GetProfileStatus];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_GetProfileStatus]'))
+    DROP PROCEDURE [vendors].[sp_GetProfileStatus];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Vendor_GetProfileStatus]
+CREATE PROCEDURE [vendors].[sp_GetProfileStatus]
     @VendorProfileID INT
 AS
 BEGIN
@@ -21,7 +22,8 @@ BEGIN
         AdminNotes,
         IsVerified,
         AcceptingBookings
-    FROM VendorProfiles
+    FROM vendors.VendorProfiles
     WHERE VendorProfileID = @VendorProfileID;
 END
 GO
+

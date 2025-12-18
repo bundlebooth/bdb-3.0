@@ -1,20 +1,21 @@
 -- =============================================
--- Stored Procedure: sp_Vendor_ResolveProfileId
+-- Stored Procedure: vendors.sp_ResolveProfileId
 -- Description: Resolves UserID or VendorProfileID to VendorProfileID
 -- Phase: 600 (Stored Procedures)
+-- Schema: vendors
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Vendor_ResolveProfileId]'))
-    DROP PROCEDURE [dbo].[sp_Vendor_ResolveProfileId];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_ResolveProfileId]'))
+    DROP PROCEDURE [vendors].[sp_ResolveProfileId];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Vendor_ResolveProfileId]
+CREATE PROCEDURE [vendors].[sp_ResolveProfileId]
     @ID INT
 AS
 BEGIN
     SET NOCOUNT ON;
     
     -- First try as direct VendorProfileID
-    IF EXISTS (SELECT 1 FROM VendorProfiles WHERE VendorProfileID = @ID)
+    IF EXISTS (SELECT 1 FROM vendors.VendorProfiles WHERE VendorProfileID = @ID)
     BEGIN
         SELECT @ID AS VendorProfileID;
         RETURN;
@@ -22,8 +23,10 @@ BEGIN
     
     -- If not found, try as UserID
     SELECT vp.VendorProfileID
-    FROM Users u
-    LEFT JOIN VendorProfiles vp ON u.UserID = vp.UserID
+    FROM users.Users u
+    LEFT JOIN vendors.VendorProfiles vp ON u.UserID = vp.UserID
     WHERE u.UserID = @ID AND u.IsActive = 1 AND u.IsVendor = 1 AND vp.VendorProfileID IS NOT NULL;
 END
 GO
+
+

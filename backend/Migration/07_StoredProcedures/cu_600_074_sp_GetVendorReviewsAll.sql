@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_GetVendorReviewsAll]
     Phase: 600 - Stored Procedures
     Script: cu_600_074_dbo.sp_GetVendorReviewsAll.sql
-    Description: Creates the [dbo].[sp_GetVendorReviewsAll] stored procedure
+    Description: Creates the [vendors].[sp_GetReviewsAll] stored procedure
     
     Execution Order: 74
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_GetVendorReviewsAll]...';
+PRINT 'Creating stored procedure [vendors].[sp_GetReviewsAll]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_GetVendorReviewsAll]'))
-    DROP PROCEDURE [dbo].[sp_GetVendorReviewsAll];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_GetReviewsAll]'))
+    DROP PROCEDURE [vendors].[sp_GetReviewsAll];
 GO
 
-CREATE   PROCEDURE [dbo].[sp_GetVendorReviewsAll]
+CREATE   PROCEDURE [vendors].[sp_GetReviewsAll]
     @VendorProfileID INT
 AS
 BEGIN
@@ -31,5 +31,5 @@ END;
 
 GO
 
-PRINT 'Stored procedure [dbo].[sp_GetVendorReviewsAll] created successfully.';
+PRINT 'Stored procedure [vendors].[sp_GetReviewsAll] created successfully.';
 GO

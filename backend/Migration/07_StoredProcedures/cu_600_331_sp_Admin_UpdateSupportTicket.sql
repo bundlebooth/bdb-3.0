@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Admin_UpdateSupportTicket
+-- Stored Procedure: admin.sp_UpdateSupportTicket
 -- Description: Updates a support ticket
 -- Phase: 600 (Stored Procedures)
+-- Schema: admin
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Admin_UpdateSupportTicket]'))
-    DROP PROCEDURE [dbo].[sp_Admin_UpdateSupportTicket];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_UpdateSupportTicket]'))
+    DROP PROCEDURE [admin].[sp_UpdateSupportTicket];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Admin_UpdateSupportTicket]
+CREATE PROCEDURE [admin].[sp_UpdateSupportTicket]
     @TicketID INT,
     @Status NVARCHAR(50) = NULL,
     @Priority NVARCHAR(50) = NULL,
@@ -17,7 +18,7 @@ AS
 BEGIN
     SET NOCOUNT ON;
     
-    UPDATE SupportTickets SET
+    UPDATE admin.SupportTickets SET
         Status = ISNULL(@Status, Status),
         Priority = ISNULL(@Priority, Priority),
         AssignedTo = ISNULL(@AssignedTo, AssignedTo),
@@ -30,3 +31,4 @@ BEGIN
     SELECT @@ROWCOUNT AS RowsAffected;
 END
 GO
+

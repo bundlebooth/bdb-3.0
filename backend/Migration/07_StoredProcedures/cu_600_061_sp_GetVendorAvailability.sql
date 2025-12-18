@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_GetVendorAvailability]
     Phase: 600 - Stored Procedures
     Script: cu_600_061_dbo.sp_GetVendorAvailability.sql
-    Description: Creates the [dbo].[sp_GetVendorAvailability] stored procedure
+    Description: Creates the [vendors].[sp_GetAvailability] stored procedure
     
     Execution Order: 61
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_GetVendorAvailability]...';
+PRINT 'Creating stored procedure [vendors].[sp_GetAvailability]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_GetVendorAvailability]'))
-    DROP PROCEDURE [dbo].[sp_GetVendorAvailability];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_GetAvailability]'))
+    DROP PROCEDURE [vendors].[sp_GetAvailability];
 GO
 
-CREATE   PROCEDURE [dbo].[sp_GetVendorAvailability]
+CREATE   PROCEDURE [vendors].[sp_GetAvailability]
     @VendorProfileID INT
 AS
 BEGIN
@@ -31,7 +31,7 @@ BEGIN
         CloseTime,
         IsAvailable,
         Timezone
-    FROM VendorBusinessHours
+    FROM vendors.VendorBusinessHours
     WHERE VendorProfileID = @VendorProfileID
     ORDER BY DayOfWeek;
     
@@ -43,12 +43,14 @@ BEGIN
         EndTime,
         IsAvailable,
         Reason
-    FROM VendorAvailabilityExceptions
+    FROM vendors.VendorAvailabilityExceptions
     WHERE VendorProfileID = @VendorProfileID
     ORDER BY Date;
 END;
 
 GO
 
-PRINT 'Stored procedure [dbo].[sp_GetVendorAvailability] created successfully.';
+PRINT 'Stored procedure [vendors].[sp_GetAvailability] created successfully.';
 GO
+
+

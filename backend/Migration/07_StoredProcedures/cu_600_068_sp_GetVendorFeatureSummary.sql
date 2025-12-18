@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_GetVendorFeatureSummary]
     Phase: 600 - Stored Procedures
     Script: cu_600_068_dbo.sp_GetVendorFeatureSummary.sql
-    Description: Creates the [dbo].[sp_GetVendorFeatureSummary] stored procedure
+    Description: Creates the [vendors].[sp_GetFeatureSummary] stored procedure
     
     Execution Order: 68
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_GetVendorFeatureSummary]...';
+PRINT 'Creating stored procedure [vendors].[sp_GetFeatureSummary]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_GetVendorFeatureSummary]'))
-    DROP PROCEDURE [dbo].[sp_GetVendorFeatureSummary];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_GetFeatureSummary]'))
+    DROP PROCEDURE [vendors].[sp_GetFeatureSummary];
 GO
 
-CREATE   PROCEDURE [dbo].[sp_GetVendorFeatureSummary]
+CREATE   PROCEDURE [vendors].[sp_GetFeatureSummary]
     @VendorProfileID INT
 AS
 BEGIN
@@ -28,9 +28,9 @@ BEGIN
         c.CategoryName,
         c.CategoryIcon,
         COUNT(vsf.FeatureID) AS FeatureCount
-    FROM VendorFeatureCategories c
-    LEFT JOIN VendorFeatures f ON c.CategoryID = f.CategoryID AND f.IsActive = 1
-    LEFT JOIN VendorSelectedFeatures vsf ON f.FeatureID = vsf.FeatureID AND vsf.VendorProfileID = @VendorProfileID
+    FROM vendors.VendorFeatureCategories c
+    LEFT JOIN vendors.VendorFeatures f ON c.CategoryID = f.CategoryID AND f.IsActive = 1
+    LEFT JOIN vendors.VendorSelectedFeatures vsf ON f.FeatureID = vsf.FeatureID AND vsf.VendorProfileID = @VendorProfileID
     WHERE c.IsActive = 1
     GROUP BY c.CategoryID, c.CategoryName, c.CategoryIcon, c.DisplayOrder
     ORDER BY c.DisplayOrder;
@@ -38,5 +38,8 @@ END
 
 GO
 
-PRINT 'Stored procedure [dbo].[sp_GetVendorFeatureSummary] created successfully.';
+PRINT 'Stored procedure [vendors].[sp_GetFeatureSummary] created successfully.';
 GO
+
+
+

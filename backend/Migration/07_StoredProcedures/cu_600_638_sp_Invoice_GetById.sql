@@ -1,18 +1,20 @@
 -- =============================================
--- Stored Procedure: sp_Invoice_GetById
+-- Stored Procedure: invoices.sp_GetById
 -- Description: Gets invoice by ID
 -- Phase: 600 (Stored Procedures)
+-- Schema: invoices
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Invoice_GetById]'))
-    DROP PROCEDURE [dbo].[sp_Invoice_GetById];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[invoices].[sp_GetById]'))
+    DROP PROCEDURE [invoices].[sp_GetById];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Invoice_GetById]
+CREATE PROCEDURE [invoices].[sp_GetById]
     @InvoiceID INT
 AS
 BEGIN
     SET NOCOUNT ON;
     
-    SELECT * FROM Invoices WHERE InvoiceID = @InvoiceID;
+    SELECT * FROM invoices.Invoices WHERE InvoiceID = @InvoiceID;
 END
 GO
+

@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_User_Get2FACode
+-- Stored Procedure: users.sp_Get2FACode
 -- Description: Gets latest 2FA code for user
 -- Phase: 600 (Stored Procedures)
+-- Schema: users
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_User_Get2FACode]'))
-    DROP PROCEDURE [dbo].[sp_User_Get2FACode];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[users].[sp_Get2FACode]'))
+    DROP PROCEDURE [users].[sp_Get2FACode];
 GO
 
-CREATE PROCEDURE [dbo].[sp_User_Get2FACode]
+CREATE PROCEDURE [users].[sp_Get2FACode]
     @UserID INT,
     @Purpose NVARCHAR(50)
 AS

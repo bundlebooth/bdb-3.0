@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_GetUserBookingRequests]
     Phase: 600 - Stored Procedures
     Script: cu_600_052_dbo.sp_GetUserBookingRequests.sql
-    Description: Creates the [dbo].[sp_GetUserBookingRequests] stored procedure
+    Description: Creates the [users].[sp_GetBookingRequests] stored procedure
     
     Execution Order: 52
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_GetUserBookingRequests]...';
+PRINT 'Creating stored procedure [users].[sp_GetBookingRequests]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_GetUserBookingRequests]'))
-    DROP PROCEDURE [dbo].[sp_GetUserBookingRequests];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[users].[sp_GetBookingRequests]'))
+    DROP PROCEDURE [users].[sp_GetBookingRequests];
 GO
 
-CREATE   PROCEDURE [dbo].[sp_GetUserBookingRequests]
+CREATE   PROCEDURE [users].[sp_GetBookingRequests]
     @UserID INT,
     @Status NVARCHAR(50) = NULL,
     @PageSize INT = 20,
@@ -52,14 +52,14 @@ BEGIN
             ELSE 0
         END AS IsExpired,
         (SELECT AVG(CAST(r.Rating AS DECIMAL(3,1))) 
-         FROM Reviews r 
+         FROM vendors.Reviews r 
          WHERE r.VendorProfileID = br.VendorProfileID AND r.IsApproved = 1) AS VendorRating,
         (SELECT COUNT(*) 
-         FROM Reviews r 
+         FROM vendors.Reviews r 
          WHERE r.VendorProfileID = br.VendorProfileID AND r.IsApproved = 1) AS VendorReviewCount
-    FROM BookingRequests br
-    JOIN VendorProfiles vp ON br.VendorProfileID = vp.VendorProfileID
-    LEFT JOIN Services s ON br.ServiceID = s.ServiceID
+    FROM bookings.BookingRequests br
+    JOIN vendors.VendorProfiles vp ON br.VendorProfileID = vp.VendorProfileID
+    LEFT JOIN vendors.Services s ON br.ServiceID = s.ServiceID
     WHERE br.UserID = @UserID
         AND (@Status IS NULL OR br.Status = @Status)
     ORDER BY br.CreatedAt DESC
@@ -69,5 +69,8 @@ END;
 
 GO
 
-PRINT 'Stored procedure [dbo].[sp_GetUserBookingRequests] created successfully.';
+PRINT 'Stored procedure [users].[sp_GetBookingRequests] created successfully.';
 GO
+
+
+

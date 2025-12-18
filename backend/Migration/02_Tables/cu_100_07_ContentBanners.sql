@@ -2,7 +2,7 @@
     Migration Script: Create Table [ContentBanners]
     Phase: 100 - Tables
     Script: cu_100_07_dbo.ContentBanners.sql
-    Description: Creates the [dbo].[ContentBanners] table
+    Description: Creates the [admin].[ContentBanners] table
     
     Execution Order: 7
 */
@@ -10,12 +10,12 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating table [dbo].[ContentBanners]...';
+PRINT 'Creating table [admin].[ContentBanners]...';
 GO
 
-IF NOT EXISTS (SELECT 1 FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[ContentBanners]') AND type in (N'U'))
+IF NOT EXISTS (SELECT 1 FROM sys.objects WHERE object_id = OBJECT_ID(N'[admin].[ContentBanners]') AND type in (N'U'))
 BEGIN
-    CREATE TABLE [dbo].[ContentBanners](
+    CREATE TABLE [admin].[ContentBanners](
 	[BannerID] [int] IDENTITY(1,1) NOT NULL,
 	[Title] [nvarchar](200) NOT NULL,
 	[Subtitle] [nvarchar](500) NULL,
@@ -37,10 +37,10 @@ PRIMARY KEY CLUSTERED
 	[BannerID] ASC
 )WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
     );
-    PRINT 'Table [dbo].[ContentBanners] created successfully.';
+    PRINT 'Table [admin].[ContentBanners] created successfully.';
 END
 ELSE
 BEGIN
-    PRINT 'Table [dbo].[ContentBanners] already exists. Skipping.';
+    PRINT 'Table [admin].[ContentBanners] already exists. Skipping.';
 END
 GO

@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Admin_UpsertFAQ
+-- Stored Procedure: admin.sp_UpsertFAQ
 -- Description: Creates or updates a platform FAQ
 -- Phase: 600 (Stored Procedures)
+-- Schema: admin
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Admin_UpsertFAQ]'))
-    DROP PROCEDURE [dbo].[sp_Admin_UpsertFAQ];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_UpsertFAQ]'))
+    DROP PROCEDURE [admin].[sp_UpsertFAQ];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Admin_UpsertFAQ]
+CREATE PROCEDURE [admin].[sp_UpsertFAQ]
     @FAQID INT = NULL,
     @Question NVARCHAR(500),
     @Answer NVARCHAR(MAX),

@@ -1,20 +1,22 @@
 -- =============================================
--- Stored Procedure: sp_Vendor_GetNextImageOrder
+-- Stored Procedure: vendors.sp_GetNextImageOrder
 -- Description: Gets the next display order for vendor images
 -- Phase: 600 (Stored Procedures)
+-- Schema: vendors
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Vendor_GetNextImageOrder]'))
-    DROP PROCEDURE [dbo].[sp_Vendor_GetNextImageOrder];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_GetNextImageOrder]'))
+    DROP PROCEDURE [vendors].[sp_GetNextImageOrder];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Vendor_GetNextImageOrder]
+CREATE PROCEDURE [vendors].[sp_GetNextImageOrder]
     @VendorProfileID INT
 AS
 BEGIN
     SET NOCOUNT ON;
     
     SELECT ISNULL(MAX(DisplayOrder), -1) + 1 as NextOrder
-    FROM VendorImages
+    FROM vendors.VendorImages
     WHERE VendorProfileID = @VendorProfileID;
 END
 GO
+

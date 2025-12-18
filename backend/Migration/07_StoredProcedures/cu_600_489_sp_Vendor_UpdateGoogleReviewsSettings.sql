@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Vendor_UpdateGoogleReviewsSettings
+-- Stored Procedure: vendors.sp_UpdateGoogleReviewsSettings
 -- Description: Updates Google Reviews settings for a vendor
 -- Phase: 600 (Stored Procedures)
+-- Schema: vendors
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Vendor_UpdateGoogleReviewsSettings]'))
-    DROP PROCEDURE [dbo].[sp_Vendor_UpdateGoogleReviewsSettings];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_UpdateGoogleReviewsSettings]'))
+    DROP PROCEDURE [vendors].[sp_UpdateGoogleReviewsSettings];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Vendor_UpdateGoogleReviewsSettings]
+CREATE PROCEDURE [vendors].[sp_UpdateGoogleReviewsSettings]
     @VendorProfileID INT,
     @GooglePlaceId NVARCHAR(100) = NULL,
     @GoogleBusinessUrl NVARCHAR(500) = NULL
@@ -15,7 +16,7 @@ AS
 BEGIN
     SET NOCOUNT ON;
     
-    UPDATE VendorProfiles
+    UPDATE vendors.VendorProfiles
     SET GooglePlaceId = @GooglePlaceId,
         GoogleBusinessUrl = @GoogleBusinessUrl
     WHERE VendorProfileID = @VendorProfileID;
@@ -23,3 +24,4 @@ BEGIN
     SELECT @@ROWCOUNT AS RowsAffected;
 END
 GO
+

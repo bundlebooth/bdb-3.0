@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_UpsertVendorImage]
     Phase: 600 - Stored Procedures
     Script: cu_600_118_dbo.sp_UpsertVendorImage.sql
-    Description: Creates the [dbo].[sp_UpsertVendorImage] stored procedure
+    Description: Creates the [vendors].[sp_UpsertImage] stored procedure
     
     Execution Order: 118
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_UpsertVendorImage]...';
+PRINT 'Creating stored procedure [vendors].[sp_UpsertImage]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_UpsertVendorImage]'))
-    DROP PROCEDURE [dbo].[sp_UpsertVendorImage];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_UpsertImage]'))
+    DROP PROCEDURE [vendors].[sp_UpsertImage];
 GO
 
-CREATE   PROCEDURE [dbo].[sp_UpsertVendorImage]
+CREATE   PROCEDURE [vendors].[sp_UpsertImage]
     @ImageID INT = NULL, -- NULL for new image, ID for update
     @VendorProfileID INT,
     @ImageURL NVARCHAR(255),
@@ -30,13 +30,13 @@ BEGIN
 
     IF @ImageID IS NULL -- Insert new image
     BEGIN
-        INSERT INTO VendorImages (VendorProfileID, ImageURL, IsPrimary, Caption, DisplayOrder)
+        INSERT INTO vendors.VendorImages (VendorProfileID, ImageURL, IsPrimary, Caption, DisplayOrder)
         VALUES (@VendorProfileID, @ImageURL, @IsPrimary, @Caption, @DisplayOrder);
         SELECT SCOPE_IDENTITY() AS ImageID;
     END
     ELSE -- Update existing image
     BEGIN
-        UPDATE VendorImages
+        UPDATE vendors.VendorImages
         SET
             ImageURL = @ImageURL,
             IsPrimary = @IsPrimary,
@@ -49,7 +49,7 @@ BEGIN
     -- Ensure only one primary image
     IF @IsPrimary = 1
     BEGIN
-        UPDATE VendorImages
+        UPDATE vendors.VendorImages
         SET IsPrimary = 0
         WHERE VendorProfileID = @VendorProfileID AND ImageID != ISNULL(@ImageID, 0);
     END
@@ -57,5 +57,6 @@ END;
 
 GO
 
-PRINT 'Stored procedure [dbo].[sp_UpsertVendorImage] created successfully.';
+PRINT 'Stored procedure [vendors].[sp_UpsertImage] created successfully.';
 GO
+

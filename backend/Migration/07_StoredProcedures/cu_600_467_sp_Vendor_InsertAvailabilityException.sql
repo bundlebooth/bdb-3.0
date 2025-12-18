@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Vendor_InsertAvailabilityException
+-- Stored Procedure: vendors.sp_InsertAvailabilityException
 -- Description: Inserts an availability exception for a vendor
 -- Phase: 600 (Stored Procedures)
+-- Schema: vendors
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Vendor_InsertAvailabilityException]'))
-    DROP PROCEDURE [dbo].[sp_Vendor_InsertAvailabilityException];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_InsertAvailabilityException]'))
+    DROP PROCEDURE [vendors].[sp_InsertAvailabilityException];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Vendor_InsertAvailabilityException]
+CREATE PROCEDURE [vendors].[sp_InsertAvailabilityException]
     @VendorProfileID INT,
     @Date DATE,
     @StartTime TIME = NULL,
@@ -18,9 +19,10 @@ AS
 BEGIN
     SET NOCOUNT ON;
     
-    INSERT INTO VendorAvailabilityExceptions (VendorProfileID, Date, StartTime, EndTime, IsAvailable, Reason)
+    INSERT INTO vendors.VendorAvailabilityExceptions (VendorProfileID, Date, StartTime, EndTime, IsAvailable, Reason)
     VALUES (@VendorProfileID, @Date, @StartTime, @EndTime, @IsAvailable, @Reason);
     
     SELECT SCOPE_IDENTITY() AS ExceptionID;
 END
 GO
+

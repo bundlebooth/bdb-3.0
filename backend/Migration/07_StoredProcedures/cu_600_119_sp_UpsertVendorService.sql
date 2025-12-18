@@ -1,23 +1,23 @@
 /*
-    Migration Script: Create Stored Procedure [sp_UpsertVendorService]
+    Migration Script: Create Stored Procedure [vendors.sp_UpsertService]
     Phase: 600 - Stored Procedures
-    Script: cu_600_119_dbo.sp_UpsertVendorService.sql
-    Description: Creates the [dbo].[sp_UpsertVendorService] stored procedure
-    
+    Script: cu_600_119_sp_UpsertVendorService.sql
+    Description: Creates the [vendors].[sp_UpsertService] stored procedure
+    Schema: vendors
     Execution Order: 119
 */
 
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_UpsertVendorService]...';
+PRINT 'Creating stored procedure [vendors].[sp_UpsertService]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_UpsertVendorService]'))
-    DROP PROCEDURE [dbo].[sp_UpsertVendorService];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_UpsertService]'))
+    DROP PROCEDURE [vendors].[sp_UpsertService];
 GO
 
-CREATE PROCEDURE [dbo].[sp_UpsertVendorService]
+CREATE PROCEDURE [vendors].[sp_UpsertService]
     @ServiceID INT = NULL,
     @VendorProfileID INT,
     @CategoryID INT = NULL,
@@ -108,7 +108,7 @@ BEGIN
     IF @CategoryID IS NULL AND @CategoryName IS NOT NULL
     BEGIN
         SELECT @CategoryID = CategoryID
-        FROM ServiceCategories
+        FROM vendors.ServiceCategories
         WHERE VendorProfileID = @VendorProfileID AND Name = @CategoryName;
 
         IF @CategoryID IS NULL
@@ -185,5 +185,5 @@ BEGIN
 END;
 GO
 
-PRINT 'Stored procedure [dbo].[sp_UpsertVendorService] created successfully.';
+PRINT 'Stored procedure [vendors].[sp_UpsertService] created successfully.';
 GO

@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Admin_GetFAQs
+-- Stored Procedure: admin.sp_GetFAQs
 -- Description: Gets all platform FAQs
 -- Phase: 600 (Stored Procedures)
+-- Schema: admin
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Admin_GetFAQs]'))
-    DROP PROCEDURE [dbo].[sp_Admin_GetFAQs];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_GetFAQs]'))
+    DROP PROCEDURE [admin].[sp_GetFAQs];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Admin_GetFAQs]
+CREATE PROCEDURE [admin].[sp_GetFAQs]
 AS
 BEGIN
     SET NOCOUNT ON;

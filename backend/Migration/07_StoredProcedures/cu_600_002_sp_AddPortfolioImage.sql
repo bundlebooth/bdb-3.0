@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_AddPortfolioImage]
     Phase: 600 - Stored Procedures
     Script: cu_600_002_dbo.sp_AddPortfolioImage.sql
-    Description: Creates the [dbo].[sp_AddPortfolioImage] stored procedure
+    Description: Creates the [vendors].[sp_AddPortfolioImage] stored procedure
     
     Execution Order: 2
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_AddPortfolioImage]...';
+PRINT 'Creating stored procedure [vendors].[sp_AddPortfolioImage]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_AddPortfolioImage]'))
-    DROP PROCEDURE [dbo].[sp_AddPortfolioImage];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_AddPortfolioImage]'))
+    DROP PROCEDURE [vendors].[sp_AddPortfolioImage];
 GO
 
-CREATE   PROCEDURE [dbo].[sp_AddPortfolioImage]
+CREATE   PROCEDURE [vendors].[sp_AddPortfolioImage]
     @AlbumID INT,
     @VendorProfileID INT,
     @ImageURL NVARCHAR(500),
@@ -40,7 +40,7 @@ BEGIN
         RETURN;
     END
     
-    INSERT INTO VendorPortfolioImages (
+    INSERT INTO vendors.VendorPortfolioImages (
         AlbumID, VendorProfileID, ImageURL, CloudinaryPublicId,
         CloudinaryUrl, CloudinarySecureUrl, Caption, DisplayOrder, CreatedAt
     )
@@ -54,5 +54,6 @@ END;
 
 GO
 
-PRINT 'Stored procedure [dbo].[sp_AddPortfolioImage] created successfully.';
+PRINT 'Stored procedure [vendors].[sp_AddPortfolioImage] created successfully.';
 GO
+

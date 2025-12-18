@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_CreateBookingWithServices]
     Phase: 600 - Stored Procedures
     Script: cu_600_017_dbo.sp_CreateBookingWithServices.sql
-    Description: Creates the [dbo].[sp_CreateBookingWithServices] stored procedure
+    Description: Creates the [bookings].[sp_CreateWithServices] stored procedure
     
     Execution Order: 17
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_CreateBookingWithServices]...';
+PRINT 'Creating stored procedure [bookings].[sp_CreateWithServices]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_CreateBookingWithServices]'))
-    DROP PROCEDURE [dbo].[sp_CreateBookingWithServices];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[bookings].[sp_CreateWithServices]'))
+    DROP PROCEDURE [bookings].[sp_CreateWithServices];
 GO
 
-CREATE   PROCEDURE [dbo].[sp_CreateBookingWithServices]
+CREATE   PROCEDURE [bookings].[sp_CreateWithServices]
     @UserID INT,
     @VendorProfileID INT,
     @EventDate DATETIME,
@@ -75,7 +75,7 @@ BEGIN
         SET @DepositAmount = @TotalAmount * (@MaxDepositPercentage / 100);
         
         -- Create booking
-        INSERT INTO Bookings (
+        INSERT INTO bookings.Bookings (
             UserID,
             VendorProfileID,
             EventDate,
@@ -111,7 +111,7 @@ BEGIN
         DECLARE @BookingID INT = SCOPE_IDENTITY();
         
         -- Add booking services
-        INSERT INTO BookingServices (
+        INSERT INTO bookings.BookingServices (
             BookingID,
             ServiceID,
             AddOnID,
@@ -129,7 +129,7 @@ BEGIN
         FROM @Services;
         
         -- Create booking timeline entry
-        INSERT INTO BookingTimeline (
+        INSERT INTO bookings.BookingTimeline (
             BookingID,
             Status,
             ChangedBy,
@@ -145,7 +145,7 @@ BEGIN
         -- Create conversation
         DECLARE @ConversationID INT;
         
-        INSERT INTO Conversations (
+        INSERT INTO messages.Conversations (
             UserID,
             VendorProfileID,
             BookingID,
@@ -163,7 +163,7 @@ BEGIN
         SET @ConversationID = SCOPE_IDENTITY();
         
         -- Create initial message
-        INSERT INTO Messages (
+        INSERT INTO messages.Messages (
             ConversationID,
             SenderID,
             Content
@@ -176,7 +176,7 @@ BEGIN
         );
         
         -- Create notification for vendor
-        INSERT INTO Notifications (
+        INSERT INTO notifications.Notifications (
             UserID,
             Type,
             Title,
@@ -186,7 +186,7 @@ BEGIN
             ActionURL
         )
         VALUES (
-            (SELECT UserID FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID),
+            (SELECT UserID FROM vendors.VendorProfiles WHERE VendorProfileID = @VendorProfileID),
             'booking',
             'New Booking Request',
             'You have a new booking request for ' + CONVERT(NVARCHAR(20), @EventDate, 107),
@@ -207,5 +207,12 @@ END;
 
 GO
 
-PRINT 'Stored procedure [dbo].[sp_CreateBookingWithServices] created successfully.';
+PRINT 'Stored procedure [bookings].[sp_CreateWithServices] created successfully.';
 GO
+
+
+
+
+
+
+

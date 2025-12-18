@@ -1,20 +1,21 @@
 -- =============================================
--- Stored Procedure: sp_Messages_GetUserConversations
+-- Stored Procedure: messages.sp_GetUserConversations
 -- Description: Gets all conversations for a user
 -- Phase: 600 (Stored Procedures)
+-- Schema: messages
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Messages_GetUserConversations]'))
-    DROP PROCEDURE [dbo].[sp_Messages_GetUserConversations];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[messages].[sp_GetUserConversations]'))
+    DROP PROCEDURE [messages].[sp_GetUserConversations];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Messages_GetUserConversations]
+CREATE PROCEDURE [messages].[sp_GetUserConversations]
     @UserID INT
 AS
 BEGIN
     SET NOCOUNT ON;
     
     DECLARE @UserVendorProfileID INT;
-    SELECT @UserVendorProfileID = VendorProfileID FROM VendorProfiles WHERE UserID = @UserID;
+    SELECT @UserVendorProfileID = VendorProfileID FROM vendors.VendorProfiles WHERE UserID = @UserID;
     
     SELECT 
         c.ConversationID,
@@ -43,14 +44,14 @@ BEGIN
         END AS IsVendorRole,
         m.Content AS LastMessageContent,
         m.CreatedAt AS LastMessageCreatedAt,
-        (SELECT COUNT(*) FROM Messages WHERE ConversationID = c.ConversationID AND IsRead = 0 AND SenderID != @UserID) AS UnreadCount
-    FROM Conversations c
-    LEFT JOIN Users u ON c.UserID = u.UserID
-    LEFT JOIN VendorProfiles v ON c.VendorProfileID = v.VendorProfileID
-    LEFT JOIN Messages m ON c.ConversationID = m.ConversationID
+        (SELECT COUNT(*) FROM messages.Messages WHERE ConversationID = c.ConversationID AND IsRead = 0 AND SenderID != @UserID) AS UnreadCount
+    FROM messages.Conversations c
+    LEFT JOIN users.Users u ON c.UserID = u.UserID
+    LEFT JOIN vendors.VendorProfiles v ON c.VendorProfileID = v.VendorProfileID
+    LEFT JOIN messages.Messages m ON c.ConversationID = m.ConversationID
         AND m.MessageID = (
             SELECT TOP 1 MessageID 
-            FROM Messages 
+            FROM messages.Messages 
             WHERE ConversationID = c.ConversationID 
             ORDER BY CreatedAt DESC
         )
@@ -59,3 +60,7 @@ BEGIN
     ORDER BY COALESCE(m.CreatedAt, c.CreatedAt) DESC;
 END
 GO
+
+
+
+

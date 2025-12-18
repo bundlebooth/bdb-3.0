@@ -8,7 +8,7 @@ router.get('/', async (req, res) => {
   try {
     const pool = await poolPromise;
     const result = await pool.request()
-      .execute('sp_Provider_Search');
+      .execute('vendors.sp_Provider_Search');
       
     res.json(result.recordset);
   } catch (err) {
@@ -22,7 +22,7 @@ router.get('/:id', async (req, res) => {
     const pool = await poolPromise;
     const result = await pool.request()
       .input('ProviderID', sql.Int, req.params.id)
-      .execute('sp_Provider_GetFullProfile');
+      .execute('vendors.sp_Provider_GetFullProfile');
       
     if (result.recordset.length === 0) {
       return res.status(404).json({ message: 'Venue not found' });
@@ -48,7 +48,7 @@ router.post('/search', async (req, res) => {
       .input('MinPrice', sql.Decimal(18, 2), minPrice || null)
       .input('MaxPrice', sql.Decimal(18, 2), maxPrice || null)
       .input('MinRating', sql.Decimal(3, 2), minRating || null)
-      .execute('sp_Provider_Search');
+      .execute('vendors.sp_Provider_Search');
       
     res.json(result.recordset);
   } catch (err) {

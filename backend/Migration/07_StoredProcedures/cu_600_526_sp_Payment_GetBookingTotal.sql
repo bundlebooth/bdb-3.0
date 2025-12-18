@@ -1,18 +1,20 @@
 -- =============================================
--- Stored Procedure: sp_Payment_GetBookingTotal
+-- Stored Procedure: payments.sp_GetBookingTotal
 -- Description: Gets booking total amount
 -- Phase: 600 (Stored Procedures)
+-- Schema: payments
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Payment_GetBookingTotal]'))
-    DROP PROCEDURE [dbo].[sp_Payment_GetBookingTotal];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[payments].[sp_GetBookingTotal]'))
+    DROP PROCEDURE [payments].[sp_GetBookingTotal];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Payment_GetBookingTotal]
+CREATE PROCEDURE [payments].[sp_GetBookingTotal]
     @BookingID INT
 AS
 BEGIN
     SET NOCOUNT ON;
     
-    SELECT TOP 1 TotalAmount FROM Bookings WHERE BookingID = @BookingID;
+    SELECT TOP 1 TotalAmount FROM bookings.Bookings WHERE BookingID = @BookingID;
 END
 GO
+

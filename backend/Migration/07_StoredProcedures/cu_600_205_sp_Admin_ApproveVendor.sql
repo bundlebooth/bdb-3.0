@@ -1,20 +1,21 @@
 -- =============================================
--- Stored Procedure: sp_Admin_ApproveVendor
+-- Stored Procedure: admin.sp_ApproveVendor
 -- Description: Approves a vendor and makes them visible on the platform
 -- Phase: 600 (Stored Procedures)
+-- Schema: admin
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Admin_ApproveVendor]'))
-    DROP PROCEDURE [dbo].[sp_Admin_ApproveVendor];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_ApproveVendor]'))
+    DROP PROCEDURE [admin].[sp_ApproveVendor];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Admin_ApproveVendor]
+CREATE PROCEDURE [admin].[sp_ApproveVendor]
     @VendorProfileID INT,
     @AdminNotes NVARCHAR(MAX) = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
     
-    UPDATE VendorProfiles 
+    UPDATE vendors.VendorProfiles 
     SET ProfileStatus = 'approved', 
         AcceptingBookings = 1, 
         IsVerified = 1,
@@ -27,3 +28,4 @@ BEGIN
     SELECT @@ROWCOUNT AS RowsAffected;
 END
 GO
+

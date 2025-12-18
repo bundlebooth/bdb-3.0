@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_ExpirePendingRequests]
     Phase: 600 - Stored Procedures
     Script: cu_600_027_dbo.sp_ExpirePendingRequests.sql
-    Description: Creates the [dbo].[sp_ExpirePendingRequests] stored procedure
+    Description: Creates the [bookings].[sp_ExpirePendingRequests] stored procedure
     
     Execution Order: 27
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_ExpirePendingRequests]...';
+PRINT 'Creating stored procedure [bookings].[sp_ExpirePendingRequests]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_ExpirePendingRequests]'))
-    DROP PROCEDURE [dbo].[sp_ExpirePendingRequests];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[bookings].[sp_ExpirePendingRequests]'))
+    DROP PROCEDURE [bookings].[sp_ExpirePendingRequests];
 GO
 
-CREATE   PROCEDURE [dbo].[sp_ExpirePendingRequests]
+CREATE   PROCEDURE [bookings].[sp_ExpirePendingRequests]
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -26,7 +26,7 @@ BEGIN
         BEGIN TRANSACTION;
         
         -- Update expired requests
-        UPDATE BookingRequests 
+        UPDATE bookings.BookingRequests 
         SET 
             Status = 'expired',
             ExpiredAt = GETDATE()
@@ -36,7 +36,7 @@ BEGIN
         DECLARE @ExpiredCount INT = @@ROWCOUNT;
         
         -- Create notifications for users with expired requests
-        INSERT INTO Notifications (UserID, Title, Message, Type, RelatedID, RelatedType)
+        INSERT INTO notifications.Notifications (UserID, Title, Message, Type, RelatedID, RelatedType)
         SELECT 
             br.UserID,
             'Booking Request Expired',
@@ -44,8 +44,8 @@ BEGIN
             'request_expired',
             br.RequestID,
             'request'
-        FROM BookingRequests br
-        JOIN VendorProfiles vp ON br.VendorProfileID = vp.VendorProfileID
+        FROM bookings.BookingRequests br
+        JOIN vendors.VendorProfiles vp ON br.VendorProfileID = vp.VendorProfileID
         WHERE br.Status = 'expired' 
             AND br.ExpiredAt >= DATEADD(MINUTE, -5, GETDATE()); -- Only recent expirations
         
@@ -69,5 +69,8 @@ END;
 
 GO
 
-PRINT 'Stored procedure [dbo].[sp_ExpirePendingRequests] created successfully.';
+PRINT 'Stored procedure [bookings].[sp_ExpirePendingRequests] created successfully.';
 GO
+
+
+

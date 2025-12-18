@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_UpdateVendorProfileLocation]
     Phase: 600 - Stored Procedures
     Script: cu_600_108_dbo.sp_UpdateVendorProfileLocation.sql
-    Description: Creates the [dbo].[sp_UpdateVendorProfileLocation] stored procedure
+    Description: Creates the [vendors].[sp_UpdateProfileLocation] stored procedure
     
     Execution Order: 108
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_UpdateVendorProfileLocation]...';
+PRINT 'Creating stored procedure [vendors].[sp_UpdateProfileLocation]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_UpdateVendorProfileLocation]'))
-    DROP PROCEDURE [dbo].[sp_UpdateVendorProfileLocation];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_UpdateProfileLocation]'))
+    DROP PROCEDURE [vendors].[sp_UpdateProfileLocation];
 GO
 
-CREATE   PROCEDURE [dbo].[sp_UpdateVendorProfileLocation]
+CREATE   PROCEDURE [vendors].[sp_UpdateProfileLocation]
     @VendorProfileID INT,
     @Address NVARCHAR(255),
     @City NVARCHAR(100),
@@ -30,7 +30,7 @@ AS
 BEGIN
     SET NOCOUNT ON;
     
-    UPDATE VendorProfiles
+    UPDATE vendors.VendorProfiles
     SET Address = @Address,
         City = @City,
         State = @State,
@@ -46,5 +46,6 @@ END;
 
 GO
 
-PRINT 'Stored procedure [dbo].[sp_UpdateVendorProfileLocation] created successfully.';
+PRINT 'Stored procedure [vendors].[sp_UpdateProfileLocation] created successfully.';
 GO
+

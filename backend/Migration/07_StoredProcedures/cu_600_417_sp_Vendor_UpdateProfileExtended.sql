@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Vendor_UpdateProfileExtended
+-- Stored Procedure: vendors.sp_UpdateProfileExtended
 -- Description: Updates vendor profile with extended fields including location
 -- Phase: 600 (Stored Procedures)
+-- Schema: vendors
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Vendor_UpdateProfileExtended]'))
-    DROP PROCEDURE [dbo].[sp_Vendor_UpdateProfileExtended];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_UpdateProfileExtended]'))
+    DROP PROCEDURE [vendors].[sp_UpdateProfileExtended];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Vendor_UpdateProfileExtended]
+CREATE PROCEDURE [vendors].[sp_UpdateProfileExtended]
     @VendorProfileID INT,
     @BusinessName NVARCHAR(100),
     @DisplayName NVARCHAR(100),
@@ -29,7 +30,7 @@ AS
 BEGIN
     SET NOCOUNT ON;
     
-    UPDATE VendorProfiles SET
+    UPDATE vendors.VendorProfiles SET
         BusinessName = @BusinessName,
         DisplayName = @DisplayName,
         BusinessDescription = @BusinessDescription,
@@ -52,3 +53,4 @@ BEGIN
     SELECT @@ROWCOUNT AS RowsAffected;
 END
 GO
+

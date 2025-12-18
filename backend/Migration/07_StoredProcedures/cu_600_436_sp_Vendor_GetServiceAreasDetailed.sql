@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Vendor_GetServiceAreasDetailed
+-- Stored Procedure: vendors.sp_GetServiceAreasDetailed
 -- Description: Gets detailed service areas for a vendor including bounds
 -- Phase: 600 (Stored Procedures)
+-- Schema: vendors
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Vendor_GetServiceAreasDetailed]'))
-    DROP PROCEDURE [dbo].[sp_Vendor_GetServiceAreasDetailed];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_GetServiceAreasDetailed]'))
+    DROP PROCEDURE [vendors].[sp_GetServiceAreasDetailed];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Vendor_GetServiceAreasDetailed]
+CREATE PROCEDURE [vendors].[sp_GetServiceAreasDetailed]
     @VendorProfileID INT
 AS
 BEGIN

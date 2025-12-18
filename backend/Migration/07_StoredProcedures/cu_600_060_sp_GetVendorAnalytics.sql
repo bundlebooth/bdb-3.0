@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_GetVendorAnalytics]
     Phase: 600 - Stored Procedures
     Script: cu_600_060_dbo.sp_GetVendorAnalytics.sql
-    Description: Creates the [dbo].[sp_GetVendorAnalytics] stored procedure
+    Description: Creates the [vendors].[sp_GetAnalytics] stored procedure
     
     Execution Order: 60
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_GetVendorAnalytics]...';
+PRINT 'Creating stored procedure [vendors].[sp_GetAnalytics]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_GetVendorAnalytics]'))
-    DROP PROCEDURE [dbo].[sp_GetVendorAnalytics];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_GetAnalytics]'))
+    DROP PROCEDURE [vendors].[sp_GetAnalytics];
 GO
 
-CREATE   PROCEDURE [dbo].[sp_GetVendorAnalytics]
+CREATE   PROCEDURE [vendors].[sp_GetAnalytics]
     @VendorProfileID INT,
     @DaysBack INT = 30
 AS
@@ -31,7 +31,7 @@ BEGIN
         COUNT(*) AS TotalViews,
         COUNT(DISTINCT ViewerUserID) AS UniqueViewers,
         COUNT(DISTINCT CAST(ViewedAt AS DATE)) AS DaysWithViews
-    FROM VendorProfileViews
+    FROM vendors.VendorProfileViews
     WHERE VendorProfileID = @VendorProfileID
       AND ViewedAt >= @StartDate;
 
@@ -40,7 +40,7 @@ BEGIN
         CAST(ViewedAt AS DATE) AS ViewDate,
         COUNT(*) AS ViewCount,
         COUNT(DISTINCT ViewerUserID) AS UniqueViewers
-    FROM VendorProfileViews
+    FROM vendors.VendorProfileViews
     WHERE VendorProfileID = @VendorProfileID
       AND ViewedAt >= @StartDate
     GROUP BY CAST(ViewedAt AS DATE)
@@ -50,7 +50,7 @@ BEGIN
     SELECT 
         DATEPART(HOUR, ViewedAt) AS HourOfDay,
         COUNT(*) AS ViewCount
-    FROM VendorProfileViews
+    FROM vendors.VendorProfileViews
     WHERE VendorProfileID = @VendorProfileID
       AND ViewedAt >= @StartDate
     GROUP BY DATEPART(HOUR, ViewedAt)
@@ -63,7 +63,7 @@ BEGIN
             ELSE ReferrerUrl
         END AS Referrer,
         COUNT(*) AS ViewCount
-    FROM VendorProfileViews
+    FROM vendors.VendorProfileViews
     WHERE VendorProfileID = @VendorProfileID
       AND ViewedAt >= @StartDate
     GROUP BY ReferrerUrl
@@ -72,5 +72,6 @@ END
 
 GO
 
-PRINT 'Stored procedure [dbo].[sp_GetVendorAnalytics] created successfully.';
+PRINT 'Stored procedure [vendors].[sp_GetAnalytics] created successfully.';
 GO
+

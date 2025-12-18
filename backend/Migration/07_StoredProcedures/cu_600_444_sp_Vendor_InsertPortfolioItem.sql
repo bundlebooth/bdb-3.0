@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Vendor_InsertPortfolioItem
+-- Stored Procedure: vendors.sp_InsertPortfolioItem
 -- Description: Inserts a portfolio item for a vendor
 -- Phase: 600 (Stored Procedures)
+-- Schema: vendors
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Vendor_InsertPortfolioItem]'))
-    DROP PROCEDURE [dbo].[sp_Vendor_InsertPortfolioItem];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_InsertPortfolioItem]'))
+    DROP PROCEDURE [vendors].[sp_InsertPortfolioItem];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Vendor_InsertPortfolioItem]
+CREATE PROCEDURE [vendors].[sp_InsertPortfolioItem]
     @VendorProfileID INT,
     @Title NVARCHAR(255),
     @Description NVARCHAR(MAX) = NULL,

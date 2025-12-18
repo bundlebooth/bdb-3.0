@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Users_LogSecurityEvent
+-- Stored Procedure: users.sp_LogSecurityEvent
 -- Description: Logs security events like login attempts
 -- Phase: 600 (Stored Procedures)
+-- Schema: users
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Users_LogSecurityEvent]'))
-    DROP PROCEDURE [dbo].[sp_Users_LogSecurityEvent];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[users].[sp_LogSecurityEvent]'))
+    DROP PROCEDURE [users].[sp_LogSecurityEvent];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Users_LogSecurityEvent]
+CREATE PROCEDURE [users].[sp_LogSecurityEvent]
     @UserID INT = NULL,
     @Email NVARCHAR(255) = NULL,
     @Action NVARCHAR(100),

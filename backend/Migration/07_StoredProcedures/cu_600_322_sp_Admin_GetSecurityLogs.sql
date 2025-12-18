@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Admin_GetSecurityLogs
+-- Stored Procedure: admin.sp_GetSecurityLogs
 -- Description: Gets security logs with filters
 -- Phase: 600 (Stored Procedures)
+-- Schema: admin
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Admin_GetSecurityLogs]'))
-    DROP PROCEDURE [dbo].[sp_Admin_GetSecurityLogs];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_GetSecurityLogs]'))
+    DROP PROCEDURE [admin].[sp_GetSecurityLogs];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Admin_GetSecurityLogs]
+CREATE PROCEDURE [admin].[sp_GetSecurityLogs]
     @Type NVARCHAR(50) = 'login',
     @Status NVARCHAR(50) = NULL,
     @Search NVARCHAR(100) = NULL,
@@ -71,12 +72,13 @@ BEGIN
             'Web Browser' as device,
             NULL as details,
             u.LastLogin as timestamp
-        FROM Users u
+        FROM users.Users u
         WHERE u.LastLogin IS NOT NULL
         ORDER BY u.LastLogin DESC
         OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY;
         
-        SELECT COUNT(*) as total FROM Users WHERE LastLogin IS NOT NULL;
+        SELECT COUNT(*) as total FROM users.Users WHERE LastLogin IS NOT NULL;
     END
 END
 GO
+

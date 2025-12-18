@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_GetVendorBookingRequests]
     Phase: 600 - Stored Procedures
     Script: cu_600_062_dbo.sp_GetVendorBookingRequests.sql
-    Description: Creates the [dbo].[sp_GetVendorBookingRequests] stored procedure
+    Description: Creates the [vendors].[sp_GetBookingRequests] stored procedure
     
     Execution Order: 62
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_GetVendorBookingRequests]...';
+PRINT 'Creating stored procedure [vendors].[sp_GetBookingRequests]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_GetVendorBookingRequests]'))
-    DROP PROCEDURE [dbo].[sp_GetVendorBookingRequests];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_GetBookingRequests]'))
+    DROP PROCEDURE [vendors].[sp_GetBookingRequests];
 GO
 
-CREATE   PROCEDURE [dbo].[sp_GetVendorBookingRequests]
+CREATE   PROCEDURE [vendors].[sp_GetBookingRequests]
     @VendorProfileID INT,
     @Status NVARCHAR(50) = NULL,
     @PageSize INT = 20,
@@ -55,9 +55,9 @@ BEGIN
             ELSE 0
         END AS IsExpired,
         DATEDIFF(HOUR, br.CreatedAt, GETDATE()) AS HoursOld
-    FROM BookingRequests br
-    JOIN Users u ON br.UserID = u.UserID
-    LEFT JOIN Services s ON br.ServiceID = s.ServiceID
+    FROM bookings.BookingRequests br
+    JOIN users.Users u ON br.UserID = u.UserID
+    LEFT JOIN vendors.Services s ON br.ServiceID = s.ServiceID
     WHERE br.VendorProfileID = @VendorProfileID
         AND (@Status IS NULL OR br.Status = @Status)
     ORDER BY 
@@ -69,5 +69,7 @@ END;
 
 GO
 
-PRINT 'Stored procedure [dbo].[sp_GetVendorBookingRequests] created successfully.';
+PRINT 'Stored procedure [vendors].[sp_GetBookingRequests] created successfully.';
 GO
+
+

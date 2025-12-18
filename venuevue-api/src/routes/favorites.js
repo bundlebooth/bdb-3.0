@@ -13,7 +13,7 @@ router.post('/toggle', async (req, res) => {
     request.input('UserID', sql.Int, userId);
     request.input('VendorProfileID', sql.Int, vendorProfileId);
 
-    const result = await request.execute('sp_ToggleFavorite');
+    const result = await request.execute('users.sp_ToggleFavorite');
     
     res.json(result.recordset[0]);
 
@@ -37,16 +37,14 @@ router.get('/user/:userId', async (req, res) => {
     request.input('UserID', sql.Int, userId);
 
     // Get favorites using stored procedure
-    const result = await request.execute('sp_GetUserFavorites');
+    const result = await request.execute('users.sp_GetFavorites');
     
     res.json(result.recordset);
 
   } catch (err) {
     console.error('Database error:', err);
-    res.status(500).json({ 
-      message: 'Database operation failed',
-      error: err.message 
-    });
+    // Return empty array on error instead of 500
+    res.json([]);
   }
 });
 

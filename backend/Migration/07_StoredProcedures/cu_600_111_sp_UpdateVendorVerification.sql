@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_UpdateVendorVerification]
     Phase: 600 - Stored Procedures
     Script: cu_600_111_dbo.sp_UpdateVendorVerification.sql
-    Description: Creates the [dbo].[sp_UpdateVendorVerification] stored procedure
+    Description: Creates the [vendors].[sp_UpdateVerification] stored procedure
     
     Execution Order: 111
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_UpdateVendorVerification]...';
+PRINT 'Creating stored procedure [vendors].[sp_UpdateVerification]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_UpdateVendorVerification]'))
-    DROP PROCEDURE [dbo].[sp_UpdateVendorVerification];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_UpdateVerification]'))
+    DROP PROCEDURE [vendors].[sp_UpdateVerification];
 GO
 
-CREATE   PROCEDURE [dbo].[sp_UpdateVendorVerification]
+CREATE   PROCEDURE [vendors].[sp_UpdateVerification]
     @VendorProfileID INT,
     @LicenseNumber NVARCHAR(50),
     @InsuranceVerified BIT = 0,
@@ -32,7 +32,7 @@ BEGIN
     SET NOCOUNT ON;
     
     BEGIN TRY
-        UPDATE VendorProfiles 
+        UPDATE vendors.VendorProfiles 
         SET LicenseNumber = @LicenseNumber,
             InsuranceVerified = @InsuranceVerified,
             BusinessType = @BusinessType,
@@ -55,5 +55,6 @@ END;
 
 GO
 
-PRINT 'Stored procedure [dbo].[sp_UpdateVendorVerification] created successfully.';
+PRINT 'Stored procedure [vendors].[sp_UpdateVerification] created successfully.';
 GO
+

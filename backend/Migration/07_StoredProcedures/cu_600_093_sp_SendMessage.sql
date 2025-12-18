@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_SendMessage]
     Phase: 600 - Stored Procedures
     Script: cu_600_093_dbo.sp_SendMessage.sql
-    Description: Creates the [dbo].[sp_SendMessage] stored procedure
+    Description: Creates the [messages].[sp_SendMessage] stored procedure
     
     Execution Order: 93
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_SendMessage]...';
+PRINT 'Creating stored procedure [messages].[sp_SendMessage]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_SendMessage]'))
-    DROP PROCEDURE [dbo].[sp_SendMessage];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[messages].[sp_SendMessage]'))
+    DROP PROCEDURE [messages].[sp_SendMessage];
 GO
 
-CREATE   PROCEDURE [dbo].[sp_SendMessage]
+CREATE   PROCEDURE [messages].[sp_SendMessage]
     @ConversationID INT,
     @SenderID INT,
     @Content NVARCHAR(MAX),
@@ -31,8 +31,8 @@ BEGIN
     
     -- Validate conversation exists and user has access
     IF NOT EXISTS (
-        SELECT 1 FROM Conversations c
-        LEFT JOIN VendorProfiles v ON c.VendorProfileID = v.VendorProfileID
+        SELECT 1 FROM messages.Conversations c
+        LEFT JOIN vendors.VendorProfiles v ON c.VendorProfileID = v.VendorProfileID
         WHERE c.ConversationID = @ConversationID
         AND (c.UserID = @SenderID OR v.UserID = @SenderID)
     )
@@ -45,7 +45,7 @@ BEGIN
         BEGIN TRANSACTION;
         
         -- Add message
-        INSERT INTO Messages (
+        INSERT INTO messages.Messages (
             ConversationID,
             SenderID,
             Content
@@ -78,7 +78,7 @@ BEGIN
         END
         
         -- Update conversation last message
-        UPDATE Conversations
+        UPDATE messages.Conversations
         SET 
             LastMessageAt = GETDATE(),
             UpdatedAt = GETDATE()
@@ -97,15 +97,15 @@ BEGIN
             @VendorProfileID = c.VendorProfileID,
             @VendorName = v.BusinessName,
             @UserName = u.Name
-        FROM Conversations c
-        JOIN VendorProfiles v ON c.VendorProfileID = v.VendorProfileID
-        JOIN Users u ON c.UserID = u.UserID
+        FROM messages.Conversations c
+        JOIN vendors.VendorProfiles v ON c.VendorProfileID = v.VendorProfileID
+        JOIN users.Users u ON c.UserID = u.UserID
         WHERE c.ConversationID = @ConversationID;
         
         -- Create notification
         IF @RecipientID IS NOT NULL
         BEGIN
-            INSERT INTO Notifications (
+            INSERT INTO notifications.Notifications (
                 UserID,
                 Type,
                 Title,
@@ -151,5 +151,10 @@ END;
 
 GO
 
-PRINT 'Stored procedure [dbo].[sp_SendMessage] created successfully.';
+PRINT 'Stored procedure [messages].[sp_SendMessage] created successfully.';
 GO
+
+
+
+
+

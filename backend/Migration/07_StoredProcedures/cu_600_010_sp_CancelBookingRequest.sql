@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_CancelBookingRequest]
     Phase: 600 - Stored Procedures
     Script: cu_600_010_dbo.sp_CancelBookingRequest.sql
-    Description: Creates the [dbo].[sp_CancelBookingRequest] stored procedure
+    Description: Creates the [bookings].[sp_CancelRequest] stored procedure
     
     Execution Order: 10
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_CancelBookingRequest]...';
+PRINT 'Creating stored procedure [bookings].[sp_CancelRequest]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_CancelBookingRequest]'))
-    DROP PROCEDURE [dbo].[sp_CancelBookingRequest];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[bookings].[sp_CancelRequest]'))
+    DROP PROCEDURE [bookings].[sp_CancelRequest];
 GO
 
-CREATE   PROCEDURE [dbo].[sp_CancelBookingRequest]
+CREATE   PROCEDURE [bookings].[sp_CancelRequest]
     @RequestID INT,
     @UserID INT,
     @CancellationReason NVARCHAR(MAX) = NULL
@@ -35,7 +35,7 @@ BEGIN
         SELECT 
             @CurrentStatus = Status,
             @VendorProfileID = VendorProfileID
-        FROM BookingRequests 
+        FROM bookings.BookingRequests 
         WHERE RequestID = @RequestID AND UserID = @UserID;
         
         IF @VendorProfileID IS NULL
@@ -55,7 +55,7 @@ BEGIN
         END
         
         -- Update request
-        UPDATE BookingRequests 
+        UPDATE bookings.BookingRequests 
         SET 
             Status = 'cancelled',
             CancellationReason = @CancellationReason,
@@ -63,16 +63,16 @@ BEGIN
         WHERE RequestID = @RequestID;
         
         -- Create notification for vendor
-        INSERT INTO Notifications (UserID, Title, Message, Type, RelatedID, RelatedType)
+        INSERT INTO notifications.Notifications (UserID, Title, Message, Type, RelatedID, RelatedType)
         SELECT 
             u.UserID,
             'Booking Request Cancelled',
-            (SELECT Name FROM Users WHERE UserID = @UserID) + ' has cancelled their booking request.',
+            (SELECT Name FROM users.Users WHERE UserID = @UserID) + ' has cancelled their booking request.',
             'booking_cancelled',
             @RequestID,
             'request'
-        FROM Users u
-        JOIN VendorProfiles vp ON u.UserID = vp.UserID
+        FROM users.Users u
+        JOIN vendors.VendorProfiles vp ON u.UserID = vp.UserID
         WHERE vp.VendorProfileID = @VendorProfileID;
         
         SELECT 
@@ -95,5 +95,9 @@ END;
 
 GO
 
-PRINT 'Stored procedure [dbo].[sp_CancelBookingRequest] created successfully.';
+PRINT 'Stored procedure [bookings].[sp_CancelRequest] created successfully.';
 GO
+
+
+
+

@@ -2,7 +2,7 @@
     Migration Script: Create Table [Conversations]
     Phase: 100 - Tables
     Script: cu_100_48_dbo.Conversations.sql
-    Description: Creates the [dbo].[Conversations] table
+    Description: Creates the [messages].[Conversations] table
     
     Execution Order: 48
 */
@@ -10,12 +10,12 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating table [dbo].[Conversations]...';
+PRINT 'Creating table [messages].[Conversations]...';
 GO
 
-IF NOT EXISTS (SELECT 1 FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Conversations]') AND type in (N'U'))
+IF NOT EXISTS (SELECT 1 FROM sys.objects WHERE object_id = OBJECT_ID(N'[messages].[Conversations]') AND type in (N'U'))
 BEGIN
-    CREATE TABLE [dbo].[Conversations](
+    CREATE TABLE [messages].[Conversations](
 	[ConversationID] [int] IDENTITY(1,1) NOT NULL,
 	[UserID] [int] NULL,
 	[VendorProfileID] [int] NULL,
@@ -29,10 +29,10 @@ PRIMARY KEY CLUSTERED
 	[ConversationID] ASC
 )WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
     );
-    PRINT 'Table [dbo].[Conversations] created successfully.';
+    PRINT 'Table [messages].[Conversations] created successfully.';
 END
 ELSE
 BEGIN
-    PRINT 'Table [dbo].[Conversations] already exists. Skipping.';
+    PRINT 'Table [messages].[Conversations] already exists. Skipping.';
 END
 GO

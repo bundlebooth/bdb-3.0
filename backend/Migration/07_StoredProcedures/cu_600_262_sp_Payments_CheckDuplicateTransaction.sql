@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Payments_CheckDuplicateTransaction
+-- Stored Procedure: payments.sp_CheckDuplicateTransaction
 -- Description: Checks for duplicate transactions
 -- Phase: 600 (Stored Procedures)
+-- Schema: payments
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Payments_CheckDuplicateTransaction]'))
-    DROP PROCEDURE [dbo].[sp_Payments_CheckDuplicateTransaction];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[payments].[sp_CheckDuplicateTransaction]'))
+    DROP PROCEDURE [payments].[sp_CheckDuplicateTransaction];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Payments_CheckDuplicateTransaction]
+CREATE PROCEDURE [payments].[sp_CheckDuplicateTransaction]
     @BookingID INT,
     @Amount DECIMAL(10,2),
     @ExternalID NVARCHAR(100) = NULL,
@@ -17,10 +18,11 @@ BEGIN
     SET NOCOUNT ON;
     
     SELECT TOP 1 TransactionID
-    FROM Transactions
+    FROM payments.Transactions
     WHERE BookingID = @BookingID AND Status = 'succeeded' AND (
         (StripeChargeID IS NOT NULL AND @ExternalID IS NOT NULL AND StripeChargeID = @ExternalID)
         OR (ABS(Amount - @Amount) < 0.01 AND CreatedAt > DATEADD(minute, -@Minutes, GETDATE()))
     );
 END
 GO
+

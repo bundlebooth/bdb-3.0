@@ -37,7 +37,7 @@ router.post('/track-view', async (req, res) => {
             .input('UserAgent', sql.VarChar(500), userAgent)
             .input('ReferrerUrl', sql.VarChar(1000), referrerUrl)
             .input('SessionID', sql.VarChar(100), sessionId)
-            .execute('sp_TrackVendorProfileView');
+            .execute('vendors.sp_TrackProfileView');
 
         res.json({
             success: true,
@@ -74,7 +74,7 @@ router.get('/trending', async (req, res) => {
             .input('DaysBack', sql.Int, parseInt(daysBack))
             .input('IncludeImages', sql.Bit, includeImages === 'true' || includeImages === true)
             .input('Category', sql.NVarChar(50), category)  // *** ADDED: Pass category to stored procedure ***
-            .execute('sp_GetTrendingVendors');
+            .execute('vendors.sp_GetTrending');
 
         console.log('\n========== TRENDING VENDORS RAW DATA ==========');
         console.log('Total vendors from DB:', result.recordset.length);
@@ -185,7 +185,7 @@ router.get('/vendor/:vendorId', authenticate, async (req, res) => {
         const result = await pool.request()
             .input('VendorProfileID', sql.Int, vendorId)
             .input('DaysBack', sql.Int, parseInt(daysBack))
-            .execute('sp_GetVendorAnalytics');
+            .execute('admin.sp_GetVendorAnalytics');
 
         // Result has multiple recordsets
         const summary = result.recordsets[0][0]; // Total views, unique viewers
@@ -246,7 +246,7 @@ router.get('/vendor/:vendorId/trends', authenticate, async (req, res) => {
 
         const result = await pool.request()
             .input('VendorProfileID', sql.Int, vendorId)
-            .execute('sp_GetVendorViewTrends');
+            .execute('admin.sp_GetVendorViewTrends');
 
         // Result has multiple recordsets - weekly and monthly comparisons
         const weeklyTrends = result.recordsets[0];
@@ -305,7 +305,7 @@ router.get('/vendor/:vendorId/view-count', async (req, res) => {
         const result = await pool.request()
             .input('VendorProfileID', sql.Int, vendorId)
             .input('DaysBack', sql.Int, parseInt(daysBack))
-            .execute('sp_Analytics_GetVendorViewCount');
+            .execute('admin.sp_Analytics_GetVendorViewCount');
 
         res.json({
             success: true,

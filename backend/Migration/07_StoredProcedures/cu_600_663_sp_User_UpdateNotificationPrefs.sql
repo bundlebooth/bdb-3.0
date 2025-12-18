@@ -1,21 +1,23 @@
 -- =============================================
--- Stored Procedure: sp_User_UpdateNotificationPrefs
+-- Stored Procedure: users.sp_UpdateNotificationPrefs
 -- Description: Updates user notification preferences
 -- Phase: 600 (Stored Procedures)
+-- Schema: users
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_User_UpdateNotificationPrefs]'))
-    DROP PROCEDURE [dbo].[sp_User_UpdateNotificationPrefs];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[users].[sp_UpdateNotificationPrefs]'))
+    DROP PROCEDURE [users].[sp_UpdateNotificationPrefs];
 GO
 
-CREATE PROCEDURE [dbo].[sp_User_UpdateNotificationPrefs]
+CREATE PROCEDURE [users].[sp_UpdateNotificationPrefs]
     @UserID INT,
     @Preferences NVARCHAR(MAX)
 AS
 BEGIN
     SET NOCOUNT ON;
     
-    UPDATE Users 
+    UPDATE users.Users 
     SET NotificationPreferences = @Preferences, UpdatedAt = GETDATE()
     WHERE UserID = @UserID;
 END
 GO
+

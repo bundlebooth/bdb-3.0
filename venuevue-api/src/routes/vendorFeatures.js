@@ -10,7 +10,7 @@ router.get('/categories', async (req, res) => {
   try {
     const pool = await poolPromise;
     const result = await pool.request()
-      .execute('sp_GetVendorFeatureCategories');
+      .execute('vendors.sp_GetFeatureCategories');
     
     res.json({
       success: true,
@@ -37,7 +37,7 @@ router.get('/category/:categoryKey', async (req, res) => {
     
     const result = await pool.request()
       .input('CategoryKey', sql.NVarChar(50), categoryKey)
-      .execute('sp_GetVendorFeaturesByCategory');
+      .execute('vendors.sp_GetFeaturesByCategory');
     
     res.json({
       success: true,
@@ -64,7 +64,7 @@ router.get('/all-grouped', async (req, res) => {
     
     try {
       result = await pool.request()
-        .execute('sp_GetAllVendorFeaturesGrouped');
+        .execute('vendors.sp_GetAllFeaturesGrouped');
     } catch (spError) {
       console.error('sp_GetAllVendorFeaturesGrouped failed:', spError.message);
       return res.json({
@@ -134,7 +134,7 @@ router.get('/vendor/:vendorProfileId', async (req, res) => {
     try {
       result = await pool.request()
         .input('VendorProfileID', sql.Int, parseInt(vendorProfileId))
-        .execute('sp_Vendor_GetSelectedFeatures');
+        .execute('vendors.sp_GetSelectedFeatures');
     } catch (spError) {
       console.error('sp_Vendor_GetSelectedFeatures failed:', spError.message);
       return res.json({
@@ -212,7 +212,7 @@ router.post('/vendor/:vendorProfileId', async (req, res) => {
       result = await pool.request()
         .input('VendorProfileID', sql.Int, parseInt(vendorProfileId))
         .input('FeatureIDs', sql.NVarChar(sql.MAX), featureIdsStr)
-        .execute('sp_SaveVendorFeatureSelections');
+        .execute('vendors.sp_SaveFeatureSelections');
       
       const status = result.recordset[0];
       
@@ -307,7 +307,7 @@ router.get('/vendor/:vendorProfileId/summary', async (req, res) => {
     
     const result = await pool.request()
       .input('VendorProfileID', sql.Int, parseInt(vendorProfileId))
-      .execute('sp_GetVendorFeatureSummary');
+      .execute('vendors.sp_GetFeatureSummary');
     
     res.json({
       success: true,

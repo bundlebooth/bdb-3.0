@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_RegisterVendor]
     Phase: 600 - Stored Procedures
     Script: cu_600_085_dbo.sp_RegisterVendor.sql
-    Description: Creates the [dbo].[sp_RegisterVendor] stored procedure
+    Description: Creates the [vendors].[sp_Register] stored procedure
     
     Execution Order: 85
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_RegisterVendor]...';
+PRINT 'Creating stored procedure [vendors].[sp_Register]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_RegisterVendor]'))
-    DROP PROCEDURE [dbo].[sp_RegisterVendor];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_Register]'))
+    DROP PROCEDURE [vendors].[sp_Register];
 GO
 
-CREATE   PROCEDURE [dbo].[sp_RegisterVendor]
+CREATE   PROCEDURE [vendors].[sp_Register]
     @UserID INT,
     @BusinessName NVARCHAR(100),
     @DisplayName NVARCHAR(100),
@@ -40,16 +40,16 @@ BEGIN
         BEGIN TRANSACTION;
         
         -- Update user to be a vendor
-        UPDATE Users SET IsVendor = 1, UpdatedAt = GETDATE() WHERE UserID = @UserID;
+        UPDATE users.Users SET IsVendor = 1, UpdatedAt = GETDATE() WHERE UserID = @UserID;
 
         DECLARE @VendorProfileID INT;
         -- Check if a vendor profile already exists for the user
-        SELECT @VendorProfileID = VendorProfileID FROM VendorProfiles WHERE UserID = @UserID;
+        SELECT @VendorProfileID = VendorProfileID FROM vendors.VendorProfiles WHERE UserID = @UserID;
 
         IF @VendorProfileID IS NULL
         BEGIN
             -- Create new vendor profile
-            INSERT INTO VendorProfiles (
+            INSERT INTO vendors.VendorProfiles (
                 UserID,
                 BusinessName,
                 DisplayName,
@@ -87,7 +87,7 @@ BEGIN
         ELSE
         BEGIN
             -- Update existing vendor profile
-             UPDATE VendorProfiles
+             UPDATE vendors.VendorProfiles
              SET
                 BusinessName = @BusinessName,
                 DisplayName = @DisplayName,
@@ -105,10 +105,10 @@ BEGIN
         END
 
         -- Remove existing categories and add new ones if provided
-        DELETE FROM VendorCategories WHERE VendorProfileID = @VendorProfileID;
+        DELETE FROM vendors.VendorCategories WHERE VendorProfileID = @VendorProfileID;
         IF @Categories IS NOT NULL
         BEGIN
-            INSERT INTO VendorCategories (VendorProfileID, Category)
+            INSERT INTO vendors.VendorCategories (VendorProfileID, Category)
             SELECT @VendorProfileID, value
             FROM OPENJSON(@Categories);
         END
@@ -132,5 +132,8 @@ END;
 
 GO
 
-PRINT 'Stored procedure [dbo].[sp_RegisterVendor] created successfully.';
+PRINT 'Stored procedure [vendors].[sp_Register] created successfully.';
 GO
+
+
+

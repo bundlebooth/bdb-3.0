@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_GetUserFavorites]
     Phase: 600 - Stored Procedures
     Script: cu_600_055_dbo.sp_GetUserFavorites.sql
-    Description: Creates the [dbo].[sp_GetUserFavorites] stored procedure
+    Description: Creates the [users].[sp_GetFavorites] stored procedure
     
     Execution Order: 55
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_GetUserFavorites]...';
+PRINT 'Creating stored procedure [users].[sp_GetFavorites]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_GetUserFavorites]'))
-    DROP PROCEDURE [dbo].[sp_GetUserFavorites];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[users].[sp_GetFavorites]'))
+    DROP PROCEDURE [users].[sp_GetFavorites];
 GO
 
-CREATE   PROCEDURE [dbo].[sp_GetUserFavorites]
+CREATE   PROCEDURE [users].[sp_GetFavorites]
     @UserID INT
 AS
 BEGIN
@@ -31,5 +31,5 @@ END;
 
 GO
 
-PRINT 'Stored procedure [dbo].[sp_GetUserFavorites] created successfully.';
+PRINT 'Stored procedure [users].[sp_GetFavorites] created successfully.';
 GO

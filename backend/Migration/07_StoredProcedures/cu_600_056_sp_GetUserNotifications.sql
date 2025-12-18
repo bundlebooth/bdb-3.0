@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_GetUserNotifications]
     Phase: 600 - Stored Procedures
     Script: cu_600_056_dbo.sp_GetUserNotifications.sql
-    Description: Creates the [dbo].[sp_GetUserNotifications] stored procedure
+    Description: Creates the [notifications].[sp_GetUserNotifications] stored procedure
     
     Execution Order: 56
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_GetUserNotifications]...';
+PRINT 'Creating stored procedure [notifications].[sp_GetUserNotifications]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_GetUserNotifications]'))
-    DROP PROCEDURE [dbo].[sp_GetUserNotifications];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[notifications].[sp_GetUserNotifications]'))
+    DROP PROCEDURE [notifications].[sp_GetUserNotifications];
 GO
 
-CREATE   PROCEDURE [dbo].[sp_GetUserNotifications]
+CREATE   PROCEDURE [notifications].[sp_GetUserNotifications]
     @UserID INT,
     @UnreadOnly BIT = 0,
     @Limit INT = 20
@@ -37,10 +37,10 @@ BEGIN
         n.ActionURL,
         n.CreatedAt,
         CASE 
-            WHEN n.Type = 'booking' THEN (SELECT b.Status FROM Bookings b WHERE b.BookingID = n.RelatedID)
+            WHEN n.Type = 'booking' THEN (SELECT b.Status FROM bookings.Bookings b WHERE b.BookingID = n.RelatedID)
             ELSE NULL
         END AS Status
-    FROM Notifications n
+    FROM notifications.Notifications n
     WHERE n.UserID = @UserID
     AND (@UnreadOnly = 0 OR n.IsRead = 0)
     ORDER BY n.CreatedAt DESC;
@@ -48,7 +48,7 @@ BEGIN
     -- Mark as read if fetching unread
     IF @UnreadOnly = 1
     BEGIN
-        UPDATE Notifications
+        UPDATE notifications.Notifications
         SET IsRead = 1,
             ReadAt = GETDATE()
         WHERE UserID = @UserID
@@ -58,5 +58,7 @@ END;
 
 GO
 
-PRINT 'Stored procedure [dbo].[sp_GetUserNotifications] created successfully.';
+PRINT 'Stored procedure [notifications].[sp_GetUserNotifications] created successfully.';
 GO
+
+

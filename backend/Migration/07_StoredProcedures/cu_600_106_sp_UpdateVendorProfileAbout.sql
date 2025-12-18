@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_UpdateVendorProfileAbout]
     Phase: 600 - Stored Procedures
     Script: cu_600_106_dbo.sp_UpdateVendorProfileAbout.sql
-    Description: Creates the [dbo].[sp_UpdateVendorProfileAbout] stored procedure
+    Description: Creates the [vendors].[sp_UpdateProfileAbout] stored procedure
     
     Execution Order: 106
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_UpdateVendorProfileAbout]...';
+PRINT 'Creating stored procedure [vendors].[sp_UpdateProfileAbout]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_UpdateVendorProfileAbout]'))
-    DROP PROCEDURE [dbo].[sp_UpdateVendorProfileAbout];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_UpdateProfileAbout]'))
+    DROP PROCEDURE [vendors].[sp_UpdateProfileAbout];
 GO
 
-CREATE   PROCEDURE [dbo].[sp_UpdateVendorProfileAbout]
+CREATE   PROCEDURE [vendors].[sp_UpdateProfileAbout]
     @VendorProfileID INT,
     @Tagline NVARCHAR(255),
     @BusinessDescription NVARCHAR(MAX),
@@ -26,7 +26,7 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    UPDATE VendorProfiles
+    UPDATE vendors.VendorProfiles
     SET Tagline = @Tagline,
         BusinessDescription = @BusinessDescription,
         YearsInBusiness = @YearsInBusiness,
@@ -38,5 +38,6 @@ END;
 
 GO
 
-PRINT 'Stored procedure [dbo].[sp_UpdateVendorProfileAbout] created successfully.';
+PRINT 'Stored procedure [vendors].[sp_UpdateProfileAbout] created successfully.';
 GO
+

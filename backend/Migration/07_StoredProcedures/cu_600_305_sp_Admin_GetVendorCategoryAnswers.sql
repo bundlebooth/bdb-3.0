@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Admin_GetVendorCategoryAnswers
+-- Stored Procedure: admin.sp_GetVendorCategoryAnswers
 -- Description: Gets vendor category questionnaire answers
 -- Phase: 600 (Stored Procedures)
+-- Schema: admin
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Admin_GetVendorCategoryAnswers]'))
-    DROP PROCEDURE [dbo].[sp_Admin_GetVendorCategoryAnswers];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_GetVendorCategoryAnswers]'))
+    DROP PROCEDURE [admin].[sp_GetVendorCategoryAnswers];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Admin_GetVendorCategoryAnswers]
+CREATE PROCEDURE [admin].[sp_GetVendorCategoryAnswers]
     @VendorProfileID INT
 AS
 BEGIN

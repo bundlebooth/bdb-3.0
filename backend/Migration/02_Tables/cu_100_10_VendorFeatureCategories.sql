@@ -2,7 +2,7 @@
     Migration Script: Create Table [VendorFeatureCategories]
     Phase: 100 - Tables
     Script: cu_100_10_dbo.VendorFeatureCategories.sql
-    Description: Creates the [dbo].[VendorFeatureCategories] table
+    Description: Creates the [vendors].[VendorFeatureCategories] table
     
     Execution Order: 10
 */
@@ -10,12 +10,12 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating table [dbo].[VendorFeatureCategories]...';
+PRINT 'Creating table [vendors].[VendorFeatureCategories]...';
 GO
 
-IF NOT EXISTS (SELECT 1 FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[VendorFeatureCategories]') AND type in (N'U'))
+IF NOT EXISTS (SELECT 1 FROM sys.objects WHERE object_id = OBJECT_ID(N'[vendors].[VendorFeatureCategories]') AND type in (N'U'))
 BEGIN
-    CREATE TABLE [dbo].[VendorFeatureCategories](
+    CREATE TABLE [vendors].[VendorFeatureCategories](
 	[CategoryID] [int] IDENTITY(1,1) NOT NULL,
 	[CategoryName] [nvarchar](100) NOT NULL,
 	[CategoryIcon] [nvarchar](50) NULL,
@@ -28,10 +28,10 @@ PRIMARY KEY CLUSTERED
 	[CategoryID] ASC
 )WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
     );
-    PRINT 'Table [dbo].[VendorFeatureCategories] created successfully.';
+    PRINT 'Table [vendors].[VendorFeatureCategories] created successfully.';
 END
 ELSE
 BEGIN
-    PRINT 'Table [dbo].[VendorFeatureCategories] already exists. Skipping.';
+    PRINT 'Table [vendors].[VendorFeatureCategories] already exists. Skipping.';
 END
 GO

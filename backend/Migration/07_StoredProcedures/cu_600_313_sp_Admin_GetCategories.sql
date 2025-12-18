@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Admin_GetCategories
+-- Stored Procedure: admin.sp_GetCategories
 -- Description: Gets all vendor categories with counts
 -- Phase: 600 (Stored Procedures)
+-- Schema: admin
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Admin_GetCategories]'))
-    DROP PROCEDURE [dbo].[sp_Admin_GetCategories];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_GetCategories]'))
+    DROP PROCEDURE [admin].[sp_GetCategories];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Admin_GetCategories]
+CREATE PROCEDURE [admin].[sp_GetCategories]
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -15,8 +16,9 @@ BEGIN
     SELECT 
         Category as CategoryName,
         COUNT(*) as VendorCount
-    FROM VendorCategories
+    FROM vendors.VendorCategories
     GROUP BY Category
     ORDER BY Category;
 END
 GO
+

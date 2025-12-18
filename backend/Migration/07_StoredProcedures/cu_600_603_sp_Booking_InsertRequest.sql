@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Booking_InsertRequest
+-- Stored Procedure: bookings.sp_InsertRequest
 -- Description: Inserts a new booking request
 -- Phase: 600 (Stored Procedures)
+-- Schema: bookings
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Booking_InsertRequest]'))
-    DROP PROCEDURE [dbo].[sp_Booking_InsertRequest];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[bookings].[sp_InsertRequest]'))
+    DROP PROCEDURE [bookings].[sp_InsertRequest];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Booking_InsertRequest]
+CREATE PROCEDURE [bookings].[sp_InsertRequest]
     @UserID INT,
     @VendorProfileID INT,
     @Services NVARCHAR(MAX),
@@ -27,7 +28,7 @@ AS
 BEGIN
     SET NOCOUNT ON;
     
-    INSERT INTO BookingRequests (
+    INSERT INTO bookings.BookingRequests (
         UserID, VendorProfileID, Services, EventDate, EventTime, EventEndTime, EventLocation, 
         AttendeeCount, Budget, SpecialRequests, EventName, EventType, TimeZone, Status, ExpiresAt, CreatedAt
     )
@@ -44,3 +45,4 @@ BEGIN
     );
 END
 GO
+

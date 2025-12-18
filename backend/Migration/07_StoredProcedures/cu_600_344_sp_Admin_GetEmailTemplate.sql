@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Admin_GetEmailTemplate
+-- Stored Procedure: admin.sp_GetEmailTemplate
 -- Description: Gets a single email template with full HTML
 -- Phase: 600 (Stored Procedures)
+-- Schema: admin
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Admin_GetEmailTemplate]'))
-    DROP PROCEDURE [dbo].[sp_Admin_GetEmailTemplate];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_GetEmailTemplate]'))
+    DROP PROCEDURE [admin].[sp_GetEmailTemplate];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Admin_GetEmailTemplate]
+CREATE PROCEDURE [admin].[sp_GetEmailTemplate]
     @TemplateID INT
 AS
 BEGIN

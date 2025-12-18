@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Vendor_InsertFAQWithActive
+-- Stored Procedure: vendors.sp_InsertFAQWithActive
 -- Description: Inserts a FAQ with IsActive flag
 -- Phase: 600 (Stored Procedures)
+-- Schema: vendors
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Vendor_InsertFAQWithActive]'))
-    DROP PROCEDURE [dbo].[sp_Vendor_InsertFAQWithActive];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_InsertFAQWithActive]'))
+    DROP PROCEDURE [vendors].[sp_InsertFAQWithActive];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Vendor_InsertFAQWithActive]
+CREATE PROCEDURE [vendors].[sp_InsertFAQWithActive]
     @VendorProfileID INT,
     @Question NVARCHAR(500),
     @Answer NVARCHAR(MAX),

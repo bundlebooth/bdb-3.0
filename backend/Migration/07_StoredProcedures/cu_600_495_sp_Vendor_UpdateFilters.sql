@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Vendor_UpdateFilters
+-- Stored Procedure: vendors.sp_UpdateFilters
 -- Description: Updates vendor filters/badges
 -- Phase: 600 (Stored Procedures)
+-- Schema: vendors
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Vendor_UpdateFilters]'))
-    DROP PROCEDURE [dbo].[sp_Vendor_UpdateFilters];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_UpdateFilters]'))
+    DROP PROCEDURE [vendors].[sp_UpdateFilters];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Vendor_UpdateFilters]
+CREATE PROCEDURE [vendors].[sp_UpdateFilters]
     @VendorProfileID INT,
     @IsPremium BIT = 0,
     @IsEcoFriendly BIT = 0,
@@ -21,7 +22,7 @@ AS
 BEGIN
     SET NOCOUNT ON;
     
-    UPDATE VendorProfiles
+    UPDATE vendors.VendorProfiles
     SET IsPremium = @IsPremium, 
         IsEcoFriendly = @IsEcoFriendly, 
         IsAwardWinning = @IsAwardWinning, 
@@ -36,3 +37,4 @@ BEGIN
     SELECT @@ROWCOUNT AS RowsAffected;
 END
 GO
+

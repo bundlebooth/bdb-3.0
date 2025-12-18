@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Insert2FACode
+-- Stored Procedure: users.sp_Insert2FACode
 -- Description: Inserts a two-factor authentication code
 -- Phase: 600 (Stored Procedures)
+-- Schema: users
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Insert2FACode]'))
-    DROP PROCEDURE [dbo].[sp_Insert2FACode];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[users].[sp_Insert2FACode]'))
+    DROP PROCEDURE [users].[sp_Insert2FACode];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Insert2FACode]
+CREATE PROCEDURE [users].[sp_Insert2FACode]
     @UserID INT,
     @CodeHash NVARCHAR(255),
     @Purpose NVARCHAR(50),

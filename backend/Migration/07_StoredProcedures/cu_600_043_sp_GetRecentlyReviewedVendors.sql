@@ -1,23 +1,23 @@
 /*
-    Migration Script: Create Stored Procedure [sp_GetRecentlyReviewedVendors]
+    Migration Script: Create Stored Procedure [vendors.sp_GetRecentlyReviewed]
     Phase: 600 - Stored Procedures
-    Script: cu_600_043_dbo.sp_GetRecentlyReviewedVendors.sql
-    Description: Creates the [dbo].[sp_GetRecentlyReviewedVendors] stored procedure
-    
+    Script: cu_600_043_sp_GetRecentlyReviewedVendors.sql
+    Description: Creates the [vendors].[sp_GetRecentlyReviewed] stored procedure
+    Schema: vendors
     Execution Order: 43
 */
 
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [dbo].[sp_GetRecentlyReviewedVendors]...';
+PRINT 'Creating stored procedure [vendors].[sp_GetRecentlyReviewed]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_GetRecentlyReviewedVendors]'))
-    DROP PROCEDURE [dbo].[sp_GetRecentlyReviewedVendors];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_GetRecentlyReviewed]'))
+    DROP PROCEDURE [vendors].[sp_GetRecentlyReviewed];
 GO
 
-CREATE PROCEDURE [dbo].[sp_GetRecentlyReviewedVendors]
+CREATE PROCEDURE [vendors].[sp_GetRecentlyReviewed]
     @City NVARCHAR(100) = NULL,
     @Limit INT = 10
 AS
@@ -25,7 +25,7 @@ BEGIN
     SET NOCOUNT ON;
     
     SELECT TOP (@Limit) *
-    FROM VendorProfiles
+    FROM vendors.VendorProfiles
     WHERE ISNULL(IsVisible, 0) = 1
       AND (@City IS NULL OR City = @City)
       AND LastReviewDate IS NOT NULL
@@ -34,5 +34,6 @@ BEGIN
 END
 GO
 
-PRINT 'Stored procedure [dbo].[sp_GetRecentlyReviewedVendors] created successfully.';
+PRINT 'Stored procedure [vendors].[sp_GetRecentlyReviewed] created successfully.';
 GO
+

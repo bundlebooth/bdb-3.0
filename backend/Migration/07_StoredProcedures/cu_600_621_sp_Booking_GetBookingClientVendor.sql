@@ -1,18 +1,20 @@
 -- =============================================
--- Stored Procedure: sp_Booking_GetBookingClientVendor
+-- Stored Procedure: bookings.sp_GetBookingClientVendor
 -- Description: Gets client and vendor IDs from booking
 -- Phase: 600 (Stored Procedures)
+-- Schema: bookings
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Booking_GetBookingClientVendor]'))
-    DROP PROCEDURE [dbo].[sp_Booking_GetBookingClientVendor];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[bookings].[sp_GetBookingClientVendor]'))
+    DROP PROCEDURE [bookings].[sp_GetBookingClientVendor];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Booking_GetBookingClientVendor]
+CREATE PROCEDURE [bookings].[sp_GetBookingClientVendor]
     @BookingID INT
 AS
 BEGIN
     SET NOCOUNT ON;
     
-    SELECT UserID AS ClientUserID, VendorProfileID FROM Bookings WHERE BookingID = @BookingID;
+    SELECT UserID AS ClientUserID, VendorProfileID FROM bookings.Bookings WHERE BookingID = @BookingID;
 END
 GO
+

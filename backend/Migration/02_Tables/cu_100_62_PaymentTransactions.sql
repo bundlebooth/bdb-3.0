@@ -2,7 +2,7 @@
     Migration Script: Create Table [PaymentTransactions]
     Phase: 100 - Tables
     Script: cu_100_62_dbo.PaymentTransactions.sql
-    Description: Creates the [dbo].[PaymentTransactions] table
+    Description: Creates the [payments].[PaymentTransactions] table
     
     Execution Order: 62
 */
@@ -10,12 +10,12 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating table [dbo].[PaymentTransactions]...';
+PRINT 'Creating table [payments].[PaymentTransactions]...';
 GO
 
-IF NOT EXISTS (SELECT 1 FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[PaymentTransactions]') AND type in (N'U'))
+IF NOT EXISTS (SELECT 1 FROM sys.objects WHERE object_id = OBJECT_ID(N'[payments].[PaymentTransactions]') AND type in (N'U'))
 BEGIN
-    CREATE TABLE [dbo].[PaymentTransactions](
+    CREATE TABLE [payments].[PaymentTransactions](
 	[TransactionID] [int] IDENTITY(1,1) NOT NULL,
 	[BookingID] [int] NULL,
 	[UserID] [int] NULL,
@@ -39,10 +39,10 @@ PRIMARY KEY CLUSTERED
 	[TransactionID] ASC
 )WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
     );
-    PRINT 'Table [dbo].[PaymentTransactions] created successfully.';
+    PRINT 'Table [payments].[PaymentTransactions] created successfully.';
 END
 ELSE
 BEGIN
-    PRINT 'Table [dbo].[PaymentTransactions] already exists. Skipping.';
+    PRINT 'Table [payments].[PaymentTransactions] already exists. Skipping.';
 END
 GO

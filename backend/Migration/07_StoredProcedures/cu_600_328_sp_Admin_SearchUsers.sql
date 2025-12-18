@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Admin_SearchUsers
+-- Stored Procedure: admin.sp_SearchUsers
 -- Description: Searches users/vendors for support tools
 -- Phase: 600 (Stored Procedures)
+-- Schema: admin
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Admin_SearchUsers]'))
-    DROP PROCEDURE [dbo].[sp_Admin_SearchUsers];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_SearchUsers]'))
+    DROP PROCEDURE [admin].[sp_SearchUsers];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Admin_SearchUsers]
+CREATE PROCEDURE [admin].[sp_SearchUsers]
     @Search NVARCHAR(100)
 AS
 BEGIN
@@ -19,8 +20,9 @@ BEGIN
         u.Name as name,
         u.Email as email,
         CASE WHEN u.IsVendor = 1 THEN 'Vendor' ELSE 'Client' END as accountType
-    FROM Users u
+    FROM users.Users u
     WHERE u.Email LIKE '%' + @Search + '%' OR u.Name LIKE '%' + @Search + '%'
     ORDER BY u.CreatedAt DESC;
 END
 GO
+

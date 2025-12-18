@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Payment_GetBookingServicesDetailed
+-- Stored Procedure: payments.sp_GetBookingServicesDetailed
 -- Description: Gets booking services with detailed info
 -- Phase: 600 (Stored Procedures)
+-- Schema: payments
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Payment_GetBookingServicesDetailed]'))
-    DROP PROCEDURE [dbo].[sp_Payment_GetBookingServicesDetailed];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[payments].[sp_GetBookingServicesDetailed]'))
+    DROP PROCEDURE [payments].[sp_GetBookingServicesDetailed];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Payment_GetBookingServicesDetailed]
+CREATE PROCEDURE [payments].[sp_GetBookingServicesDetailed]
     @BookingID INT
 AS
 BEGIN
@@ -15,8 +16,9 @@ BEGIN
     
     SELECT bs.BookingServiceID, bs.Quantity, bs.PriceAtBooking,
            s.Name AS ServiceName, s.Description AS ServiceDescription
-    FROM BookingServices bs
-    LEFT JOIN Services s ON bs.ServiceID = s.ServiceID
+    FROM bookings.BookingServices bs
+    LEFT JOIN vendors.Services s ON bs.ServiceID = s.ServiceID
     WHERE bs.BookingID = @BookingID;
 END
 GO
+

@@ -2,7 +2,7 @@
     Migration Script: Create View [vw_UserNotifications]
     Phase: 400 - Views
     Script: cu_400_05_dbo.vw_UserNotifications.sql
-    Description: Creates the [dbo].[vw_UserNotifications] view
+    Description: Creates the [notifications].[vw_UserNotifications] view
     
     Execution Order: 5
 */
@@ -10,14 +10,14 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating view [dbo].[vw_UserNotifications]...';
+PRINT 'Creating view [notifications].[vw_UserNotifications]...';
 GO
 
-IF EXISTS (SELECT 1 FROM sys.views WHERE object_id = OBJECT_ID(N'[dbo].[vw_UserNotifications]'))
-    DROP VIEW [dbo].[vw_UserNotifications];
+IF EXISTS (SELECT 1 FROM sys.views WHERE object_id = OBJECT_ID(N'[notifications].[vw_UserNotifications]'))
+    DROP VIEW [notifications].[vw_UserNotifications];
 GO
 
-CREATE VIEW [dbo].[vw_UserNotifications] AS
+CREATE VIEW [notifications].[vw_UserNotifications] AS
 SELECT 
     n.NotificationID,
     n.UserID,
@@ -31,12 +31,12 @@ SELECT
     n.ActionURL,
     n.CreatedAt,
     CASE 
-        WHEN n.Type = 'booking' THEN (SELECT b.Status FROM Bookings b WHERE b.BookingID = n.RelatedID)
-        WHEN n.Type = 'message' THEN (SELECT c.Subject FROM Messages m JOIN Conversations c ON m.ConversationID = c.ConversationID WHERE m.MessageID = n.RelatedID)
+        WHEN n.Type = 'booking' THEN (SELECT b.Status FROM bookings.Bookings b WHERE b.BookingID = n.RelatedID)
+        WHEN n.Type = 'message' THEN (SELECT c.Subject FROM messages.Messages m JOIN messages.Conversations c ON m.ConversationID = c.ConversationID WHERE m.MessageID = n.RelatedID)
         ELSE NULL
     END AS Status
-FROM Notifications n;
+FROM notifications.Notifications n;
 GO
 
-PRINT 'View [dbo].[vw_UserNotifications] created successfully.';
+PRINT 'View [notifications].[vw_UserNotifications] created successfully.';
 GO

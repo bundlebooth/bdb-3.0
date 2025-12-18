@@ -1,13 +1,14 @@
 -- =============================================
--- Stored Procedure: sp_Vendor_GetSelectedServicesWithPricing
+-- Stored Procedure: vendors.sp_GetSelectedServicesWithPricing
 -- Description: Gets vendor's selected services with unified pricing
 -- Phase: 600 (Stored Procedures)
+-- Schema: vendors
 -- =============================================
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Vendor_GetSelectedServicesWithPricing]'))
-    DROP PROCEDURE [dbo].[sp_Vendor_GetSelectedServicesWithPricing];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_GetSelectedServicesWithPricing]'))
+    DROP PROCEDURE [vendors].[sp_GetSelectedServicesWithPricing];
 GO
 
-CREATE PROCEDURE [dbo].[sp_Vendor_GetSelectedServicesWithPricing]
+CREATE PROCEDURE [vendors].[sp_GetSelectedServicesWithPricing]
     @VendorProfileID INT
 AS
 BEGIN
@@ -42,11 +43,12 @@ BEGIN
         s.PricePerPerson,
         s.MinimumAttendees,
         s.MaximumAttendees
-    FROM Services s
-    LEFT JOIN PredefinedServices ps ON ps.PredefinedServiceID = s.LinkedPredefinedServiceID
+    FROM vendors.Services s
+    LEFT JOIN admin.PredefinedServices ps ON ps.PredefinedServiceID = s.LinkedPredefinedServiceID
     WHERE s.VendorProfileID = @VendorProfileID 
         AND s.LinkedPredefinedServiceID IS NOT NULL 
         AND s.IsActive = 1
     ORDER BY ps.Category, ps.ServiceName;
 END
 GO
+
