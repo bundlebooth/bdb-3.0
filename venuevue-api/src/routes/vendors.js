@@ -4150,6 +4150,60 @@ router.post('/:id/packages', async (req, res) => {
   }
 });
 
+// Get vendor services
+router.get('/:id/services', async (req, res) => {
+  try {
+    const vendorProfileId = parseVendorProfileId(req.params.id);
+    const pool = await poolPromise;
+    
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
+    
+    const result = await request.execute('vendors.sp_GetServices');
+    
+    res.json({ success: true, services: result.recordset || [] });
+  } catch (error) {
+    console.error('Error fetching services:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch services', error: error.message });
+  }
+});
+
+// Get vendor reviews
+router.get('/:id/reviews', async (req, res) => {
+  try {
+    const vendorProfileId = parseVendorProfileId(req.params.id);
+    const pool = await poolPromise;
+    
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
+    
+    const result = await request.execute('vendors.sp_GetReviews');
+    
+    res.json({ success: true, reviews: result.recordset || [] });
+  } catch (error) {
+    console.error('Error fetching reviews:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch reviews', error: error.message });
+  }
+});
+
+// Get vendor gallery
+router.get('/:id/gallery', async (req, res) => {
+  try {
+    const vendorProfileId = parseVendorProfileId(req.params.id);
+    const pool = await poolPromise;
+    
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
+    
+    const result = await request.execute('vendors.sp_GetImages');
+    
+    res.json({ success: true, gallery: result.recordset || [] });
+  } catch (error) {
+    console.error('Error fetching gallery:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch gallery', error: error.message });
+  }
+});
+
 // Add service
 router.post('/:id/services', async (req, res) => {
   try {
@@ -5822,6 +5876,333 @@ router.get('/:vendorProfileId/status', async (req, res) => {
   } catch (error) {
     console.error('Error fetching profile status:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch profile status', error: error.message });
+  }
+});
+
+// ============================================
+// VENDOR FEATURES ENDPOINTS
+// (Merged from vendorFeatures.js)
+// ============================================
+
+// GET /api/vendors/features/categories - Get all feature categories
+router.get('/features/categories', async (req, res) => {
+  try {
+    const pool = await poolPromise;
+    const result = await pool.request()
+      .execute('vendors.sp_GetFeatureCategories');
+    
+    res.json({
+      success: true,
+      categories: result.recordset
+    });
+  } catch (error) {
+    console.error('Error fetching feature categories:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch feature categories',
+      error: error.message
+    });
+  }
+});
+
+// GET /api/vendors/features/category/:categoryKey - Get features by category key
+router.get('/features/category/:categoryKey', async (req, res) => {
+  try {
+    const { categoryKey } = req.params;
+    const pool = await poolPromise;
+    
+    const result = await pool.request()
+      .input('CategoryKey', sql.NVarChar(50), categoryKey)
+      .execute('vendors.sp_GetFeaturesByCategory');
+    
+    res.json({
+      success: true,
+      features: result.recordset
+    });
+  } catch (error) {
+    console.error('Error fetching features by category:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch features',
+      error: error.message
+    });
+  }
+});
+
+// GET /api/vendors/features/all-grouped - Get all features grouped by category
+router.get('/features/all-grouped', async (req, res) => {
+  try {
+    const pool = await poolPromise;
+    let result;
+    
+    try {
+      result = await pool.request()
+        .execute('vendors.sp_GetAllFeaturesGrouped');
+    } catch (spError) {
+      console.error('sp_GetAllVendorFeaturesGrouped failed:', spError.message);
+      return res.json({
+        success: true,
+        categories: []
+      });
+    }
+    
+    // Group the results by category
+    const grouped = {};
+    (result.recordset || []).forEach(row => {
+      const catKey = row.CategoryKey;
+      if (!catKey) return;
+      
+      if (!grouped[catKey]) {
+        grouped[catKey] = {
+          categoryID: row.CategoryID,
+          categoryName: row.CategoryName,
+          categoryKey: row.CategoryKey,
+          categoryDescription: row.CategoryDescription,
+          categoryIcon: row.CategoryIcon,
+          applicableVendorCategories: row.ApplicableVendorCategories,
+          categoryOrder: row.CategoryOrder,
+          features: []
+        };
+      }
+      
+      if (row.FeatureID) {
+        grouped[catKey].features.push({
+          featureID: row.FeatureID,
+          featureName: row.FeatureName,
+          featureKey: row.FeatureKey,
+          featureDescription: row.FeatureDescription,
+          featureIcon: row.FeatureIcon,
+          featureOrder: row.FeatureOrder
+        });
+      }
+    });
+    
+    // Convert to array and sort by category order
+    const categories = Object.values(grouped).sort((a, b) => a.categoryOrder - b.categoryOrder);
+    
+    res.json({
+      success: true,
+      categories
+    });
+  } catch (error) {
+    console.error('Error fetching grouped features:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch features',
+      error: error.message
+    });
+  }
+});
+
+// GET /api/vendors/features/vendor/:vendorProfileId - Get vendor's selected features
+router.get('/features/vendor/:vendorProfileId', async (req, res) => {
+  try {
+    const { vendorProfileId } = req.params;
+    const pool = await poolPromise;
+    let result;
+    
+    try {
+      result = await pool.request()
+        .input('VendorProfileID', sql.Int, parseInt(vendorProfileId))
+        .execute('vendors.sp_GetSelectedFeatures');
+    } catch (spError) {
+      console.error('sp_Vendor_GetSelectedFeatures failed:', spError.message);
+      return res.json({
+        success: true,
+        selectedFeatures: [],
+        groupedByCategory: []
+      });
+    }
+    
+    // Group by category
+    const grouped = {};
+    (result.recordset || []).forEach(row => {
+      const catKey = row.CategoryKey;
+      if (!catKey) return;
+      
+      if (!grouped[catKey]) {
+        grouped[catKey] = {
+          categoryID: row.CategoryID,
+          categoryName: row.CategoryName,
+          categoryKey: row.CategoryKey,
+          categoryIcon: row.CategoryIcon,
+          features: []
+        };
+      }
+      
+      grouped[catKey].features.push({
+        featureID: row.FeatureID,
+        featureName: row.FeatureName,
+        featureKey: row.FeatureKey,
+        featureIcon: row.FeatureIcon,
+        selectedAt: row.SelectedAt
+      });
+    });
+    
+    const categories = Object.values(grouped);
+    
+    res.json({
+      success: true,
+      selectedFeatures: result.recordset || [],
+      groupedByCategory: categories
+    });
+  } catch (error) {
+    console.error('Error fetching vendor selected features:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch vendor features',
+      error: error.message
+    });
+  }
+});
+
+// POST /api/vendors/features/vendor/:vendorProfileId - Save vendor's feature selections
+router.post('/features/vendor/:vendorProfileId', async (req, res) => {
+  try {
+    const { vendorProfileId } = req.params;
+    const { featureIds } = req.body; // Array of feature IDs
+    
+    if (!Array.isArray(featureIds)) {
+      return res.status(400).json({
+        success: false,
+        message: 'featureIds must be an array'
+      });
+    }
+    
+    const pool = await poolPromise;
+    
+    // Convert array to comma-separated string
+    const featureIdsStr = featureIds.length > 0 ? featureIds.join(',') : '';
+    
+    let result;
+    try {
+      result = await pool.request()
+        .input('VendorProfileID', sql.Int, parseInt(vendorProfileId))
+        .input('FeatureIDs', sql.NVarChar(sql.MAX), featureIdsStr)
+        .execute('vendors.sp_SaveFeatureSelections');
+      
+      const status = result.recordset[0];
+      
+      if (status.Status === 'success') {
+        res.json({
+          success: true,
+          message: status.Message,
+          selectionCount: status.SelectionCount
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          message: status.Message
+        });
+      }
+    } catch (spError) {
+      console.error('[vendor-features] sp_SaveFeatureSelections error:', spError.message);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to save feature selections. Please ensure database migrations are up to date.',
+        error: spError.message
+      });
+    }
+  } catch (error) {
+    console.error('Error saving vendor feature selections:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to save feature selections',
+      error: error.message
+    });
+  }
+});
+
+// GET /api/vendors/features/vendor/:vendorProfileId/summary - Get vendor's feature summary
+router.get('/features/vendor/:vendorProfileId/summary', async (req, res) => {
+  try {
+    const { vendorProfileId } = req.params;
+    const pool = await poolPromise;
+    
+    const result = await pool.request()
+      .input('VendorProfileID', sql.Int, parseInt(vendorProfileId))
+      .execute('vendors.sp_GetFeatureSummary');
+    
+    res.json({
+      success: true,
+      summary: result.recordset
+    });
+  } catch (error) {
+    console.error('Error fetching vendor feature summary:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch feature summary',
+      error: error.message
+    });
+  }
+});
+
+// ============================================
+// VENDOR REVIEWS ENDPOINTS
+// (Merged from reviews.js)
+// ============================================
+
+// POST /api/vendors/reviews/submit - Submit a review for a vendor
+router.post('/reviews/submit', async (req, res) => {
+  try {
+    const { userId, vendorProfileId, rating, comment } = req.body;
+
+    if (!userId || !vendorProfileId || !rating || !comment) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Missing required fields' 
+      });
+    }
+
+    const pool = await poolPromise;
+    const request = pool.request();
+    
+    request.input('UserID', sql.Int, userId);
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
+    request.input('Rating', sql.Int, rating);
+    request.input('Comment', sql.NVarChar(sql.MAX), comment);
+    
+    const result = await request.execute('vendors.sp_SubmitReview');
+    
+    res.json({
+      success: true,
+      review: result.recordset[0]
+    });
+
+  } catch (err) {
+    console.error('Review submission error:', err);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to submit review',
+      error: err.message 
+    });
+  }
+});
+
+// GET /api/vendors/reviews/vendor/:vendorProfileId - Get reviews for a vendor
+router.get('/reviews/vendor/:vendorProfileId', async (req, res) => {
+  try {
+    const { vendorProfileId } = req.params;
+
+    const pool = await poolPromise;
+    const request = pool.request();
+    
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
+    
+    const result = await request.execute('vendors.sp_GetVendorReviews');
+    
+    res.json({
+      success: true,
+      reviews: result.recordset
+    });
+
+  } catch (err) {
+    console.error('Database error:', err);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to fetch reviews',
+      error: err.message 
+    });
   }
 });
 

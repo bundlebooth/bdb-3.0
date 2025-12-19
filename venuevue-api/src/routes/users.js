@@ -18,77 +18,6 @@ const validatePassword = (password) => {
   return password && password.length >= 8;
 };
 
-async function ensureTwoFactorTable(pool) {
-  await pool.request().query(`
-    IF OBJECT_ID('dbo.UserTwoFactorCodes', 'U') IS NULL
-    BEGIN
-      CREATE TABLE dbo.UserTwoFactorCodes (
-        CodeID INT IDENTITY(1,1) PRIMARY KEY,
-        UserID INT NOT NULL,
-        CodeHash NVARCHAR(255) NOT NULL,
-        Purpose NVARCHAR(50) NOT NULL,
-        ExpiresAt DATETIME NOT NULL,
-        CreatedAt DATETIME NOT NULL DEFAULT GETDATE(),
-        Attempts TINYINT NOT NULL DEFAULT 0,
-        IsUsed BIT NOT NULL DEFAULT 0
-      );
-      CREATE INDEX IX_UserTwoFactorCodes_UserID ON dbo.UserTwoFactorCodes(UserID);
-    END
-  `);
-}
-
-// Ensure SecurityLogs table exists
-async function ensureSecurityLogsTable(pool) {
-  console.log('🔒 Checking/Creating SecurityLogs table...');
-  try {
-    await pool.request().query(`
-      IF OBJECT_ID('dbo.SecurityLogs', 'U') IS NULL
-      BEGIN
-        CREATE TABLE dbo.SecurityLogs (
-          LogID INT IDENTITY(1,1) PRIMARY KEY,
-          UserID INT NULL,
-          Email NVARCHAR(255) NULL,
-          Action NVARCHAR(100) NOT NULL,
-          ActionStatus NVARCHAR(50) NOT NULL,
-          IPAddress NVARCHAR(50) NULL,
-          UserAgent NVARCHAR(500) NULL,
-          Location NVARCHAR(255) NULL,
-          Device NVARCHAR(255) NULL,
-          Details NVARCHAR(MAX) NULL,
-          CreatedAt DATETIME NOT NULL DEFAULT GETDATE()
-        );
-        CREATE INDEX IX_SecurityLogs_UserID ON dbo.SecurityLogs(UserID);
-        CREATE INDEX IX_SecurityLogs_Email ON dbo.SecurityLogs(Email);
-        CREATE INDEX IX_SecurityLogs_Action ON dbo.SecurityLogs(Action);
-        CREATE INDEX IX_SecurityLogs_CreatedAt ON dbo.SecurityLogs(CreatedAt DESC);
-        PRINT 'SecurityLogs table created';
-      END
-    `);
-    console.log('✅ SecurityLogs table ready');
-  } catch (err) {
-    console.error('❌ Error creating SecurityLogs table:', err.message);
-  }
-}
-
-// Ensure SecuritySettings table exists
-async function ensureSecuritySettingsTable(pool) {
-  await pool.request().query(`
-    IF OBJECT_ID('dbo.SecuritySettings', 'U') IS NULL
-    BEGIN
-      CREATE TABLE dbo.SecuritySettings (
-        SettingID INT IDENTITY(1,1) PRIMARY KEY,
-        Require2FAForAdmins BIT NOT NULL DEFAULT 0,
-        Require2FAForVendors BIT NOT NULL DEFAULT 0,
-        SessionTimeout INT NOT NULL DEFAULT 30,
-        FailedLoginLockout INT NOT NULL DEFAULT 5,
-        UpdatedAt DATETIME NOT NULL DEFAULT GETDATE(),
-        UpdatedBy INT NULL
-      );
-      INSERT INTO dbo.SecuritySettings (Require2FAForAdmins, Require2FAForVendors) VALUES (0, 0);
-    END
-  `);
-}
-
 // User Registration
 router.post('/register', async (req, res) => {
   try {
@@ -208,14 +137,6 @@ router.post('/login', async (req, res) => {
 
     const pool = await poolPromise;
     
-    // Ensure required tables exist for security logging and 2FA
-    try {
-      await ensureSecurityLogsTable(pool);
-      await ensureSecuritySettingsTable(pool);
-    } catch (tableErr) {
-      console.log('Could not ensure security tables:', tableErr.message);
-    }
-    
     const request = pool.request();
     request.input('Email', sql.NVarChar(100), email.toLowerCase().trim());
 
@@ -268,15 +189,12 @@ router.post('/login', async (req, res) => {
     console.log('👤 User info:', { userId: user.UserID, email: user.Email, isAdmin: user.IsAdmin, isVendor: user.IsVendor });
     
     try {
-      // Check if SecuritySettings table exists and get settings
-      const tableCheck = await pool.request().query(`
-        SELECT COUNT(*) as cnt FROM sys.tables WHERE name = 'SecuritySettings'
-      `);
+      // Get security settings via stored procedure (handles table existence check internally)
+      const settingsResult = await pool.request().execute('users.sp_CheckSecuritySettings');
       
-      console.log('🔐 SecuritySettings table exists:', tableCheck.recordset[0].cnt > 0);
+      console.log('🔐 SecuritySettings result count:', settingsResult.recordset?.length || 0);
       
-      if (tableCheck.recordset[0].cnt > 0) {
-        const settingsResult = await pool.request().execute('users.sp_GetSecuritySettings');
+      if (settingsResult.recordset && settingsResult.recordset.length > 0) {
         
         console.log('🔐 Raw settings from DB:', settingsResult.recordset);
         
@@ -301,7 +219,7 @@ router.post('/login', async (req, res) => {
           console.log('❌ 2FA NOT required for this user (Admin:', user.IsAdmin, 'Vendor:', user.IsVendor, ')');
         }
       } else {
-        console.log('⚠️ SecuritySettings table does not exist');
+        console.log('⚠️ No security settings found');
       }
     } catch (settingsErr) { 
       console.log('❌ Could not check 2FA settings from database:', settingsErr.message); 
@@ -311,7 +229,6 @@ router.post('/login', async (req, res) => {
     console.log('🔐 ========== 2FA CHECK END ==========');
     
     if (enable2FA) {
-      await ensureTwoFactorTable(pool);
       const raw = crypto.randomInt(0, 1000000).toString().padStart(6, '0');
       const salt = await bcrypt.genSalt(10);
       const codeHash = await bcrypt.hash(raw, salt);
@@ -338,9 +255,6 @@ router.post('/login', async (req, res) => {
     // Log successful login
     console.log('📝 Attempting to log successful login for:', user.Email);
     try {
-      // Ensure table exists first
-      await ensureSecurityLogsTable(pool);
-      
       const ipAddress = req.ip || req.headers['x-forwarded-for'] || req.connection?.remoteAddress || 'Unknown';
       const userAgent = req.headers['user-agent'] || 'Unknown';
       const device = userAgent.includes('Mobile') ? 'Mobile' : (userAgent.includes('Chrome') ? 'Chrome' : (userAgent.includes('Firefox') ? 'Firefox' : 'Browser'));
@@ -407,7 +321,6 @@ router.post('/login/verify-2fa', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid token purpose' });
     }
     const pool = await poolPromise;
-    await ensureTwoFactorTable(pool);
     const now = new Date();
     const rec = await pool.request()
       .input('UserID', sql.Int, decoded.id)
@@ -466,7 +379,6 @@ router.post('/login/resend-2fa', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid token purpose' });
     }
     const pool = await poolPromise;
-    await ensureTwoFactorTable(pool);
     const raw = crypto.randomInt(0, 1000000).toString().padStart(6, '0');
     const salt = await bcrypt.genSalt(10);
     const codeHash = await bcrypt.hash(raw, salt);
@@ -743,6 +655,44 @@ router.get('/:id/reviews', async (req, res) => {
   } catch (err) {
     console.error('Get user reviews error:', err);
     res.status(500).json({ message: 'Failed to get user reviews', error: err.message });
+  }
+});
+
+// Get user profile (alias for profile-details)
+router.get('/:id/profile', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pool = await poolPromise;
+    const request = pool.request();
+    request.input('UserID', sql.Int, parseInt(id));
+    const result = await request.execute('users.sp_GetUserProfileDetails');
+    if (result.recordset.length > 0) {
+      res.json({ success: true, profile: result.recordset[0] });
+    } else {
+      res.status(404).json({ success: false, message: 'User profile not found' });
+    }
+  } catch (err) {
+    console.error('Get user profile error:', err);
+    res.status(500).json({ success: false, message: 'Failed to get user profile', error: err.message });
+  }
+});
+
+// Get user's vendor profile
+router.get('/:id/vendor-profile', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pool = await poolPromise;
+    const request = pool.request();
+    request.input('UserID', sql.Int, parseInt(id));
+    const result = await request.execute('vendors.sp_GetVendorProfileByUserId');
+    if (result.recordset.length > 0) {
+      res.json({ success: true, vendorProfile: result.recordset[0] });
+    } else {
+      res.status(404).json({ success: false, message: 'Vendor profile not found for this user' });
+    }
+  } catch (err) {
+    console.error('Get user vendor profile error:', err);
+    res.status(500).json({ success: false, message: 'Failed to get vendor profile', error: err.message });
   }
 });
 
@@ -1117,6 +1067,57 @@ router.put('/:id', async (req, res) => {
       message: 'Failed to update user',
       error: err.message
     });
+  }
+});
+
+// ============================================
+// USER FAVORITES ENDPOINTS
+// (Merged from favorites.js)
+// ============================================
+
+// POST /api/users/favorites/toggle - Toggle favorite status
+router.post('/favorites/toggle', async (req, res) => {
+  try {
+    const { userId, vendorProfileId } = req.body;
+
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    
+    request.input('UserID', sql.Int, userId);
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
+
+    const result = await request.execute('users.sp_ToggleFavorite');
+    
+    res.json(result.recordset[0]);
+
+  } catch (err) {
+    console.error('Database error:', err);
+    res.status(500).json({ 
+      message: 'Database operation failed',
+      error: err.message 
+    });
+  }
+});
+
+// GET /api/users/favorites/user/:userId - Get user favorites with complete vendor data
+router.get('/favorites/user/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    
+    request.input('UserID', sql.Int, userId);
+
+    // Get favorites using stored procedure
+    const result = await request.execute('users.sp_GetFavorites');
+    
+    res.json(result.recordset);
+
+  } catch (err) {
+    console.error('Database error:', err);
+    // Return empty array on error instead of 500
+    res.json([]);
   }
 });
 

@@ -62,18 +62,14 @@ router.get('/trending', async (req, res) => {
     try {
         const { 
             topN = 5, 
-            daysBack = 7, 
-            includeImages = true,
-            category = null  // *** ADDED: Accept category filter ***
+            city = null
         } = req.query;
 
         const pool = await poolPromise;
 
         const result = await pool.request()
-            .input('TopN', sql.Int, parseInt(topN))
-            .input('DaysBack', sql.Int, parseInt(daysBack))
-            .input('IncludeImages', sql.Bit, includeImages === 'true' || includeImages === true)
-            .input('Category', sql.NVarChar(50), category)  // *** ADDED: Pass category to stored procedure ***
+            .input('City', sql.NVarChar(100), city)
+            .input('Limit', sql.Int, parseInt(topN))
             .execute('vendors.sp_GetTrending');
 
         console.log('\n========== TRENDING VENDORS RAW DATA ==========');
@@ -142,7 +138,7 @@ router.get('/trending', async (req, res) => {
         res.json({
             success: true,
             vendors: vendors,
-            period: `Last ${daysBack} days`,
+            period: 'Last 7 days',
             count: vendors.length
         });
     } catch (error) {
@@ -169,7 +165,7 @@ router.get('/vendor/:vendorId', authenticate, async (req, res) => {
         // Verify the vendor belongs to the requesting user (or user is admin)
         const vendorCheck = await pool.request()
             .input('VendorProfileID', sql.Int, vendorId)
-            .query('SELECT UserID FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID');
+            .execute('vendors.sp_GetVendorOwner');
 
         if (vendorCheck.recordset.length === 0) {
             return res.status(404).json({ error: 'Vendor not found' });
@@ -231,7 +227,7 @@ router.get('/vendor/:vendorId/trends', authenticate, async (req, res) => {
         // Verify the vendor belongs to the requesting user (or user is admin)
         const vendorCheck = await pool.request()
             .input('VendorProfileID', sql.Int, vendorId)
-            .query('SELECT UserID FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID');
+            .execute('vendors.sp_GetVendorOwner');
 
         if (vendorCheck.recordset.length === 0) {
             return res.status(404).json({ error: 'Vendor not found' });

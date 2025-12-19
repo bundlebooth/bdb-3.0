@@ -92,9 +92,12 @@ router.get('/platform-health', async (req, res) => {
     const memUsage = process.memoryUsage();
     const memoryPercent = Math.round((memUsage.heapUsed / memUsage.heapTotal) * 100);
     
-    // Calculate database load based on active connections (assume max 100 connections)
-    const activeConns = dbStats.activeConnections || 1;
-    const dbLoad = Math.min(Math.round((activeConns / 50) * 100), 100);
+    // Calculate database load based on user connections from this app (not all SQL Server sessions)
+    // Use userConnections if available, otherwise estimate based on app connections only
+    const activeConns = dbStats.userConnections || dbStats.activeConnections || 1;
+    // More realistic calculation: assume max 200 connections for a healthy system
+    // Only count as high load if there are many concurrent queries
+    const dbLoad = Math.min(Math.round((activeConns / 200) * 100), 100);
     
     // Calculate storage (estimate based on data size, assume 10GB max)
     const storageMB = storageStats.totalSizeMB || 100;

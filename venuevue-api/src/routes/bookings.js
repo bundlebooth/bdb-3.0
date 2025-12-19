@@ -60,6 +60,42 @@ router.post('/', async (req, res) => {
   }
 });
 
+// Get bookings for a user
+router.get('/user/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    
+    request.input('UserID', sql.Int, parseInt(userId));
+    
+    const result = await request.execute('bookings.sp_GetUserBookings');
+    
+    res.json({ success: true, bookings: result.recordset || [] });
+  } catch (err) {
+    console.error('Database error:', err);
+    res.status(500).json({ success: false, message: 'Failed to get user bookings', error: err.message });
+  }
+});
+
+// Get bookings for a vendor
+router.get('/vendor/:vendorId', async (req, res) => {
+  try {
+    const { vendorId } = req.params;
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    
+    request.input('VendorProfileID', sql.Int, parseInt(vendorId));
+    
+    const result = await request.execute('bookings.sp_GetVendorBookings');
+    
+    res.json({ success: true, bookings: result.recordset || [] });
+  } catch (err) {
+    console.error('Database error:', err);
+    res.status(500).json({ success: false, message: 'Failed to get vendor bookings', error: err.message });
+  }
+});
+
 // Get booking details
 router.get('/:id', async (req, res) => {
   try {
@@ -590,13 +626,9 @@ router.get('/vendor/:vendorId/requests', async (req, res) => {
   try {
     const { vendorId } = req.params;
     const rawStatus = (req.query.status || 'all').toString().toLowerCase();
-    const direction = (req.query.direction || 'inbound').toString().toLowerCase(); // inbound | outbound
+    const direction = (req.query.direction || 'inbound').toString().toLowerCase();
 
     const pool = await poolPromise;
-    const request = new sql.Request(pool);
-
-    // Always have VendorProfileID param
-    request.input('VendorProfileID', sql.Int, parseInt(vendorId));
 
     // Resolve vendor's UserID (for outbound queries)
     let vendorUserId = null;
@@ -610,67 +642,16 @@ router.get('/vendor/:vendorId/requests', async (req, res) => {
       }
     }
 
-    // Build WHERE for direction
-    let whereClause = direction === 'outbound'
-      ? 'br.UserID = @VendorUserID'
-      : 'br.VendorProfileID = @VendorProfileID';
-
-    if (direction === 'outbound') {
-      request.input('VendorUserID', sql.Int, vendorUserId);
-    }
-
-    // Build status filter
-    let statusFilter = '';
-    if (rawStatus && rawStatus !== 'all') {
-      request.input('Status', sql.NVarChar(50), rawStatus);
-      if (rawStatus === 'expired') {
-        // Include explicit expired rows or pending rows past expiry
-        statusFilter = " AND (br.Status = 'expired' OR (br.Status = 'pending' AND br.ExpiresAt <= GETDATE()))";
-      } else {
-        statusFilter = ' AND br.Status = @Status';
-      }
-    }
-
-    const orderClause = (rawStatus === 'all')
-      ? 'ORDER BY br.CreatedAt DESC'
-      : `ORDER BY 
-        CASE WHEN br.Status = 'pending' THEN 1 ELSE 2 END,
-        br.CreatedAt DESC`;
-
-    const query = `
-      SELECT 
-        br.RequestID,
-        br.UserID,
-        u.Name AS ClientName,
-        u.Email AS ClientEmail,
-        vp.BusinessName AS VendorName,
-        br.Services,
-        br.EventDate,
-        CONVERT(VARCHAR(8), br.EventTime, 108) AS EventTime,
-        CONVERT(VARCHAR(8), br.EventEndTime, 108) AS EventEndTime,
-        br.EventLocation,
-        br.AttendeeCount,
-        br.Budget,
-        br.SpecialRequests,
-        br.EventName,
-        br.EventType,
-        br.TimeZone,
-        br.Status,
-        br.CreatedAt,
-        br.ExpiresAt,
-        CASE WHEN br.ExpiresAt <= GETDATE() AND br.Status = 'pending' THEN 1 ELSE 0 END AS IsExpired
-      FROM BookingRequests br
-      LEFT JOIN Users u ON br.UserID = u.UserID
-      LEFT JOIN VendorProfiles vp ON br.VendorProfileID = vp.VendorProfileID
-      WHERE ${whereClause}
-      ${statusFilter}
-      ${orderClause}`;
-
-    const result = await request.query(query);
+    const result = await pool.request()
+      .input('VendorProfileID', sql.Int, parseInt(vendorId))
+      .input('VendorUserID', sql.Int, vendorUserId)
+      .input('Status', sql.NVarChar(50), rawStatus)
+      .input('Direction', sql.NVarChar(20), direction)
+      .execute('bookings.sp_GetVendorRequests');
 
     res.json({
       success: true,
-      requests: result.recordset
+      requests: result.recordset || []
     });
 
   } catch (err) {

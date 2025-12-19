@@ -494,6 +494,42 @@ router.post('/conversations/support', async (req, res) => {
   }
 });
 
+// Get vendor conversations
+router.get('/conversations/vendor/:vendorId', async (req, res) => {
+  try {
+    const { vendorId } = req.params;
+    const pool = await poolPromise;
+    
+    const result = await pool.request()
+      .input('VendorProfileID', sql.Int, vendorId)
+      .execute('messages.sp_GetVendorConversations');
+
+    const formattedConversations = result.recordset.map(conv => ({
+      id: conv.ConversationID,
+      createdAt: conv.CreatedAt,
+      userId: conv.UserID,
+      userName: conv.UserName,
+      userEmail: conv.UserEmail,
+      lastMessageContent: conv.LastMessageContent,
+      lastMessageCreatedAt: conv.LastMessageCreatedAt,
+      lastMessageSenderId: conv.LastMessageSenderID,
+      unreadCount: conv.UnreadCount
+    }));
+
+    res.json({
+      success: true,
+      conversations: formattedConversations
+    });
+  } catch (err) {
+    console.error('Database error:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve conversations',
+      error: err.message
+    });
+  }
+});
+
 module.exports = {
   router,
   handleSocketIO
