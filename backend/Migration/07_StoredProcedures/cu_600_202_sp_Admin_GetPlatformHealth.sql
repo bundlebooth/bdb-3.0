@@ -13,10 +13,10 @@ AS
 BEGIN
     SET NOCOUNT ON;
     
-    -- Database stats
+    -- Database stats - count only active requests (queries currently running), not idle sessions
     SELECT 
-        (SELECT COUNT(*) FROM sys.dm_exec_sessions WHERE is_user_process = 1) as activeConnections,
-        (SELECT cntr_value FROM sys.dm_os_performance_counters WHERE counter_name = 'User Connections') as userConnections;
+        (SELECT COUNT(*) FROM sys.dm_exec_requests WHERE session_id > 50) as activeConnections,
+        (SELECT COUNT(*) FROM sys.dm_exec_sessions WHERE is_user_process = 1 AND status = 'running') as userConnections;
     
     -- Storage stats
     SELECT 
