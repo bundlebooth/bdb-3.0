@@ -5,28 +5,19 @@ function NewLocationStep({ formData = {}, onInputChange = () => {} }) {
   const cityInputRef = useRef(null);
 
   useEffect(() => {
-    console.log('🔍 Checking Google Maps availability...');
-    console.log('window.google:', window.google);
-    console.log('window.google?.maps:', window.google?.maps);
-    console.log('window.google?.maps?.places:', window.google?.maps?.places);
-
     // SIMPLE TEST - just try to create autocomplete
     const testAutocomplete = () => {
       if (!addressInputRef.current) {
-        console.log('❌ Address input ref not ready');
         setTimeout(testAutocomplete, 100);
         return;
       }
 
       if (!window.google?.maps?.places?.Autocomplete) {
-        console.log('❌ Google Maps Autocomplete not available');
         setTimeout(testAutocomplete, 500);
         return;
       }
 
       try {
-        console.log('✅ Creating autocomplete...');
-        
         // Create address autocomplete
         const addressAutocomplete = new window.google.maps.places.Autocomplete(
           addressInputRef.current,
@@ -35,8 +26,6 @@ function NewLocationStep({ formData = {}, onInputChange = () => {} }) {
             componentRestrictions: { country: 'ca' }
           }
         );
-
-        console.log('✅ Address autocomplete created:', addressAutocomplete);
 
         // FORCE SHOW GOOGLE DROPDOWN - ADD CSS TO HEAD
         const style = document.createElement('style');
@@ -67,12 +56,9 @@ function NewLocationStep({ formData = {}, onInputChange = () => {} }) {
 
         // Listen for selection
         addressAutocomplete.addListener('place_changed', () => {
-          console.log('🎯 PLACE CHANGED FIRED!');
           const place = addressAutocomplete.getPlace();
-          console.log('📍 Selected place:', place);
 
           if (!place || !place.address_components) {
-            console.log('❌ No address components');
             return;
           }
 
@@ -88,8 +74,6 @@ function NewLocationStep({ formData = {}, onInputChange = () => {} }) {
           const city = getComponent('locality') || getComponent('sublocality');
           const province = getComponent('administrative_area_level_1');
           const postal = getComponent('postal_code');
-
-          console.log('📋 Extracted:', { street, city, province, postal });
 
           // Update fields
           onInputChange('address', street);
@@ -108,10 +92,7 @@ function NewLocationStep({ formData = {}, onInputChange = () => {} }) {
             
             onInputChange('latitude', lat);
             onInputChange('longitude', lng);
-            console.log('🗺️ Coordinates:', lat, lng);
           }
-
-          console.log('✅ ALL FIELDS SHOULD BE UPDATED NOW!');
         });
 
         // Create city autocomplete if element exists
@@ -135,11 +116,9 @@ function NewLocationStep({ formData = {}, onInputChange = () => {} }) {
             }
           });
 
-          console.log('✅ City autocomplete created');
         }
 
       } catch (error) {
-        console.error('❌ Error creating autocomplete:', error);
       }
     };
 

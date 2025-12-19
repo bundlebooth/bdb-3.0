@@ -108,7 +108,6 @@ export function AuthProvider({ children }) {
     // Update UI elements
     updateUserInterface(userData);
     
-    console.log('✅ User logged in:', userData);
   }
 
   function updateUserInterface(user) {

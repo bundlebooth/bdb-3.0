@@ -12,10 +12,8 @@ function WorkingLocationStep({ formData, setFormData }) {
     // Wait for Google Maps to load, then initialize
     const initializeWhenReady = () => {
       if (window.google?.maps?.places) {
-        console.log('🎉 Google Maps ready, initializing...');
         setTimeout(initializeAutocomplete, 100);
       } else {
-        console.log('⏳ Waiting for Google Maps...');
         setTimeout(initializeWhenReady, 200);
       }
     };
@@ -29,8 +27,6 @@ function WorkingLocationStep({ formData, setFormData }) {
       return;
     }
     
-    console.log('✅ Initializing address autocomplete...');
-    
     // Address Autocomplete - EXACT COPY FROM WORKING HTML
     const addressAutocomplete = new window.google.maps.places.Autocomplete(addressInputRef.current, {
       types: ['address'],
@@ -39,7 +35,6 @@ function WorkingLocationStep({ formData, setFormData }) {
     
     addressAutocomplete.addListener('place_changed', function() {
       const place = addressAutocomplete.getPlace();
-      console.log('🎯 Address selected:', place);
       
       if (place.address_components) {
         const comps = place.address_components;
@@ -73,13 +68,11 @@ function WorkingLocationStep({ formData, setFormData }) {
           longitude: place.geometry?.location?.lng() || null
         }));
         
-        console.log('✅ Address fields updated!');
       }
     });
     
     // Service Area Autocomplete
     if (serviceAreaInputRef.current) {
-      console.log('✅ Initializing service area autocomplete...');
       
       const serviceAreaAutocomplete = new window.google.maps.places.Autocomplete(serviceAreaInputRef.current, {
         types: ['(cities)'],
@@ -88,7 +81,6 @@ function WorkingLocationStep({ formData, setFormData }) {
       
       serviceAreaAutocomplete.addListener('place_changed', function() {
         const place = serviceAreaAutocomplete.getPlace();
-        console.log('🎯 City selected:', place);
         
         if (place.address_components) {
           const comps = place.address_components;
@@ -101,7 +93,6 @@ function WorkingLocationStep({ formData, setFormData }) {
               ...prev,
               serviceAreas: [...prev.serviceAreas, areaToAdd]
             }));
-            console.log('✅ Added service area:', areaToAdd);
           }
           
           // Clear input
@@ -111,8 +102,6 @@ function WorkingLocationStep({ formData, setFormData }) {
         }
       });
     }
-    
-    console.log('✅ All autocomplete initialized!');
   };
   
   const handleAddServiceArea = () => {

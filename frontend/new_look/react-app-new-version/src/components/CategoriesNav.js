@@ -18,7 +18,6 @@ import {
 
 // Clean flat cartoon icons matching the reference style
 const CartoonIcon = ({ type, size = 36 }) => {
-  console.log('🎨 CartoonIcon rendering:', type);
   const icons = {
     all: (
       <svg width={size} height={size} viewBox="0 0 100 100">

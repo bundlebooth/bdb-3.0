@@ -150,9 +150,7 @@ export const updateUrlParams = (params) => {
 };
 
 export const trackPageView = (pageName, params = {}) => {
-  console.log('Page View:', pageName, params);
 };
 
 export const trackEvent = (eventName, params = {}) => {
-  console.log('Event:', eventName, params);
 };

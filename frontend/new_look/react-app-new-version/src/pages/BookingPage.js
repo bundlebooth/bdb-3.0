@@ -54,8 +54,6 @@ function BookingPage() {
 
   // Initialize page
   useEffect(() => {
-    console.log('🚀 BookingPage useEffect running, vendorId:', vendorId);
-    
     if (!vendorId) {
       alert('No vendor selected. Redirecting to home page.');
       navigate('/');
@@ -69,7 +67,6 @@ function BookingPage() {
       dateInput.setAttribute('min', today);
     }
 
-    console.log('📞 About to call loadVendorData and loadVendorAvailability');
     loadVendorData();
     loadVendorAvailability();
   }, [vendorId, navigate]);
@@ -98,7 +95,6 @@ function BookingPage() {
   // Load vendor data
   const loadVendorData = useCallback(async () => {
     try {
-      console.log(`Loading vendor data for ID: ${vendorId}`);
       const response = await fetch(`${API_BASE_URL}/vendors/${vendorId}`);
       
       if (!response.ok) {
@@ -106,7 +102,6 @@ function BookingPage() {
       }
       
       const result = await response.json();
-      console.log('Vendor data response:', result);
       
       if (result.success && result.data) {
         setVendorData(result.data);
@@ -133,19 +128,10 @@ function BookingPage() {
   // Load vendor availability (business hours and exceptions)
   const loadVendorAvailability = useCallback(async () => {
     try {
-      console.log('🔄 Loading vendor availability for vendor:', vendorId);
       const response = await fetch(`${API_BASE_URL}/vendors/${vendorId}/availability`);
       if (response.ok) {
         const data = await response.json();
         setVendorAvailability(data);
-        console.log('✅ Vendor availability loaded:', data);
-        console.log('📅 Business hours count:', data.businessHours?.length || 0);
-        console.log('🚫 Exceptions count:', data.exceptions?.length || 0);
-        if (data.businessHours && data.businessHours.length > 0) {
-          console.log('📋 Sample business hour:', data.businessHours[0]);
-        }
-      } else {
-        console.error('❌ Failed to load availability, status:', response.status);
       }
     } catch (error) {
       console.error('❌ Error loading vendor availability:', error);
@@ -267,23 +253,17 @@ function BookingPage() {
 
   // Generate available time slots based on business hours for selected date
   const updateAvailableTimeSlots = useCallback((dateString) => {
-    console.log('🕐 updateAvailableTimeSlots called with:', dateString);
-    console.log('📦 vendorAvailability:', vendorAvailability);
-    
     if (!dateString) {
-      console.log('⚠️ No date provided');
       setAvailableTimeSlots([]);
       return;
     }
 
     if (!vendorAvailability) {
-      console.log('⚠️ No vendor availability data');
       setAvailableTimeSlots([]);
       return;
     }
 
     if (!vendorAvailability.businessHours) {
-      console.log('⚠️ No business hours in vendor availability');
       setAvailableTimeSlots([]);
       return;
     }
@@ -292,29 +272,20 @@ function BookingPage() {
     const date = new Date(year, month - 1, day);
     const dayOfWeek = date.getDay(); // 0 = Sunday, 6 = Saturday (JavaScript standard)
     
-    console.log('📅 Generating time slots for:', dateString);
-    console.log('📅 JavaScript day of week:', dayOfWeek, ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][dayOfWeek]);
-    console.log('📋 All business hours:', vendorAvailability.businessHours);
-    console.log('📋 Looking for DayOfWeek:', dayOfWeek);
-    
     // Try to find business hours - check if database uses 0-6 or 1-7
     let dayHours = vendorAvailability.businessHours.find(bh => bh.DayOfWeek === dayOfWeek);
     
     // If not found and it's Sunday (0), try looking for day 7 (some databases use 1-7 where Sunday=7)
     if (!dayHours && dayOfWeek === 0) {
-      console.log('🔄 Sunday not found at 0, trying 7...');
       dayHours = vendorAvailability.businessHours.find(bh => bh.DayOfWeek === 7);
     }
-    console.log('🔍 Found hours for this day:', dayHours);
     
     if (!dayHours) {
-      console.log('❌ No business hours found for day', dayOfWeek);
       setAvailableTimeSlots([]);
       return;
     }
 
     if (!dayHours.IsAvailable) {
-      console.log('❌ Vendor not available on this day');
       setAvailableTimeSlots([]);
       return;
     }
@@ -360,10 +331,8 @@ function BookingPage() {
 
     const openTime = parseTime(dayHours.OpenTime);
     const closeTime = parseTime(dayHours.CloseTime);
-    console.log('⏰ Open:', openTime, 'Close:', closeTime);
 
     if (!openTime || !closeTime) {
-      console.log('❌ Invalid open/close times');
       setAvailableTimeSlots([]);
       return;
     }
@@ -388,7 +357,6 @@ function BookingPage() {
       }
     }
 
-    console.log('✅ Generated slots:', slots);
     setAvailableTimeSlots(slots);
 
     // Auto-set start and end times to first and default end slot
@@ -396,9 +364,6 @@ function BookingPage() {
       const newStartTime = slots[0];
       const endIndex = Math.min(6, slots.length - 1); // Default 3 hours
       const newEndTime = slots[endIndex];
-      
-      console.log('⚡ Setting start time to:', newStartTime);
-      console.log('⚡ Setting end time to:', newEndTime);
       
       setBookingData(prev => ({ 
         ...prev, 
@@ -410,17 +375,10 @@ function BookingPage() {
 
   // Update time slots when event date changes
   useEffect(() => {
-    console.log('🎯 useEffect triggered - eventDate:', bookingData.eventDate, 'vendorAvailability:', !!vendorAvailability);
     if (bookingData.eventDate && vendorAvailability) {
-      console.log('🔄 Event date changed, updating time slots:', bookingData.eventDate);
       updateAvailableTimeSlots(bookingData.eventDate);
     }
   }, [bookingData.eventDate, vendorAvailability, updateAvailableTimeSlots]);
-
-  // Log when availableTimeSlots changes
-  useEffect(() => {
-    console.log('🎰 availableTimeSlots updated:', availableTimeSlots);
-  }, [availableTimeSlots]);
 
   // Toggle service selection
   const toggleServiceSelection = (service) => {
@@ -628,15 +586,11 @@ function BookingPage() {
   const reviewCount = profile.ReviewCount || profile.TotalReviews || 0;
   const profilePic = profile.LogoURL || profile.FeaturedImageURL || profile.ProfilePictureURL || profile.ProfilePicture || '';
 
-  // Debug logging
-  console.log('Current step:', currentStep);
-  console.log('Booking data:', bookingData);
-
   return (
     <div style={{ backgroundColor: '#ffffff', minHeight: '100vh', width: '100%' }}>
       {/* Header */}
       <Header 
-        onSearch={(q) => console.log(q)} 
+        onSearch={() => {}} 
         onProfileClick={() => {
           if (currentUser) {
             setDashboardModalOpen(true);
@@ -810,9 +764,7 @@ function BookingPage() {
                       <BookingCalendar
                         selectedDate={bookingData.eventDate}
                         onDateSelect={(date) => {
-                          console.log('📆 Calendar date selected:', date);
                           handleCalendarDateSelect(date);
-                          console.log('🔄 Calling updateAvailableTimeSlots with:', date);
                           updateAvailableTimeSlots(date);
                           setShowCalendar(false);
                         }}

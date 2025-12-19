@@ -23,7 +23,6 @@ function GalleryMediaPanel({ onBack, vendorProfileId }) {
   const loadPhotos = async () => {
     try {
       setLoading(true);
-      console.log('Loading photos for vendorProfileId:', vendorProfileId);
       
       // Load images
       const photosResponse = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/images`, {
@@ -32,10 +31,8 @@ function GalleryMediaPanel({ onBack, vendorProfileId }) {
       
       if (photosResponse.ok) {
         const photosData = await photosResponse.json();
-        console.log('Photos data:', photosData);
         // Response is an array of images
         const images = Array.isArray(photosData) ? photosData : [];
-        console.log('Loaded images:', images.length);
         setPhotos(images.map(img => ({
           id: img.id || img.ImageID,
           url: img.url || img.ImageURL,
@@ -54,7 +51,6 @@ function GalleryMediaPanel({ onBack, vendorProfileId }) {
       if (albumsResponse.ok) {
         const albumsData = await albumsResponse.json();
         const albums = albumsData.albums || [];
-        console.log('Loaded albums:', albums.length);
         setAlbums(albums.map(album => ({
           id: album.AlbumID,
           name: album.AlbumName,

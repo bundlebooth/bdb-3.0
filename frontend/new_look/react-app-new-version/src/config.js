@@ -61,22 +61,17 @@ export { SOCKET_BASE_URL };
 if (typeof window !== 'undefined') {
   window.switchToProduction = () => {
     localStorage.setItem('USE_PRODUCTION_API', 'true');
-    console.log('✅ Switched to PRODUCTION API. Refresh the page to apply.');
     window.location.reload();
   };
   window.switchToLocalhost = () => {
     localStorage.setItem('USE_PRODUCTION_API', 'false');
-    console.log('✅ Switched to LOCALHOST API. Refresh the page to apply.');
     window.location.reload();
   };
   window.resetApiMode = () => {
     localStorage.removeItem('USE_PRODUCTION_API');
-    console.log('✅ Reset to default API mode. Refresh the page to apply.');
     window.location.reload();
   };
   window.getCurrentApiMode = () => {
-    console.log(`Current API: ${API_BASE_URL}`);
-    console.log(`Mode: ${USE_PRODUCTION_API ? 'PRODUCTION' : 'LOCALHOST'}`);
     return { url: API_BASE_URL, isProduction: USE_PRODUCTION_API };
   };
 }

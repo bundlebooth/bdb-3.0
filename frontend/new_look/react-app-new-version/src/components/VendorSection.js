@@ -95,15 +95,7 @@ function VendorSection({
 
   const iconConfig = getIconConfig();
 
-  // Debug logging for modal - MUST be before early return
-  useEffect(() => {
-    if (showModal) {
-      console.log(`Modal opened for "${title}" with ${vendors.length} vendors:`, vendors);
-    }
-  }, [showModal, title, vendors]);
-
   if (!vendors || vendors.length === 0) {
-    console.log(`VendorSection "${title}" has no vendors:`, vendors);
     return null;
   }
 

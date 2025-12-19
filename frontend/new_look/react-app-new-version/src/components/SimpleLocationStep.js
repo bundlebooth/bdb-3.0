@@ -6,7 +6,6 @@ function SimpleLocationStep({ formData, setFormData }) {
   React.useEffect(() => {
     const handleMessage = (event) => {
       if (event.data && event.data.type === 'LOCATION_UPDATE') {
-        console.log('📨 Received location data:', event.data.data);
         setFormData(prev => ({
           ...prev,
           ...event.data.data

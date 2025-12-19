@@ -2,10 +2,7 @@ import React, { memo } from 'react';
 import VendorCard from './VendorCard';
 
 const VendorGrid = memo(function VendorGrid({ vendors, loading, loadingMore, favorites, onToggleFavorite, onViewVendor, onHighlightVendor }) {
-  console.log('🎯 VendorGrid render - loading:', loading, 'loadingMore:', loadingMore, 'vendors count:', vendors?.length);
-  
   if (loading && (!vendors || vendors.length === 0)) {
-    console.log('✅ VendorGrid: Showing skeleton cards NOW!');
     return (
       <div 
         className="vendor-grid" 

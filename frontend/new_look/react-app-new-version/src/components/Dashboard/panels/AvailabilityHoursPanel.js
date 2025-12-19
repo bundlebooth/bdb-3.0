@@ -42,7 +42,6 @@ function AvailabilityHoursPanel({ onBack, vendorProfileId }) {
       
       if (response.ok) {
         const result = await response.json();
-        console.log('Vendor data:', result);
         
         // Handle nested structure from /vendors/:id endpoint
         const profile = result.data?.profile || result.profile || result;

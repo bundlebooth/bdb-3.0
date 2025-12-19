@@ -8,7 +8,6 @@ const loadGoogleMapsAPI = () => {
   return new Promise((resolve, reject) => {
     // Check if already loaded
     if (window.google?.maps?.places) {
-      console.log('✅ Google Maps API already loaded');
       resolve();
       return;
     }
@@ -16,7 +15,6 @@ const loadGoogleMapsAPI = () => {
     // Check if script is already being loaded
     const existingScript = document.querySelector('script[src*="maps.googleapis.com"]');
     if (existingScript) {
-      console.log('⏳ Google Maps script already loading, waiting...');
       existingScript.addEventListener('load', () => resolve());
       existingScript.addEventListener('error', () => reject(new Error('Failed to load Google Maps')));
       return;
@@ -29,7 +27,6 @@ const loadGoogleMapsAPI = () => {
     script.async = true;
     script.defer = true;
     script.onload = () => {
-      console.log('✅ Google Maps API loaded successfully');
       resolve();
     };
     script.onerror = () => reject(new Error('Failed to load Google Maps'));
@@ -87,21 +84,17 @@ function LocationServiceAreasPanel({ onBack, vendorProfileId }) {
         // Wait for DOM elements to be ready - retry multiple times
         const tryInit = (attempts = 0) => {
           if (attempts > 20) {
-            console.error('❌ Failed to initialize autocomplete after 20 attempts');
             return;
           }
           if (addressInputRef.current && window.google?.maps?.places) {
-            console.log('✅ Google Maps ready, initializing autocomplete...');
             initializeGoogleMaps();
           } else {
-            console.log(`⏳ Waiting for DOM/API (attempt ${attempts + 1})...`);
             setTimeout(() => tryInit(attempts + 1), 200);
           }
         };
         // Start trying after a short delay to ensure DOM is rendered
         setTimeout(() => tryInit(0), 300);
       } catch (error) {
-        console.error('❌ Failed to load Google Maps API:', error);
       }
     };
     
@@ -124,23 +117,12 @@ function LocationServiceAreasPanel({ onBack, vendorProfileId }) {
   }, [loading]);
 
   const initializeGoogleMaps = () => {
-    console.log('🔍 LocationServiceAreasPanel: Checking Google Maps...', {
-      hasGoogle: !!window.google,
-      hasMaps: !!window.google?.maps,
-      hasPlaces: !!window.google?.maps?.places,
-      hasAddressInput: !!addressInputRef.current,
-      hasServiceAreaInput: !!serviceAreaInputRef.current
-    });
-
     if (!window.google || !window.google.maps || !window.google.maps.places) {
-      console.log('❌ Google Maps not ready yet');
       return;
     }
     
     // Address Autocomplete - EXACTLY like EnhancedSearchBar
     if (addressInputRef.current && !addressAutocompleteRef.current) {
-      console.log('✅ Creating address autocomplete...');
-
       addressAutocompleteRef.current = new window.google.maps.places.Autocomplete(addressInputRef.current, {
         types: ['address'],
         componentRestrictions: { country: 'ca' }
@@ -148,10 +130,8 @@ function LocationServiceAreasPanel({ onBack, vendorProfileId }) {
       
       addressAutocompleteRef.current.addListener('place_changed', () => {
         const place = addressAutocompleteRef.current.getPlace();
-        console.log('🎯 Address place selected:', place);
         
         if (!place || !place.address_components) {
-          console.log('❌ No place or address components');
           return;
         }
         
@@ -162,18 +142,9 @@ function LocationServiceAreasPanel({ onBack, vendorProfileId }) {
         const route = pick('route');
         const fullAddress = streetNumber && route ? `${streetNumber} ${route}` : place.formatted_address;
         
-        console.log('📋 Extracted address data:', {
-          fullAddress,
-          city: pick('locality') || pick('sublocality'),
-          state: pick('administrative_area_level_1'),
-          postalCode: pick('postal_code')
-        });
-        
         const loc = place.geometry?.location;
         const latitude = loc ? (typeof loc.lat === 'function' ? loc.lat() : loc.lat) : null;
         const longitude = loc ? (typeof loc.lng === 'function' ? loc.lng() : loc.lng) : null;
-        
-        console.log('📍 Address coordinates:', { latitude, longitude });
         
         setFormData(prev => ({
           ...prev,
@@ -185,17 +156,11 @@ function LocationServiceAreasPanel({ onBack, vendorProfileId }) {
           latitude,
           longitude
         }));
-
-        console.log('✅ Address fields updated!');
       });
-
-      console.log('✅ Address autocomplete created');
     }
     
     // Service Area Autocomplete - EXACTLY like EnhancedSearchBar
     if (serviceAreaInputRef.current && !serviceAreaAutocompleteRef.current) {
-      console.log('✅ Creating service area autocomplete...');
-
       serviceAreaAutocompleteRef.current = new window.google.maps.places.Autocomplete(serviceAreaInputRef.current, {
         types: ['(cities)'],
         componentRestrictions: { country: 'ca' }
@@ -203,10 +168,8 @@ function LocationServiceAreasPanel({ onBack, vendorProfileId }) {
       
       serviceAreaAutocompleteRef.current.addListener('place_changed', () => {
         const place = serviceAreaAutocompleteRef.current.getPlace();
-        console.log('🎯 Service area place selected:', place);
         
         if (!place || !place.address_components) {
-          console.log('❌ No place or address components');
           return;
         }
         
@@ -229,8 +192,6 @@ function LocationServiceAreasPanel({ onBack, vendorProfileId }) {
           serviceRadius: 25.0
         };
         
-        console.log('📍 New service area:', newArea);
-        
         // Check for duplicates
         const exists = formData.serviceAreas.some(a => 
           (newArea.placeId && a.placeId && a.placeId === newArea.placeId) ||
@@ -243,9 +204,6 @@ function LocationServiceAreasPanel({ onBack, vendorProfileId }) {
             ...prev,
             serviceAreas: [...prev.serviceAreas, newArea]
           }));
-          console.log('✅ Added service area:', newArea.city);
-        } else {
-          console.log('⚠️ Service area already exists');
         }
         
         setServiceAreaInput('');
@@ -254,8 +212,6 @@ function LocationServiceAreasPanel({ onBack, vendorProfileId }) {
           serviceAreaInputRef.current.value = '';
         }
       });
-
-      console.log('✅ Service area autocomplete created');
     }
   };
   
@@ -268,7 +224,6 @@ function LocationServiceAreasPanel({ onBack, vendorProfileId }) {
       
       if (response.ok) {
         const data = await response.json();
-        console.log('Location data loaded:', data);
         
         // The /vendors/:id/location endpoint returns data directly (not nested)
         const newFormData = {

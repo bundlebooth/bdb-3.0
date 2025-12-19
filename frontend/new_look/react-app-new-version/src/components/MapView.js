@@ -214,14 +214,9 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false, u
       return bounds.contains(position);
     });
 
-    console.log(`${vendorsInView.length} vendors in viewport`);
   }, [vendors]);
 
   const createMap = useCallback(() => {
-    console.log('🗺️ createMap called');
-    console.log('mapRef.current:', mapRef.current);
-    console.log('window.google:', window.google);
-    
     if (!mapRef.current) {
       console.error('❌ mapRef.current is null!');
       return;
@@ -243,7 +238,6 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false, u
       }
     }
 
-    console.log('Creating Google Map instance...');
     const map = new window.google.maps.Map(mapRef.current, {
       center: mapCenter,
       zoom: mapZoom,
@@ -273,7 +267,6 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false, u
 
     // Helper function to trigger bounds change callback
     const triggerBoundsChange = () => {
-      console.log('🗺️ triggerBoundsChange called, searchOnDragEnabled:', searchOnDragEnabledRef.current);
       if (searchOnDragEnabledRef.current && onMapBoundsChangeRef.current) {
         // Debounce the search to avoid too many API calls
         if (dragTimeoutRef.current) {
@@ -285,7 +278,6 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false, u
           if (bounds && center) {
             const ne = bounds.getNorthEast();
             const sw = bounds.getSouthWest();
-            console.log('🗺️ Calling onMapBoundsChange with center:', center.lat(), center.lng());
             onMapBoundsChangeRef.current({
               center: { lat: center.lat(), lng: center.lng() },
               bounds: {
@@ -303,17 +295,14 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false, u
 
     // Add dragend listener for "search as you drag" functionality
     map.addListener('dragend', () => {
-      console.log('🗺️ Map dragend event fired');
       triggerBoundsChange();
     });
 
     // Add zoom_changed listener for scroll/zoom events
     map.addListener('zoom_changed', () => {
-      console.log('🗺️ Map zoom_changed event fired');
       triggerBoundsChange();
     });
 
-    console.log('✅ Google Maps initialized successfully');
   }, [updateVendorsInViewport]);
 
   const initializeMap = useCallback(async () => {
@@ -325,7 +314,6 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false, u
     isInitializingRef.current = true;
     
     if (!window.google || !window.google.maps) {
-      console.log('Waiting for Google Maps to load...');
       // Wait for Google Maps to be loaded from CDN
       const checkGoogleMaps = setInterval(() => {
         if (window.google && window.google.maps) {
@@ -343,11 +331,8 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false, u
 
   const updateMarkers = useCallback(() => {
     if (!mapInstanceRef.current || !window.google || !window.google.maps) {
-      console.log('Map not ready for markers');
       return;
     }
-
-    console.log('🗺️ Updating markers for', vendors.length, 'vendors');
 
     // Clear existing markers
     markersRef.current.forEach(marker => marker.setMap(null));
@@ -369,11 +354,8 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false, u
 
       // Only check if coordinates exist and are valid numbers
       if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
-        console.log('⚠️ No valid coordinates for vendor:', vendor.BusinessName || vendor.name, 'lat:', lat, 'lng:', lng);
         return;
       }
-
-      console.log('✅ Adding marker for:', vendor.BusinessName || vendor.name, 'at', lat, lng);
 
       const position = { lat, lng };
       
@@ -419,8 +401,6 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false, u
 
       // Add click listener to show InfoWindow with mini vendor card
       marker.addListener('click', () => {
-        console.log('🔵 MARKER CLICKED:', vendor.BusinessName || vendor.name);
-        
         // Reset all markers to grey
         markersRef.current.forEach(m => {
           if (m !== marker) {
@@ -441,11 +421,8 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false, u
         
         // Close existing InfoWindow if any
         if (infoWindowRef.current) {
-          console.log('Closing existing InfoWindow');
           infoWindowRef.current.close();
         }
-        
-        console.log('Creating InfoWindow with loading skeleton...');
         
         // Show loading skeleton first
         const loadingHTML = createLoadingSkeletonHTML();
@@ -457,13 +434,10 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false, u
         try {
           infoWindow.open(mapInstanceRef.current, marker);
           infoWindowRef.current = infoWindow;
-          console.log('✅ Loading skeleton displayed');
-          
           // After a brief delay, replace with actual card content
           setTimeout(() => {
             const cardHTML = createMiniVendorCardHTML(vendor);
             infoWindow.setContent(cardHTML);
-            console.log('✅ Actual card content loaded');
           }, 300);
         } catch (error) {
           console.error('Error opening InfoWindow:', error);
@@ -471,7 +445,6 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false, u
         
         // Listen for close events
         window.google.maps.event.addListener(infoWindow, 'closeclick', () => {
-          console.log('❌ InfoWindow closed via closeclick event');
           marker.setIcon({
             url: greyIcon,
             scaledSize: new window.google.maps.Size(20, 30),
@@ -481,8 +454,6 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false, u
         
         // Style and add interactions when DOM is ready
         window.google.maps.event.addListener(infoWindow, 'domready', () => {
-          console.log('✅ InfoWindow DOM ready');
-          
           // HIDE Google's default close button
           const closeButton = document.querySelector('button[title="Close"]');
           if (closeButton) {
@@ -507,7 +478,6 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false, u
           const cardDiv = document.querySelector('.map-vendor-card');
           if (cardDiv) {
             cardDiv.addEventListener('click', () => {
-              console.log('Card clicked, navigating to vendor profile');
               const vendorId = marker.vendorId;
               // Navigate to vendor profile page
               window.location.href = `/vendor/${vendorId}`;
@@ -521,9 +491,6 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false, u
       hasValidMarkers = true;
     });
 
-    console.log('📍 Total markers added:', markersRef.current.length);
-    console.log('📍 Marker vendor IDs:', markersRef.current.map(m => m.vendorId));
-
     // Show city-level view instead of zooming to individual vendors
     // This keeps the map at a city overview level
     if (hasValidMarkers) {
@@ -531,16 +498,13 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false, u
       if (userLocation && userLocation.lat && userLocation.lng) {
         mapInstanceRef.current.setCenter({ lat: userLocation.lat, lng: userLocation.lng });
         mapInstanceRef.current.setZoom(11); // City-level zoom
-        console.log('📍 Map centered on user city location');
       } else {
         // Otherwise center on vendors but keep city-level zoom
         const center = bounds.getCenter();
         mapInstanceRef.current.setCenter(center);
         mapInstanceRef.current.setZoom(11); // City-level zoom, don't zoom in on vendors
-        console.log('📍 Map centered on vendor area at city level');
       }
     } else {
-      console.log('⚠️ No valid markers to display');
     }
 
     // No clustering - show all individual pins like Google Maps default
@@ -589,7 +553,6 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false, u
   // Keep refs in sync with state/props for event listeners (fixes closure issue)
   useEffect(() => {
     searchOnDragEnabledRef.current = searchOnDragEnabled;
-    console.log('🗺️ searchOnDragEnabled state changed to:', searchOnDragEnabled);
   }, [searchOnDragEnabled]);
 
   useEffect(() => {

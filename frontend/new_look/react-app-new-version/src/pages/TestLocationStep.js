@@ -8,22 +8,11 @@ function TestLocationStep({ formData = {}, onInputChange = () => {} }) {
   const [localPostal, setLocalPostal] = useState(formData.postalCode || '');
 
   useEffect(() => {
-    console.log('🔍 Starting Google Maps initialization...');
-    
     const initGoogleMaps = () => {
-      console.log('🔍 Checking Google Maps...');
-      console.log('window.google:', !!window.google);
-      console.log('window.google.maps:', !!window.google?.maps);
-      console.log('window.google.maps.places:', !!window.google?.maps?.places);
-      console.log('inputRef.current:', !!inputRef.current);
-      
       if (!window.google?.maps?.places?.Autocomplete || !inputRef.current) {
-        console.log('❌ Not ready, retrying in 200ms...');
         setTimeout(initGoogleMaps, 200);
         return;
       }
-
-      console.log('✅ Google Maps ready! Creating autocomplete...');
 
       try {
         // Clear existing autocomplete if it exists
@@ -39,13 +28,9 @@ function TestLocationStep({ formData = {}, onInputChange = () => {} }) {
 
         autocompleteRef.current = autocomplete;
 
-        console.log('✅ Autocomplete created successfully:', autocomplete);
-
         // Listen for selection - EXACTLY like EnhancedSearchBar
         autocomplete.addListener('place_changed', () => {
           const place = autocomplete.getPlace();
-          
-          console.log('🎯 Place selected:', place);
           
           if (place.address_components) {
             const getComponent = (type) => {
@@ -60,8 +45,6 @@ function TestLocationStep({ formData = {}, onInputChange = () => {} }) {
             const city = getComponent('locality') || getComponent('sublocality');
             const province = getComponent('administrative_area_level_1');
             const postal = getComponent('postal_code');
-
-            console.log('📋 Extracted data:', { street, city, province, postal });
 
             // Update local state for immediate UI update
             setLocalCity(city);
@@ -79,12 +62,9 @@ function TestLocationStep({ formData = {}, onInputChange = () => {} }) {
             if (place.geometry?.location) {
               const lat = place.geometry.location.lat();
               const lng = place.geometry.location.lng();
-              console.log('🗺️ Coordinates:', lat, lng);
               onInputChange('latitude', lat);
               onInputChange('longitude', lng);
             }
-
-            console.log('✅ All address fields updated!');
           }
         });
       

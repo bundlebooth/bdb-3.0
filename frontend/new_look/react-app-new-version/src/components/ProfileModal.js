@@ -654,7 +654,7 @@ function ProfileModal({ isOpen, onClose }) {
                 </div>
                 <button
                   type="button"
-                  onClick={() => console.log('Facebook login')}
+                  onClick={() => {}}
                   style={{
                     width: '100%',
                     padding: '12px',

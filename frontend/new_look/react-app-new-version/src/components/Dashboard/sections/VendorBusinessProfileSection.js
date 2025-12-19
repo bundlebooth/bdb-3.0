@@ -19,26 +19,18 @@ function VendorBusinessProfileSection() {
   // NO FALLBACK - must have vendorProfileId
   const vendorProfileId = currentUser?.vendorProfileId;
 
-  // Debug logging - hooks must be called unconditionally
+  // Hooks must be called unconditionally
   useEffect(() => {
     if (!vendorProfileId) return; // Guard inside effect
-    console.log('🔍 VendorBusinessProfileSection - currentUser changed:', {
-      userId: currentUser?.id,
-      vendorProfileId: currentUser?.vendorProfileId,
-      calculatedVendorId: vendorProfileId,
-      activePanel
-    });
   }, [currentUser, vendorProfileId, activePanel]);
 
   // Close any open panel when user changes to prevent showing old data
   useEffect(() => {
-    console.log('🚪 Closing active panel due to user change');
     setActivePanel(null);
   }, [currentUser?.id, currentUser?.vendorProfileId]);
   
   // Don't render if no vendorProfileId - MUST be after all hooks
   if (!vendorProfileId) {
-    console.error('❌ No vendorProfileId found for user:', currentUser);
     return (
       <div style={{ padding: '2rem', textAlign: 'center' }}>
         <h2>Vendor Profile Not Found</h2>

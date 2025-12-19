@@ -14,7 +14,6 @@ import './styles/MapControls.css';
 
 // Global initMap callback for Google Maps
 window.initMap = function() {
-  console.log('Google Maps API loaded');
 };
 
 // Home route wrapper - shows landing page for unauthenticated users, main page for authenticated

@@ -12,8 +12,6 @@ export async function startStripeOnboarding(vendorProfileId) {
       throw new Error('Vendor profile ID is required');
     }
 
-    console.log('Starting Stripe onboarding for vendor:', vendorProfileId);
-
     const response = await fetch(`${API_BASE_URL}/payments/connect/onboard/${vendorProfileId}`, {
       method: 'POST',
       headers: {

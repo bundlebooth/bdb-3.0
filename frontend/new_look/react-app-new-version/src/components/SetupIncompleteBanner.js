@@ -66,17 +66,13 @@ function SetupIncompleteBanner({
     }
 
     if (!currentUser?.id) {
-      console.log('[SetupBanner] No currentUser.id, not showing banner');
       setLoading(false);
       return;
     }
 
-    console.log('[SetupBanner] Checking for vendor:', currentUser);
-    
     // Check if banner was dismissed
     const dismissKey = `vv_hideSetupReminderUntilComplete_${currentUser.id}`;
     if (localStorage.getItem(dismissKey)) {
-      console.log('[SetupBanner] Banner was dismissed');
       setDismissed(true);
       setLoading(false);
       return;
@@ -84,7 +80,6 @@ function SetupIncompleteBanner({
 
     // Prevent duplicate fetches using ref
     if (fetchStartedRef.current) {
-      console.log('[SetupBanner] Fetch already started, skipping');
       return;
     }
     fetchStartedRef.current = true;
@@ -99,12 +94,9 @@ function SetupIncompleteBanner({
     try {
       // Check if user is a vendor first
       if (!currentUser.isVendor || !currentUser.vendorProfileId) {
-        console.log('[SetupBanner] User is not a vendor or no vendorProfileId');
         setLoading(false);
         return;
       }
-
-      console.log('[SetupBanner] Fetching vendor profile for userId:', currentUser.id);
 
       // STEP 1: Fetch main profile data (same as BecomeVendorPage line 326)
       const response = await fetch(`${API_BASE_URL}/vendors/profile?userId=${currentUser.id}`, {
@@ -112,7 +104,6 @@ function SetupIncompleteBanner({
       });
 
       if (!response.ok) {
-        console.log('[SetupBanner] Profile fetch failed:', response.status);
         setLoading(false);
         return;
       }
@@ -120,7 +111,6 @@ function SetupIncompleteBanner({
       const result = await response.json();
       
       if (!result.success || !result.data) {
-        console.log('[SetupBanner] No data in result');
         setLoading(false);
         return;
       }
@@ -138,7 +128,6 @@ function SetupIncompleteBanner({
       // Load profile status for review workflow
       if (profile.ProfileStatus) {
         setFetchedProfileStatus(profile.ProfileStatus);
-        console.log('[SetupBanner] Profile status loaded:', profile.ProfileStatus);
       }
 
       // Map business hours from database format to form format (same as BecomeVendorPage lines 366-379)
@@ -259,10 +248,8 @@ function SetupIncompleteBanner({
         if (stripeRes.ok) {
           const stripeData = await stripeRes.json();
           updatedFormData.stripeConnected = stripeData.connected || false;
-          console.log('[SetupBanner] Stripe connected:', updatedFormData.stripeConnected);
         }
       } catch (e) {
-        console.log('[SetupBanner] Could not fetch Stripe status:', e);
       }
 
       // STEP 3: Fetch filters (same as BecomeVendorPage lines 492-505)
@@ -278,10 +265,8 @@ function SetupIncompleteBanner({
           } else if (filtersData.isPremium || filtersData.isFeatured) {
             updatedFormData.selectedFilters = ['filter-premium'];
           }
-          console.log('[SetupBanner] Filters loaded:', updatedFormData.selectedFilters);
         }
       } catch (e) {
-        console.log('[SetupBanner] Could not fetch filters:', e);
       }
 
       // STEP 4: Fetch social media from dedicated endpoint (same as BecomeVendorPage lines 508-524)
@@ -295,10 +280,8 @@ function SetupIncompleteBanner({
           updatedFormData.instagram = socialData.instagram || '';
           updatedFormData.twitter = socialData.twitter || '';
           updatedFormData.linkedin = socialData.linkedin || '';
-          console.log('[SetupBanner] Social media loaded:', socialData);
         }
       } catch (e) {
-        console.log('[SetupBanner] Could not fetch social media:', e);
       }
 
       // STEP 5: Fetch selected features from dedicated endpoint (more reliable than profile API)
@@ -310,13 +293,10 @@ function SetupIncompleteBanner({
           const featuresData = await featuresRes.json();
           const featureIds = featuresData.selectedFeatures?.map(f => f.FeatureID) || [];
           updatedFormData.selectedFeatures = featureIds;
-          console.log('[SetupBanner] Selected features loaded:', featureIds.length, 'features');
         }
       } catch (e) {
-        console.log('[SetupBanner] Could not fetch selected features:', e);
       }
 
-      console.log('[SetupBanner] Final formData:', updatedFormData);
       setFormData(updatedFormData);
       setLoading(false);
     } catch (error) {
@@ -420,17 +400,13 @@ function SetupIncompleteBanner({
     if (incompleteSteps.length === 0 && !showAllSteps) return null;
   } else {
     // API mode: Use fetched formData with same logic as BecomeVendorPage
-    console.log('[SetupBanner] Render check - loading:', loading, 'formData:', !!formData, 'dismissed:', dismissed);
     if (loading) {
-      console.log('[SetupBanner] Still loading, not showing banner');
       return null;
     }
     if (!formData) {
-      console.log('[SetupBanner] No formData, not showing banner');
       return null;
     }
     if (dismissed) {
-      console.log('[SetupBanner] Banner was dismissed');
       return null;
     }
     

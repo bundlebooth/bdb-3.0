@@ -61,10 +61,6 @@ const BookingCalendar = ({
       const day = String(date.getDate()).padStart(2, '0');
       const formattedDate = `${year}-${month}-${day}`;
       
-      console.log('📅 Date clicked:', date);
-      console.log('📅 Day of week:', date.getDay(), ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][date.getDay()]);
-      console.log('📅 Formatted date:', formattedDate);
-      
       onDateSelect(formattedDate);
       
       // Update available time slots based on business hours for this day
@@ -127,23 +123,16 @@ const BookingCalendar = ({
   // Check if date is disabled based on vendor availability
   // Get available time slots for a given date based on business hours
   const updateAvailableTimeSlots = (date) => {
-    console.log('🕐 updateAvailableTimeSlots called for date:', date);
-    
     if (!date || !vendorAvailability?.businessHours) {
-      console.log('⚠️ No date or business hours available');
       setAvailableTimeSlots([]);
       return;
     }
 
     const dayOfWeek = date.getDay(); // 0 = Sunday, 6 = Saturday
-    console.log('📅 Day of week:', dayOfWeek, ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][dayOfWeek]);
-    console.log('📋 All business hours:', vendorAvailability.businessHours);
     
     const dayHours = vendorAvailability.businessHours.find(bh => bh.DayOfWeek === dayOfWeek);
-    console.log('🔍 Found business hours for this day:', dayHours);
     
     if (!dayHours || !dayHours.IsAvailable) {
-      console.log('❌ Vendor not available on this day');
       setAvailableTimeSlots([]);
       return;
     }
@@ -189,10 +178,8 @@ const BookingCalendar = ({
 
     const openTime = parseTime(dayHours.OpenTime);
     const closeTime = parseTime(dayHours.CloseTime);
-    console.log('⏰ Open time:', openTime, 'Close time:', closeTime);
 
     if (!openTime || !closeTime) {
-      console.log('❌ Invalid open/close times');
       setAvailableTimeSlots([]);
       return;
     }
@@ -219,7 +206,6 @@ const BookingCalendar = ({
       }
     }
 
-    console.log('✅ Generated time slots:', slots);
     setAvailableTimeSlots(slots);
     
     // Update start and end times if they're outside business hours
@@ -227,12 +213,8 @@ const BookingCalendar = ({
       const startTimeInSlots = slots.includes(localStartTime);
       const endTimeInSlots = slots.includes(localEndTime);
       
-      console.log('🔄 Current start time:', localStartTime, 'in slots?', startTimeInSlots);
-      console.log('🔄 Current end time:', localEndTime, 'in slots?', endTimeInSlots);
-      
       if (!startTimeInSlots) {
         const newStartTime = slots[0];
-        console.log('⚡ Adjusting start time to:', newStartTime);
         setLocalStartTime(newStartTime);
         if (onTimeChange) {
           onTimeChange('start', newStartTime);
@@ -241,7 +223,6 @@ const BookingCalendar = ({
       
       if (!endTimeInSlots) {
         const newEndTime = slots[Math.min(6, slots.length - 1)]; // Default to 6 slots (3 hours) or last slot
-        console.log('⚡ Adjusting end time to:', newEndTime);
         setLocalEndTime(newEndTime);
         if (onTimeChange) {
           onTimeChange('end', newEndTime);
@@ -279,7 +260,6 @@ const BookingCalendar = ({
 
     // If no availability data provided, only disable past dates
     if (!vendorAvailability) {
-      console.log('No vendor availability data');
       return false;
     }
 
@@ -293,7 +273,6 @@ const BookingCalendar = ({
         return exDate.toISOString().split('T')[0] === dateString && !ex.IsAvailable;
       });
       if (exception) {
-        console.log(`Date ${dateString} disabled by exception`);
         return true; // Date is explicitly unavailable
       }
     }
@@ -302,22 +281,15 @@ const BookingCalendar = ({
     if (vendorAvailability.businessHours && vendorAvailability.businessHours.length > 0) {
       const dayHours = vendorAvailability.businessHours.find(bh => bh.DayOfWeek === dayOfWeek);
       
-      // Debug logging
-      console.log(`Checking day ${dayOfWeek} (${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][dayOfWeek]}):`, dayHours);
-      
       if (!dayHours) {
-        console.log(`No business hours found for day ${dayOfWeek}`);
         return true; // No hours defined for this day, assume closed
       }
       
       // Check IsAvailable field (could be boolean or bit)
       const isAvailable = dayHours.IsAvailable === true || dayHours.IsAvailable === 1;
       if (!isAvailable) {
-        console.log(`Vendor closed on day ${dayOfWeek}`);
         return true; // Vendor is closed on this day
       }
-    } else {
-      console.log('No business hours data available');
     }
 
     return false;

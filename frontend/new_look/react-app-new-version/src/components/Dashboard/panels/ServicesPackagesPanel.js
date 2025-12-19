@@ -36,7 +36,6 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
   const loadServices = async () => {
     try {
       setLoading(true);
-      console.log('Loading services for vendorProfileId:', vendorProfileId);
       
       // Fetch available predefined services (all categories)
       const servicesResponse = await fetch(`${API_BASE_URL}/vendors/predefined-services`, {
@@ -56,7 +55,6 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
         });
         
         setAvailableServices(allServices);
-        console.log('Loaded available services:', allServices.length);
         
         // Fetch vendor's selected services
         const vendorServicesResponse = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/selected-services`, {
@@ -103,8 +101,6 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
           
           setServices(mappedServices);
           setSelectedCount(mappedServices.length);
-          console.log('Loaded selected services:', mappedServices.length);
-          console.log('Mapped services with pricing data:', mappedServices);
         }
       }
     } catch (error) {
@@ -212,8 +208,6 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
           categoryName: s.category || null
         }))
       };
-      
-      console.log('Saving services:', payload);
       
       const response = await fetch(`${API_BASE_URL}/vendors/setup/step3-services`, {
         method: 'POST',

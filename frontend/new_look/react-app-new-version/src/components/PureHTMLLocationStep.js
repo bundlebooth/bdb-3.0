@@ -175,10 +175,7 @@ function PureHTMLLocationStep({ formData, setFormData }) {
   }, []);
   
   const initializeGoogleMaps = () => {
-    console.log('🎉 Initializing Google Maps - PURE DOM VERSION');
-    
     if (!window.google?.maps?.places) {
-      console.log('⏳ Google Maps not ready, retrying...');
       setTimeout(initializeGoogleMaps, 200);
       return;
     }
@@ -191,8 +188,6 @@ function PureHTMLLocationStep({ formData, setFormData }) {
       return;
     }
     
-    console.log('✅ Creating address autocomplete...');
-    
     // Address Autocomplete - EXACT COPY FROM WORKING TEST
     try {
       const addressAutocomplete = new window.google.maps.places.Autocomplete(addressInput, {
@@ -202,7 +197,6 @@ function PureHTMLLocationStep({ formData, setFormData }) {
       
       addressAutocomplete.addListener('place_changed', function() {
         const place = addressAutocomplete.getPlace();
-        console.log('🎯 Address selected:', place);
         
         if (place.address_components) {
           const comps = place.address_components;
@@ -236,11 +230,8 @@ function PureHTMLLocationStep({ formData, setFormData }) {
             longitude: place.geometry?.location?.lng() || null
           }));
           
-          console.log('✅ Address fields updated!');
         }
       });
-      
-      console.log('✅ Address autocomplete created successfully!');
     } catch (error) {
       console.error('❌ Error creating address autocomplete:', error);
     }
@@ -248,8 +239,6 @@ function PureHTMLLocationStep({ formData, setFormData }) {
     // Service Area Autocomplete
     if (serviceAreaInput) {
       try {
-        console.log('✅ Creating service area autocomplete...');
-        
         const serviceAreaAutocomplete = new window.google.maps.places.Autocomplete(serviceAreaInput, {
           types: ['(cities)'],
           componentRestrictions: { country: 'ca' }
@@ -257,7 +246,6 @@ function PureHTMLLocationStep({ formData, setFormData }) {
         
         serviceAreaAutocomplete.addListener('place_changed', function() {
           const place = serviceAreaAutocomplete.getPlace();
-          console.log('🎯 City selected:', place);
           
           if (place.address_components) {
             const comps = place.address_components;
@@ -269,14 +257,11 @@ function PureHTMLLocationStep({ formData, setFormData }) {
               window.currentServiceAreas.push(areaToAdd);
               updateServiceAreasDisplay();
               updateReactState();
-              console.log('✅ Added service area:', areaToAdd);
             }
             
             serviceAreaInput.value = '';
           }
         });
-        
-        console.log('✅ Service area autocomplete created successfully!');
       } catch (error) {
         console.error('❌ Error creating service area autocomplete:', error);
       }

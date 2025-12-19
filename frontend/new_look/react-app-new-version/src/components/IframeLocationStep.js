@@ -6,7 +6,6 @@ function IframeLocationStep({ formData, setFormData }) {
     // Listen for messages from the iframe
     const handleMessage = (event) => {
       if (event.data.type === 'LOCATION_DATA') {
-        console.log('📨 Received data from iframe:', event.data.data);
         setFormData(prev => ({
           ...prev,
           ...event.data.data

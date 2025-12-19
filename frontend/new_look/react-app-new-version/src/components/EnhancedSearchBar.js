@@ -41,7 +41,6 @@ const EnhancedSearchBar = ({ onSearch, isScrolled }) => {
         }
       }
     } catch (error) {
-      console.log('IP geolocation not available:', error);
     }
   };
 
@@ -293,8 +292,6 @@ const EnhancedSearchBar = ({ onSearch, isScrolled }) => {
       userLocation: userLocation
     };
 
-    console.log('Search params:', searchParams);
-
     if (onSearch) {
       onSearch(searchParams);
     }
@@ -342,7 +339,6 @@ const EnhancedSearchBar = ({ onSearch, isScrolled }) => {
 
   const handleDateFieldClick = (e) => {
     e.stopPropagation();
-    console.log('Date field clicked, showing calendar');
     setIsExpanded(true);
     setShowCalendar(true);
     setShowLocationDropdown(false);

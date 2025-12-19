@@ -39,11 +39,6 @@ const VendorApprovalsPanel = () => {
 
       if (response.ok) {
         const data = await response.json();
-        console.log('Full profile data received:', data.profile);
-        console.log('Images:', data.profile?.Images?.length, 'Services:', data.profile?.Services?.length);
-        console.log('Categories:', data.profile?.Categories);
-        console.log('BusinessHours:', data.profile?.BusinessHours?.length);
-        console.log('StripeAccountId:', data.profile?.StripeAccountId);
         setFullProfileData(data.profile);
       } else {
         console.error('Failed to load vendor details, status:', response.status);

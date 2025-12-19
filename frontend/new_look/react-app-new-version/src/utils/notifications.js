@@ -23,16 +23,13 @@ export async function createNotification(notificationData) {
     });
     
     if (response.ok) {
-      console.log('Notification created successfully via API');
       return true;
     }
     
     // Fallback: Create notification locally
-    console.log('API failed, creating local notification');
     createLocalNotification(notificationData.userId, notificationData.type, notificationData.title, notificationData.message);
     return false;
   } catch (error) {
-    console.warn('Error creating notification, using fallback:', error);
     createLocalNotification(notificationData.userId, notificationData.type, notificationData.title, notificationData.message);
     return false;
   }
@@ -55,7 +52,6 @@ export function createLocalNotification(userId, type, title, message) {
   notifications.push(newNotification);
   localStorage.setItem('notifications', JSON.stringify(notifications));
   
-  console.log('Local notification created successfully');
   return newNotification;
 }
 
@@ -127,7 +123,6 @@ export async function getUserNotifications(userId) {
       // Sort by creation date (newest first)
       notifications.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       
-      console.log('📬 Loaded notifications from API:', notifications);
       return notifications;
     }
     
@@ -273,6 +268,5 @@ export function createSampleNotifications(userId) {
   ];
   
   localStorage.setItem('notifications', JSON.stringify(sampleNotifications));
-  console.log('✅ Sample notifications created!');
   return sampleNotifications;
 }

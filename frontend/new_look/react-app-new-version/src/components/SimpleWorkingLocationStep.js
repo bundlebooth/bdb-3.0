@@ -36,8 +36,6 @@ function SimpleWorkingLocationStep({ formData, setFormData }) {
   };
 
   const initializeGooglePlaces = () => {
-    console.log('🚀 Initializing Google Places - EXACT COPY FROM SEARCH BAR');
-    
     // ADDRESS AUTOCOMPLETE - EXACT PATTERN FROM EnhancedSearchBar
     if (!addressInputRef.current) return;
     
@@ -58,7 +56,6 @@ function SimpleWorkingLocationStep({ formData, setFormData }) {
 
     addressAutocomplete.addListener('place_changed', () => {
       const place = addressAutocomplete.getPlace();
-      console.log('🎯 Address place selected:', place);
       
       if (place.address_components) {
         const comps = place.address_components;
@@ -79,11 +76,8 @@ function SimpleWorkingLocationStep({ formData, setFormData }) {
           longitude: place.geometry?.location?.lng() || null
         }));
         
-        console.log('✅ Address fields updated!');
       }
     });
-    
-    console.log('✅ Address autocomplete initialized');
 
     // SERVICE AREA AUTOCOMPLETE - EXACT PATTERN FROM EnhancedSearchBar
     if (!serviceAreaInputRef.current) return;
@@ -105,7 +99,6 @@ function SimpleWorkingLocationStep({ formData, setFormData }) {
 
     serviceAreaAutocomplete.addListener('place_changed', () => {
       const place = serviceAreaAutocomplete.getPlace();
-      console.log('🎯 Service area selected:', place);
       
       if (place.address_components) {
         const comps = place.address_components;
@@ -139,9 +132,6 @@ function SimpleWorkingLocationStep({ formData, setFormData }) {
             ...prev,
             serviceAreas: [...(prev.serviceAreas || []), newArea]
           }));
-          console.log('✅ Service area added:', newArea.city);
-        } else {
-          console.log('⚠️ Service area already exists');
         }
         
         // Clear input
@@ -159,8 +149,6 @@ function SimpleWorkingLocationStep({ formData, setFormData }) {
         }
       }
     });
-    
-    console.log('✅ Service area autocomplete initialized');
   };
 
   const handleRemoveServiceArea = (index) => {

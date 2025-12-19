@@ -6,23 +6,16 @@ function WhatsNewSidebar({ isOpen, onClose }) {
   const [loading, setLoading] = useState(true);
 
   const loadAnnouncements = useCallback(async () => {
-    console.log('📢 WhatsNewSidebar: Loading announcements...');
     setLoading(true);
     try {
       // Use /all endpoint to show all announcements including upcoming ones
       const url = `${API_BASE_URL}/public/announcements/all`;
-      console.log('📢 Fetching from:', url);
       const response = await fetch(url);
-      console.log('📢 Response status:', response.status);
       if (response.ok) {
         const data = await response.json();
-        console.log('📢 Announcements loaded:', data.announcements?.length || 0, data);
         setAnnouncements(data.announcements || []);
-      } else {
-        console.error('📢 Response not OK:', response.status, response.statusText);
       }
     } catch (error) {
-      console.error('📢 Failed to load announcements:', error);
     } finally {
       setLoading(false);
     }

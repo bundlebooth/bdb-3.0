@@ -52,13 +52,9 @@ function WorkingGoogleLocationStep({ formData, setFormData }) {
   };
 
   const initializeGooglePlaces = () => {
-    console.log('🎉 Initializing Google Places - WORKING VERSION');
-    
     // Address Autocomplete
     if (addressInputRef.current && !addressAutocompleteRef.current) {
       const input = addressInputRef.current;
-      
-      console.log('📍 Creating address autocomplete for:', input);
       
       // Clear existing autocomplete if it exists
       if (addressAutocompleteRef.current) {
@@ -84,7 +80,6 @@ function WorkingGoogleLocationStep({ formData, setFormData }) {
 
       autocomplete.addListener('place_changed', () => {
         const place = autocomplete.getPlace();
-        console.log('🎯 Address place selected:', place);
         
         if (place.address_components) {
           const comps = place.address_components;
@@ -110,11 +105,8 @@ function WorkingGoogleLocationStep({ formData, setFormData }) {
             longitude: place.geometry?.location?.lng() || null
           }));
           
-          console.log('✅ Address fields updated!');
         }
       });
-      
-      console.log('✅ Address autocomplete created');
     }
     
     // Service Area Autocomplete
@@ -135,7 +127,6 @@ function WorkingGoogleLocationStep({ formData, setFormData }) {
 
       autocomplete.addListener('place_changed', () => {
         const place = autocomplete.getPlace();
-        console.log('🎯 Service area place selected:', place);
         
         if (place.formatted_address) {
           const areaToAdd = place.formatted_address;
@@ -145,14 +136,11 @@ function WorkingGoogleLocationStep({ formData, setFormData }) {
               ...prev,
               serviceAreas: [...prev.serviceAreas, areaToAdd]
             }));
-            console.log('✅ Added service area:', areaToAdd);
           }
           
           setServiceAreaInput('');
         }
       });
-      
-      console.log('✅ Service area autocomplete created');
     }
   };
   

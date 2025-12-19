@@ -312,26 +312,17 @@ const BecomeVendorPage = () => {
   // Fetch existing vendor profile data if user is already a vendor
   useEffect(() => {
     const fetchExistingVendorData = async () => {
-      console.log('🔍 Checking if should load vendor data...');
-      console.log('currentUser:', currentUser);
-      console.log('currentUser.isVendor:', currentUser?.isVendor);
-      console.log('currentUser.vendorProfileId:', currentUser?.vendorProfileId);
-      console.log('initialDataLoaded:', initialDataLoaded);
-      
       if (!currentUser || !currentUser.isVendor || !currentUser.vendorProfileId) {
-        console.log('❌ Not loading vendor data - conditions not met');
         return;
       }
       
       // Skip re-fetching if we've already loaded data (prevents reset after save)
       if (initialDataLoaded) {
-        console.log('⏭️ Skipping re-fetch - data already loaded');
         return;
       }
 
       try {
         setLoadingProfile(true);
-        console.log('✅ Fetching existing vendor profile for user:', currentUser.id);
 
         const response = await fetch(`${API_BASE_URL}/vendors/profile?userId=${currentUser.id}`, {
           headers: {
@@ -346,7 +337,6 @@ const BecomeVendorPage = () => {
         const result = await response.json();
         
         if (result.success && result.data) {
-          console.log('Existing vendor data loaded:', result.data);
           setExistingVendorData(result.data);
           setIsExistingVendor(true);
 
@@ -356,7 +346,6 @@ const BecomeVendorPage = () => {
           // Load profile status for review workflow
           if (profile.ProfileStatus) {
             setProfileStatus(profile.ProfileStatus);
-            console.log('📋 Profile status loaded:', profile.ProfileStatus);
           }
           const categories = result.data.categories || [];
           const services = result.data.services || [];
@@ -377,8 +366,6 @@ const BecomeVendorPage = () => {
             });
           }
 
-          console.log('📋 Selected features from database:', selectedFeatures);
-
           // Map business hours from database format to form format
           const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
           const hoursMap = {};
@@ -394,16 +381,11 @@ const BecomeVendorPage = () => {
               };
             }
           });
-          console.log('⏰ Business hours mapped:', hoursMap);
 
           // Extract primary and additional categories
-          console.log('📂 Categories from database:', categories);
-          
           // Use 'Category' property instead of 'CategoryName'
           const primaryCat = categories.find(c => c.IsPrimary)?.Category || categories[0]?.Category || '';
           const additionalCats = categories.filter(c => !c.IsPrimary).map(c => c.Category);
-          console.log('📂 Primary category:', primaryCat);
-          console.log('📂 Additional categories:', additionalCats);
 
           // Map service areas to simple format
           const mappedServiceAreas = serviceAreas.map(area => ({
@@ -504,10 +486,8 @@ const BecomeVendorPage = () => {
             if (stripeRes.ok) {
               const stripeData = await stripeRes.json();
               updatedFormData.stripeConnected = stripeData.connected || false;
-              console.log('💳 Stripe connected:', updatedFormData.stripeConnected);
             }
           } catch (e) {
-            console.log('Could not fetch Stripe status:', e);
           }
 
           // Fetch filters
@@ -523,10 +503,8 @@ const BecomeVendorPage = () => {
               } else if (filtersData.isPremium || filtersData.isFeatured) {
                 updatedFormData.selectedFilters = ['filter-premium'];
               }
-              console.log('🏷️ Filters loaded:', updatedFormData.selectedFilters);
             }
           } catch (e) {
-            console.log('Could not fetch filters:', e);
           }
 
           // Fetch social media from dedicated endpoint (more reliable than profile API)
@@ -542,36 +520,27 @@ const BecomeVendorPage = () => {
               updatedFormData.linkedin = socialData.linkedin || '';
               updatedFormData.youtube = socialData.youtube || '';
               updatedFormData.tiktok = socialData.tiktok || '';
-              console.log('📱 Social media loaded:', socialData);
             }
           } catch (e) {
-            console.log('Could not fetch social media:', e);
           }
 
           // Fetch selected features from dedicated endpoint (more reliable than profile API)
           try {
-            console.log('🔍 Fetching features from dedicated endpoint for vendorProfileId:', currentUser.vendorProfileId);
             const featuresRes = await fetch(`${API_BASE_URL}/vendor-features/vendor/${currentUser.vendorProfileId}`, {
               headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
             });
-            console.log('🔍 Features endpoint response status:', featuresRes.status);
             if (featuresRes.ok) {
               const featuresData = await featuresRes.json();
-              console.log('🔍 Features endpoint raw response:', featuresData);
               const featureIds = featuresData.selectedFeatures?.map(f => f.FeatureID) || [];
               updatedFormData.selectedFeatures = featureIds;
               setFeaturesLoadedFromDB(true); // Mark that we've loaded features from DB
-              console.log('✨ Selected features loaded from dedicated endpoint:', featureIds.length, 'features', featureIds);
             } else {
-              console.log('❌ Features endpoint returned non-OK status:', featuresRes.status);
               setFeaturesLoadedFromDB(true); // Still mark as loaded even if empty
             }
           } catch (e) {
-            console.log('❌ Could not fetch selected features:', e);
             setFeaturesLoadedFromDB(true); // Still mark as loaded even on error
           }
 
-          console.log('📝 Setting formData with loaded data:', updatedFormData);
           setFormData(updatedFormData);
           setInitialDataLoaded(true); // Mark that initial data has been loaded
 
@@ -602,7 +571,6 @@ const BecomeVendorPage = () => {
     if (targetStep && steps.length > 0 && !location.state?.resetToFirst) {
       const targetStepIndex = steps.findIndex(s => s.id === targetStep);
       if (targetStepIndex !== -1) {
-        console.log('Navigating to target step:', targetStep);
         setCurrentStep(targetStepIndex);
       }
       // Clear the state after using it (but keep URL param visible)
@@ -710,9 +678,6 @@ const BecomeVendorPage = () => {
       // Always use POST - the backend handles both create and update
       const endpoint = `${API_BASE_URL}/vendors/onboarding`;
       
-      console.log('Sending save request to:', endpoint);
-      console.log('Vendor data being saved:', JSON.stringify(vendorData, null, 2));
-      
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
@@ -721,8 +686,6 @@ const BecomeVendorPage = () => {
         },
         body: JSON.stringify(vendorData)
       });
-
-      console.log('Save response status:', response.status);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -738,14 +701,11 @@ const BecomeVendorPage = () => {
       }
 
       const result = await response.json();
-      console.log('✅ Save successful! Result:', result);
-      console.log('VendorProfileId:', result.vendorProfileId);
       
       const vendorProfileId = result.vendorProfileId;
       
       // ALWAYS update currentUser with vendorProfileId (for both new and existing)
       if (vendorProfileId) {
-        console.log('Updating currentUser with vendorProfileId:', vendorProfileId);
         
         setCurrentUser(prev => ({
           ...prev,
@@ -760,11 +720,8 @@ const BecomeVendorPage = () => {
         storedUser.isVendor = true;
         localStorage.setItem('user', JSON.stringify(storedUser));
         
-        console.log('Updated localStorage user:', storedUser);
-        
         // Also save features to dedicated endpoint if any are selected
         if (formData.selectedFeatures && formData.selectedFeatures.length > 0) {
-          console.log('[Save] Saving features to dedicated endpoint:', formData.selectedFeatures);
           try {
             const featuresResponse = await fetch(`${API_BASE_URL}/vendor-features/vendor/${vendorProfileId}`, {
               method: 'POST',
@@ -775,7 +732,6 @@ const BecomeVendorPage = () => {
               body: JSON.stringify({ featureIds: formData.selectedFeatures })
             });
             if (featuresResponse.ok) {
-              console.log('[Save] Features saved successfully');
             } else {
               console.error('[Save] Failed to save features:', await featuresResponse.text());
             }
@@ -786,7 +742,6 @@ const BecomeVendorPage = () => {
         
         // Also save filters to dedicated endpoint if any are selected
         if (formData.selectedFilters && formData.selectedFilters.length > 0) {
-          console.log('[Save] Saving filters to dedicated endpoint:', formData.selectedFilters);
           try {
             const filtersResponse = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/filters`, {
               method: 'PUT',
@@ -797,7 +752,6 @@ const BecomeVendorPage = () => {
               body: JSON.stringify({ filters: formData.selectedFilters.join(',') })
             });
             if (filtersResponse.ok) {
-              console.log('[Save] Filters saved successfully');
             } else {
               console.error('[Save] Failed to save filters:', await filtersResponse.text());
             }
@@ -867,7 +821,6 @@ const BecomeVendorPage = () => {
     // to let the useEffect fetch their data and show the progress indicators
     // This matches the behavior of "Complete Profile Setup" button
     if (userData.isVendor && userData.vendorProfileId) {
-      console.log('Existing vendor logged in, staying on welcome step to load profile data');
       setCurrentStep(0);
       // The useEffect will fetch vendor data and show progress indicators
     } else {
@@ -947,14 +900,9 @@ const BecomeVendorPage = () => {
         return;
       }
 
-      console.log('[handleSubmit] Starting submit...');
-      console.log('[handleSubmit] formData.selectedFeatures:', formData.selectedFeatures);
-      console.log('[handleSubmit] featuresLoadedFromDB:', featuresLoadedFromDB);
-
       // If features haven't been loaded yet and user is an existing vendor, fetch them now
       let currentFeatures = formData.selectedFeatures || [];
       if (currentUser.vendorProfileId && (!featuresLoadedFromDB || currentFeatures.length === 0)) {
-        console.log('[handleSubmit] Features not loaded, fetching from API...');
         try {
           const featuresRes = await fetch(`${API_BASE_URL}/vendor-features/vendor/${currentUser.vendorProfileId}`, {
             headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
@@ -966,11 +914,9 @@ const BecomeVendorPage = () => {
               currentFeatures = featureIds;
               // Update formData with the fetched features
               setFormData(prev => ({ ...prev, selectedFeatures: featureIds }));
-              console.log('[handleSubmit] Loaded features from API:', featureIds.length, 'features');
             }
           }
         } catch (e) {
-          console.log('[handleSubmit] Could not fetch features:', e);
         }
       }
 
@@ -1077,7 +1023,6 @@ const BecomeVendorPage = () => {
       // Save features to dedicated endpoint to ensure they're properly saved
       // This is important because the onboarding endpoint may not save features correctly
       if (vendorProfileId && currentFeatures && currentFeatures.length > 0) {
-        console.log('[handleSubmit] Saving features to dedicated endpoint:', currentFeatures);
         try {
           const featuresResponse = await fetch(`${API_BASE_URL}/vendor-features/vendor/${vendorProfileId}`, {
             method: 'POST',
@@ -1087,9 +1032,7 @@ const BecomeVendorPage = () => {
             },
             body: JSON.stringify({ featureIds: currentFeatures })
           });
-          if (featuresResponse.ok) {
-            console.log('[handleSubmit] Features saved successfully');
-          } else {
+          if (!featuresResponse.ok) {
             console.error('[handleSubmit] Failed to save features:', await featuresResponse.text());
           }
         } catch (featuresError) {
@@ -1099,7 +1042,6 @@ const BecomeVendorPage = () => {
 
       // Save filters to dedicated endpoint if any are selected
       if (vendorProfileId && formData.selectedFilters && formData.selectedFilters.length > 0) {
-        console.log('[handleSubmit] Saving filters to dedicated endpoint:', formData.selectedFilters);
         try {
           const filtersResponse = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/filters`, {
             method: 'PUT',
@@ -1109,9 +1051,7 @@ const BecomeVendorPage = () => {
             },
             body: JSON.stringify({ filters: formData.selectedFilters.join(',') })
           });
-          if (filtersResponse.ok) {
-            console.log('[handleSubmit] Filters saved successfully');
-          } else {
+          if (!filtersResponse.ok) {
             console.error('[handleSubmit] Failed to save filters:', await filtersResponse.text());
           }
         } catch (filtersError) {
@@ -1827,11 +1767,6 @@ function AccountStep({ currentUser, setFormData, formData, onAccountCreated, isE
 }
 
 function CategoriesStep({ formData, onInputChange, categories }) {
-  // Add logging to debug category loading
-  console.log('📋 CategoriesStep - formData.primaryCategory:', formData.primaryCategory);
-  console.log('📋 CategoriesStep - formData.additionalCategories:', formData.additionalCategories);
-  console.log('📋 CategoriesStep - Available categories:', categories.map(c => c.id));
-
   const handlePrimaryChange = (categoryId) => {
     onInputChange('primaryCategory', categoryId);
     const newAdditional = formData.additionalCategories.filter(c => c !== categoryId);
@@ -1854,7 +1789,6 @@ function CategoriesStep({ formData, onInputChange, categories }) {
       <div className="categories-grid">
         {categories.map(category => {
           const isSelected = formData.primaryCategory === category.id;
-          console.log(`Category ${category.id}: isSelected=${isSelected}, formData.primaryCategory=${formData.primaryCategory}`);
           return (
             <div
               key={category.id}
@@ -2091,13 +2025,11 @@ function LocationStep({ formData, onInputChange, setFormData, provinces, googleM
     // Add retry mechanism in case Google Maps hasn't loaded yet
     const tryInitialize = () => {
       if (window.google?.maps?.places) {
-        console.log('✅ Google Maps ready, initializing autocomplete...');
         // Add small delay to ensure DOM elements are ready
         setTimeout(() => {
           initializeGoogleMaps();
         }, 100);
       } else {
-        console.log('⏳ Google Maps not ready yet, retrying in 200ms...');
         setTimeout(tryInitialize, 200);
       }
     };
@@ -2116,14 +2048,6 @@ function LocationStep({ formData, onInputChange, setFormData, provinces, googleM
   }, []); // Empty dependency - only run once on mount
 
   const initializeGoogleMaps = () => {
-    console.log('🎉 Google Maps API loaded successfully!');
-    console.log('🔍 LocationStep: Checking Google Maps...', {
-      hasGoogle: !!window.google,
-      hasMaps: !!window.google?.maps,
-      hasPlaces: !!window.google?.maps?.places,
-      hasAddressInput: !!addressInputRef.current,
-      hasServiceAreaInput: !!serviceAreaInputRef.current
-    });
 
     if (!window.google || !window.google.maps || !window.google.maps.places) {
       console.error('❌ Google Maps not ready yet');
@@ -2137,8 +2061,6 @@ function LocationStep({ formData, onInputChange, setFormData, provinces, googleM
     
     // Address Autocomplete - EXACT COPY FROM WORKING TEST PAGE
     try {
-      console.log('✅ Creating address autocomplete for:', addressInputRef.current);
-      
       addressAutocompleteRef.current = new window.google.maps.places.Autocomplete(addressInputRef.current, {
         types: ['address'],
         componentRestrictions: { country: 'ca' }
@@ -2146,7 +2068,6 @@ function LocationStep({ formData, onInputChange, setFormData, provinces, googleM
       
       addressAutocompleteRef.current.addListener('place_changed', function() {
         const place = addressAutocompleteRef.current.getPlace();
-        console.log('🎯 Address selected:', place);
         
         if (place.address_components) {
           const comps = place.address_components;
@@ -2155,13 +2076,6 @@ function LocationStep({ formData, onInputChange, setFormData, provinces, googleM
           const streetNumber = pick('street_number');
           const route = pick('route');
           const fullAddress = streetNumber && route ? `${streetNumber} ${route}` : place.formatted_address;
-          
-          console.log('📋 Extracted address data:', {
-            fullAddress,
-            city: pick('locality') || pick('sublocality'),
-            province: pick('administrative_area_level_1'),
-            postalCode: pick('postal_code')
-          });
           
           // Update form data
           setFormData(prev => ({
@@ -2174,12 +2088,8 @@ function LocationStep({ formData, onInputChange, setFormData, provinces, googleM
             latitude: place.geometry?.location?.lat() || null,
             longitude: place.geometry?.location?.lng() || null
           }));
-          
-          console.log('✅ Address fields updated in React state!');
         }
       });
-      
-      console.log('✅ Address autocomplete initialized');
     } catch (error) {
       console.error('❌ Error initializing address autocomplete:', error);
     }
@@ -2187,8 +2097,6 @@ function LocationStep({ formData, onInputChange, setFormData, provinces, googleM
     // Service Area Autocomplete - EXACT COPY FROM WORKING TEST PAGE
     if (serviceAreaInputRef.current) {
       try {
-        console.log('✅ Creating city autocomplete for:', serviceAreaInputRef.current);
-        
         serviceAreaAutocompleteRef.current = new window.google.maps.places.Autocomplete(serviceAreaInputRef.current, {
           types: ['(cities)'],
           componentRestrictions: { country: 'ca' }
@@ -2196,7 +2104,6 @@ function LocationStep({ formData, onInputChange, setFormData, provinces, googleM
         
         serviceAreaAutocompleteRef.current.addListener('place_changed', function() {
           const place = serviceAreaAutocompleteRef.current.getPlace();
-          console.log('🎯 City selected:', place);
           
           if (place.address_components) {
             const comps = place.address_components;
@@ -2209,7 +2116,6 @@ function LocationStep({ formData, onInputChange, setFormData, provinces, googleM
                 ...prev,
                 serviceAreas: [...prev.serviceAreas, areaToAdd]
               }));
-              console.log('✅ Added service area:', areaToAdd);
             }
             
             if (serviceAreaInputRef.current) {
@@ -2217,8 +2123,6 @@ function LocationStep({ formData, onInputChange, setFormData, provinces, googleM
             }
           }
         });
-        
-        console.log('✅ City autocomplete initialized');
       } catch (error) {
         console.error('❌ Error initializing city autocomplete:', error);
       }
@@ -2492,9 +2396,6 @@ function ServicesStep({ formData, setFormData }) {
   const [editingService, setEditingService] = useState(null);
 
   useEffect(() => {
-    console.log('🔄 ServicesStep useEffect triggered');
-    console.log('🔄 Primary category:', formData.primaryCategory);
-    console.log('🔄 Additional categories:', formData.additionalCategories);
     loadServices();
   }, [formData.primaryCategory, JSON.stringify(formData.additionalCategories)]);
 
@@ -2515,10 +2416,6 @@ function ServicesStep({ formData, setFormData }) {
       setLoading(true);
       const allCategories = [formData.primaryCategory, ...formData.additionalCategories].filter(Boolean);
       
-      console.log('ServicesStep - Loading services for categories:', allCategories);
-      console.log('ServicesStep - formData.primaryCategory:', formData.primaryCategory);
-      console.log('ServicesStep - formData.additionalCategories:', formData.additionalCategories);
-      
       if (allCategories.length === 0) {
         console.warn('ServicesStep - No categories selected yet');
         setAvailableServices([]);
@@ -2537,16 +2434,12 @@ function ServicesStep({ formData, setFormData }) {
         const filteredServices = [];
         allCategories.forEach(category => {
           if (servicesByCategory[category]) {
-            console.log(`Found ${servicesByCategory[category].length} services for category: ${category}`);
             servicesByCategory[category].forEach(service => {
               filteredServices.push({ ...service, category });
             });
-          } else {
-            console.warn(`No services found for category: ${category}`);
           }
         });
         
-        console.log('ServicesStep - Total filtered services:', filteredServices.length);
         setAvailableServices(filteredServices);
       }
     } catch (error) {
@@ -3231,20 +3124,14 @@ function QuestionnaireStep({ formData, setFormData, currentUser, setFeaturesLoad
   const loadQuestionnaire = async () => {
     try {
       setLoading(true);
-      console.log('[BecomeVendor Questionnaire] ===== LOADING START =====');
-      console.log('[BecomeVendor Questionnaire] vendorProfileId:', currentUser?.vendorProfileId);
-      console.log('[BecomeVendor Questionnaire] API_BASE_URL:', API_BASE_URL);
       
       // Fetch all features grouped by category
       const response = await fetch(`${API_BASE_URL}/vendor-features/all-grouped`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       
-      console.log('[BecomeVendor Questionnaire] all-grouped response status:', response.status);
       if (response.ok) {
         const data = await response.json();
-        console.log('[BecomeVendor Questionnaire] Raw data:', data);
-        console.log('[BecomeVendor Questionnaire] Categories count:', data.categories?.length);
         setCategories(data.categories || []);
       } else {
         console.error('[BecomeVendor Questionnaire] Failed to fetch, status:', response.status);
@@ -3252,15 +3139,12 @@ function QuestionnaireStep({ formData, setFormData, currentUser, setFeaturesLoad
       
       // Load vendor's existing selections if vendorProfileId exists
       if (currentUser?.vendorProfileId) {
-        console.log('[BecomeVendor Questionnaire] Fetching vendor selections...');
         const selectionsResponse = await fetch(`${API_BASE_URL}/vendor-features/vendor/${currentUser.vendorProfileId}`, {
           headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
         });
         
-        console.log('[BecomeVendor Questionnaire] Selections response:', selectionsResponse.status);
         if (selectionsResponse.ok) {
           const selectionsData = await selectionsResponse.json();
-          console.log('[BecomeVendor Questionnaire] Selections data:', selectionsData);
           const selectedIds = new Set(
             selectionsData.selectedFeatures?.map(f => f.FeatureID) || []
           );
@@ -3269,7 +3153,6 @@ function QuestionnaireStep({ formData, setFormData, currentUser, setFeaturesLoad
           setFormData(prev => ({ ...prev, selectedFeatures: Array.from(selectedIds) }));
           // Mark that features have been loaded from DB
           if (setFeaturesLoadedFromDB) setFeaturesLoadedFromDB(true);
-          console.log('[BecomeVendor Questionnaire] Loaded selected features:', selectedIds.size);
         } else {
           // Still mark as loaded even if response not OK
           if (setFeaturesLoadedFromDB) setFeaturesLoadedFromDB(true);
@@ -3307,8 +3190,6 @@ function QuestionnaireStep({ formData, setFormData, currentUser, setFeaturesLoad
     setSaving(true);
     try {
       const featureIdsArray = Array.from(selectedFeatureIds);
-      console.log('[BecomeVendor Questionnaire] Saving features:', featureIdsArray);
-      console.log('[BecomeVendor Questionnaire] To vendorProfileId:', currentUser.vendorProfileId);
       
       const response = await fetch(`${API_BASE_URL}/vendor-features/vendor/${currentUser.vendorProfileId}`, {
         method: 'POST',
@@ -3321,9 +3202,7 @@ function QuestionnaireStep({ formData, setFormData, currentUser, setFeaturesLoad
         })
       });
       
-      console.log('[BecomeVendor Questionnaire] Save response:', response.status);
       const responseData = await response.json();
-      console.log('[BecomeVendor Questionnaire] Save response data:', responseData);
       
       if (response.ok) {
         showBanner('Features saved successfully!', 'success');
@@ -3378,13 +3257,6 @@ function QuestionnaireStep({ formData, setFormData, currentUser, setFeaturesLoad
   };
 
   const filteredCategories = getFilteredCategories();
-  
-  // Debug logging
-  console.log('[BecomeVendor Questionnaire] RENDER - loading:', loading, 'categories:', categories.length, 'filteredCategories:', filteredCategories.length);
-  if (filteredCategories.length > 0) {
-    console.log('[BecomeVendor Questionnaire] First category:', filteredCategories[0]);
-    console.log('[BecomeVendor Questionnaire] First feature:', filteredCategories[0]?.features?.[0]);
-  }
 
   if (loading) {
     return (
@@ -4040,17 +3912,13 @@ function FiltersStep({ formData, setFormData, filterOptions, currentUser }) {
   const loadFilters = async () => {
     try {
       setLoading(true);
-      console.log('[FiltersStep] Loading filters for vendorProfileId:', currentUser.vendorProfileId);
       const response = await fetch(`${API_BASE_URL}/vendors/${currentUser.vendorProfileId}/filters`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       
-      console.log('[FiltersStep] Response status:', response.status);
       if (response.ok) {
         const data = await response.json();
-        console.log('[FiltersStep] Loaded data:', data);
         const filters = data.filters ? data.filters.split(',').filter(f => f) : [];
-        console.log('[FiltersStep] Parsed filters:', filters);
         setSelectedFilters(filters);
         setFormData(prev => ({ ...prev, selectedFilters: filters }));
       }
@@ -4230,7 +4098,6 @@ function StripeStep({ formData, setFormData, currentUser }) {
 
       if (response.ok) {
         const data = await response.json();
-        console.log('Stripe status:', data);
         setStripeStatus(data);
         // Update formData so step completion can check it
         if (data.connected) {
@@ -4258,7 +4125,6 @@ function StripeStep({ formData, setFormData, currentUser }) {
 
       if (response.ok) {
         const data = await response.json();
-        console.log('Stripe onboard response:', data);
         // Check for authUrl or url (dashboard uses both)
         if (data.authUrl || data.url) {
           window.location.href = data.authUrl || data.url;

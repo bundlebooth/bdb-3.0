@@ -23,22 +23,8 @@ function BusinessInformationPanel({ onBack, vendorProfileId }) {
     logoUrl: ''
   });
 
-  // Debug: Log when component mounts/unmounts
-  useEffect(() => {
-    console.log('📝 BusinessInformationPanel MOUNTED with vendorProfileId:', vendorProfileId);
-    return () => {
-      console.log('📝 BusinessInformationPanel UNMOUNTED for vendorProfileId:', vendorProfileId);
-    };
-  }, []);
-
-  // Debug: Log when vendorProfileId changes
-  useEffect(() => {
-    console.log('🔄 BusinessInformationPanel - vendorProfileId changed to:', vendorProfileId);
-  }, [vendorProfileId]);
-
   // Clear form data when vendorProfileId changes
   useEffect(() => {
-    console.log('🧹 Clearing form data for vendorProfileId:', vendorProfileId);
     // Reset form to default values when vendor changes
     setFormData({
       businessName: '',
@@ -154,25 +140,16 @@ function BusinessInformationPanel({ onBack, vendorProfileId }) {
         logoUrl: ''
       });
       
-      console.log('Loading profile for vendorProfileId:', vendorProfileId);
       const response = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       
-      console.log('Profile response status:', response.status);
-      
       if (response.ok) {
         const result = await response.json();
-        console.log('Profile data loaded:', result);
         
         // Handle nested structure from /vendors/:id endpoint
         const profile = result.data?.profile || result.profile || result;
         const categories = result.data?.categories || result.categories || [];
-        
-        // CRITICAL DEBUG: Check what VendorProfileID the API returned
-        console.log('⚠️ API returned VendorProfileID:', profile.VendorProfileID);
-        console.log('⚠️ We requested vendorProfileId:', vendorProfileId);
-        console.log('⚠️ BusinessName in response:', profile.BusinessName);
         
         if (profile.VendorProfileID && profile.VendorProfileID !== vendorProfileId) {
           console.error('🚨 MISMATCH! API returned different vendor data!');
@@ -220,13 +197,6 @@ function BusinessInformationPanel({ onBack, vendorProfileId }) {
     try {
       const allCategories = [formData.category, ...formData.additionalCategories].filter(Boolean).join(',');
       
-      console.log('Saving profile for vendorProfileId:', vendorProfileId);
-      console.log('Profile data:', {
-        BusinessName: formData.businessName,
-        Categories: allCategories,
-        PriceLevel: formData.priceLevel
-      });
-      
       const response = await fetch(`${API_BASE_URL}/vendors/setup/step1-business-basics`, {
         method: 'POST',
         headers: {
@@ -248,8 +218,6 @@ function BusinessInformationPanel({ onBack, vendorProfileId }) {
           priceLevel: formData.priceLevel
         })
       });
-      
-      console.log('Save response status:', response.status);
       
       if (response.ok) {
         showBanner('Profile updated successfully!', 'success');

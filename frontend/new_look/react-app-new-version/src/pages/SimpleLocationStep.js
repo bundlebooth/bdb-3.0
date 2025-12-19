@@ -10,13 +10,10 @@ function SimpleLocationStep({ formData = {}, onInputChange = () => {} }) {
   React.useEffect(() => {
     const initAutocomplete = async () => {
       if (!addressContainerRef.current || !window.google?.maps) {
-        console.log('❌ Cannot initialize: missing refs or Google Maps');
         return;
       }
 
       try {
-        console.log('✅ Initializing NEW PlaceAutocompleteElement for address...');
-        
         // Import the Places library
         const { PlaceAutocompleteElement } = await window.google.maps.importLibrary("places");
         
@@ -37,11 +34,9 @@ function SimpleLocationStep({ formData = {}, onInputChange = () => {} }) {
         
         // Listen for place selection
         autocompleteElement.addEventListener('gmp-placeselect', async (event) => {
-          console.log('🎯 NEW API: Address place selected!');
           const place = event.place;
           
           if (!place) {
-            console.log('❌ No place object');
             return;
           }
           
@@ -49,8 +44,6 @@ function SimpleLocationStep({ formData = {}, onInputChange = () => {} }) {
           await place.fetchFields({
             fields: ['displayName', 'formattedAddress', 'addressComponents', 'location']
           });
-          
-          console.log('📍 Place details:', place);
           
           const getComponent = (type) => {
             const comp = place.addressComponents?.find(c => c.types.includes(type));
@@ -70,8 +63,6 @@ function SimpleLocationStep({ formData = {}, onInputChange = () => {} }) {
             postalCode: getComponent('postal_code') || ''
           };
           
-          console.log('📋 Extracted data:', addressData);
-          
           // Update all fields
           onInputChange('address', addressData.address);
           onInputChange('city', addressData.city);
@@ -83,29 +74,21 @@ function SimpleLocationStep({ formData = {}, onInputChange = () => {} }) {
           if (place.location) {
             const lat = place.location.lat();
             const lng = place.location.lng();
-            console.log('🗺️ Coordinates:', lat, lng);
             onInputChange('latitude', lat);
             onInputChange('longitude', lng);
           }
           
-          console.log('✅ All address fields updated!');
         });
-        
-        console.log('✅ NEW PlaceAutocompleteElement initialized!');
       } catch (error) {
-        console.error('❌ Error initializing PlaceAutocompleteElement:', error);
       }
     };
 
     // Wait for Google Maps to load
     if (window.google?.maps) {
-      console.log('✅ Google Maps already loaded');
       initAutocomplete();
     } else {
-      console.log('⏳ Waiting for Google Maps to load...');
       const checkGoogle = setInterval(() => {
         if (window.google?.maps) {
-          console.log('✅ Google Maps loaded!');
           initAutocomplete();
           clearInterval(checkGoogle);
         }
@@ -113,7 +96,6 @@ function SimpleLocationStep({ formData = {}, onInputChange = () => {} }) {
 
       setTimeout(() => {
         clearInterval(checkGoogle);
-        console.log('⏰ Timeout: Google Maps did not load');
       }, 10000);
       
       return () => clearInterval(checkGoogle);
@@ -128,8 +110,6 @@ function SimpleLocationStep({ formData = {}, onInputChange = () => {} }) {
       }
 
       try {
-        console.log('✅ Initializing NEW PlaceAutocompleteElement for service areas...');
-        
         // Import the Places library
         const { PlaceAutocompleteElement } = await window.google.maps.importLibrary("places");
         
@@ -150,7 +130,6 @@ function SimpleLocationStep({ formData = {}, onInputChange = () => {} }) {
         
         // Listen for place selection
         autocompleteElement.addEventListener('gmp-placeselect', async (event) => {
-          console.log('🎯 NEW API: Service area place selected!');
           const place = event.place;
           
           if (!place) return;
@@ -161,13 +140,11 @@ function SimpleLocationStep({ formData = {}, onInputChange = () => {} }) {
           });
           
           const cityName = place.formattedAddress || place.displayName;
-          console.log('📍 Selected city:', cityName);
           
           // Add to service areas
           const areas = formData.serviceAreas || [];
           if (!areas.includes(cityName)) {
             onInputChange('serviceAreas', [...areas, cityName]);
-            console.log('✅ Added service area:', cityName);
           }
           
           // Clear the input by recreating the element
@@ -183,10 +160,7 @@ function SimpleLocationStep({ formData = {}, onInputChange = () => {} }) {
           newElement.addEventListener('gmp-placeselect', arguments.callee);
           serviceAreaElementRef.current = newElement;
         });
-        
-        console.log('✅ NEW PlaceAutocompleteElement for service areas initialized!');
       } catch (error) {
-        console.error('❌ Error initializing service area PlaceAutocompleteElement:', error);
       }
     };
 

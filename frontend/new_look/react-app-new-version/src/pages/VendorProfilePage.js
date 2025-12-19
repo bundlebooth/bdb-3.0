@@ -77,10 +77,7 @@ function VendorProfilePage() {
         
         // Load Google Reviews if Google Place ID exists
         if (vendorDetails.profile.GooglePlaceId) {
-          console.log('🔍 Google Place ID found:', vendorDetails.profile.GooglePlaceId);
           loadGoogleReviews(vendorDetails.profile.GooglePlaceId);
-        } else {
-          console.log('❌ No Google Place ID found for this vendor');
         }
 
         // Auto-toggle to Google Reviews if no in-app reviews
@@ -138,12 +135,10 @@ function VendorProfilePage() {
   const loadGoogleReviews = useCallback(async (googlePlaceId) => {
     try {
       setGoogleReviewsLoading(true);
-      console.log('🔍 Loading Google Reviews for Place ID:', googlePlaceId);
       
       const response = await fetch(`${API_BASE_URL}/vendors/google-reviews/${googlePlaceId}`);
       if (response.ok) {
         const data = await response.json();
-        console.log('✅ Google Reviews loaded:', data.data);
         setGoogleReviews(data.data);
       } else {
         console.warn('Google Reviews not available:', response.status);
@@ -640,7 +635,7 @@ function VendorProfilePage() {
         <h2>Portfolio</h2>
         <div className="portfolio-grid">
           {portfolioAlbums.map((album, index) => (
-            <div key={index} className="portfolio-album" onClick={() => console.log('Open album:', album.AlbumID)}>
+            <div key={index} className="portfolio-album" onClick={() => {}}>
               <div style={{ position: 'relative', paddingTop: '66%', background: 'var(--bg-dark)' }}>
                 {album.CoverImageURL ? (
                   <img src={album.CoverImageURL} alt={album.AlbumName} className="portfolio-album-image" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -1263,7 +1258,7 @@ function VendorProfilePage() {
     return (
       <>
         <Header 
-          onSearch={(q) => console.log(q)} 
+          onSearch={() => {}} 
           onProfileClick={() => setProfileModalOpen(true)} 
           onWishlistClick={() => setProfileModalOpen(true)} 
           onChatClick={() => setProfileModalOpen(true)} 
@@ -1406,7 +1401,7 @@ function VendorProfilePage() {
   return (
     <div style={{ backgroundColor: '#ffffff', minHeight: '100vh', width: '100%' }}>
       <Header 
-        onSearch={(q) => console.log(q)} 
+        onSearch={() => {}} 
         onProfileClick={() => {
           if (currentUser) {
             setDashboardModalOpen(true);

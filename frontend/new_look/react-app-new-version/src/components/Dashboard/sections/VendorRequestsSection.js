@@ -40,10 +40,8 @@ function VendorRequestsSection() {
       });
       if (response.ok) {
         const data = await response.json();
-        console.log('Got vendor profile:', data);
         setVendorProfileId(data.vendorProfileId);
       } else {
-        console.log('No vendor profile found for user');
         setLoading(false);
       }
     } catch (error) {
@@ -54,19 +52,15 @@ function VendorRequestsSection() {
 
   const loadBookings = useCallback(async () => {
     if (!vendorProfileId) {
-      console.log('No vendorProfileId found');
       setLoading(false);
       return;
     }
     
     try {
       setLoading(true);
-      console.log('Fetching vendor bookings for vendorProfileId:', vendorProfileId);
       const resp = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/bookings/all`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
-      
-      console.log('Response status:', resp.status);
       
       if (!resp.ok) {
         const errorData = await resp.json().catch(() => ({ message: 'Unknown error' }));
@@ -75,7 +69,6 @@ function VendorRequestsSection() {
       }
       
       const data = await resp.json();
-      console.log('Received vendor bookings:', data);
       const bookings = Array.isArray(data) ? data : [];
       
       // Normalize status and sort by date

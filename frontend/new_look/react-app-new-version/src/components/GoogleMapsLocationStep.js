@@ -179,8 +179,6 @@ function GoogleMapsLocationStep({ formData, setFormData, onInputChange }) {
   }, []);
   
   const initializeGoogleMapsForInjectedHTML = () => {
-    console.log('🎉 Initializing Google Maps for injected HTML...');
-    
     if (!window.google?.maps?.places) {
       console.error('❌ Google Maps not ready');
       return;
@@ -203,7 +201,6 @@ function GoogleMapsLocationStep({ formData, setFormData, onInputChange }) {
       
       addressAutocomplete.addListener('place_changed', function() {
         const place = addressAutocomplete.getPlace();
-        console.log('🎯 Address selected:', place);
         
         if (place.address_components) {
           const comps = place.address_components;
@@ -236,11 +233,8 @@ function GoogleMapsLocationStep({ formData, setFormData, onInputChange }) {
             longitude: place.geometry?.location?.lng() || null
           }));
           
-          console.log('✅ Address fields updated!');
         }
       });
-      
-      console.log('✅ Address autocomplete created');
     } catch (error) {
       console.error('❌ Error creating address autocomplete:', error);
     }
@@ -255,7 +249,6 @@ function GoogleMapsLocationStep({ formData, setFormData, onInputChange }) {
         
         serviceAreaAutocomplete.addListener('place_changed', function() {
           const place = serviceAreaAutocomplete.getPlace();
-          console.log('🎯 City selected:', place);
           
           if (place.address_components) {
             const comps = place.address_components;
@@ -269,14 +262,11 @@ function GoogleMapsLocationStep({ formData, setFormData, onInputChange }) {
                 serviceAreas: [...prev.serviceAreas, areaToAdd]
               }));
               updateServiceAreasDisplay([...formData.serviceAreas, areaToAdd]);
-              console.log('✅ Added service area:', areaToAdd);
             }
             
             serviceAreaInput.value = '';
           }
         });
-        
-        console.log('✅ Service area autocomplete created');
       } catch (error) {
         console.error('❌ Error creating service area autocomplete:', error);
       }

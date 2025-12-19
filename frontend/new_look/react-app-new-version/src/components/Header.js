@@ -32,7 +32,6 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
   // Clear any dashboard hash on mount to prevent auto-opening
   useEffect(() => {
     if (window.location.hash === '#dashboard') {
-      console.log('Clearing dashboard hash to prevent auto-open');
       window.history.replaceState(null, null, window.location.pathname);
     }
 
@@ -296,7 +295,6 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
           className="nav-icon" 
           id="whats-new-btn" 
           onClick={() => {
-            console.log('📢 What\'s New button clicked, opening sidebar');
             setWhatsNewOpen(true);
           }}
           title="What's New"

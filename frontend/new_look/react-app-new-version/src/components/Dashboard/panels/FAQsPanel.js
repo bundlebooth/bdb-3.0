@@ -30,7 +30,6 @@ function FAQsPanel({ onBack, vendorProfileId }) {
       
       if (response.ok) {
         const data = await response.json();
-        console.log('FAQs data:', data);
         // The endpoint returns an array directly
         const faqsArray = Array.isArray(data) ? data : (data.faqs || []);
         setFaqs(faqsArray.map(faq => ({

@@ -26,7 +26,6 @@ export function useNotifications() {
         setNotificationCount(data.unreadCount || 0);
       }
     } catch (error) {
-      console.log('Notifications endpoint not available:', error);
       // Fallback: use unread messages as notification count
       try {
         const msgResponse = await fetch(`${API_BASE_URL}/messages/unread-count/${currentUser.id}`, {
@@ -57,7 +56,6 @@ export function useNotifications() {
         setNotifications(data.notifications || []);
       }
     } catch (error) {
-      console.log('Notifications endpoint not available:', error);
       setNotifications([]);
     } finally {
       setLoading(false);

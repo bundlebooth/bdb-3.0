@@ -100,12 +100,10 @@ function IndexPage() {
   // Using ip-api.com - free and reliable service
   const detectCityFromIP = useCallback(async () => {
     try {
-      console.log('🌍 Detecting city from IP using ip-api.com...');
-      // ip-api.com is free for non-commercial use, no API key needed
+        // ip-api.com is free for non-commercial use, no API key needed
       const response = await fetch('http://ip-api.com/json/?fields=status,city,regionName,country,lat,lon');
       if (response.ok) {
         const data = await response.json();
-        console.log('🌍 IP geolocation data:', data);
         if (data.status === 'success' && data.city) {
           const cityString = `${data.city}, ${data.regionName}`;
           setDetectedCity(data.city);
@@ -116,11 +114,9 @@ function IndexPage() {
           });
           // Also set the location filter to auto-filter vendors by city
           setFilters(prev => ({ ...prev, location: data.city }));
-          console.log('🌍 City detected:', cityString, 'Lat:', data.lat, 'Lng:', data.lon);
         }
       }
     } catch (error) {
-      console.log('🌍 IP geolocation failed, trying fallback...', error);
       // Fallback to ipinfo.io
       try {
         const fallbackResponse = await fetch('https://ipinfo.io/json?token=demo');
@@ -131,11 +127,9 @@ function IndexPage() {
             setDetectedCity(fallbackData.city);
             setUserLocation({ lat, lng, city: `${fallbackData.city}, ${fallbackData.region}` });
             setFilters(prev => ({ ...prev, location: fallbackData.city }));
-            console.log('🌍 Fallback city detected:', fallbackData.city);
           }
         }
       } catch (fallbackError) {
-        console.log('🌍 All IP geolocation attempts failed:', fallbackError);
       }
     }
   }, []);
@@ -154,7 +148,7 @@ function IndexPage() {
             lng: position.coords.longitude
           }));
         },
-        (error) => console.log('Geolocation error:', error)
+        () => {}
       );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -165,18 +159,13 @@ function IndexPage() {
   const loadDiscoverySections = useCallback(async (overrideFilters = null) => {
     // This function is now a no-op - discovery sections are loaded with vendors
     // Keeping for backwards compatibility with any code that calls it directly
-    console.log('📋 loadDiscoverySections called - sections now loaded with main vendors query');
   }, []);
 
   // Handler for map bounds change - search as user drags map
   const handleMapBoundsChange = useCallback(async (boundsData) => {
-    console.log('🗺️ Map bounds changed:', boundsData);
-    
     // Calculate radius based on map bounds (approximate)
     const latDiff = Math.abs(boundsData.bounds.north - boundsData.bounds.south);
     const radiusMiles = Math.max(10, Math.min(100, Math.round(latDiff * 69 / 2))); // ~69 miles per degree latitude
-    
-    console.log('🗺️ Triggering vendor search for center:', boundsData.center, 'radius:', radiusMiles, 'miles');
     
     // Show loading state while fetching
     setLoading(true);
@@ -196,14 +185,11 @@ function IndexPage() {
       }
       
       const searchUrl = `${API_BASE_URL}/vendors?${qp.toString()}`;
-      console.log('🗺️ Fetching vendors from:', searchUrl);
       
       const vendorResponse = await fetch(searchUrl);
       if (vendorResponse.ok) {
         const data = await vendorResponse.json();
-        console.log('🗺️ API Response:', data);
         const newVendors = data.vendors || data.data || data || [];
-        console.log('🗺️ Found', newVendors.length, 'vendors in map area');
         
         // Try to get city from first vendor's location
         let mapCity = 'this area';
@@ -232,11 +218,9 @@ function IndexPage() {
         
         // Update discovery sections if available in response
         if (data.discoverySections && Array.isArray(data.discoverySections)) {
-          console.log('🗺️ Updating discovery sections from map search');
           setDiscoverySections(data.discoverySections);
         } else if (newVendors.length > 0) {
           // Create basic discovery sections from the vendors
-          console.log('🗺️ Creating discovery sections from vendors');
           const sections = [
             {
               id: 'nearby',
@@ -260,14 +244,11 @@ function IndexPage() {
 
   // EXACT match to original applyClientSideFilters (line 26091-26120)
   const applyClientSideFiltersInternal = useCallback((vendorsToFilter) => {
-    console.log('🔧 Applying client-side filters to', vendorsToFilter.length, 'vendors');
-    
     const filtered = vendorsToFilter.filter(vendor => {
       // Category filter - check both category and type fields
       if (currentCategory !== 'all') {
         const vendorCategory = vendor.category || vendor.type || '';
         if (vendorCategory !== currentCategory) {
-          console.log(`❌ Vendor ${vendor.name} filtered out: has "${vendorCategory}", need "${currentCategory}"`);
           return false;
         }
       }
@@ -297,8 +278,6 @@ function IndexPage() {
     
     isLoadingRef.current = true;
     
-    console.log('🔍 loadVendors called with:', { currentCategory, location: filters.location, append });
-    
     try {
       if (!append) {
         setLoading(true);
@@ -310,8 +289,6 @@ function IndexPage() {
       const hasCategoryQuery = currentCategory && currentCategory !== 'all';
       const nextPage = append ? serverPageNumber + 1 : 1;
       const hasUserLocation = userLocation?.lat && userLocation?.lng;
-      
-      console.log('🔍 hasCategoryQuery:', hasCategoryQuery, 'currentCategory:', currentCategory);
       
       let url = '';
       
@@ -401,16 +378,13 @@ function IndexPage() {
         url = `${API_BASE_URL}/vendors?${qp.toString()}`;
       }
       
-      console.log('🔍 Fetching vendors from:', url);
       const response = await fetch(url);
-      console.log('📡 Response status:', response.status);
       if (!response.ok) {
         const errorText = await response.text();
         console.error('❌ API Error:', errorText);
         throw new Error('Failed to fetch vendors');
       }
       const data = await response.json();
-      console.log('📦 Raw API response:', data);
       
       // Handle response EXACTLY like original (line 26238-26258)
       let newVendors = [];
@@ -418,7 +392,6 @@ function IndexPage() {
       
       if (hasCategoryQuery && Array.isArray(data.sections)) {
         // Response from /vendors/search-by-categories has sections
-        console.log('📦 Response has sections format');
         newVendors = data.sections.flatMap(s => s?.vendors || []);
         
         // Deduplicate vendors by profile ID or id (EXACT match to line 26242-26250)
@@ -441,7 +414,6 @@ function IndexPage() {
         // Handle discovery sections from category search (filtered by category)
         // ALSO filter discovery section vendors by city
         if (data.discoverySections && Array.isArray(data.discoverySections)) {
-          console.log('📦 Discovery sections loaded from category search:', data.discoverySections.length);
           // Filter each section's vendors by city if location is set
           const cityFilter = filters.location?.toLowerCase();
           const filteredSections = data.discoverySections.map(section => ({
@@ -458,14 +430,12 @@ function IndexPage() {
         }
       } else {
         // Regular /vendors response (line 26256-26258)
-        console.log('📦 Response has regular format');
         newVendors = data.vendors || [];
         totalCount = data.totalCount || newVendors.length;
         
         // Handle discovery sections from unified endpoint
         // ALSO filter discovery section vendors by city
         if (data.discoverySections && Array.isArray(data.discoverySections)) {
-          console.log('📦 Discovery sections loaded from unified endpoint:', data.discoverySections.length);
           // Filter each section's vendors by city if location is set
           const cityFilter = filters.location?.toLowerCase();
           const filteredSections = data.discoverySections.map(section => ({
@@ -481,11 +451,6 @@ function IndexPage() {
           setLoadingDiscovery(false);
         }
       }
-      console.log('✅ Vendors loaded:', newVendors.length, 'Total count:', totalCount);
-      if (newVendors.length > 0) {
-        console.log('📋 First vendor sample:', newVendors[0]);
-      }
-      
       // Always set loadingDiscovery to false after processing response
       setLoadingDiscovery(false);
       
@@ -523,7 +488,6 @@ function IndexPage() {
   }, [currentCategory, filters.priceLevel, filters.minRating, filters.region, filters.tags, userLocation, serverPageNumber]);
 
   const initializePage = useCallback(async () => {
-    console.log('🚀 initializePage called, hasLoadedOnce:', hasLoadedOnce.current, 'currentCategory:', currentCategory, 'filters.location:', filters.location);
     if (hasLoadedOnce.current) {
       return; // Prevent duplicate initialization
     }
@@ -561,14 +525,11 @@ function IndexPage() {
     const urlCategory = params.get('category') || 'all';
     const urlLocation = params.get('location') || '';
     
-    console.log('🔄 URL params changed:', { urlCategory, urlLocation, currentCategory, currentLocation: filters.location });
-    
     // Check if URL params differ from current state
     const categoryChanged = urlCategory !== currentCategory;
     const locationChanged = urlLocation !== filters.location;
     
     if (categoryChanged || locationChanged) {
-      console.log('🔄 Updating state from URL params');
       if (categoryChanged) {
         setCurrentCategory(urlCategory);
       }
@@ -657,21 +618,15 @@ function IndexPage() {
 
   // Discovery sections are now loaded with vendors - this useEffect is kept for logging only
   useEffect(() => {
-    console.log('🔄 Category/location changed - discovery sections will update with vendors:', {
-      currentCategory,
-      location: filters.location
-    });
   }, [currentCategory, filters.location]);
 
   const handleCategoryChange = useCallback((category) => {
-    console.log('🎯 Category changed to:', category);
     setCurrentCategory(category);
     setCurrentPage(1);
   }, []);
 
   const handleSortChange = useCallback((e) => {
     const newSortBy = e.target.value;
-    console.log('🔧 Sort changed:', newSortBy);
     setSortBy(newSortBy);
     
     // Apply sorting to current vendors
@@ -717,7 +672,6 @@ function IndexPage() {
   }, [filteredVendors, userLocation]);
 
   const handleFilterChange = useCallback((newFilters) => {
-    console.log('🔧 Filter changed:', newFilters);
     setFilters(newFilters);
     
     // Update URL with filter parameters
@@ -838,8 +792,6 @@ function IndexPage() {
   }, [mapActive]);
 
   const handleEnhancedSearch = useCallback(async (searchParams) => {
-    console.log('🔍 Enhanced search triggered:', searchParams);
-    
     // Mark that we're doing an enhanced search so useEffect doesn't overwrite our results
     isEnhancedSearchRef.current = true;
     
@@ -883,21 +835,15 @@ function IndexPage() {
         if (currentCategory && currentCategory !== 'all') params.set('category', currentCategory);
         
         const url = `${API_BASE_URL}/vendors?${params.toString()}`;
-        console.log('🔥 FETCHING VENDORS:', url);
-        console.log('🔥 FILTERS:', newFilters);
         
         // Fetch vendors
         const vendorsResponse = await fetch(url);
         const vendorsData = await vendorsResponse.json();
         
-        console.log('🔥 RESPONSE:', vendorsData);
-        
         if (vendorsData.success && vendorsData.vendors) {
           setVendors(vendorsData.vendors);
           setFilteredVendors(vendorsData.vendors);
           setServerTotalCount(vendorsData.totalCount || 0);
-          
-          console.log(`✅ Loaded ${vendorsData.vendors.length} vendors`);
           
           if (vendorsData.vendors.length === 0) {
             showBanner(`No vendors found in ${cityName} for the selected criteria`, 'info');
@@ -928,15 +874,6 @@ function IndexPage() {
   const hasMore = vendors.length < serverTotalCount;
   const showLoadMore = hasMore && !loading && filteredVendors.length > 0;
   
-  console.log('📊 Render state:', { 
-    vendorsCount: vendors.length, 
-    filteredVendorsCount: filteredVendors.length, 
-    currentVendorsCount: currentVendors.length,
-    loading,
-    currentPage,
-    hasMore
-  });
-
   return (
     <div>
       {/* Announcement Banners, Popups, and Toasts */}
