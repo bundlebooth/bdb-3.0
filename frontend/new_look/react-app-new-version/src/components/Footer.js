@@ -1,11 +1,18 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 function Footer() {
+  const navigate = useNavigate();
+
+  const handleCategoryClick = (category) => {
+    navigate(`/explore?category=${category}`);
+  };
+
   return (
     <footer className="vv-footer" aria-label="Site footer">
       <div className="vv-wrap">
         <div className="vv-brand">
-          <div className="vv-logo">
+          <div className="vv-logo" onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>
             <img src="/planhive_logo.svg" alt="PlanHive" style={{ height: '45px', width: 'auto' }} />
           </div>
           <div className="vv-tagline">Get the app and plan on the go</div>
@@ -25,11 +32,9 @@ function Footer() {
         <div className="vv-col">
           <h4>Company</h4>
           <ul className="vv-links">
-            <li><a href="#" onClick={(e) => e.preventDefault()}>Home</a></li>
-            <li><a href="#" onClick={(e) => e.preventDefault()}>Articles</a></li>
-            <li><a href="#" onClick={(e) => e.preventDefault()}>Submit to Blog</a></li>
-            <li><a href="#" onClick={(e) => e.preventDefault()}>Are You a Vendor?</a></li>
-            <li><a href="#" onClick={(e) => e.preventDefault()}>Meet the Team</a></li>
+            <li><a href="/" onClick={(e) => { e.preventDefault(); navigate('/'); }}>Home</a></li>
+            <li><a href="/explore" onClick={(e) => { e.preventDefault(); navigate('/explore'); }}>Browse Vendors</a></li>
+            <li><a href="/become-a-vendor" onClick={(e) => { e.preventDefault(); navigate('/become-a-vendor'); }}>Are You a Vendor?</a></li>
             <li><a href="#" onClick={(e) => e.preventDefault()}>Privacy Policy</a></li>
             <li><a href="#" onClick={(e) => e.preventDefault()}>Terms of Use</a></li>
           </ul>
@@ -38,13 +43,13 @@ function Footer() {
         <div className="vv-col">
           <h4>Vendors</h4>
           <ul className="vv-links">
-            <li><a href="#" onClick={(e) => e.preventDefault()}>Venues</a></li>
-            <li><a href="#" onClick={(e) => e.preventDefault()}>Caterers</a></li>
-            <li><a href="#" onClick={(e) => e.preventDefault()}>Event Planners</a></li>
-            <li><a href="#" onClick={(e) => e.preventDefault()}>Photographers</a></li>
-            <li><a href="#" onClick={(e) => e.preventDefault()}>Videographers</a></li>
-            <li><a href="#" onClick={(e) => e.preventDefault()}>Live Music & DJs</a></li>
-            <li><a href="#" onClick={(e) => e.preventDefault()}>Décor & Rentals</a></li>
+            <li><a href="#" onClick={(e) => { e.preventDefault(); handleCategoryClick('venue'); }}>Venues</a></li>
+            <li><a href="#" onClick={(e) => { e.preventDefault(); handleCategoryClick('catering'); }}>Caterers</a></li>
+            <li><a href="#" onClick={(e) => { e.preventDefault(); handleCategoryClick('planner'); }}>Event Planners</a></li>
+            <li><a href="#" onClick={(e) => { e.preventDefault(); handleCategoryClick('photo'); }}>Photographers</a></li>
+            <li><a href="#" onClick={(e) => { e.preventDefault(); handleCategoryClick('music'); }}>Live Music & DJs</a></li>
+            <li><a href="#" onClick={(e) => { e.preventDefault(); handleCategoryClick('decor'); }}>Décor & Rentals</a></li>
+            <li><a href="#" onClick={(e) => { e.preventDefault(); handleCategoryClick('entertainment'); }}>Entertainment</a></li>
           </ul>
         </div>
 
@@ -58,7 +63,7 @@ function Footer() {
             <a href="#" onClick={(e) => e.preventDefault()} aria-label="TikTok"><i className="fab fa-tiktok"></i></a>
           </div>
           <div className="vv-cta">
-            <a href="#" onClick={(e) => e.preventDefault()}>Advertise with Us!</a>
+            <a href="/become-a-vendor" onClick={(e) => { e.preventDefault(); navigate('/become-a-vendor'); }}>Advertise with Us!</a>
           </div>
         </div>
       </div>

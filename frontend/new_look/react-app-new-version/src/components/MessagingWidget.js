@@ -383,8 +383,7 @@ function MessagingWidget() {
     }
   };
 
-  if (!currentUser) return null;
-
+  // Show widget for all users - non-signed-in users can still access Help/FAQs
   return (
     <div className="messaging-widget" style={{
       position: 'fixed',

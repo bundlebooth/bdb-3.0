@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
 import Header from '../components/Header';
@@ -19,12 +19,17 @@ import { showBanner } from '../utils/helpers';
 
 function IndexPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { currentUser } = useAuth();
   
   const [vendors, setVendors] = useState([]);
   const [filteredVendors, setFilteredVendors] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [currentCategory, setCurrentCategory] = useState('all');
+  // Initialize category from URL params
+  const [currentCategory, setCurrentCategory] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('category') || 'all';
+  });
   const [favorites, setFavorites] = useState([]);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [filterModalOpen, setFilterModalOpen] = useState(false);
@@ -53,19 +58,23 @@ function IndexPage() {
   const vendorsPerPage = 12;
   const serverPageSize = 200;
 
-  const [filters, setFilters] = useState({
-    location: '',
-    useCurrentLocation: false,
-    distanceKm: 50,
-    priceLevel: '',
-    minRating: '',
-    region: '',
-    tags: [],
-    // Availability filters
-    eventDate: null,
-    dayOfWeek: null,
-    startTime: null,
-    endTime: null
+  // Initialize filters from URL params
+  const [filters, setFilters] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return {
+      location: params.get('location') || '',
+      useCurrentLocation: params.get('useCurrentLocation') === 'true',
+      distanceKm: 50,
+      priceLevel: params.get('priceLevel') || '',
+      minRating: params.get('minRating') || '',
+      region: params.get('region') || '',
+      tags: params.get('tags') ? params.get('tags').split(',') : [],
+      // Availability filters
+      eventDate: null,
+      dayOfWeek: null,
+      startTime: null,
+      endTime: null
+    };
   });
 
   const loadFavorites = useCallback(async () => {
@@ -288,6 +297,8 @@ function IndexPage() {
     
     isLoadingRef.current = true;
     
+    console.log('🔍 loadVendors called with:', { currentCategory, location: filters.location, append });
+    
     try {
       if (!append) {
         setLoading(true);
@@ -299,6 +310,8 @@ function IndexPage() {
       const hasCategoryQuery = currentCategory && currentCategory !== 'all';
       const nextPage = append ? serverPageNumber + 1 : 1;
       const hasUserLocation = userLocation?.lat && userLocation?.lng;
+      
+      console.log('🔍 hasCategoryQuery:', hasCategoryQuery, 'currentCategory:', currentCategory);
       
       let url = '';
       
@@ -472,6 +485,10 @@ function IndexPage() {
       if (newVendors.length > 0) {
         console.log('📋 First vendor sample:', newVendors[0]);
       }
+      
+      // Always set loadingDiscovery to false after processing response
+      setLoadingDiscovery(false);
+      
       // EXACT match to original (line 26284-26300)
       let updatedVendors;
       if (append) {
@@ -506,6 +523,7 @@ function IndexPage() {
   }, [currentCategory, filters.priceLevel, filters.minRating, filters.region, filters.tags, userLocation, serverPageNumber]);
 
   const initializePage = useCallback(async () => {
+    console.log('🚀 initializePage called, hasLoadedOnce:', hasLoadedOnce.current, 'currentCategory:', currentCategory, 'filters.location:', filters.location);
     if (hasLoadedOnce.current) {
       return; // Prevent duplicate initialization
     }
@@ -517,28 +535,12 @@ function IndexPage() {
     }
     await loadDiscoverySections();
     await loadVendors();
-  }, [loadDiscoverySections, loadVendors, tryGetUserLocation, loadFavorites, currentUser]);
+  }, [loadDiscoverySections, loadVendors, tryGetUserLocation, loadFavorites, currentUser, currentCategory, filters.location]);
 
-  // Load filters from URL on mount
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const urlFilters = {};
-    
-    if (params.has('location')) urlFilters.location = params.get('location');
-    if (params.has('priceLevel')) urlFilters.priceLevel = params.get('priceLevel');
-    if (params.has('minRating')) urlFilters.minRating = params.get('minRating');
-    if (params.has('region')) urlFilters.region = params.get('region');
-    if (params.has('tags')) urlFilters.tags = params.get('tags').split(',');
-    if (params.has('useCurrentLocation')) urlFilters.useCurrentLocation = params.get('useCurrentLocation') === 'true';
-    if (params.has('within50Miles')) urlFilters.within50Miles = params.get('within50Miles') === 'true';
-    
-    if (Object.keys(urlFilters).length > 0) {
-      setFilters(prev => ({ ...prev, ...urlFilters }));
-    }
-  }, []);
-
+  // Initialize page on mount - URL params are already loaded in useState initializers
   useEffect(() => {
     initializePage();
+    
     // Set map-active class on initial load since map starts as true
     document.body.classList.add('map-active');
     const appContainer = document.getElementById('app-container');
@@ -552,6 +554,41 @@ function IndexPage() {
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Respond to URL parameter changes (e.g., when navigating from landing page)
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const urlCategory = params.get('category') || 'all';
+    const urlLocation = params.get('location') || '';
+    
+    console.log('🔄 URL params changed:', { urlCategory, urlLocation, currentCategory, currentLocation: filters.location });
+    
+    // Check if URL params differ from current state
+    const categoryChanged = urlCategory !== currentCategory;
+    const locationChanged = urlLocation !== filters.location;
+    
+    if (categoryChanged || locationChanged) {
+      console.log('🔄 Updating state from URL params');
+      if (categoryChanged) {
+        setCurrentCategory(urlCategory);
+      }
+      if (locationChanged) {
+        setFilters(prev => ({ ...prev, location: urlLocation }));
+      }
+      
+      // Reset loading state and reload vendors
+      setLoading(true);
+      setLoadingDiscovery(true);
+      hasLoadedOnce.current = false; // Allow re-initialization
+      isLoadingRef.current = false; // Reset loading ref
+      
+      // Reload vendors with new params
+      setTimeout(() => {
+        loadVendors();
+      }, 50);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.search]);
 
   // Listen for dashboard open events from ProfileModal
   useEffect(() => {
