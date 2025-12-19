@@ -71,28 +71,14 @@ router.get('/trending', async (req, res) => {
             .input('City', sql.NVarChar(100), city)
             .input('Limit', sql.Int, parseInt(topN))
             .execute('vendors.sp_GetTrending');
-
-        console.log('\n========== TRENDING VENDORS RAW DATA ==========');
-        console.log('Total vendors from DB:', result.recordset.length);
         
         const vendors = result.recordset.map((vendor, index) => {
-            console.log(`\n--- Vendor ${index + 1}: ${vendor.BusinessName} ---`);
-            console.log('Raw ImageURL:', vendor.ImageURL);
-            console.log('Raw CloudinaryUrl:', vendor.CloudinaryUrl);
-            console.log('Raw LogoURL:', vendor.LogoURL);
-            console.log('Raw ImagesJson:', vendor.ImagesJson ? 'EXISTS' : 'NULL');
-            
             // Parse JSON fields
             if (vendor.ImagesJson) {
                 try {
                     vendor.Images = JSON.parse(vendor.ImagesJson);
-                    console.log('Parsed Images array length:', vendor.Images.length);
-                    if (vendor.Images.length > 0) {
-                        console.log('First image in array:', vendor.Images[0]);
-                    }
                 } catch (e) {
                     vendor.Images = [];
-                    console.log('Error parsing ImagesJson:', e.message);
                 }
                 delete vendor.ImagesJson;
             }
@@ -114,16 +100,12 @@ router.get('/trending', async (req, res) => {
             if (vendor.Images && vendor.Images.length > 0) {
                 const firstImage = vendor.Images[0];
                 imageUrl = firstImage.CloudinaryUrl || firstImage.ImageURL;
-                console.log('Found image in Images array:', imageUrl);
             }
             
             // Fallback to direct fields
             if (!imageUrl) {
                 imageUrl = vendor.CloudinaryUrl || vendor.LogoURL;
-                console.log('Using fallback field:', imageUrl);
             }
-            
-            console.log('✅ FINAL imageUrl chosen:', imageUrl || '❌ NONE FOUND');
             
             // Set multiple fields for maximum frontend compatibility
             vendor.ImageURL = imageUrl;
@@ -132,8 +114,6 @@ router.get('/trending', async (req, res) => {
 
             return vendor;
         });
-        
-        console.log('\n========== END TRENDING VENDORS DATA ==========\n');
 
         res.json({
             success: true,

@@ -183,50 +183,28 @@ router.post('/login', async (req, res) => {
 
     // Check 2FA settings from database (SecuritySettings table - key-value pairs)
     let enable2FA = String(process.env.ENABLE_2FA || 'false').toLowerCase() === 'true';
-    console.log('🔐 ========== 2FA CHECK START ==========');
-    console.log('🔐 Environment ENABLE_2FA:', process.env.ENABLE_2FA);
-    console.log('🔐 Initial enable2FA value:', enable2FA);
-    console.log('👤 User info:', { userId: user.UserID, email: user.Email, isAdmin: user.IsAdmin, isVendor: user.IsVendor });
     
     try {
       // Get security settings via stored procedure (handles table existence check internally)
       const settingsResult = await pool.request().execute('users.sp_CheckSecuritySettings');
       
-      console.log('🔐 SecuritySettings result count:', settingsResult.recordset?.length || 0);
-      
       if (settingsResult.recordset && settingsResult.recordset.length > 0) {
-        
-        console.log('🔐 Raw settings from DB:', settingsResult.recordset);
-        
         const settings = {};
         settingsResult.recordset.forEach(row => {
           settings[row.SettingKey] = row.SettingValue;
         });
         
-        console.log('🔐 Parsed 2FA Settings:', settings);
-        
         // Enable 2FA if user is admin and admin 2FA is required, or if user is vendor and vendor 2FA is required
         const require2FAForAdmins = settings['require_2fa_admins'] === 'true';
         const require2FAForVendors = settings['require_2fa_vendors'] === 'true';
         
-        console.log('🔐 require2FAForAdmins:', require2FAForAdmins);
-        console.log('🔐 require2FAForVendors:', require2FAForVendors);
-        
         if ((user.IsAdmin && require2FAForAdmins) || (user.IsVendor && require2FAForVendors)) {
-          console.log('✅ 2FA WILL BE ENABLED for this user');
           enable2FA = true;
-        } else {
-          console.log('❌ 2FA NOT required for this user (Admin:', user.IsAdmin, 'Vendor:', user.IsVendor, ')');
         }
-      } else {
-        console.log('⚠️ No security settings found');
       }
     } catch (settingsErr) { 
-      console.log('❌ Could not check 2FA settings from database:', settingsErr.message); 
+      // Could not check 2FA settings from database
     }
-    
-    console.log('🔐 Final enable2FA decision:', enable2FA);
-    console.log('🔐 ========== 2FA CHECK END ==========');
     
     if (enable2FA) {
       const raw = crypto.randomInt(0, 1000000).toString().padStart(6, '0');
@@ -253,13 +231,10 @@ router.post('/login', async (req, res) => {
       { expiresIn: '30d' }
     );
     // Log successful login
-    console.log('📝 Attempting to log successful login for:', user.Email);
     try {
       const ipAddress = req.ip || req.headers['x-forwarded-for'] || req.connection?.remoteAddress || 'Unknown';
       const userAgent = req.headers['user-agent'] || 'Unknown';
       const device = userAgent.includes('Mobile') ? 'Mobile' : (userAgent.includes('Chrome') ? 'Chrome' : (userAgent.includes('Firefox') ? 'Firefox' : 'Browser'));
-      
-      console.log('📝 Inserting security log:', { userId: user.UserID, email: user.Email, ip: ipAddress });
       
       await pool.request()
         .input('userId', sql.Int, user.UserID)
@@ -271,7 +246,6 @@ router.post('/login', async (req, res) => {
         .input('device', sql.NVarChar, device)
         .input('details', sql.NVarChar, user.IsAdmin ? 'Admin login' : (user.IsVendor ? 'Vendor login' : 'Client login'))
         .execute('users.sp_InsertSecurityLog');
-      console.log('✅ Security log inserted successfully');
     } catch (logErr) { 
       console.error('❌ Failed to log security event:', logErr.message); 
       console.error('Full error:', logErr);

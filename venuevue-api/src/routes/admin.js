@@ -174,8 +174,6 @@ router.get('/vendor-approvals/:id', async (req, res) => {
     const { id } = req.params;
     const pool = await getPool();
     
-    console.log('Fetching vendor details for ID:', id);
-    
     // Use the same stored procedure as the vendor profile page
     const request = pool.request();
     request.input('VendorProfileID', sql.Int, id);
@@ -205,14 +203,12 @@ router.get('/vendor-approvals/:id', async (req, res) => {
     ] = result.recordsets;
     
     const profile = profileRecordset[0];
-    console.log('Profile found:', profile.BusinessName, 'StripeAccountId:', profile.StripeAccountId);
     
     // Get owner info and visibility status using stored procedure
     const ownerRequest = pool.request();
     ownerRequest.input('VendorProfileID', sql.Int, id);
     const ownerResult = await ownerRequest.execute('admin.sp_GetVendorOwnerInfo');
     const ownerInfo = ownerResult.recordset[0] || {};
-    console.log('Visibility status:', ownerInfo.IsVisible, 'ProfileStatus:', ownerInfo.ProfileStatus);
     
     // Get service areas using stored procedure
     let serviceAreas = [];
@@ -232,7 +228,6 @@ router.get('/vendor-approvals/:id', async (req, res) => {
       featuresRequest.input('VendorProfileID', sql.Int, id);
       const featuresResult = await featuresRequest.execute('admin.sp_GetVendorFeatures');
       features = featuresResult.recordset || [];
-      console.log('Features found:', features.length);
     } catch (e) {
       console.warn('Features query failed:', e.message);
     }
@@ -253,9 +248,6 @@ router.get('/vendor-approvals/:id', async (req, res) => {
       CloseTime: formatTime(bh.CloseTime)
     }));
     
-    console.log('Data summary - Images:', imagesRecordset?.length, 'Services:', servicesRecordset?.length, 
-                'Categories:', categoriesRecordset?.length, 'Hours:', businessHours.length);
-    
     // Check Stripe connection status using stored procedure
     let stripeStatus = { connected: false };
     try {
@@ -269,9 +261,6 @@ router.get('/vendor-approvals/:id', async (req, res) => {
           connected: true,
           accountId: stripeAccountId
         };
-        console.log('Stripe connected:', stripeAccountId);
-      } else {
-        console.log('No Stripe account found for vendor');
       }
     } catch (e) {
       console.warn('Error checking Stripe status:', e.message);
@@ -286,7 +275,6 @@ router.get('/vendor-approvals/:id', async (req, res) => {
         answersRequest.input('VendorProfileID', sql.Int, id);
         const answersResult = await answersRequest.execute('admin.sp_GetVendorCategoryAnswers');
         categoryAnswers = answersResult.recordset || [];
-        console.log('Category answers found:', categoryAnswers.length);
       } catch (e) {
         console.warn('Category answers query failed:', e.message);
       }
@@ -600,8 +588,6 @@ router.get('/bookings', async (req, res) => {
     request.input('PageSize', sql.Int, parseInt(limit));
     
     const result = await request.execute('admin.sp_GetAllBookings');
-    
-    console.log(`Admin: Fetched ${result.recordsets[0]?.length || 0} bookings out of ${result.recordsets[1]?.[0]?.total || 0} total`);
     
     res.json({
       bookings: result.recordsets[0] || [],
@@ -1054,8 +1040,6 @@ router.get('/chats', async (req, res) => {
     request.input('PageSize', sql.Int, parseInt(limit));
     
     const result = await request.execute('admin.sp_GetAllChats');
-    
-    console.log(`Admin: Fetched ${result.recordsets[0]?.length || 0} conversations out of ${result.recordsets[1]?.[0]?.total || 0} total`);
     
     res.json({
       conversations: result.recordsets[0] || [],
@@ -1612,11 +1596,6 @@ router.post('/notifications/send', async (req, res) => {
     const result = await request.execute('admin.sp_GetNotificationRecipients');
     const recipients = result.recordset.map(r => r.Email).filter(e => e);
     
-    // Log notification (in real implementation, send actual emails)
-    console.log(`Sending ${type} notification to ${recipients.length} recipients`);
-    console.log(`Subject: ${subject}`);
-    console.log(`Message: ${message}`);
-    
     res.json({ 
       success: true, 
       message: `Notification queued for ${recipients.length} recipients`,
@@ -1698,7 +1677,6 @@ router.post('/settings/maintenance', async (req, res) => {
   try {
     const { enabled } = req.body;
     // In production, this would update a settings table or environment variable
-    console.log(`Maintenance mode ${enabled ? 'enabled' : 'disabled'}`);
     res.json({ success: true, message: `Maintenance mode ${enabled ? 'enabled' : 'disabled'}` });
   } catch (error) {
     console.error('Error toggling maintenance mode:', error);
@@ -1733,9 +1711,6 @@ router.post('/bookings/:id/refund', async (req, res) => {
     refundRequest.input('Reason', sql.NVarChar(sql.MAX), reason);
     
     await refundRequest.execute('admin.sp_ProcessRefund');
-    
-    // Log the refund action
-    console.log(`Refund processed: Booking #${id}, Amount: $${amount}, Reason: ${reason}`);
     
     res.json({ 
       success: true, 
@@ -1933,9 +1908,6 @@ router.post('/payments/manual-payout', async (req, res) => {
     }
     
     const vendor = vendorResult.recordset[0];
-    
-    // Log the payout (in production, this would integrate with Stripe)
-    console.log(`Manual payout initiated: Vendor ${vendor.BusinessName}, Amount: $${amount}`);
     
     res.json({ 
       success: true, 

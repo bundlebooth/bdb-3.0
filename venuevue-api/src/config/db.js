@@ -15,7 +15,6 @@ if (useWindowsAuth) {
   // For named instances, use format: Server\Instance
   const serverName = process.env.DB_SERVER || 'localhost';
   const connectionString = `Driver={ODBC Driver 17 for SQL Server};Server=${serverName};Database=${process.env.DB_NAME};Trusted_Connection=yes;`;
-  console.log('Connection string (sanitized):', `Driver={ODBC Driver 17 for SQL Server};Server=${serverName};Database=${process.env.DB_NAME};Trusted_Connection=yes;`);
   config = {
     connectionString: connectionString,
     driver: 'msnodesqlv8',
@@ -26,7 +25,6 @@ if (useWindowsAuth) {
       acquireTimeoutMillis: 60000
     }
   };
-  console.log('Using msnodesqlv8 driver with Windows Authentication');
 } else {
   // Production (Linux/Render) or SQL Server Authentication
   config = {
@@ -45,17 +43,15 @@ if (useWindowsAuth) {
       acquireTimeoutMillis: 60000
     }
   };
-  console.log('Using tedious driver with SQL Server Authentication');
 }
 
 const poolPromise = new sql.ConnectionPool(config)
   .connect()
   .then(pool => {
-    console.log('Connected to SQL Server');
     return pool;
   })
   .catch(err => {
-    console.log('Database Connection Failed!', err);
+    console.error('Database Connection Failed!', err);
     throw err;
   });
 

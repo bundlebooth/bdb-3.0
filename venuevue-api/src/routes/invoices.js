@@ -12,17 +12,14 @@ function nowIso() { return new Date().toISOString(); }
 // Helper to resolve booking ID (handles both public ID and numeric ID)
 function resolveBookingId(idParam) {
   if (!idParam) return null;
-  console.log(`[resolveBookingId] Input: "${idParam}", isPublicId: ${isPublicId(idParam)}`);
   
   // If it's a public ID, decode it
   if (isPublicId(idParam)) {
     const decoded = decodeBookingId(idParam);
-    console.log(`[resolveBookingId] Decoded public ID "${idParam}" to: ${decoded}`);
     return decoded;
   }
   // Otherwise, parse as numeric
   const parsed = parseInt(idParam, 10);
-  console.log(`[resolveBookingId] Parsed numeric ID: ${parsed}`);
   return isNaN(parsed) ? null : parsed;
 }
 
@@ -475,7 +472,6 @@ router.post('/admin/regenerate/:bookingId', async (req, res) => {
     if (!bookingId) return res.status(400).json({ success: false, message: 'Invalid booking ID' });
     const pool = await poolPromise;
     
-    console.log(`[Admin] Force regenerating invoice for booking ${bookingId}`);
     const result = await upsertInvoiceForBooking(pool, bookingId, { forceRegenerate: true });
     const invoice = await getInvoiceByBooking(pool, bookingId, true);
     

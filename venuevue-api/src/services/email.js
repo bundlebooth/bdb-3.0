@@ -152,7 +152,6 @@ async function logEmail(templateKey, recipientEmail, recipientName, subject, sta
   try {
     const pool = await poolPromise;
     if (!pool) {
-      console.log('Database not connected, skipping email log');
       return;
     }
     await pool.request()
@@ -178,7 +177,6 @@ async function sendTemplatedEmail(templateKey, recipientEmail, recipientName, va
     if (emailCategory && userId) {
       const canSend = await canSendEmail(userId, emailCategory);
       if (!canSend) {
-        console.log(`📧 Email blocked by user preferences: ${templateKey} to ${recipientEmail} (category: ${emailCategory})`);
         await logEmail(templateKey, recipientEmail, recipientName, 'Blocked by preferences', 'pending', 'User disabled this email type', userId, bookingId, metadata);
         return;
       }
@@ -212,9 +210,7 @@ async function sendTemplatedEmail(templateKey, recipientEmail, recipientName, va
         const fromAddr = process.env.SMTP_FROM || process.env.FROM_EMAIL || 'no-reply@venuevue.com';
         await t.sendMail({ from: fromAddr, to: recipientEmail, subject, text, html });
         emailSent = true;
-        console.log(`✅ Email sent via SMTP: ${templateKey} to ${recipientEmail}`);
       } catch (smtpError) {
-        console.log('SMTP failed, trying Brevo API fallback:', smtpError.message);
         lastError = smtpError;
       }
     }
@@ -224,7 +220,6 @@ async function sendTemplatedEmail(templateKey, recipientEmail, recipientName, va
       try {
         await sendViaBrevoAPI(recipientEmail, subject, html, text);
         emailSent = true;
-        console.log(`✅ Email sent via Brevo API: ${templateKey} to ${recipientEmail}`);
       } catch (apiError) {
         console.error('Brevo API also failed:', apiError.message);
         lastError = apiError;
@@ -257,10 +252,9 @@ async function sendEmail({ to, subject, text, html, from }) {
       const fromAddr = from || process.env.SMTP_FROM || process.env.FROM_EMAIL || 'no-reply@venuevue.com';
       await t.sendMail({ from: fromAddr, to, subject, text, html });
       emailSent = true;
-      console.log(`✅ Direct email sent via SMTP to ${to}`);
       return;
     } catch (smtpError) {
-      console.log('SMTP failed, trying Brevo API fallback:', smtpError.message);
+      // SMTP failed, trying Brevo API fallback
     }
   }
 
@@ -268,7 +262,6 @@ async function sendEmail({ to, subject, text, html, from }) {
   if (!emailSent) {
     try {
       await sendViaBrevoAPI(to, subject, html, text);
-      console.log(`✅ Direct email sent via Brevo API to ${to}`);
     } catch (apiError) {
       console.error('Email sending failed:', apiError.message);
       throw apiError;

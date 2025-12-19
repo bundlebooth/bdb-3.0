@@ -410,13 +410,6 @@ router.get('/', async (req, res) => {
     const formattedStartTime = formatTime(startTime);
     const formattedEndTime = formatTime(endTime);
     
-    console.log('⏰ Time formatting:', { 
-      startTime, 
-      endTime, 
-      formattedStartTime, 
-      formattedEndTime 
-    });
-
     let result;
     
     // Try stored procedure first, fall back to direct query if it fails
@@ -511,8 +504,6 @@ router.get('/', async (req, res) => {
 
     // Enhance with Cloudinary images if requested (default: true for better UX)
     if (includeImages !== 'false') {
-      console.log('Enhancing vendors with Cloudinary images...');
-      
       // Process vendors in batches to avoid overwhelming the database
       const batchSize = 5;
       const enhancedVendors = [];
@@ -1300,8 +1291,6 @@ router.post('/register', upload.array('images', 5), async (req, res) => {
             serviceRequest.input('VendorDescription', sql.NVarChar(sql.MAX), predefinedService.vendorDescription || null);
             
             await serviceRequest.execute('vendors.sp_InsertPredefinedService');
-            
-            console.log(`Added predefined service ${predefinedService.id} for vendor ${vendorProfileId}`);
           } catch (serviceError) {
             console.error(`Error adding predefined service ${predefinedService.id}:`, serviceError);
             // Continue with other services even if one fails
@@ -1309,11 +1298,6 @@ router.post('/register', upload.array('images', 5), async (req, res) => {
         }
       }
       
-      if (req.files && req.files.length > 0) {
-        req.files.forEach(file => {
-          console.log('Vendor image uploaded:', file);
-        });
-      }
       
       res.status(201).json({
         success: true,
@@ -1598,8 +1582,6 @@ router.post('/onboarding', async (req, res) => {
       googlePlaceId
     } = req.body;
 
-    console.log('📝 Onboarding request received for user:', userId);
-
     // Validation
     if (!userId) {
       return res.status(400).json({
@@ -1633,7 +1615,6 @@ router.post('/onboarding', async (req, res) => {
     if (checkResult.recordset.length > 0) {
       // Update existing profile
       vendorProfileId = checkResult.recordset[0].VendorProfileID;
-      console.log('✏️ Updating existing vendor profile:', vendorProfileId);
       
       const updateRequest = new sql.Request(pool);
       updateRequest.input('VendorProfileID', sql.Int, vendorProfileId);
@@ -1658,7 +1639,6 @@ router.post('/onboarding', async (req, res) => {
 
     } else {
       // Create new profile
-      console.log('➕ Creating new vendor profile');
       const createRequest = new sql.Request(pool);
       createRequest.input('UserID', sql.Int, parseInt(userId));
       createRequest.input('BusinessName', sql.NVarChar(100), businessName);
@@ -1682,7 +1662,6 @@ router.post('/onboarding', async (req, res) => {
       }
       
       vendorProfileId = result.recordset[0].VendorProfileID;
-      console.log('✅ Created vendor profile:', vendorProfileId);
 
       // Update additional fields not in sp_RegisterVendor
       const updateExtraRequest = new sql.Request(pool);
@@ -1709,7 +1688,6 @@ router.post('/onboarding', async (req, res) => {
         
         await categoryRequest.execute('vendors.sp_InsertCategoryByName');
       }
-      console.log('✅ Updated categories');
     }
 
     // Update service areas
@@ -1733,7 +1711,6 @@ router.post('/onboarding', async (req, res) => {
         
         await areaRequest.execute('vendors.sp_InsertServiceAreaExtended');
       }
-      console.log('✅ Updated service areas');
     }
 
     // Update business hours and timezone
@@ -1783,7 +1760,6 @@ router.post('/onboarding', async (req, res) => {
           await hoursRequest.execute('vendors.sp_UpsertBusinessHoursExtended');
         }
       }
-      console.log('✅ Updated business hours with timezone');
     }
 
     // Update social media
@@ -1815,7 +1791,6 @@ router.post('/onboarding', async (req, res) => {
           await socialRequest.execute('vendors.sp_InsertSocialMedia');
         }
       }
-      console.log('✅ Updated social media');
     }
 
     // Save selected features (questionnaire)
@@ -1833,7 +1808,6 @@ router.post('/onboarding', async (req, res) => {
           featureRequest.input('FeatureID', sql.Int, parseInt(featureId));
           await featureRequest.execute('vendors.sp_InsertSelectedFeature');
         }
-        console.log('✅ Updated selected features (questionnaire):', selectedFeatures.length, 'features');
       } catch (featureError) {
         console.warn('⚠️ Could not save features (table may not exist):', featureError.message);
         // Don't fail the whole request if features table doesn't exist
@@ -1862,7 +1836,6 @@ router.post('/onboarding', async (req, res) => {
             }
           }
         }
-        console.log('✅ Updated photo gallery:', photoURLs.length, 'photos');
       } catch (imageError) {
         console.warn('⚠️ Could not save images:', imageError.message);
       }
@@ -1875,7 +1848,6 @@ router.post('/onboarding', async (req, res) => {
         googleRequest.input('VendorProfileID', sql.Int, vendorProfileId);
         googleRequest.input('GooglePlaceId', sql.NVarChar(100), googlePlaceId);
         await googleRequest.execute('vendors.sp_UpdateGooglePlaceId');
-        console.log('✅ Updated Google Place ID');
       } catch (googleError) {
         console.warn('⚠️ Could not save Google Place ID:', googleError.message);
       }
@@ -1885,8 +1857,6 @@ router.post('/onboarding', async (req, res) => {
     const updateUserRequest = new sql.Request(pool);
     updateUserRequest.input('UserID', sql.Int, parseInt(userId));
     await updateUserRequest.execute('vendors.sp_SetUserAsVendor');
-
-    console.log('✅ Vendor onboarding completed successfully');
 
     res.status(200).json({
       success: true,
@@ -1990,8 +1960,6 @@ router.get('/profile', async (req, res) => {
 
     const userResult = await userRequest.execute('vendors.sp_GetUserWithProfile');
 
-    console.log('User query result:', userResult.recordset);
-
     if (userResult.recordset.length === 0) {
       return res.status(404).json({
         success: false,
@@ -2002,7 +1970,6 @@ router.get('/profile', async (req, res) => {
     const user = userResult.recordset[0];
 
     if (!user.IsVendor) {
-      console.log(`User ${userIdNum} is not a vendor.`);
       return res.status(403).json({
         success: false,
         message: 'User is not registered as a vendor'
@@ -2010,8 +1977,6 @@ router.get('/profile', async (req, res) => {
     }
 
     if (!user.VendorProfileID) {
-      console.log(`User ${userIdNum} does not have a vendor profile. Creating one...`);
-      
       // Create a basic vendor profile for the user
       const createProfileRequest = new sql.Request(pool);
       createProfileRequest.input('UserID', sql.Int, userIdNum);
@@ -2034,7 +1999,6 @@ router.get('/profile', async (req, res) => {
         
         if (createResult.recordset[0].Success) {
           const newVendorProfileId = createResult.recordset[0].VendorProfileID;
-          console.log(`Created vendor profile ID: ${newVendorProfileId} for user ${userIdNum}`);
           
           // Return the new vendor profile ID for setup
           return res.json({
@@ -2056,8 +2020,6 @@ router.get('/profile', async (req, res) => {
       }
     }
 
-    console.log(`User ${userIdNum} has vendor profile ID: ${user.VendorProfileID}`);
-
     // Get comprehensive vendor profile data using the stored procedure
     const profileRequest = new sql.Request(pool);
     profileRequest.input('VendorProfileID', sql.Int, user.VendorProfileID);
@@ -2072,23 +2034,6 @@ router.get('/profile', async (req, res) => {
       });
     }
 
-    // DEBUG: Log all recordsets to identify where images are located
-    console.log(`🔍 DEBUGGING RECORDSETS FROM sp_GetVendorDetails:`);
-    console.log(`📊 Total recordsets: ${profileResult.recordsets.length}`);
-    
-    profileResult.recordsets.forEach((recordset, index) => {
-      console.log(`📋 Recordset[${index}]: ${recordset.length} records`);
-      if (recordset.length > 0) {
-        const firstRecord = recordset[0];
-        const keys = Object.keys(firstRecord);
-        console.log(`   🔑 Keys: ${keys.join(', ')}`);
-        
-        // Check if this recordset contains images
-        if (keys.includes('images')) {
-          console.log(`   🖼️  FOUND IMAGES in recordset[${index}]:`, firstRecord.images);
-        }
-      }
-    });
 
     // Parse images JSON array from updated sp_GetVendorDetails stored procedure
     let imagesFromStoredProcedure = [];
@@ -2103,21 +2048,13 @@ router.get('/profile', async (req, res) => {
       }
     }
     
-    console.log(`🎯 Images found in recordset index: ${imagesRecordsetIndex}`);
-    
     try {
       if (imagesRecordsetIndex >= 0) {
         const imagesJson = profileResult.recordsets[imagesRecordsetIndex][0].images;
-        console.log(`📝 Raw images JSON from recordset[${imagesRecordsetIndex}]:`, imagesJson);
         
         if (imagesJson) {
           imagesFromStoredProcedure = JSON.parse(imagesJson);
-          console.log(`✅ PARSED IMAGES FROM STORED PROCEDURE:`, imagesFromStoredProcedure);
-        } else {
-          console.log(`❌ Images JSON is null/empty`);
         }
-      } else {
-        console.log(`❌ NO RECORDSET WITH IMAGES FOUND`);
       }
     } catch (e) {
       console.error(`❌ ERROR PARSING IMAGES FROM STORED PROCEDURE:`, e);
@@ -2127,9 +2064,6 @@ router.get('/profile', async (req, res) => {
     // Use images from stored procedure (dynamic, no fallback)
     const galleryImages = imagesFromStoredProcedure;
     
-    console.log(`FINAL GALLERY IMAGES TO RETURN:`, galleryImages);
-    console.log(`FINAL GALLERY IMAGES LENGTH:`, galleryImages.length);
-
     // Get service areas for this vendor
     let serviceAreas = [];
     try {
@@ -2236,7 +2170,6 @@ router.get('/profile', async (req, res) => {
           if (extraFields.IsInsured) selectedFilters.push('filter-insured');
         }
         
-        console.log('[Profile] StripeAccountID:', stripeAccountId, 'GooglePlaceID:', googlePlaceId, 'selectedFilters:', selectedFilters);
       }
     } catch (extraFieldsError) {
       console.error('Extra fields query failed:', extraFieldsError.message);
@@ -2401,8 +2334,6 @@ router.get('/:id', async (req, res) => {
       CloseTime: formatTime(bh.CloseTime)
     }));
     
-    console.log('Business Hours with Timezone:', businessHours.length > 0 ? businessHours[0] : 'No business hours');
-
     // Extract timezone from business hours (all days should have same timezone)
     const timezone = businessHours.length > 0 ? businessHours[0].Timezone : null;
 
@@ -2703,7 +2634,6 @@ router.post('/setup/step4-business-hours', async (req, res) => {
         
         await timezoneRequest.execute('vendors.sp_UpdateTimezone');
       } catch (tzErr) {
-        console.log('Note: Timezone column may not exist in VendorProfiles:', tzErr.message);
         // Continue even if timezone update fails
       }
     }
@@ -2723,8 +2653,6 @@ router.post('/setup/step4-business-hours', async (req, res) => {
         // Ensure time format is HH:MM:SS for SQL Server TIME type
         const openTime = hour.openTime && hour.openTime.length === 5 ? `${hour.openTime}:00` : hour.openTime;
         const closeTime = hour.closeTime && hour.closeTime.length === 5 ? `${hour.closeTime}:00` : hour.closeTime;
-        
-        console.log(`Inserting business hour - Day: ${hour.dayOfWeek}, Open: ${openTime}, Close: ${closeTime}, Available: ${hour.isAvailable}`);
         
         insertRequest.input('OpenTime', sql.VarChar(8), openTime);
         insertRequest.input('CloseTime', sql.VarChar(8), closeTime);
@@ -2835,8 +2763,6 @@ async function geocodeLocation(locationString) {
       const location = data.results[0].geometry.location;
       const formattedAddress = data.results[0].formatted_address;
       
-      console.log(`Geocoded "${cleanLocation}" to: ${location.lat}, ${location.lng} (${formattedAddress})`);
-      
       return { 
         lat: location.lat, 
         lng: location.lng,
@@ -2878,9 +2804,6 @@ router.post('/search-by-services', async (req, res) => {
 
     // Extract service IDs for filtering
     const predefinedServiceIds = selectedServices.map(s => s.serviceId).filter(id => !isNaN(id) && id > 0);
-    
-    console.log('Received selectedServices:', selectedServices);
-    console.log('Extracted predefinedServiceIds:', predefinedServiceIds);
     
     if (predefinedServiceIds.length === 0) {
       return res.status(400).json({
@@ -3302,13 +3225,6 @@ router.post('/setup/step3-services', async (req, res) => {
         const baseDurationMinutes = service.baseDurationMinutes != null ? parseInt(service.baseDurationMinutes) : (service.durationMinutes || null);
         const maximumAttendees = service.maximumAttendees != null ? parseInt(service.maximumAttendees) : null;
 
-        console.log('Upserting service with legacy parameters', {
-          vendorProfileId,
-          name: service.name,
-          derivedPrice,
-          baseDurationMinutes,
-          maximumAttendees
-        });
 
         // Use the legacy stored procedure parameters (matching sp_UpsertVendorService with 11 parameters)
         serviceRequest.input('VendorProfileID', sql.Int, vendorProfileId);
@@ -3352,27 +3268,20 @@ router.post('/setup/step3-services', async (req, res) => {
     
     // Handle selected predefined services
     // First, delete ALL existing services for this vendor (both predefined and custom)
-    console.log(`[BACKEND] Deleting all existing services for vendor ${vendorProfileId}`);
     const deleteServicesRequest = new sql.Request(pool);
     deleteServicesRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-    const deleteResult = await deleteServicesRequest.execute('vendors.sp_DeleteAllServices');
-    console.log(`[BACKEND] Deleted ${deleteResult.recordset[0]?.RowsDeleted || 0} services from Services table`);
+    await deleteServicesRequest.execute('vendors.sp_DeleteAllServices');
     
     // Also delete from VendorSelectedServices (legacy table, may not be used anymore)
     const deleteSelectedRequest = new sql.Request(pool);
     deleteSelectedRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-    const deleteSelectedResult = await deleteSelectedRequest.execute('vendors.sp_DeleteSelectedServices');
-    console.log(`[BACKEND] Deleted ${deleteSelectedResult.recordset[0]?.RowsDeleted || 0} services from VendorSelectedServices table`);
+    await deleteSelectedRequest.execute('vendors.sp_DeleteSelectedServices');
 
     if (selectedPredefinedServices && selectedPredefinedServices.length > 0) {
       // Insert new selected predefined services
       for (const selectedService of selectedPredefinedServices) {
         try {
           const imageUrlValue = selectedService.imageURL || null;
-          console.log(`[BACKEND] Inserting service: ${selectedService.name || selectedService.predefinedServiceId}`);
-          console.log(`[BACKEND]   - imageURL received:`, imageUrlValue);
-          console.log(`[BACKEND]   - imageURL type:`, typeof imageUrlValue);
-          console.log(`[BACKEND]   - imageURL length:`, imageUrlValue ? imageUrlValue.length : 0);
           
           // Calculate the vendor price from the pricing model
           const baseRate = selectedService.baseRate != null ? parseFloat(selectedService.baseRate) : null;
@@ -3393,14 +3302,6 @@ router.post('/setup/step3-services', async (req, res) => {
           } else {
             vendorPrice = 0; // Default fallback
           }
-
-          console.log(`[BACKEND] Pricing calculation for ${selectedService.name}:`, {
-            baseRate,
-            fixedPrice,
-            pricePerPerson,
-            legacyPrice,
-            vendorPrice
-          });
 
           // Use unified stored procedure with all pricing parameters
           const serviceRequest = new sql.Request(pool);
@@ -3433,28 +3334,7 @@ router.post('/setup/step3-services', async (req, res) => {
           serviceRequest.input('MinimumAttendees', sql.Int, selectedService.minimumAttendees || null);
           serviceRequest.input('MaximumAttendees', sql.Int, selectedService.maximumAttendees || null);
 
-          console.log(`[BACKEND] Creating Service with unified pricing for ${selectedService.name}`);
-          
-          const insertResult = await serviceRequest.execute('vendors.sp_UpsertService');
-          
-          console.log(`[BACKEND]   - Insert result:`, insertResult.rowsAffected);
-          
-          // VERIFY: Read back what was actually saved
-          const verifyRequest = new sql.Request(pool);
-          verifyRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-          verifyRequest.input('LinkedPredefinedServiceID', sql.Int, selectedService.predefinedServiceId);
-          const verifyResult = await verifyRequest.execute('vendors.sp_VerifyInsertedService');
-          
-          if (verifyResult.recordset.length > 0) {
-            const savedService = verifyResult.recordset[0];
-            console.log(`[BACKEND]   - VERIFICATION SUCCESS: Service saved!`);
-            console.log(`[BACKEND]   - BaseRate: ${savedService.BaseRate}`);
-            console.log(`[BACKEND]   - OvertimeRate: ${savedService.OvertimeRatePerHour}`);
-            console.log(`[BACKEND]   - PricingModel: ${savedService.PricingModel}`);
-            console.log(`[BACKEND]   - BaseDuration: ${savedService.BaseDurationMinutes}`);
-          } else {
-            console.error(`[BACKEND]   - VERIFICATION FAILED: Service not found after insert!`);
-          }
+          await serviceRequest.execute('vendors.sp_UpsertService');
           
         } catch (insertError) {
           console.error(`[BACKEND] ERROR inserting service ${selectedService.predefinedServiceId}:`, insertError);
@@ -4004,8 +3884,6 @@ router.post('/setup', async (req, res) => {
       availability
     } = req.body;
 
-    console.log('Setup request received:', { vendorProfileId, hasGallery: !!gallery, hasPackages: !!packages, hasServices: !!services });
-
     // Validate vendorProfileId
     if (!vendorProfileId) {
       return res.status(400).json({
@@ -4040,8 +3918,6 @@ router.post('/setup', async (req, res) => {
         message: 'Vendor profile not found. Please ensure the vendor profile exists.'
       });
     }
-
-    console.log(`Completing setup for VendorProfileID: ${vendorProfileIdNum}`);
 
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, vendorProfileIdNum);
@@ -4589,9 +4465,6 @@ router.post('/setup/step5-availability', async (req, res) => {
           const openTime = formatTimeForSQL(hours.openTime);
           const closeTime = formatTimeForSQL(hours.closeTime);
           
-          console.log(`Day ${day}: Original times - Open: "${hours.openTime}", Close: "${hours.closeTime}"`);
-          console.log(`Day ${day}: Formatted times - Open: "${openTime}", Close: "${closeTime}"`);
-          
           // Try using VarChar instead of Time type to avoid validation issues
           request.input('OpenTime', sql.VarChar(8), openTime);
           request.input('CloseTime', sql.VarChar(8), closeTime);
@@ -4630,20 +4503,15 @@ router.post('/setup/step6-gallery', async (req, res) => {
     }
     
     // Save gallery images if provided
-    console.log('Gallery images received:', galleryImages);
     if (galleryImages && Array.isArray(galleryImages) && galleryImages.length > 0) {
-      console.log(`Processing ${galleryImages.length} gallery images...`);
-      
       // First, delete existing gallery images for this vendor
       const deleteRequest = new sql.Request(pool);
       deleteRequest.input('VendorProfileID', sql.Int, vendorProfileId);
       await deleteRequest.execute('vendors.sp_DeleteGalleryImages');
-      console.log('Deleted existing gallery images');
       
       // Insert new gallery images
       for (let i = 0; i < galleryImages.length; i++) {
         const image = galleryImages[i];
-        console.log(`Processing image ${i}:`, image);
         if (image.url) {
           const insertRequest = new sql.Request(pool);
           insertRequest.input('VendorProfileID', sql.Int, vendorProfileId);
@@ -4653,13 +4521,8 @@ router.post('/setup/step6-gallery', async (req, res) => {
           insertRequest.input('DisplayOrder', sql.Int, i);
           
           await insertRequest.execute('vendors.sp_InsertGalleryImageFull');
-          console.log(`Inserted gallery image ${i} successfully`);
-        } else {
-          console.log(`Skipping image ${i} - no URL`);
         }
       }
-    } else {
-      console.log('No gallery images to process or invalid format');
     }
     
     res.json({ success: true, message: 'Gallery and media saved successfully' });
@@ -4683,20 +4546,17 @@ router.post('/setup/step7-social', async (req, res) => {
     
     // Handle social media profiles if provided (array format from frontend)
     const socialProfiles = socialMediaProfiles || socialMedia;
-    console.log('Social media data received:', socialProfiles);
     
     if (socialProfiles) {
       // First, delete existing social media for this vendor
       const deleteRequest = new sql.Request(pool);
       deleteRequest.input('VendorProfileID', sql.Int, vendorProfileId);
       await deleteRequest.execute('vendors.sp_DeleteSocialMedia');
-      console.log('Deleted existing social media');
       
       // Handle array format (socialMediaProfiles)
       if (Array.isArray(socialProfiles)) {
         for (let i = 0; i < socialProfiles.length; i++) {
           const profile = socialProfiles[i];
-          console.log(`Processing social profile ${i}:`, profile);
           if (profile.platform && profile.url) {
             const request = new sql.Request(pool);
             request.input('VendorProfileID', sql.Int, vendorProfileId);
@@ -4705,7 +4565,6 @@ router.post('/setup/step7-social', async (req, res) => {
             request.input('DisplayOrder', sql.Int, i);
             
             await request.execute('vendors.sp_InsertSocialMediaWithOrder');
-            console.log(`Inserted social media ${i} successfully`);
           }
         }
       } 
@@ -4721,12 +4580,9 @@ router.post('/setup/step7-social', async (req, res) => {
             request.input('DisplayOrder', sql.Int, displayOrder++);
             
             await request.execute('vendors.sp_InsertSocialMediaWithOrder');
-            console.log(`Inserted social media ${platform} successfully`);
           }
         }
       }
-    } else {
-      console.log('No social media data to process');
     }
     
     res.json({ success: true, message: 'Social media saved successfully' });
@@ -4852,8 +4708,6 @@ router.post('/setup/step9-completion', async (req, res) => {
           serviceRequest.input('VendorDescription', sql.NVarChar(sql.MAX), predefinedService.vendorDescription || null);
           
           await serviceRequest.execute('vendors.sp_InsertPredefinedService');
-          
-          console.log(`Added predefined service ${predefinedService.id} for vendor ${vendorProfileId}`);
         } catch (serviceError) {
           console.error(`Error adding predefined service ${predefinedService.id}:`, serviceError);
           // Continue with other services even if one fails
@@ -5764,8 +5618,6 @@ router.post('/:vendorProfileId/submit-for-review', async (req, res) => {
     // Update profile status to pending_review
     await request.execute('vendors.sp_SubmitForReview');
     
-    console.log(`[Vendor Review] Profile ${vendorProfileId} submitted for review`);
-    
     res.json({ 
       success: true, 
       message: 'Profile submitted for review',
@@ -5809,8 +5661,6 @@ router.post('/admin/:vendorProfileId/approve', async (req, res) => {
     // Update profile status to approved and make it visible
     await request.execute('vendors.sp_ApproveProfile');
     
-    console.log(`[Vendor Review] Profile ${vendorProfileId} APPROVED`);
-    
     res.json({ 
       success: true, 
       message: 'Profile approved and is now live',
@@ -5840,8 +5690,6 @@ router.post('/admin/:vendorProfileId/reject', async (req, res) => {
     
     // Update profile status to rejected
     await request.execute('vendors.sp_RejectProfile');
-    
-    console.log(`[Vendor Review] Profile ${vendorProfileId} REJECTED: ${rejectionReason}`);
     
     res.json({ 
       success: true, 

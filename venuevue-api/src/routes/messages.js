@@ -5,7 +5,6 @@ const { poolPromise, sql } = require('../config/db');
 // Handle Socket.IO events
 const handleSocketIO = (io) => {
   io.on('connection', (socket) => {
-    console.log(`New connection: User ${socket.userId}`);
 
     // Handle new messages
     socket.on('send-message', async (messageData) => {
@@ -76,10 +75,8 @@ const handleSocketIO = (io) => {
 
     // Join user's personal room when they connect
     socket.join(`user_${socket.userId}`);
-    console.log(`User ${socket.userId} joined their personal room`);
 
     socket.on('disconnect', () => {
-      console.log(`User ${socket.userId} disconnected`);
     });
   });
 };
@@ -134,7 +131,6 @@ router.get('/conversation/:id', async (req, res) => {
 router.get('/conversations/user/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
-    console.log('📨 Loading conversations for user:', userId);
 
     const pool = await poolPromise;
     
@@ -143,8 +139,6 @@ router.get('/conversations/user/:userId', async (req, res) => {
     request.input('UserID', sql.Int, userId);
     
     const result = await request.execute('messages.sp_GetUserConversations');
-    
-    console.log('📨 Found conversations:', result.recordset.length);
 
     // Format conversations to match frontend expected format
     // Filter out conversations with no messages (LastMessageContent is null/empty)
@@ -189,8 +183,6 @@ router.post('/conversation/check', async (req, res) => {
         checkRequest.input('UserID', sql.Int, userId);
         checkRequest.input('VendorProfileID', sql.Int, vendorProfileId);
         const result = await checkRequest.execute('messages.sp_CheckExistingConversation');
-
-        console.log('Conversation check result:', result.recordset); // Debug log
 
         if (result.recordset.length > 0) {
             return res.json({

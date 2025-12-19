@@ -1110,20 +1110,6 @@ router.post('/checkout-session', async (req, res) => {
       stripe_fee_percent: String(commissionSettings.stripeFeePercent)
     };
 
-    // Debug logging
-    console.log('[CheckoutSession] Creating with', {
-      bookingId,
-      vendorProfileId,
-      vendorStripeAccountId,
-      servicesSubtotal,
-      platformFeeAmount,
-      taxAmount,
-      processingFee,
-      totalAmountCents,
-      applicationFeeCents,
-      lineItemsCount: lineItems.length
-    });
-
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: lineItems,
@@ -1146,8 +1132,6 @@ router.post('/checkout-session', async (req, res) => {
       .input('BookingID', sql.Int, bookingId)
       .input('StripeSessionID', sql.NVarChar(255), session.id)
       .execute('payments.sp_SaveSessionToBooking');
-
-    console.log('[CheckoutSession] Created', { sessionId: session.id, url: session.url });
 
     res.json({
       success: true,
@@ -1235,16 +1219,12 @@ router.get('/verify-session', async (req, res) => {
     const paymentStatus = session?.payment_status || session?.status; // 'paid' for modern sessions
     const paymentIntentId = session && session.payment_intent ? (typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent.id) : null;
 
-    console.log('[VerifySession] session', sessionId, 'paymentStatus:', paymentStatus, 'payment_intent:', paymentIntentId);
-
     if (!paymentIntentId) {
       return res.status(400).json({ success: false, message: 'No payment_intent on session' });
     }
 
     const pi = await stripe.paymentIntents.retrieve(paymentIntentId);
     let bookingId = pi?.metadata?.booking_id || null;
-
-    console.log('[VerifySession] PI status:', pi?.status, 'metadata.booking_id:', bookingId);
 
     // Fallback: use booking_id passed in success URL if metadata is missing (older sessions)
     if (!bookingId) {
@@ -1404,10 +1384,6 @@ const webhook = async (req, res) => {
   const sig = req.headers['stripe-signature'];
   const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
-  console.log('[Webhook] Received webhook request');
-  console.log('[Webhook] Signature present:', !!sig);
-  console.log('[Webhook] Endpoint secret configured:', !!endpointSecret && !endpointSecret.includes('placeholder'));
-
   let event;
 
   try {
@@ -1417,7 +1393,6 @@ const webhook = async (req, res) => {
     }
     
     event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
-    console.log('[Webhook] Event verified successfully:', event.type);
   } catch (err) {
     console.error('Webhook signature verification failed:', err.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);
@@ -1430,7 +1405,6 @@ const webhook = async (req, res) => {
         try {
           const paymentIntent = event.data.object;
           const bookingId = paymentIntent?.metadata?.booking_id;
-          console.log(`[Webhook] payment_intent.succeeded for PI ${paymentIntent?.id} booking ${bookingId}`);
           if (bookingId) {
             const pool = await poolPromise;
             const request = new sql.Request(pool);
@@ -1484,7 +1458,6 @@ const webhook = async (req, res) => {
         try {
           const session = event.data.object;
           const paymentIntentId = session.payment_intent;
-          console.log(`[Webhook] checkout.session.completed, PI: ${paymentIntentId}`);
           if (paymentIntentId) {
             const pi = await stripe.paymentIntents.retrieve(paymentIntentId);
             const bookingId = pi?.metadata?.booking_id;
@@ -1518,7 +1491,6 @@ const webhook = async (req, res) => {
 
       case 'charge.succeeded':
         const charge = event.data.object;
-        console.log(`Payment succeeded for charge ${charge.id}`);
         
         // Update booking status to 'confirmed' or 'paid'
         try {
@@ -1588,7 +1560,6 @@ const webhook = async (req, res) => {
 
       case 'charge.failed':
         const failedCharge = event.data.object;
-        console.log(`Payment failed for charge ${failedCharge.id}`);
         
         // Update booking status to 'payment_failed'
         if (failedCharge.metadata.booking_id) {
@@ -1603,7 +1574,6 @@ const webhook = async (req, res) => {
 
       case 'charge.refunded':
         const refundedCharge = event.data.object;
-        console.log(`Refund processed for charge ${refundedCharge.id}`);
         
         // Update booking with refund information
         if (refundedCharge.metadata.booking_id) {
@@ -1619,14 +1589,14 @@ const webhook = async (req, res) => {
 
       case 'account.updated':
         const account = event.data.object;
-        console.log(`Connected account ${account.id} was updated`);
         
         // You can update vendor account status in your database here
         // This is useful for tracking when vendors complete their onboarding
         break;
 
       default:
-        console.log(`Unhandled event type ${event.type}`);
+        // Unhandled event type
+        break;
     }
 
     res.json({ received: true });
@@ -1731,8 +1701,6 @@ router.get('/config', async (req, res) => {
 
     // Fetch settings from database (with env fallbacks)
     const settings = await getCommissionSettings();
-
-    console.log('📊 Config endpoint called - Commission settings:', settings);
 
     res.json({
       success: true,
