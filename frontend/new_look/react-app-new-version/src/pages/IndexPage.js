@@ -623,6 +623,16 @@ function IndexPage() {
   const handleCategoryChange = useCallback((category) => {
     setCurrentCategory(category);
     setCurrentPage(1);
+    
+    // Update URL with category parameter
+    const params = new URLSearchParams(window.location.search);
+    if (category && category !== 'all') {
+      params.set('category', category);
+    } else {
+      params.delete('category');
+    }
+    const newUrl = `${window.location.pathname}${params.toString() ? '?' + params.toString() : ''}`;
+    window.history.pushState({}, '', newUrl);
   }, []);
 
   const handleSortChange = useCallback((e) => {
@@ -1053,24 +1063,44 @@ function IndexPage() {
               </>
             ) : (
               // Show actual discovery sections when loaded
-              discoverySections.length > 0 && discoverySections.map((section) => (
-                <VendorSection
-                  key={`${section.id}-${mapActive}`}
-                  title={section.title}
-                  description={section.description}
-                  vendors={section.vendors}
-                  favorites={favorites}
-                  onToggleFavorite={handleToggleFavorite}
-                  onViewVendor={handleViewVendor}
-                  onHighlightVendor={handleHighlightVendor}
-                  showViewCount={section.showViewCount || false}
-                  showResponseTime={section.showResponseTime || false}
-                  showAnalyticsBadge={section.showAnalyticsBadge || false}
-                  analyticsBadgeType={section.analyticsBadgeType || null}
-                />
+              discoverySections.length > 0 && discoverySections.map((section, index) => (
+                <React.Fragment key={`${section.id}-${mapActive}`}>
+                  <VendorSection
+                    title={section.title}
+                    description={section.description}
+                    vendors={section.vendors}
+                    favorites={favorites}
+                    onToggleFavorite={handleToggleFavorite}
+                    onViewVendor={handleViewVendor}
+                    onHighlightVendor={handleHighlightVendor}
+                    showViewCount={section.showViewCount || false}
+                    showResponseTime={section.showResponseTime || false}
+                    showAnalyticsBadge={section.showAnalyticsBadge || false}
+                    analyticsBadgeType={section.analyticsBadgeType || null}
+                  />
+                  {/* Divider between discovery sections */}
+                  {index < discoverySections.length - 1 && (
+                    <div style={{
+                      maxWidth: '100%',
+                      margin: '32px 0',
+                      height: '1px',
+                      background: 'linear-gradient(to right, transparent, rgba(0, 0, 0, 0.08), transparent)'
+                    }}></div>
+                  )}
+                </React.Fragment>
               ))
             )}
           </div>
+          
+          {/* Divider between discovery sections and main vendor grid */}
+          {!loadingDiscovery && discoverySections.length > 0 && (
+            <div className="section-divider" style={{
+              maxWidth: '100%',
+              margin: '40px 0',
+              height: '1px',
+              background: 'linear-gradient(to right, transparent, rgba(0, 0, 0, 0.08), transparent)'
+            }}></div>
+          )}
           
           {/* Main Vendor Grid */}
           <VendorGrid vendors={currentVendors} loading={loading} loadingMore={loadingMore} favorites={favorites} onToggleFavorite={handleToggleFavorite} onViewVendor={handleViewVendor} onHighlightVendor={handleHighlightVendor} />

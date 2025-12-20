@@ -5,14 +5,20 @@ function Footer() {
   const navigate = useNavigate();
 
   const handleCategoryClick = (category) => {
+    window.scrollTo(0, 0);
     navigate(`/explore?category=${category}`);
+  };
+
+  const handleNavigate = (path) => {
+    window.scrollTo(0, 0);
+    navigate(path);
   };
 
   return (
     <footer className="vv-footer" aria-label="Site footer">
       <div className="vv-wrap">
         <div className="vv-brand">
-          <div className="vv-logo" onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>
+          <div className="vv-logo" onClick={() => handleNavigate('/')} style={{ cursor: 'pointer' }}>
             <img src="/planhive_logo.svg" alt="PlanHive" style={{ height: '45px', width: 'auto' }} />
           </div>
           <div className="vv-tagline">Get the app and plan on the go</div>
@@ -32,9 +38,9 @@ function Footer() {
         <div className="vv-col">
           <h4>Company</h4>
           <ul className="vv-links">
-            <li><a href="/" onClick={(e) => { e.preventDefault(); navigate('/'); }}>Home</a></li>
-            <li><a href="/explore" onClick={(e) => { e.preventDefault(); navigate('/explore'); }}>Browse Vendors</a></li>
-            <li><a href="/become-a-vendor" onClick={(e) => { e.preventDefault(); navigate('/become-a-vendor'); }}>Are You a Vendor?</a></li>
+            <li><a href="/" onClick={(e) => { e.preventDefault(); handleNavigate('/'); }}>Home</a></li>
+            <li><a href="/explore" onClick={(e) => { e.preventDefault(); handleNavigate('/explore'); }}>Browse Vendors</a></li>
+            <li><a href="/become-a-vendor" onClick={(e) => { e.preventDefault(); handleNavigate('/become-a-vendor'); }}>Are You a Vendor?</a></li>
             <li><a href="#" onClick={(e) => e.preventDefault()}>Privacy Policy</a></li>
             <li><a href="#" onClick={(e) => e.preventDefault()}>Terms of Use</a></li>
           </ul>
@@ -63,7 +69,7 @@ function Footer() {
             <a href="#" onClick={(e) => e.preventDefault()} aria-label="TikTok"><i className="fab fa-tiktok"></i></a>
           </div>
           <div className="vv-cta">
-            <a href="/become-a-vendor" onClick={(e) => { e.preventDefault(); navigate('/become-a-vendor'); }}>Advertise with Us!</a>
+            <a href="/become-a-vendor" onClick={(e) => { e.preventDefault(); handleNavigate('/become-a-vendor'); }}>Advertise with Us!</a>
           </div>
         </div>
       </div>

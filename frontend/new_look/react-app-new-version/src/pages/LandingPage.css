@@ -5,6 +5,20 @@
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 
+/* Section Divider */
+.section-divider {
+  max-width: 1200px;
+  margin: 40px auto;
+  padding: 0 40px;
+}
+
+.section-divider::after {
+  content: '';
+  display: block;
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgba(0, 0, 0, 0.08), transparent);
+}
+
 /* Header - Transparent on hero */
 .landing-header {
   position: fixed;
@@ -24,9 +38,9 @@
 }
 
 .landing-header-content {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 12px 40px;
+  max-width: 100%;
+  margin: 0;
+  padding: 12px 24px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1155,6 +1169,15 @@
 }
 
 /* Scroll Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 @keyframes fadeInUp {
   from {
     opacity: 0;
@@ -1200,7 +1223,7 @@
 }
 
 .animate-on-scroll {
-  opacity: 0;
+  opacity: 1;
 }
 
 .animate-on-scroll.animated {
@@ -1209,20 +1232,11 @@
   animation-timing-function: cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
-.animate-on-scroll.animated.fade-up {
-  animation-name: fadeInUp;
-}
-
-.animate-on-scroll.animated.fade-left {
-  animation-name: fadeInLeft;
-}
-
-.animate-on-scroll.animated.fade-right {
-  animation-name: fadeInRight;
-}
-
+.animate-on-scroll.animated.fade-up,
+.animate-on-scroll.animated.fade-left,
+.animate-on-scroll.animated.fade-right,
 .animate-on-scroll.animated.scale-in {
-  animation-name: scaleIn;
+  animation-name: fadeIn;
 }
 
 /* Staggered animation delays for grid items */
@@ -1619,127 +1633,446 @@
   }
 }
 
-/* Discovery Section - VendorSection overrides for landing page */
-.discovery-section {
-  padding: 24px 40px;
-  max-width: 1400px;
-  margin: 0 auto;
-  overflow: hidden;
+/* Featured Vendors Section - Matching Landing Page Card Style */
+.featured-vendors-section {
+  padding: 50px 0 40px;
+  background: #ffffff;
 }
 
-.discovery-section:first-of-type {
-  padding-top: 48px;
+.featured-vendors-section h2 {
+  font-size: 28px;
+  font-weight: 700;
+  color: #222222;
+  margin: 0 0 8px 0;
 }
 
-.discovery-section .vendor-section {
-  margin: 0;
+.featured-vendors-section .section-subtitle {
+  margin: 0 0 24px 0;
+}
+
+.landing-discovery-row {
+  margin-bottom: 40px;
+}
+
+.landing-discovery-row:last-child {
+  margin-bottom: 0;
+}
+
+/* Override VendorSection styling for landing page */
+.landing-discovery-row .vendor-section {
   padding: 0;
+  margin: 0;
 }
 
-.discovery-section .vendor-section-header {
-  margin-bottom: 20px;
+.landing-discovery-row .vendor-section-header {
+  margin-bottom: 16px;
+}
+
+.landing-discovery-row .vendor-section-title {
+  font-size: 20px !important;
+  font-weight: 600 !important;
+}
+
+.landing-discovery-row .vendor-section-description {
+  font-size: 14px !important;
+  color: #717171 !important;
+}
+
+/* Make vendor cards match the 3:4 aspect ratio style like category cards */
+.landing-discovery-row .vendor-card {
+  border-radius: 12px !important;
+  overflow: hidden !important;
+}
+
+/* Override the inline style square aspect ratio to 3:4 */
+.landing-discovery-row .vendor-card > div:first-child {
+  aspect-ratio: 3/4 !important;
+  border-radius: 12px !important;
+  overflow: hidden !important;
+}
+
+.landing-discovery-row .vendor-card-image {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+}
+
+/* Hide the placeholder icon image and show gradient background instead */
+.landing-discovery-row .vendor-card img[src*="image_placeholder"] {
+  opacity: 0 !important;
+}
+
+.landing-discovery-row .vendor-card > div:first-child:has(img[src*="image_placeholder"]) {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+}
+
+.landing-discovery-row .vendor-card:hover {
+  transform: translateY(-4px) !important;
+}
+
+.landing-discovery-row .vendor-card:hover > div:first-child {
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Hide heart icon on landing page vendor cards */
+.landing-discovery-row .vendor-card button[class*="active"],
+.landing-discovery-row .vendor-card button:has(svg) {
+  display: none !important;
+}
+
+/* Hide "Show all" button on landing page */
+.landing-discovery-row .vendor-section-header .show-all-btn,
+.landing-discovery-row .vendor-section-show-all,
+.landing-discovery-row [class*="show-all"] {
+  display: none !important;
+}
+
+/* Position the card content inside the image with gradient overlay */
+.landing-discovery-row .vendor-card {
+  position: relative !important;
+}
+
+.landing-discovery-row .vendor-card > div:last-child {
+  position: absolute !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  padding: 40px 12px 12px 12px !important;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.75)) !important;
+  z-index: 5 !important;
+  border-radius: 0 0 12px 12px !important;
+}
+
+.landing-discovery-row .vendor-card .vendor-card-business-name {
+  color: white !important;
+  font-size: 15px !important;
+  font-weight: 600 !important;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.3) !important;
+}
+
+/* Make ALL text white on landing page vendor cards */
+.landing-discovery-row .vendor-card > div:last-child,
+.landing-discovery-row .vendor-card > div:last-child * {
+  color: white !important;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.3) !important;
+}
+
+.landing-discovery-row .vendor-card > div:last-child span,
+.landing-discovery-row .vendor-card > div:last-child div {
+  color: white !important;
+}
+
+/* Vendor carousel cards - same style as city/category cards */
+.vendor-carousel-card .carousel-card-image {
+  position: relative;
+}
+
+.vendor-card-favorite-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: rgba(255, 255, 255, 0.9);
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  opacity: 0;
+  transform: scale(0.8);
+  z-index: 2;
 }
 
-.discovery-section .vendor-section-title-wrapper {
-  flex: 1;
+.vendor-carousel-card:hover .vendor-card-favorite-btn {
+  opacity: 1;
+  transform: scale(1);
 }
 
-.discovery-section .vendor-section-title {
-  font-size: 24px !important;
-  font-weight: 700 !important;
-  color: #222 !important;
+.vendor-card-favorite-btn:hover {
+  background: white;
+  transform: scale(1.1);
+}
+
+.vendor-card-favorite-btn i {
+  font-size: 14px;
+  color: #ff385c;
+}
+
+.vendor-card-favorite-btn .fas.fa-heart {
+  color: #ff385c;
+}
+
+.vendor-carousel-card .carousel-card-overlay h3 {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0 0 4px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vendor-carousel-card .carousel-card-overlay p {
+  font-size: 12px;
+  margin: 0;
+  opacity: 0.9;
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.discovery-section .vendor-section-icon {
-  width: 28px !important;
-  height: 28px !important;
-  border-radius: 8px !important;
+.vendor-carousel-card .vendor-rating {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
 }
 
-.discovery-section .vendor-section-description {
-  font-size: 14px !important;
+.vendor-carousel-card .vendor-rating i {
+  color: #fbbf24;
+  font-size: 11px;
+}
+
+.vendor-carousel-card .vendor-rating .review-count {
+  margin-left: 2px;
+  opacity: 0.8;
+}
+
+.vendor-carousel-card .vendor-city {
+  opacity: 0.9;
+}
+
+.vendor-carousel-card .vendor-price {
+  font-size: 11px;
+  margin-top: 4px;
+  opacity: 0.85;
+}
+
+.featured-vendors-cta {
+  display: flex;
+  justify-content: center;
+  margin-top: 32px;
+}
+
+.explore-all-btn {
+  background: #5e72e4;
+  color: white;
+  border: none;
+  padding: 14px 32px;
+  font-size: 15px;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.explore-all-btn:hover {
+  background: #4c5fd7;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(94, 114, 228, 0.3);
+}
+
+.explore-all-btn i {
+  font-size: 14px;
+  transition: transform 0.2s ease;
+}
+
+.explore-all-btn:hover i {
+  transform: translateX(4px);
+}
+
+@media (max-width: 768px) {
+  .featured-vendors-section {
+    padding: 40px 0 32px;
+  }
+  
+  .featured-vendors-section h2 {
+    font-size: 22px;
+  }
+  
+  .vendor-card-favorite-btn {
+    opacity: 1;
+    transform: scale(1);
+  }
+  
+  .explore-all-btn {
+    padding: 12px 24px;
+    font-size: 14px;
+  }
+  
+  .featured-vendors-cta {
+    margin-top: 24px;
+  }
+}
+
+/* Discovery Section - VendorSection overrides for landing page */
+.landing-page .discovery-section {
+  padding: 40px 40px;
+  max-width: 1400px;
+  margin: 0 auto;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.landing-page .discovery-section:first-of-type {
+  padding-top: 60px;
+}
+
+.landing-page .discovery-section .vendor-section {
+  margin: 0;
+  padding: 0;
+}
+
+.landing-page .discovery-section .vendor-section-header {
+  margin-bottom: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.landing-page .discovery-section .vendor-section-title-wrapper {
+  flex: 1;
+}
+
+/* Clean title styling matching landing page aesthetics */
+.landing-page .discovery-section .vendor-section-title {
+  font-size: 28px !important;
+  font-weight: 700 !important;
+  color: #222222 !important;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 !important;
+}
+
+/* Hide the colored icon box on landing page for cleaner look */
+.landing-page .discovery-section .vendor-section-icon {
+  display: none !important;
+}
+
+.landing-page .discovery-section .vendor-section-description {
+  font-size: 16px !important;
   color: #717171 !important;
-  margin-top: 4px !important;
+  margin: 8px 0 0 0 !important;
+  font-weight: 400 !important;
 }
 
-.discovery-section .vendor-section-scroll-container {
+.landing-page .discovery-section .vendor-section-scroll-container {
   overflow: hidden !important;
   position: relative;
   width: 100%;
 }
 
-.discovery-section .vendor-section-carousel {
+.landing-page .discovery-section .vendor-section-carousel {
   display: flex !important;
   gap: 16px !important;
 }
 
-.discovery-section .vendor-section-controls {
+.landing-page .discovery-section .vendor-section-controls {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 16px;
 }
 
-.discovery-section .vendor-section-show-all {
+.landing-page .discovery-section .vendor-section-show-all {
   font-size: 14px !important;
-  color: #222 !important;
+  color: #222222 !important;
   background: none !important;
   border: none !important;
   padding: 0 !important;
   cursor: pointer;
   font-weight: 600 !important;
   white-space: nowrap;
-}
-
-.discovery-section .vendor-section-show-all:hover {
   text-decoration: underline;
 }
 
-.discovery-section .vendor-section-nav-btn {
+.landing-page .discovery-section .vendor-section-show-all:hover {
+  color: #5e72e4 !important;
+}
+
+.landing-page .discovery-section .vendor-section-nav-btn {
   width: 32px !important;
   height: 32px !important;
   border-radius: 50% !important;
-  border: 1px solid #ddd !important;
+  border: 1px solid #dddddd !important;
   background: white !important;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: all 0.2s ease;
 }
 
-.discovery-section .vendor-section-nav-btn:hover:not(:disabled) {
-  border-color: #222 !important;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+.landing-page .discovery-section .vendor-section-nav-btn:hover:not(:disabled) {
+  border-color: #222222 !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  transform: scale(1.05);
 }
 
-.discovery-section .vendor-section-nav-btn:disabled {
+.landing-page .discovery-section .vendor-section-nav-btn:disabled {
   opacity: 0.3;
   cursor: not-allowed;
 }
 
 /* Force carousel to not wrap and hide overflow */
-.discovery-section .vendor-section-scroll-container {
+.landing-page .discovery-section .vendor-section-scroll-container {
   overflow: hidden !important;
   width: 100% !important;
   max-width: 100% !important;
 }
 
-.discovery-section .vendor-section-carousel {
+.landing-page .discovery-section .vendor-section-carousel {
   display: flex !important;
   flex-wrap: nowrap !important;
-  gap: 16px !important;
+  gap: 20px !important;
   width: max-content !important;
 }
 
-.discovery-section .vendor-section-carousel > div {
-  flex: 0 0 220px !important;
-  width: 220px !important;
-  min-width: 220px !important;
+.landing-page .discovery-section .vendor-section-carousel > div {
+  flex: 0 0 240px !important;
+  width: 240px !important;
+  min-width: 240px !important;
+}
+
+/* Vendor card styling for landing page - cleaner, more modern look */
+.landing-page .discovery-section .vendor-card {
+  background: transparent !important;
+  border-radius: 0 !important;
+  overflow: visible;
+  transition: transform 0.3s ease !important;
+}
+
+.landing-page .discovery-section .vendor-card:hover {
+  transform: translateY(-4px) !important;
+}
+
+/* Image container with rounded corners for landing */
+.landing-page .discovery-section .vendor-card > div:first-child {
+  border-radius: 16px !important;
+  overflow: hidden !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: box-shadow 0.3s ease;
+}
+
+.landing-page .discovery-section .vendor-card:hover > div:first-child {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+/* Card content styling */
+.landing-page .discovery-section .vendor-card-business-name {
+  font-size: 15px !important;
+  font-weight: 600 !important;
+  color: #222222 !important;
+}
+
+/* Placeholder image styling - make it look better when no image */
+.landing-page .discovery-section .vendor-card-image {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important;
 }
 
 /* Trusted Marketplace Section - Image 1 Style */
@@ -1852,7 +2185,7 @@
 }
 
 .vendor-cta-btn {
-  background: #ff6b6b;
+  background: #6366f1;
   color: white;
   border: none;
   padding: 14px 32px;
@@ -1864,9 +2197,9 @@
 }
 
 .vendor-cta-btn:hover {
-  background: #ff5252;
+  background: #4f46e5;
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
 }
 
 @media (max-width: 992px) {
@@ -1897,5 +2230,166 @@
   
   .vendor-cta-content {
     padding: 24px;
+  }
+  
+  /* Hero styled search bar - stack on mobile */
+  .hero-search-bar-styled {
+    flex-direction: column;
+    border-radius: 16px;
+    padding: 16px;
+    max-width: 340px;
+    gap: 12px;
+  }
+  
+  .hero-search-bar-styled .search-field-group {
+    min-width: 100%;
+    padding-right: 0;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #eee;
+  }
+  
+  .hero-search-bar-styled .search-field-group:last-of-type {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+  
+  .hero-search-bar-styled .search-divider-line {
+    display: none;
+  }
+  
+  .hero-search-bar-styled .search-btn-styled {
+    width: 100%;
+    justify-content: center;
+    margin-left: 0;
+    margin-top: 8px;
+    padding: 16px 24px;
+  }
+  
+  /* Discovery sections mobile */
+  .landing-page .discovery-section {
+    padding: 32px 16px;
+  }
+  
+  .landing-page .discovery-section .vendor-section-carousel > div {
+    flex: 0 0 200px !important;
+    width: 200px !important;
+    min-width: 200px !important;
+  }
+  
+  .landing-page .discovery-section .vendor-section-title {
+    font-size: 22px !important;
+  }
+  
+  .landing-page .discovery-section .vendor-section-description {
+    font-size: 14px !important;
+  }
+  
+  .landing-page .discovery-section .vendor-section-header {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+}
+
+/* Engagement CTA Section */
+.engagement-cta-section {
+  padding: 80px 0;
+  background: linear-gradient(135deg, #5e72e4 0%, #825ee4 100%);
+  text-align: center;
+}
+
+.engagement-content {
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+.engagement-content h2 {
+  font-size: 36px;
+  font-weight: 700;
+  color: white;
+  margin: 0 0 16px 0;
+}
+
+.engagement-content p {
+  font-size: 18px;
+  color: rgba(255, 255, 255, 0.9);
+  margin: 0 0 32px 0;
+  line-height: 1.6;
+}
+
+.engagement-buttons {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.engagement-buttons .cta-primary {
+  background: white;
+  color: #5e72e4;
+  border: none;
+  padding: 16px 40px;
+  font-size: 16px;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.engagement-buttons .cta-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+}
+
+.engagement-buttons .cta-secondary {
+  background: transparent;
+  color: white;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  padding: 14px 40px;
+  font-size: 16px;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.engagement-buttons .cta-secondary:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: white;
+}
+
+@media (max-width: 768px) {
+  .engagement-cta-section {
+    padding: 60px 0;
+  }
+  
+  .engagement-content h2 {
+    font-size: 28px;
+  }
+  
+  .engagement-content p {
+    font-size: 16px;
+  }
+  
+  .engagement-buttons {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .engagement-buttons .cta-primary,
+  .engagement-buttons .cta-secondary {
+    width: 100%;
+    max-width: 280px;
+  }
+}
+
+@media (max-width: 480px) {
+  .engagement-content h2 {
+    font-size: 24px;
+  }
+  
+  .engagement-buttons .cta-primary,
+  .engagement-buttons .cta-secondary {
+    padding: 14px 32px;
+    font-size: 15px;
   }
 }

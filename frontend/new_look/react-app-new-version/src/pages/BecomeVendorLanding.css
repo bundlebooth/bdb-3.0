@@ -915,4 +915,140 @@
     width: 100%;
     padding: 16px 32px;
   }
+  
+  .vendor-hero-text h1 {
+    font-size: 24px;
+    line-height: 1.3;
+  }
+  
+  .hero-subtitle {
+    font-size: 15px;
+  }
+  
+  .stat-number {
+    font-size: 24px;
+  }
+  
+  .stat-label {
+    font-size: 12px;
+  }
+  
+  .vendor-hero-image img {
+    height: 280px;
+  }
+  
+  .why-vendor-card {
+    padding: 20px;
+  }
+  
+  .why-vendor-card h2 {
+    font-size: 20px;
+  }
+  
+  .why-item {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .why-icon {
+    margin: 0 auto 12px;
+  }
+  
+  .why-vendor-image img {
+    height: 250px;
+  }
+  
+  .how-step {
+    padding: 20px;
+  }
+  
+  .step-number {
+    width: 40px;
+    height: 40px;
+    font-size: 18px;
+  }
+  
+  .step-details h3 {
+    font-size: 18px;
+  }
+  
+  .vendor-stats-section h2 {
+    font-size: 22px;
+  }
+  
+  .testimonial-text blockquote {
+    font-size: 18px;
+  }
+  
+  .testimonial-image img {
+    height: 250px;
+  }
+  
+  .vendor-cta-section h2 {
+    font-size: 24px;
+  }
+  
+  .vendor-cta-section p {
+    font-size: 15px;
+  }
+}
+
+/* Additional mobile touch-friendly improvements */
+@media (max-width: 768px) {
+  /* Ensure tap targets are at least 44px */
+  .hero-cta-btn,
+  .cta-btn-large,
+  .vendor-landing-nav .nav-btn {
+    min-height: 44px;
+  }
+  
+  /* Better spacing for mobile readability */
+  .vendor-categories-section .section-subtitle {
+    font-size: 14px;
+    line-height: 1.6;
+    padding: 0 8px;
+  }
+  
+  /* Feature cards mobile */
+  .feature-card {
+    padding: 24px;
+  }
+  
+  .feature-icon {
+    width: 48px;
+    height: 48px;
+  }
+  
+  .feature-card h3 {
+    font-size: 16px;
+  }
+  
+  .feature-card p {
+    font-size: 13px;
+  }
+  
+  /* Benefit cards mobile */
+  .benefit-card {
+    padding: 20px 16px;
+  }
+  
+  .benefit-icon {
+    width: 50px;
+    height: 50px;
+  }
+  
+  /* Ensure images don't overflow */
+  .vendor-hero-image,
+  .why-vendor-image,
+  .testimonial-image {
+    width: 100%;
+    overflow: hidden;
+  }
+  
+  .vendor-hero-image img,
+  .why-vendor-image img,
+  .testimonial-image img {
+    width: 100%;
+    max-width: 100%;
+  }
 }

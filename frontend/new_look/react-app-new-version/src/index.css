@@ -9392,3 +9392,215 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
     }
 }
 
+/* ============================================
+   MOBILE RESPONSIVE STYLES - LANDING PAGES
+   ============================================ */
+
+/* Mobile Header Improvements */
+@media (max-width: 768px) {
+    .header {
+        padding: 0.75rem 1rem;
+    }
+    
+    .header .logo img {
+        height: 36px !important;
+    }
+    
+    .search-container {
+        margin: 0 0.75rem;
+        max-width: none;
+        flex: 1;
+    }
+    
+    .user-nav {
+        gap: 0.75rem;
+    }
+    
+    .user-nav .become-vendor-btn,
+    .user-nav .complete-profile-btn,
+    .user-nav .admin-dashboard-btn {
+        display: none !important;
+    }
+    
+    .nav-icon {
+        width: 32px;
+        height: 32px;
+    }
+    
+    #profile-btn {
+        width: 32px !important;
+        height: 32px !important;
+        font-size: 0.9rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .header {
+        padding: 0.5rem 0.75rem;
+    }
+    
+    .header .logo img {
+        height: 32px !important;
+    }
+    
+    .search-container {
+        margin: 0 0.5rem;
+    }
+    
+    .user-nav {
+        gap: 0.5rem;
+    }
+    
+    .nav-icon {
+        width: 28px;
+        height: 28px;
+    }
+    
+    #profile-btn {
+        width: 28px !important;
+        height: 28px !important;
+        font-size: 0.8rem;
+    }
+}
+
+/* Mobile App Container - Single Column Layout */
+@media (max-width: 900px) {
+    .app-container {
+        grid-template-columns: 1fr !important;
+    }
+    
+    .app-container.sidebar-collapsed {
+        grid-template-columns: 1fr !important;
+    }
+    
+    .app-container.map-active {
+        grid-template-columns: 1fr !important;
+    }
+    
+    .sidebar {
+        display: none;
+    }
+    
+    .map-sidebar {
+        display: none;
+    }
+    
+    .main-content {
+        padding: 1rem;
+    }
+    
+    /* Categories nav mobile */
+    .categories-nav {
+        padding: 0.5rem 0.75rem;
+        top: 55px;
+    }
+    
+    .categories-list {
+        gap: 1rem;
+        justify-content: flex-start;
+    }
+    
+    .category-item {
+        min-width: 50px;
+        padding: 0.25rem 0.35rem;
+    }
+    
+    .category-item i {
+        font-size: 1.25rem;
+    }
+    
+    .category-item span {
+        font-size: 0.7rem;
+    }
+}
+
+/* Mobile Vendor Grid */
+@media (max-width: 600px) {
+    .vendor-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 0.75rem !important;
+    }
+    
+    .vendor-card {
+        min-width: 0;
+    }
+    
+    .vendor-details {
+        padding: 0.75rem;
+    }
+    
+    .vendor-name {
+        font-size: 0.9rem;
+    }
+    
+    .vendor-location {
+        font-size: 0.8rem;
+    }
+}
+
+@media (max-width: 400px) {
+    .vendor-grid {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+/* Mobile Modal Improvements */
+@media (max-width: 768px) {
+    .modal-content {
+        width: 95%;
+        max-width: none;
+        margin: 1rem;
+        max-height: calc(100vh - 2rem);
+    }
+    
+    .modal-header {
+        padding: 1rem;
+    }
+    
+    .modal-body {
+        padding: 1rem;
+    }
+    
+    /* Dashboard modal mobile */
+    .dashboard-container {
+        grid-template-columns: 1fr !important;
+    }
+    
+    .dashboard-sidebar {
+        display: none;
+    }
+    
+    .dashboard-content {
+        padding: 1rem;
+    }
+}
+
+/* Touch-friendly improvements */
+@media (max-width: 768px) {
+    /* Ensure minimum tap target size of 44px */
+    .btn,
+    .nav-btn,
+    .page-btn,
+    button {
+        min-height: 44px;
+    }
+    
+    /* Better spacing for form elements */
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        padding: 0.875rem;
+        font-size: 16px; /* Prevents iOS zoom on focus */
+    }
+    
+    /* Prevent horizontal scroll */
+    body {
+        overflow-x: hidden;
+    }
+    
+    .landing-page,
+    .become-vendor-landing {
+        overflow-x: hidden;
+    }
+}
+

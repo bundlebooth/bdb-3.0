@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL, GOOGLE_MAPS_API_KEY } from '../config';
 import VendorSection from '../components/VendorSection';
+import VendorCard from '../components/VendorCard';
 import Footer from '../components/Footer';
 import MessagingWidget from '../components/MessagingWidget';
 import './LandingPage.css';
@@ -110,7 +111,11 @@ function LandingPage() {
         
         // Use discovery sections from API if available
         if (data.discoverySections && Array.isArray(data.discoverySections)) {
-          setDiscoverySections(data.discoverySections);
+          // Filter out Budget-Friendly Options section
+          const filteredSections = data.discoverySections.filter(
+            section => !section.title?.toLowerCase().includes('budget')
+          );
+          setDiscoverySections(filteredSections);
         } else {
           // Fallback: create sections from vendors
           const vendors = data.vendors || [];
@@ -154,31 +159,6 @@ function LandingPage() {
     loadVendors();
   }, [loadVendors]);
 
-  // Scroll animation observer
-  useEffect(() => {
-    const observerOptions = {
-      root: null,
-      rootMargin: '0px',
-      threshold: 0.1
-    };
-
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('animated');
-          observer.unobserve(entry.target);
-        }
-      });
-    }, observerOptions);
-
-    // Observe all elements with animate-on-scroll class
-    const animatedElements = document.querySelectorAll('.animate-on-scroll');
-    animatedElements.forEach(el => observer.observe(el));
-
-    return () => {
-      animatedElements.forEach(el => observer.unobserve(el));
-    };
-  }, [loading]); // Re-run when loading changes to catch dynamically loaded content
 
   const handleSearch = (e) => {
     e?.preventDefault();
@@ -186,17 +166,20 @@ function LandingPage() {
     if (searchLocation) params.set('location', searchLocation);
     if (eventType) params.set('category', eventType.toLowerCase());
     if (searchGuests) params.set('guests', searchGuests);
+    window.scrollTo(0, 0);
     navigate(`/explore?${params.toString()}`);
   };
 
   const handleCityClick = (cityName) => {
     // Extract just the city name without province for API compatibility
     const city = cityName.split(',')[0].trim();
+    window.scrollTo(0, 0);
     navigate(`/explore?location=${encodeURIComponent(city)}`);
   };
 
-  const handleCategoryClick = (categoryName) => {
-    navigate(`/explore?category=${encodeURIComponent(categoryName)}`);
+  const handleCategoryClick = (categorySlug) => {
+    window.scrollTo(0, 0);
+    navigate(`/explore?category=${encodeURIComponent(categorySlug)}`);
   };
 
   const handleToggleFavorite = (vendorId) => {
@@ -217,12 +200,12 @@ function LandingPage() {
   ];
 
   const vendorCategories = [
-    { name: 'Venues', slug: 'venues', icon: 'fa-building', image: '/images/landing/meeting-venue.jpg', count: 150 },
-    { name: 'Caterers', slug: 'caterers', icon: 'fa-utensils', image: '/images/landing/slide-catering.jpg', count: 85 },
-    { name: 'Photographers', slug: 'photographers', icon: 'fa-camera', image: '/images/landing/slide-photography.jpg', count: 120 },
-    { name: 'DJs & Music', slug: 'djs', icon: 'fa-music', image: '/images/landing/slide-music.jpg', count: 65 },
-    { name: 'Decorators', slug: 'decorators', icon: 'fa-palette', image: '/images/landing/creative-space.jpg', count: 45 },
-    { name: 'Event Planners', slug: 'planners', icon: 'fa-clipboard-list', image: '/images/landing/slide-events.jpg', count: 55 }
+    { name: 'Venues', slug: 'Venues', icon: 'fa-building', image: '/images/landing/meeting-venue.jpg', count: 150 },
+    { name: 'Caterers', slug: 'Catering', icon: 'fa-utensils', image: '/images/landing/slide-catering.jpg', count: 85 },
+    { name: 'Photographers', slug: 'Photo/Video', icon: 'fa-camera', image: '/images/landing/slide-photography.jpg', count: 120 },
+    { name: 'DJs & Music', slug: 'Music/DJ', icon: 'fa-music', image: '/images/landing/slide-music.jpg', count: 65 },
+    { name: 'Decorators', slug: 'Decorations', icon: 'fa-palette', image: '/images/landing/creative-space.jpg', count: 45 },
+    { name: 'Event Planners', slug: 'Entertainment', icon: 'fa-clipboard-list', image: '/images/landing/slide-events.jpg', count: 55 }
   ];
 
   const cities = [
@@ -268,11 +251,11 @@ function LandingPage() {
           <nav className="landing-nav">
             <a href="/become-a-vendor" className="nav-link">Become a Vendor</a>
             {currentUser ? (
-              <button className="nav-btn login-btn" onClick={() => navigate('/explore')}>
+              <button className="nav-btn login-btn" onClick={() => { window.scrollTo(0, 0); navigate('/explore'); }}>
                 Go to App
               </button>
             ) : (
-              <button className="nav-btn login-btn" onClick={() => navigate('/explore')}>
+              <button className="nav-btn login-btn" onClick={() => { window.scrollTo(0, 0); navigate('/explore'); }}>
                 Log in
               </button>
             )}
@@ -364,13 +347,13 @@ function LandingPage() {
       {/* Discover Cities Section */}
       <section className="cities-section">
         <div className="section-container">
-          <h2 className="animate-on-scroll fade-up">Discover top event spaces in Canada</h2>
-          <p className="section-subtitle animate-on-scroll fade-up">Explore vendors in popular Canadian cities</p>
+          <h2>Discover top event spaces in Canada</h2>
+          <p className="section-subtitle">Explore vendors in popular Canadian cities</p>
           <div className="cities-grid">
             {cities.map((city, index) => (
               <div 
                 key={index} 
-                className={`city-card animate-on-scroll scale-in delay-${(index % 6) + 1}`}
+                className="city-card"
                 onClick={() => handleCityClick(city.name)}
               >
                 <img src={city.image} alt={city.name} />
@@ -387,8 +370,8 @@ function LandingPage() {
       {/* Browse by Category Section - Horizontal Scroll */}
       <section className="category-carousel-section">
         <div className="section-container">
-          <h2 className="animate-on-scroll fade-up">Browse by vendor type</h2>
-          <p className="section-subtitle animate-on-scroll fade-up">Find the perfect vendors for every aspect of your event</p>
+          <h2>Browse by vendor type</h2>
+          <p className="section-subtitle">Find the perfect vendors for every aspect of your event</p>
           <div className="carousel-wrapper">
             <div className="carousel-scroll">
               {vendorCategories.map((category, index) => (
@@ -411,11 +394,32 @@ function LandingPage() {
         </div>
       </section>
 
+      {/* Divider before discovery sections */}
+      <div className="section-divider"></div>
+
+      {/* First Discovery Section */}
+      {!loading && discoverySections[0] && discoverySections[0].vendors?.length > 0 && (
+        <section className="featured-vendors-section">
+          <div className="section-container">
+            <div className="landing-discovery-row">
+              <VendorSection
+                title={discoverySections[0].title}
+                description={discoverySections[0].description}
+                vendors={discoverySections[0].vendors}
+                favorites={favorites}
+                onToggleFavorite={handleToggleFavorite}
+                onViewVendor={(vendorId) => { window.scrollTo(0, 0); navigate(`/vendor/${vendorId}`); }}
+              />
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Why PlanHive Section - Image 5 Style (Moved Higher) */}
       <section className="why-planhive-section">
         <div className="section-container">
           <div className="why-planhive-content">
-            <div className="why-planhive-card animate-on-scroll fade-left">
+            <div className="why-planhive-card">
               <div className="why-item">
                 <div className="why-icon">
                   <i className="fas fa-th-large"></i>
@@ -444,7 +448,7 @@ function LandingPage() {
                 </div>
               </div>
             </div>
-            <div className="why-planhive-image animate-on-scroll fade-right">
+            <div className="why-planhive-image">
               <img 
                 src="/images/landing/venue-feature.jpg" 
                 alt="Beautiful venue"
@@ -454,8 +458,26 @@ function LandingPage() {
         </div>
       </section>
 
+      {/* Second Discovery Section */}
+      {!loading && discoverySections[1] && discoverySections[1].vendors?.length > 0 && (
+        <section className="featured-vendors-section">
+          <div className="section-container">
+            <div className="landing-discovery-row">
+              <VendorSection
+                title={discoverySections[1].title}
+                description={discoverySections[1].description}
+                vendors={discoverySections[1].vendors}
+                favorites={favorites}
+                onToggleFavorite={handleToggleFavorite}
+                onViewVendor={(vendorId) => { window.scrollTo(0, 0); navigate(`/vendor/${vendorId}`); }}
+              />
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* PlanHive - Your Trusted Vendor Marketplace Section */}
-      <section className="trusted-marketplace-section animate-on-scroll fade-up">
+      <section className="trusted-marketplace-section">
         <div className="section-container">
           <h2>PlanHive - your trusted vendor marketplace</h2>
           <p className="marketplace-subtitle">
@@ -494,8 +516,9 @@ function LandingPage() {
         </div>
       </section>
 
+
       {/* Vendor CTA Section - List Your Business */}
-      <section className="vendor-cta-banner animate-on-scroll fade-up">
+      <section className="vendor-cta-banner">
         <div className="section-container">
           <div className="vendor-cta-content">
             <div className="vendor-cta-image">
@@ -504,7 +527,7 @@ function LandingPage() {
             <div className="vendor-cta-text">
               <h2>List your business for free and get more bookings!</h2>
               <p>We are Canada's fastest-growing online marketplace for event vendors, giving you direct access to the right customers.</p>
-              <button className="vendor-cta-btn" onClick={() => navigate('/become-a-vendor')}>
+              <button className="vendor-cta-btn" onClick={() => { window.scrollTo(0, 0); navigate('/become-a-vendor'); }}>
                 Become a Vendor
               </button>
             </div>
@@ -512,111 +535,36 @@ function LandingPage() {
         </div>
       </section>
 
-      {/* Discovery Sections - Same as IndexPage */}
-      {loading ? (
-        <section className="vendors-section">
+
+      {/* Fourth Discovery Section */}
+      {!loading && discoverySections[3] && discoverySections[3].vendors?.length > 0 && (
+        <section className="featured-vendors-section">
           <div className="section-container">
-            <div className="vendors-loading">
-              <div className="loading-spinner"></div>
-              <p>Loading vendors...</p>
+            <div className="landing-discovery-row">
+              <VendorSection
+                title={discoverySections[3].title}
+                description={discoverySections[3].description}
+                vendors={discoverySections[3].vendors}
+                favorites={favorites}
+                onToggleFavorite={handleToggleFavorite}
+                onViewVendor={(vendorId) => { window.scrollTo(0, 0); navigate(`/vendor/${vendorId}`); }}
+              />
             </div>
           </div>
         </section>
-      ) : (
-        discoverySections.map((section) => (
-          <section key={section.id} className="discovery-section animate-on-scroll fade-up">
-            <VendorSection
-              title={section.title}
-              description={section.description}
-              vendors={section.vendors}
-              favorites={favorites}
-              onToggleFavorite={handleToggleFavorite}
-              onViewVendor={(vendorId) => navigate(`/vendor/${vendorId}`)}
-            />
-          </section>
-        ))
       )}
 
-      {/* Event Types Section - Horizontal Carousel */}
-      <section className="category-carousel-section alt-bg">
-        <div className="section-container">
-          <h2 className="animate-on-scroll fade-up">Inspiring Creative Spaces</h2>
-          <p className="section-subtitle animate-on-scroll fade-up">Perfect for artists, photographers, and creatives looking to craft their next masterpiece</p>
-          <div className="carousel-wrapper">
-            <div className="carousel-scroll">
-              {[
-                { name: 'Performance Spaces', image: '/images/landing/creative-space.jpg' },
-                { name: 'Video Shoot Locations', image: '/images/landing/slide-photography.jpg' },
-                { name: 'Film Shoot Locations', image: '/images/landing/slide-music.jpg' },
-                { name: 'Green Screen Spaces', image: '/images/landing/meeting-venue.jpg' },
-                { name: 'Influencer Spaces', image: '/images/landing/slide-events.jpg' },
-                { name: 'Theater Spaces', image: '/images/landing/slide-catering.jpg' }
-              ].map((space, index) => (
-                <div 
-                  key={index} 
-                  className="carousel-card"
-                  onClick={() => handleCategoryClick(space.name.toLowerCase())}
-                >
-                  <div className="carousel-card-image">
-                    <img src={space.image} alt={space.name} />
-                    <div className="carousel-card-overlay">
-                      <h3>{space.name}</h3>
-                      <p>Creative spaces</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Professional Meeting Venues - Another Carousel */}
-      <section className="category-carousel-section">
-        <div className="section-container">
-          <h2>Professional Meeting Venues</h2>
-          <p className="section-subtitle">Elevate your professional gatherings with our selection of versatile meeting venues</p>
-          <div className="carousel-wrapper">
-            <div className="carousel-scroll">
-              {[
-                { name: 'Corporate Event Venues', image: '/images/landing/meeting-venue.jpg' },
-                { name: 'Interview Venues', image: '/images/landing/venue-feature.jpg' },
-                { name: 'Function Spaces', image: '/images/landing/city-ottawa.jpg' },
-                { name: 'Training Spaces', image: '/images/landing/slide-events.jpg' },
-                { name: 'Collaboration Spaces', image: '/images/landing/creative-space.jpg' },
-                { name: 'Corporate Party Venues', image: '/images/landing/slide-catering.jpg' }
-              ].map((space, index) => (
-                <div 
-                  key={index} 
-                  className="carousel-card"
-                  onClick={() => handleCategoryClick(space.name.toLowerCase())}
-                >
-                  <div className="carousel-card-image">
-                    <img src={space.image} alt={space.name} />
-                    <div className="carousel-card-overlay">
-                      <h3>{space.name}</h3>
-                      <p>Work event venues</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-
       {/* Engagement CTA Section */}
-      <section className="engagement-cta-section animate-on-scroll fade-up">
+      <section className="engagement-cta-section">
         <div className="section-container">
           <div className="engagement-content">
             <h2>Ready to Plan Your Perfect Event?</h2>
             <p>Browse thousands of verified vendors across Canada. Find photographers, caterers, venues, DJs, and more.</p>
             <div className="engagement-buttons">
-              <button className="cta-primary" onClick={() => navigate('/explore')}>
+              <button className="cta-primary" onClick={() => { window.scrollTo(0, 0); navigate('/explore'); }}>
                 Explore Vendors
               </button>
-              <button className="cta-secondary" onClick={() => navigate('/become-a-vendor')}>
+              <button className="cta-secondary" onClick={() => { window.scrollTo(0, 0); navigate('/become-a-vendor'); }}>
                 Become a Vendor
               </button>
             </div>
