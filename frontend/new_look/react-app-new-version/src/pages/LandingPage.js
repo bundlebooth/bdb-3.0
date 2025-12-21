@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL, GOOGLE_MAPS_API_KEY } from '../config';
@@ -17,6 +17,8 @@ function LandingPage() {
   const [favorites, setFavorites] = useState([]);
   const [isScrolled, setIsScrolled] = useState(false);
   const [activeSlide, setActiveSlide] = useState(0);
+  const [visibleSections, setVisibleSections] = useState(new Set());
+  const observerRef = useRef(null);
   
   // Hero slideshow data - each slide has an icon and background image
   // Images are stored in /public/images/landing/
@@ -58,6 +60,27 @@ function LandingPage() {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // Intersection Observer for scroll animations
+  useEffect(() => {
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setVisibleSections((prev) => new Set([...prev, entry.target.id]));
+          }
+        });
+      },
+      { threshold: 0.15, rootMargin: '0px 0px -50px 0px' }
+    );
+
+    // Observe all animated sections
+    document.querySelectorAll('.animate-section').forEach((el) => {
+      observerRef.current?.observe(el);
+    });
+
+    return () => observerRef.current?.disconnect();
+  }, [loading]);
 
   // Auto-rotate slideshow every 5 seconds
   useEffect(() => {
@@ -476,41 +499,244 @@ function LandingPage() {
         </section>
       )}
 
-      {/* PlanHive - Your Trusted Vendor Marketplace Section */}
-      <section className="trusted-marketplace-section">
-        <div className="section-container">
-          <h2>PlanHive - your trusted vendor marketplace</h2>
-          <p className="marketplace-subtitle">
-            Join thousands of event organizers enjoying a stress-free vendor search every month. With us, any event can find the right vendors, and vendors can grow their business.
-          </p>
-          <div className="marketplace-features">
-            <div className="marketplace-feature">
-              <div className="feature-icon-box">
-                <i className="fas fa-th-large"></i>
+      {/* Animated Feature Showcase - Giggster Style Alternating Sections */}
+      <section className="feature-showcase-section">
+        {/* Feature 1: Discover Vendors */}
+        <div 
+          id="feature-discover" 
+          className={`feature-row animate-section ${visibleSections.has('feature-discover') ? 'visible' : ''}`}
+        >
+          <div className="feature-row-content">
+            <div className="feature-text-side">
+              <div className="feature-badge">
+                <i className="fas fa-compass"></i>
+                <span>Discover</span>
               </div>
-              <h3>Discover unique vendors for any event</h3>
-              <p>We list over 500+ vendors across Canada. You'll find the right one among photographers, caterers, venues, DJs, decorators, and more.</p>
+              <h2>Find the perfect vendors for your event</h2>
+              <p>Browse <strong>500+ verified vendors</strong> across Canada. From photographers to caterers, venues to DJs — we've curated the best so you don't have to search endlessly.</p>
+              <ul className="feature-list">
+                <li><i className="fas fa-check-circle"></i> Photographers & Videographers</li>
+                <li><i className="fas fa-check-circle"></i> Caterers & Food Services</li>
+                <li><i className="fas fa-check-circle"></i> Venues & Event Spaces</li>
+                <li><i className="fas fa-check-circle"></i> DJs, Musicians & Entertainment</li>
+              </ul>
+              <button className="feature-cta" onClick={() => { window.scrollTo(0, 0); navigate('/explore'); }}>
+                Explore Vendors <i className="fas fa-arrow-right"></i>
+              </button>
             </div>
-            <div className="marketplace-feature">
-              <div className="feature-icon-box">
+            <div className="feature-image-side">
+              <div className="feature-image-stack">
+                <img src="/images/landing/slide-photography.jpg" alt="Photography" className="stack-img stack-img-1" />
+                <img src="/images/landing/slide-catering.jpg" alt="Catering" className="stack-img stack-img-2" />
+                <div className="floating-stat floating-stat-1">
+                  <i className="fas fa-star"></i>
+                  <span>4.9 avg rating</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Feature 2: Smart Search */}
+        <div 
+          id="feature-search" 
+          className={`feature-row feature-row-reverse animate-section ${visibleSections.has('feature-search') ? 'visible' : ''}`}
+        >
+          <div className="feature-row-content">
+            <div className="feature-text-side">
+              <div className="feature-badge feature-badge-purple">
                 <i className="fas fa-sliders-h"></i>
+                <span>Smart Tools</span>
               </div>
-              <h3>Find the perfect fit with smart tools</h3>
-              <p>Use intuitive filters to customize your search by budget, guest count, amenities, cancellation flexibility, and more. See real prices and response times upfront.</p>
+              <h2>Find your perfect match in seconds</h2>
+              <p>Our <strong>intelligent search</strong> helps you filter by budget, location, availability, and more. See real prices and response times upfront — no surprises.</p>
+              <div className="feature-highlights">
+                <div className="highlight-item">
+                  <div className="highlight-icon"><i className="fas fa-dollar-sign"></i></div>
+                  <div>
+                    <strong>Transparent Pricing</strong>
+                    <span>Know costs upfront</span>
+                  </div>
+                </div>
+                <div className="highlight-item">
+                  <div className="highlight-icon"><i className="fas fa-map-marker-alt"></i></div>
+                  <div>
+                    <strong>Location-Based</strong>
+                    <span>Find vendors near you</span>
+                  </div>
+                </div>
+                <div className="highlight-item">
+                  <div className="highlight-icon"><i className="fas fa-calendar-check"></i></div>
+                  <div>
+                    <strong>Real-Time Availability</strong>
+                    <span>Book instantly</span>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div className="marketplace-feature">
-              <div className="feature-icon-box">
-                <i className="fas fa-check-circle"></i>
+            <div className="feature-image-side">
+              <div className="feature-mockup">
+                <div className="mockup-browser">
+                  <div className="browser-dots">
+                    <span></span><span></span><span></span>
+                  </div>
+                  <div className="mockup-content">
+                    <div className="mock-filter-bar">
+                      <div className="mock-filter"><i className="fas fa-map-marker-alt"></i> Toronto</div>
+                      <div className="mock-filter"><i className="fas fa-users"></i> 50-100</div>
+                      <div className="mock-filter"><i className="fas fa-dollar-sign"></i> $$</div>
+                    </div>
+                    <div className="mock-results">
+                      <div className="mock-card"></div>
+                      <div className="mock-card"></div>
+                      <div className="mock-card"></div>
+                    </div>
+                  </div>
+                </div>
+                <div className="floating-stat floating-stat-2">
+                  <i className="fas fa-bolt"></i>
+                  <span>Avg 2hr response</span>
+                </div>
               </div>
-              <h3>Check verified reviews before you book</h3>
-              <p>Feel confident in your choice by hearing from people who have been there: read reviews from real users who have hosted events with vendors on our platform.</p>
             </div>
-            <div className="marketplace-feature">
-              <div className="feature-icon-box">
-                <i className="fas fa-handshake"></i>
+          </div>
+        </div>
+
+        {/* Feature 3: Reviews */}
+        <div 
+          id="feature-reviews" 
+          className={`feature-row animate-section ${visibleSections.has('feature-reviews') ? 'visible' : ''}`}
+        >
+          <div className="feature-row-content">
+            <div className="feature-text-side">
+              <div className="feature-badge feature-badge-green">
+                <i className="fas fa-star"></i>
+                <span>Verified Reviews</span>
               </div>
-              <h3>Make a secure, hassle-free booking</h3>
-              <p>Pay for your booking securely, chat directly with vendors, and manage everything with your free account. It's quick, easy, and backed by our dedicated support team.</p>
+              <h2>Book with confidence</h2>
+              <p>Read <strong>authentic reviews</strong> from real customers who've hosted events. Every review is verified, so you can trust what you read.</p>
+              <div className="review-preview">
+                <div className="review-card">
+                  <div className="review-header">
+                    <div className="reviewer-avatar">JM</div>
+                    <div>
+                      <strong>Jessica M.</strong>
+                      <div className="review-stars">
+                        <i className="fas fa-star"></i>
+                        <i className="fas fa-star"></i>
+                        <i className="fas fa-star"></i>
+                        <i className="fas fa-star"></i>
+                        <i className="fas fa-star"></i>
+                      </div>
+                    </div>
+                  </div>
+                  <p>"Found our wedding photographer through PlanHive. The process was so easy and the results were amazing!"</p>
+                </div>
+              </div>
+            </div>
+            <div className="feature-image-side">
+              <div className="reviews-collage">
+                <img src="/images/landing/slide-events.jpg" alt="Events" className="collage-main" />
+                <div className="review-bubble review-bubble-1">
+                  <div className="bubble-stars"><i className="fas fa-star"></i><i className="fas fa-star"></i><i className="fas fa-star"></i><i className="fas fa-star"></i><i className="fas fa-star"></i></div>
+                  <span>"Absolutely perfect!"</span>
+                </div>
+                <div className="review-bubble review-bubble-2">
+                  <div className="bubble-stars"><i className="fas fa-star"></i><i className="fas fa-star"></i><i className="fas fa-star"></i><i className="fas fa-star"></i><i className="fas fa-star"></i></div>
+                  <span>"Best decision ever"</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Feature 4: Secure Booking */}
+        <div 
+          id="feature-booking" 
+          className={`feature-row feature-row-reverse animate-section ${visibleSections.has('feature-booking') ? 'visible' : ''}`}
+        >
+          <div className="feature-row-content">
+            <div className="feature-text-side">
+              <div className="feature-badge feature-badge-blue">
+                <i className="fas fa-shield-alt"></i>
+                <span>Secure & Easy</span>
+              </div>
+              <h2>Book securely, stress-free</h2>
+              <p>Pay safely through our platform, chat directly with vendors, and manage everything from your <strong>free account</strong>. Our support team has your back.</p>
+              <div className="security-badges">
+                <div className="security-badge">
+                  <i className="fas fa-lock"></i>
+                  <span>Secure Payments</span>
+                </div>
+                <div className="security-badge">
+                  <i className="fas fa-comments"></i>
+                  <span>Direct Messaging</span>
+                </div>
+                <div className="security-badge">
+                  <i className="fas fa-headset"></i>
+                  <span>24/7 Support</span>
+                </div>
+              </div>
+              <button className="feature-cta feature-cta-dark" onClick={() => { window.scrollTo(0, 0); navigate('/explore'); }}>
+                Start Planning <i className="fas fa-arrow-right"></i>
+              </button>
+            </div>
+            <div className="feature-image-side">
+              <div className="booking-visual">
+                <div className="booking-card">
+                  <div className="booking-header">
+                    <i className="fas fa-calendar-check"></i>
+                    <span>Booking Confirmed</span>
+                  </div>
+                  <div className="booking-details">
+                    <div className="booking-vendor">
+                      <img src="/images/landing/slide-music.jpg" alt="Vendor" />
+                      <div>
+                        <strong>Elite Photography</strong>
+                        <span>Wedding Package</span>
+                      </div>
+                    </div>
+                    <div className="booking-info">
+                      <div><i className="fas fa-calendar"></i> June 15, 2024</div>
+                      <div><i className="fas fa-clock"></i> 4:00 PM - 10:00 PM</div>
+                    </div>
+                    <div className="booking-status">
+                      <i className="fas fa-check-circle"></i> Payment Secured
+                    </div>
+                  </div>
+                </div>
+                <div className="floating-stat floating-stat-3">
+                  <i className="fas fa-heart"></i>
+                  <span>10K+ happy customers</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Stats Counter Section */}
+      <section 
+        id="stats-section" 
+        className={`stats-counter-section animate-section ${visibleSections.has('stats-section') ? 'visible' : ''}`}
+      >
+        <div className="section-container">
+          <div className="stats-grid">
+            <div className="stat-item">
+              <div className="stat-number" data-target="500">500+</div>
+              <div className="stat-label">Verified Vendors</div>
+            </div>
+            <div className="stat-item">
+              <div className="stat-number" data-target="10000">10K+</div>
+              <div className="stat-label">Events Booked</div>
+            </div>
+            <div className="stat-item">
+              <div className="stat-number" data-target="50">50+</div>
+              <div className="stat-label">Cities Covered</div>
+            </div>
+            <div className="stat-item">
+              <div className="stat-number" data-target="4.9">4.9</div>
+              <div className="stat-label">Average Rating</div>
             </div>
           </div>
         </div>

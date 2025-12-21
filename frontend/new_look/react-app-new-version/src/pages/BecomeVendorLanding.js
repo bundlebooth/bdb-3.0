@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { 
@@ -14,6 +14,8 @@ const BecomeVendorLanding = () => {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
   const [isScrolled, setIsScrolled] = useState(false);
+  const [visibleSections, setVisibleSections] = useState(new Set());
+  const observerRef = useRef(null);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -23,7 +25,7 @@ const BecomeVendorLanding = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Scroll animation observer
+  // Scroll animation observer for class-based animations
   useEffect(() => {
     const observerOptions = {
       root: null,
@@ -46,6 +48,26 @@ const BecomeVendorLanding = () => {
     return () => {
       animatedElements.forEach(el => observer.unobserve(el));
     };
+  }, []);
+
+  // Intersection Observer for state-based scroll animations (feature sections)
+  useEffect(() => {
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setVisibleSections((prev) => new Set([...prev, entry.target.id]));
+          }
+        });
+      },
+      { threshold: 0.15, rootMargin: '0px 0px -50px 0px' }
+    );
+
+    document.querySelectorAll('.vendor-feature-section').forEach((el) => {
+      observerRef.current?.observe(el);
+    });
+
+    return () => observerRef.current?.disconnect();
   }, []);
 
   const handleGetStarted = () => {
@@ -226,19 +248,246 @@ const BecomeVendorLanding = () => {
         </div>
       </section>
 
-      {/* Platform Features Grid */}
-      <section className="features-section animate-on-scroll fade-up">
+      {/* Animated Feature Showcase - Modern Alternating Sections */}
+      <section className="vendor-features-showcase">
+        {/* Section Header */}
         <div className="section-container">
-          <h2>Everything You Need to Succeed</h2>
-          <p className="section-subtitle">Powerful tools to manage and grow your event business</p>
-          <div className="features-grid">
-            {platformFeatures.map((feature, index) => (
-              <div key={index} className="feature-card animate-on-scroll fade-up">
-                <div className="feature-icon">{feature.icon}</div>
-                <h3>{feature.title}</h3>
-                <p>{feature.description}</p>
+          <div className="features-header animate-on-scroll fade-up">
+            <h2>Everything You Need to Succeed</h2>
+            <p>Powerful tools to manage and grow your event business</p>
+          </div>
+        </div>
+
+        {/* Feature 1: Easy Profile Setup */}
+        <div 
+          id="vendor-feature-profile" 
+          className={`vendor-feature-section ${visibleSections.has('vendor-feature-profile') ? 'visible' : ''}`}
+        >
+          <div className="vendor-feature-content">
+            <div className="vendor-feature-text">
+              <div className="vendor-feature-badge">
+                <Edit3 size={16} />
+                <span>Quick Setup</span>
               </div>
-            ))}
+              <h3>Create your professional profile in minutes</h3>
+              <p>Our step-by-step wizard guides you through everything. Add your services, set your pricing, upload stunning photos, and showcase what makes you unique.</p>
+              <ul className="vendor-feature-list">
+                <li><UserCheck size={18} /> Guided profile builder</li>
+                <li><UserCheck size={18} /> Service & pricing setup</li>
+                <li><UserCheck size={18} /> Portfolio gallery</li>
+                <li><UserCheck size={18} /> Business hours & availability</li>
+              </ul>
+            </div>
+            <div className="vendor-feature-visual">
+              <div className="profile-mockup">
+                <div className="mockup-header">
+                  <div className="mockup-avatar"></div>
+                  <div className="mockup-info">
+                    <div className="mockup-name"></div>
+                    <div className="mockup-category"></div>
+                  </div>
+                </div>
+                <div className="mockup-gallery">
+                  <div className="mockup-img"></div>
+                  <div className="mockup-img"></div>
+                  <div className="mockup-img"></div>
+                </div>
+                <div className="mockup-stats">
+                  <div className="mockup-stat"><Star size={14} /> 4.9</div>
+                  <div className="mockup-stat"><MapPin size={14} /> Toronto</div>
+                </div>
+              </div>
+              <div className="floating-badge floating-badge-1">
+                <UserCheck size={16} />
+                <span>Profile Complete!</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Feature 2: Get Discovered */}
+        <div 
+          id="vendor-feature-discovery" 
+          className={`vendor-feature-section vendor-feature-reverse ${visibleSections.has('vendor-feature-discovery') ? 'visible' : ''}`}
+        >
+          <div className="vendor-feature-content">
+            <div className="vendor-feature-text">
+              <div className="vendor-feature-badge vendor-badge-green">
+                <MapPin size={16} />
+                <span>Get Found</span>
+              </div>
+              <h3>Get discovered by clients in your area</h3>
+              <p>Set your service areas and let our smart search connect you with event planners nearby. Appear in relevant searches and attract clients who are ready to book.</p>
+              <div className="discovery-stats">
+                <div className="discovery-stat">
+                  <span className="stat-big">15+</span>
+                  <span className="stat-desc">Cities across Canada</span>
+                </div>
+                <div className="discovery-stat">
+                  <span className="stat-big">10K+</span>
+                  <span className="stat-desc">Monthly searches</span>
+                </div>
+              </div>
+            </div>
+            <div className="vendor-feature-visual">
+              <div className="map-visual">
+                <div className="map-bg"></div>
+                <div className="map-pin map-pin-1"><MapPin size={20} /></div>
+                <div className="map-pin map-pin-2"><MapPin size={20} /></div>
+                <div className="map-pin map-pin-3"><MapPin size={20} /></div>
+                <div className="map-radius"></div>
+              </div>
+              <div className="floating-badge floating-badge-2">
+                <TrendingUp size={16} />
+                <span>+45% visibility</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Feature 3: Booking Management */}
+        <div 
+          id="vendor-feature-bookings" 
+          className={`vendor-feature-section ${visibleSections.has('vendor-feature-bookings') ? 'visible' : ''}`}
+        >
+          <div className="vendor-feature-content">
+            <div className="vendor-feature-text">
+              <div className="vendor-feature-badge vendor-badge-purple">
+                <Calendar size={16} />
+                <span>Manage Bookings</span>
+              </div>
+              <h3>All your bookings in one place</h3>
+              <p>Accept requests, manage your calendar, and coordinate event details directly through the platform. Never miss a booking opportunity again.</p>
+              <div className="booking-features">
+                <div className="booking-feature">
+                  <div className="bf-icon"><Calendar size={20} /></div>
+                  <div>
+                    <strong>Calendar Sync</strong>
+                    <span>Manage availability</span>
+                  </div>
+                </div>
+                <div className="booking-feature">
+                  <div className="bf-icon"><Clock size={20} /></div>
+                  <div>
+                    <strong>Quick Responses</strong>
+                    <span>Reply in seconds</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="vendor-feature-visual">
+              <div className="booking-card-stack">
+                <div className="booking-card bc-1">
+                  <div className="bc-header">New Booking Request</div>
+                  <div className="bc-event">Wedding Photography</div>
+                  <div className="bc-date"><Calendar size={14} /> June 15, 2024</div>
+                  <div className="bc-actions">
+                    <button className="bc-accept">Accept</button>
+                    <button className="bc-decline">Decline</button>
+                  </div>
+                </div>
+                <div className="booking-card bc-2"></div>
+                <div className="booking-card bc-3"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Feature 4: Messaging & Payments */}
+        <div 
+          id="vendor-feature-payments" 
+          className={`vendor-feature-section vendor-feature-reverse ${visibleSections.has('vendor-feature-payments') ? 'visible' : ''}`}
+        >
+          <div className="vendor-feature-content">
+            <div className="vendor-feature-text">
+              <div className="vendor-feature-badge vendor-badge-blue">
+                <CreditCard size={16} />
+                <span>Get Paid</span>
+              </div>
+              <h3>Secure payments & direct messaging</h3>
+              <p>Chat with clients through our secure messaging system. Accept payments via Stripe with transparent fees and get paid directly to your bank account.</p>
+              <div className="payment-highlights">
+                <div className="payment-highlight">
+                  <Shield size={20} />
+                  <span>Secure Stripe Integration</span>
+                </div>
+                <div className="payment-highlight">
+                  <MessageCircle size={20} />
+                  <span>Built-in Messaging</span>
+                </div>
+                <div className="payment-highlight">
+                  <DollarSign size={20} />
+                  <span>Transparent Pricing</span>
+                </div>
+              </div>
+            </div>
+            <div className="vendor-feature-visual">
+              <div className="chat-payment-visual">
+                <div className="chat-bubble chat-bubble-client">
+                  <span>Hi! I'd love to book you for my wedding in June.</span>
+                </div>
+                <div className="chat-bubble chat-bubble-vendor">
+                  <span>I'd be happy to help! Let me send you a quote.</span>
+                </div>
+                <div className="payment-notification">
+                  <CreditCard size={18} />
+                  <div>
+                    <strong>Payment Received</strong>
+                    <span>$1,500.00 - Wedding Package</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Feature 5: Portfolio & Reviews */}
+        <div 
+          id="vendor-feature-portfolio" 
+          className={`vendor-feature-section ${visibleSections.has('vendor-feature-portfolio') ? 'visible' : ''}`}
+        >
+          <div className="vendor-feature-content">
+            <div className="vendor-feature-text">
+              <div className="vendor-feature-badge vendor-badge-orange">
+                <Image size={16} />
+                <span>Showcase Work</span>
+              </div>
+              <h3>Let your work speak for itself</h3>
+              <p>Upload unlimited photos to showcase your best work. Import your Google Reviews to build trust and attract more premium clients.</p>
+              <div className="portfolio-stats">
+                <div className="portfolio-stat">
+                  <Image size={24} />
+                  <div>
+                    <strong>Unlimited Photos</strong>
+                    <span>High-quality gallery</span>
+                  </div>
+                </div>
+                <div className="portfolio-stat">
+                  <Star size={24} />
+                  <div>
+                    <strong>Google Reviews</strong>
+                    <span>Import & display</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="vendor-feature-visual">
+              <div className="portfolio-grid-visual">
+                <img src="/images/landing/slide-photography.jpg" alt="Portfolio 1" className="pg-img pg-img-1" />
+                <img src="/images/landing/slide-catering.jpg" alt="Portfolio 2" className="pg-img pg-img-2" />
+                <img src="/images/landing/slide-events.jpg" alt="Portfolio 3" className="pg-img pg-img-3" />
+                <div className="review-float">
+                  <div className="rf-stars">
+                    <Star size={12} fill="#fbbf24" />
+                    <Star size={12} fill="#fbbf24" />
+                    <Star size={12} fill="#fbbf24" />
+                    <Star size={12} fill="#fbbf24" />
+                    <Star size={12} fill="#fbbf24" />
+                  </div>
+                  <span>"Amazing work!"</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
