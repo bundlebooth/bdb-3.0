@@ -742,7 +742,7 @@ function IndexPage() {
 
   const handleToggleFavorite = useCallback(async (vendorId) => {
     if (!currentUser) {
-      showBanner('Please log in to save favorites', 'info');
+      setProfileModalOpen(true);
       return;
     }
     try {

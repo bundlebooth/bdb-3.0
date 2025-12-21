@@ -225,7 +225,7 @@ function VendorProfilePage() {
 
   const handleToggleFavorite = async () => {
     if (!currentUser) {
-      showBanner('Please log in to save favorites', 'info');
+      setProfileModalOpen(true);
       return;
     }
 
@@ -259,7 +259,7 @@ function VendorProfilePage() {
   // Handle favorite toggle for recommendation cards
   const handleRecommendationFavorite = async (recommendationVendorId) => {
     if (!currentUser) {
-      showBanner('Please log in to save favorites', 'info');
+      setProfileModalOpen(true);
       return;
     }
 
@@ -342,8 +342,7 @@ function VendorProfilePage() {
 
   const handleMessageVendor = async () => {
     if (!currentUser) {
-      showBanner('Please log in to message vendors', 'info');
-      navigate('/');
+      setProfileModalOpen(true);
       return;
     }
     

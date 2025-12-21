@@ -6,6 +6,7 @@ import VendorSection from '../components/VendorSection';
 import VendorCard from '../components/VendorCard';
 import Footer from '../components/Footer';
 import MessagingWidget from '../components/MessagingWidget';
+import ProfileModal from '../components/ProfileModal';
 import './LandingPage.css';
 
 function LandingPage() {
@@ -16,6 +17,7 @@ function LandingPage() {
   const [loading, setLoading] = useState(true);
   const [favorites, setFavorites] = useState([]);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [activeSlide, setActiveSlide] = useState(0);
   const [visibleSections, setVisibleSections] = useState(new Set());
   const observerRef = useRef(null);
@@ -207,7 +209,7 @@ function LandingPage() {
 
   const handleToggleFavorite = (vendorId) => {
     if (!currentUser) {
-      navigate('/explore');
+      setProfileModalOpen(true);
       return;
     }
     setFavorites(prev => 
@@ -367,30 +369,72 @@ function LandingPage() {
         </div>
       </section>
 
-      {/* Discover Cities Section */}
-      <section className="cities-section">
-        <div className="section-container">
-          <h2>Discover top event spaces in Canada</h2>
-          <p className="section-subtitle">Explore vendors in popular Canadian cities</p>
-          <div className="cities-grid">
-            {cities.map((city, index) => (
-              <div 
-                key={index} 
-                className="city-card"
-                onClick={() => handleCityClick(city.name)}
-              >
-                <img src={city.image} alt={city.name} />
-                <div className="city-overlay">
-                  <h3>{city.shortName}</h3>
-                  <p>{city.vendorCount}+ vendors</p>
+      {/* 1. Find the perfect vendors for your event (Lead Section) */}
+      <section className="feature-showcase-section">
+        <div 
+          id="feature-discover" 
+          className={`feature-row animate-section ${visibleSections.has('feature-discover') ? 'visible' : ''}`}
+        >
+          <div className="feature-row-content">
+            <div className="feature-text-side">
+              <div className="feature-badge">
+                <i className="fas fa-compass"></i>
+                <span>Discover</span>
+              </div>
+              <h2>Find the perfect vendors for your event</h2>
+              <p>Browse <strong>500+ verified vendors</strong> across Canada. From photographers to caterers, venues to DJs — we've curated the best so you don't have to search endlessly.</p>
+              <ul className="feature-list">
+                <li><i className="fas fa-check-circle"></i> Photographers & Videographers</li>
+                <li><i className="fas fa-check-circle"></i> Caterers & Food Services</li>
+                <li><i className="fas fa-check-circle"></i> Venues & Event Spaces</li>
+                <li><i className="fas fa-check-circle"></i> DJs, Musicians & Entertainment</li>
+              </ul>
+              <button className="feature-cta" onClick={() => { window.scrollTo(0, 0); navigate('/explore'); }}>
+                Explore Vendors <i className="fas fa-arrow-right"></i>
+              </button>
+            </div>
+            <div className="feature-image-side">
+              <div className="feature-image-stack">
+                <img src="/images/landing/slide-photography.jpg" alt="Photography" className="stack-img stack-img-1" />
+                <img src="/images/landing/slide-catering.jpg" alt="Catering" className="stack-img stack-img-2" />
+                <div className="floating-stat floating-stat-1">
+                  <i className="fas fa-star"></i>
+                  <span>4.9 avg rating</span>
                 </div>
               </div>
-            ))}
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Browse by Category Section - Horizontal Scroll */}
+      {/* 2. Stats Bar (Trust Builder) */}
+      <section 
+        id="stats-section" 
+        className={`stats-counter-section animate-section ${visibleSections.has('stats-section') ? 'visible' : ''}`}
+      >
+        <div className="section-container">
+          <div className="stats-grid">
+            <div className="stat-item">
+              <div className="stat-number" data-target="500">500+</div>
+              <div className="stat-label">Verified Vendors</div>
+            </div>
+            <div className="stat-item">
+              <div className="stat-number" data-target="10000">10K+</div>
+              <div className="stat-label">Events Booked</div>
+            </div>
+            <div className="stat-item">
+              <div className="stat-number" data-target="50">50+</div>
+              <div className="stat-label">Cities Covered</div>
+            </div>
+            <div className="stat-item">
+              <div className="stat-number" data-target="4.9">4.9</div>
+              <div className="stat-label">Average Rating</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 3. Browse by vendor type (Navigation) */}
       <section className="category-carousel-section">
         <div className="section-container">
           <h2>Browse by vendor type</h2>
@@ -417,28 +461,7 @@ function LandingPage() {
         </div>
       </section>
 
-      {/* Divider before discovery sections */}
-      <div className="section-divider"></div>
-
-      {/* First Discovery Section */}
-      {!loading && discoverySections[0] && discoverySections[0].vendors?.length > 0 && (
-        <section className="featured-vendors-section">
-          <div className="section-container">
-            <div className="landing-discovery-row">
-              <VendorSection
-                title={discoverySections[0].title}
-                description={discoverySections[0].description}
-                vendors={discoverySections[0].vendors}
-                favorites={favorites}
-                onToggleFavorite={handleToggleFavorite}
-                onViewVendor={(vendorId) => { window.scrollTo(0, 0); navigate(`/vendor/${vendorId}`); }}
-              />
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* Why PlanHive Section - Image 5 Style (Moved Higher) */}
+      {/* 4. Value Card (Why PlanHive - Benefits) */}
       <section className="why-planhive-section">
         <div className="section-container">
           <div className="why-planhive-content">
@@ -481,15 +504,19 @@ function LandingPage() {
         </div>
       </section>
 
-      {/* Second Discovery Section */}
-      {!loading && discoverySections[1] && discoverySections[1].vendors?.length > 0 && (
-        <section className="featured-vendors-section">
+      {/* 5. Browse Our Vendors (Showcase) */}
+      {!loading && discoverySections[0] && discoverySections[0].vendors?.length > 0 && (
+        <section className="featured-vendors-section browse-vendors-section">
           <div className="section-container">
+            <div className="browse-vendors-header">
+              <h2>Browse Our Vendors</h2>
+              <p>Explore top-rated professionals for your next event</p>
+            </div>
             <div className="landing-discovery-row">
               <VendorSection
-                title={discoverySections[1].title}
-                description={discoverySections[1].description}
-                vendors={discoverySections[1].vendors}
+                title=""
+                description=""
+                vendors={discoverySections[0].vendors}
                 favorites={favorites}
                 onToggleFavorite={handleToggleFavorite}
                 onViewVendor={(vendorId) => { window.scrollTo(0, 0); navigate(`/vendor/${vendorId}`); }}
@@ -499,45 +526,8 @@ function LandingPage() {
         </section>
       )}
 
-      {/* Animated Feature Showcase - Giggster Style Alternating Sections */}
+      {/* 6. Find your perfect match in seconds (How-To Part 1) */}
       <section className="feature-showcase-section">
-        {/* Feature 1: Discover Vendors */}
-        <div 
-          id="feature-discover" 
-          className={`feature-row animate-section ${visibleSections.has('feature-discover') ? 'visible' : ''}`}
-        >
-          <div className="feature-row-content">
-            <div className="feature-text-side">
-              <div className="feature-badge">
-                <i className="fas fa-compass"></i>
-                <span>Discover</span>
-              </div>
-              <h2>Find the perfect vendors for your event</h2>
-              <p>Browse <strong>500+ verified vendors</strong> across Canada. From photographers to caterers, venues to DJs — we've curated the best so you don't have to search endlessly.</p>
-              <ul className="feature-list">
-                <li><i className="fas fa-check-circle"></i> Photographers & Videographers</li>
-                <li><i className="fas fa-check-circle"></i> Caterers & Food Services</li>
-                <li><i className="fas fa-check-circle"></i> Venues & Event Spaces</li>
-                <li><i className="fas fa-check-circle"></i> DJs, Musicians & Entertainment</li>
-              </ul>
-              <button className="feature-cta" onClick={() => { window.scrollTo(0, 0); navigate('/explore'); }}>
-                Explore Vendors <i className="fas fa-arrow-right"></i>
-              </button>
-            </div>
-            <div className="feature-image-side">
-              <div className="feature-image-stack">
-                <img src="/images/landing/slide-photography.jpg" alt="Photography" className="stack-img stack-img-1" />
-                <img src="/images/landing/slide-catering.jpg" alt="Catering" className="stack-img stack-img-2" />
-                <div className="floating-stat floating-stat-1">
-                  <i className="fas fa-star"></i>
-                  <span>4.9 avg rating</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Feature 2: Smart Search */}
         <div 
           id="feature-search" 
           className={`feature-row feature-row-reverse animate-section ${visibleSections.has('feature-search') ? 'visible' : ''}`}
@@ -601,59 +591,13 @@ function LandingPage() {
             </div>
           </div>
         </div>
+      </section>
 
-        {/* Feature 3: Reviews */}
-        <div 
-          id="feature-reviews" 
-          className={`feature-row animate-section ${visibleSections.has('feature-reviews') ? 'visible' : ''}`}
-        >
-          <div className="feature-row-content">
-            <div className="feature-text-side">
-              <div className="feature-badge feature-badge-green">
-                <i className="fas fa-star"></i>
-                <span>Verified Reviews</span>
-              </div>
-              <h2>Book with confidence</h2>
-              <p>Read <strong>authentic reviews</strong> from real customers who've hosted events. Every review is verified, so you can trust what you read.</p>
-              <div className="review-preview">
-                <div className="review-card">
-                  <div className="review-header">
-                    <div className="reviewer-avatar">JM</div>
-                    <div>
-                      <strong>Jessica M.</strong>
-                      <div className="review-stars">
-                        <i className="fas fa-star"></i>
-                        <i className="fas fa-star"></i>
-                        <i className="fas fa-star"></i>
-                        <i className="fas fa-star"></i>
-                        <i className="fas fa-star"></i>
-                      </div>
-                    </div>
-                  </div>
-                  <p>"Found our wedding photographer through PlanHive. The process was so easy and the results were amazing!"</p>
-                </div>
-              </div>
-            </div>
-            <div className="feature-image-side">
-              <div className="reviews-collage">
-                <img src="/images/landing/slide-events.jpg" alt="Events" className="collage-main" />
-                <div className="review-bubble review-bubble-1">
-                  <div className="bubble-stars"><i className="fas fa-star"></i><i className="fas fa-star"></i><i className="fas fa-star"></i><i className="fas fa-star"></i><i className="fas fa-star"></i></div>
-                  <span>"Absolutely perfect!"</span>
-                </div>
-                <div className="review-bubble review-bubble-2">
-                  <div className="bubble-stars"><i className="fas fa-star"></i><i className="fas fa-star"></i><i className="fas fa-star"></i><i className="fas fa-star"></i><i className="fas fa-star"></i></div>
-                  <span>"Best decision ever"</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Feature 4: Secure Booking */}
+      {/* 7. Book securely, stress-free (How-To Part 2) */}
+      <section className="feature-showcase-section">
         <div 
           id="feature-booking" 
-          className={`feature-row feature-row-reverse animate-section ${visibleSections.has('feature-booking') ? 'visible' : ''}`}
+          className={`feature-row animate-section ${visibleSections.has('feature-booking') ? 'visible' : ''}`}
         >
           <div className="feature-row-content">
             <div className="feature-text-side">
@@ -715,35 +659,80 @@ function LandingPage() {
         </div>
       </section>
 
-      {/* Stats Counter Section */}
-      <section 
-        id="stats-section" 
-        className={`stats-counter-section animate-section ${visibleSections.has('stats-section') ? 'visible' : ''}`}
-      >
+      {/* 8. Discover top event spaces in Canada (Location Discovery) */}
+      <section className="cities-section">
         <div className="section-container">
-          <div className="stats-grid">
-            <div className="stat-item">
-              <div className="stat-number" data-target="500">500+</div>
-              <div className="stat-label">Verified Vendors</div>
+          <h2>Discover top event spaces in Canada</h2>
+          <p className="section-subtitle">Explore vendors in popular Canadian cities</p>
+          <div className="cities-grid">
+            {cities.map((city, index) => (
+              <div 
+                key={index} 
+                className="city-card"
+                onClick={() => handleCityClick(city.name)}
+              >
+                <img src={city.image} alt={city.name} />
+                <div className="city-overlay">
+                  <h3>{city.shortName}</h3>
+                  <p>{city.vendorCount}+ vendors</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* 9. Book with confidence (Social Proof) */}
+      <section className="feature-showcase-section">
+        <div 
+          id="feature-reviews" 
+          className={`feature-row feature-row-reverse animate-section ${visibleSections.has('feature-reviews') ? 'visible' : ''}`}
+        >
+          <div className="feature-row-content">
+            <div className="feature-text-side">
+              <div className="feature-badge feature-badge-green">
+                <i className="fas fa-star"></i>
+                <span>Verified Reviews</span>
+              </div>
+              <h2>Book with confidence</h2>
+              <p>Read <strong>authentic reviews</strong> from real customers who've hosted events. Every review is verified, so you can trust what you read.</p>
+              <div className="review-preview">
+                <div className="review-card">
+                  <div className="review-header">
+                    <div className="reviewer-avatar">JM</div>
+                    <div>
+                      <strong>Jessica M.</strong>
+                      <div className="review-stars">
+                        <i className="fas fa-star"></i>
+                        <i className="fas fa-star"></i>
+                        <i className="fas fa-star"></i>
+                        <i className="fas fa-star"></i>
+                        <i className="fas fa-star"></i>
+                      </div>
+                    </div>
+                  </div>
+                  <p>"Found our wedding photographer through PlanHive. The process was so easy and the results were amazing!"</p>
+                </div>
+              </div>
             </div>
-            <div className="stat-item">
-              <div className="stat-number" data-target="10000">10K+</div>
-              <div className="stat-label">Events Booked</div>
-            </div>
-            <div className="stat-item">
-              <div className="stat-number" data-target="50">50+</div>
-              <div className="stat-label">Cities Covered</div>
-            </div>
-            <div className="stat-item">
-              <div className="stat-number" data-target="4.9">4.9</div>
-              <div className="stat-label">Average Rating</div>
+            <div className="feature-image-side">
+              <div className="reviews-collage">
+                <img src="/images/landing/slide-events.jpg" alt="Events" className="collage-main" />
+                <div className="review-bubble review-bubble-1">
+                  <div className="bubble-stars"><i className="fas fa-star"></i><i className="fas fa-star"></i><i className="fas fa-star"></i><i className="fas fa-star"></i><i className="fas fa-star"></i></div>
+                  <span>"Absolutely perfect!"</span>
+                </div>
+                <div className="review-bubble review-bubble-2">
+                  <div className="bubble-stars"><i className="fas fa-star"></i><i className="fas fa-star"></i><i className="fas fa-star"></i><i className="fas fa-star"></i><i className="fas fa-star"></i></div>
+                  <span>"Best decision ever"</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-
-      {/* Vendor CTA Section - List Your Business */}
+      {/* 10. List your business for free (Footer CTA) */}
       <section className="vendor-cta-banner">
         <div className="section-container">
           <div className="vendor-cta-content">
@@ -761,46 +750,10 @@ function LandingPage() {
         </div>
       </section>
 
-
-      {/* Fourth Discovery Section */}
-      {!loading && discoverySections[3] && discoverySections[3].vendors?.length > 0 && (
-        <section className="featured-vendors-section">
-          <div className="section-container">
-            <div className="landing-discovery-row">
-              <VendorSection
-                title={discoverySections[3].title}
-                description={discoverySections[3].description}
-                vendors={discoverySections[3].vendors}
-                favorites={favorites}
-                onToggleFavorite={handleToggleFavorite}
-                onViewVendor={(vendorId) => { window.scrollTo(0, 0); navigate(`/vendor/${vendorId}`); }}
-              />
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* Engagement CTA Section */}
-      <section className="engagement-cta-section">
-        <div className="section-container">
-          <div className="engagement-content">
-            <h2>Ready to Plan Your Perfect Event?</h2>
-            <p>Browse thousands of verified vendors across Canada. Find photographers, caterers, venues, DJs, and more.</p>
-            <div className="engagement-buttons">
-              <button className="cta-primary" onClick={() => { window.scrollTo(0, 0); navigate('/explore'); }}>
-                Explore Vendors
-              </button>
-              <button className="cta-secondary" onClick={() => { window.scrollTo(0, 0); navigate('/become-a-vendor'); }}>
-                Become a Vendor
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* Footer */}
       <Footer />
       <MessagingWidget />
+      <ProfileModal isOpen={profileModalOpen} onClose={() => setProfileModalOpen(false)} />
     </div>
   );
 }

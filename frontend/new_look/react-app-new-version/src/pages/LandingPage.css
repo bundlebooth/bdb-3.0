@@ -5,18 +5,68 @@
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 
-/* Section Divider */
+/* Section Divider - Hidden */
 .section-divider {
-  max-width: 1200px;
-  margin: 40px auto;
-  padding: 0 40px;
+  display: none;
 }
 
-.section-divider::after {
-  content: '';
-  display: block;
-  height: 1px;
-  background: linear-gradient(to right, transparent, rgba(0, 0, 0, 0.08), transparent);
+/* Browse Our Vendors Section */
+.browse-vendors-section {
+  padding-top: 50px;
+  padding-bottom: 40px;
+  background: #fff;
+}
+
+.browse-vendors-header {
+  margin-bottom: 24px;
+}
+
+.browse-vendors-header h2 {
+  font-size: 24px;
+  font-weight: 600;
+  color: #222;
+  margin: 0 0 6px 0;
+  line-height: 1.3;
+}
+
+.browse-vendors-header p {
+  font-size: 15px;
+  color: #717171;
+  margin: 0;
+}
+
+/* Hide the VendorSection default title when using custom header */
+.browse-vendors-section .vendor-section-title-wrapper {
+  display: none;
+}
+
+.browse-vendors-section .vendor-section {
+  padding-top: 0;
+}
+
+.browse-vendors-section .vendor-section-header {
+  justify-content: flex-end;
+  margin-bottom: 20px;
+}
+
+.browse-vendors-section .vendor-section-controls {
+  margin-left: 0;
+}
+
+/* Responsive for browse vendors header */
+@media (max-width: 768px) {
+  .browse-vendors-header h2 {
+    font-size: 20px;
+  }
+  
+  .browse-vendors-header p {
+    font-size: 14px;
+  }
+  
+  .browse-vendors-section {
+    padding-top: 40px;
+    padding-bottom: 30px;
+  }
 }
 
 /* Header - Transparent on hero */
