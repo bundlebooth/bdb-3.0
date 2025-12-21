@@ -1848,3 +1848,473 @@
     height: 80px;
   }
 }
+
+/* ============================================
+   ENHANCED MOBILE STYLES FOR BECOME A VENDOR
+   Comprehensive mobile-first improvements
+   ============================================ */
+
+@media (max-width: 768px) {
+  /* Hero Section Mobile */
+  .vendor-hero-section {
+    min-height: auto;
+    padding-bottom: 40px;
+  }
+  
+  .vendor-hero-split {
+    flex-direction: column;
+    padding: 100px 20px 40px;
+    gap: 32px;
+    text-align: center;
+  }
+  
+  .hero-text-content {
+    max-width: 100%;
+  }
+  
+  .hero-text-content h1 {
+    font-size: 28px;
+    line-height: 1.2;
+  }
+  
+  .hero-text-content p {
+    font-size: 15px;
+  }
+  
+  .hero-cta-group {
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .hero-cta-btn {
+    width: 100%;
+    padding: 14px 24px;
+    font-size: 15px;
+  }
+  
+  .hero-image-side {
+    width: 100%;
+    max-width: 300px;
+    margin: 0 auto;
+  }
+  
+  /* Header Mobile */
+  .vendor-landing-header-content {
+    padding: 12px 16px;
+  }
+  
+  .vendor-landing-logo img {
+    height: 32px;
+  }
+  
+  .vendor-landing-nav {
+    gap: 10px;
+  }
+  
+  .vendor-nav-link {
+    font-size: 13px;
+    display: none;
+  }
+  
+  .vendor-nav-btn {
+    padding: 8px 16px;
+    font-size: 13px;
+  }
+  
+  /* Categories Section Mobile */
+  .vendor-categories-section {
+    padding: 40px 0;
+  }
+  
+  .vendor-categories-section h2 {
+    font-size: 22px;
+  }
+  
+  .vendor-categories-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+  
+  .vendor-category-card {
+    padding: 16px 12px;
+  }
+  
+  .vendor-category-card i {
+    font-size: 24px;
+  }
+  
+  .vendor-category-card span {
+    font-size: 12px;
+  }
+  
+  /* Why Choose Section Mobile */
+  .why-choose-section {
+    padding: 40px 0;
+  }
+  
+  .why-choose-section h2 {
+    font-size: 22px;
+  }
+  
+  .why-choose-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  
+  .why-choose-card {
+    padding: 20px;
+  }
+  
+  .why-choose-card h3 {
+    font-size: 16px;
+  }
+  
+  .why-choose-card p {
+    font-size: 14px;
+  }
+  
+  /* Features Showcase Mobile */
+  .vendor-features-showcase {
+    padding: 40px 0;
+  }
+  
+  .features-header {
+    padding: 0 16px;
+    margin-bottom: 32px;
+  }
+  
+  .features-header h2 {
+    font-size: 24px;
+  }
+  
+  .features-header p {
+    font-size: 14px;
+  }
+  
+  .vendor-feature-section {
+    padding: 32px 0;
+  }
+  
+  .vendor-feature-content {
+    grid-template-columns: 1fr;
+    gap: 24px;
+    padding: 0 16px;
+  }
+  
+  .vendor-feature-text {
+    text-align: center;
+    order: 2;
+  }
+  
+  .vendor-feature-visual {
+    order: 1;
+    max-width: 280px;
+    margin: 0 auto;
+  }
+  
+  .vendor-feature-text h3 {
+    font-size: 20px;
+  }
+  
+  .vendor-feature-text > p {
+    font-size: 14px;
+  }
+  
+  .vendor-feature-list {
+    text-align: left;
+    display: inline-block;
+  }
+  
+  .vendor-feature-list li {
+    font-size: 13px;
+    padding: 6px 0;
+  }
+  
+  /* How It Works Mobile */
+  .how-it-works-section {
+    padding: 40px 0;
+  }
+  
+  .how-it-works-section h2 {
+    font-size: 22px;
+  }
+  
+  .steps-container {
+    flex-direction: column;
+    gap: 24px;
+  }
+  
+  .step-card {
+    padding: 20px;
+  }
+  
+  .step-number {
+    width: 40px;
+    height: 40px;
+    font-size: 18px;
+  }
+  
+  .step-card h3 {
+    font-size: 16px;
+  }
+  
+  .step-card p {
+    font-size: 13px;
+  }
+  
+  /* Stats Section Mobile */
+  .success-stats-section {
+    padding: 40px 0;
+  }
+  
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+  }
+  
+  .stat-item {
+    padding: 16px;
+  }
+  
+  .stat-number {
+    font-size: 32px;
+  }
+  
+  .stat-label {
+    font-size: 12px;
+  }
+  
+  /* Testimonial Section Mobile */
+  .testimonial-section {
+    padding: 40px 0;
+  }
+  
+  .testimonial-section h2 {
+    font-size: 22px;
+  }
+  
+  .testimonial-card {
+    padding: 24px 20px;
+    margin: 0 16px;
+  }
+  
+  .testimonial-card p {
+    font-size: 15px;
+  }
+  
+  .testimonial-author {
+    font-size: 14px;
+  }
+  
+  /* Final CTA Section Mobile */
+  .final-cta-section {
+    padding: 50px 0;
+  }
+  
+  .final-cta-section h2 {
+    font-size: 24px;
+  }
+  
+  .final-cta-section p {
+    font-size: 14px;
+    padding: 0 16px;
+  }
+  
+  .cta-btn-large {
+    width: calc(100% - 32px);
+    max-width: 300px;
+    padding: 14px 24px;
+    font-size: 15px;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Hero Section Small Mobile */
+  .vendor-hero-split {
+    padding: 90px 16px 32px;
+  }
+  
+  .hero-text-content h1 {
+    font-size: 24px;
+  }
+  
+  .hero-text-content p {
+    font-size: 14px;
+  }
+  
+  .hero-cta-btn {
+    padding: 12px 20px;
+    font-size: 14px;
+  }
+  
+  .hero-image-side {
+    max-width: 260px;
+  }
+  
+  /* Header Small Mobile */
+  .vendor-landing-header-content {
+    padding: 10px 12px;
+  }
+  
+  .vendor-landing-logo img {
+    height: 28px;
+  }
+  
+  .vendor-nav-btn {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+  
+  /* Categories Small Mobile */
+  .vendor-categories-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  
+  .vendor-category-card {
+    padding: 14px 10px;
+  }
+  
+  .vendor-category-card i {
+    font-size: 20px;
+  }
+  
+  .vendor-category-card span {
+    font-size: 11px;
+  }
+  
+  /* Section Headers Small Mobile */
+  .vendor-categories-section h2,
+  .why-choose-section h2,
+  .how-it-works-section h2,
+  .testimonial-section h2 {
+    font-size: 20px;
+  }
+  
+  .section-subtitle {
+    font-size: 13px;
+  }
+  
+  /* Feature Sections Small Mobile */
+  .vendor-feature-text h3 {
+    font-size: 18px;
+  }
+  
+  .vendor-feature-badge {
+    font-size: 11px;
+    padding: 5px 10px;
+  }
+  
+  .vendor-feature-visual {
+    max-width: 240px;
+  }
+  
+  /* Stats Small Mobile */
+  .stats-grid {
+    gap: 12px;
+  }
+  
+  .stat-item {
+    padding: 12px;
+  }
+  
+  .stat-number {
+    font-size: 26px;
+  }
+  
+  .stat-label {
+    font-size: 11px;
+  }
+  
+  /* Final CTA Small Mobile */
+  .final-cta-section h2 {
+    font-size: 20px;
+  }
+  
+  .cta-btn-large {
+    padding: 12px 20px;
+    font-size: 14px;
+  }
+  
+  /* Mockup visuals smaller */
+  .profile-mockup,
+  .map-visual,
+  .booking-card-stack,
+  .chat-payment-visual,
+  .portfolio-grid-visual {
+    max-width: 220px;
+  }
+  
+  .mockup-header {
+    padding: 12px;
+  }
+  
+  .mockup-avatar {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .mockup-name {
+    font-size: 14px;
+  }
+  
+  .mockup-category {
+    font-size: 11px;
+  }
+  
+  .mockup-gallery {
+    gap: 6px;
+    padding: 8px;
+  }
+  
+  .mockup-img {
+    height: 50px;
+  }
+  
+  .booking-card {
+    padding: 12px;
+  }
+  
+  .bc-event {
+    font-size: 13px;
+  }
+  
+  .bc-date {
+    font-size: 11px;
+  }
+}
+
+/* Extra small devices */
+@media (max-width: 360px) {
+  .hero-text-content h1 {
+    font-size: 22px;
+  }
+  
+  .vendor-categories-grid {
+    gap: 8px;
+  }
+  
+  .vendor-category-card {
+    padding: 12px 8px;
+  }
+  
+  .vendor-category-card i {
+    font-size: 18px;
+  }
+  
+  .vendor-category-card span {
+    font-size: 10px;
+  }
+  
+  .vendor-feature-text h3 {
+    font-size: 16px;
+  }
+  
+  .stat-number {
+    font-size: 22px;
+  }
+  
+  .final-cta-section h2 {
+    font-size: 18px;
+  }
+}

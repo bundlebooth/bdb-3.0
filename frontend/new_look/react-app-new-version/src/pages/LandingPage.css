@@ -272,17 +272,22 @@
 .scroll-dots {
   display: flex;
   gap: 8px;
+  align-items: center;
+  justify-content: center;
 }
 
 .scroll-dots .dot {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
+  min-width: 10px;
+  min-height: 10px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.5);
   border: none;
   padding: 0;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
 }
 
 .scroll-dots .dot:hover {
@@ -291,8 +296,9 @@
 
 .scroll-dots .dot.active {
   background: white;
-  width: 24px;
-  border-radius: 4px;
+  width: 28px;
+  min-width: 28px;
+  border-radius: 5px;
 }
 
 /* Hero Search Bar - Simple Clean Style */
@@ -373,6 +379,7 @@
   gap: 2px;
   min-width: 160px;
   padding-right: 20px;
+  text-align: left;
 }
 
 .hero-search-bar-styled .search-field-group label {
@@ -380,6 +387,8 @@
   font-weight: 500;
   color: #888;
   text-transform: none;
+  text-align: left;
+  display: block;
 }
 
 .hero-search-bar-styled .search-field-group input {
@@ -391,6 +400,7 @@
   padding: 0;
   width: 100%;
   font-weight: 500;
+  text-align: left;
 }
 
 .hero-search-bar-styled .search-field-group input::placeholder {
@@ -1473,15 +1483,6 @@
     font-size: 14px;
   }
   
-  .scroll-dots .dot {
-    width: 6px;
-    height: 6px;
-  }
-  
-  .scroll-dots .dot.active {
-    width: 20px;
-  }
-  
   .section-container {
     padding: 0 16px;
   }
@@ -1654,15 +1655,6 @@
     padding: 12px 16px;
     font-size: 13px;
     border-radius: 0 0 10px 10px;
-  }
-  
-  .scroll-dots .dot {
-    width: 5px;
-    height: 5px;
-  }
-  
-  .scroll-dots .dot.active {
-    width: 16px;
   }
   
   .hero-text h1 {
@@ -3117,33 +3109,63 @@
   .hero-search-bar-styled {
     flex-direction: column;
     border-radius: 16px;
-    padding: 16px;
+    padding: 20px;
     max-width: 340px;
-    gap: 12px;
+    gap: 0;
+    align-items: stretch;
   }
   
   .hero-search-bar-styled .search-field-group {
     min-width: 100%;
-    padding-right: 0;
-    padding-bottom: 12px;
+    padding: 0 0 16px 0;
+    margin-bottom: 16px;
     border-bottom: 1px solid #eee;
+    text-align: left;
+  }
+  
+  .hero-search-bar-styled .search-field-group label {
+    text-align: left;
+    display: block;
+    margin-bottom: 4px;
+  }
+  
+  .hero-search-bar-styled .search-field-group input {
+    text-align: left;
+    width: 100%;
   }
   
   .hero-search-bar-styled .search-field-group:last-of-type {
     border-bottom: none;
     padding-bottom: 0;
+    margin-bottom: 16px;
   }
   
   .hero-search-bar-styled .search-divider-line {
     display: none;
   }
   
+  .hero-search-bar-styled .field-input-wrapper {
+    justify-content: space-between;
+  }
+  
   .hero-search-bar-styled .search-btn-styled {
     width: 100%;
     justify-content: center;
     margin-left: 0;
-    margin-top: 8px;
-    padding: 16px 24px;
+    margin-top: 0;
+    padding: 14px 24px;
+    border-radius: 8px;
+  }
+  
+  /* Fix scroll dots on mobile */
+  .hero-scroll-indicator {
+    bottom: 30px;
+  }
+  
+  .scroll-dots {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
   }
   
   /* Discovery sections mobile */
@@ -3272,5 +3294,1110 @@
   .engagement-buttons .cta-secondary {
     padding: 14px 32px;
     font-size: 15px;
+  }
+}
+
+/* ============================================
+   ENHANCED MOBILE STYLES
+   Comprehensive mobile-first improvements
+   ============================================ */
+
+/* Mobile Hero Section */
+@media (max-width: 768px) {
+  .hero-section-fullscreen {
+    min-height: 85vh;
+  }
+  
+  .hero-center-content {
+    padding: 0 20px;
+    width: 100%;
+    max-width: 100%;
+  }
+  
+  .hero-center-content h1 {
+    font-size: 32px;
+    line-height: 1.15;
+    margin-bottom: 24px;
+  }
+  
+  .hero-search-bar-styled {
+    max-width: 100%;
+    width: 100%;
+  }
+  
+  /* CRITICAL: Fix section container overflow */
+  .section-container {
+    padding: 0 16px;
+    overflow: hidden;
+  }
+  
+  /* ========== CITY CARDS - HORIZONTAL CAROUSEL ON MOBILE ========== */
+  .cities-section {
+    padding: 24px 0;
+    overflow: visible;
+  }
+  
+  .cities-section .section-container {
+    overflow: visible;
+    padding: 0 16px;
+  }
+  
+  .cities-section h2 {
+    font-size: 20px;
+    margin-bottom: 4px;
+  }
+  
+  .cities-section .section-subtitle {
+    font-size: 13px;
+    margin-bottom: 16px;
+  }
+  
+  .cities-grid {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 4px 0 16px 0;
+    margin: 0 -16px;
+    padding-left: 16px;
+    padding-right: 16px;
+    scroll-snap-type: x mandatory;
+  }
+  
+  .cities-grid::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .city-card {
+    flex: 0 0 140px;
+    min-width: 140px;
+    height: 180px;
+    border-radius: 12px;
+    position: relative;
+    overflow: hidden;
+    scroll-snap-align: start;
+  }
+  
+  .city-card img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  
+  .city-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 12px;
+    background: linear-gradient(transparent, rgba(0,0,0,0.7));
+  }
+  
+  .city-card h3 {
+    font-size: 14px;
+    font-weight: 600;
+    color: white;
+    margin: 0 0 2px 0;
+  }
+  
+  .city-card p {
+    font-size: 11px;
+    color: rgba(255,255,255,0.9);
+    margin: 0;
+  }
+  
+  /* ========== CATEGORY CAROUSEL MOBILE ========== */
+  .category-carousel-section {
+    padding: 24px 0;
+    overflow: visible;
+  }
+  
+  .carousel-wrapper {
+    margin: 0 -16px;
+    padding: 0 16px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .carousel-wrapper::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .carousel-scroll {
+    padding-left: 0;
+    gap: 12px;
+  }
+  
+  .carousel-card {
+    flex: 0 0 120px;
+    min-width: 120px;
+  }
+  
+  .carousel-card-image {
+    height: 160px;
+    border-radius: 12px;
+  }
+  
+  .carousel-card-overlay h3 {
+    font-size: 13px;
+  }
+  
+  .carousel-card-overlay p {
+    font-size: 10px;
+  }
+  
+  /* ========== WHY PLANHIVE SECTION MOBILE ========== */
+  .why-planhive-section {
+    padding: 24px 0;
+    overflow: hidden;
+  }
+  
+  .why-planhive-content {
+    flex-direction: column;
+    gap: 16px;
+  }
+  
+  .why-planhive-card {
+    padding: 20px 16px;
+    border-radius: 12px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  
+  .why-item {
+    flex-direction: row;
+    text-align: left;
+    gap: 12px;
+    align-items: flex-start;
+  }
+  
+  .why-icon {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    margin: 0;
+  }
+  
+  .why-text h3 {
+    font-size: 15px;
+    margin-bottom: 4px;
+  }
+  
+  .why-text p {
+    font-size: 12px;
+    line-height: 1.4;
+  }
+  
+  .why-planhive-image {
+    display: none;
+  }
+  
+  /* ========== FEATURE SECTIONS - FIX CUT OFF IMAGES ========== */
+  .feature-showcase-section {
+    overflow: hidden;
+  }
+  
+  .feature-row {
+    padding: 24px 0;
+    overflow: hidden;
+  }
+  
+  .feature-row-content {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 24px;
+    padding: 0 16px;
+  }
+  
+  .feature-text-side {
+    text-align: left;
+    order: 2;
+    width: 100%;
+  }
+  
+  .feature-text-side h2 {
+    font-size: 22px;
+    margin-bottom: 12px;
+  }
+  
+  .feature-text-side > p {
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  
+  .feature-image-side {
+    order: 1;
+    display: flex;
+    justify-content: center;
+    overflow: hidden;
+    width: 100%;
+  }
+  
+  /* FIX IMAGE STACK - CONTAINED */
+  .feature-image-stack {
+    position: relative;
+    width: 100%;
+    max-width: 280px;
+    margin: 0 auto;
+  }
+  
+  .stack-img-1 {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+  }
+  
+  .stack-img-2 {
+    position: absolute;
+    width: 80px;
+    height: 80px;
+    bottom: -10px;
+    right: 10px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  }
+  
+  .floating-stat {
+    position: absolute;
+    padding: 6px 10px;
+    font-size: 10px;
+    background: white;
+    border-radius: 6px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    white-space: nowrap;
+  }
+  
+  .floating-stat-1 {
+    top: 10px;
+    right: 10px;
+  }
+  
+  .floating-stat-2 {
+    bottom: 10px;
+    left: 10px;
+  }
+  
+  .floating-stat-3 {
+    top: -5px;
+    left: 10px;
+  }
+  
+  /* FIX MOCKUP BROWSER - CONTAINED */
+  .feature-mockup {
+    width: 100%;
+    max-width: 280px;
+    margin: 0 auto;
+    position: relative;
+  }
+  
+  .mockup-browser {
+    width: 100%;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+  }
+  
+  .mockup-browser-header {
+    padding: 8px 12px;
+  }
+  
+  .mockup-browser-dots span {
+    width: 8px;
+    height: 8px;
+  }
+  
+  .mockup-content {
+    padding: 12px;
+  }
+  
+  .mockup-filters {
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+  
+  .mockup-filter {
+    padding: 4px 8px;
+    font-size: 10px;
+  }
+  
+  .mockup-grid {
+    gap: 6px;
+  }
+  
+  .mockup-card {
+    height: 40px;
+    border-radius: 6px;
+  }
+  
+  .mockup-badge {
+    padding: 4px 8px;
+    font-size: 9px;
+    bottom: -8px;
+    left: 10px;
+  }
+  
+  /* FIX REVIEWS COLLAGE - CONTAINED */
+  .reviews-collage {
+    width: 100%;
+    max-width: 280px;
+    margin: 0 auto;
+    position: relative;
+  }
+  
+  .collage-main {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+  }
+  
+  .review-bubble {
+    position: absolute;
+    padding: 6px 10px;
+    font-size: 10px;
+    max-width: 130px;
+    background: white;
+    border-radius: 6px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  }
+  
+  .review-bubble .bubble-stars {
+    font-size: 8px;
+  }
+  
+  .review-bubble-1 {
+    top: 10px;
+    right: 10px;
+  }
+  
+  .review-bubble-2 {
+    bottom: 10px;
+    left: 10px;
+  }
+  
+  /* FIX BOOKING VISUAL - CONTAINED */
+  .booking-visual {
+    width: 100%;
+    max-width: 280px;
+    margin: 0 auto;
+    position: relative;
+  }
+  
+  .booking-card {
+    width: 100%;
+    padding: 12px;
+    border-radius: 10px;
+    box-sizing: border-box;
+    background: white;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+  }
+  
+  .booking-header {
+    font-size: 12px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    margin-bottom: 10px;
+  }
+  
+  .booking-details {
+    padding: 0;
+  }
+  
+  .booking-vendor {
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  
+  .booking-vendor img {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+  }
+  
+  .booking-vendor strong {
+    font-size: 11px;
+  }
+  
+  .booking-vendor span {
+    font-size: 9px;
+  }
+  
+  .booking-info {
+    font-size: 10px;
+    margin-bottom: 10px;
+  }
+  
+  .booking-info div {
+    padding: 3px 0;
+  }
+  
+  .booking-info i {
+    font-size: 10px;
+    width: 14px;
+  }
+  
+  .booking-status {
+    font-size: 10px;
+    padding: 6px 10px;
+    border-radius: 6px;
+  }
+  
+  /* Feature highlights on mobile - stack vertically */
+  .feature-highlights {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 16px 0;
+  }
+  
+  .highlight-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 8px;
+  }
+  
+  .highlight-icon {
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .highlight-icon i {
+    font-size: 14px;
+  }
+  
+  .highlight-item strong {
+    font-size: 13px;
+    display: block;
+  }
+  
+  .highlight-item span {
+    font-size: 11px;
+    color: #666;
+  }
+  
+  /* Security badges on mobile */
+  .security-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 16px 0;
+  }
+  
+  .security-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    background: #f8f9fa;
+    border-radius: 20px;
+    font-size: 12px;
+  }
+  
+  .security-badge i {
+    font-size: 12px;
+  }
+  
+  /* Feature CTA button on mobile */
+  .feature-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    font-size: 14px;
+    border-radius: 8px;
+    margin-top: 16px;
+  }
+  
+  /* Review preview card on mobile */
+  .review-preview {
+    margin-top: 16px;
+  }
+  
+  .review-card {
+    padding: 14px;
+    border-radius: 10px;
+  }
+  
+  .review-header {
+    margin-bottom: 10px;
+  }
+  
+  .reviewer-avatar {
+    width: 36px;
+    height: 36px;
+    font-size: 12px;
+  }
+  
+  .review-card p {
+    font-size: 13px;
+    line-height: 1.4;
+  }
+  
+  .review-stars i {
+    font-size: 10px;
+  }
+  
+  /* ========== BROWSE VENDORS SECTION - CAROUSEL ========== */
+  .browse-vendors-section {
+    padding: 24px 0;
+    overflow: visible;
+  }
+  
+  .browse-vendors-section .section-container {
+    overflow: visible;
+    padding: 0 16px;
+  }
+  
+  .browse-vendors-header {
+    margin-bottom: 12px;
+  }
+  
+  .browse-vendors-header h2 {
+    font-size: 20px;
+    margin-bottom: 4px;
+  }
+  
+  .browse-vendors-header p {
+    font-size: 13px;
+  }
+  
+  .landing-discovery-row {
+    margin: 0;
+    padding: 0;
+    overflow: visible;
+  }
+  
+  .landing-discovery-row .vendor-section {
+    overflow: visible;
+  }
+  
+  /* Fix navigation buttons */
+  .landing-discovery-row .vendor-section-header {
+    padding: 0;
+    margin-bottom: 12px;
+    display: flex;
+    justify-content: flex-end;
+  }
+  
+  .landing-discovery-row .vendor-section-title-wrapper {
+    display: none;
+  }
+  
+  .landing-discovery-row .vendor-section-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .landing-discovery-row .vendor-section-show-all {
+    font-size: 13px;
+    padding: 6px 12px;
+  }
+  
+  .landing-discovery-row .vendor-section-nav {
+    display: flex;
+    gap: 6px;
+  }
+  
+  .landing-discovery-row .vendor-section-nav-btn {
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    min-height: 32px !important;
+    border-radius: 50% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: white !important;
+    border: 1px solid #e0e0e0 !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.08) !important;
+  }
+  
+  .landing-discovery-row .vendor-section-nav-btn i {
+    font-size: 12px !important;
+  }
+  
+  .landing-discovery-row .vendor-section-scroll-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 8px;
+    margin: 0 -16px;
+    padding-left: 16px;
+    padding-right: 16px;
+    scroll-snap-type: x mandatory;
+  }
+  
+  .landing-discovery-row .vendor-section-scroll-container::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .landing-discovery-row .vendor-section-carousel {
+    padding-left: 0;
+    gap: 12px !important;
+    transform: none !important;
+    display: flex !important;
+    flex-wrap: nowrap !important;
+  }
+  
+  /* Vendor cards proper sizing on mobile */
+  .landing-discovery-row .vendor-section-carousel > div {
+    flex: 0 0 160px !important;
+    width: 160px !important;
+    min-width: 160px !important;
+    max-width: 160px !important;
+    scroll-snap-align: start;
+  }
+  
+  .landing-discovery-row .vendor-card {
+    width: 100% !important;
+    border-radius: 12px !important;
+    overflow: hidden !important;
+    background: white !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08) !important;
+  }
+  
+  .landing-discovery-row .vendor-card > div:first-child {
+    aspect-ratio: 3/4 !important;
+    height: auto !important;
+    min-height: 200px !important;
+    border-radius: 12px 12px 0 0 !important;
+  }
+  
+  /* Fix vendor card image - no weird fade */
+  .landing-discovery-row .vendor-card-image {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+  }
+  
+  .landing-discovery-row .vendor-card-info {
+    padding: 10px !important;
+    background: white !important;
+  }
+  
+  .landing-discovery-row .vendor-card-info h3 {
+    font-size: 13px !important;
+    margin-bottom: 2px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+  
+  .landing-discovery-row .vendor-card-info p {
+    font-size: 11px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+  
+  .landing-discovery-row .vendor-card-price,
+  .landing-discovery-row .vendor-card-rating {
+    font-size: 11px !important;
+  }
+  
+  /* Vendor CTA banner mobile */
+  .vendor-cta-banner {
+    padding: 24px 0;
+    overflow: hidden;
+  }
+  
+  .vendor-cta-content {
+    flex-direction: column;
+    padding: 24px;
+    gap: 24px;
+    text-align: center;
+  }
+  
+  .vendor-cta-image {
+    flex: none;
+    width: 100%;
+  }
+  
+  .vendor-cta-image img {
+    height: 160px;
+    width: 100%;
+  }
+  
+  .vendor-cta-text h2 {
+    font-size: 22px;
+  }
+  
+  .vendor-cta-text p {
+    font-size: 14px;
+  }
+  
+  .vendor-cta-btn {
+    width: 100%;
+    padding: 14px 24px;
+  }
+  
+  /* STATS SECTION MOBILE */
+  .stats-counter-section {
+    padding: 24px 0;
+  }
+  
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+  }
+  
+  .stat-number {
+    font-size: 36px;
+  }
+  
+  .stat-label {
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero-section-fullscreen {
+    min-height: 80vh;
+  }
+  
+  .hero-center-content h1 {
+    font-size: 26px;
+    line-height: 1.2;
+  }
+  
+  .hero-icons {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  
+  .hero-icon-btn {
+    padding: 8px;
+  }
+  
+  .hero-icon-btn i {
+    font-size: 16px;
+  }
+  
+  /* Search bar mobile small */
+  .hero-search-bar-styled {
+    padding: 12px;
+    border-radius: 12px;
+  }
+  
+  .hero-search-bar-styled .search-field-group label {
+    font-size: 10px;
+  }
+  
+  .hero-search-bar-styled .search-field-group input {
+    font-size: 14px;
+  }
+  
+  .hero-search-bar-styled .search-btn-styled {
+    padding: 12px 16px;
+    font-size: 14px;
+  }
+  
+  /* Cities grid 2 columns on small mobile */
+  .cities-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  
+  .city-card {
+    height: 120px;
+  }
+  
+  .city-card h3 {
+    font-size: 14px;
+  }
+  
+  /* Sections padding */
+  .cities-section,
+  .category-carousel-section,
+  .why-planhive-section,
+  .featured-vendors-section {
+    padding: 32px 0;
+  }
+  
+  .cities-section h2,
+  .category-carousel-section h2 {
+    font-size: 20px;
+    margin-bottom: 6px;
+  }
+  
+  .section-subtitle {
+    font-size: 13px;
+    margin-bottom: 16px;
+  }
+  
+  /* Feature sections mobile small */
+  .feature-row {
+    padding: 40px 0;
+  }
+  
+  .feature-row-content {
+    padding: 0 16px;
+    gap: 24px;
+  }
+  
+  .feature-text-side h2 {
+    font-size: 20px;
+  }
+  
+  .feature-text-side > p {
+    font-size: 13px;
+  }
+  
+  .feature-badge {
+    font-size: 11px;
+    padding: 5px 10px;
+  }
+  
+  .feature-list {
+    text-align: left;
+    display: inline-block;
+  }
+  
+  .feature-list li {
+    font-size: 13px;
+    padding: 5px 0;
+  }
+  
+  .feature-cta {
+    padding: 12px 20px;
+    font-size: 14px;
+    width: 100%;
+    justify-content: center;
+  }
+  
+  /* Smaller image stacks */
+  .feature-image-stack {
+    max-width: 240px;
+  }
+  
+  .stack-img-1 {
+    height: 180px;
+  }
+  
+  .stack-img-2 {
+    width: 80px;
+    height: 80px;
+    bottom: -10px;
+    right: 5px;
+  }
+  
+  .feature-mockup,
+  .reviews-collage,
+  .booking-visual {
+    max-width: 240px;
+  }
+  
+  .collage-main {
+    height: 180px;
+  }
+  
+  /* Highlight items stack vertically */
+  .feature-highlights {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .highlight-item {
+    padding: 12px;
+    text-align: left;
+  }
+  
+  /* Security badges stack */
+  .security-badges {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .security-badge {
+    padding: 10px 16px;
+    font-size: 13px;
+    justify-content: center;
+  }
+  
+  /* Stats section mobile */
+  .stats-counter-section {
+    padding: 40px 0;
+  }
+  
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+  
+  .stat-number {
+    font-size: 28px;
+  }
+  
+  .stat-label {
+    font-size: 12px;
+  }
+  
+  /* Browse vendors section mobile */
+  .browse-vendors-section {
+    padding: 32px 0;
+  }
+  
+  .browse-vendors-header {
+    margin-bottom: 16px;
+  }
+  
+  .browse-vendors-header h2 {
+    font-size: 18px;
+  }
+  
+  .browse-vendors-header p {
+    font-size: 13px;
+  }
+  
+  /* Review bubbles mobile - hide on very small screens */
+  .review-bubble {
+    padding: 6px 8px;
+    font-size: 10px;
+  }
+  
+  .review-bubble-1 {
+    top: 5px;
+    right: 0;
+  }
+  
+  .review-bubble-2 {
+    bottom: 10px;
+    left: 0;
+  }
+  
+  /* Booking card smaller */
+  .booking-card {
+    padding: 12px;
+  }
+  
+  .booking-header {
+    font-size: 12px;
+    padding: 8px 12px;
+  }
+  
+  .booking-vendor img {
+    width: 36px;
+    height: 36px;
+  }
+  
+  .booking-vendor strong {
+    font-size: 12px;
+  }
+  
+  .booking-vendor span {
+    font-size: 10px;
+  }
+  
+  .booking-info {
+    font-size: 11px;
+  }
+  
+  .booking-info div {
+    padding: 4px 0;
+  }
+  
+  .booking-status {
+    font-size: 11px;
+    padding: 6px 10px;
+  }
+  
+  /* Floating stats smaller */
+  .floating-stat {
+    padding: 6px 10px;
+    font-size: 10px;
+  }
+  
+  .floating-stat i {
+    font-size: 10px;
+  }
+  
+  /* Review preview card */
+  .review-preview {
+    margin-top: 16px;
+  }
+  
+  .review-card {
+    padding: 14px;
+  }
+  
+  .review-card p {
+    font-size: 12px;
+  }
+  
+  .reviewer-avatar {
+    width: 32px;
+    height: 32px;
+    font-size: 11px;
+  }
+  
+  .review-stars i {
+    font-size: 10px;
+  }
+  
+  /* Category carousel smaller cards */
+  .carousel-card {
+    flex: 0 0 120px;
+  }
+  
+  .carousel-card-image {
+    height: 160px;
+  }
+  
+  .carousel-card-overlay h3 {
+    font-size: 13px;
+  }
+  
+  .carousel-card-overlay p {
+    font-size: 10px;
+  }
+}
+
+/* Extra small devices */
+@media (max-width: 360px) {
+  .hero-center-content h1 {
+    font-size: 22px;
+  }
+  
+  .cities-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  
+  .city-card {
+    height: 100px;
+  }
+  
+  .city-card h3 {
+    font-size: 12px;
+  }
+  
+  .city-card p {
+    font-size: 10px;
+  }
+  
+  .carousel-card {
+    flex: 0 0 120px;
+  }
+  
+  .feature-text-side h2 {
+    font-size: 20px;
+  }
+  
+  .stat-number {
+    font-size: 24px;
   }
 }
