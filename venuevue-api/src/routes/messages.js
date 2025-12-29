@@ -104,9 +104,16 @@ router.get('/conversation/:id', async (req, res) => {
 
     const result = await request.execute('messages.sp_GetConversationMessages');
     
+    // Format dates to ISO strings for proper JSON serialization
+    const formattedMessages = result.recordset.map(msg => ({
+      ...msg,
+      CreatedAt: msg.CreatedAt ? new Date(msg.CreatedAt).toISOString() : null,
+      ReadAt: msg.ReadAt ? new Date(msg.ReadAt).toISOString() : null
+    }));
+    
     res.json({
       success: true,
-      messages: result.recordset
+      messages: formattedMessages
     });
 
   } catch (err) {

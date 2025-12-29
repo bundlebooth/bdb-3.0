@@ -233,7 +233,8 @@ function VendorMessagesSection({ onSectionChange }) {
         style={{ 
           marginBottom: '1rem', 
           display: 'flex', 
-          justifyContent: isOwnMessage ? 'flex-end' : 'flex-start' 
+          flexDirection: 'column',
+          alignItems: isOwnMessage ? 'flex-end' : 'flex-start' 
         }}
       >
         <div style={{ 
@@ -249,43 +250,35 @@ function VendorMessagesSection({ onSectionChange }) {
         }}>
           <div style={{ fontSize: '0.75rem', fontWeight: 600, marginBottom: '0.25rem', opacity: 0.8 }}>{senderName}</div>
           <div style={{ marginBottom: '0.25rem' }}>{message.Content}</div>
-          <div style={{ fontSize: '0.75rem', opacity: 0.7, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px' }}>
-            <span>
-              {(() => {
-                if (!message.CreatedAt) return '';
-                const date = new Date(message.CreatedAt);
-                if (isNaN(date.getTime())) return '';
-                return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-              })()}
-            </span>
-            {/* Read receipt eye icon - only show for last sent message */}
-            {isLastSentMessage && (
-              <span 
-                title={isRead ? 'Read' : 'Delivered'}
-                style={{ 
-                  display: 'inline-flex', 
-                  alignItems: 'center',
-                  opacity: isRead ? 1 : 0.5
-                }}
-              >
-                <svg 
-                  width="16" 
-                  height="16" 
-                  viewBox="0 0 24 24" 
-                  fill="none" 
-                  stroke="currentColor" 
-                  strokeWidth="2" 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round"
-                  style={{ color: isRead ? '#fff' : 'rgba(255,255,255,0.5)' }}
-                >
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                  <circle cx="12" cy="12" r="3"></circle>
-                </svg>
-              </span>
-            )}
+          <div style={{ fontSize: '0.75rem', opacity: 0.7, textAlign: 'right' }}>
+            {(() => {
+              if (!message.CreatedAt) return '';
+              const date = new Date(message.CreatedAt);
+              if (isNaN(date.getTime())) return '';
+              return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            })()}
           </div>
         </div>
+        {/* Read receipt - shown outside message bubble for last sent message */}
+        {isLastSentMessage && isRead && message.ReadAt && (
+          <div style={{ 
+            fontSize: '0.7rem', 
+            color: '#666',
+            marginTop: '4px',
+            paddingRight: '4px'
+          }}>
+            Seen on: {(() => {
+              const date = new Date(message.ReadAt);
+              if (isNaN(date.getTime())) return '';
+              return date.toLocaleString([], { 
+                month: 'short', 
+                day: 'numeric',
+                hour: '2-digit', 
+                minute: '2-digit' 
+              });
+            })()}
+          </div>
+        )}
       </div>
     );
   };

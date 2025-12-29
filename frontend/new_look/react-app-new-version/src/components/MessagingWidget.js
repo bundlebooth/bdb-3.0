@@ -953,14 +953,15 @@ function MessagingWidget() {
                   messages.map((msg, index) => {
                     const isSent = msg.SenderID === currentUser.id;
                     const isRead = msg.IsRead === true || msg.IsRead === 1;
-                    // Only show read icon on the last sent message
+                    // Only show read receipt on the last sent message
                     const isLastSentMessage = isSent && !messages.slice(index + 1).some(m => m.SenderID === currentUser.id);
                     return (
                       <div
                         key={msg.MessageID}
                         style={{
                           display: 'flex',
-                          justifyContent: isSent ? 'flex-end' : 'flex-start',
+                          flexDirection: 'column',
+                          alignItems: isSent ? 'flex-end' : 'flex-start',
                           marginBottom: '12px'
                         }}
                       >
@@ -977,48 +978,37 @@ function MessagingWidget() {
                             fontSize: '11px', 
                             marginTop: '4px',
                             opacity: 0.7,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'flex-end',
-                            gap: '4px'
+                            textAlign: 'right'
                           }}>
-                            <span>
-                              {(() => {
-                                const dateStr = msg.CreatedAt || msg.SentAt;
-                                if (!dateStr) return '';
-                                const date = new Date(dateStr);
-                                if (isNaN(date.getTime())) return '';
-                                return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                              })()}
-                            </span>
-                            {/* Read receipt eye icon - only show for last sent message */}
-                            {isLastSentMessage && (
-                              <span 
-                                title={isRead ? 'Read' : 'Delivered'}
-                                style={{ 
-                                  display: 'inline-flex', 
-                                  alignItems: 'center',
-                                  opacity: isRead ? 1 : 0.5
-                                }}
-                              >
-                                <svg 
-                                  width="14" 
-                                  height="14" 
-                                  viewBox="0 0 24 24" 
-                                  fill="none" 
-                                  stroke="currentColor" 
-                                  strokeWidth="2" 
-                                  strokeLinecap="round" 
-                                  strokeLinejoin="round"
-                                  style={{ color: isRead ? '#fff' : 'rgba(255,255,255,0.5)' }}
-                                >
-                                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                  <circle cx="12" cy="12" r="3"></circle>
-                                </svg>
-                              </span>
-                            )}
+                            {(() => {
+                              const dateStr = msg.CreatedAt || msg.SentAt;
+                              if (!dateStr) return '';
+                              const date = new Date(dateStr);
+                              if (isNaN(date.getTime())) return '';
+                              return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                            })()}
                           </div>
                         </div>
+                        {/* Read receipt - shown outside message bubble for last sent message */}
+                        {isLastSentMessage && isRead && msg.ReadAt && (
+                          <div style={{ 
+                            fontSize: '11px', 
+                            color: '#666',
+                            marginTop: '4px',
+                            paddingRight: '4px'
+                          }}>
+                            Seen on: {(() => {
+                              const date = new Date(msg.ReadAt);
+                              if (isNaN(date.getTime())) return '';
+                              return date.toLocaleString([], { 
+                                month: 'short', 
+                                day: 'numeric',
+                                hour: '2-digit', 
+                                minute: '2-digit' 
+                              });
+                            })()}
+                          </div>
+                        )}
                       </div>
                     );
                   })

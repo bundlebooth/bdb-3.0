@@ -1,5 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import VendorCard from './VendorCard';
+import { useVendorOnlineStatus } from '../hooks/useOnlineStatus';
 import '../styles/VendorSection.css';
 
 /**
@@ -95,6 +96,13 @@ function VendorSection({
 
   const iconConfig = getIconConfig();
 
+  // Get vendor IDs for online status
+  const vendorIds = vendors?.map(v => v.vendorProfileId || v.VendorProfileID || v.id).filter(Boolean) || [];
+  const { statuses: onlineStatuses } = useVendorOnlineStatus(vendorIds, { 
+    enabled: vendorIds.length > 0, 
+    refreshInterval: 300000 // 5 minutes for landing page
+  });
+
   if (!vendors || vendors.length === 0) {
     return null;
   }
@@ -174,6 +182,7 @@ function VendorSection({
                     showResponseTime={showResponseTime}
                     showAnalyticsBadge={showAnalyticsBadge}
                     analyticsBadgeType={analyticsBadgeType}
+                    onlineStatus={onlineStatuses[vendorId]}
                   />
                 </div>
               );
@@ -223,6 +232,7 @@ function VendorSection({
                         onHighlight={onHighlightVendor}
                         showAnalyticsBadge={showAnalyticsBadge}
                         analyticsBadgeType={analyticsBadgeType}
+                        onlineStatus={onlineStatuses[vendorId]}
                       />
                     );
                   })

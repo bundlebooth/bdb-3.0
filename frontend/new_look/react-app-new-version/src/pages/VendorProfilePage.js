@@ -13,6 +13,7 @@ import Footer from '../components/Footer';
 import Breadcrumb from '../components/Breadcrumb';
 import SetupIncompleteBanner from '../components/SetupIncompleteBanner';
 import MessagingWidget from '../components/MessagingWidget';
+import { useVendorOnlineStatus } from '../hooks/useOnlineStatus';
 import { showBanner } from '../utils/helpers';
 import { extractVendorIdFromSlug, parseQueryParams, trackPageView, buildBookingUrl } from '../utils/urlHelpers';
 import './VendorProfilePage.css';
@@ -49,6 +50,13 @@ function VendorProfilePage() {
   const [currentReviewPage, setCurrentReviewPage] = useState(0);
   const [reviewsPerPage] = useState(5);
   const [carouselIndex, setCarouselIndex] = useState(0);
+
+  // Get online status for this vendor
+  const { statuses: onlineStatuses } = useVendorOnlineStatus(
+    vendorId ? [vendorId] : [],
+    { enabled: !!vendorId, refreshInterval: 180000 } // 3 minutes
+  );
+  const vendorOnlineStatus = vendorId ? onlineStatuses[vendorId] : null;
 
   const loadVendorProfile = useCallback(async () => {
     try {
@@ -1544,9 +1552,37 @@ function VendorProfilePage() {
               )}
               
               <div style={{ flex: 1 }}>
-                <h1 style={{ fontSize: '1.625rem', fontWeight: 600, marginBottom: '0.5rem', color: '#222', lineHeight: 1.25 }}>
-                  {profile.BusinessName || profile.DisplayName}
-                </h1>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+                  <h1 style={{ fontSize: '1.625rem', fontWeight: 600, color: '#222', lineHeight: 1.25, margin: 0 }}>
+                    {profile.BusinessName || profile.DisplayName}
+                  </h1>
+                  {/* Online Status Indicator */}
+                  {vendorOnlineStatus && (
+                    <div style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '6px',
+                      padding: '4px 10px',
+                      borderRadius: '16px',
+                      backgroundColor: vendorOnlineStatus.isOnline ? '#dcfce7' : '#f3f4f6',
+                      flexShrink: 0
+                    }}>
+                      <span style={{
+                        width: '8px',
+                        height: '8px',
+                        borderRadius: '50%',
+                        backgroundColor: vendorOnlineStatus.isOnline ? '#22c55e' : '#9ca3af'
+                      }} />
+                      <span style={{ 
+                        fontSize: '0.8rem', 
+                        fontWeight: 500,
+                        color: vendorOnlineStatus.isOnline ? '#16a34a' : '#6b7280'
+                      }}>
+                        {vendorOnlineStatus.isOnline ? 'Online' : vendorOnlineStatus.lastActiveText || 'Offline'}
+                      </span>
+                    </div>
+                  )}
+                </div>
               
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', fontSize: '0.95rem' }}>
                   {/* Rating with blue star - clickable */}
