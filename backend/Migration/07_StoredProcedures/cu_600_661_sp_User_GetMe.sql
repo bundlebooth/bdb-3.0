@@ -15,13 +15,23 @@ BEGIN
     SET NOCOUNT ON;
     
     SELECT 
-        UserID as userId,
-        Name as name,
-        Email as email,
-        ProfileImageURL as avatar,
-        IsVendor as isVendor
-    FROM users.Users 
-    WHERE UserID = @UserID;
+        u.UserID as userId,
+        u.Name as name,
+        u.Email as email,
+        u.ProfileImageURL as avatar,
+        u.IsVendor as isVendor,
+        ul.City as city,
+        ul.State as province,
+        ul.Country as country,
+        ul.Latitude as latitude,
+        ul.Longitude as longitude
+    FROM users.Users u
+    LEFT JOIN (
+        SELECT UserID, City, State, Country, Latitude, Longitude,
+               ROW_NUMBER() OVER (PARTITION BY UserID ORDER BY Timestamp DESC) as rn
+        FROM users.UserLocations
+    ) ul ON u.UserID = ul.UserID AND ul.rn = 1
+    WHERE u.UserID = @UserID;
 END
 GO
 

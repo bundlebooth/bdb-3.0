@@ -740,14 +740,6 @@ router.post('/:id/location', async (req, res) => {
     const { id } = req.params;
     const { latitude, longitude, city, state, country } = req.body;
 
-    // Basic validation
-    if (isNaN(latitude) || isNaN(longitude)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Valid latitude and longitude are required'
-      });
-    }
-
     if (isNaN(id)) {
       return res.status(400).json({
         success: false,
@@ -755,21 +747,34 @@ router.post('/:id/location', async (req, res) => {
       });
     }
 
+    // State/province is required for tax calculation
+    if (!state) {
+      return res.status(400).json({
+        success: false,
+        message: 'Province/state is required for tax calculation'
+      });
+    }
+
     const pool = await poolPromise;
     const request = pool.request();
     
+    // Use 0 as default for lat/lng if not provided
+    const lat = latitude !== undefined && latitude !== null && !isNaN(latitude) ? parseFloat(latitude) : 0;
+    const lng = longitude !== undefined && longitude !== null && !isNaN(longitude) ? parseFloat(longitude) : 0;
+    
     request.input('UserID', sql.Int, parseInt(id));
-    request.input('Latitude', sql.Decimal(10, 8), parseFloat(latitude));
-    request.input('Longitude', sql.Decimal(11, 8), parseFloat(longitude));
+    request.input('Latitude', sql.Decimal(10, 8), lat);
+    request.input('Longitude', sql.Decimal(11, 8), lng);
     request.input('City', sql.NVarChar(100), city || null);
     request.input('State', sql.NVarChar(50), state || null);
-    request.input('Country', sql.NVarChar(50), country || null);
+    request.input('Country', sql.NVarChar(50), country || 'Canada');
 
-    const result = await request.execute('users.sp_UpdateUserLocation');
+    const result = await request.execute('users.sp_UpdateLocation');
     
     res.json({
       success: true,
-      locationId: result.recordset[0].LocationID
+      locationId: result.recordset?.[0]?.LocationID || null,
+      message: 'Location updated successfully'
     });
 
   } catch (err) {
@@ -975,11 +980,11 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Update user (including profile picture)
+// Update user (including profile picture and location)
 router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { firstName, lastName, phone, currentPassword, newPassword } = req.body;
+    const { firstName, lastName, phone, city, province, country, currentPassword, newPassword } = req.body;
 
     if (isNaN(id)) {
       return res.status(400).json({
@@ -1028,6 +1033,19 @@ router.put('/:id', async (req, res) => {
     request.input('Phone', sql.NVarChar(20), phone || null);
 
     await request.execute('users.sp_UpdateProfile');
+
+    // Update user location if provided
+    if (province) {
+      const locationRequest = pool.request();
+      locationRequest.input('UserID', sql.Int, parseInt(id));
+      locationRequest.input('Latitude', sql.Decimal(10, 8), 0);
+      locationRequest.input('Longitude', sql.Decimal(11, 8), 0);
+      locationRequest.input('City', sql.NVarChar(100), city || null);
+      locationRequest.input('State', sql.NVarChar(50), province || null);
+      locationRequest.input('Country', sql.NVarChar(50), country || 'Canada');
+
+      await locationRequest.execute('users.sp_UpdateUserLocation');
+    }
 
     res.json({
       success: true,

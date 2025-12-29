@@ -13,6 +13,38 @@ function isStripeConfigured() {
          !process.env.STRIPE_PUBLISHABLE_KEY.includes('placeholder');
 }
 
+// Canadian province tax rates (2024)
+const PROVINCE_TAX_RATES = {
+  'Alberta': { rate: 5, type: 'GST', label: 'GST 5%' },
+  'British Columbia': { rate: 12, type: 'GST+PST', label: 'GST 5% + PST 7%' },
+  'Manitoba': { rate: 12, type: 'GST+PST', label: 'GST 5% + PST 7%' },
+  'New Brunswick': { rate: 15, type: 'HST', label: 'HST 15%' },
+  'Newfoundland and Labrador': { rate: 15, type: 'HST', label: 'HST 15%' },
+  'Northwest Territories': { rate: 5, type: 'GST', label: 'GST 5%' },
+  'Nova Scotia': { rate: 15, type: 'HST', label: 'HST 15%' },
+  'Nunavut': { rate: 5, type: 'GST', label: 'GST 5%' },
+  'Ontario': { rate: 13, type: 'HST', label: 'HST 13%' },
+  'Prince Edward Island': { rate: 15, type: 'HST', label: 'HST 15%' },
+  'Quebec': { rate: 14.975, type: 'GST+QST', label: 'GST 5% + QST 9.975%' },
+  'Saskatchewan': { rate: 11, type: 'GST+PST', label: 'GST 5% + PST 6%' },
+  'Yukon': { rate: 5, type: 'GST', label: 'GST 5%' }
+};
+
+// Get tax rate for a province (returns percentage as number, e.g., 13 for 13%)
+function getTaxRateForProvince(province) {
+  if (!province) return 13; // Default to Ontario HST
+  const normalized = province.trim();
+  const taxInfo = PROVINCE_TAX_RATES[normalized];
+  return taxInfo ? taxInfo.rate : 13;
+}
+
+// Get full tax info for a province
+function getTaxInfoForProvince(province) {
+  if (!province) return { rate: 13, type: 'HST', label: 'HST 13%' };
+  const normalized = province.trim();
+  return PROVINCE_TAX_RATES[normalized] || { rate: 13, type: 'HST', label: 'HST 13%' };
+}
+
 // Fetch commission settings from database (with env fallbacks)
 async function getCommissionSettings() {
   const defaults = {
@@ -824,7 +856,8 @@ router.post('/payment-intent', async (req, res) => {
       vendorProfileId,
       amount,
       currency = 'cad',
-      description
+      description,
+      clientProvince
     } = req.body;
 
     if (!isStripeConfigured()) {
@@ -842,8 +875,8 @@ router.post('/payment-intent', async (req, res) => {
     }
 
     // Prevent duplicate payments for already-paid bookings
+    const pool = await poolPromise;
     try {
-      const pool = await poolPromise;
       const check = await pool.request()
         .input('BookingID', sql.Int, bookingId)
         .execute('payments.sp_CheckBookingPaid');
@@ -873,35 +906,57 @@ router.post('/payment-intent', async (req, res) => {
       });
     }
 
-    const platformFeePercent = parseFloat(process.env.PLATFORM_FEE_PERCENT || '5') / 100;
-    const invTotals2 = await getInvoiceTotalsCents(bookingId);
-    const amountCents = invTotals2.totalAmountCents;
-    if (!amountCents || amountCents < 50) {
-      return res.status(400).json({ success: false, message: 'Unable to compute invoice total for payment' });
+    // Get commission settings
+    const commissionSettings = await getCommissionSettings();
+    const platformFeePercent = commissionSettings.platformFeePercent / 100;
+    const stripeFeePercent = commissionSettings.stripeFeePercent / 100;
+    const stripeFeeFixed = commissionSettings.stripeFeeFixed;
+
+    // Determine tax rate based on client's province (location-based taxation)
+    let taxPercent = commissionSettings.taxPercent; // Default from settings
+    let taxInfo = { rate: taxPercent, type: 'HST', label: `HST ${taxPercent}%` };
+    
+    if (clientProvince) {
+      taxInfo = getTaxInfoForProvince(clientProvince);
+      taxPercent = taxInfo.rate;
+      console.log(`[PaymentIntent] Using province-based tax for ${clientProvince}: ${taxPercent}%`);
     }
-    const applicationFee = (invTotals2.platformFeeCents != null) ? invTotals2.platformFeeCents : Math.round(amountCents * platformFeePercent);
-    const taxPercentRaw2 = parseFloat(process.env.TAX_PERCENT || '0');
+
+    // Calculate totals with province-specific tax
+    const subtotal = Number(amount);
+    const platformFee = Math.round(subtotal * platformFeePercent * 100) / 100;
+    const taxAmount = Math.round((subtotal + platformFee) * (taxPercent / 100) * 100) / 100;
+    const processingFee = Math.round((subtotal * stripeFeePercent + stripeFeeFixed) * 100) / 100;
+    const totalAmount = Math.round((subtotal + platformFee + taxAmount + processingFee) * 100) / 100;
+    const totalAmountCents = Math.round(totalAmount * 100);
+    const applicationFeeCents = Math.round(platformFee * 100);
+
+    if (totalAmountCents < 50) {
+      return res.status(400).json({ success: false, message: 'Total amount is too low for payment processing' });
+    }
 
     // Create a PaymentIntent on the platform with destination charge to the connected account
     const pi = await stripe.paymentIntents.create({
-      amount: amountCents,
+      amount: totalAmountCents,
       currency,
       description: description || `Booking Payment #${bookingId}`,
       automatic_payment_methods: { enabled: true },
-      application_fee_amount: applicationFee,
+      application_fee_amount: applicationFeeCents,
       transfer_data: {
         destination: vendorStripeAccountId,
       },
       metadata: {
-        booking_id: bookingId,
-        vendor_profile_id: resolvedVendorProfileId,
-        platform_fee_percent: String(platformFeePercent * 100),
-        invoice_id: invTotals2.invoiceId || '',
-        subtotal_cents: String(invTotals2.subtotalCents || 0),
-        platform_fee_cents: String(applicationFee),
-        tax_cents: String(invTotals2.taxCents || 0),
-        total_cents: String(amountCents),
-        tax_percent: String(Number.isFinite(taxPercentRaw2) ? taxPercentRaw2 : 0)
+        booking_id: String(bookingId),
+        vendor_profile_id: String(resolvedVendorProfileId),
+        platform_fee_percent: String(commissionSettings.platformFeePercent),
+        client_province: clientProvince || '',
+        tax_type: taxInfo.type,
+        subtotal_cents: String(Math.round(subtotal * 100)),
+        platform_fee_cents: String(applicationFeeCents),
+        tax_cents: String(Math.round(taxAmount * 100)),
+        processing_fee_cents: String(Math.round(processingFee * 100)),
+        total_cents: String(totalAmountCents),
+        tax_percent: String(taxPercent)
       }
     });
 
@@ -909,7 +964,17 @@ router.post('/payment-intent', async (req, res) => {
       success: true,
       clientSecret: pi.client_secret,
       paymentIntentId: pi.id,
-      publishableKey: process.env.STRIPE_PUBLISHABLE_KEY
+      publishableKey: process.env.STRIPE_PUBLISHABLE_KEY,
+      breakdown: {
+        subtotal: subtotal,
+        platformFee: platformFee,
+        tax: taxAmount,
+        taxPercent: taxPercent,
+        taxType: taxInfo.type,
+        taxLabel: taxInfo.label,
+        processingFee: processingFee,
+        total: totalAmount
+      }
     });
   } catch (error) {
     console.error('PaymentIntent creation error:', error);
@@ -946,7 +1011,8 @@ router.post('/checkout-session', async (req, res) => {
       currency = 'cad',
       description,
       successUrl,
-      cancelUrl 
+      cancelUrl,
+      clientProvince
     } = req.body;
 
     if (!isStripeConfigured()) {
@@ -1009,10 +1075,20 @@ router.post('/checkout-session', async (req, res) => {
       }];
     }
 
-    // Calculate totals
+    // Determine tax rate based on client's province (location-based taxation)
+    let taxPercent = commissionSettings.taxPercent;
+    let taxInfo = { rate: taxPercent, type: 'HST', label: `HST ${taxPercent}%` };
+    
+    if (clientProvince) {
+      taxInfo = getTaxInfoForProvince(clientProvince);
+      taxPercent = taxInfo.rate;
+      console.log(`[CheckoutSession] Using province-based tax for ${clientProvince}: ${taxPercent}%`);
+    }
+
+    // Calculate totals with province-specific tax
     const servicesSubtotal = services.reduce((sum, s) => sum + (Number(s.PriceAtBooking || 0) * (s.Quantity || 1)), 0);
     const platformFeeAmount = Math.round(servicesSubtotal * (commissionSettings.platformFeePercent / 100) * 100) / 100;
-    const taxAmount = Math.round((servicesSubtotal + platformFeeAmount) * (commissionSettings.taxPercent / 100) * 100) / 100;
+    const taxAmount = Math.round((servicesSubtotal + platformFeeAmount) * (taxPercent / 100) * 100) / 100;
     const processingFee = Math.round((servicesSubtotal * (commissionSettings.stripeFeePercent / 100) + commissionSettings.stripeFeeFixed) * 100) / 100;
     const totalAmount = Math.round((servicesSubtotal + platformFeeAmount + taxAmount + processingFee) * 100) / 100;
 
@@ -1049,14 +1125,14 @@ router.post('/checkout-session', async (req, res) => {
       });
     }
 
-    // Add tax as a line item
+    // Add tax as a line item (using province-specific tax label)
     if (taxAmount > 0) {
       lineItems.push({
         price_data: {
           currency: commissionSettings.currency,
           product_data: {
-            name: `Tax (HST ${commissionSettings.taxPercent}%)`,
-            description: 'Harmonized Sales Tax'
+            name: `Tax (${taxInfo.label})`,
+            description: clientProvince ? `Sales tax for ${clientProvince}` : 'Sales Tax'
           },
           unit_amount: Math.round(taxAmount * 100)
         },
@@ -1100,13 +1176,15 @@ router.post('/checkout-session', async (req, res) => {
       event_name: booking.EventName || '',
       event_type: booking.EventType || '',
       event_location: booking.EventLocation || '',
+      client_province: clientProvince || '',
+      tax_type: taxInfo.type,
       services_subtotal_cents: String(Math.round(servicesSubtotal * 100)),
       platform_fee_cents: String(applicationFeeCents),
       tax_cents: String(Math.round(taxAmount * 100)),
       processing_fee_cents: String(Math.round(processingFee * 100)),
       total_cents: String(totalAmountCents),
       platform_fee_percent: String(commissionSettings.platformFeePercent),
-      tax_percent: String(commissionSettings.taxPercent),
+      tax_percent: String(taxPercent),
       stripe_fee_percent: String(commissionSettings.stripeFeePercent)
     };
 
@@ -1714,6 +1792,69 @@ router.get('/config', async (req, res) => {
   } catch (e) {
     console.error('❌ Config endpoint error:', e);
     res.status(500).json({ success: false, message: 'Failed to load config' });
+  }
+});
+
+// 0b. GET TAX RATES: Get tax rate for a specific province or all provinces
+router.get('/tax-rates', (req, res) => {
+  const { province } = req.query;
+  
+  if (province) {
+    // Return tax info for a specific province
+    const taxInfo = getTaxInfoForProvince(province);
+    return res.json({
+      success: true,
+      province: province,
+      rate: taxInfo.rate,
+      type: taxInfo.type,
+      label: taxInfo.label
+    });
+  }
+  
+  // Return all province tax rates
+  res.json({
+    success: true,
+    provinces: PROVINCE_TAX_RATES
+  });
+});
+
+// 0c. CALCULATE PAYMENT BREAKDOWN: Preview payment totals with province-based tax
+router.post('/calculate-breakdown', async (req, res) => {
+  try {
+    const { amount, province } = req.body;
+    
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ success: false, message: 'Valid amount is required' });
+    }
+
+    const commissionSettings = await getCommissionSettings();
+    const taxInfo = getTaxInfoForProvince(province);
+    const taxPercent = taxInfo.rate;
+
+    const subtotal = Number(amount);
+    const platformFee = Math.round(subtotal * (commissionSettings.platformFeePercent / 100) * 100) / 100;
+    const taxAmount = Math.round((subtotal + platformFee) * (taxPercent / 100) * 100) / 100;
+    const processingFee = Math.round((subtotal * (commissionSettings.stripeFeePercent / 100) + commissionSettings.stripeFeeFixed) * 100) / 100;
+    const total = Math.round((subtotal + platformFee + taxAmount + processingFee) * 100) / 100;
+
+    res.json({
+      success: true,
+      breakdown: {
+        subtotal,
+        platformFee,
+        platformFeePercent: commissionSettings.platformFeePercent,
+        tax: taxAmount,
+        taxPercent,
+        taxType: taxInfo.type,
+        taxLabel: taxInfo.label,
+        processingFee,
+        total
+      },
+      province: province || 'Ontario (default)'
+    });
+  } catch (e) {
+    console.error('Calculate breakdown error:', e);
+    res.status(500).json({ success: false, message: 'Failed to calculate breakdown' });
   }
 });
 
