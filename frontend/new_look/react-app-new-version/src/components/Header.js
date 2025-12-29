@@ -185,8 +185,54 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
   return (
     <>
     <header className={`header ${isScrolled ? 'header-scrolled' : ''}`}>
-      <div className="logo" style={{ cursor: 'pointer' }} onClick={() => window.location.href = '/'}>
-        <img src="/planhive_logo.svg" alt="PlanHive" style={{ height: '50px', width: 'auto' }} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+        <div className="logo" style={{ cursor: 'pointer' }} onClick={() => window.location.href = '/'}>
+          <img src="/planhive_logo.svg" alt="PlanHive" style={{ height: '50px', width: 'auto' }} />
+        </div>
+        
+        {/* Page Tabs - Explore / Forum */}
+        <div style={{ display: 'flex', gap: '4px' }}>
+          <button
+            onClick={() => navigate('/')}
+            style={{
+              padding: '8px 16px',
+              background: location.pathname === '/' || location.pathname === '/explore' ? '#f3f4f6' : 'transparent',
+              border: 'none',
+              borderRadius: '20px',
+              fontSize: '14px',
+              fontWeight: location.pathname === '/' || location.pathname === '/explore' ? 600 : 500,
+              color: location.pathname === '/' || location.pathname === '/explore' ? '#222' : '#666',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              transition: 'all 0.2s'
+            }}
+          >
+            <i className="fas fa-compass" style={{ fontSize: '14px' }}></i>
+            Explore
+          </button>
+          <button
+            onClick={() => navigate('/forum')}
+            style={{
+              padding: '8px 16px',
+              background: location.pathname.startsWith('/forum') ? '#f3f4f6' : 'transparent',
+              border: 'none',
+              borderRadius: '20px',
+              fontSize: '14px',
+              fontWeight: location.pathname.startsWith('/forum') ? 600 : 500,
+              color: location.pathname.startsWith('/forum') ? '#222' : '#666',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              transition: 'all 0.2s'
+            }}
+          >
+            <i className="fas fa-comments" style={{ fontSize: '14px' }}></i>
+            Forum
+          </button>
+        </div>
       </div>
 
       <div className="search-container">

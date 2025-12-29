@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
 import { useVendorOnlineStatus } from '../hooks/useOnlineStatus';
+import EmojiPicker from 'emoji-picker-react';
 
 function MessagingWidget() {
   const { currentUser } = useAuth();
@@ -28,8 +29,42 @@ function MessagingWidget() {
   const [selectedFaq, setSelectedFaq] = useState(null); // For full FAQ detail view
   const [faqFeedbackSubmitted, setFaqFeedbackSubmitted] = useState({});
   const [otherPartyVendorId, setOtherPartyVendorId] = useState(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const messagesEndRef = useRef(null);
   const pollingIntervalRef = useRef(null);
+  const emojiPickerRef = useRef(null);
+
+  // Quick reply suggestions
+  const quickReplies = [
+    "Hi! 👋",
+    "Thank you!",
+    "Sounds good!",
+    "I'm interested",
+    "Can we discuss?",
+    "Perfect! ✨"
+  ];
+
+  // Handle emoji selection
+  const onEmojiClick = (emojiData) => {
+    setMessageInput(prev => prev + emojiData.emoji);
+    setShowEmojiPicker(false);
+  };
+
+  // Handle quick reply click
+  const handleQuickReply = (reply) => {
+    setMessageInput(reply);
+  };
+
+  // Close emoji picker when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target)) {
+        setShowEmojiPicker(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Get online status for the other party (vendor) in the conversation
   const { statuses: vendorOnlineStatuses } = useVendorOnlineStatus(
@@ -1015,14 +1050,89 @@ function MessagingWidget() {
                 )}
                 <div ref={messagesEndRef} />
               </div>
+              {/* Quick Reply Buttons */}
+              {messages.length > 0 && !messageInput && (
+                <div style={{
+                  padding: '8px 16px',
+                  borderTop: '1px solid #e0e0e0',
+                  background: '#f8f9fa',
+                  display: 'flex',
+                  gap: '8px',
+                  flexWrap: 'wrap'
+                }}>
+                  {quickReplies.map((reply, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => handleQuickReply(reply)}
+                      style={{
+                        padding: '6px 12px',
+                        background: 'white',
+                        border: '1px solid #e0e0e0',
+                        borderRadius: '16px',
+                        fontSize: '12px',
+                        cursor: 'pointer',
+                        color: '#555',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.target.style.background = '#5e72e4';
+                        e.target.style.color = 'white';
+                        e.target.style.borderColor = '#5e72e4';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.target.style.background = 'white';
+                        e.target.style.color = '#555';
+                        e.target.style.borderColor = '#e0e0e0';
+                      }}
+                    >
+                      {reply}
+                    </button>
+                  ))}
+                </div>
+              )}
               <div className="chat-input-container" style={{
                 padding: '16px',
                 borderTop: '1px solid #e0e0e0',
                 background: 'white',
                 display: 'flex',
                 gap: '12px',
-                alignItems: 'center'
+                alignItems: 'center',
+                position: 'relative'
               }}>
+                {/* Emoji Picker */}
+                {showEmojiPicker && (
+                  <div 
+                    ref={emojiPickerRef}
+                    style={{
+                      position: 'absolute',
+                      bottom: '70px',
+                      left: '16px',
+                      zIndex: 1000
+                    }}
+                  >
+                    <EmojiPicker 
+                      onEmojiClick={onEmojiClick}
+                      width={300}
+                      height={350}
+                      searchDisabled={false}
+                      skinTonesDisabled
+                      previewConfig={{ showPreview: false }}
+                    />
+                  </div>
+                )}
+                <button
+                  onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: '20px',
+                    color: showEmojiPicker ? '#5e72e4' : '#666',
+                    padding: '8px'
+                  }}
+                >
+                  <i className="far fa-smile"></i>
+                </button>
                 <input
                   type="text"
                   className="widget-chat-input"

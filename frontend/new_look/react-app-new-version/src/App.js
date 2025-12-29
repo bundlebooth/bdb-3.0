@@ -12,6 +12,8 @@ import PaymentSuccessPage from './pages/PaymentSuccessPage';
 import TermsOfServicePage from './pages/TermsOfServicePage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import HelpCentrePage from './pages/HelpCentrePage';
+import ForumPage from './pages/ForumPage';
+import ForumPostPage from './pages/ForumPostPage';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { useHeartbeat } from './hooks/useOnlineStatus';
 import './styles/MapControls.css';
@@ -84,6 +86,9 @@ function App() {
           <Route path="/terms-of-service" element={<TermsOfServicePage />} />
           <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
           <Route path="/help-centre" element={<HelpCentrePage />} />
+          <Route path="/forum" element={<ForumPage />} />
+          <Route path="/forum/:slug" element={<ForumPage />} />
+          <Route path="/forum/post/:slug" element={<ForumPostPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>

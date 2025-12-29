@@ -372,10 +372,10 @@ const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavori
           <span className="vendor-card-business-name">
             {vendor.BusinessName || vendor.name}
           </span>
-          {/* Online Status Indicator */}
-          {onlineStatus && (
+          {/* Online Status Indicator - Only show when online */}
+          {onlineStatus?.isOnline && (
             <span 
-              title={onlineStatus.isOnline ? 'Online now' : onlineStatus.lastActiveText || 'Offline'}
+              title="Online now"
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -387,18 +387,16 @@ const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavori
                 width: '8px',
                 height: '8px',
                 borderRadius: '50%',
-                backgroundColor: onlineStatus.isOnline ? '#22c55e' : '#9ca3af',
-                boxShadow: onlineStatus.isOnline ? '0 0 0 2px rgba(34, 197, 94, 0.2)' : 'none'
+                backgroundColor: '#22c55e',
+                boxShadow: '0 0 0 2px rgba(34, 197, 94, 0.2)'
               }} />
-              {onlineStatus.isOnline && (
-                <span style={{ 
-                  fontSize: '11px', 
-                  color: '#22c55e', 
-                  fontWeight: 500 
-                }}>
-                  Online
-                </span>
-              )}
+              <span style={{ 
+                fontSize: '11px', 
+                color: '#22c55e', 
+                fontWeight: 500 
+              }}>
+                Online
+              </span>
             </span>
           )}
         </div>
