@@ -14,10 +14,30 @@ function PersonalDetailsPanel({ onBack }) {
     email: '',
     phone: '',
     profilePicture: '',
+    city: '',
+    province: 'Ontario',
+    country: 'Canada',
     currentPassword: '',
     newPassword: '',
     confirmPassword: ''
   });
+
+  // Canadian provinces for tax calculation
+  const CANADIAN_PROVINCES = [
+    { value: 'Alberta', label: 'Alberta (GST 5%)' },
+    { value: 'British Columbia', label: 'British Columbia (GST+PST 12%)' },
+    { value: 'Manitoba', label: 'Manitoba (GST+PST 12%)' },
+    { value: 'New Brunswick', label: 'New Brunswick (HST 15%)' },
+    { value: 'Newfoundland and Labrador', label: 'Newfoundland and Labrador (HST 15%)' },
+    { value: 'Northwest Territories', label: 'Northwest Territories (GST 5%)' },
+    { value: 'Nova Scotia', label: 'Nova Scotia (HST 15%)' },
+    { value: 'Nunavut', label: 'Nunavut (GST 5%)' },
+    { value: 'Ontario', label: 'Ontario (HST 13%)' },
+    { value: 'Prince Edward Island', label: 'Prince Edward Island (HST 15%)' },
+    { value: 'Quebec', label: 'Quebec (GST+QST 14.975%)' },
+    { value: 'Saskatchewan', label: 'Saskatchewan (GST+PST 11%)' },
+    { value: 'Yukon', label: 'Yukon (GST 5%)' }
+  ];
 
   // Clear form data when user changes
   useEffect(() => {
@@ -27,6 +47,9 @@ function PersonalDetailsPanel({ onBack }) {
       email: '',
       phone: '',
       profilePicture: '',
+      city: '',
+      province: 'Ontario',
+      country: 'Canada',
       currentPassword: '',
       newPassword: '',
       confirmPassword: ''
@@ -104,7 +127,10 @@ function PersonalDetailsPanel({ onBack }) {
       lastName: lastNameFromSession,
       email: currentUser.email || '',
       phone: currentUser.phone || '',
-      profilePicture: currentUser.profilePicture || ''
+      profilePicture: currentUser.profilePicture || '',
+      city: currentUser.city || '',
+      province: currentUser.province || 'Ontario',
+      country: currentUser.country || 'Canada'
     }));
     
     try {
@@ -122,7 +148,10 @@ function PersonalDetailsPanel({ onBack }) {
           lastName: userData.LastName || userData.lastName || prev.lastName,
           email: userData.Email || userData.email || prev.email,
           phone: userData.Phone || userData.phone || prev.phone,
-          profilePicture: userData.ProfilePicture || userData.profilePicture || prev.profilePicture
+          profilePicture: userData.ProfilePicture || userData.profilePicture || prev.profilePicture,
+          city: userData.City || userData.city || prev.city,
+          province: userData.Province || userData.province || userData.State || userData.state || prev.province,
+          country: userData.Country || userData.country || prev.country
         }));
       } else {
         console.warn('API returned non-OK status, using session data');
@@ -160,7 +189,10 @@ function PersonalDetailsPanel({ onBack }) {
       const updateData = {
         firstName: formData.firstName,
         lastName: formData.lastName,
-        phone: formData.phone
+        phone: formData.phone,
+        city: formData.city,
+        province: formData.province,
+        country: formData.country
       };
       
       // Include password change if provided
@@ -348,6 +380,55 @@ function PersonalDetailsPanel({ onBack }) {
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                   placeholder="(555) 123-4567"
                 />
+              </div>
+            </div>
+          </div>
+
+          {/* Location & Tax */}
+          <hr style={{ border: 'none', borderTop: '1px solid #e5e7eb', margin: '2rem 0' }} />
+          <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text)' }}>
+            Location & Tax Settings
+          </h3>
+          <p style={{ color: 'var(--text-light)', marginBottom: '1rem', fontSize: '0.85rem' }}>
+            Your province determines the applicable sales tax (GST/HST/PST) for payments.
+          </p>
+
+          <div className="form-row">
+            <div className="form-col">
+              <div className="form-group">
+                <label htmlFor="city">City</label>
+                <input
+                  type="text"
+                  id="city"
+                  value={formData.city}
+                  onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                  placeholder="Enter your city"
+                />
+              </div>
+            </div>
+            <div className="form-col">
+              <div className="form-group">
+                <label htmlFor="province">Province / Territory</label>
+                <select
+                  id="province"
+                  value={formData.province}
+                  onChange={(e) => setFormData({ ...formData, province: e.target.value })}
+                  style={{ 
+                    width: '100%', 
+                    padding: '0.75rem 1rem', 
+                    border: '1px solid var(--border)', 
+                    borderRadius: '8px', 
+                    fontSize: '1rem',
+                    background: 'white',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {CANADIAN_PROVINCES.map(province => (
+                    <option key={province.value} value={province.value}>
+                      {province.label}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
           </div>

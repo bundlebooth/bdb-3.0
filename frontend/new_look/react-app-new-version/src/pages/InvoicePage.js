@@ -267,7 +267,7 @@ function InvoicePage() {
           )}
           {invoice.TaxAmount > 0 && (
             <div className="summary-row">
-              <span>Tax (HST 13%)</span>
+              <span>Tax ({invoice.TaxLabel || invoice.TaxType || 'HST 13%'})</span>
               <span>{formatCurrency(invoice.TaxAmount)}</span>
             </div>
           )}

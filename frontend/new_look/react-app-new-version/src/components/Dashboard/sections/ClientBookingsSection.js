@@ -4,13 +4,12 @@ import { showBanner } from '../../../utils/banners';
 import { API_BASE_URL } from '../../../config';
 import { buildInvoiceUrl } from '../../../utils/urlHelpers';
 
-function ClientBookingsSection() {
+function ClientBookingsSection({ onPayNow }) {
   const { currentUser } = useAuth();
   const [activeTab, setActiveTab] = useState('all');
   const [allBookings, setAllBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandedDetails, setExpandedDetails] = useState({});
-  const [paymentLoading, setPaymentLoading] = useState(null);
 
   const loadBookings = useCallback(async () => {
     if (!currentUser?.id) return;
@@ -63,44 +62,10 @@ function ClientBookingsSection() {
     }));
   };
 
-  // Handle Pay Now - Create Stripe Checkout Session
-  const handlePayNow = async (booking) => {
-    try {
-      setPaymentLoading(booking.BookingID);
-      
-      const response = await fetch(`${API_BASE_URL}/payments/checkout-session`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          bookingId: booking.BookingID,
-          amount: booking.TotalAmount,
-          currency: 'cad',
-          description: `Payment for ${booking.ServiceName || 'Booking'} with ${booking.VendorName || 'Vendor'}`,
-          successUrl: `${window.location.origin}/payment-success?booking_id=${booking.BookingID}`,
-          cancelUrl: `${window.location.origin}/dashboard?section=bookings&payment=cancelled`
-        })
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to create checkout session');
-      }
-
-      if (data.success && data.sessionUrl) {
-        // Redirect to Stripe Checkout
-        window.location.href = data.sessionUrl;
-      } else {
-        throw new Error('No checkout URL received');
-      }
-    } catch (error) {
-      console.error('Payment error:', error);
-      showBanner(error.message || 'Failed to initiate payment. Please try again.', 'error');
-    } finally {
-      setPaymentLoading(null);
+  // Handle Pay Now - Navigate to payment section in dashboard
+  const handlePayNow = (booking) => {
+    if (onPayNow) {
+      onPayNow(booking);
     }
   };
 
@@ -224,13 +189,8 @@ function ClientBookingsSection() {
                 className="btn-pay-now" 
                 style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '13px' }}
                 onClick={() => handlePayNow(booking)}
-                disabled={paymentLoading === booking.BookingID}
               >
-                {paymentLoading === booking.BookingID ? (
-                  <><i className="fas fa-spinner fa-spin" style={{ marginRight: '6px' }}></i>Processing...</>
-                ) : (
-                  isDepositOnly ? 'Pay Balance' : 'Pay Now'
-                )}
+                {isDepositOnly ? 'Pay Balance' : 'Pay Now'}
               </button>
             )}
             {(s === 'confirmed' || s === 'accepted' || s === 'approved' || isPaid) && (

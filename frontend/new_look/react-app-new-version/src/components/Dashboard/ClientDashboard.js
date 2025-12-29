@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { API_BASE_URL } from '../../config';
 import { useNotifications } from '../../hooks/useNotifications';
+import { showBanner } from '../../utils/banners';
 import DashboardSidebar from './DashboardSidebar';
 import ClientDashboardSection from './sections/ClientDashboardSection';
 import ClientBookingsSection from './sections/ClientBookingsSection';
@@ -10,12 +11,14 @@ import ClientFavoritesSection from './sections/ClientFavoritesSection';
 import ClientMessagesSection from './sections/ClientMessagesSection';
 import ClientReviewsSection from './sections/ClientReviewsSection';
 import ClientSettingsSection from './sections/ClientSettingsSection';
+import ClientPaymentSection from './sections/ClientPaymentSection';
 
 function ClientDashboard({ activeSection, onSectionChange, onLogout }) {
   const { currentUser } = useAuth();
   const { notificationCount } = useNotifications();
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [selectedBookingForPayment, setSelectedBookingForPayment] = useState(null);
 
   const menuItems = [
     { id: 'dashboard', icon: 'fa-tachometer-alt', label: 'Dashboard' },
@@ -102,6 +105,25 @@ function ClientDashboard({ activeSection, onSectionChange, onLogout }) {
     loadDashboardData();
   }, [loadDashboardData]);
 
+  // Handle Pay Now from bookings - navigate to payment section
+  const handlePayNow = (booking) => {
+    setSelectedBookingForPayment(booking);
+    onSectionChange('payment');
+  };
+
+  // Handle payment success
+  const handlePaymentSuccess = (paymentIntent) => {
+    showBanner('Payment successful! Your booking is now confirmed.', 'success');
+    setSelectedBookingForPayment(null);
+    onSectionChange('bookings');
+  };
+
+  // Handle back from payment
+  const handleBackFromPayment = () => {
+    setSelectedBookingForPayment(null);
+    onSectionChange('bookings');
+  };
+
   const renderSection = () => {
     switch (activeSection) {
       case 'dashboard':
@@ -113,7 +135,7 @@ function ClientDashboard({ activeSection, onSectionChange, onLogout }) {
           />
         );
       case 'bookings':
-        return <ClientBookingsSection />;
+        return <ClientBookingsSection onPayNow={handlePayNow} />;
       case 'invoices':
         return <ClientInvoicesSection />;
       case 'favorites':
@@ -124,6 +146,14 @@ function ClientDashboard({ activeSection, onSectionChange, onLogout }) {
         return <ClientReviewsSection />;
       case 'settings':
         return <ClientSettingsSection />;
+      case 'payment':
+        return (
+          <ClientPaymentSection 
+            booking={selectedBookingForPayment}
+            onBack={handleBackFromPayment}
+            onPaymentSuccess={handlePaymentSuccess}
+          />
+        );
       default:
         return <ClientDashboardSection data={dashboardData} loading={loading} />;
     }

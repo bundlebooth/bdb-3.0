@@ -15,8 +15,8 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
   const location = useLocation();
   const { currentUser } = useAuth();
   
-  // Only show incomplete profile banner on main page
-  const isMainPage = location.pathname === '/' || location.pathname === '';
+  // Only show search bar and incomplete profile banner on explore/main page
+  const isExplorePage = location.pathname === '/' || location.pathname === '' || location.pathname === '/explore';
   const [searchQuery, setSearchQuery] = useState('');
   const [favoritesBadge, setFavoritesBadge] = useState(0);
   const [messagesBadge, setMessagesBadge] = useState(0);
@@ -235,12 +235,14 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
         </div>
       </div>
 
-      <div className="search-container">
-        <EnhancedSearchBar 
-          onSearch={onSearch} 
-          isScrolled={isScrolled}
-        />
-      </div>
+      {isExplorePage && (
+        <div className="search-container">
+          <EnhancedSearchBar 
+            onSearch={onSearch} 
+            isScrolled={isScrolled}
+          />
+        </div>
+      )}
 
       <div className="user-nav">
         {!currentUser?.isVendor && (
@@ -268,7 +270,7 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
             Become A Vendor
           </button>
         )}
-        {currentUser?.isVendor && profileIncomplete && isMainPage && (
+        {currentUser?.isVendor && profileIncomplete && isExplorePage && (
           <button 
             className="complete-profile-btn"
             onClick={() => {

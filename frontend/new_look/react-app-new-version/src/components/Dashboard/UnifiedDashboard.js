@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { API_BASE_URL } from '../../config';
 import { useNotifications } from '../../hooks/useNotifications';
+import { showBanner } from '../../utils/banners';
 import DashboardSidebar from './DashboardSidebar';
 
 // Import all client sections
@@ -11,6 +12,7 @@ import ClientInvoicesSection from './sections/ClientInvoicesSection';
 import ClientFavoritesSection from './sections/ClientFavoritesSection';
 import ClientReviewsSection from './sections/ClientReviewsSection';
 import ClientSettingsSection from './sections/ClientSettingsSection';
+import ClientPaymentSection from './sections/ClientPaymentSection';
 import UnifiedMessagesSection from './sections/UnifiedMessagesSection';
 
 // Import all vendor sections
@@ -28,6 +30,7 @@ function UnifiedDashboard({ activeSection, onSectionChange, onLogout, mobileMenu
   const [clientData, setClientData] = useState(null);
   const [vendorData, setVendorData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [selectedBookingForPayment, setSelectedBookingForPayment] = useState(null);
 
   // Load client dashboard data
   const loadClientData = useCallback(async () => {
@@ -154,6 +157,25 @@ function UnifiedDashboard({ activeSection, onSectionChange, onLogout, mobileMenu
     ]}
   ];
 
+  // Handle Pay Now from bookings - navigate to payment section
+  const handlePayNow = (booking) => {
+    setSelectedBookingForPayment(booking);
+    onSectionChange('payment');
+  };
+
+  // Handle payment success
+  const handlePaymentSuccess = (paymentIntent) => {
+    showBanner('Payment successful! Your booking is now confirmed.', 'success');
+    setSelectedBookingForPayment(null);
+    onSectionChange('bookings');
+  };
+
+  // Handle back from payment
+  const handleBackFromPayment = () => {
+    setSelectedBookingForPayment(null);
+    onSectionChange('bookings');
+  };
+
   const renderSection = () => {
     switch (activeSection) {
       // Unified Messages section (combines client and vendor messages)
@@ -164,7 +186,7 @@ function UnifiedDashboard({ activeSection, onSectionChange, onLogout, mobileMenu
       case 'dashboard':
         return <ClientDashboardSection data={clientData} loading={loading && !clientData} onSectionChange={onSectionChange} />;
       case 'bookings':
-        return <ClientBookingsSection />;
+        return <ClientBookingsSection onPayNow={handlePayNow} />;
       case 'invoices':
         return <ClientInvoicesSection />;
       case 'favorites':
@@ -173,6 +195,14 @@ function UnifiedDashboard({ activeSection, onSectionChange, onLogout, mobileMenu
         return <ClientReviewsSection />;
       case 'settings':
         return <ClientSettingsSection />;
+      case 'payment':
+        return (
+          <ClientPaymentSection 
+            booking={selectedBookingForPayment}
+            onBack={handleBackFromPayment}
+            onPaymentSuccess={handlePaymentSuccess}
+          />
+        );
       
       // Vendor sections
       case 'vendor-dashboard':

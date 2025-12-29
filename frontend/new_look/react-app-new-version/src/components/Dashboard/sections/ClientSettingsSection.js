@@ -3,6 +3,7 @@ import { useAuth } from '../../../context/AuthContext';
 import PersonalDetailsPanel from '../panels/PersonalDetailsPanel';
 import CommunicationPreferencesPanel from '../panels/CommunicationPreferencesPanel';
 import SecurityPanel from '../panels/SecurityPanel';
+import LocationPanel from '../panels/LocationPanel';
 
 function ClientSettingsSection() {
   const { currentUser } = useAuth();
@@ -19,6 +20,13 @@ function ClientSettingsSection() {
       icon: 'fa-user', 
       title: 'Personal details', 
       description: 'Contact information, password, authentication methods and your active sessions.',
+      category: 'personal'
+    },
+    { 
+      id: 'location', 
+      icon: 'fa-map-marker-alt', 
+      title: 'Location & Tax', 
+      description: 'Set your province for accurate tax calculation on payments.',
       category: 'personal'
     },
     { 
@@ -43,6 +51,8 @@ function ClientSettingsSection() {
     switch (activePanel) {
       case 'personal-details':
         return <PersonalDetailsPanel key={userId} onBack={() => setActivePanel(null)} />;
+      case 'location':
+        return <LocationPanel key={userId} onBack={() => setActivePanel(null)} />;
       case 'communication-preferences':
         return <CommunicationPreferencesPanel key={userId} onBack={() => setActivePanel(null)} />;
       case 'security':
