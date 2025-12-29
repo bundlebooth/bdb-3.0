@@ -1480,8 +1480,7 @@ function AccountStep({ currentUser, setFormData, formData, onAccountCreated, isE
                     borderRadius: '8px',
                     fontSize: '15px',
                     outline: 'none',
-                    boxSizing: 'border-box',
-                    background: '#FFFEF0'
+                    boxSizing: 'border-box'
                   }}
                   required
                 />
@@ -1505,8 +1504,7 @@ function AccountStep({ currentUser, setFormData, formData, onAccountCreated, isE
                     borderRadius: '8px',
                     fontSize: '15px',
                     outline: 'none',
-                    boxSizing: 'border-box',
-                    background: '#FFFEF0'
+                    boxSizing: 'border-box'
                   }}
                   required
                 />
@@ -1605,6 +1603,15 @@ function AccountStep({ currentUser, setFormData, formData, onAccountCreated, isE
                   Continue with Facebook
                 </button>
               </div>
+              <p style={{ 
+                textAlign: 'center', 
+                fontSize: '12px', 
+                color: '#9CA3AF',
+                marginTop: '16px',
+                marginBottom: 0
+              }}>
+                By signing up, you agree to our <a href="/terms-of-service" style={{ color: '#5B68F4' }}>Terms of Service</a> and <a href="/privacy-policy" style={{ color: '#5B68F4' }}>Privacy Policy</a>
+              </p>
             </form>
           ) : (
             <form onSubmit={handleAccountSubmit}>
@@ -1653,8 +1660,7 @@ function AccountStep({ currentUser, setFormData, formData, onAccountCreated, isE
                     borderRadius: '8px',
                     fontSize: '15px',
                     outline: 'none',
-                    boxSizing: 'border-box',
-                    background: '#FFFEF0'
+                    boxSizing: 'border-box'
                   }}
                   required
                 />
@@ -1679,8 +1685,7 @@ function AccountStep({ currentUser, setFormData, formData, onAccountCreated, isE
                     borderRadius: '8px',
                     fontSize: '15px',
                     outline: 'none',
-                    boxSizing: 'border-box',
-                    background: '#FFFEF0'
+                    boxSizing: 'border-box'
                   }}
                   required
                   minLength="6"
@@ -1756,7 +1761,7 @@ function AccountStep({ currentUser, setFormData, formData, onAccountCreated, isE
                 color: '#9CA3AF',
                 margin: 0
               }}>
-                By signing up, you agree to our <a href="#" style={{ color: '#5B68F4' }}>Terms of Service</a> and <a href="#" style={{ color: '#5B68F4' }}>Privacy Policy</a>
+                By signing up, you agree to our <a href="/terms-of-service" style={{ color: '#5B68F4' }}>Terms of Service</a> and <a href="/privacy-policy" style={{ color: '#5B68F4' }}>Privacy Policy</a>
               </p>
             </form>
           )}

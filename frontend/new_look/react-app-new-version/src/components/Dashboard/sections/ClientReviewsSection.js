@@ -36,7 +36,12 @@ function ClientReviewsSection() {
       <div key={review.ReviewID || review.id} className="review-card">
         <div className="review-header">
           <div className="reviewer">{review.VendorName}</div>
-          <div className="review-date">{new Date(review.CreatedAt).toLocaleDateString()}</div>
+          <div className="review-date">{(() => {
+            if (!review.CreatedAt) return 'N/A';
+            const date = new Date(review.CreatedAt);
+            if (isNaN(date.getTime())) return 'N/A';
+            return date.toLocaleDateString();
+          })()}</div>
         </div>
         <div className="review-rating">
           {'★'.repeat(review.Rating)}{'☆'.repeat(5 - review.Rating)}

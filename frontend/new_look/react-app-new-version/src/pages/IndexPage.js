@@ -1052,7 +1052,8 @@ function IndexPage() {
           </div>
           <div className="map-overlay"></div>
           
-          {/* Vendor Discovery Sections */}
+          {/* Vendor Discovery Sections - Only show when there are vendors in main grid */}
+          {(filteredVendors.length > 0 || loading) && (
           <div className="vendor-discovery-sections">
             {loadingDiscovery ? (
               // Show skeleton loaders while discovery sections are loading
@@ -1091,9 +1092,10 @@ function IndexPage() {
               ))
             )}
           </div>
+          )}
           
           {/* Divider between discovery sections and main vendor grid */}
-          {!loadingDiscovery && discoverySections.length > 0 && (
+          {(filteredVendors.length > 0 || loading) && !loadingDiscovery && discoverySections.length > 0 && (
             <div className="section-divider" style={{
               maxWidth: '100%',
               margin: '40px 0',

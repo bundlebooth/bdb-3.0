@@ -522,6 +522,107 @@ router.get('/conversations/vendor/:vendorId', async (req, res) => {
   }
 });
 
+// ============================================
+// MESSAGE READ RECEIPT ENDPOINTS
+// ============================================
+
+// POST /api/messages/mark-read - Mark messages as read
+router.post('/mark-read', async (req, res) => {
+  try {
+    const { conversationId, readerUserId, messageIds } = req.body;
+
+    if (!conversationId || !readerUserId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'conversationId and readerUserId are required' 
+      });
+    }
+
+    const pool = await poolPromise;
+    const request = pool.request();
+    
+    request.input('ConversationID', sql.Int, conversationId);
+    request.input('ReaderUserID', sql.Int, readerUserId);
+    request.input('MessageIDs', sql.NVarChar(sql.MAX), messageIds ? messageIds.join(',') : null);
+
+    const result = await request.execute('messages.sp_MarkMessagesAsRead');
+
+    // Emit read receipts via Socket.IO
+    const io = req.app.get('io');
+    if (io && result.recordset.length > 0) {
+      // Notify the sender(s) that their messages were read
+      const senderIds = [...new Set(result.recordset.map(m => m.SenderID))];
+      senderIds.forEach(senderId => {
+        io.to(`user_${senderId}`).emit('messages-read', {
+          conversationId,
+          readBy: readerUserId,
+          messageIds: result.recordset.filter(m => m.SenderID === senderId).map(m => m.MessageID),
+          readAt: new Date().toISOString()
+        });
+      });
+    }
+
+    res.json({
+      success: true,
+      markedCount: result.recordset.length,
+      messages: result.recordset
+    });
+
+  } catch (err) {
+    console.error('Mark messages read error:', err);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to mark messages as read',
+      error: err.message 
+    });
+  }
+});
+
+// GET /api/messages/read-status/:conversationId - Get read status for messages in a conversation
+router.get('/read-status/:conversationId', async (req, res) => {
+  try {
+    const { conversationId } = req.params;
+
+    if (!conversationId || isNaN(conversationId)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Valid conversationId is required' 
+      });
+    }
+
+    const pool = await poolPromise;
+    const result = await pool.request()
+      .input('ConversationID', sql.Int, parseInt(conversationId))
+      .query(`
+        SELECT 
+          MessageID,
+          SenderID,
+          IsRead,
+          ReadAt
+        FROM messages.Messages
+        WHERE ConversationID = @ConversationID
+        ORDER BY CreatedAt
+      `);
+
+    const readStatus = {};
+    result.recordset.forEach(msg => {
+      readStatus[msg.MessageID] = {
+        isRead: msg.IsRead === true || msg.IsRead === 1,
+        readAt: msg.ReadAt
+      };
+    });
+
+    res.json({
+      success: true,
+      readStatus
+    });
+
+  } catch (err) {
+    console.error('Get read status error:', err);
+    res.json({ success: false, readStatus: {} });
+  }
+});
+
 module.exports = {
   router,
   handleSocketIO

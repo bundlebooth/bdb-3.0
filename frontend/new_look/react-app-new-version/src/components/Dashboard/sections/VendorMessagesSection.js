@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { API_BASE_URL } from '../../../config';
+import { useUserOnlineStatus } from '../../../hooks/useOnlineStatus';
 
 function VendorMessagesSection({ onSectionChange }) {
   const { currentUser } = useAuth();
@@ -10,7 +11,16 @@ function VendorMessagesSection({ onSectionChange }) {
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [vendorProfileId, setVendorProfileId] = useState(null);
+  const [otherPartyUserId, setOtherPartyUserId] = useState(null);
   const messagesEndRef = useRef(null);
+  const hasAutoSelected = useRef(false);
+
+  // Get online status for the other party in the conversation
+  const { statuses: onlineStatuses } = useUserOnlineStatus(
+    otherPartyUserId ? [otherPartyUserId] : [],
+    { enabled: !!otherPartyUserId, refreshInterval: 180000 } // 3 minutes
+  );
+  const otherPartyOnlineStatus = otherPartyUserId ? onlineStatuses[otherPartyUserId] : null;
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -67,8 +77,9 @@ function VendorMessagesSection({ onSectionChange }) {
         }));
         setConversations(convs);
         
-        // Auto-select first conversation
-        if (convs.length > 0 && !selectedConversation) {
+        // Auto-select first conversation only once
+        if (convs.length > 0 && !hasAutoSelected.current) {
+          hasAutoSelected.current = true;
           setSelectedConversation(convs[0]);
         }
       } else {
@@ -90,10 +101,10 @@ function VendorMessagesSection({ onSectionChange }) {
     } finally {
       setLoading(false);
     }
-  }, [vendorProfileId, selectedConversation]);
+  }, [vendorProfileId]);
 
   const loadMessages = useCallback(async (conversationId) => {
-    if (!conversationId) return;
+    if (!conversationId || !vendorProfileId) return;
     
     try {
       const response = await fetch(`${API_BASE_URL}/messages/conversation/${conversationId}?vendorProfileId=${vendorProfileId}`, {
@@ -105,17 +116,26 @@ function VendorMessagesSection({ onSectionChange }) {
       const data = await response.json();
       setMessages(data.messages || []);
       setTimeout(scrollToBottom, 100);
+
+      // Extract other party's user ID from messages for online status
+      if (data.messages && data.messages.length > 0) {
+        const otherMessage = data.messages.find(m => m.SenderID !== currentUser?.id);
+        if (otherMessage) {
+          setOtherPartyUserId(otherMessage.SenderID);
+        }
+      }
     } catch (error) {
       console.error('Error loading messages:', error);
       setMessages([]);
     }
-  }, [vendorProfileId]);
+  }, [vendorProfileId, currentUser?.id]);
 
+  // Load messages when conversation changes
   useEffect(() => {
-    if (selectedConversation) {
+    if (selectedConversation?.id) {
       loadMessages(selectedConversation.id);
     }
-  }, [selectedConversation, loadMessages]);
+  }, [selectedConversation?.id, loadMessages]);
 
   const handleSendMessage = async (e) => {
     if (e) e.preventDefault();
@@ -189,28 +209,81 @@ function VendorMessagesSection({ onSectionChange }) {
           {lastMessageDisplay}
         </div>
         <div style={{ fontSize: '0.75rem', color: '#999', marginTop: '0.25rem' }}>
-          {conv.lastMessageCreatedAt ? new Date(conv.lastMessageCreatedAt).toLocaleString() : ''}
+          {(() => {
+            if (!conv.lastMessageCreatedAt) return 'Recently';
+            const date = new Date(conv.lastMessageCreatedAt);
+            if (isNaN(date.getTime())) return 'Recently';
+            return date.toLocaleString();
+          })()}
         </div>
       </div>
     );
   };
 
-  const renderMessage = (message) => {
+  const renderMessage = (message, index, allMessages) => {
     const isOwnMessage = message.SenderID === vendorProfileId;
-    const containerStyle = isOwnMessage ? 'display: flex; justify-content: flex-end;' : 'display: flex; justify-content: flex-start;';
-    const bubbleStyle = isOwnMessage 
-      ? 'background: #007bff; color: white; border-bottom-right-radius: 4px;' 
-      : 'background: #e9ecef; color: #333; border: 1px solid #dee2e6; border-bottom-left-radius: 4px;';
-    
     const senderName = isOwnMessage ? 'You' : (message.SenderName || 'Other User');
+    const isRead = message.IsRead === true || message.IsRead === 1;
+    // Only show read icon on the last sent message
+    const isLastSentMessage = isOwnMessage && !allMessages.slice(index + 1).some(m => m.SenderID === vendorProfileId);
     
     return (
-      <div key={message.MessageID || message.id} style={{ marginBottom: '1rem', [containerStyle.split(':')[0]]: containerStyle.split(':')[1] }}>
-        <div style={{ padding: '0.75rem 1rem', borderRadius: '18px', ...Object.fromEntries(bubbleStyle.split(';').filter(s => s.trim()).map(s => s.split(':').map(p => p.trim()))), boxShadow: '0 1px 2px rgba(0,0,0,0.1)', maxWidth: '70%' }}>
+      <div 
+        key={message.MessageID || message.id} 
+        style={{ 
+          marginBottom: '1rem', 
+          display: 'flex', 
+          justifyContent: isOwnMessage ? 'flex-end' : 'flex-start' 
+        }}
+      >
+        <div style={{ 
+          padding: '0.75rem 1rem', 
+          borderRadius: '18px', 
+          background: isOwnMessage ? '#007bff' : '#e9ecef',
+          color: isOwnMessage ? 'white' : '#333',
+          border: isOwnMessage ? 'none' : '1px solid #dee2e6',
+          borderBottomRightRadius: isOwnMessage ? '4px' : '18px',
+          borderBottomLeftRadius: isOwnMessage ? '18px' : '4px',
+          boxShadow: '0 1px 2px rgba(0,0,0,0.1)', 
+          maxWidth: '70%' 
+        }}>
           <div style={{ fontSize: '0.75rem', fontWeight: 600, marginBottom: '0.25rem', opacity: 0.8 }}>{senderName}</div>
           <div style={{ marginBottom: '0.25rem' }}>{message.Content}</div>
-          <div style={{ fontSize: '0.75rem', opacity: 0.7 }}>
-            {new Date(message.CreatedAt).toLocaleString()}
+          <div style={{ fontSize: '0.75rem', opacity: 0.7, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px' }}>
+            <span>
+              {(() => {
+                if (!message.CreatedAt) return '';
+                const date = new Date(message.CreatedAt);
+                if (isNaN(date.getTime())) return '';
+                return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+              })()}
+            </span>
+            {/* Read receipt eye icon - only show for last sent message */}
+            {isLastSentMessage && (
+              <span 
+                title={isRead ? 'Read' : 'Delivered'}
+                style={{ 
+                  display: 'inline-flex', 
+                  alignItems: 'center',
+                  opacity: isRead ? 1 : 0.5
+                }}
+              >
+                <svg 
+                  width="16" 
+                  height="16" 
+                  viewBox="0 0 24 24" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  strokeWidth="2" 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round"
+                  style={{ color: isRead ? '#fff' : 'rgba(255,255,255,0.5)' }}
+                >
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -242,10 +315,30 @@ function VendorMessagesSection({ onSectionChange }) {
           
           {/* Chat area */}
           <div id="chat-area" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-            {/* Chat header */}
+            {/* Chat header with online status */}
             <div id="chat-header" style={{ padding: '1rem', borderBottom: '1px solid var(--border)', background: 'white' }}>
-              <div id="chat-partner-name" style={{ fontWeight: 600, color: selectedConversation ? '#111' : '#666' }}>
-                {selectedConversation ? (selectedConversation.OtherPartyName || 'Unknown') : 'Select a conversation'}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div id="chat-partner-name" style={{ fontWeight: 600, color: selectedConversation ? '#111' : '#666' }}>
+                  {selectedConversation ? (selectedConversation.OtherPartyName || 'Unknown') : 'Select a conversation'}
+                </div>
+                {/* Online status indicator */}
+                {selectedConversation && otherPartyOnlineStatus && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{
+                      width: '8px',
+                      height: '8px',
+                      borderRadius: '50%',
+                      backgroundColor: otherPartyOnlineStatus.isOnline ? '#22c55e' : '#9ca3af'
+                    }} />
+                    <span style={{ 
+                      fontSize: '0.75rem', 
+                      color: otherPartyOnlineStatus.isOnline ? '#22c55e' : '#666',
+                      fontWeight: 500
+                    }}>
+                      {otherPartyOnlineStatus.isOnline ? 'Online' : otherPartyOnlineStatus.lastActiveText || 'Offline'}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
             
@@ -259,7 +352,7 @@ function VendorMessagesSection({ onSectionChange }) {
                 <div style={{ textAlign: 'center', color: '#666', padding: '2rem' }}>No messages yet. Start the conversation!</div>
               ) : (
                 <>
-                  {messages.map(renderMessage)}
+                  {messages.map((message, index) => renderMessage(message, index, messages))}
                   <div ref={messagesEndRef} />
                 </>
               )}

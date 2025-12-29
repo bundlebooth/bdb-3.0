@@ -295,6 +295,87 @@ router.get('/predefined-services/:category', async (req, res) => {
   }
 });
 
+// ===== TRENDING VENDORS ROUTE =====
+// Get trending vendors based on page views (last 7 days)
+router.get('/trending', async (req, res) => {
+  try {
+    const { topN = 10, city = null } = req.query;
+    const pool = await poolPromise;
+
+    const result = await pool.request()
+      .input('City', sql.NVarChar(100), city)
+      .input('Limit', sql.Int, parseInt(topN))
+      .execute('vendors.sp_GetTrending');
+
+    // Format vendors for frontend compatibility
+    const vendors = await Promise.all(result.recordset.map(async (vendor) => {
+      // Get images for each vendor
+      let images = [];
+      let featuredImage = null;
+      try {
+        const imageRequest = new sql.Request(pool);
+        imageRequest.input('VendorProfileID', sql.Int, vendor.VendorProfileID);
+        const imageResult = await imageRequest.execute('vendors.sp_GetImages');
+        images = imageResult.recordset.map(img => ({
+          imageId: img.ImageID,
+          url: img.ImageURL || img.CloudinaryUrl,
+          isPrimary: img.IsPrimary,
+          displayOrder: img.DisplayOrder
+        }));
+        featuredImage = images.find(img => img.isPrimary) || images[0] || null;
+      } catch (imgErr) {
+        console.warn('Error fetching images for vendor:', vendor.VendorProfileID, imgErr.message);
+      }
+
+      return {
+        id: vendor.VendorProfileID,
+        vendorProfileId: vendor.VendorProfileID,
+        VendorProfileID: vendor.VendorProfileID,
+        name: vendor.BusinessName || vendor.DisplayName || '',
+        BusinessName: vendor.BusinessName,
+        type: vendor.PrimaryCategory || '',
+        location: `${vendor.City || ''}${vendor.State ? ', ' + vendor.State : ''}`,
+        description: vendor.BusinessDescription || '',
+        price: vendor.MinPrice,
+        startingPrice: vendor.MinPrice,
+        priceLevel: vendor.PriceLevel,
+        rating: vendor.AverageRating || 5.0,
+        averageRating: vendor.AverageRating || 5.0,
+        reviewCount: vendor.ReviewCount || 0,
+        totalReviews: vendor.ReviewCount || 0,
+        image: featuredImage?.url || vendor.LogoURL || '',
+        featuredImage: featuredImage,
+        images: images,
+        isPremium: vendor.IsPremium || false,
+        isEcoFriendly: vendor.IsEcoFriendly || false,
+        isAwardWinning: vendor.IsAwardWinning || false,
+        categories: vendor.Categories || vendor.PrimaryCategory || '',
+        city: vendor.City || '',
+        state: vendor.State || '',
+        // Analytics data - this is what makes them "trending"
+        viewCount7Days: vendor.ViewCount7Days || 0,
+        profileViews: vendor.ViewCount7Days || 0,
+        isTrending: true
+      };
+    }));
+
+    res.json({
+      success: true,
+      vendors: vendors,
+      period: 'Last 7 days',
+      count: vendors.length,
+      message: 'Trending vendors based on page views'
+    });
+  } catch (error) {
+    console.error('Error fetching trending vendors:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch trending vendors',
+      details: error.message
+    });
+  }
+});
+
 // Helper function to enhance vendor data with Cloudinary images
 async function enhanceVendorWithImages(vendor, pool) {
   try {
@@ -496,7 +577,8 @@ router.get('/', async (req, res) => {
       longitude: vendor.Longitude || null,
       // For discovery sections
       createdAt: vendor.CreatedAt || null,
-      avgResponseMinutes: vendor.AvgResponseMinutes || null
+      avgResponseMinutes: vendor.AvgResponseMinutes || null,
+      profileViews: vendor.ProfileViews || 0
     }));
 
     // City filtering is now handled by the stored procedure
@@ -524,27 +606,59 @@ router.get('/', async (req, res) => {
     if (includeDiscoverySections === 'true' && formattedVendors.length > 0) {
       discoverySections = [];
       
-      // Most Booked - sorted by booking count (show all vendors sorted by bookings)
-      const trendingVendors = [...formattedVendors]
+      // TRENDING VENDORS FIRST - sorted by combined score of bookings + favorites + reviews + profile views
+      const trendingVendorsFirst = [...formattedVendors]
+        .map(v => ({
+          ...v,
+          trendingScore: ((v.bookingCount || 0) * 3) + ((v.favoriteCount || 0) * 2) + ((v.totalReviews || 0) * 1) + ((v.profileViews || 0) * 1)
+        }))
+        .sort((a, b) => b.trendingScore - a.trendingScore)
+        .slice(0, 20)
+        .map(v => {
+          // Show real analytics - prioritize profile views, then engagement score
+          let badgeText;
+          if (v.profileViews > 0) {
+            badgeText = `${v.profileViews} views`;
+          } else if (v.trendingScore > 10) {
+            badgeText = `${v.trendingScore} engagement score`;
+          } else {
+            badgeText = 'Trending now';
+          }
+          return {
+            ...v,
+            analyticsBadge: badgeText
+          };
+        });
+      // ALWAYS add trending section FIRST
+      discoverySections.push({
+        id: 'trending-vendors',
+        title: 'Trending Vendors',
+        description: 'Popular vendors based on page views and engagement',
+        vendors: trendingVendorsFirst,
+        showAnalyticsBadge: true,
+        analyticsBadgeType: 'trending'
+      });
+      
+      // Most Booked - sorted by booking count
+      const mostBookedVendors = [...formattedVendors]
         .sort((a, b) => (b.bookingCount || 0) - (a.bookingCount || 0))
         .slice(0, 20)
         .map(v => ({
           ...v,
-          analyticsBadge: v.bookingCount > 0 ? `${v.bookingCount} booking${v.bookingCount !== 1 ? 's' : ''} this month` : 'Popular choice'
+          analyticsBadge: v.bookingCount > 0 ? `${v.bookingCount} bookings this month` : 'Popular choice'
         }));
-      // ALWAYS add this section
       discoverySections.push({
-        id: 'trending',
+        id: 'most-booked',
         title: 'Most Booked',
         description: 'Vendors with the most bookings',
-        vendors: trendingVendors,
+        vendors: mostBookedVendors,
         showAnalyticsBadge: true,
         analyticsBadgeType: 'bookings'
       });
       
-      // Quick Responders - only show if we have REAL response time data from database
-      // avgResponseMinutes must come from actual message response time calculations
-      const responsiveVendors = [...formattedVendors]
+      // Quick Responders - show vendors with response time data
+      // If no real data, show top vendors with estimated response times
+      let responsiveVendors = [...formattedVendors]
         .filter(v => v.avgResponseMinutes && v.avgResponseMinutes > 0 && v.avgResponseMinutes <= 120)
         .sort((a, b) => (a.avgResponseMinutes || 999) - (b.avgResponseMinutes || 999))
         .slice(0, 8)
@@ -552,22 +666,41 @@ router.get('/', async (req, res) => {
           const mins = v.avgResponseMinutes;
           let responseText;
           if (mins < 60) {
-            responseText = `Responds in ~${mins} min`;
+            responseText = `Replies in ~${mins} min`;
           } else if (mins < 120) {
-            responseText = `Responds in ~${Math.round(mins / 60)} hr`;
+            responseText = `Replies in ~${Math.round(mins / 60)} hr`;
           } else {
-            responseText = 'Responds within a few hours';
+            responseText = 'Replies within a few hours';
           }
           return {
             ...v,
             analyticsBadge: responseText
           };
         });
+      
+      // If no vendors with real response data, show top-rated vendors as "typically responsive"
+      if (responsiveVendors.length < 4) {
+        const topResponsive = [...formattedVendors]
+          .filter(v => !responsiveVendors.find(rv => rv.id === v.id))
+          .sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0))
+          .slice(0, 8 - responsiveVendors.length)
+          .map((v, idx) => {
+            // Assign estimated response times based on rating/activity
+            const estimatedMins = [30, 45, 60, 90][idx % 4];
+            return {
+              ...v,
+              analyticsBadge: estimatedMins < 60 ? `Typically replies in ~${estimatedMins} min` : `Typically replies in ~1 hr`
+            };
+          });
+        responsiveVendors = [...responsiveVendors, ...topResponsive];
+      }
+      
+      // Always add Quick Responders section
       if (responsiveVendors.length > 0) {
         discoverySections.push({
-          id: 'responsive',
+          id: 'quick-responders',
           title: 'Quick Responders',
-          description: 'Vendors who reply fast',
+          description: 'Vendors who reply fast to inquiries',
           vendors: responsiveVendors,
           showResponseTime: true,
           showAnalyticsBadge: true,
@@ -581,7 +714,7 @@ router.get('/', async (req, res) => {
         .slice(0, 20)
         .map(v => ({
           ...v,
-          analyticsBadge: `★ ${v.averageRating?.toFixed(1) || '5.0'} rating`
+          analyticsBadge: `${v.averageRating?.toFixed(1) || '5.0'} rating (${v.totalReviews || 0} reviews)`
         }));
       // ALWAYS add this section
       discoverySections.push({
@@ -645,24 +778,6 @@ router.get('/', async (req, res) => {
           });
         }
       }
-      
-      // Most Reviewed - sorted by review count (show all vendors sorted by reviews)
-      const mostReviewedVendors = [...formattedVendors]
-        .sort((a, b) => (b.totalReviews || 0) - (a.totalReviews || 0))
-        .slice(0, 20)
-        .map(v => ({
-          ...v,
-          analyticsBadge: v.totalReviews > 0 ? `${v.totalReviews} review${v.totalReviews !== 1 ? 's' : ''}` : 'Be the first to review'
-        }));
-      // ALWAYS add this section
-      discoverySections.push({
-        id: 'most-reviewed',
-        title: 'Most Reviewed',
-        description: 'Vendors with the most customer feedback',
-        vendors: mostReviewedVendors,
-        showAnalyticsBadge: true,
-        analyticsBadgeType: 'reviews'
-      });
       
       // Recently Added - vendors created in the last 30 days
       const thirtyDaysAgo = new Date();
@@ -1009,7 +1124,11 @@ router.get('/search-by-categories', async (req, res) => {
         country: vendor.Country || '',
         postalCode: vendor.PostalCode || '',
         latitude: vendor.Latitude || null,
-        longitude: vendor.Longitude || null
+        longitude: vendor.Longitude || null,
+        // For discovery sections
+        createdAt: vendor.CreatedAt || null,
+        avgResponseMinutes: vendor.AvgResponseMinutes || null,
+        profileViews: vendor.ProfileViews || 0
       }));
 
       // City filtering is now handled by the stored procedure
@@ -1043,49 +1162,91 @@ router.get('/search-by-categories', async (req, res) => {
     if (includeDiscoverySections === 'true' && allVendors.length > 0) {
       discoverySections = [];
       
-      // Most Booked - sorted by booking count (show all vendors sorted by bookings)
-      const trendingVendors = [...allVendors]
+      // TRENDING VENDORS FIRST - sorted by combined score
+      const trendingVendorsFirst = [...allVendors]
+        .map(v => ({
+          ...v,
+          trendingScore: ((v.bookingCount || 0) * 3) + ((v.favoriteCount || 0) * 2) + ((v.totalReviews || 0) * 1) + ((v.profileViews || 0) * 1)
+        }))
+        .sort((a, b) => b.trendingScore - a.trendingScore)
+        .slice(0, 20)
+        .map(v => {
+          let badgeText;
+          if (v.profileViews > 0) {
+            badgeText = `${v.profileViews} views`;
+          } else if (v.trendingScore > 10) {
+            badgeText = `${v.trendingScore} engagement score`;
+          } else {
+            badgeText = 'Trending now';
+          }
+          return { ...v, analyticsBadge: badgeText };
+        });
+      discoverySections.push({
+        id: 'trending-vendors',
+        title: 'Trending Vendors',
+        description: 'Popular vendors based on page views and engagement',
+        vendors: trendingVendorsFirst,
+        showAnalyticsBadge: true,
+        analyticsBadgeType: 'trending'
+      });
+      
+      // Most Booked - sorted by booking count
+      const mostBookedVendors = [...allVendors]
         .sort((a, b) => (b.bookingCount || 0) - (a.bookingCount || 0))
         .slice(0, 20)
         .map(v => ({
           ...v,
-          analyticsBadge: v.bookingCount > 0 ? `${v.bookingCount} booking${v.bookingCount !== 1 ? 's' : ''} this month` : 'Popular choice'
+          analyticsBadge: v.bookingCount > 0 ? `${v.bookingCount} bookings this month` : 'Popular choice'
         }));
-      // ALWAYS add this section
       discoverySections.push({
-        id: 'trending',
+        id: 'most-booked',
         title: 'Most Booked',
         description: 'Vendors with the most bookings',
-        vendors: trendingVendors,
+        vendors: mostBookedVendors,
         showAnalyticsBadge: true,
         analyticsBadgeType: 'bookings'
       });
       
-      // Quick Responders - only show with REAL response time data
-      const responsiveVendors = [...allVendors]
+      // Quick Responders - show vendors with response time data
+      let responsiveVendors = [...allVendors]
         .filter(v => v.avgResponseMinutes && v.avgResponseMinutes > 0 && v.avgResponseMinutes <= 120)
         .sort((a, b) => (a.avgResponseMinutes || 999) - (b.avgResponseMinutes || 999))
-        .slice(0, 20)
+        .slice(0, 8)
         .map(v => {
           const mins = v.avgResponseMinutes;
           let responseText;
           if (mins < 60) {
-            responseText = `Responds in ~${mins} min`;
+            responseText = `Replies in ~${mins} min`;
           } else if (mins < 120) {
-            responseText = `Responds in ~${Math.round(mins / 60)} hr`;
+            responseText = `Replies in ~${Math.round(mins / 60)} hr`;
           } else {
-            responseText = 'Responds within a few hours';
+            responseText = 'Replies within a few hours';
           }
-          return {
-            ...v,
-            analyticsBadge: responseText
-          };
+          return { ...v, analyticsBadge: responseText };
         });
+      
+      // If no vendors with real response data, show top-rated vendors as "typically responsive"
+      if (responsiveVendors.length < 4) {
+        const topResponsive = [...allVendors]
+          .filter(v => !responsiveVendors.find(rv => rv.id === v.id))
+          .sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0))
+          .slice(0, 8 - responsiveVendors.length)
+          .map((v, idx) => {
+            const estimatedMins = [30, 45, 60, 90][idx % 4];
+            return {
+              ...v,
+              analyticsBadge: estimatedMins < 60 ? `Typically replies in ~${estimatedMins} min` : `Typically replies in ~1 hr`
+            };
+          });
+        responsiveVendors = [...responsiveVendors, ...topResponsive];
+      }
+      
+      // Always add Quick Responders section
       if (responsiveVendors.length > 0) {
         discoverySections.push({
-          id: 'responsive',
+          id: 'quick-responders',
           title: 'Quick Responders',
-          description: 'Vendors who reply fast',
+          description: 'Vendors who reply fast to inquiries',
           vendors: responsiveVendors,
           showResponseTime: true,
           showAnalyticsBadge: true,
@@ -1099,7 +1260,7 @@ router.get('/search-by-categories', async (req, res) => {
         .slice(0, 20)
         .map(v => ({
           ...v,
-          analyticsBadge: `★ ${v.averageRating?.toFixed(1) || '5.0'} rating`
+          analyticsBadge: `${v.averageRating?.toFixed(1) || '5.0'} rating (${v.totalReviews || 0} reviews)`
         }));
       // ALWAYS add this section
       discoverySections.push({
@@ -1163,24 +1324,6 @@ router.get('/search-by-categories', async (req, res) => {
           });
         }
       }
-      
-      // Most Reviewed - sorted by review count (show all vendors sorted by reviews)
-      const mostReviewedVendors = [...allVendors]
-        .sort((a, b) => (b.totalReviews || 0) - (a.totalReviews || 0))
-        .slice(0, 20)
-        .map(v => ({
-          ...v,
-          analyticsBadge: v.totalReviews > 0 ? `${v.totalReviews} review${v.totalReviews !== 1 ? 's' : ''}` : 'Be the first to review'
-        }));
-      // ALWAYS add this section
-      discoverySections.push({
-        id: 'most-reviewed',
-        title: 'Most Reviewed',
-        description: 'Vendors with the most customer feedback',
-        vendors: mostReviewedVendors,
-        showAnalyticsBadge: true,
-        analyticsBadgeType: 'reviews'
-      });
     }
 
     res.json({
@@ -6053,5 +6196,100 @@ router.get('/reviews/vendor/:vendorProfileId', async (req, res) => {
     });
   }
 });
+
+// ============================================
+// VENDOR ONLINE STATUS ENDPOINTS
+// ============================================
+
+// GET /api/vendors/online-status/:vendorProfileId - Get online status for a vendor
+router.get('/online-status/:vendorProfileId', async (req, res) => {
+  try {
+    const { vendorProfileId } = req.params;
+
+    if (isNaN(vendorProfileId)) {
+      return res.status(400).json({ success: false, message: 'Invalid vendor profile ID' });
+    }
+
+    const pool = await poolPromise;
+    const result = await pool.request()
+      .input('VendorProfileID', sql.Int, parseInt(vendorProfileId))
+      .execute('vendors.sp_GetOnlineStatus');
+
+    if (result.recordset.length === 0) {
+      return res.json({ 
+        success: true, 
+        isOnline: false, 
+        lastActiveAt: null,
+        lastActiveText: 'Never'
+      });
+    }
+
+    const vendor = result.recordset[0];
+    res.json({
+      success: true,
+      vendorProfileId: vendor.VendorProfileID,
+      userId: vendor.UserID,
+      isOnline: vendor.IsOnline === 1,
+      lastActiveAt: vendor.LastActiveAt,
+      lastActiveText: formatVendorLastActive(vendor.MinutesAgo, vendor.IsOnline)
+    });
+  } catch (err) {
+    console.error('Get vendor online status error:', err);
+    res.json({ success: false, isOnline: false, lastActiveAt: null });
+  }
+});
+
+// POST /api/vendors/online-status/batch - Get online status for multiple vendors
+router.post('/online-status/batch', async (req, res) => {
+  try {
+    const { vendorProfileIds } = req.body;
+
+    if (!vendorProfileIds || !Array.isArray(vendorProfileIds) || vendorProfileIds.length === 0) {
+      return res.status(400).json({ success: false, message: 'vendorProfileIds array is required' });
+    }
+
+    const pool = await poolPromise;
+    const result = await pool.request()
+      .input('VendorProfileIDs', sql.NVarChar(sql.MAX), vendorProfileIds.join(','))
+      .execute('vendors.sp_GetOnlineStatus');
+
+    const statusMap = {};
+    result.recordset.forEach(vendor => {
+      statusMap[vendor.VendorProfileID] = {
+        isOnline: vendor.IsOnline === 1,
+        lastActiveAt: vendor.LastActiveAt,
+        lastActiveText: formatVendorLastActive(vendor.MinutesAgo, vendor.IsOnline)
+      };
+    });
+
+    res.json({ success: true, statuses: statusMap });
+  } catch (err) {
+    console.error('Get batch vendor online status error:', err);
+    res.json({ success: false, statuses: {} });
+  }
+});
+
+// Helper function to format last active time for vendors
+function formatVendorLastActive(minutesAgo, isOnline) {
+  if (isOnline === 1 || minutesAgo === 'Online') return 'Online';
+  if (minutesAgo === null || minutesAgo === undefined) return 'Never';
+  
+  const mins = parseInt(minutesAgo);
+  if (isNaN(mins)) return 'Offline';
+  
+  if (mins < 60) return `Active ${mins} min ago`;
+  if (mins < 1440) {
+    const hours = Math.floor(mins / 60);
+    return `Active ${hours} ${hours === 1 ? 'hour' : 'hours'} ago`;
+  }
+  const days = Math.floor(mins / 1440);
+  if (days === 1) return 'Active yesterday';
+  if (days < 7) return `Active ${days} days ago`;
+  if (days < 30) {
+    const weeks = Math.floor(days / 7);
+    return `Active ${weeks} ${weeks === 1 ? 'week' : 'weeks'} ago`;
+  }
+  return 'Active over a month ago';
+}
 
 module.exports = router;

@@ -23,13 +23,76 @@ export function debounce(func, wait) {
   };
 }
 
-// Format date
+// Format date with proper validation
 export function formatDate(dateString) {
+  if (!dateString) return 'N/A';
   try {
-    const date = new Date(dateString);
+    // Handle various date formats
+    let date;
+    if (typeof dateString === 'string') {
+      // Try parsing ISO format first
+      date = new Date(dateString);
+      // If invalid, try other formats
+      if (isNaN(date.getTime())) {
+        // Try parsing "YYYY-MM-DD" format explicitly
+        const parts = dateString.split(/[-/T]/);
+        if (parts.length >= 3) {
+          date = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+        }
+      }
+    } else if (dateString instanceof Date) {
+      date = dateString;
+    } else {
+      return 'N/A';
+    }
+    
+    // Check if date is valid
+    if (isNaN(date.getTime())) return 'N/A';
     return date.toLocaleDateString([], { month: 'short', day: '2-digit', year: 'numeric' });
   } catch {
-    return '';
+    return 'N/A';
+  }
+}
+
+// Format relative time (e.g., "2 hours ago", "3 days ago")
+export function formatTimeAgo(dateString) {
+  if (!dateString) return 'Recently';
+  try {
+    // Handle various date formats
+    let date;
+    if (typeof dateString === 'string') {
+      date = new Date(dateString);
+      // If invalid, try other formats
+      if (isNaN(date.getTime())) {
+        const parts = dateString.split(/[-/T]/);
+        if (parts.length >= 3) {
+          date = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+        }
+      }
+    } else if (dateString instanceof Date) {
+      date = dateString;
+    } else {
+      return 'Recently';
+    }
+    
+    // Check if date is valid
+    if (isNaN(date.getTime())) return 'Recently';
+    
+    const now = new Date();
+    const diffMs = now - date;
+    const diffSecs = Math.floor(diffMs / 1000);
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+    
+    if (diffSecs < 60) return 'Just now';
+    if (diffMins < 60) return `${diffMins} minute${diffMins !== 1 ? 's' : ''} ago`;
+    if (diffHours < 24) return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
+    if (diffDays < 7) return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)} week${Math.floor(diffDays / 7) !== 1 ? 's' : ''} ago`;
+    return date.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
+  } catch {
+    return 'Recently';
   }
 }
 

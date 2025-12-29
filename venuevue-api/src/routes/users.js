@@ -1095,4 +1095,124 @@ router.get('/favorites/user/:userId', async (req, res) => {
   }
 });
 
+// ============================================
+// ONLINE STATUS ENDPOINTS
+// ============================================
+
+// POST /api/users/heartbeat - Update user's last active timestamp (called periodically by frontend)
+router.post('/heartbeat', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ success: false, message: 'No token provided' });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const userId = decoded.id;
+
+    const pool = await poolPromise;
+    await pool.request()
+      .input('UserID', sql.Int, userId)
+      .execute('users.sp_UpdateLastActive');
+
+    res.json({ success: true });
+  } catch (err) {
+    // Silently fail for heartbeat - don't log errors for expired tokens
+    if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
+      return res.status(401).json({ success: false });
+    }
+    res.json({ success: false });
+  }
+});
+
+// GET /api/users/online-status/:userId - Get online status for a single user
+router.get('/online-status/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    if (isNaN(userId)) {
+      return res.status(400).json({ success: false, message: 'Invalid user ID' });
+    }
+
+    const pool = await poolPromise;
+    const result = await pool.request()
+      .input('UserID', sql.Int, parseInt(userId))
+      .execute('users.sp_GetOnlineStatus');
+
+    if (result.recordset.length === 0) {
+      return res.json({ 
+        success: true, 
+        isOnline: false, 
+        lastActiveAt: null,
+        lastActiveText: 'Never'
+      });
+    }
+
+    const user = result.recordset[0];
+    res.json({
+      success: true,
+      userId: user.UserID,
+      isOnline: user.IsOnline === 1,
+      lastActiveAt: user.LastActiveAt,
+      lastActiveText: formatLastActive(user.MinutesAgo, user.IsOnline)
+    });
+  } catch (err) {
+    console.error('Get online status error:', err);
+    res.json({ success: false, isOnline: false, lastActiveAt: null });
+  }
+});
+
+// POST /api/users/online-status/batch - Get online status for multiple users
+router.post('/online-status/batch', async (req, res) => {
+  try {
+    const { userIds } = req.body;
+
+    if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
+      return res.status(400).json({ success: false, message: 'userIds array is required' });
+    }
+
+    const pool = await poolPromise;
+    const result = await pool.request()
+      .input('UserIDs', sql.NVarChar(sql.MAX), userIds.join(','))
+      .execute('users.sp_GetOnlineStatus');
+
+    const statusMap = {};
+    result.recordset.forEach(user => {
+      statusMap[user.UserID] = {
+        isOnline: user.IsOnline === 1,
+        lastActiveAt: user.LastActiveAt,
+        lastActiveText: formatLastActive(user.MinutesAgo, user.IsOnline)
+      };
+    });
+
+    res.json({ success: true, statuses: statusMap });
+  } catch (err) {
+    console.error('Get batch online status error:', err);
+    res.json({ success: false, statuses: {} });
+  }
+});
+
+// Helper function to format last active time
+function formatLastActive(minutesAgo, isOnline) {
+  if (isOnline === 1 || minutesAgo === 'Online') return 'Online';
+  if (minutesAgo === null || minutesAgo === undefined) return 'Never';
+  
+  const mins = parseInt(minutesAgo);
+  if (isNaN(mins)) return 'Offline';
+  
+  if (mins < 60) return `Active ${mins} min ago`;
+  if (mins < 1440) { // Less than 24 hours
+    const hours = Math.floor(mins / 60);
+    return `Active ${hours} ${hours === 1 ? 'hour' : 'hours'} ago`;
+  }
+  const days = Math.floor(mins / 1440);
+  if (days === 1) return 'Active yesterday';
+  if (days < 7) return `Active ${days} days ago`;
+  if (days < 30) {
+    const weeks = Math.floor(days / 7);
+    return `Active ${weeks} ${weeks === 1 ? 'week' : 'weeks'} ago`;
+  }
+  return 'Active over a month ago';
+}
+
 module.exports = router;

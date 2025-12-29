@@ -241,18 +241,38 @@ function CategoriesNav({ activeCategory, onCategoryChange, loading = false }) {
     }
   }, []);
 
-  const updateIndicator = useCallback(() => {
+  const updateIndicator = useCallback((skipTransition = false) => {
+    if (loading) return; // Don't update during loading
+    
     const activeIndex = categories.findIndex(cat => cat.key === activeCategory);
     if (activeIndex >= 0 && indicatorRef.current && listRef.current) {
-      const items = listRef.current.querySelectorAll('.category-item');
+      const items = listRef.current.querySelectorAll('.category-item:not(.skeleton)');
       if (items[activeIndex]) {
         const item = items[activeIndex];
-        const left = item.offsetLeft;
+        const itemRect = item.getBoundingClientRect();
+        const listRect = listRef.current.getBoundingClientRect();
+        const left = itemRect.left - listRect.left + listRef.current.scrollLeft;
         const width = item.offsetWidth;
-        indicatorRef.current.style.transform = `translateX(${left + width / 2 - 30}px)`;
+        
+        // Skip transition on initial load to prevent animation from left edge
+        if (skipTransition) {
+          indicatorRef.current.style.transition = 'none';
+        }
+        
+        indicatorRef.current.style.width = `${width}px`;
+        indicatorRef.current.style.transform = `translateX(${left}px)`;
+        
+        // Re-enable transition after initial positioning
+        if (skipTransition) {
+          requestAnimationFrame(() => {
+            if (indicatorRef.current) {
+              indicatorRef.current.style.transition = 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+            }
+          });
+        }
       }
     }
-  }, [activeCategory]);
+  }, [activeCategory, loading]);
 
   // Handle scroll to shrink/expand categories nav
   useEffect(() => {
@@ -273,19 +293,44 @@ function CategoriesNav({ activeCategory, onCategoryChange, loading = false }) {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Initial setup - skip transition on first render
+  const isInitialMount = useRef(true);
+  
   useEffect(() => {
     checkScrollButtons();
-    updateIndicator();
+    // Skip transition on initial mount
+    updateIndicator(true);
     
     window.addEventListener('resize', checkScrollButtons);
+    window.addEventListener('resize', () => updateIndicator(false));
+    
+    // Also update indicator when wrapper scrolls (without transition skip)
+    const wrapper = wrapperRef.current;
+    if (wrapper) {
+      wrapper.addEventListener('scroll', () => updateIndicator(false));
+    }
+    
     return () => {
       window.removeEventListener('resize', checkScrollButtons);
+      window.removeEventListener('resize', () => updateIndicator(false));
+      if (wrapper) {
+        wrapper.removeEventListener('scroll', () => updateIndicator(false));
+      }
     };
   }, [checkScrollButtons, updateIndicator]);
 
   useEffect(() => {
-    updateIndicator();
-  }, [activeCategory, updateIndicator]);
+    // Skip transition only on initial mount, animate on subsequent changes
+    const timer = setTimeout(() => {
+      if (isInitialMount.current) {
+        updateIndicator(true); // No animation on first load
+        isInitialMount.current = false;
+      } else {
+        updateIndicator(false); // Animate on category change
+      }
+    }, 50);
+    return () => clearTimeout(timer);
+  }, [activeCategory, loading, updateIndicator]);
 
   const scroll = (direction) => {
     if (wrapperRef.current) {
@@ -298,7 +343,7 @@ function CategoriesNav({ activeCategory, onCategoryChange, loading = false }) {
   };
 
   return (
-    <nav className={`categories-nav ${isScrolled ? 'scrolled' : ''}`}>
+    <nav className="categories-nav">
       <button
         className="nav-scroll-btn left"
         id="scroll-left"
@@ -402,7 +447,7 @@ function CategoriesNav({ activeCategory, onCategoryChange, loading = false }) {
             ))
           )}
         </div>
-        <div className="category-indicator" ref={indicatorRef} id="category-indicator"></div>
+        {!loading && <div className="category-indicator" ref={indicatorRef} id="category-indicator"></div>}
       </div>
       <button
         className="nav-scroll-btn right"

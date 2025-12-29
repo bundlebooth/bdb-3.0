@@ -1,15 +1,15 @@
 /*
-    Migration Script: Create Optimized Stored Procedure [vendors.sp_Search]
+    Migration Script: Update Stored Procedure [vendors.sp_Search] with Analytics
     Phase: 600 - Stored Procedures
-    Script: cu_600_089b_sp_SearchVendors_Optimized.sql
-    Description: Optimized version of [vendors].[sp_Search] for better performance
+    Script: cu_600_089c_sp_SearchVendors_WithAnalytics.sql
+    Description: Updates [vendors].[sp_Search] to include ProfileViews and AvgResponseMinutes
     Schema: vendors
 */
 
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating optimized stored procedure [vendors].[sp_Search]...';
+PRINT 'Updating stored procedure [vendors].[sp_Search] with analytics...';
 GO
 
 IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_Search]'))
@@ -56,7 +56,7 @@ BEGIN
     -- Validate pagination parameters
     IF @PageNumber < 1 SET @PageNumber = 1;
     IF @PageSize < 1 SET @PageSize = 10;
-    IF @PageSize > 100 SET @PageSize = 100;
+    IF @PageSize > 200 SET @PageSize = 200;
     
     DECLARE @Offset INT = (@PageNumber - 1) * @PageSize;
     
@@ -66,16 +66,20 @@ BEGIN
         AverageRating DECIMAL(3,1),
         ReviewCount INT,
         FavoriteCount INT,
-        BookingCount INT
+        BookingCount INT,
+        ProfileViews INT,
+        AvgResponseMinutes INT
     );
     
-    INSERT INTO #VendorStats (VendorProfileID, AverageRating, ReviewCount, FavoriteCount, BookingCount)
+    INSERT INTO #VendorStats (VendorProfileID, AverageRating, ReviewCount, FavoriteCount, BookingCount, ProfileViews, AvgResponseMinutes)
     SELECT 
         v.VendorProfileID,
         (SELECT AVG(CAST(r.Rating AS DECIMAL(3,1))) FROM vendors.Reviews r WHERE r.VendorProfileID = v.VendorProfileID AND r.IsApproved = 1),
         (SELECT COUNT(*) FROM vendors.Reviews r WHERE r.VendorProfileID = v.VendorProfileID AND r.IsApproved = 1),
         (SELECT COUNT(*) FROM users.Favorites f WHERE f.VendorProfileID = v.VendorProfileID),
-        (SELECT COUNT(*) FROM bookings.Bookings b WHERE b.VendorProfileID = v.VendorProfileID)
+        (SELECT COUNT(*) FROM bookings.Bookings b WHERE b.VendorProfileID = v.VendorProfileID AND b.CreatedAt >= DATEADD(DAY, -30, GETDATE())),
+        (SELECT COUNT(*) FROM vendors.VendorProfileViews pv WHERE pv.VendorProfileID = v.VendorProfileID),
+        (SELECT TOP 1 rt.AvgResponseMinutes FROM vendors.vw_VendorResponseTimes rt WHERE rt.VendorProfileID = v.VendorProfileID)
     FROM vendors.VendorProfiles v
     WHERE v.IsCompleted = 1 AND v.IsVisible = 1;
     
@@ -159,12 +163,15 @@ BEGIN
             v.Capacity,
             v.Rooms,
             v.LogoURL,
+            v.CreatedAt,
             ISNULL(p.MinPrice, 0) AS MinPrice,
             p.MinServiceName,
             ISNULL(s.AverageRating, 0) AS AverageRating,
             ISNULL(s.ReviewCount, 0) AS ReviewCount,
             ISNULL(s.FavoriteCount, 0) AS FavoriteCount,
             ISNULL(s.BookingCount, 0) AS BookingCount,
+            ISNULL(s.ProfileViews, 0) AS ProfileViews,
+            s.AvgResponseMinutes,
             e.ImageURL,
             e.PrimaryCategory,
             e.Categories,
@@ -176,7 +183,6 @@ BEGIN
             CASE 
                 WHEN @Latitude IS NOT NULL AND @Longitude IS NOT NULL AND v.Latitude IS NOT NULL AND v.Longitude IS NOT NULL
                 THEN 3959 * ACOS(
-                    -- Clamp value to [-1, 1] to prevent ACOS domain errors from floating point precision
                     CASE 
                         WHEN (COS(RADIANS(CAST(@Latitude AS FLOAT))) * COS(RADIANS(CAST(v.Latitude AS FLOAT))) * COS(RADIANS(CAST(v.Longitude AS FLOAT)) - RADIANS(CAST(@Longitude AS FLOAT))) + 
                               SIN(RADIANS(CAST(@Latitude AS FLOAT))) * SIN(RADIANS(CAST(v.Latitude AS FLOAT)))) > 1 THEN 1
@@ -196,31 +202,22 @@ BEGIN
         WHERE u.IsActive = 1
         AND v.IsCompleted = 1
         AND v.IsVisible = 1
-        -- Search term filter
         AND (@SearchTerm IS NULL OR @SearchTerm = '' OR 
              v.BusinessName LIKE '%' + @SearchTerm + '%' OR 
              v.BusinessDescription LIKE '%' + @SearchTerm + '%' OR
              e.Categories LIKE '%' + @SearchTerm + '%')
-        -- Category filter
         AND (@Category IS NULL OR @Category = '' OR 
              EXISTS (SELECT 1 FROM vendors.VendorCategories vc WHERE vc.VendorProfileID = v.VendorProfileID AND vc.Category = @Category))
-        -- City filter
         AND (@City IS NULL OR @City = '' OR v.City LIKE '%' + @City + '%')
-        -- Price filters
         AND (@MinPrice IS NULL OR ISNULL(p.MinPrice, 0) >= @MinPrice)
         AND (@MaxPrice IS NULL OR ISNULL(p.MinPrice, 0) <= @MaxPrice)
-        -- Rating filter
         AND (@MinRating IS NULL OR ISNULL(s.AverageRating, 0) >= @MinRating)
-        -- Feature filters
         AND (@IsPremium IS NULL OR v.IsPremium = @IsPremium)
         AND (@IsEcoFriendly IS NULL OR v.IsEcoFriendly = @IsEcoFriendly)
         AND (@IsAwardWinning IS NULL OR v.IsAwardWinning = @IsAwardWinning)
-        -- Price level filter
         AND (@PriceLevel IS NULL OR @PriceLevel = '' OR v.PriceLevel = @PriceLevel)
-        -- Location filter
         AND (@Latitude IS NULL OR @Longitude IS NULL OR v.Latitude IS NULL OR v.Longitude IS NULL OR
              3959 * ACOS(
-                -- Clamp value to [-1, 1] to prevent ACOS domain errors
                 CASE 
                     WHEN (COS(RADIANS(CAST(@Latitude AS FLOAT))) * COS(RADIANS(CAST(v.Latitude AS FLOAT))) * COS(RADIANS(CAST(v.Longitude AS FLOAT)) - RADIANS(CAST(@Longitude AS FLOAT))) + 
                           SIN(RADIANS(CAST(@Latitude AS FLOAT))) * SIN(RADIANS(CAST(v.Latitude AS FLOAT)))) > 1 THEN 1
@@ -250,6 +247,8 @@ BEGIN
         f.ReviewCount,
         f.FavoriteCount,
         f.BookingCount,
+        f.ProfileViews,
+        f.AvgResponseMinutes,
         f.ImageURL AS image,
         f.IsPremium,
         f.IsEcoFriendly,
@@ -266,9 +265,10 @@ BEGIN
         f.Longitude,
         f.Categories,
         f.DistanceMiles,
+        f.CreatedAt,
         t.TotalCount,
-        NULL AS services,  -- Removed nested JSON for performance - fetch separately if needed
-        NULL AS reviews    -- Removed nested JSON for performance - fetch separately if needed
+        NULL AS services,
+        NULL AS reviews
     FROM FilteredVendors f
     CROSS JOIN TotalCounted t
     ORDER BY 
@@ -288,5 +288,5 @@ BEGIN
 END;
 GO
 
-PRINT 'Optimized stored procedure [vendors].[sp_Search] created successfully.';
+PRINT 'Stored procedure [vendors].[sp_Search] updated with analytics successfully.';
 GO

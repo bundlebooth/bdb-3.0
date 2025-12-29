@@ -2,7 +2,7 @@ import React, { memo } from 'react';
 import { getCategoryIconHtml, mapTypeToCategory } from '../utils/helpers';
 import { buildVendorProfileUrl } from '../utils/urlHelpers';
 
-const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavorite, onView, onHighlight, showViewCount, showResponseTime, showAnalyticsBadge, analyticsBadgeType }) {
+const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavorite, onView, onHighlight, showViewCount, showResponseTime, showAnalyticsBadge, analyticsBadgeType, onlineStatus }) {
   const [isHovered, setIsHovered] = React.useState(false);
   const [currentImageIndex, setCurrentImageIndex] = React.useState(0);
   const vendorId = vendor.VendorProfileID || vendor.id;
@@ -356,7 +356,7 @@ const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavori
       
       {/* Card Content - Airbnb Style */}
       <div style={{ padding: '10px 0 4px 0', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-        {/* Line 1: Vendor Name - Black, semibold */}
+        {/* Line 1: Vendor Name with Online Status - Black, semibold */}
         <div style={{ 
           fontSize: '15px', 
           color: '#222222', 
@@ -364,11 +364,43 @@ const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavori
           fontWeight: 600,
           overflow: 'hidden',
           textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap'
+          whiteSpace: 'nowrap',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px'
         }}>
           <span className="vendor-card-business-name">
             {vendor.BusinessName || vendor.name}
           </span>
+          {/* Online Status Indicator */}
+          {onlineStatus && (
+            <span 
+              title={onlineStatus.isOnline ? 'Online now' : onlineStatus.lastActiveText || 'Offline'}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                flexShrink: 0
+              }}
+            >
+              <span style={{
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                backgroundColor: onlineStatus.isOnline ? '#22c55e' : '#9ca3af',
+                boxShadow: onlineStatus.isOnline ? '0 0 0 2px rgba(34, 197, 94, 0.2)' : 'none'
+              }} />
+              {onlineStatus.isOnline && (
+                <span style={{ 
+                  fontSize: '11px', 
+                  color: '#22c55e', 
+                  fontWeight: 500 
+                }}>
+                  Online
+                </span>
+              )}
+            </span>
+          )}
         </div>
         
         {/* Line 2: City, Province - Gray, same size as price line */}
@@ -430,7 +462,7 @@ const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavori
                    analyticsBadgeType === 'rating' ? '#FFB400' :
                    analyticsBadgeType === 'bookings' ? '#EC4899' :
                    analyticsBadgeType === 'distance' ? '#8B5CF6' :
-                   analyticsBadgeType === 'reviews' ? '#5E72E4' : '#FF385C',
+                   analyticsBadgeType === 'trending' ? '#FF6B35' : '#FF385C',
             marginTop: '2px',
             fontWeight: 500
           }}>
@@ -439,7 +471,7 @@ const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavori
               analyticsBadgeType === 'rating' ? 'fa-star' :
               analyticsBadgeType === 'bookings' ? 'fa-calendar-check' :
               analyticsBadgeType === 'distance' ? 'fa-location-dot' :
-              analyticsBadgeType === 'reviews' ? 'fa-comment-dots' : 'fa-fire'
+              analyticsBadgeType === 'trending' ? 'fa-fire-flame-curved' : 'fa-fire'
             }`} style={{ fontSize: '11px' }}></i>
             <span>{vendor.analyticsBadge}</span>
           </div>

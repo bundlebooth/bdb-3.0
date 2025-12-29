@@ -352,7 +352,12 @@ function UnifiedMessagesSection({ onSectionChange }) {
             opacity: 0.7,
             textAlign: isOwnMessage ? 'right' : 'left'
           }}>
-            {new Date(message.CreatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            {(() => {
+              if (!message.CreatedAt) return '';
+              const date = new Date(message.CreatedAt);
+              if (isNaN(date.getTime())) return '';
+              return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            })() || ''}
           </div>
         </div>
       </div>

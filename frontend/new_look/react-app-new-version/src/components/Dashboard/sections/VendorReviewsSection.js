@@ -132,7 +132,12 @@ function VendorReviewsSection() {
       }}>
         <div className="review-header" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
           <div className="reviewer" style={{ fontWeight: 600, color: '#111827' }}>{review.ClientName || review.ReviewerName || 'Client'}</div>
-          <div className="review-date" style={{ fontSize: '0.85rem', color: '#6b7280' }}>{new Date(review.CreatedAt).toLocaleDateString()}</div>
+          <div className="review-date" style={{ fontSize: '0.85rem', color: '#6b7280' }}>{(() => {
+            if (!review.CreatedAt) return 'N/A';
+            const date = new Date(review.CreatedAt);
+            if (isNaN(date.getTime())) return 'N/A';
+            return date.toLocaleDateString();
+          })()}</div>
         </div>
         <div className="review-rating" style={{ color: '#f59e0b', marginBottom: '0.5rem' }}>
           {'★'.repeat(review.Rating)}{'☆'.repeat(5 - review.Rating)}

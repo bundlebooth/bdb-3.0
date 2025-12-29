@@ -153,17 +153,41 @@ function TrendingVendors({ onViewVendor }) {
               </div>
             ))
           ) : (
-            trendingVendors.map((vendor) => (
-              <div key={vendor.VendorProfileID || vendor.id} style={{ flex: '0 0 auto', width: '260px' }}>
-                <VendorCard
-                  vendor={vendor}
-                  isFavorite={false}
-                  onToggleFavorite={() => {}}
-                  onView={onViewVendor}
-                  onHighlight={() => {}}
-                />
-              </div>
-            ))
+            trendingVendors.map((vendor, index) => {
+              // Add analytics badge showing view count or engagement
+              const viewCount = vendor.viewCount7Days || vendor.profileViews || vendor.ViewCount7Days || 0;
+              let badgeText;
+              if (viewCount > 0) {
+                badgeText = `${viewCount} views`;
+              } else {
+                // Calculate engagement score for display
+                const engagementScore = ((vendor.bookingCount || 0) * 3) + ((vendor.favoriteCount || 0) * 2) + ((vendor.totalReviews || vendor.reviewCount || 0));
+                if (engagementScore > 10) {
+                  badgeText = `${engagementScore} engagement score`;
+                } else if (index < 3) {
+                  badgeText = `#${index + 1} Trending`;
+                } else {
+                  badgeText = 'Trending now';
+                }
+              }
+              const vendorWithBadge = {
+                ...vendor,
+                analyticsBadge: badgeText
+              };
+              return (
+                <div key={vendor.VendorProfileID || vendor.id} style={{ flex: '0 0 auto', width: '260px' }}>
+                  <VendorCard
+                    vendor={vendorWithBadge}
+                    isFavorite={false}
+                    onToggleFavorite={() => {}}
+                    onView={onViewVendor}
+                    onHighlight={() => {}}
+                    showAnalyticsBadge={true}
+                    analyticsBadgeType="trending"
+                  />
+                </div>
+              );
+            })
           )}
         </div>
       </div>

@@ -228,11 +228,65 @@ function BookingPage() {
     }));
   };
 
-  // Handle calendar date selection
-  const handleCalendarDateSelect = (date) => {
+  // Handle calendar date selection - do everything here, no useEffect
+  const handleCalendarDateSelect = (dateString) => {
+    // Generate time slots for this date
+    let newSlots = [];
+    if (dateString && vendorAvailability?.businessHours) {
+      const [year, month, day] = dateString.split('-').map(Number);
+      const date = new Date(year, month - 1, day);
+      const dayOfWeek = date.getDay();
+      
+      let dayHours = vendorAvailability.businessHours.find(bh => bh.DayOfWeek === dayOfWeek);
+      if (!dayHours && dayOfWeek === 0) {
+        dayHours = vendorAvailability.businessHours.find(bh => bh.DayOfWeek === 7);
+      }
+      
+      if (dayHours && dayHours.IsAvailable) {
+        const parseTime = (timeStr) => {
+          if (!timeStr) return null;
+          if (typeof timeStr !== 'string') {
+            if (timeStr instanceof Date) return { hour: timeStr.getHours(), minute: timeStr.getMinutes() };
+            if (typeof timeStr === 'object' && timeStr.hour !== undefined) return timeStr;
+            timeStr = String(timeStr);
+          }
+          if (timeStr.includes('T')) {
+            const d = new Date(timeStr);
+            return { hour: d.getHours(), minute: d.getMinutes() };
+          }
+          const parts = timeStr.split(':');
+          return { hour: parseInt(parts[0]), minute: parseInt(parts[1] || 0) };
+        };
+        
+        const openTime = parseTime(dayHours.OpenTime);
+        const closeTime = parseTime(dayHours.CloseTime);
+        
+        if (openTime && closeTime && !isNaN(openTime.hour) && !isNaN(closeTime.hour)) {
+          let currentHour = openTime.hour;
+          let currentMinute = openTime.minute || 0;
+          const closeMinutes = closeTime.hour * 60 + (closeTime.minute || 0);
+          
+          while (currentHour * 60 + currentMinute <= closeMinutes) {
+            newSlots.push(`${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}`);
+            currentMinute += 30;
+            if (currentMinute >= 60) { currentMinute = 0; currentHour++; }
+          }
+        }
+      }
+    }
+    
+    setAvailableTimeSlots(newSlots);
+    
+    // Set date and times in one update
+    const newStartTime = newSlots.length > 0 ? newSlots[0] : '';
+    const endIndex = Math.min(6, newSlots.length - 1);
+    const newEndTime = newSlots.length > 0 ? newSlots[endIndex] : '';
+    
     setBookingData(prev => ({
       ...prev,
-      eventDate: date
+      eventDate: dateString,
+      eventTime: newStartTime,
+      eventEndTime: newEndTime
     }));
   };
 
@@ -337,16 +391,19 @@ function BookingPage() {
       return;
     }
 
+    // Validate parsed times before proceeding
+    if (isNaN(openTime.hour) || isNaN(closeTime.hour)) {
+      setAvailableTimeSlots([]);
+      return;
+    }
+
     // Generate 30-minute interval slots (including close time)
     const slots = [];
     let currentHour = openTime.hour;
-    let currentMinute = openTime.minute;
-    const closeMinutes = closeTime.hour * 60 + closeTime.minute;
+    let currentMinute = openTime.minute || 0;
+    const closeMinutes = closeTime.hour * 60 + (closeTime.minute || 0);
 
-    while (true) {
-      const currentMinutes = currentHour * 60 + currentMinute;
-      if (currentMinutes > closeMinutes) break; // Changed >= to > to include close time
-
+    while (currentHour * 60 + currentMinute <= closeMinutes) {
       const timeStr = `${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}`;
       slots.push(timeStr);
 
@@ -358,27 +415,8 @@ function BookingPage() {
     }
 
     setAvailableTimeSlots(slots);
-
-    // Auto-set start and end times to first and default end slot
-    if (slots.length > 0) {
-      const newStartTime = slots[0];
-      const endIndex = Math.min(6, slots.length - 1); // Default 3 hours
-      const newEndTime = slots[endIndex];
-      
-      setBookingData(prev => ({ 
-        ...prev, 
-        eventTime: newStartTime,
-        eventEndTime: newEndTime
-      }));
-    }
+    return slots;
   }, [vendorAvailability]);
-
-  // Update time slots when event date changes
-  useEffect(() => {
-    if (bookingData.eventDate && vendorAvailability) {
-      updateAvailableTimeSlots(bookingData.eventDate);
-    }
-  }, [bookingData.eventDate, vendorAvailability, updateAvailableTimeSlots]);
 
   // Toggle service selection
   const toggleServiceSelection = (service) => {
@@ -525,15 +563,23 @@ function BookingPage() {
   // Format date for display
   const formatDate = (dateString) => {
     if (!dateString) return '';
-    // Parse date components to avoid timezone issues
-    const [year, month, day] = dateString.split('-').map(Number);
-    const dateObj = new Date(year, month - 1, day);
-    return dateObj.toLocaleDateString('en-US', { 
-      weekday: 'short', 
-      year: 'numeric', 
-      month: 'short', 
-      day: 'numeric' 
-    });
+    try {
+      // Parse date components to avoid timezone issues
+      const parts = dateString.split('-');
+      if (parts.length !== 3) return dateString;
+      const [year, month, day] = parts.map(Number);
+      if (isNaN(year) || isNaN(month) || isNaN(day)) return dateString;
+      const dateObj = new Date(year, month - 1, day);
+      if (isNaN(dateObj.getTime())) return dateString;
+      return dateObj.toLocaleDateString('en-US', { 
+        weekday: 'short', 
+        year: 'numeric', 
+        month: 'short', 
+        day: 'numeric' 
+      });
+    } catch {
+      return dateString;
+    }
   };
 
   // Get timezone info from vendor data
@@ -765,7 +811,6 @@ function BookingPage() {
                         selectedDate={bookingData.eventDate}
                         onDateSelect={(date) => {
                           handleCalendarDateSelect(date);
-                          updateAvailableTimeSlots(date);
                           setShowCalendar(false);
                         }}
                         onClose={() => setShowCalendar(false)}

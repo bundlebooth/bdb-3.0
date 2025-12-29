@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
+import { useVendorOnlineStatus } from '../hooks/useOnlineStatus';
 
 function MessagingWidget() {
   const { currentUser } = useAuth();
@@ -26,8 +27,16 @@ function MessagingWidget() {
   const [expandedFaq, setExpandedFaq] = useState(null);
   const [selectedFaq, setSelectedFaq] = useState(null); // For full FAQ detail view
   const [faqFeedbackSubmitted, setFaqFeedbackSubmitted] = useState({});
+  const [otherPartyVendorId, setOtherPartyVendorId] = useState(null);
   const messagesEndRef = useRef(null);
   const pollingIntervalRef = useRef(null);
+
+  // Get online status for the other party (vendor) in the conversation
+  const { statuses: vendorOnlineStatuses } = useVendorOnlineStatus(
+    otherPartyVendorId ? [otherPartyVendorId] : [],
+    { enabled: !!otherPartyVendorId, refreshInterval: 180000 } // 3 minutes
+  );
+  const otherPartyOnlineStatus = otherPartyVendorId ? vendorOnlineStatuses[otherPartyVendorId] : null;
 
   // Load FAQs from API
   useEffect(() => {
@@ -98,16 +107,13 @@ function MessagingWidget() {
         const data = await response.json();
         setMessages(data.messages || []);
         setTimeout(scrollToBottom, 100);
-        
-        // Reload conversations to update unread count
-        loadConversations();
       }
     } catch (error) {
       console.error('Failed to load messages:', error);
     } finally {
       setLoading(false);
     }
-  }, [currentUser, loadConversations]);
+  }, [currentUser]);
 
   // Send message
   const sendMessage = useCallback(async () => {
@@ -144,6 +150,10 @@ function MessagingWidget() {
     setCurrentConversation(conversation);
     setView('chat');
     loadMessages(conversation.id);
+    // Set vendor profile ID for online status tracking
+    if (conversation.VendorProfileID) {
+      setOtherPartyVendorId(conversation.VendorProfileID);
+    }
   }, [loadMessages]);
 
   // Back to conversations
@@ -151,6 +161,7 @@ function MessagingWidget() {
     setView('conversations');
     setCurrentConversation(null);
     setMessages([]);
+    setOtherPartyVendorId(null);
     loadConversations();
   }, [loadConversations]);
 
@@ -863,39 +874,65 @@ function MessagingWidget() {
                   <i className="fas fa-arrow-left"></i>
                 </button>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
-                  {currentConversation.OtherPartyAvatar || currentConversation.OtherPartyLogo ? (
-                    <img
-                      src={currentConversation.OtherPartyAvatar || currentConversation.OtherPartyLogo}
-                      alt={currentConversation.OtherPartyName}
-                      style={{
-                        width: '40px',
-                        height: '40px',
+                  <div style={{ position: 'relative' }}>
+                    {currentConversation.OtherPartyAvatar || currentConversation.OtherPartyLogo ? (
+                      <img
+                        src={currentConversation.OtherPartyAvatar || currentConversation.OtherPartyLogo}
+                        alt={currentConversation.OtherPartyName}
+                        style={{
+                          width: '40px',
+                          height: '40px',
+                          borderRadius: '50%',
+                          objectFit: 'cover'
+                        }}
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                          e.target.nextSibling.style.display = 'flex';
+                        }}
+                      />
+                    ) : null}
+                    <div style={{
+                      width: '40px',
+                      height: '40px',
+                      borderRadius: '50%',
+                      background: '#5e72e4',
+                      display: currentConversation.OtherPartyAvatar || currentConversation.OtherPartyLogo ? 'none' : 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'white',
+                      fontSize: '16px',
+                      fontWeight: 600
+                    }}>
+                      {(currentConversation.OtherPartyName || 'U')[0].toUpperCase()}
+                    </div>
+                    {/* Online status dot on avatar */}
+                    {otherPartyOnlineStatus && (
+                      <span style={{
+                        position: 'absolute',
+                        bottom: '0',
+                        right: '0',
+                        width: '12px',
+                        height: '12px',
                         borderRadius: '50%',
-                        objectFit: 'cover'
-                      }}
-                      onError={(e) => {
-                        e.target.style.display = 'none';
-                        e.target.nextSibling.style.display = 'flex';
-                      }}
-                    />
-                  ) : null}
-                  <div style={{
-                    width: '40px',
-                    height: '40px',
-                    borderRadius: '50%',
-                    background: '#5e72e4',
-                    display: currentConversation.OtherPartyAvatar || currentConversation.OtherPartyLogo ? 'none' : 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'white',
-                    fontSize: '16px',
-                    fontWeight: 600
-                  }}>
-                    {(currentConversation.OtherPartyName || 'U')[0].toUpperCase()}
+                        backgroundColor: otherPartyOnlineStatus.isOnline ? '#22c55e' : '#9ca3af',
+                        border: '2px solid white'
+                      }} />
+                    )}
                   </div>
-                  <span style={{ fontWeight: 600, fontSize: '16px', color: '#222' }}>
-                    {currentConversation.OtherPartyName || 'Unknown'}
-                  </span>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontWeight: 600, fontSize: '16px', color: '#222' }}>
+                      {currentConversation.OtherPartyName || 'Unknown'}
+                    </span>
+                    {/* Online status text */}
+                    {otherPartyOnlineStatus && (
+                      <span style={{ 
+                        fontSize: '12px', 
+                        color: otherPartyOnlineStatus.isOnline ? '#22c55e' : '#666'
+                      }}>
+                        {otherPartyOnlineStatus.isOnline ? 'Online' : otherPartyOnlineStatus.lastActiveText || 'Offline'}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
               <div className="chat-messages-container" style={{
@@ -913,8 +950,11 @@ function MessagingWidget() {
                     <p>No messages yet. Start the conversation!</p>
                   </div>
                 ) : (
-                  messages.map((msg) => {
+                  messages.map((msg, index) => {
                     const isSent = msg.SenderID === currentUser.id;
+                    const isRead = msg.IsRead === true || msg.IsRead === 1;
+                    // Only show read icon on the last sent message
+                    const isLastSentMessage = isSent && !messages.slice(index + 1).some(m => m.SenderID === currentUser.id);
                     return (
                       <div
                         key={msg.MessageID}
@@ -937,9 +977,46 @@ function MessagingWidget() {
                             fontSize: '11px', 
                             marginTop: '4px',
                             opacity: 0.7,
-                            textAlign: 'right'
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'flex-end',
+                            gap: '4px'
                           }}>
-                            {new Date(msg.CreatedAt || msg.SentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            <span>
+                              {(() => {
+                                const dateStr = msg.CreatedAt || msg.SentAt;
+                                if (!dateStr) return '';
+                                const date = new Date(dateStr);
+                                if (isNaN(date.getTime())) return '';
+                                return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                              })()}
+                            </span>
+                            {/* Read receipt eye icon - only show for last sent message */}
+                            {isLastSentMessage && (
+                              <span 
+                                title={isRead ? 'Read' : 'Delivered'}
+                                style={{ 
+                                  display: 'inline-flex', 
+                                  alignItems: 'center',
+                                  opacity: isRead ? 1 : 0.5
+                                }}
+                              >
+                                <svg 
+                                  width="14" 
+                                  height="14" 
+                                  viewBox="0 0 24 24" 
+                                  fill="none" 
+                                  stroke="currentColor" 
+                                  strokeWidth="2" 
+                                  strokeLinecap="round" 
+                                  strokeLinejoin="round"
+                                  style={{ color: isRead ? '#fff' : 'rgba(255,255,255,0.5)' }}
+                                >
+                                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                  <circle cx="12" cy="12" r="3"></circle>
+                                </svg>
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>

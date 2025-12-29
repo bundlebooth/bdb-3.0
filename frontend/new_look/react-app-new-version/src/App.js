@@ -9,7 +9,11 @@ import BecomeVendorLanding from './pages/BecomeVendorLanding';
 import AdminDashboard from './pages/AdminDashboard';
 import InvoicePage from './pages/InvoicePage';
 import PaymentSuccessPage from './pages/PaymentSuccessPage';
+import TermsOfServicePage from './pages/TermsOfServicePage';
+import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
+import HelpCentrePage from './pages/HelpCentrePage';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { useHeartbeat } from './hooks/useOnlineStatus';
 import './styles/MapControls.css';
 
 // Global initMap callback for Google Maps
@@ -19,6 +23,9 @@ window.initMap = function() {
 // Home route wrapper - shows landing page for unauthenticated users, main page for authenticated
 function HomeRoute() {
   const { currentUser, loading } = useAuth();
+  
+  // Send heartbeat to track online status
+  useHeartbeat();
   
   // Show loading while checking auth status
   if (loading) {
@@ -74,6 +81,9 @@ function App() {
           <Route path="/invoice/:invoiceId" element={<InvoicePage />} />
           <Route path="/invoice/booking/:bookingId" element={<InvoicePage />} />
           <Route path="/payment-success" element={<PaymentSuccessPage />} />
+          <Route path="/terms-of-service" element={<TermsOfServicePage />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+          <Route path="/help-centre" element={<HelpCentrePage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>

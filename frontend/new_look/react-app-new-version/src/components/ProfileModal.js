@@ -680,6 +680,15 @@ function ProfileModal({ isOpen, onClose }) {
                   Continue with Facebook
                 </button>
               </div>
+              <p style={{ 
+                textAlign: 'center', 
+                fontSize: '12px', 
+                color: '#9CA3AF',
+                marginTop: '16px',
+                marginBottom: 0
+              }}>
+                By signing up, you agree to our <a href="/terms-of-service" style={{ color: '#5B68F4' }}>Terms of Service</a> and <a href="/privacy-policy" style={{ color: '#5B68F4' }}>Privacy Policy</a>
+              </p>
             </form>
           )}
 
@@ -730,11 +739,19 @@ function ProfileModal({ isOpen, onClose }) {
               <button className="btn btn-primary" type="submit" disabled={loading} style={{ width: '100%', marginBottom: '1rem' }}>
                 {loading ? 'Creating Account...' : 'Create Account'}
               </button>
-              <div style={{ textAlign: 'center' }}>
+              <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
                 <button type="button" onClick={() => setView('login')} style={{ background: 'none', border: 'none', color: 'var(--primary)', textDecoration: 'none', fontSize: '0.9rem', cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}>
                   Already have an account? Log in
                 </button>
               </div>
+              <p style={{ 
+                textAlign: 'center', 
+                fontSize: '12px', 
+                color: '#9CA3AF',
+                margin: 0
+              }}>
+                By signing up, you agree to our <a href="/terms-of-service" style={{ color: '#5B68F4' }}>Terms of Service</a> and <a href="/privacy-policy" style={{ color: '#5B68F4' }}>Privacy Policy</a>
+              </p>
             </form>
           )}
 
