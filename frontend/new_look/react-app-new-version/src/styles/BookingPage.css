@@ -640,6 +640,7 @@ select.form-input:focus {
 
 .summary-item {
     display: flex;
+    align-items: flex-start;
     gap: 1rem;
     padding: 0.75rem 0;
 }
@@ -648,17 +649,24 @@ select.form-input:focus {
     color: var(--text-secondary);
     width: 20px;
     flex-shrink: 0;
+    margin-top: 0.15rem;
+}
+
+.summary-item > div {
+    text-align: left;
 }
 
 .summary-label {
     font-size: 0.85rem;
     color: var(--text-secondary);
     margin-bottom: 0.25rem;
+    text-align: left;
 }
 
 .summary-value {
     font-weight: 600;
     color: var(--text-primary);
+    text-align: left;
 }
 
 .info-notice {

@@ -45,8 +45,8 @@ function BookingPage() {
     eventName: '',
     eventType: '',
     eventDate: '',
-    eventTime: '11:00',
-    eventEndTime: '17:00',
+    eventTime: '',
+    eventEndTime: '',
     attendeeCount: '',
     eventLocation: '',
     specialRequests: ''
@@ -1234,14 +1234,15 @@ function BookingPage() {
                 </div>
               )}
 
-              {bookingData.eventTime && (
+              {(bookingData.eventTime || bookingData.eventEndTime) && (
                 <div className="summary-item" id="summary-time">
                   <i className="fas fa-clock"></i>
                   <div>
                     <div className="summary-label">Time</div>
                     <div className="summary-value">
-                      {formatTime(bookingData.eventTime)}
-                      {bookingData.eventEndTime && ` - ${formatTime(bookingData.eventEndTime)}`}
+                      {bookingData.eventTime ? formatTime(bookingData.eventTime) : ''}
+                      {bookingData.eventTime && bookingData.eventEndTime && ' - '}
+                      {bookingData.eventEndTime ? formatTime(bookingData.eventEndTime) : ''}
                     </div>
                   </div>
                 </div>

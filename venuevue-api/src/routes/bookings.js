@@ -702,7 +702,6 @@ router.post('/requests/send', async (req, res) => {
 
     request.input('UserID', sql.Int, userId);
     request.input('VendorProfileID', sql.Int, vendorProfileId);
-    request.input('SpecialRequestText', sql.NVarChar(sql.MAX), specialRequestText || null);
     request.input('EventDate', sql.VarChar(10), eventDate || null);
     request.input('EventTime', sql.VarChar(8), eventTime || null);
     request.input('EventEndTime', sql.VarChar(8), eventEndTime || null);
@@ -715,8 +714,8 @@ router.post('/requests/send', async (req, res) => {
     request.input('TimeZone', sql.NVarChar(100), timeZone || null);
     request.input('Status', sql.NVarChar(50), 'pending');
     request.input('ExpiresAt', sql.DateTime, expiresAt);
-
     request.input('SpecialRequests', sql.NVarChar(sql.MAX), specialRequestText || null);
+
     const result = await request.execute('bookings.sp_InsertRequest');
 
     if (result.recordset.length === 0) {
