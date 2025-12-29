@@ -220,7 +220,8 @@ function ClientPaymentSection({ booking, onBack, onPaymentSuccess }) {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           },
           body: JSON.stringify({
-            bookingId: booking.BookingID,
+            bookingId: booking.BookingID || null,
+            requestId: booking.RequestID || null,
             vendorProfileId: booking.VendorProfileID,
             amount: booking.TotalAmount,
             currency: 'cad',

@@ -55,10 +55,10 @@ function ClientBookingsSection({ onPayNow }) {
     return allBookings;
   };
 
-  const toggleDetails = (bookingId) => {
+  const toggleDetails = (id) => {
     setExpandedDetails(prev => ({
       ...prev,
-      [bookingId]: !prev[bookingId]
+      [id]: !prev[id]
     }));
   };
 
@@ -128,10 +128,13 @@ function ClientBookingsSection({ onPayNow }) {
     const status = isPaid ? 'paid' : s;
     const statusCfg = statusMap[status] || statusMap.pending;
 
-    const isExpanded = expandedDetails[booking.BookingID];
+    // Use RequestID for approved requests, BookingID for confirmed bookings
+    const itemId = booking.RequestID || booking.BookingID;
+    const isRequest = !!booking.RequestID;
+    const isExpanded = expandedDetails[itemId];
 
     return (
-      <div key={booking.BookingID} className="booking-item has-details">
+      <div key={itemId} className="booking-item has-details">
         <div className="booking-date-section">
           <div className="booking-month">{month}</div>
           <div className="booking-day">{day}</div>
@@ -180,7 +183,7 @@ function ClientBookingsSection({ onPayNow }) {
               <span>{statusCfg.label}</span>
             </div>
           </div>
-          <button className="link-btn" onClick={() => toggleDetails(booking.BookingID)} style={{ marginTop: '2px' }}>
+          <button className="link-btn" onClick={() => toggleDetails(itemId)} style={{ marginTop: '2px' }}>
             {isExpanded ? 'Less info' : 'More info'}
           </button>
           <div className="actions-row" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>

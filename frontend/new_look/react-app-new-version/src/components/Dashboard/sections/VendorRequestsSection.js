@@ -98,11 +98,57 @@ function VendorRequestsSection() {
     return allBookings;
   };
 
-  const toggleDetails = (bookingId) => {
+  const toggleDetails = (id) => {
     setExpandedDetails(prev => ({
       ...prev,
-      [bookingId]: !prev[bookingId]
+      [id]: !prev[id]
     }));
+  };
+
+  const handleApproveRequest = async (requestId) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/bookings/requests/${requestId}/approve`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ vendorProfileId })
+      });
+      
+      if (response.ok) {
+        loadBookings();
+      } else {
+        const data = await response.json();
+        alert(data.message || 'Failed to approve request');
+      }
+    } catch (error) {
+      console.error('Error approving request:', error);
+      alert('Failed to approve request');
+    }
+  };
+
+  const handleDeclineRequest = async (requestId) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/bookings/requests/${requestId}/decline`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ vendorProfileId })
+      });
+      
+      if (response.ok) {
+        loadBookings();
+      } else {
+        const data = await response.json();
+        alert(data.message || 'Failed to decline request');
+      }
+    } catch (error) {
+      console.error('Error declining request:', error);
+      alert('Failed to decline request');
+    }
   };
 
   const renderBookingItem = (booking) => {
@@ -134,10 +180,13 @@ function VendorRequestsSection() {
     const status = isPaid ? 'paid' : s;
     const statusCfg = statusMap[status] || statusMap.pending;
 
-    const isExpanded = expandedDetails[booking.BookingID];
+    // Use RequestID for pending requests, BookingID for confirmed bookings
+    const itemId = booking.RequestID || booking.BookingID;
+    const isRequest = !!booking.RequestID;
+    const isExpanded = expandedDetails[itemId];
 
     return (
-      <div key={booking.BookingID} className="booking-item has-details">
+      <div key={itemId} className="booking-item has-details">
         <div className="booking-date-section">
           <div className="booking-month">{month}</div>
           <div className="booking-day">{day}</div>
@@ -186,10 +235,28 @@ function VendorRequestsSection() {
               <span>{statusCfg.label}</span>
             </div>
           </div>
-          <button className="link-btn" onClick={() => toggleDetails(booking.BookingID)} style={{ marginTop: '2px' }}>
+          <button className="link-btn" onClick={() => toggleDetails(itemId)} style={{ marginTop: '2px' }}>
             {isExpanded ? 'Less info' : 'More info'}
           </button>
           <div className="actions-row" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            {s === 'pending' && isRequest && (
+              <>
+                <button 
+                  className="btn btn-primary" 
+                  style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '13px', background: '#10b981', border: 'none', color: 'white' }}
+                  onClick={() => handleApproveRequest(booking.RequestID)}
+                >
+                  <i className="fas fa-check" style={{ marginRight: '4px' }}></i> Approve
+                </button>
+                <button 
+                  className="btn btn-outline" 
+                  style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '13px', color: '#ef4444', borderColor: '#ef4444' }}
+                  onClick={() => handleDeclineRequest(booking.RequestID)}
+                >
+                  <i className="fas fa-times" style={{ marginRight: '4px' }}></i> Decline
+                </button>
+              </>
+            )}
             {(s === 'confirmed' || s === 'accepted' || s === 'approved' || isPaid) && (
               <>
                 {booking.ConversationID && (

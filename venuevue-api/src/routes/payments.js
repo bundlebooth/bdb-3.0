@@ -853,6 +853,7 @@ router.post('/payment-intent', async (req, res) => {
   try {
     const {
       bookingId,
+      requestId,
       vendorProfileId,
       amount,
       currency = 'cad',
@@ -867,29 +868,33 @@ router.post('/payment-intent', async (req, res) => {
       });
     }
 
-    if (!bookingId || !amount) {
+    // Either bookingId or requestId is required, plus amount
+    if ((!bookingId && !requestId) || !amount) {
       return res.status(400).json({
         success: false,
         message: 'Missing required payment information'
       });
     }
 
-    // Prevent duplicate payments for already-paid bookings
     const pool = await poolPromise;
-    try {
-      const check = await pool.request()
-        .input('BookingID', sql.Int, bookingId)
-        .execute('payments.sp_CheckBookingPaid');
-      if (check.recordset.length === 0) {
-        return res.status(404).json({ success: false, message: 'Booking not found' });
+
+    // Prevent duplicate payments for already-paid bookings (only if bookingId exists)
+    if (bookingId) {
+      try {
+        const check = await pool.request()
+          .input('BookingID', sql.Int, bookingId)
+          .execute('payments.sp_CheckBookingPaid');
+        if (check.recordset.length === 0) {
+          return res.status(404).json({ success: false, message: 'Booking not found' });
+        }
+        const paidFlag = check.recordset[0].FullAmountPaid;
+        const alreadyPaid = paidFlag === true || paidFlag === 1;
+        if (alreadyPaid) {
+          return res.status(409).json({ success: false, message: 'This booking is already paid.' });
+        }
+      } catch (dbErr) {
+        console.warn('[PaymentIntent] Could not verify booking paid status:', dbErr?.message);
       }
-      const paidFlag = check.recordset[0].FullAmountPaid;
-      const alreadyPaid = paidFlag === true || paidFlag === 1;
-      if (alreadyPaid) {
-        return res.status(409).json({ success: false, message: 'This booking is already paid.' });
-      }
-    } catch (dbErr) {
-      console.warn('[PaymentIntent] Could not verify booking paid status:', dbErr?.message);
     }
 
     // Resolve vendor profile from input or booking
@@ -936,17 +941,19 @@ router.post('/payment-intent', async (req, res) => {
     }
 
     // Create a PaymentIntent on the platform with destination charge to the connected account
+    const paymentDescription = description || (bookingId ? `Booking Payment #${bookingId}` : `Request Payment #${requestId}`);
     const pi = await stripe.paymentIntents.create({
       amount: totalAmountCents,
       currency,
-      description: description || `Booking Payment #${bookingId}`,
+      description: paymentDescription,
       automatic_payment_methods: { enabled: true },
       application_fee_amount: applicationFeeCents,
       transfer_data: {
         destination: vendorStripeAccountId,
       },
       metadata: {
-        booking_id: String(bookingId),
+        booking_id: bookingId ? String(bookingId) : '',
+        request_id: requestId ? String(requestId) : '',
         vendor_profile_id: String(resolvedVendorProfileId),
         platform_fee_percent: String(commissionSettings.platformFeePercent),
         client_province: clientProvince || '',
