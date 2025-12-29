@@ -1014,20 +1014,76 @@ router.post('/confirmed', async (req, res) => {
 
     const requestData = requestDetails.recordset[0];
     
+    // Parse services from request to get actual service info
+    let services = [];
+    let primaryServiceId = null;
+    let totalAmount = requestData.Budget || 0;
+    
+    try {
+      if (requestData.Services) {
+        services = typeof requestData.Services === 'string' 
+          ? JSON.parse(requestData.Services) 
+          : requestData.Services;
+        
+        if (Array.isArray(services) && services.length > 0) {
+          // Get the first service as primary
+          const primaryService = services[0];
+          primaryServiceId = primaryService.serviceId || primaryService.ServiceID || primaryService.id || null;
+          
+          // Calculate total from services if available
+          const servicesTotal = services.reduce((sum, svc) => {
+            const price = parseFloat(svc.price || svc.Price || svc.BasePrice || 0);
+            const qty = parseInt(svc.quantity || svc.Quantity || 1, 10);
+            return sum + (price * qty);
+          }, 0);
+          
+          if (servicesTotal > 0) {
+            totalAmount = servicesTotal;
+          }
+        }
+      }
+    } catch (parseErr) {
+      console.warn('Could not parse services JSON:', parseErr.message);
+    }
+    
     // Create booking in Bookings table
     const request = pool.request();
     request.input('UserID', sql.Int, userId);
     request.input('VendorProfileID', sql.Int, vendorProfileId);
-    request.input('ServiceID', sql.Int, 1); // Default service ID
+    request.input('ServiceID', sql.Int, primaryServiceId || 1);
     request.input('EventDate', sql.DateTime, requestData.EventDate || new Date());
     request.input('Status', sql.NVarChar(20), 'confirmed');
     request.input('AttendeeCount', sql.Int, requestData.AttendeeCount || 1);
     request.input('SpecialRequests', sql.NVarChar(sql.MAX), requestData.SpecialRequests);
-    request.input('TotalAmount', sql.Decimal(10, 2), requestData.Budget || 0);
+    request.input('TotalAmount', sql.Decimal(10, 2), totalAmount);
 
     const result = await request.execute('bookings.sp_InsertConfirmedBooking');
 
     const bookingId = result.recordset && result.recordset[0] ? result.recordset[0].BookingID : null;
+    
+    // Create BookingServices records for each service
+    if (bookingId && services.length > 0) {
+      for (const svc of services) {
+        const svcId = svc.serviceId || svc.ServiceID || svc.id || null;
+        const price = parseFloat(svc.price || svc.Price || svc.BasePrice || 0);
+        const qty = parseInt(svc.quantity || svc.Quantity || 1, 10);
+        const notes = svc.notes || svc.Notes || null;
+        
+        if (svcId || price > 0) {
+          try {
+            await pool.request()
+              .input('BookingID', sql.Int, bookingId)
+              .input('ServiceID', sql.Int, svcId)
+              .input('Quantity', sql.Int, qty)
+              .input('PriceAtBooking', sql.Decimal(10, 2), price)
+              .input('Notes', sql.NVarChar(sql.MAX), notes)
+              .execute('bookings.sp_InsertBookingService');
+          } catch (bsErr) {
+            console.warn('Could not insert booking service:', bsErr.message);
+          }
+        }
+      }
+    }
 
     // Ensure a conversation exists for this request/user/vendor
     let conversationId = null;

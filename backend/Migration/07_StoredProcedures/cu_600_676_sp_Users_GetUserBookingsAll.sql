@@ -51,7 +51,16 @@ BEGIN
         vp.BusinessName AS VendorName,
         vp.BusinessEmail AS VendorEmail,
         vp.BusinessPhone AS VendorPhone,
-        vp.LogoURL AS VendorLogo
+        vp.LogoURL AS VendorLogo,
+        b.EventLocation AS Location,
+        (SELECT TOP 1 c.ConversationID FROM messages.Conversations c WHERE c.UserID = b.UserID AND c.VendorProfileID = b.VendorProfileID) AS ConversationID,
+        COALESCE(
+            (SELECT TOP 1 s.Name FROM bookings.BookingServices bs 
+             INNER JOIN vendors.Services s ON bs.ServiceID = s.ServiceID 
+             WHERE bs.BookingID = b.BookingID ORDER BY bs.BookingServiceID),
+            (SELECT Name FROM vendors.Services WHERE ServiceID = b.ServiceID),
+            'Service'
+        ) AS ServiceName
     FROM bookings.Bookings b
     INNER JOIN vendors.VendorProfiles vp ON b.VendorProfileID = vp.VendorProfileID
     WHERE b.UserID = @UserID
