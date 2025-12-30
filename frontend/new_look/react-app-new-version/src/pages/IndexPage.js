@@ -1078,6 +1078,9 @@ function IndexPage() {
                     showResponseTime={section.showResponseTime || false}
                     showAnalyticsBadge={section.showAnalyticsBadge || false}
                     analyticsBadgeType={section.analyticsBadgeType || null}
+                    sectionType={section.type || section.id}
+                    cityFilter={detectedCity || filters.location}
+                    categoryFilter={currentCategory}
                   />
                   {/* Divider between discovery sections */}
                   {index < discoverySections.length - 1 && (

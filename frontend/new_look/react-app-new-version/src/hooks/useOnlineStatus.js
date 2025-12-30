@@ -22,11 +22,15 @@ export function useVendorOnlineStatus(vendorProfileIds, options = {}) {
   const [statuses, setStatuses] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const mountedRef = useRef(true);
+  
+  // Store vendorProfileIds in a ref to avoid dependency changes
+  const idsRef = useRef(vendorProfileIds);
+  idsRef.current = vendorProfileIds;
 
   const fetchStatus = useCallback(async () => {
-    if (!enabled || !vendorProfileIds) return;
+    if (!enabled || !idsRef.current) return;
 
-    const ids = Array.isArray(vendorProfileIds) ? vendorProfileIds : [vendorProfileIds];
+    const ids = Array.isArray(idsRef.current) ? idsRef.current : [idsRef.current];
     if (ids.length === 0) return;
 
     const now = Date.now();
@@ -101,7 +105,7 @@ export function useVendorOnlineStatus(vendorProfileIds, options = {}) {
         setIsLoading(false);
       }
     }
-  }, [vendorProfileIds, enabled]);
+  }, [enabled]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -135,11 +139,15 @@ export function useUserOnlineStatus(userIds, options = {}) {
   const [statuses, setStatuses] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const mountedRef = useRef(true);
+  
+  // Store userIds in a ref to avoid dependency changes
+  const idsRef = useRef(userIds);
+  idsRef.current = userIds;
 
   const fetchStatus = useCallback(async () => {
-    if (!enabled || !userIds) return;
+    if (!enabled || !idsRef.current) return;
 
-    const ids = Array.isArray(userIds) ? userIds : [userIds];
+    const ids = Array.isArray(idsRef.current) ? idsRef.current : [idsRef.current];
     if (ids.length === 0) return;
 
     const now = Date.now();
@@ -211,7 +219,7 @@ export function useUserOnlineStatus(userIds, options = {}) {
         setIsLoading(false);
       }
     }
-  }, [userIds, enabled]);
+  }, [enabled]);
 
   useEffect(() => {
     mountedRef.current = true;

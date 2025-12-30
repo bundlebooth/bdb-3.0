@@ -1469,8 +1469,14 @@ function VendorProfilePage() {
         {/* Breadcrumb Navigation with Save/Share */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
           <Breadcrumb items={[
-            profile.City || 'City',
-            categories[0]?.CategoryName || categories[0]?.Category || profile.CategoryName || profile.PrimaryCategory || profile.Category || 'Services',
+            { 
+              label: profile.City || 'City', 
+              path: `/browse/${encodeURIComponent(profile.City || 'City')}` 
+            },
+            { 
+              label: categories[0]?.CategoryName || categories[0]?.Category || profile.CategoryName || profile.PrimaryCategory || profile.Category || 'Services',
+              path: `/browse/${encodeURIComponent(profile.City || 'City')}/${(categories[0]?.CategoryKey || profile.CategoryKey || 'all').toLowerCase()}`
+            },
             profile.BusinessName || profile.DisplayName || 'Vendor Name',
             'Profile'
           ]} />

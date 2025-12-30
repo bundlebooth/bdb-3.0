@@ -1,4 +1,5 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import VendorCard from './VendorCard';
 import { useVendorOnlineStatus } from '../hooks/useOnlineStatus';
 import '../styles/VendorSection.css';
@@ -20,16 +21,21 @@ function VendorSection({
   showViewCount = false,
   showResponseTime = false,
   showAnalyticsBadge = false,
-  analyticsBadgeType = null
+  analyticsBadgeType = null,
+  sectionType = null,
+  cityFilter = null,
+  categoryFilter = null
 }) {
+  const navigate = useNavigate();
   const scrollContainerRef = useRef(null);
   const [showModal, setShowModal] = useState(false);
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [visibleCount, setVisibleCount] = useState(4);
 
-  const calculateVisibleCount = () => {
+  // Memoize vendors length to avoid unnecessary re-renders
+  const vendorsLength = vendors?.length || 0;
+
+  const calculateVisibleCount = useCallback(() => {
     if (!scrollContainerRef.current) return 4;
     const containerWidth = scrollContainerRef.current.offsetWidth;
     
@@ -44,27 +50,28 @@ function VendorSection({
     const availableWidth = containerWidth - 20; // Reduced safety margin
     const count = Math.floor(availableWidth / (cardWidth + gap));
     return Math.max(1, Math.min(count, 8)); // Increased cap to 8 cards max
-  };
+  }, []);
 
-  const checkScrollButtons = () => {
-    const maxIndex = Math.max(0, vendors.length - visibleCount);
-    setCanScrollLeft(currentIndex > 0);
-    setCanScrollRight(currentIndex < maxIndex);
-  };
-
+  // Update visible count on mount and resize only - run once
   useEffect(() => {
-    const updateLayout = () => {
-      const count = calculateVisibleCount();
-      setVisibleCount(count);
-      checkScrollButtons();
+    const count = calculateVisibleCount();
+    setVisibleCount(count);
+    
+    const handleResize = () => {
+      const newCount = calculateVisibleCount();
+      setVisibleCount(newCount);
     };
     
-    updateLayout();
-    window.addEventListener('resize', updateLayout);
+    window.addEventListener('resize', handleResize);
     return () => {
-      window.removeEventListener('resize', updateLayout);
+      window.removeEventListener('resize', handleResize);
     };
-  }, [vendors, currentIndex, visibleCount]);
+  }, []); // Empty dependency - only run on mount
+  
+  // Compute scroll button states directly (no useEffect needed)
+  const maxIndex = Math.max(0, vendorsLength - visibleCount);
+  const computedCanScrollLeft = currentIndex > 0;
+  const computedCanScrollRight = currentIndex < maxIndex;
 
   const scroll = (direction) => {
     const scrollAmount = 1; // Always scroll one card at a time
@@ -96,8 +103,11 @@ function VendorSection({
 
   const iconConfig = getIconConfig();
 
-  // Get vendor IDs for online status
-  const vendorIds = vendors?.map(v => v.vendorProfileId || v.VendorProfileID || v.id).filter(Boolean) || [];
+  // Memoize vendor IDs to prevent infinite loop in useVendorOnlineStatus
+  const vendorIds = useMemo(() => {
+    return vendors?.map(v => v.vendorProfileId || v.VendorProfileID || v.id).filter(Boolean) || [];
+  }, [vendors]);
+  
   const { statuses: onlineStatuses } = useVendorOnlineStatus(vendorIds, { 
     enabled: vendorIds.length > 0, 
     refreshInterval: 300000 // 5 minutes for landing page
@@ -127,7 +137,44 @@ function VendorSection({
           <div className="vendor-section-controls">
             <button 
               className="vendor-section-show-all"
-              onClick={() => setShowModal(true)}
+              onClick={() => {
+                // Build browse URL based on section type
+                let browseUrl = '/browse/';
+                
+                // Determine the discovery type from title
+                const titleLower = title.toLowerCase();
+                let discoveryType = sectionType;
+                
+                if (!discoveryType) {
+                  if (titleLower.includes('trending')) discoveryType = 'trending';
+                  else if (titleLower.includes('top rated') || titleLower.includes('rated')) discoveryType = 'top-rated';
+                  else if (titleLower.includes('responsive')) discoveryType = 'most-responsive';
+                  else if (titleLower.includes('reviewed') || titleLower.includes('review')) discoveryType = 'recently-reviewed';
+                  else if (titleLower.includes('near') || titleLower.includes('nearby')) discoveryType = 'nearby';
+                  else if (titleLower.includes('premium')) discoveryType = 'premium';
+                  else if (titleLower.includes('booked') || titleLower.includes('popular')) discoveryType = 'popular';
+                  else if (titleLower.includes('new') || titleLower.includes('added')) discoveryType = 'new';
+                  else if (titleLower.includes('recommended')) discoveryType = 'recommended';
+                }
+                
+                // Build URL: /browse/city/category or /browse/discovery-type
+                if (cityFilter) {
+                  browseUrl += encodeURIComponent(cityFilter);
+                  if (categoryFilter && categoryFilter !== 'all') {
+                    browseUrl += '/' + categoryFilter;
+                  }
+                } else if (categoryFilter && categoryFilter !== 'all') {
+                  browseUrl += categoryFilter;
+                } else if (discoveryType) {
+                  browseUrl += discoveryType;
+                } else {
+                  // Fallback: show modal for unknown types
+                  setShowModal(true);
+                  return;
+                }
+                
+                navigate(browseUrl);
+              }}
             >
               Show all ({vendors.length})
             </button>
@@ -135,7 +182,7 @@ function VendorSection({
               <button 
                 className="vendor-section-nav-btn vendor-section-nav-btn-left"
                 onClick={() => scroll('left')}
-                disabled={!canScrollLeft}
+                disabled={!computedCanScrollLeft}
                 aria-label="Scroll left"
               >
                 <i className="fas fa-chevron-left"></i>
@@ -143,7 +190,7 @@ function VendorSection({
               <button 
                 className="vendor-section-nav-btn vendor-section-nav-btn-right"
                 onClick={() => scroll('right')}
-                disabled={!canScrollRight}
+                disabled={!computedCanScrollRight}
                 aria-label="Scroll right"
               >
                 <i className="fas fa-chevron-right"></i>

@@ -66,12 +66,24 @@ function VendorGallery({ images }) {
         <div 
           className="gallery-item large-image" 
           onClick={() => validImages.length > 0 ? openLightbox(0) : null}
-          style={{ cursor: validImages.length > 0 ? 'pointer' : 'default' }}
+          style={{ 
+            cursor: validImages.length > 0 ? 'pointer' : 'default',
+            borderRadius: '16px 0 0 16px',
+            overflow: 'hidden'
+          }}
         >
           <img
             src={getImageUrl(displayImages[0])}
             alt="Main"
-            style={{ objectFit: 'cover' }}
+            style={{ 
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              borderRadius: '16px 0 0 16px'
+            }}
             onError={(e) => {
               e.target.src = 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png';
             }}
@@ -80,14 +92,24 @@ function VendorGallery({ images }) {
 
         {/* Thumbnails Grid (Right Side) - 2x2 Grid */}
         <div className="thumbnails-container">
-          {[1, 2, 3, 4].map((index) => (
+          {[1, 2, 3, 4].map((index) => {
+            // Border radius only on outer corners
+            const getBorderRadius = (idx) => {
+              if (idx === 2) return '0 16px 0 0'; // top-right
+              if (idx === 4) return '0 0 16px 0'; // bottom-right
+              return '0';
+            };
+            const radius = getBorderRadius(index);
+            return (
             <div
               key={index}
               className="gallery-item"
               onClick={() => validImages.length > index ? openLightbox(index) : null}
               style={{ 
                 cursor: validImages.length > index ? 'pointer' : 'default',
-                position: 'relative'
+                position: 'relative',
+                borderRadius: radius,
+                overflow: 'hidden'
               }}
             >
               {displayImages[index] ? (
@@ -95,7 +117,15 @@ function VendorGallery({ images }) {
                   <img
                     src={getImageUrl(displayImages[index])}
                     alt={`Image ${index + 1}`}
-                    style={{ objectFit: 'cover' }}
+                    style={{ 
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      borderRadius: radius
+                    }}
                     onError={(e) => {
                       e.target.src = 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png';
                     }}
@@ -120,7 +150,8 @@ function VendorGallery({ images }) {
                 </div>
               )}
             </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* Show All Photos Button */}

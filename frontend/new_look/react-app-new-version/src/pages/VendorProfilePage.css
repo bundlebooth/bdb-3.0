@@ -146,8 +146,8 @@
     gap: 8px;
     width: 100%;
     height: 428px; /* 450 * 0.95 */
-    border-radius: 11px; /* 12 * 0.95 */
-    overflow: hidden;
+    border-radius: 0;
+    overflow: visible;
     margin-bottom: 0;
     background-color: transparent;
     position: relative;
@@ -157,8 +157,18 @@
 .image-gallery > .gallery-item.large-image {
     flex: 0 0 50%;
     height: 100%;
-    border-radius: 12px 0 0 12px;
+    border-radius: 16px 0 0 16px !important;
     position: relative;
+    overflow: hidden;
+}
+
+.image-gallery > .gallery-item.large-image img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }
 
 /* Right side: 2x2 grid for thumbnails - perfectly square */
@@ -176,6 +186,7 @@
     height: 100%;
     position: relative;
     overflow: hidden;
+    border-radius: 0;
 }
 
 .thumbnails-container > .gallery-item img {
@@ -187,13 +198,21 @@
     object-fit: cover;
 }
 
-/* Border radius for corner images */
+/* Border radius ONLY for outer corner images */
+/* Top-right image - rounded on top-right corner only */
 .thumbnails-container > .gallery-item:nth-child(2) {
-    border-radius: 0 12px 0 0;
+    border-radius: 0 16px 0 0 !important;
 }
 
+/* Bottom-right image - rounded on bottom-right corner only */
 .thumbnails-container > .gallery-item:nth-child(4) {
-    border-radius: 0 0 12px 0;
+    border-radius: 0 0 16px 0 !important;
+}
+
+/* Top-left and bottom-left thumbnails have no rounded corners */
+.thumbnails-container > .gallery-item:nth-child(1),
+.thumbnails-container > .gallery-item:nth-child(3) {
+    border-radius: 0 !important;
 }
 
 .gallery-item {
@@ -201,9 +220,6 @@
     overflow: hidden;
     cursor: pointer;
     background-color: #f3f4f6;
-    display: flex;
-    align-items: center;
-    justify-content: center;
     color: var(--text-light);
     border: none !important;
     outline: none !important;

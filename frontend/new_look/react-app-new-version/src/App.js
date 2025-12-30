@@ -14,6 +14,7 @@ import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import HelpCentrePage from './pages/HelpCentrePage';
 import ForumPage from './pages/ForumPage';
 import ForumPostPage from './pages/ForumPostPage';
+import BrowsePage from './pages/BrowsePage';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { useHeartbeat } from './hooks/useOnlineStatus';
 import './styles/MapControls.css';
@@ -89,6 +90,9 @@ function App() {
           <Route path="/forum" element={<ForumPage />} />
           <Route path="/forum/:slug" element={<ForumPage />} />
           <Route path="/forum/post/:slug" element={<ForumPostPage />} />
+          {/* Browse page routes for category/city/discovery filtering */}
+          <Route path="/browse/:filter" element={<BrowsePage />} />
+          <Route path="/browse/:filter/:subfilter" element={<BrowsePage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>
