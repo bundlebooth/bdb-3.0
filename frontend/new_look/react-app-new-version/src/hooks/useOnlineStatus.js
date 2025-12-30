@@ -10,16 +10,22 @@ import { API_BASE_URL } from '../config';
  * @returns {object} - { statuses, isLoading, error, refresh }
  */
 export function useVendorOnlineStatus(vendorProfileIds, options = {}) {
-  const { enabled = true, refreshInterval = 180000 } = options; // Default: 3 minutes
+  const { enabled = true, refreshInterval = 300000 } = options; // Default: 5 minutes (reduced frequency)
   const [statuses, setStatuses] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [retryCount, setRetryCount] = useState(0);
 
-  const fetchStatus = useCallback(async () => {
+  const fetchStatus = useCallback(async (signal) => {
     if (!enabled || !vendorProfileIds) return;
 
     const ids = Array.isArray(vendorProfileIds) ? vendorProfileIds : [vendorProfileIds];
     if (ids.length === 0) return;
+
+    // Skip if we've had too many consecutive failures
+    if (retryCount >= 3) {
+      return;
+    }
 
     setIsLoading(true);
     setError(null);
@@ -27,11 +33,12 @@ export function useVendorOnlineStatus(vendorProfileIds, options = {}) {
     try {
       if (ids.length === 1) {
         // Single vendor
-        const response = await fetch(`${API_BASE_URL}/vendors/online-status/${ids[0]}`);
+        const response = await fetch(`${API_BASE_URL}/vendors/online-status/${ids[0]}`, { signal });
         if (response.ok) {
           const data = await response.json();
           if (data.success) {
             setStatuses({ [ids[0]]: data });
+            setRetryCount(0); // Reset on success
           }
         }
       } else {
@@ -39,33 +46,52 @@ export function useVendorOnlineStatus(vendorProfileIds, options = {}) {
         const response = await fetch(`${API_BASE_URL}/vendors/online-status/batch`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ vendorProfileIds: ids })
+          body: JSON.stringify({ vendorProfileIds: ids }),
+          signal
         });
         if (response.ok) {
           const data = await response.json();
           if (data.success) {
             setStatuses(data.statuses);
+            setRetryCount(0); // Reset on success
           }
         }
       }
     } catch (err) {
-      console.error('Failed to fetch vendor online status:', err);
-      setError(err);
+      // Don't log aborted requests
+      if (err.name !== 'AbortError') {
+        setRetryCount(prev => prev + 1);
+        setError(err);
+      }
     } finally {
       setIsLoading(false);
     }
-  }, [vendorProfileIds, enabled]);
+  }, [vendorProfileIds, enabled, retryCount]);
 
   useEffect(() => {
-    fetchStatus();
+    const controller = new AbortController();
+    fetchStatus(controller.signal);
 
+    let interval;
     if (enabled && refreshInterval > 0) {
-      const interval = setInterval(fetchStatus, refreshInterval);
-      return () => clearInterval(interval);
+      interval = setInterval(() => fetchStatus(controller.signal), refreshInterval);
     }
+    
+    return () => {
+      controller.abort();
+      if (interval) clearInterval(interval);
+    };
   }, [fetchStatus, enabled, refreshInterval]);
 
-  return { statuses, isLoading, error, refresh: fetchStatus };
+  // Reset retry count after 5 minutes
+  useEffect(() => {
+    if (retryCount >= 3) {
+      const timeout = setTimeout(() => setRetryCount(0), 300000);
+      return () => clearTimeout(timeout);
+    }
+  }, [retryCount]);
+
+  return { statuses, isLoading, error, refresh: () => fetchStatus() };
 }
 
 /**
@@ -75,16 +101,22 @@ export function useVendorOnlineStatus(vendorProfileIds, options = {}) {
  * @returns {object} - { statuses, isLoading, error, refresh }
  */
 export function useUserOnlineStatus(userIds, options = {}) {
-  const { enabled = true, refreshInterval = 180000 } = options; // Default: 3 minutes
+  const { enabled = true, refreshInterval = 300000 } = options; // Default: 5 minutes (reduced frequency)
   const [statuses, setStatuses] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [retryCount, setRetryCount] = useState(0);
 
-  const fetchStatus = useCallback(async () => {
+  const fetchStatus = useCallback(async (signal) => {
     if (!enabled || !userIds) return;
 
     const ids = Array.isArray(userIds) ? userIds : [userIds];
     if (ids.length === 0) return;
+
+    // Skip if we've had too many consecutive failures
+    if (retryCount >= 3) {
+      return;
+    }
 
     setIsLoading(true);
     setError(null);
@@ -92,11 +124,12 @@ export function useUserOnlineStatus(userIds, options = {}) {
     try {
       if (ids.length === 1) {
         // Single user
-        const response = await fetch(`${API_BASE_URL}/users/online-status/${ids[0]}`);
+        const response = await fetch(`${API_BASE_URL}/users/online-status/${ids[0]}`, { signal });
         if (response.ok) {
           const data = await response.json();
           if (data.success) {
             setStatuses({ [ids[0]]: data });
+            setRetryCount(0);
           }
         }
       } else {
@@ -104,33 +137,52 @@ export function useUserOnlineStatus(userIds, options = {}) {
         const response = await fetch(`${API_BASE_URL}/users/online-status/batch`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userIds: ids })
+          body: JSON.stringify({ userIds: ids }),
+          signal
         });
         if (response.ok) {
           const data = await response.json();
           if (data.success) {
             setStatuses(data.statuses);
+            setRetryCount(0);
           }
         }
       }
     } catch (err) {
-      console.error('Failed to fetch user online status:', err);
-      setError(err);
+      // Don't log aborted requests
+      if (err.name !== 'AbortError') {
+        setRetryCount(prev => prev + 1);
+        setError(err);
+      }
     } finally {
       setIsLoading(false);
     }
-  }, [userIds, enabled]);
+  }, [userIds, enabled, retryCount]);
 
   useEffect(() => {
-    fetchStatus();
+    const controller = new AbortController();
+    fetchStatus(controller.signal);
 
+    let interval;
     if (enabled && refreshInterval > 0) {
-      const interval = setInterval(fetchStatus, refreshInterval);
-      return () => clearInterval(interval);
+      interval = setInterval(() => fetchStatus(controller.signal), refreshInterval);
     }
+    
+    return () => {
+      controller.abort();
+      if (interval) clearInterval(interval);
+    };
   }, [fetchStatus, enabled, refreshInterval]);
 
-  return { statuses, isLoading, error, refresh: fetchStatus };
+  // Reset retry count after 5 minutes
+  useEffect(() => {
+    if (retryCount >= 3) {
+      const timeout = setTimeout(() => setRetryCount(0), 300000);
+      return () => clearTimeout(timeout);
+    }
+  }, [retryCount]);
+
+  return { statuses, isLoading, error, refresh: () => fetchStatus() };
 }
 
 /**
