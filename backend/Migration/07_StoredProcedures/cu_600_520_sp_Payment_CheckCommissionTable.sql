@@ -13,6 +13,6 @@ AS
 BEGIN
     SET NOCOUNT ON;
     
-    SELECT COUNT(*) as cnt FROM sys.tables WHERE name = 'CommissionSettings';
+    SELECT COUNT(*) as cnt FROM sys.tables WHERE name = 'CommissionSettings' AND SCHEMA_NAME(schema_id) = 'admin';
 END
 GO

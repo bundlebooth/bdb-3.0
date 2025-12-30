@@ -19,7 +19,7 @@ AS
 BEGIN
     SET NOCOUNT ON;
     
-    INSERT INTO CommissionSettings (SettingKey, SettingValue, Description, SettingType, MinValue, MaxValue, IsActive)
+    INSERT INTO admin.CommissionSettings (SettingKey, SettingValue, Description, SettingType, MinValue, MaxValue, IsActive)
     OUTPUT INSERTED.*
     VALUES (@SettingKey, @SettingValue, @Description, @SettingType, @MinValue, @MaxValue, 1);
 END

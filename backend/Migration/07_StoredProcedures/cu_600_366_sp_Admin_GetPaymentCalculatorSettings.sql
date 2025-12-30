@@ -13,9 +13,9 @@ AS
 BEGIN
     SET NOCOUNT ON;
     
-    IF EXISTS (SELECT 1 FROM sys.tables WHERE name = 'CommissionSettings')
+    IF EXISTS (SELECT 1 FROM sys.tables WHERE name = 'CommissionSettings' AND SCHEMA_NAME(schema_id) = 'admin')
     BEGIN
-        SELECT SettingKey, SettingValue FROM CommissionSettings WHERE IsActive = 1;
+        SELECT SettingKey, SettingValue FROM admin.CommissionSettings WHERE IsActive = 1;
     END
     ELSE
     BEGIN

@@ -13,9 +13,9 @@ AS
 BEGIN
     SET NOCOUNT ON;
     
-    IF OBJECT_ID('dbo.CommissionSettings', 'U') IS NOT NULL
+    IF OBJECT_ID('admin.CommissionSettings', 'U') IS NOT NULL
     BEGIN
-        SELECT SettingKey, SettingValue FROM CommissionSettings WHERE IsActive = 1;
+        SELECT SettingKey, SettingValue FROM admin.CommissionSettings WHERE IsActive = 1;
     END
 END
 GO

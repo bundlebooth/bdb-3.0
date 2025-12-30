@@ -13,6 +13,6 @@ AS
 BEGIN
     SET NOCOUNT ON;
     
-    SELECT SettingKey, SettingValue FROM CommissionSettings WHERE IsActive = 1;
+    SELECT SettingKey, SettingValue FROM admin.CommissionSettings WHERE IsActive = 1;
 END
 GO

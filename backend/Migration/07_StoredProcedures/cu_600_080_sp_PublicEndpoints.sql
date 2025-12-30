@@ -163,10 +163,10 @@ AS
 BEGIN
     SET NOCOUNT ON;
     
-    IF EXISTS (SELECT 1 FROM sys.tables WHERE name = 'CommissionSettings')
+    IF EXISTS (SELECT 1 FROM sys.tables WHERE name = 'CommissionSettings' AND SCHEMA_NAME(schema_id) = 'admin')
     BEGIN
         SELECT SettingKey, SettingValue, Description
-        FROM CommissionSettings
+        FROM admin.CommissionSettings
         WHERE IsActive = 1;
     END
 END

@@ -14,7 +14,7 @@ BEGIN
     SET NOCOUNT ON;
     
     SELECT SettingKey, SettingValue 
-    FROM CommissionSettings 
+    FROM admin.CommissionSettings 
     WHERE IsActive = 1;
 END
 GO

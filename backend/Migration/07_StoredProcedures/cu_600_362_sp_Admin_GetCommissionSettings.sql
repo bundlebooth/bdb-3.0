@@ -13,10 +13,10 @@ AS
 BEGIN
     SET NOCOUNT ON;
     
-    IF EXISTS (SELECT 1 FROM sys.tables WHERE name = 'CommissionSettings')
+    IF EXISTS (SELECT 1 FROM sys.tables WHERE name = 'CommissionSettings' AND SCHEMA_NAME(schema_id) = 'admin')
     BEGIN
         SELECT SettingID, SettingKey, SettingValue, Description, SettingType, MinValue, MaxValue, IsActive, CreatedAt, UpdatedAt
-        FROM CommissionSettings
+        FROM admin.CommissionSettings
         ORDER BY SettingKey;
     END
     ELSE

@@ -16,7 +16,7 @@ AS
 BEGIN
     SET NOCOUNT ON;
     
-    UPDATE CommissionSettings 
+    UPDATE admin.CommissionSettings 
     SET SettingValue = @SettingValue, Description = ISNULL(@Description, Description), UpdatedAt = GETUTCDATE()
     WHERE SettingKey = @SettingKey;
     
