@@ -217,28 +217,31 @@ async function upsertInvoiceForBooking(pool, bookingId, opts = {}) {
       const ins = await r.execute('invoices.sp_Create');
       invoiceId = ins.recordset[0].InvoiceID;
     } else {
-      // Update
-      r.input('InvoiceID', sql.Int, invoiceId);
-      r.input('IssueDate', sql.DateTime, issueDate);
-      r.input('Status', sql.NVarChar(20), invStatus);
-      r.input('Subtotal', sql.Decimal(10,2), subtotal);
-      r.input('VendorExpensesTotal', sql.Decimal(10,2), expensesTotal);
-      r.input('PlatformFee', sql.Decimal(10,2), platformFee);
-      r.input('StripeFee', sql.Decimal(10,2), stripeFee);
-      r.input('TaxAmount', sql.Decimal(10,2), taxAmount);
-      r.input('TotalAmount', sql.Decimal(10,2), totalDue);
-      r.input('FeesIncludedInTotal', sql.Bit, 1);
-      r.input('SnapshotJSON', sql.NVarChar(sql.MAX), JSON.stringify({
+      // Update - use new request to avoid extra parameters from previous bindings
+      const updateReq = new sql.Request(tx);
+      updateReq.input('InvoiceID', sql.Int, invoiceId);
+      updateReq.input('IssueDate', sql.DateTime, issueDate);
+      updateReq.input('Status', sql.NVarChar(20), invStatus);
+      updateReq.input('Subtotal', sql.Decimal(10,2), subtotal);
+      updateReq.input('VendorExpensesTotal', sql.Decimal(10,2), expensesTotal);
+      updateReq.input('PlatformFee', sql.Decimal(10,2), platformFee);
+      updateReq.input('StripeFee', sql.Decimal(10,2), stripeFee);
+      updateReq.input('TaxAmount', sql.Decimal(10,2), taxAmount);
+      updateReq.input('TotalAmount', sql.Decimal(10,2), totalDue);
+      updateReq.input('FeesIncludedInTotal', sql.Bit, 1);
+      updateReq.input('SnapshotJSON', sql.NVarChar(sql.MAX), JSON.stringify({
         at: nowIso(),
         booking: snap.booking,
         services: snap.services,
         expenses: snap.expenses,
         transactions: snap.transactions
       }));
-      await r.execute('invoices.sp_Update');
+      await updateReq.execute('invoices.sp_Update');
       // Wipe items if regenerating
       if (forceRegenerate) {
-        await r.execute('invoices.sp_DeleteItems');
+        const deleteReq = new sql.Request(tx);
+        deleteReq.input('InvoiceID', sql.Int, invoiceId);
+        await deleteReq.execute('invoices.sp_DeleteItems');
       }
     }
 

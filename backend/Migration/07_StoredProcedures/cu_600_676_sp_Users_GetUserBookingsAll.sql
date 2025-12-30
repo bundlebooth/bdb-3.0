@@ -71,6 +71,7 @@ BEGIN
     UNION ALL
 
     -- Get approved requests from BookingRequests table (awaiting payment)
+    -- Exclude requests that already have a corresponding booking created
     SELECT 
         NULL AS BookingID,
         br.RequestID,
@@ -93,7 +94,7 @@ BEGIN
         br.SpecialRequests,
         NULL AS CancellationDate,
         NULL AS RefundAmount,
-        NULL AS StripePaymentIntentID,
+        br.PaymentIntentID AS StripePaymentIntentID,
         br.CreatedAt,
         NULL AS UpdatedAt,
         br.EventLocation,
@@ -115,6 +116,13 @@ BEGIN
     INNER JOIN vendors.VendorProfiles vp ON br.VendorProfileID = vp.VendorProfileID
     WHERE br.UserID = @UserID
       AND br.Status = 'approved'
+      AND NOT EXISTS (
+          SELECT 1 FROM bookings.Bookings b 
+          WHERE b.UserID = br.UserID 
+            AND b.VendorProfileID = br.VendorProfileID 
+            AND b.EventDate = br.EventDate
+            AND b.Status = 'confirmed'
+      )
 
     ORDER BY EventDate DESC;
 END;

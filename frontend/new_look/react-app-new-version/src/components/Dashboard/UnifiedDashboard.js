@@ -31,6 +31,7 @@ function UnifiedDashboard({ activeSection, onSectionChange, onLogout, mobileMenu
   const [vendorData, setVendorData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedBookingForPayment, setSelectedBookingForPayment] = useState(null);
+  const [bookingsRefreshKey, setBookingsRefreshKey] = useState(0);
 
   // Load client dashboard data
   const loadClientData = useCallback(async () => {
@@ -167,6 +168,7 @@ function UnifiedDashboard({ activeSection, onSectionChange, onLogout, mobileMenu
   const handlePaymentSuccess = (paymentIntent) => {
     showBanner('Payment successful! Your booking is now confirmed.', 'success');
     setSelectedBookingForPayment(null);
+    setBookingsRefreshKey(prev => prev + 1); // Force bookings to refresh
     onSectionChange('bookings');
   };
 
@@ -186,7 +188,7 @@ function UnifiedDashboard({ activeSection, onSectionChange, onLogout, mobileMenu
       case 'dashboard':
         return <ClientDashboardSection data={clientData} loading={loading && !clientData} onSectionChange={onSectionChange} />;
       case 'bookings':
-        return <ClientBookingsSection onPayNow={handlePayNow} />;
+        return <ClientBookingsSection key={bookingsRefreshKey} onPayNow={handlePayNow} />;
       case 'invoices':
         return <ClientInvoicesSection />;
       case 'favorites':
