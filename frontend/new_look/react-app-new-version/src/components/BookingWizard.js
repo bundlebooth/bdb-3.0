@@ -188,9 +188,19 @@ function BookingWizard({ vendorId, onClose, onSuccess }) {
   return (
     <div className="booking-wizard-modal" onClick={onClose}>
       <div className="booking-wizard-content" onClick={(e) => e.stopPropagation()}>
-        <button className="modal-close-btn" onClick={onClose}>
-          <i className="fas fa-times"></i>
-        </button>
+        <button className="modal-close-btn" onClick={onClose} style={{
+          background: '#f3f4f6',
+          border: 'none',
+          width: '36px',
+          height: '36px',
+          borderRadius: '50%',
+          fontSize: '20px',
+          color: '#6b7280',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}>×</button>
 
         <div className="booking-container">
           {/* Left Side - Form */}

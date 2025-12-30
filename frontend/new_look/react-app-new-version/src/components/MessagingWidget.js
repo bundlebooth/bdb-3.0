@@ -7,7 +7,6 @@ import EmojiPicker from 'emoji-picker-react';
 function MessagingWidget() {
   const { currentUser } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
-  const [isMobileFullscreen, setIsMobileFullscreen] = useState(false);
   const [mainView, setMainView] = useState('home'); // 'home', 'messages', 'help'
   const [view, setView] = useState('conversations'); // 'conversations' or 'chat'
   const [messageRole, setMessageRole] = useState('client'); // 'client' or 'vendor'
@@ -204,10 +203,6 @@ function MessagingWidget() {
   // Toggle widget
   const toggleWidget = useCallback(() => {
     setIsOpen(prev => !prev);
-    // Reset mobile fullscreen when closing
-    if (isOpen) {
-      setIsMobileFullscreen(false);
-    }
     if (!isOpen) {
       setMainView('home'); // Always start with home view
       loadConversations();
@@ -350,23 +345,22 @@ function MessagingWidget() {
   // Listen for openMessagingWidget events from other components
   useEffect(() => {
     const handleOpenWidget = async (event) => {
-      const { conversationId, vendorProfileId, vendorName, mobileFullscreen } = event.detail || {};
+      const { conversationId, vendorProfileId, vendorName, showHome } = event.detail || {};
       
-      // Enable mobile fullscreen if requested
-      if (mobileFullscreen) {
-        setIsMobileFullscreen(true);
+      // Open the widget
+      setIsOpen(true);
+      
+      // If showHome is true or no specific conversation requested, show home view
+      if (showHome || (!conversationId && !vendorProfileId)) {
+        setMainView('home');
+        return;
       }
       
-      // Open the widget and set to messages view
-      setIsOpen(true);
       setMainView('messages');
-      setView('conversations'); // Show conversations list
-      
-      // Always load conversations when opening
-      await loadConversations();
       
       // If we have a conversationId, open that conversation
       if (conversationId) {
+        await loadConversations();
         const conv = conversations.find(c => c.id === conversationId || c.ConversationID === conversationId);
         if (conv) {
           openConversation(conv);
@@ -375,7 +369,8 @@ function MessagingWidget() {
           openConversation({ id: conversationId, OtherPartyName: vendorName || 'Vendor' });
         }
       } else if (vendorProfileId) {
-        // Find conversation with this vendor
+        // Load conversations and find one with this vendor
+        await loadConversations();
         const existingConv = conversations.find(c => c.VendorProfileID === vendorProfileId);
         if (existingConv) {
           openConversation(existingConv);
@@ -383,8 +378,16 @@ function MessagingWidget() {
       }
     };
     
+    const handleCloseWidget = () => {
+      setIsOpen(false);
+    };
+    
     window.addEventListener('openMessagingWidget', handleOpenWidget);
-    return () => window.removeEventListener('openMessagingWidget', handleOpenWidget);
+    window.addEventListener('closeMessagingWidget', handleCloseWidget);
+    return () => {
+      window.removeEventListener('openMessagingWidget', handleOpenWidget);
+      window.removeEventListener('closeMessagingWidget', handleCloseWidget);
+    };
   }, [conversations, loadConversations, openConversation]);
 
   // Handle Enter key to send message
@@ -443,7 +446,7 @@ function MessagingWidget() {
 
   // Show widget for all users - non-signed-in users can still access Help/FAQs
   return (
-    <div className="messaging-widget" style={{
+    <div className={`messaging-widget ${isOpen ? 'widget-open' : ''}`} style={{
       position: 'fixed',
       bottom: '24px',
       right: '24px',
@@ -502,22 +505,19 @@ function MessagingWidget() {
 
       {/* Widget Container - Improved Positioning */}
       {isOpen && (
-        <div className={`widget-container ${isMobileFullscreen ? 'mobile-fullscreen' : ''}`} style={{ 
+        <div className="widget-container" style={{ 
           display: 'flex',
           flexDirection: 'column',
-          width: isMobileFullscreen ? '100vw' : '380px',
-          height: isMobileFullscreen ? '100vh' : '600px',
-          borderRadius: isMobileFullscreen ? '0' : '16px',
-          boxShadow: isMobileFullscreen ? 'none' : '0 12px 40px rgba(0,0,0,0.3)',
+          width: '380px',
+          height: '600px',
+          borderRadius: '16px',
+          boxShadow: '0 12px 40px rgba(0,0,0,0.3)',
           overflow: 'hidden',
           background: 'white',
-          position: isMobileFullscreen ? 'fixed' : 'absolute',
-          top: isMobileFullscreen ? '0' : 'auto',
-          left: isMobileFullscreen ? '0' : 'auto',
-          bottom: isMobileFullscreen ? '0' : '80px',
-          right: isMobileFullscreen ? '0' : '0',
-          border: isMobileFullscreen ? 'none' : '1px solid rgba(0,0,0,0.1)',
-          zIndex: isMobileFullscreen ? 1000001 : 'auto'
+          position: 'absolute',
+          bottom: '80px',
+          right: '0',
+          border: '1px solid rgba(0,0,0,0.1)'
         }}>
           <div className="widget-header" style={{
             background: 'white',
@@ -582,12 +582,12 @@ function MessagingWidget() {
                 )}
               </div>
             </div>
-            <button className="widget-close" onClick={toggleWidget} style={{
-              background: '#f0f0f0',
+            <button className="widget-close modal-close-btn" onClick={toggleWidget} style={{
+              background: '#f3f4f6',
               border: 'none',
-              color: '#222',
-              width: '32px',
-              height: '32px',
+              color: '#6b7280',
+              width: '36px',
+              height: '36px',
               borderRadius: '50%',
               cursor: 'pointer',
               fontSize: '20px',
@@ -595,7 +595,7 @@ function MessagingWidget() {
               alignItems: 'center',
               justifyContent: 'center',
               transition: 'background 0.2s'
-            }}>&times;</button>
+            }}>×</button>
           </div>
 
           {/* Home/Help Center View */}
@@ -726,37 +726,7 @@ function MessagingWidget() {
 
           {/* Messages View */}
           {mainView === 'messages' && view === 'conversations' && (
-            <div className="widget-view" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-              {/* Show login prompt if not logged in */}
-              {!currentUser ? (
-                <div style={{ padding: '3rem 2rem', textAlign: 'center', color: '#666', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
-                  <svg width="64" height="64" viewBox="0 0 24 24" fill="none" style={{ margin: '0 auto 1rem', opacity: 0.3 }}>
-                    <path d="M12 12C14.21 12 16 10.21 16 8C16 5.79 14.21 4 12 4C9.79 4 8 5.79 8 8C8 10.21 9.79 12 12 12ZM12 14C9.33 14 4 15.34 4 18V20H20V18C20 15.34 14.67 14 12 14Z" fill="#ddd"/>
-                  </svg>
-                  <p style={{ fontSize: '16px', fontWeight: 500, marginBottom: '8px' }}>Sign in to view messages</p>
-                  <p style={{ fontSize: '14px', opacity: 0.7, marginBottom: '16px' }}>Log in to chat with vendors</p>
-                  <button
-                    onClick={() => {
-                      toggleWidget();
-                      // Trigger login modal
-                      window.dispatchEvent(new CustomEvent('openProfileModal'));
-                    }}
-                    style={{
-                      padding: '12px 24px',
-                      background: '#5e72e4',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '8px',
-                      fontSize: '14px',
-                      fontWeight: 600,
-                      cursor: 'pointer'
-                    }}
-                  >
-                    Sign In
-                  </button>
-                </div>
-              ) : (
-              <>
+            <div className="widget-view">
               {/* Role Tabs - Only show if user is a vendor */}
               {currentUser?.isVendor && (
                 <div style={{ 
@@ -929,8 +899,6 @@ function MessagingWidget() {
                   ))
                 )}
               </div>
-              </>
-              )}
             </div>
           )}
 

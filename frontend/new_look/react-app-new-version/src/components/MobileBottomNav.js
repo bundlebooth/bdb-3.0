@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
-function MobileBottomNav({ onOpenDashboard, onOpenProfile, onOpenMessages, onToggleMap, mapActive }) {
+function MobileBottomNav({ onOpenDashboard, onOpenProfile, onOpenMessages, onOpenMap, onCloseDashboard }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { currentUser } = useAuth();
@@ -10,9 +10,12 @@ function MobileBottomNav({ onOpenDashboard, onOpenProfile, onOpenMessages, onTog
   const [isVisible, setIsVisible] = useState(true);
   const lastScrollY = useRef(0);
   const scrollTimeout = useRef(null);
-  
-  // Map button should only show on explore page where map is available
-  const showMapButton = location.pathname === '/' || location.pathname === '/explore';
+
+  // Pages where bottom nav should be visible
+  const allowedPaths = ['/', '/explore', '/forum'];
+  const isAllowedPage = allowedPaths.some(path => 
+    location.pathname === path || location.pathname.startsWith('/forum')
+  );
 
   // Handle scroll to hide/show bottom nav
   useEffect(() => {
@@ -59,40 +62,41 @@ function MobileBottomNav({ onOpenDashboard, onOpenProfile, onOpenMessages, onTog
     e.preventDefault();
     e.stopPropagation();
     setActiveTab(null);
+    // Close dashboard if open
+    if (onCloseDashboard) onCloseDashboard();
+    // Close messaging widget if open
+    window.dispatchEvent(new CustomEvent('closeMessagingWidget'));
     navigate('/');
+    // Scroll to top
+    window.scrollTo(0, 0);
   };
 
   const handleForumClick = (e) => {
     e.preventDefault();
     e.stopPropagation();
     setActiveTab(null);
+    // Close dashboard if open
+    if (onCloseDashboard) onCloseDashboard();
+    // Close messaging widget if open
+    window.dispatchEvent(new CustomEvent('closeMessagingWidget'));
     navigate('/forum');
+    // Scroll to top
+    window.scrollTo(0, 0);
   };
 
   const handleMessagesClick = (e) => {
     e.preventDefault();
     e.stopPropagation();
+    // Close dashboard if open
+    if (onCloseDashboard) onCloseDashboard();
     if (currentUser) {
       setActiveTab('messages');
-      // Open MessagingWidget in fullscreen mode on mobile
-      window.dispatchEvent(new CustomEvent('openMessagingWidget', { 
-        detail: { mobileFullscreen: true } 
-      }));
-    } else {
-      if (onOpenProfile) {
-        onOpenProfile();
-      }
-    }
-  };
-
-  const handleAccountClick = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (currentUser) {
-      setActiveTab('account');
-      // Open dashboard
-      if (onOpenDashboard) {
-        onOpenDashboard('dashboard');
+      // Open messaging widget instead of dashboard
+      if (onOpenMessages) {
+        onOpenMessages();
+      } else {
+        // Fallback: dispatch event to open messaging widget
+        window.dispatchEvent(new CustomEvent('openMessagingWidget', { detail: { showHome: true } }));
       }
     } else {
       if (onOpenProfile) {
@@ -104,10 +108,40 @@ function MobileBottomNav({ onOpenDashboard, onOpenProfile, onOpenMessages, onTog
   const handleMapClick = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    if (onToggleMap) {
-      onToggleMap();
+    setActiveTab('map');
+    // Close dashboard if open
+    if (onCloseDashboard) onCloseDashboard();
+    // Close messaging widget if open
+    window.dispatchEvent(new CustomEvent('closeMessagingWidget'));
+    if (onOpenMap) {
+      onOpenMap();
     }
   };
+
+  const handleAccountClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Close messaging widget if open
+    window.dispatchEvent(new CustomEvent('closeMessagingWidget'));
+    if (currentUser) {
+      setActiveTab('account');
+      // Open dashboard fullscreen
+      if (onOpenDashboard) {
+        onOpenDashboard('dashboard');
+      }
+    } else {
+      // Close dashboard if somehow open
+      if (onCloseDashboard) onCloseDashboard();
+      if (onOpenProfile) {
+        onOpenProfile();
+      }
+    }
+  };
+
+  // Don't render if not on allowed page
+  if (!isAllowedPage) {
+    return null;
+  }
 
   return (
     <nav className={`mobile-bottom-nav ${isVisible ? 'visible' : 'hidden'}`} onClick={(e) => e.stopPropagation()}>
@@ -120,17 +154,15 @@ function MobileBottomNav({ onOpenDashboard, onOpenProfile, onOpenMessages, onTog
         <span>Explore</span>
       </button>
       
-      {/* Map button - only on explore page where map feature exists */}
-      {showMapButton && (
-        <button 
-          type="button"
-          className={`mobile-nav-item ${mapActive ? 'active' : ''}`}
-          onClick={handleMapClick}
-        >
-          <i className="fas fa-map"></i>
-          <span>Map</span>
-        </button>
-      )}
+      {/* Map button - always visible on all allowed pages */}
+      <button 
+        type="button"
+        className={`mobile-nav-item ${activeTab === 'map' ? 'active' : ''}`}
+        onClick={handleMapClick}
+      >
+        <i className="fas fa-map"></i>
+        <span>Map</span>
+      </button>
       
       <button 
         type="button"

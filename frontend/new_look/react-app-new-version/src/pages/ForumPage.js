@@ -16,6 +16,11 @@ function ForumPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { currentUser } = useAuth();
   
+  // Scroll to top when component mounts
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+  
   const [categories, setCategories] = useState([]);
   const [posts, setPosts] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
@@ -31,6 +36,7 @@ function ForumPage() {
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [dashboardModalOpen, setDashboardModalOpen] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const emojiPickerRef = useRef(null);
 
   // Handle emoji selection for post content
@@ -224,20 +230,95 @@ function ForumPage() {
       <ProfileModal isOpen={profileModalOpen} onClose={() => setProfileModalOpen(false)} />
       <DashboardModal isOpen={dashboardModalOpen} onClose={() => setDashboardModalOpen(false)} initialSection={dashboardSection} />
       
+      {/* Mobile Header Bar with Hamburger - consistent with Dashboard */}
+      <div 
+        className="forum-mobile-header"
+        style={{
+          display: 'none',
+          position: 'sticky',
+          top: '60px',
+          left: 0,
+          right: 0,
+          background: 'white',
+          borderBottom: '1px solid #e5e7eb',
+          padding: '12px 16px',
+          alignItems: 'center',
+          gap: '12px',
+          zIndex: 100
+        }}
+      >
+        <button
+          className="forum-mobile-menu-btn"
+          onClick={() => setMobileSidebarOpen(true)}
+          style={{
+            width: '36px',
+            height: '36px',
+            borderRadius: '8px',
+            border: 'none',
+            background: 'transparent',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            padding: 0
+          }}
+        >
+          <i className="fas fa-bars" style={{ fontSize: '18px', color: '#374151' }}></i>
+        </button>
+        <span style={{ fontSize: '18px', fontWeight: '600', color: '#1f2937' }}>Forum Categories</span>
+      </div>
+
+      {/* Mobile Sidebar Overlay */}
+      {mobileSidebarOpen && (
+        <div 
+          className="forum-sidebar-overlay"
+          onClick={() => setMobileSidebarOpen(false)}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.5)',
+            zIndex: 1099
+          }}
+        />
+      )}
+
       {/* Main Layout with Left Sidebar */}
       <div className="forum-layout" style={{ display: 'flex', minHeight: 'calc(100vh - 80px)' }}>
         {/* Left Sidebar - Categories (Reddit-style) */}
-        <div className="forum-sidebar" style={{
+        <div className={`forum-sidebar ${mobileSidebarOpen ? 'mobile-open' : ''}`} style={{
           width: '270px',
           borderRight: '1px solid #edeff1',
           background: '#fff',
-          position: 'sticky',
-          top: '80px',
-          height: 'calc(100vh - 80px)',
-          overflowY: 'auto',
           flexShrink: 0
         }}>
           <div style={{ padding: '16px' }}>
+            {/* Mobile Close Button */}
+            <button
+              className="forum-sidebar-close modal-close-btn"
+              onClick={() => setMobileSidebarOpen(false)}
+              style={{
+                display: 'none',
+                position: 'absolute',
+                top: '12px',
+                right: '12px',
+                width: '36px',
+                height: '36px',
+                borderRadius: '50%',
+                background: '#f3f4f6',
+                border: 'none',
+                cursor: 'pointer',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '20px',
+                color: '#6b7280'
+              }}
+            >
+              ×
+            </button>
+            
             {/* Create Post Button */}
             <button
               onClick={() => currentUser ? setShowCreatePost(true) : setProfileModalOpen(true)}
@@ -724,7 +805,12 @@ function ForumPage() {
           }
           setDashboardModalOpen(true);
         }}
+        onCloseDashboard={() => setDashboardModalOpen(false)}
         onOpenProfile={() => setProfileModalOpen(true)}
+        onOpenMessages={() => {
+          // Dispatch event to open messaging widget
+          window.dispatchEvent(new CustomEvent('openMessagingWidget', { detail: {} }));
+        }}
       />
     </div>
   );

@@ -461,8 +461,8 @@ function ProfileModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   return (
-    <div className="modal" style={{ display: 'flex' }} onClick={onClose}>
-      <div className="modal-content" style={{ 
+    <div className="modal profile-modal" id="profile-modal" style={{ display: 'flex' }} onClick={onClose}>
+      <div className="modal-content profile-modal-content" style={{ 
         maxWidth: '440px',
         borderRadius: '16px',
         padding: '0',
@@ -489,16 +489,18 @@ function ProfileModal({ isOpen, onClose }) {
           </h3>
           <button 
             onClick={onClose}
+            className="modal-close-btn"
             style={{
-              background: 'none',
+              background: '#f3f4f6',
               border: 'none',
-              fontSize: '28px',
-              color: '#6B7280',
+              fontSize: '20px',
+              color: '#6b7280',
               cursor: 'pointer',
               padding: '0',
               lineHeight: '1',
-              width: '32px',
-              height: '32px',
+              width: '36px',
+              height: '36px',
+              borderRadius: '50%',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center'

@@ -119,6 +119,7 @@ function DashboardSidebar({ menuItems, activeSection, onSectionChange, onLogout,
             </div>
             <button
               onClick={() => setMobileMenuOpen(false)}
+              className="modal-close-btn"
               style={{
                 width: '36px',
                 height: '36px',
@@ -128,10 +129,12 @@ function DashboardSidebar({ menuItems, activeSection, onSectionChange, onLogout,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                fontSize: '20px',
+                color: '#6b7280'
               }}
             >
-              <i className="fas fa-times" style={{ fontSize: '16px', color: '#6b7280' }}></i>
+              ×
             </button>
           </div>
 

@@ -1249,9 +1249,13 @@ function IndexPage() {
           }
           setDashboardModalOpen(true);
         }}
+        onCloseDashboard={() => setDashboardModalOpen(false)}
         onOpenProfile={() => setProfileModalOpen(true)}
-        onToggleMap={() => setMobileMapOpen(true)}
-        mapActive={mobileMapOpen}
+        onOpenMap={() => setMobileMapOpen(true)}
+        onOpenMessages={() => {
+          // Dispatch event to open messaging widget
+          window.dispatchEvent(new CustomEvent('openMessagingWidget', { detail: {} }));
+        }}
       />
     </div>
   );

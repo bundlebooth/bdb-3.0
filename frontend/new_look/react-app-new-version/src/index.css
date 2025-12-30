@@ -610,11 +610,25 @@ body {
     justify-content: start !important;
 }
 
-/* Mobile: smaller fixed cards */
+/* Mobile: 2 cards per row that fit screen */
 @media (max-width: 768px) {
     .vendor-grid {
-        grid-template-columns: repeat(auto-fill, 160px) !important;
-        gap: 0.75rem !important;
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 12px !important;
+        padding: 0.5rem !important;
+    }
+    
+    .vendor-card {
+        width: 100% !important;
+    }
+    
+    /* Smaller text on mobile vendor cards */
+    .vendor-card-business-name {
+        font-size: 13px !important;
+    }
+    
+    .vendor-card-content {
+        padding: 6px 0 2px 0 !important;
     }
 }
 
@@ -8721,10 +8735,14 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
     background: white;
     z-index: 99999;
     flex-direction: column;
+    pointer-events: none;
+    visibility: hidden;
 }
 
 .mobile-map-overlay.active {
     display: flex !important;
+    pointer-events: auto;
+    visibility: visible;
 }
 
 /* Close button floating on top of map */
@@ -8876,32 +8894,33 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
     }
     
     .vendor-section-scroll-container {
-        overflow: visible !important;
+        overflow-x: auto !important;
         width: 100% !important;
+        -webkit-overflow-scrolling: touch !important;
     }
     
-    /* FORCE 2-COLUMN GRID */
+    /* HORIZONTAL SCROLL for vendor sections */
     .vendor-section .vendor-section-scroll-container .vendor-section-grid {
-        display: grid !important;
-        grid-template-columns: repeat(2, 1fr) !important;
-        gap: 0.75rem !important;
-        width: 100% !important;
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        gap: 12px !important;
+        width: max-content !important;
         transform: none !important;
-        flex-wrap: wrap !important;
+        padding: 0 16px !important;
     }
     
-    /* FORCE Cards to fill grid cells */
+    /* Cards in horizontal scroll */
     .vendor-section .vendor-section-grid .vendor-section-card-wrapper {
-        width: 100% !important;
-        min-width: 0 !important;
-        max-width: 100% !important;
-        flex: unset !important;
+        width: 160px !important;
+        min-width: 160px !important;
+        max-width: 160px !important;
+        flex: 0 0 160px !important;
         display: block !important;
     }
     
-    /* Limit to 4 cards visible (2 rows) */
+    /* Show all cards in horizontal scroll */
     .vendor-section .vendor-section-grid .vendor-section-card-wrapper:nth-child(n+5) {
-        display: none !important;
+        display: block !important;
     }
     
     /* FORCE vendor cards to fill wrapper */
@@ -9495,7 +9514,7 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
 
 @media (max-width: 400px) {
     .vendor-grid {
-        grid-template-columns: 1fr !important;
+        grid-template-columns: repeat(2, 1fr) !important;
     }
 }
 
@@ -9691,14 +9710,23 @@ html, body {
         padding-bottom: 1rem !important;
     }
     
-    /* Hide messaging widget on mobile when bottom nav is visible */
-    .messaging-widget,
-    .messaging-widget-container,
-    .chat-widget,
-    .messaging-fab {
+    /* Hide messaging widget FAB on mobile, but allow widget to show when opened */
+    .messaging-widget .chat-button {
         display: none !important;
-        visibility: hidden !important;
-        pointer-events: none !important;
+    }
+    
+    /* When widget is open, show it full screen on mobile */
+    .messaging-widget.widget-open .widget-container {
+        position: fixed !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        top: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        max-height: 100vh !important;
+        border-radius: 0 !important;
+        z-index: 999999 !important;
     }
     
     /* Ensure sticky booking bar doesn't overlap */
@@ -9762,10 +9790,12 @@ html, body {
         transition: left 0.3s ease;
         background: white;
         box-shadow: 4px 0 20px rgba(0,0,0,0.15);
+        pointer-events: none;
     }
     
     .dashboard-sidebar.open {
         left: 0;
+        pointer-events: auto;
     }
     
     .dashboard-container {
@@ -9965,6 +9995,50 @@ html, body {
         flex: 1 !important;
         min-width: 80px !important;
     }
+    
+    /* Forum sidebar mobile - hide by default, slide in from left when open */
+    .forum-sidebar {
+        display: none !important;
+    }
+    
+    .forum-sidebar.mobile-open {
+        display: block !important;
+        position: fixed !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 280px !important;
+        height: 100vh !important;
+        z-index: 1100 !important;
+        box-shadow: 4px 0 20px rgba(0,0,0,0.15) !important;
+        background: white !important;
+        overflow-y: auto !important;
+        padding-top: 60px !important;
+    }
+    
+    /* Show mobile header bar on mobile */
+    .forum-mobile-header {
+        display: flex !important;
+    }
+    
+    /* Hamburger button inside header - already flex from inline styles */
+    .forum-mobile-menu-btn {
+        display: flex !important;
+    }
+    
+    /* Show close button on mobile */
+    .forum-sidebar-close {
+        display: flex !important;
+    }
+    
+    /* Forum layout adjustments */
+    .forum-layout {
+        flex-direction: column !important;
+    }
+    
+    .forum-main-content {
+        width: 100% !important;
+        padding: 12px !important;
+    }
 }
 
 /* Booking Wizard Mobile */
@@ -10010,6 +10084,84 @@ html, body {
     
     .payment-summary {
         padding: 1rem !important;
+    }
+}
+
+/* Login/Profile Modal Mobile - Full screen on mobile */
+@media (max-width: 768px) {
+    .modal {
+        padding: 0 !important;
+        align-items: flex-end !important;
+    }
+    
+    .modal .modal-content {
+        width: 100% !important;
+        max-width: 100% !important;
+        max-height: 90vh !important;
+        margin: 0 !important;
+        border-radius: 20px 20px 0 0 !important;
+        animation: modalSlideUpMobile 0.3s ease !important;
+    }
+    
+    @keyframes modalSlideUpMobile {
+        from {
+            transform: translateY(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+    
+    .modal .modal-header {
+        padding: 16px 20px !important;
+        position: sticky;
+        top: 0;
+        background: white;
+        z-index: 10;
+    }
+    
+    .modal .modal-header h3 {
+        font-size: 18px !important;
+    }
+    
+    .modal .modal-body {
+        padding: 16px 20px 24px 20px !important;
+        overflow-y: auto !important;
+        max-height: calc(90vh - 70px) !important;
+    }
+    
+    /* Login form inputs mobile */
+    .modal input[type="email"],
+    .modal input[type="password"],
+    .modal input[type="text"],
+    .modal select {
+        font-size: 16px !important;
+        padding: 14px 16px !important;
+        border-radius: 10px !important;
+    }
+    
+    /* Login buttons mobile */
+    .modal button[type="submit"],
+    .modal .btn-primary {
+        padding: 14px !important;
+        font-size: 16px !important;
+        border-radius: 10px !important;
+    }
+    
+    /* Social login buttons mobile */
+    #google-signin-btn-container {
+        width: 100% !important;
+    }
+    
+    #google-signin-btn-container > div {
+        width: 100% !important;
+    }
+    
+    /* Google button iframe */
+    #google-signin-btn-container iframe {
+        width: 100% !important;
     }
 }
 
@@ -10132,15 +10284,29 @@ html, body {
     }
 }
 
-/* Messaging Widget Mobile */
+/* Messaging Widget Mobile - Only apply fullscreen when widget is open */
 @media (max-width: 768px) {
     .messaging-widget {
+        /* Keep widget small when closed - don't block clicks */
+        width: auto !important;
+        height: auto !important;
+        pointer-events: none;
+    }
+    
+    /* Allow clicks on the chat button */
+    .messaging-widget .chat-button {
+        pointer-events: auto;
+    }
+    
+    /* When widget is open, make it fullscreen */
+    .messaging-widget.widget-open {
         width: 100% !important;
         height: 100% !important;
         bottom: 0 !important;
         right: 0 !important;
         border-radius: 0 !important;
         max-height: 100vh !important;
+        pointer-events: auto;
     }
     
     .messaging-widget-header {
@@ -10190,10 +10356,12 @@ html, body {
         height: 100vh !important;
         z-index: 1100 !important;
         transition: left 0.3s ease !important;
+        pointer-events: none !important;
     }
     
     .admin-sidebar.open {
         left: 0 !important;
+        pointer-events: auto !important;
     }
     
     .admin-content {
@@ -10813,21 +10981,19 @@ html, body {
     }
 }
 
-/* 3. VENDOR CARDS - Show 2 cards fully, enable touch swipe */
+/* 3. VENDOR CARDS - Horizontal scroll with touch swipe */
 @media (max-width: 768px) {
     .vendor-section .vendor-grid,
     .vendor-discovery-sections .vendor-grid {
         display: flex !important;
         flex-wrap: nowrap !important;
         overflow-x: auto !important;
-        overflow-y: hidden !important;
-        scroll-snap-type: x mandatory !important;
         -webkit-overflow-scrolling: touch !important;
+        scroll-snap-type: x mandatory !important;
         scrollbar-width: none !important;
-        -ms-overflow-style: none !important;
-        gap: 10px !important;
-        padding: 8px 0 16px 0 !important;
-        margin: 0 !important;
+        gap: 12px !important;
+        padding: 0.5rem 16px 1rem 16px !important;
+        margin: 0 -16px !important;
     }
     
     .vendor-section .vendor-grid::-webkit-scrollbar,
@@ -10835,19 +11001,22 @@ html, body {
         display: none !important;
     }
     
-    /* Each card takes ~48% width to show 2 cards */
+    /* Each card takes ~45% width to show 2+ cards with peek */
     .vendor-section .vendor-grid .vendor-card,
     .vendor-discovery-sections .vendor-grid .vendor-card {
-        flex: 0 0 calc(50% - 5px) !important;
-        min-width: calc(50% - 5px) !important;
-        max-width: calc(50% - 5px) !important;
+        flex: 0 0 45% !important;
+        min-width: 45% !important;
+        max-width: 45% !important;
         scroll-snap-align: start !important;
     }
     
-    /* Hide navigation arrows on mobile - use swipe instead */
+    /* Show navigation arrows for scrolling */
     .vendor-section .nav-scroll-btn,
-    .vendor-discovery-sections .nav-scroll-btn {
-        display: none !important;
+    .vendor-discovery-sections .nav-scroll-btn,
+    .vendor-section-nav button,
+    .vendor-section-nav-btn {
+        display: flex !important;
+        opacity: 1 !important;
     }
 }
 
@@ -10938,3 +11107,55 @@ html, body {
     }
 }
 
+/* 6. MAIN VENDOR GRID - Force 2 cards per row on mobile (FINAL OVERRIDE) */
+@media (max-width: 768px) {
+    /* Target the main vendor grid by ID */
+    #vendor-grid {
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 12px !important;
+        padding: 8px !important;
+        flex-wrap: wrap !important;
+        overflow-x: visible !important;
+    }
+    
+    #vendor-grid > .vendor-card,
+    #vendor-grid > .vendor-card-skeleton {
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+        flex: none !important;
+    }
+}
+
+/* Force 2 cards for screens under 400px too - NO single column */
+@media (max-width: 400px) {
+    #vendor-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+}
+
+/* ============================================
+   GLOBAL MODAL CLOSE BUTTON STYLE
+   All close buttons should use this class for consistency
+   ============================================ */
+.modal-close-btn {
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: 50% !important;
+    background: #f3f4f6 !important;
+    border: none !important;
+    color: #6b7280 !important;
+    font-size: 20px !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: background 0.2s ease !important;
+    line-height: 1 !important;
+    padding: 0 !important;
+}
+
+.modal-close-btn:hover {
+    background: #e5e7eb !important;
+}
