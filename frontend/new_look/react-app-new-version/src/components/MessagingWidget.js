@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
 import { useVendorOnlineStatus } from '../hooks/useOnlineStatus';
 import EmojiPicker from 'emoji-picker-react';
+import Header from './Header';
 
 function MessagingWidget() {
   const { currentUser } = useAuth();
@@ -30,9 +31,17 @@ function MessagingWidget() {
   const [faqFeedbackSubmitted, setFaqFeedbackSubmitted] = useState({});
   const [otherPartyVendorId, setOtherPartyVendorId] = useState(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const messagesEndRef = useRef(null);
   const pollingIntervalRef = useRef(null);
   const emojiPickerRef = useRef(null);
+
+  // Handle resize for mobile detection
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Quick reply suggestions
   const quickReplies = [
@@ -503,100 +512,60 @@ function MessagingWidget() {
         )}
       </div>
 
-      {/* Widget Container - Improved Positioning */}
-      {isOpen && (
-        <div className="widget-container" style={{ 
-          display: 'flex',
-          flexDirection: 'column',
-          width: '380px',
-          height: '600px',
-          borderRadius: '16px',
-          boxShadow: '0 12px 40px rgba(0,0,0,0.3)',
-          overflow: 'hidden',
-          background: 'white',
-          position: 'absolute',
-          bottom: '80px',
-          right: '0',
-          border: '1px solid rgba(0,0,0,0.1)'
-        }}>
-          <div className="widget-header" style={{
+      {/* Mobile: Full-screen page layout (not a popup - treated as a page like Forum) */}
+      {isOpen && isMobile && (
+        <div 
+          className="messages-mobile-page"
+          style={{ 
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            width: '100%',
+            height: '100%',
             background: 'white',
-            color: '#222',
-            padding: '20px',
+            zIndex: 9999,
             display: 'flex',
-            justifyContent: 'space-between',
+            flexDirection: 'column'
+          }}
+        >
+          <Header 
+            onSearch={() => {}} 
+            onProfileClick={() => {}} 
+            onWishlistClick={() => {}} 
+            onChatClick={() => {}} 
+            onNotificationsClick={() => {}} 
+          />
+          {/* Mobile Menu Bar - Below Header */}
+          <div className="mobile-menu-bar" style={{
+            display: 'none',
             alignItems: 'center',
-            borderBottom: '1px solid #e0e0e0'
+            padding: '8px 16px',
+            background: '#f9fafb',
+            borderBottom: '1px solid #e5e7eb'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              {mainView === 'home' && (
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <div style={{
-                    width: '40px',
-                    height: '40px',
-                    borderRadius: '50%',
-                    background: '#5e72e4',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'white',
-                    fontSize: '14px',
-                    fontWeight: 600
-                  }}>PH</div>
-                  <div style={{
-                    width: '40px',
-                    height: '40px',
-                    borderRadius: '50%',
-                    background: '#5e72e4',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'white',
-                    fontSize: '14px',
-                    fontWeight: 600,
-                    marginLeft: '-12px'
-                  }}>VV</div>
-                  <div style={{
-                    width: '40px',
-                    height: '40px',
-                    borderRadius: '50%',
-                    background: '#5e72e4',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'white',
-                    fontSize: '14px',
-                    fontWeight: 600,
-                    marginLeft: '-12px'
-                  }}>CS</div>
-                </div>
-              )}
-              <div>
-                <h3 style={{ margin: 0, fontSize: '20px', fontWeight: 600 }}>
-                  {mainView === 'home' ? '' : mainView === 'messages' ? 'Messages' : 'Help Center'}
-                </h3>
-                {mainView !== 'home' && (
-                  <p style={{ margin: '4px 0 0 0', fontSize: '14px', opacity: 0.9 }}>
-                    {mainView === 'messages' ? 'Chat with vendors' : 'Get support'}
-                  </p>
-                )}
-              </div>
-            </div>
-            <button className="widget-close modal-close-btn" onClick={toggleWidget} style={{
-              background: '#f3f4f6',
-              border: 'none',
-              color: '#6b7280',
-              width: '36px',
-              height: '36px',
-              borderRadius: '50%',
-              cursor: 'pointer',
-              fontSize: '20px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              transition: 'background 0.2s'
-            }}>×</button>
+            <button
+              onClick={() => switchMainView('messages')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px 12px',
+                background: 'white',
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: 500,
+                color: '#374151'
+              }}
+            >
+              <i className="fas fa-bars" style={{ fontSize: '14px' }}></i>
+              <span>{mainView === 'home' ? 'Messages' : mainView === 'messages' ? 'Messages' : 'Help'}</span>
+            </button>
           </div>
+          <div style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
 
           {/* Home/Help Center View */}
           {mainView === 'home' && (
@@ -1574,7 +1543,273 @@ function MessagingWidget() {
             </div>
           )}
 
-          {/* Bottom Navigation */}
+          {/* Bottom Navigation - hide on mobile since we use the app's bottom nav */}
+          {!isMobile && (
+            <div style={{
+              display: 'flex',
+              borderTop: '1px solid #e0e0e0',
+              background: 'white',
+              padding: '8px 0'
+            }}>
+              <button
+                onClick={() => switchMainView('home')}
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  border: 'none',
+                  background: 'transparent',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '4px',
+                  color: mainView === 'home' ? '#5e72e4' : '#717171',
+                  transition: 'color 0.2s'
+                }}
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                  <path d="M3 9L12 2L21 9V20C21 20.5304 20.7893 21.0391 20.4142 21.4142C20.0391 21.7893 19.5304 22 19 22H5C4.46957 22 3.96086 21.7893 3.58579 21.4142C3.21071 21.0391 3 20.5304 3 20V9Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                <span style={{ fontSize: '12px', fontWeight: mainView === 'home' ? 600 : 400 }}>Home</span>
+              </button>
+              <button
+                onClick={() => switchMainView('messages')}
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  border: 'none',
+                  background: 'transparent',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '4px',
+                  color: mainView === 'messages' ? '#5e72e4' : '#717171',
+                  transition: 'color 0.2s',
+                  position: 'relative'
+                }}
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                  <path d="M21 15C21 15.5304 20.7893 16.0391 20.4142 16.4142C20.0391 16.7893 19.5304 17 19 17H7L3 21V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H19C19.5304 3 20.0391 3.21071 20.4142 3.58579C20.7893 3.96086 21 4.46957 21 5V15Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                <span style={{ fontSize: '12px', fontWeight: mainView === 'messages' ? 600 : 400 }}>Messages</span>
+                {unreadCount > 0 && (
+                  <span style={{
+                    position: 'absolute',
+                    top: '8px',
+                    right: '50%',
+                    transform: 'translateX(12px)',
+                    background: '#ff385c',
+                    color: 'white',
+                    borderRadius: '10px',
+                    padding: '2px 6px',
+                    fontSize: '10px',
+                    fontWeight: 600,
+                    minWidth: '18px',
+                    textAlign: 'center'
+                  }}>
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </button>
+              <button
+                onClick={() => switchMainView('help')}
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  border: 'none',
+                  background: 'transparent',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '4px',
+                  color: mainView === 'help' ? '#5e72e4' : '#717171',
+                  transition: 'color 0.2s'
+                }}
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
+                  <path d="M9.09 9C9.3251 8.33167 9.78915 7.76811 10.4 7.40913C11.0108 7.05016 11.7289 6.91894 12.4272 7.03871C13.1255 7.15849 13.7588 7.52152 14.2151 8.06353C14.6713 8.60553 14.9211 9.29152 14.92 10C14.92 12 11.92 13 11.92 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <circle cx="12" cy="17" r="1" fill="currentColor"/>
+                </svg>
+                <span style={{ fontSize: '12px', fontWeight: mainView === 'help' ? 600 : 400 }}>Help</span>
+              </button>
+            </div>
+          )}
+          </div>
+        </div>
+      )}
+
+      {/* Desktop: Widget popup container */}
+      {isOpen && !isMobile && (
+        <div className="widget-container" style={{ 
+          display: 'flex',
+          flexDirection: 'column',
+          width: '380px',
+          height: '600px',
+          borderRadius: '16px',
+          boxShadow: '0 12px 40px rgba(0,0,0,0.3)',
+          overflow: 'hidden',
+          background: 'white',
+          position: 'absolute',
+          bottom: '80px',
+          right: '0',
+          border: '1px solid rgba(0,0,0,0.1)'
+        }}>
+          <header className="header widget-header" style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '1rem',
+            background: 'white',
+            borderBottom: '1px solid #e5e7eb'
+          }}>
+            <div className="header-left" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div className="logo" style={{ marginRight: '8px' }}>
+                <img src="/planbeau_logo.svg" alt="PlanBeau" className="header-logo-img" />
+              </div>
+              <span style={{ fontSize: '16px', fontWeight: 600, color: '#1f2937' }}>
+                {mainView === 'home' ? 'Messages' : mainView === 'messages' ? 'Messages' : 'Help Center'}
+              </span>
+            </div>
+            <button className="modal-close-btn" onClick={toggleWidget}>×</button>
+          </header>
+
+          {/* Desktop content - same views as mobile */}
+          <div style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
+            {/* Home/Help Center View */}
+            {mainView === 'home' && (
+              <div style={{ flex: 1, overflow: 'auto', background: 'white' }}>
+                <div style={{ padding: '24px 20px' }}>
+                  <h2 style={{ margin: '0 0 8px 0', fontSize: '24px', fontWeight: 600, color: '#222' }}>
+                    Hi there 👋
+                  </h2>
+                  <p style={{ margin: 0, fontSize: '18px', color: '#222', fontWeight: 500 }}>
+                    How can we help?
+                  </p>
+                </div>
+
+                {/* Connect with Support Team */}
+                <div style={{ padding: '0 20px 16px' }}>
+                  <div style={{
+                    background: '#5e72e4',
+                    borderRadius: '12px',
+                    padding: '16px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    transition: 'all 0.2s',
+                    boxShadow: '0 2px 8px rgba(94, 114, 228, 0.3)'
+                  }}
+                  onClick={() => openSupportChat()}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                        <path d="M21 15C21 15.5304 20.7893 16.0391 20.4142 16.4142C20.0391 16.7893 19.5304 17 19 17H7L3 21V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H19C19.5304 3 20.0391 3.21071 20.4142 3.58579C20.7893 3.96086 21 4.46957 21 5V15Z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: '15px', color: 'white' }}>
+                          Connect with Support Team
+                        </div>
+                        <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.85)' }}>
+                          Get help from our team
+                        </div>
+                      </div>
+                    </div>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                      <path d="M9 18L15 12L9 6" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+                </div>
+
+                {/* View My Messages */}
+                <div style={{ padding: '0 20px 16px' }}>
+                  <div style={{
+                    background: 'white',
+                    border: '1px solid #e0e0e0',
+                    borderRadius: '12px',
+                    padding: '14px 16px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    transition: 'all 0.2s'
+                  }}
+                  onClick={() => switchMainView('messages')}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                        <path d="M9 5H7C5.89543 5 5 5.89543 5 7V19C5 20.1046 5.89543 21 7 21H17C18.1046 21 19 20.1046 19 19V7C19 5.89543 18.1046 5 17 5H15" stroke="#5e72e4" strokeWidth="2" strokeLinecap="round"/>
+                        <rect x="9" y="3" width="6" height="4" rx="1" stroke="#5e72e4" strokeWidth="2"/>
+                        <path d="M9 12H15" stroke="#5e72e4" strokeWidth="2" strokeLinecap="round"/>
+                        <path d="M9 16H13" stroke="#5e72e4" strokeWidth="2" strokeLinecap="round"/>
+                      </svg>
+                      <span style={{ fontWeight: 500, fontSize: '14px', color: '#222' }}>View My Messages</span>
+                    </div>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                      <path d="M9 18L15 12L9 6" stroke="#717171" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+                </div>
+
+                {/* FAQ Section */}
+                <div style={{ padding: '0 20px 80px' }}>
+                  <h4 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px', color: '#222' }}>Frequently Asked Questions</h4>
+                  {faqs.length > 0 ? faqs.map((faq) => (
+                    <div key={faq.FAQID} style={{ borderBottom: '1px solid #f0f0f0' }}>
+                      <div 
+                        onClick={() => setExpandedFaq(expandedFaq === faq.FAQID ? null : faq.FAQID)}
+                        style={{
+                          padding: '14px 0',
+                          fontSize: '14px',
+                          color: '#222',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center'
+                        }}
+                      >
+                        <span>{faq.Question}</span>
+                        <svg 
+                          width="16" height="16" viewBox="0 0 24 24" fill="none"
+                          style={{ transform: expandedFaq === faq.FAQID ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s', flexShrink: 0 }}
+                        >
+                          <path d="M6 9L12 15L18 9" stroke="#666" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </div>
+                      {expandedFaq === faq.FAQID && (
+                        <div style={{ padding: '0 0 14px 0', fontSize: '13px', color: '#666', lineHeight: '1.5' }}>
+                          {faq.Answer}
+                        </div>
+                      )}
+                    </div>
+                  )) : (
+                    <p style={{ color: '#999', fontSize: '13px' }}>Loading FAQs...</p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Messages View - show conversations or chat */}
+            {mainView === 'messages' && (
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                <p style={{ padding: '20px', color: '#666', textAlign: 'center' }}>
+                  Messages view - desktop widget
+                </p>
+              </div>
+            )}
+
+            {/* Help View */}
+            {mainView === 'help' && (
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                <p style={{ padding: '20px', color: '#666', textAlign: 'center' }}>
+                  Help view - desktop widget
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Desktop Bottom Navigation */}
           <div style={{
             display: 'flex',
             borderTop: '1px solid #e0e0e0',

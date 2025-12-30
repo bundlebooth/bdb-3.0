@@ -489,7 +489,7 @@ const RefundModal = ({ transaction, onClose, onRefund }) => {
         <div className="modal-header">
           <h2>Process Refund</h2>
           <button className="modal-close" onClick={onClose}>
-            <i className="fas fa-times"></i>
+            
           </button>
         </div>
         <div className="modal-body">
@@ -575,7 +575,7 @@ const ManualPayoutModal = ({ onClose, onPayout }) => {
         <div className="modal-header">
           <h2>Manual Payout</h2>
           <button className="modal-close" onClick={onClose}>
-            <i className="fas fa-times"></i>
+            
           </button>
         </div>
         <div className="modal-body">
@@ -622,7 +622,7 @@ const TransactionViewModal = ({ transaction, onClose }) => {
         <div className="modal-header">
           <h2>Transaction Details</h2>
           <button className="modal-close" onClick={onClose}>
-            <i className="fas fa-times"></i>
+            
           </button>
         </div>
         <div className="modal-body">

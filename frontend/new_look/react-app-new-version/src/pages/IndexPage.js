@@ -1212,15 +1212,53 @@ function IndexPage() {
       
       {/* Mobile Fullscreen Map Overlay */}
       <div className={`mobile-map-overlay ${mobileMapOpen ? 'active' : ''}`}>
-        <div className="map-header">
-          <button 
-            className="close-map-btn"
-            onClick={() => setMobileMapOpen(false)}
-            aria-label="Close map"
-          >
-            <i className="fas fa-times"></i>
-          </button>
-        </div>
+        <Header 
+          onSearch={() => {}} 
+          onProfileClick={() => currentUser ? setDashboardModalOpen(true) : setProfileModalOpen(true)} 
+          onWishlistClick={() => {
+            if (currentUser) {
+              setDashboardSection('favorites');
+              setDashboardModalOpen(true);
+            } else {
+              setProfileModalOpen(true);
+            }
+          }} 
+          onChatClick={() => {
+            if (currentUser) {
+              const section = currentUser.isVendor ? 'vendor-messages' : 'messages';
+              setDashboardSection(section);
+              setDashboardModalOpen(true);
+            } else {
+              setProfileModalOpen(true);
+            }
+          }} 
+          onNotificationsClick={() => {}} 
+        />
+        <button 
+          className="mobile-map-close-btn"
+          onClick={() => setMobileMapOpen(false)}
+          aria-label="Close map"
+          style={{
+            position: 'absolute',
+            top: '12px',
+            right: '12px',
+            zIndex: 1001,
+            width: '36px',
+            height: '36px',
+            borderRadius: '50%',
+            border: 'none',
+            background: 'white',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '20px',
+            color: '#374151'
+          }}
+        >
+          ×
+        </button>
         <div className="map-content">
           <MapView 
             vendors={filteredVendors} 

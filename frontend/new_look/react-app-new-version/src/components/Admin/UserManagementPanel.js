@@ -420,7 +420,7 @@ const UserViewModal = ({ user, onClose }) => {
         <div className="modal-header">
           <h2>User Details</h2>
           <button className="modal-close" onClick={onClose}>
-            <i className="fas fa-times"></i>
+            
           </button>
         </div>
         <div className="modal-body">
@@ -507,7 +507,7 @@ const UserEditModal = ({ user, onClose, onSave }) => {
         <div className="modal-header">
           <h2>Edit User</h2>
           <button className="modal-close" onClick={onClose}>
-            <i className="fas fa-times"></i>
+            
           </button>
         </div>
         <div className="modal-body">
@@ -603,7 +603,7 @@ const UserActivityModal = ({ user, onClose }) => {
         <div className="modal-header">
           <h2>Activity Log: {user.FirstName} {user.LastName}</h2>
           <button className="modal-close" onClick={onClose}>
-            <i className="fas fa-times"></i>
+            
           </button>
         </div>
         <div className="modal-body">

@@ -978,11 +978,22 @@
 }
 
 .modal-close {
-  background: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #f3f4f6;
   border: none;
-  font-size: 1.25rem;
+  font-size: 20px;
   color: #6b7280;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease;
+}
+
+.modal-close:hover {
+  background: #e5e7eb;
 }
 
 .modal-body {

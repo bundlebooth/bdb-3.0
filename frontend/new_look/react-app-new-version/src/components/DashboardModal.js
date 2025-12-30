@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import UnifiedDashboard from './Dashboard/UnifiedDashboard';
+import Header from './Header';
 
 function DashboardModal({ isOpen, onClose, initialSection = 'dashboard' }) {
   const { currentUser, logout } = useAuth();
@@ -93,99 +94,76 @@ function DashboardModal({ isOpen, onClose, initialSection = 'dashboard' }) {
 
   if (!isOpen || !currentUser) return null;
 
-  // Mobile full-screen layout
+  // Mobile full-screen page layout (not a modal - treated as a page like Forum)
   if (isMobile) {
     return (
       <div 
-        id="dashboard-modal" 
-        className={`modal ${activeSection === 'messages' || activeSection === 'vendor-messages' ? 'messages-active' : ''}`}
-        data-no-outside-close 
+        id="dashboard-page" 
+        className="dashboard-mobile-page"
         style={{ 
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          width: '100%',
+          height: '100%',
+          background: 'white',
+          zIndex: 9999,
           display: 'flex',
-          padding: 0,
-          background: 'white'
+          flexDirection: 'column'
         }}
       >
-        <div 
-          className="modal-content" 
-          style={{ 
-            maxWidth: '100%', 
-            width: '100%', 
-            height: '100vh',
-            margin: 0,
-            borderRadius: 0,
-            display: 'flex', 
-            flexDirection: 'column'
-          }}
-        >
-          <div className="modal-header" style={{
-            padding: '12px 16px',
-            borderBottom: '1px solid #e5e7eb',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            background: 'white',
-            position: 'sticky',
-            top: 0,
-            zIndex: 100
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              {/* Hamburger menu button */}
-              <button
-                onClick={() => setMobileMenuOpen(true)}
-                style={{
-                  width: '36px',
-                  height: '36px',
-                  borderRadius: '8px',
-                  border: 'none',
-                  background: 'transparent',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  padding: 0
-                }}
-              >
-                <i className="fas fa-bars" style={{ fontSize: '18px', color: '#374151' }}></i>
-              </button>
-              <h3 id="dashboard-modal-title" style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>{getSectionTitle()}</h3>
-            </div>
-            <button 
-              onClick={handleClose}
-              style={{
-                width: '36px',
-                height: '36px',
-                borderRadius: '50%',
-                border: 'none',
-                background: '#f3f4f6',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                fontSize: '20px',
-                color: '#6b7280'
-              }}
-            >
-              ×
-            </button>
-          </div>
-          <div 
-            className="modal-body" 
-            style={{ 
-              padding: 0, 
-              overflow: 'auto', 
-              flexGrow: 1,
-              background: '#f9fafb'
+        <Header 
+          onSearch={() => {}} 
+          onProfileClick={() => {}} 
+          onWishlistClick={() => {}} 
+          onChatClick={() => {}} 
+          onNotificationsClick={() => {}} 
+        />
+        {/* Mobile Menu Bar - Below Header */}
+        <div className="mobile-menu-bar" style={{
+          display: 'none',
+          alignItems: 'center',
+          padding: '8px 16px',
+          background: '#f9fafb',
+          borderBottom: '1px solid #e5e7eb'
+        }}>
+          <button
+            onClick={() => setMobileMenuOpen(true)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '8px 12px',
+              background: 'white',
+              border: '1px solid #e5e7eb',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: 500,
+              color: '#374151'
             }}
           >
-            <UnifiedDashboard 
-              activeSection={activeSection}
-              onSectionChange={handleSectionChange}
-              onLogout={handleLogout}
-              mobileMenuOpen={mobileMenuOpen}
-              setMobileMenuOpen={setMobileMenuOpen}
-            />
-          </div>
+            <i className="fas fa-bars" style={{ fontSize: '14px' }}></i>
+            <span>{getSectionTitle()}</span>
+          </button>
+        </div>
+        <div 
+          style={{ 
+            padding: 0, 
+            overflow: 'auto', 
+            flexGrow: 1,
+            background: '#f9fafb'
+          }}
+        >
+          <UnifiedDashboard 
+            activeSection={activeSection}
+            onSectionChange={handleSectionChange}
+            onLogout={handleLogout}
+            mobileMenuOpen={mobileMenuOpen}
+            setMobileMenuOpen={setMobileMenuOpen}
+          />
         </div>
       </div>
     );

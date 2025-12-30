@@ -53,8 +53,8 @@ const BookingCalendar = ({ selectedDate, onDateSelect, onClose, vendorAvailabili
 
   return (
     <div className="calendar-popup">
-      <button onClick={onClose} className="calendar-close-x" title="Close">
-        <i className="fas fa-times"></i>
+      <button onClick={onClose} className="calendar-close-x modal-close-btn" title="Close">
+        ×
       </button>
       
       <div className="calendar-section">

@@ -335,7 +335,7 @@ const ReviewViewModal = ({ review, onClose }) => {
         <div className="modal-header">
           <h2>Review Details</h2>
           <button className="modal-close" onClick={onClose}>
-            <i className="fas fa-times"></i>
+            
           </button>
         </div>
         <div className="modal-body">
@@ -416,7 +416,7 @@ const AddNoteModal = ({ review, onClose, onSave }) => {
         <div className="modal-header">
           <h2>Admin Note</h2>
           <button className="modal-close" onClick={onClose}>
-            <i className="fas fa-times"></i>
+            
           </button>
         </div>
         <div className="modal-body">
@@ -459,7 +459,7 @@ const FlagReviewModal = ({ review, onClose, onFlag }) => {
         <div className="modal-header">
           <h2>Flag Review</h2>
           <button className="modal-close" onClick={onClose}>
-            <i className="fas fa-times"></i>
+            
           </button>
         </div>
         <div className="modal-body">

@@ -466,7 +466,7 @@ const TicketModal = ({ ticket, onClose, onSave }) => {
         <div className="modal-header">
           <h2>{ticket?.isNew ? 'Create Support Ticket' : `Ticket #${ticket.id}`}</h2>
           <button className="modal-close" onClick={onClose}>
-            <i className="fas fa-times"></i>
+            
           </button>
         </div>
         <div className="modal-body">
@@ -552,7 +552,7 @@ const TicketModal = ({ ticket, onClose, onSave }) => {
                     <i className="fas fa-file"></i>
                     <span>{file.name}</span>
                     <button onClick={() => setAttachments(attachments.filter((_, i) => i !== index))}>
-                      <i className="fas fa-times"></i>
+                      
                     </button>
                   </div>
                 ))}

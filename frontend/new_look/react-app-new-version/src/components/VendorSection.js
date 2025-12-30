@@ -250,11 +250,11 @@ function VendorSection({
                 {title}
               </h2>
               <button 
-                className="vendor-section-modal-close"
+                className="vendor-section-modal-close modal-close-btn"
                 onClick={() => setShowModal(false)}
                 aria-label="Close modal"
               >
-                <i className="fas fa-times"></i>
+                ×
               </button>
             </div>
             <div className="vendor-section-modal-content">

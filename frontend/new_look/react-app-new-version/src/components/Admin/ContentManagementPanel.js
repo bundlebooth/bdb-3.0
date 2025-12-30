@@ -603,7 +603,7 @@ const ContentModal = ({ type, item, onClose, onSave }) => {
         <div className="modal-header">
           <h2>{item ? 'Edit' : 'Add'} {type.slice(0, -1)}</h2>
           <button className="modal-close" onClick={onClose}>
-            <i className="fas fa-times"></i>
+            
           </button>
         </div>
         <div className="modal-body">

@@ -67,7 +67,7 @@ body {
     border-bottom: 1px solid var(--border);
     position: sticky;
     top: 0;
-    z-index: 100; /* Higher than categories nav (10) but below modals (1000+) */
+    z-index: 100;
     transition: padding 0.3s ease, box-shadow 0.3s ease;
 }
 
@@ -5272,11 +5272,14 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
         grid-template-columns: 1fr !important;
     }
     
-    /* Header - Mobile Only */
+    /* Header - Mobile Only - Fixed height for consistency across all pages */
     .header {
         padding: 0.75rem 1rem !important;
         flex-wrap: nowrap !important;
         gap: 0.75rem;
+        min-height: 56px !important;
+        height: 56px !important;
+        box-sizing: border-box !important;
     }
     
     .logo {
@@ -8745,40 +8748,61 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
     visibility: visible;
 }
 
-/* Close button floating on top of map */
-.mobile-map-overlay .map-header {
-    position: absolute;
-    top: 10px;
-    right: 10px;
+/* Map overlay header - use standard Header component */
+.mobile-map-overlay .header {
+    position: sticky;
+    top: 0;
     z-index: 100;
-    padding: 0;
-    border: none;
-    background: transparent;
-}
-
-.mobile-map-overlay .map-header h3 {
-    display: none;
-}
-
-.mobile-map-overlay .close-map-btn {
     background: white;
+    border-bottom: 1px solid #e5e7eb;
+    flex-shrink: 0;
+}
+
+/* Close button for mobile map overlay */
+.mobile-map-close-btn {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 1001;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
     border: none;
-    font-size: 20px;
-    color: #222;
+    background: white;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
     cursor: pointer;
-    padding: 0;
-    line-height: 1;
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 40px;
-    height: 40px;
-    border-radius: 4px;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-    transition: background 0.2s;
+    font-size: 20px;
+    color: #374151;
 }
 
-.mobile-map-overlay .close-map-btn:hover {
+.mobile-map-close-btn:hover {
+    background: #f5f5f5;
+}
+
+/* Universal mobile page close button - for all bottom nav pages */
+.mobile-page-close-btn {
+    position: fixed;
+    top: 12px;
+    right: 12px;
+    z-index: 1001;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: none;
+    background: white;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    color: #374151;
+}
+
+.mobile-page-close-btn:hover {
     background: #f5f5f5;
 }
 
@@ -10012,16 +10036,22 @@ html, body {
         box-shadow: 4px 0 20px rgba(0,0,0,0.15) !important;
         background: white !important;
         overflow-y: auto !important;
-        padding-top: 60px !important;
     }
     
-    /* Show mobile header bar on mobile */
-    .forum-mobile-header {
+    /* Show sidebar header on mobile */
+    .forum-sidebar.mobile-open .forum-sidebar-header {
         display: flex !important;
     }
     
-    /* Hamburger button inside header - already flex from inline styles */
-    .forum-mobile-menu-btn {
+    /* Forum page uses the standard Header component - same as Explore page */
+    .forum-page .header {
+        display: flex !important;
+    }
+    
+    /* Show mobile menu bar below header on mobile */
+    .forum-page .mobile-menu-bar,
+    .dashboard-mobile-page .mobile-menu-bar,
+    .messages-mobile-page .mobile-menu-bar {
         display: flex !important;
     }
     
@@ -10754,6 +10784,25 @@ html, body {
         z-index: 1000000 !important;
     }
     
+    /* Override MessagingWidget header on mobile fullscreen to match universal style */
+    .messaging-widget.fullscreen .widget-header,
+    .messaging-widget.mobile-fullscreen .widget-header {
+        background: white !important;
+        border-bottom: 1px solid #e5e7eb !important;
+        padding: 12px 16px !important;
+    }
+    
+    .messaging-widget.fullscreen .widget-header h3,
+    .messaging-widget.mobile-fullscreen .widget-header h3 {
+        color: #1f2937 !important;
+    }
+    
+    .messaging-widget.fullscreen .widget-header button,
+    .messaging-widget.mobile-fullscreen .widget-header button {
+        background: #f3f4f6 !important;
+        color: #6b7280 !important;
+    }
+    
     /* Dashboard Messages Section - Full screen on mobile */
     .dashboard-modal.messages-fullscreen .modal-content,
     #dashboard-modal.messages-fullscreen .modal-content {
@@ -11158,4 +11207,59 @@ html, body {
 
 .modal-close-btn:hover {
     background: #e5e7eb !important;
+}
+
+/* ============================================
+   UNIVERSAL MOBILE PAGE HEADER
+   Consistent header for all mobile overlay pages
+   ============================================ */
+.mobile-page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: white;
+    border-bottom: 1px solid #e5e7eb;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.mobile-page-header .header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.mobile-page-header .header-logo {
+    height: 32px;
+    width: auto;
+}
+
+.mobile-page-header .header-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #1f2937;
+    margin: 0;
+}
+
+.mobile-page-header .header-close {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #f3f4f6;
+    border: none;
+    color: #6b7280;
+    font-size: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s ease;
+    line-height: 1;
+    padding: 0;
+}
+
+.mobile-page-header .header-close:hover {
+    background: #e5e7eb;
 }

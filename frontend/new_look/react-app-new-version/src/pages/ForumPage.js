@@ -112,6 +112,8 @@ function ForumPage() {
   const handleCategorySelect = (category) => {
     setSelectedCategory(category);
     setPage(1);
+    // Close mobile sidebar when category is selected
+    setMobileSidebarOpen(false);
     if (category) {
       navigate(`/forum/${category.Slug}`);
     } else {
@@ -205,7 +207,7 @@ function ForumPage() {
   };
 
   return (
-    <div style={{ backgroundColor: '#ffffff', minHeight: '100vh' }}>
+    <div className="forum-page" style={{ backgroundColor: '#ffffff', minHeight: '100vh' }}>
       <Header 
         onSearch={() => {}} 
         onProfileClick={() => currentUser ? setDashboardModalOpen(true) : setProfileModalOpen(true)} 
@@ -229,43 +231,34 @@ function ForumPage() {
       />
       <ProfileModal isOpen={profileModalOpen} onClose={() => setProfileModalOpen(false)} />
       <DashboardModal isOpen={dashboardModalOpen} onClose={() => setDashboardModalOpen(false)} initialSection={dashboardSection} />
-      
-      {/* Mobile Header Bar with Hamburger - consistent with Dashboard */}
-      <div 
-        className="forum-mobile-header"
-        style={{
-          display: 'none',
-          position: 'sticky',
-          top: '60px',
-          left: 0,
-          right: 0,
-          background: 'white',
-          borderBottom: '1px solid #e5e7eb',
-          padding: '12px 16px',
-          alignItems: 'center',
-          gap: '12px',
-          zIndex: 100
-        }}
-      >
+
+      {/* Mobile Menu Bar - Below Header */}
+      <div className="mobile-menu-bar" style={{
+        display: 'none',
+        alignItems: 'center',
+        padding: '8px 16px',
+        background: '#f9fafb',
+        borderBottom: '1px solid #e5e7eb'
+      }}>
         <button
-          className="forum-mobile-menu-btn"
           onClick={() => setMobileSidebarOpen(true)}
           style={{
-            width: '36px',
-            height: '36px',
-            borderRadius: '8px',
-            border: 'none',
-            background: 'transparent',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center',
+            gap: '8px',
+            padding: '8px 12px',
+            background: 'white',
+            border: '1px solid #e5e7eb',
+            borderRadius: '8px',
             cursor: 'pointer',
-            padding: 0
+            fontSize: '14px',
+            fontWeight: 500,
+            color: '#374151'
           }}
         >
-          <i className="fas fa-bars" style={{ fontSize: '18px', color: '#374151' }}></i>
+          <i className="fas fa-bars" style={{ fontSize: '14px' }}></i>
+          <span>Categories</span>
         </button>
-        <span style={{ fontSize: '18px', fontWeight: '600', color: '#1f2937' }}>Forum Categories</span>
       </div>
 
       {/* Mobile Sidebar Overlay */}
@@ -294,34 +287,28 @@ function ForumPage() {
           background: '#fff',
           flexShrink: 0
         }}>
+          {/* Mobile Header for Sidebar */}
+          <div className="forum-sidebar-header" style={{
+            display: 'none',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '12px 16px',
+            borderBottom: '1px solid #e5e7eb',
+            background: 'white'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <img src="/planbeau_logo.svg" alt="PlanBeau" style={{ height: '28px' }} />
+              <span style={{ fontSize: '16px', fontWeight: '600', color: '#1f2937' }}>Categories</span>
+            </div>
+          </div>
+          
           <div style={{ padding: '16px' }}>
-            {/* Mobile Close Button */}
+            {/* Create Post Button - at the top */}
             <button
-              className="forum-sidebar-close modal-close-btn"
-              onClick={() => setMobileSidebarOpen(false)}
-              style={{
-                display: 'none',
-                position: 'absolute',
-                top: '12px',
-                right: '12px',
-                width: '36px',
-                height: '36px',
-                borderRadius: '50%',
-                background: '#f3f4f6',
-                border: 'none',
-                cursor: 'pointer',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '20px',
-                color: '#6b7280'
+              onClick={() => {
+                setMobileSidebarOpen(false);
+                currentUser ? setShowCreatePost(true) : setProfileModalOpen(true);
               }}
-            >
-              ×
-            </button>
-            
-            {/* Create Post Button */}
-            <button
-              onClick={() => currentUser ? setShowCreatePost(true) : setProfileModalOpen(true)}
               style={{
                 width: '100%',
                 padding: '10px 16px',
@@ -629,6 +616,7 @@ function ForumPage() {
         </div>
       </div>
 
+
       {/* Create Post Modal */}
       {showCreatePost && (
         <div style={{
@@ -654,8 +642,8 @@ function ForumPage() {
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
               <h2 style={{ fontSize: '1.5rem', fontWeight: 600 }}>Create New Post</h2>
-              <button onClick={() => setShowCreatePost(false)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#999' }}>
-                <i className="fas fa-times"></i>
+              <button onClick={() => setShowCreatePost(false)} className="modal-close-btn">
+                ×
               </button>
             </div>
             <form onSubmit={handleCreatePost}>

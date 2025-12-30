@@ -303,7 +303,7 @@ const CategoryModal = ({ category, onClose, onSave }) => {
         <div className="modal-header">
           <h2>{category ? 'Edit Category' : 'Add Category'}</h2>
           <button className="modal-close" onClick={onClose}>
-            <i className="fas fa-times"></i>
+            
           </button>
         </div>
         <div className="modal-body">
@@ -448,7 +448,7 @@ const ServicesModal = ({ category, onClose }) => {
         <div className="modal-header">
           <h2>Service Templates: {category.CategoryName}</h2>
           <button className="modal-close" onClick={onClose}>
-            <i className="fas fa-times"></i>
+            
           </button>
         </div>
         <div className="modal-body">

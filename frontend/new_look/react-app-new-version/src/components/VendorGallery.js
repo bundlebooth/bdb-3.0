@@ -185,26 +185,18 @@ function VendorGallery({ images }) {
         >
           <button
             id="lightbox-close"
+            className="modal-close-btn"
             onClick={closeLightbox}
             style={{
               position: 'absolute',
               top: '20px',
               right: '20px',
-              background: 'rgba(255, 255, 255, 0.2)',
-              border: 'none',
-              color: 'white',
-              fontSize: '2rem',
-              cursor: 'pointer',
-              width: '50px',
-              height: '50px',
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              backdropFilter: 'blur(10px)'
+              background: '#f3f4f6',
+              width: '36px',
+              height: '36px'
             }}
           >
-            <i className="fas fa-times"></i>
+            ×
           </button>
 
           <button

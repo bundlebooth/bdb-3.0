@@ -232,7 +232,7 @@ const BookingManagementPanel = () => {
                           title="Cancel Booking"
                           onClick={() => { setSelectedBooking(booking); setModalType('cancel'); }}
                         >
-                          <i className="fas fa-times"></i>
+                          
                         </button>
                       )}
                       {(booking.Status === 'Completed' || booking.Status === 'Cancelled') && (
@@ -332,7 +332,7 @@ const BookingViewModal = ({ booking, onClose }) => {
         <div className="modal-header">
           <h2>Booking #{booking.BookingID}</h2>
           <button className="modal-close" onClick={onClose}>
-            <i className="fas fa-times"></i>
+            
           </button>
         </div>
         <div className="modal-body">
@@ -462,7 +462,7 @@ const BookingEditModal = ({ booking, onClose, onSave }) => {
         <div className="modal-header">
           <h2>Edit Booking #{booking.BookingID}</h2>
           <button className="modal-close" onClick={onClose}>
-            <i className="fas fa-times"></i>
+            
           </button>
         </div>
         <div className="modal-body">
@@ -544,7 +544,7 @@ const CancelBookingModal = ({ booking, onClose, onCancel }) => {
         <div className="modal-header">
           <h2>Cancel Booking #{booking.BookingID}</h2>
           <button className="modal-close" onClick={onClose}>
-            <i className="fas fa-times"></i>
+            
           </button>
         </div>
         <div className="modal-body">
@@ -616,7 +616,7 @@ const RefundModal = ({ booking, onClose, onRefund }) => {
         <div className="modal-header">
           <h2>Issue Refund - Booking #{booking.BookingID}</h2>
           <button className="modal-close" onClick={onClose}>
-            <i className="fas fa-times"></i>
+            
           </button>
         </div>
         <div className="modal-body">
@@ -719,7 +719,7 @@ const DisputeModal = ({ booking, onClose, onResolve }) => {
         <div className="modal-header">
           <h2>Resolve Dispute - Booking #{booking.BookingID}</h2>
           <button className="modal-close" onClick={onClose}>
-            <i className="fas fa-times"></i>
+            
           </button>
         </div>
         <div className="modal-body">

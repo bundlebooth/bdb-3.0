@@ -412,7 +412,7 @@ const VendorApprovalsPanel = () => {
                 </div>
               </div>
               <button className="close-btn" onClick={() => setSelectedProfile(null)}>
-                <i className="fas fa-times"></i>
+                
               </button>
             </div>
 

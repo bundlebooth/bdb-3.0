@@ -483,7 +483,7 @@ const TemplateModal = ({ template, onClose, onSave, onPreview }) => {
         <div className="modal-header">
           <h2>Edit Template: {template?.name}</h2>
           <button className="modal-close" onClick={onClose}>
-            <i className="fas fa-times"></i>
+            
           </button>
         </div>
         <div className="modal-body">
@@ -546,7 +546,7 @@ const EmailPreviewModal = ({ html, onClose }) => {
         <div className="modal-header">
           <h2><i className="fas fa-envelope"></i> Email Preview</h2>
           <button className="modal-close" onClick={onClose}>
-            <i className="fas fa-times"></i>
+            
           </button>
         </div>
         <div className="modal-body">

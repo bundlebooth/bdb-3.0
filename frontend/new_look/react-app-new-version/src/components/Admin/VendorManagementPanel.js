@@ -482,7 +482,7 @@ const VendorManagementPanel = () => {
                             title="Reject"
                             onClick={() => { setSelectedVendor(vendor); setModalType('reject'); }}
                           >
-                            <i className="fas fa-times"></i>
+                            
                           </button>
                         </>
                       )}
@@ -583,7 +583,7 @@ const VendorViewModal = ({ vendor, onClose, onApprove, onReject, actionLoading }
         <div className="modal-header">
           <h2>Vendor Details: {vendor.BusinessName}</h2>
           <button className="modal-close" onClick={onClose}>
-            <i className="fas fa-times"></i>
+            
           </button>
         </div>
         <div className="modal-body">
@@ -671,7 +671,7 @@ const VendorViewModal = ({ vendor, onClose, onApprove, onReject, actionLoading }
                 <i className="fas fa-check"></i> Approve
               </button>
               <button className="btn-danger" onClick={onReject} disabled={actionLoading}>
-                <i className="fas fa-times"></i> Reject
+                 Reject
               </button>
             </>
           )}
@@ -724,7 +724,7 @@ const VendorEditModal = ({ vendor, onClose, onSave }) => {
         <div className="modal-header">
           <h2>Edit Vendor: {vendor.BusinessName}</h2>
           <button className="modal-close" onClick={onClose}>
-            <i className="fas fa-times"></i>
+            
           </button>
         </div>
         <div className="modal-body">
@@ -810,7 +810,7 @@ const RejectModal = ({ vendor, onClose, onReject, actionLoading }) => {
         <div className="modal-header">
           <h2>Reject Vendor: {vendor.BusinessName}</h2>
           <button className="modal-close" onClick={onClose}>
-            <i className="fas fa-times"></i>
+            
           </button>
         </div>
         <div className="modal-body">
@@ -873,7 +873,7 @@ const VendorAnalyticsModal = ({ vendor, onClose }) => {
         <div className="modal-header">
           <h2>Analytics: {vendor.BusinessName}</h2>
           <button className="modal-close" onClick={onClose}>
-            <i className="fas fa-times"></i>
+            
           </button>
         </div>
         <div className="modal-body">

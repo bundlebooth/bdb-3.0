@@ -438,9 +438,10 @@ function ForumPostPage() {
               </p>
               <button
                 onClick={() => setReplyTo(null)}
-                style={{ background: 'none', border: 'none', color: '#999', cursor: 'pointer' }}
+                className="modal-close-btn"
+                style={{ width: '28px', height: '28px', fontSize: '16px' }}
               >
-                <i className="fas fa-times"></i>
+                ×
               </button>
             </div>
           )}
