@@ -1,188 +1,231 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { API_BASE_URL } from '../config';
+
+// Global cache to prevent duplicate API calls across components
+const vendorStatusCache = {
+  data: {},
+  lastFetch: 0,
+  pendingRequest: null,
+  subscribers: new Set()
+};
+
+const CACHE_TTL = 60000; // 1 minute cache TTL
+const MIN_FETCH_INTERVAL = 30000; // Minimum 30 seconds between fetches
+const POLLING_INTERVAL = 300000; // Poll every 5 minutes
 
 /**
  * Hook to fetch and track online status for vendors
- * @param {number|number[]} vendorProfileIds - Single vendor ID or array of vendor IDs
- * @param {object} options - Options for the hook
- * @param {boolean} options.enabled - Whether to fetch status (default: true)
- * @param {number} options.refreshInterval - Refresh interval in ms (default: 60000 = 1 minute)
- * @returns {object} - { statuses, isLoading, error, refresh }
+ * Uses global cache to prevent duplicate API calls
  */
 export function useVendorOnlineStatus(vendorProfileIds, options = {}) {
-  const { enabled = true, refreshInterval = 300000 } = options; // Default: 5 minutes (reduced frequency)
+  const { enabled = true } = options;
   const [statuses, setStatuses] = useState({});
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [retryCount, setRetryCount] = useState(0);
+  const mountedRef = useRef(true);
 
-  const fetchStatus = useCallback(async (signal) => {
+  const fetchStatus = useCallback(async () => {
     if (!enabled || !vendorProfileIds) return;
 
     const ids = Array.isArray(vendorProfileIds) ? vendorProfileIds : [vendorProfileIds];
     if (ids.length === 0) return;
 
-    // Skip if we've had too many consecutive failures
-    if (retryCount >= 3) {
+    const now = Date.now();
+    
+    // Check if we have fresh cached data
+    if (now - vendorStatusCache.lastFetch < MIN_FETCH_INTERVAL && Object.keys(vendorStatusCache.data).length > 0) {
+      // Use cached data
+      const cachedStatuses = {};
+      ids.forEach(id => {
+        if (vendorStatusCache.data[id]) {
+          cachedStatuses[id] = vendorStatusCache.data[id];
+        }
+      });
+      if (Object.keys(cachedStatuses).length > 0 && mountedRef.current) {
+        setStatuses(cachedStatuses);
+      }
+      return;
+    }
+
+    // If there's already a pending request, wait for it
+    if (vendorStatusCache.pendingRequest) {
+      try {
+        await vendorStatusCache.pendingRequest;
+        const cachedStatuses = {};
+        ids.forEach(id => {
+          if (vendorStatusCache.data[id]) {
+            cachedStatuses[id] = vendorStatusCache.data[id];
+          }
+        });
+        if (mountedRef.current) {
+          setStatuses(cachedStatuses);
+        }
+      } catch (e) { /* ignore */ }
       return;
     }
 
     setIsLoading(true);
-    setError(null);
 
-    try {
-      if (ids.length === 1) {
-        // Single vendor
-        const response = await fetch(`${API_BASE_URL}/vendors/online-status/${ids[0]}`, { signal });
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success) {
-            setStatuses({ [ids[0]]: data });
-            setRetryCount(0); // Reset on success
-          }
-        }
-      } else {
-        // Multiple vendors - batch request
+    // Create the fetch promise
+    const fetchPromise = (async () => {
+      try {
         const response = await fetch(`${API_BASE_URL}/vendors/online-status/batch`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ vendorProfileIds: ids }),
-          signal
+          body: JSON.stringify({ vendorProfileIds: ids })
         });
         if (response.ok) {
           const data = await response.json();
           if (data.success) {
-            setStatuses(data.statuses);
-            setRetryCount(0); // Reset on success
+            // Update global cache
+            vendorStatusCache.data = { ...vendorStatusCache.data, ...data.statuses };
+            vendorStatusCache.lastFetch = Date.now();
+            return data.statuses;
           }
         }
+      } catch (err) {
+        // Silently fail - online status is not critical
       }
-    } catch (err) {
-      // Don't log aborted requests
-      if (err.name !== 'AbortError') {
-        setRetryCount(prev => prev + 1);
-        setError(err);
+      return null;
+    })();
+
+    vendorStatusCache.pendingRequest = fetchPromise;
+
+    try {
+      const result = await fetchPromise;
+      if (result && mountedRef.current) {
+        setStatuses(result);
       }
     } finally {
-      setIsLoading(false);
+      vendorStatusCache.pendingRequest = null;
+      if (mountedRef.current) {
+        setIsLoading(false);
+      }
     }
-  }, [vendorProfileIds, enabled, retryCount]);
+  }, [vendorProfileIds, enabled]);
 
   useEffect(() => {
-    const controller = new AbortController();
-    fetchStatus(controller.signal);
+    mountedRef.current = true;
+    fetchStatus();
 
-    let interval;
-    if (enabled && refreshInterval > 0) {
-      interval = setInterval(() => fetchStatus(controller.signal), refreshInterval);
-    }
+    // Single global polling interval - only one component needs to poll
+    const intervalId = setInterval(fetchStatus, POLLING_INTERVAL);
     
     return () => {
-      controller.abort();
-      if (interval) clearInterval(interval);
+      mountedRef.current = false;
+      clearInterval(intervalId);
     };
-  }, [fetchStatus, enabled, refreshInterval]);
+  }, [fetchStatus]);
 
-  // Reset retry count after 5 minutes
-  useEffect(() => {
-    if (retryCount >= 3) {
-      const timeout = setTimeout(() => setRetryCount(0), 300000);
-      return () => clearTimeout(timeout);
-    }
-  }, [retryCount]);
-
-  return { statuses, isLoading, error, refresh: () => fetchStatus() };
+  return { statuses, isLoading, error: null, refresh: fetchStatus };
 }
+
+// Global cache for user online status
+const userStatusCache = {
+  data: {},
+  lastFetch: 0,
+  pendingRequest: null
+};
 
 /**
  * Hook to fetch and track online status for users
- * @param {number|number[]} userIds - Single user ID or array of user IDs
- * @param {object} options - Options for the hook
- * @returns {object} - { statuses, isLoading, error, refresh }
+ * Uses global cache to prevent duplicate API calls
  */
 export function useUserOnlineStatus(userIds, options = {}) {
-  const { enabled = true, refreshInterval = 300000 } = options; // Default: 5 minutes (reduced frequency)
+  const { enabled = true } = options;
   const [statuses, setStatuses] = useState({});
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [retryCount, setRetryCount] = useState(0);
+  const mountedRef = useRef(true);
 
-  const fetchStatus = useCallback(async (signal) => {
+  const fetchStatus = useCallback(async () => {
     if (!enabled || !userIds) return;
 
     const ids = Array.isArray(userIds) ? userIds : [userIds];
     if (ids.length === 0) return;
 
-    // Skip if we've had too many consecutive failures
-    if (retryCount >= 3) {
+    const now = Date.now();
+    
+    // Check if we have fresh cached data
+    if (now - userStatusCache.lastFetch < MIN_FETCH_INTERVAL && Object.keys(userStatusCache.data).length > 0) {
+      const cachedStatuses = {};
+      ids.forEach(id => {
+        if (userStatusCache.data[id]) {
+          cachedStatuses[id] = userStatusCache.data[id];
+        }
+      });
+      if (Object.keys(cachedStatuses).length > 0 && mountedRef.current) {
+        setStatuses(cachedStatuses);
+      }
+      return;
+    }
+
+    // If there's already a pending request, wait for it
+    if (userStatusCache.pendingRequest) {
+      try {
+        await userStatusCache.pendingRequest;
+        const cachedStatuses = {};
+        ids.forEach(id => {
+          if (userStatusCache.data[id]) {
+            cachedStatuses[id] = userStatusCache.data[id];
+          }
+        });
+        if (mountedRef.current) {
+          setStatuses(cachedStatuses);
+        }
+      } catch (e) { /* ignore */ }
       return;
     }
 
     setIsLoading(true);
-    setError(null);
 
-    try {
-      if (ids.length === 1) {
-        // Single user
-        const response = await fetch(`${API_BASE_URL}/users/online-status/${ids[0]}`, { signal });
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success) {
-            setStatuses({ [ids[0]]: data });
-            setRetryCount(0);
-          }
-        }
-      } else {
-        // Multiple users - batch request
+    const fetchPromise = (async () => {
+      try {
         const response = await fetch(`${API_BASE_URL}/users/online-status/batch`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userIds: ids }),
-          signal
+          body: JSON.stringify({ userIds: ids })
         });
         if (response.ok) {
           const data = await response.json();
           if (data.success) {
-            setStatuses(data.statuses);
-            setRetryCount(0);
+            userStatusCache.data = { ...userStatusCache.data, ...data.statuses };
+            userStatusCache.lastFetch = Date.now();
+            return data.statuses;
           }
         }
+      } catch (err) {
+        // Silently fail
       }
-    } catch (err) {
-      // Don't log aborted requests
-      if (err.name !== 'AbortError') {
-        setRetryCount(prev => prev + 1);
-        setError(err);
+      return null;
+    })();
+
+    userStatusCache.pendingRequest = fetchPromise;
+
+    try {
+      const result = await fetchPromise;
+      if (result && mountedRef.current) {
+        setStatuses(result);
       }
     } finally {
-      setIsLoading(false);
+      userStatusCache.pendingRequest = null;
+      if (mountedRef.current) {
+        setIsLoading(false);
+      }
     }
-  }, [userIds, enabled, retryCount]);
+  }, [userIds, enabled]);
 
   useEffect(() => {
-    const controller = new AbortController();
-    fetchStatus(controller.signal);
+    mountedRef.current = true;
+    fetchStatus();
 
-    let interval;
-    if (enabled && refreshInterval > 0) {
-      interval = setInterval(() => fetchStatus(controller.signal), refreshInterval);
-    }
+    const intervalId = setInterval(fetchStatus, POLLING_INTERVAL);
     
     return () => {
-      controller.abort();
-      if (interval) clearInterval(interval);
+      mountedRef.current = false;
+      clearInterval(intervalId);
     };
-  }, [fetchStatus, enabled, refreshInterval]);
+  }, [fetchStatus]);
 
-  // Reset retry count after 5 minutes
-  useEffect(() => {
-    if (retryCount >= 3) {
-      const timeout = setTimeout(() => setRetryCount(0), 300000);
-      return () => clearTimeout(timeout);
-    }
-  }, [retryCount]);
-
-  return { statuses, isLoading, error, refresh: () => fetchStatus() };
+  return { statuses, isLoading, error: null, refresh: fetchStatus };
 }
 
 /**

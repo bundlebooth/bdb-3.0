@@ -1592,7 +1592,7 @@ const webhook = async (req, res) => {
                   userId: row.UserID,
                   vendorProfileId: row.VendorProfileID,
                   amount: row.TotalAmount,
-                  currency: (pi && typeof pi.currency === 'string' && pi.currency) ? pi.currency.toUpperCase() : 'CAD',
+                  currency: (paymentIntent && typeof paymentIntent.currency === 'string' && paymentIntent.currency) ? paymentIntent.currency.toUpperCase() : 'CAD',
                   stripeChargeId: paymentIntent.id,
                   description: 'Stripe Payment (webhook PI)'
                 });
