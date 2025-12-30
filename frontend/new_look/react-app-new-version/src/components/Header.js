@@ -187,7 +187,7 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
     <header className={`header ${isScrolled ? 'header-scrolled' : ''}`}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
         <div className="logo" style={{ cursor: 'pointer' }} onClick={() => window.location.href = '/'}>
-          <img src="/planhive_logo.svg" alt="PlanHive" style={{ height: '50px', width: 'auto' }} />
+          <img src="/planbeau_logo.svg" alt="PlanBeau" style={{ height: '50px', width: 'auto' }} />
         </div>
         
         {/* Page Tabs - Explore / Forum */}

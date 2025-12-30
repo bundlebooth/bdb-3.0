@@ -271,7 +271,7 @@ function LandingPage() {
       <header className={`landing-header ${isScrolled ? 'scrolled' : ''}`}>
         <div className="landing-header-content">
           <div className="landing-logo" onClick={() => navigate('/')}>
-            <img src="/planhive_logo.svg" alt="PlanHive" />
+            <img src="/planbeau_logo.svg" alt="PlanBeau" />
           </div>
           <nav className="landing-nav">
             <a href="/become-a-vendor" className="nav-link">Become a Vendor</a>
@@ -461,7 +461,7 @@ function LandingPage() {
         </div>
       </section>
 
-      {/* 4. Value Card (Why PlanHive - Benefits) */}
+      {/* 4. Value Card (Why PlanBeau - Benefits) */}
       <section className="why-planhive-section">
         <div className="section-container">
           <div className="why-planhive-content">
@@ -711,7 +711,7 @@ function LandingPage() {
                       </div>
                     </div>
                   </div>
-                  <p>"Found our wedding photographer through PlanHive. The process was so easy and the results were amazing!"</p>
+                  <p>"Found our wedding photographer through PlanBeau. The process was so easy and the results were amazing!"</p>
                 </div>
               </div>
             </div>

@@ -181,16 +181,16 @@ const SecurityLogsPanel = () => {
         { id: 1, user: 'john@example.com', action: 'Login Success', ip: '192.168.1.100', location: 'Toronto, ON', device: 'Chrome / Windows', timestamp: new Date(now - 1000 * 60 * 5).toISOString() },
         { id: 2, user: 'vendor@catering.com', action: 'Login Success', ip: '192.168.1.101', location: 'Vancouver, BC', device: 'Safari / macOS', timestamp: new Date(now - 1000 * 60 * 15).toISOString() },
         { id: 3, user: 'unknown@test.com', action: 'Login Failed', ip: '10.0.0.55', location: 'Unknown', device: 'Firefox / Linux', timestamp: new Date(now - 1000 * 60 * 30).toISOString() },
-        { id: 4, user: 'admin@planhive.com', action: 'Login Success', ip: '192.168.1.1', location: 'Toronto, ON', device: 'Chrome / Windows', timestamp: new Date(now - 1000 * 60 * 60).toISOString() },
+        { id: 4, user: 'admin@planbeau.com', action: 'Login Success', ip: '192.168.1.1', location: 'Toronto, ON', device: 'Chrome / Windows', timestamp: new Date(now - 1000 * 60 * 60).toISOString() },
         { id: 5, user: 'jane@example.com', action: 'Password Reset', ip: '192.168.1.102', location: 'Montreal, QC', device: 'Chrome / Android', timestamp: new Date(now - 1000 * 60 * 120).toISOString() }
       ];
     } else if (type === 'admin') {
       return [
-        { id: 1, admin: 'admin@planhive.com', action: 'Approved Vendor', target: 'Elite Catering Co.', details: 'Vendor profile approved', timestamp: new Date(now - 1000 * 60 * 10).toISOString() },
-        { id: 2, admin: 'admin@planhive.com', action: 'Updated Settings', target: 'Platform Settings', details: 'Changed commission rate to 10%', timestamp: new Date(now - 1000 * 60 * 30).toISOString() },
-        { id: 3, admin: 'admin@planhive.com', action: 'Deleted Review', target: 'Review #456', details: 'Removed for policy violation', timestamp: new Date(now - 1000 * 60 * 60).toISOString() },
-        { id: 4, admin: 'admin@planhive.com', action: 'Suspended User', target: 'user@spam.com', details: 'Spam activity detected', timestamp: new Date(now - 1000 * 60 * 120).toISOString() },
-        { id: 5, admin: 'admin@planhive.com', action: 'Issued Refund', target: 'Booking #1234', details: 'Full refund of $250', timestamp: new Date(now - 1000 * 60 * 180).toISOString() }
+        { id: 1, admin: 'admin@planbeau.com', action: 'Approved Vendor', target: 'Elite Catering Co.', details: 'Vendor profile approved', timestamp: new Date(now - 1000 * 60 * 10).toISOString() },
+        { id: 2, admin: 'admin@planbeau.com', action: 'Updated Settings', target: 'Platform Settings', details: 'Changed commission rate to 10%', timestamp: new Date(now - 1000 * 60 * 30).toISOString() },
+        { id: 3, admin: 'admin@planbeau.com', action: 'Deleted Review', target: 'Review #456', details: 'Removed for policy violation', timestamp: new Date(now - 1000 * 60 * 60).toISOString() },
+        { id: 4, admin: 'admin@planbeau.com', action: 'Suspended User', target: 'user@spam.com', details: 'Spam activity detected', timestamp: new Date(now - 1000 * 60 * 120).toISOString() },
+        { id: 5, admin: 'admin@planbeau.com', action: 'Issued Refund', target: 'Booking #1234', details: 'Full refund of $250', timestamp: new Date(now - 1000 * 60 * 180).toISOString() }
       ];
     } else if (type === 'flagged') {
       return [

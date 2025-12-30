@@ -117,7 +117,7 @@ const TemplatesSection = ({ templates, loading, onEdit, onRefresh }) => {
     { id: 5, name: 'Payment Failed', category: 'payment', type: 'email', subject: 'Payment failed - Action required' },
     { id: 6, name: 'Vendor Approved', category: 'vendor', type: 'email', subject: 'Congratulations! Your profile is approved' },
     { id: 7, name: 'Vendor Rejected', category: 'vendor', type: 'email', subject: 'Profile review update' },
-    { id: 8, name: 'Welcome Email', category: 'user', type: 'email', subject: 'Welcome to PlanHive!' },
+    { id: 8, name: 'Welcome Email', category: 'user', type: 'email', subject: 'Welcome to PlanBeau!' },
     { id: 9, name: 'Password Reset', category: 'user', type: 'email', subject: 'Reset your password' },
     { id: 10, name: 'Review Request', category: 'review', type: 'email', subject: 'How was your experience?' }
   ];
@@ -462,8 +462,8 @@ const TemplateModal = ({ template, onClose, onSave, onPreview }) => {
             amount: '500.00',
             booking_id: '12345',
             service_name: 'Wedding Catering',
-            reset_link: 'https://planhive.com/reset-password',
-            review_link: 'https://planhive.com/leave-review'
+            reset_link: 'https://planbeau.com/reset-password',
+            review_link: 'https://planbeau.com/leave-review'
           }
         })
       });

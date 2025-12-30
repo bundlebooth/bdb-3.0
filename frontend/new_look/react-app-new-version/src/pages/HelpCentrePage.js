@@ -12,24 +12,24 @@ function HelpCentrePage() {
       icon: 'fa-star',
       articleCount: 15,
       articles: [
-        { id: 1, title: "PlanHive's Health & Safety Measures" },
+        { id: 1, title: "PlanBeau's Health & Safety Measures" },
         { id: 2, title: "What is the cancellation and refund policy for clients and vendors?" }
       ],
       sections: [
         {
           title: 'For Vendors',
           articles: [
-            { id: 3, title: "How does PlanHive Referral Program work?" },
+            { id: 3, title: "How does PlanBeau Referral Program work?" },
             { id: 4, title: "Instant Book" },
             { id: 5, title: "Calendar Sync" },
-            { id: 6, title: "Why you should always keep your bookings on PlanHive" },
+            { id: 6, title: "Why you should always keep your bookings on PlanBeau" },
             { id: 7, title: "How do I send a custom rate?" },
             { id: 8, title: "Tips for navigating your first booking" },
-            { id: 9, title: "How much commission does PlanHive take?" },
+            { id: 9, title: "How much commission does PlanBeau take?" },
             { id: 10, title: "What is a site rep? How do I go about requesting one?" },
             { id: 11, title: "How is my payout calculated?" },
             { id: 12, title: "A client wants to add more hours to a booking. How do I do that?" },
-            { id: 13, title: "Understanding and Customizing Activity Types on PlanHive" }
+            { id: 13, title: "Understanding and Customizing Activity Types on PlanBeau" }
           ]
         },
         {
@@ -160,7 +160,7 @@ function HelpCentrePage() {
               {collection.title}
             </h1>
             <p style={{ color: '#666', fontSize: '0.9rem' }}>
-              By PlanHive Support Team · {collection.articleCount} articles
+              By PlanBeau Support Team · {collection.articleCount} articles
             </p>
           </div>
 
@@ -235,7 +235,7 @@ function HelpCentrePage() {
             textAlign: 'center'
           }}>
             <Link to="/" style={{ color: '#999', fontSize: '0.9rem', textDecoration: 'none' }}>
-              planhive
+              planbeau
             </Link>
           </div>
         </div>
@@ -259,7 +259,7 @@ function HelpCentrePage() {
             fontWeight: '700',
             marginBottom: '1.5rem'
           }}>
-            planhive
+            planbeau
           </h1>
         </Link>
         <h2 style={{ 
@@ -268,7 +268,7 @@ function HelpCentrePage() {
           fontWeight: '500',
           marginBottom: '2rem'
         }}>
-          Advice and answers from the PlanHive Team
+          Advice and answers from the PlanBeau Team
         </h2>
         
         {/* Search Bar */}
@@ -356,7 +356,7 @@ function HelpCentrePage() {
                 {collection.title}
               </h3>
               <p style={{ color: '#999', fontSize: '0.85rem', margin: 0 }}>
-                By PlanHive Support · {collection.articleCount} articles
+                By PlanBeau Support · {collection.articleCount} articles
               </p>
             </div>
           </div>
@@ -368,7 +368,7 @@ function HelpCentrePage() {
           textAlign: 'center'
         }}>
           <Link to="/" style={{ color: '#ccc', fontSize: '0.9rem', textDecoration: 'none' }}>
-            planhive
+            planbeau
           </Link>
         </div>
       </div>

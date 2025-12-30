@@ -481,7 +481,7 @@ function ProfileModal({ isOpen, onClose }) {
             color: '#1F2937',
             margin: 0
           }}>
-            {view === 'login' && 'Welcome to PlanHive'}
+            {view === 'login' && 'Welcome to PlanBeau'}
             {view === 'signup' && 'Create Account'}
             {view === 'twofa' && 'Verify Your Account'}
             {view === 'googleAccountType' && 'Choose Account Type'}
@@ -811,7 +811,7 @@ function ProfileModal({ isOpen, onClose }) {
                   margin: 0,
                   fontWeight: '500'
                 }}>
-                  Welcome! Choose how you'd like to use PlanHive
+                  Welcome! Choose how you'd like to use PlanBeau
                 </p>
               </div>
 

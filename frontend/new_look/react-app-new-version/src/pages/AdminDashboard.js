@@ -169,7 +169,7 @@ const AdminDashboard = () => {
       <aside className="admin-sidebar">
         <div className="sidebar-header">
           <div className="logo" onClick={() => navigate('/')}>
-            <img src="/planhive_logo.svg" alt="PlanHive" />
+            <img src="/planbeau_logo.svg" alt="PlanBeau" />
             {!sidebarCollapsed && <span>Admin</span>}
           </div>
           <button 
@@ -968,7 +968,7 @@ const CommissionSettingsPanel = () => {
           <div style={{ marginTop: '20px', padding: '16px', background: '#fff3cd', borderRadius: '8px', fontSize: '13px', color: '#856404' }}>
             <strong>How it works (like Giggster):</strong>
             <ul style={{ margin: '8px 0 0 16px', paddingLeft: '0' }}>
-              <li>PlanHive takes a {settings.find(s => s.SettingKey === 'platform_commission_rate')?.SettingValue || '15'}% commission from the host's payout</li>
+              <li>PlanBeau takes a {settings.find(s => s.SettingKey === 'platform_commission_rate')?.SettingValue || '15'}% commission from the host's payout</li>
               <li>Customers pay a {settings.find(s => s.SettingKey === 'renter_processing_fee_rate')?.SettingValue || '5'}% processing fee</li>
               <li>These fees cover platform development, support, and fraud prevention</li>
             </ul>

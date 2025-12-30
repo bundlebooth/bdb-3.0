@@ -95,7 +95,7 @@ function VendorProfilePage() {
       }
       
       // Update page title
-      document.title = `${vendorDetails.profile.BusinessName || vendorDetails.profile.DisplayName} - PlanHive`;
+      document.title = `${vendorDetails.profile.BusinessName || vendorDetails.profile.DisplayName} - PlanBeau`;
       
       // Track page view with URL parameters
       const queryParams = parseQueryParams(location.search);
@@ -313,7 +313,7 @@ function VendorProfilePage() {
       try {
         await navigator.share({
           title: vendorName,
-          text: `Check out ${vendorName} on PlanHive!`,
+          text: `Check out ${vendorName} on PlanBeau!`,
           url: url
         });
       } catch (error) {
@@ -847,7 +847,7 @@ function VendorProfilePage() {
               fontWeight: showGoogleReviews ? 400 : 600,
               transition: 'all 0.2s'
             }}>
-              PlanHive
+              PlanBeau
             </span>
             
             <div 

@@ -258,7 +258,7 @@ const ChatOversightPanel = () => {
                       >
                         <div className="message-header">
                           <span className="sender-name">
-                            {msg.IsSystem ? 'PlanHive Support' : msg.IsAdminNote ? 'Admin Note' : msg.SenderName}
+                            {msg.IsSystem ? 'PlanBeau Support' : msg.IsAdminNote ? 'Admin Note' : msg.SenderName}
                           </span>
                           <span className="message-time">
                             {new Date(msg.SentAt).toLocaleString()}
@@ -306,7 +306,7 @@ const ChatOversightPanel = () => {
                     <textarea
                       value={systemMessage}
                       onChange={(e) => setSystemMessage(e.target.value)}
-                      placeholder="Send message as PlanHive Support..."
+                      placeholder="Send message as PlanBeau Support..."
                       rows={2}
                     />
                     <button className="btn-primary" onClick={handleSendSystemMessage}>

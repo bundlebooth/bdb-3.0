@@ -14,7 +14,7 @@ const DEFAULT_FAQS = [
 const DEFAULT_COMMISSION = {
   platformCommission: '15',
   renterProcessingFee: '5',
-  description: 'PlanHive takes a 15% commission from the host\'s total payout. We also collect a 5% processing fee from the renter.'
+  description: 'PlanBeau takes a 15% commission from the host\'s total payout. We also collect a 5% processing fee from the renter.'
 };
 
 // Get active announcements for homepage
@@ -133,7 +133,7 @@ router.get('/commission-info', async (req, res) => {
         commissionInfo: {
           platformCommission: settings.platform_commission_rate?.value || DEFAULT_COMMISSION.platformCommission,
           renterProcessingFee: settings.renter_processing_fee_rate?.value || DEFAULT_COMMISSION.renterProcessingFee,
-          description: 'PlanHive takes a commission from the host\'s total payout. We also collect a processing fee from the renter to cover payment processing, platform development, customer support, and fraud prevention.'
+          description: 'PlanBeau takes a commission from the host\'s total payout. We also collect a processing fee from the renter to cover payment processing, platform development, customer support, and fraud prevention.'
         }
       });
     } else {

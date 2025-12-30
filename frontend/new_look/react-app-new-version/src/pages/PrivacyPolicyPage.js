@@ -22,7 +22,7 @@ function PrivacyPolicyPage() {
               1. Introduction
             </h2>
             <p style={{ color: '#4b5563', lineHeight: '1.7', marginBottom: '1rem' }}>
-              PlanHive ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy 
+              PlanBeau ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy 
               explains how we collect, use, disclose, and safeguard your information when you use our platform.
             </p>
           </section>
@@ -160,7 +160,7 @@ function PrivacyPolicyPage() {
             </h2>
             <p style={{ color: '#4b5563', lineHeight: '1.7', marginBottom: '1rem' }}>
               If you have questions about this Privacy Policy or our data practices, please contact us at{' '}
-              <a href="mailto:privacy@planhive.com" style={{ color: '#5B68F4' }}>privacy@planhive.com</a>
+              <a href="mailto:privacy@planbeau.com" style={{ color: '#5B68F4' }}>privacy@planbeau.com</a>
             </p>
           </section>
 

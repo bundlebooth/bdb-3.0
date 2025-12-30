@@ -162,7 +162,7 @@ const BecomeVendorPage = () => {
   const steps = [
     {
       id: 'account',
-      title: currentUser ? `Welcome, ${currentUser.name}!` : 'Welcome to PlanHive',
+      title: currentUser ? `Welcome, ${currentUser.name}!` : 'Welcome to PlanBeau',
       subtitle: 'Please log in or create an account to continue',
       component: AccountStep,
       required: true
@@ -1130,7 +1130,7 @@ const BecomeVendorPage = () => {
       <header className="become-vendor-header">
         <div className="header-content">
           <div className="logo" onClick={() => navigate('/')} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-            <img src="/planhive_logo.svg" alt="PlanHive" style={{ height: '50px', width: 'auto' }} />
+            <img src="/planbeau_logo.svg" alt="PlanBeau" style={{ height: '50px', width: 'auto' }} />
           </div>
           <div className="header-actions">
             {isExistingVendor && (
@@ -1454,7 +1454,7 @@ function AccountStep({ currentUser, setFormData, formData, onAccountCreated, isE
             color: '#1F2937',
             margin: 0
           }}>
-            Welcome to PlanHive
+            Welcome to PlanBeau
           </h3>
         </div>
         

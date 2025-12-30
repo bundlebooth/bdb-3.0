@@ -74,8 +74,8 @@ function DashboardSidebar({ menuItems, activeSection, onSectionChange, onLogout,
             justifyContent: 'space-between'
           }}>
             <img 
-              src="/planhive_logo.svg" 
-              alt="PlanHive" 
+              src="/planbeau_logo.svg" 
+              alt="PlanBeau" 
               style={{ height: '36px', width: 'auto' }} 
             />
             <button
@@ -223,8 +223,8 @@ function DashboardSidebar({ menuItems, activeSection, onSectionChange, onLogout,
         }}
       >
         <img 
-          src="/planhive_logo.svg" 
-          alt="PlanHive" 
+          src="/planbeau_logo.svg" 
+          alt="PlanBeau" 
           style={{ height: '40px', width: 'auto' }} 
         />
       </div>

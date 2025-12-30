@@ -2,7 +2,7 @@
 
 // Update page title with notification count
 export function updatePageTitle(notificationCount) {
-  const baseTitle = 'PlanHive - Event Booking Platform';
+  const baseTitle = 'PlanBeau - Event Booking Platform';
   if (notificationCount > 0) {
     document.title = `(${notificationCount}) ${baseTitle}`;
   } else {

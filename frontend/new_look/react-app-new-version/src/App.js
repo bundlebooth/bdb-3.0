@@ -35,7 +35,7 @@ function HomeRoute() {
     return (
       <div id="app-loading-overlay">
         <div className="loading-logo">
-          <img src="/planhive_logo.svg" alt="PlanHive" style={{ height: '60px', width: 'auto' }} />
+          <img src="/planbeau_logo.svg" alt="PlanBeau" style={{ height: '60px', width: 'auto' }} />
         </div>
         <div className="loading-spinner"></div>
       </div>
@@ -62,7 +62,7 @@ function App() {
     return (
       <div id="app-loading-overlay">
         <div className="loading-logo">
-          <img src="/planhive_logo.svg" alt="PlanHive" style={{ height: '60px', width: 'auto' }} />
+          <img src="/planbeau_logo.svg" alt="PlanBeau" style={{ height: '60px', width: 'auto' }} />
         </div>
         <div className="loading-spinner"></div>
       </div>

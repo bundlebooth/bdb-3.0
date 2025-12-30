@@ -97,11 +97,11 @@ const PlatformSettingsPanel = () => {
   };
 
   const getDefaultSettings = () => ({
-    platformName: 'PlanHive',
+    platformName: 'PlanBeau',
     tagline: 'Find and book the perfect vendors for your events',
-    supportEmail: 'support@planhive.com',
+    supportEmail: 'support@planbeau.com',
     supportPhone: '',
-    logoUrl: '/planhive_logo.svg',
+    logoUrl: '/planbeau_logo.svg',
     faviconUrl: '/favicon.ico',
     primaryColor: '#5e72e4',
     secondaryColor: '#2dce89',
