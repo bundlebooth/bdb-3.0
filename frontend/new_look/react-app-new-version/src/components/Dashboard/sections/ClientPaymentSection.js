@@ -88,15 +88,7 @@ function CheckoutForm({ onSuccess, onCancel, clientProvince, total }) {
     <form onSubmit={handleSubmit}>
       <PaymentElement 
         options={{
-          layout: 'tabs',
-          fields: {
-            billingDetails: {
-              address: {
-                country: 'never',
-                postalCode: 'never'
-              }
-            }
-          }
+          layout: 'tabs'
         }}
       />
 
