@@ -13,17 +13,30 @@ CREATE PROCEDURE [bookings].[sp_InsertConfirmedBooking]
     @VendorProfileID INT,
     @ServiceID INT,
     @EventDate DATETIME,
-    @Status NVARCHAR(20),
-    @AttendeeCount INT,
-    @SpecialRequests NVARCHAR(MAX),
-    @TotalAmount DECIMAL(10,2)
+    @EndDate DATETIME = NULL,
+    @TotalAmount DECIMAL(10,2),
+    @AttendeeCount INT = 1,
+    @SpecialRequests NVARCHAR(MAX) = NULL,
+    @EventLocation NVARCHAR(500) = NULL,
+    @EventName NVARCHAR(255) = NULL,
+    @EventType NVARCHAR(100) = NULL,
+    @TimeZone NVARCHAR(100) = NULL,
+    @StripePaymentIntentID NVARCHAR(100) = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
     
-    INSERT INTO bookings.Bookings (UserID, VendorProfileID, ServiceID, EventDate, Status, AttendeeCount, SpecialRequests, TotalAmount)
+    INSERT INTO bookings.Bookings (
+        UserID, VendorProfileID, ServiceID, EventDate, EndDate, Status, 
+        AttendeeCount, SpecialRequests, TotalAmount, EventLocation, 
+        EventName, EventType, TimeZone, StripePaymentIntentID, FullAmountPaid
+    )
     OUTPUT INSERTED.BookingID
-    VALUES (@UserID, @VendorProfileID, @ServiceID, @EventDate, @Status, @AttendeeCount, @SpecialRequests, @TotalAmount);
+    VALUES (
+        @UserID, @VendorProfileID, @ServiceID, @EventDate, @EndDate, 'confirmed', 
+        @AttendeeCount, @SpecialRequests, @TotalAmount, @EventLocation,
+        @EventName, @EventType, @TimeZone, @StripePaymentIntentID, 1
+    );
 END
 GO
 

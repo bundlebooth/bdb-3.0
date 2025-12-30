@@ -1400,8 +1400,11 @@ router.get('/verify-intent', async (req, res) => {
 
     const pi = await stripe.paymentIntents.retrieve(paymentIntentId);
     const status = pi?.status;
-    let bookingId = pi?.metadata?.booking_id || null;
-    const requestId = pi?.metadata?.request_id || null;
+    // Handle empty strings as null
+    let bookingId = pi?.metadata?.booking_id && pi.metadata.booking_id !== '' ? pi.metadata.booking_id : null;
+    const requestId = pi?.metadata?.request_id && pi.metadata.request_id !== '' ? pi.metadata.request_id : null;
+    
+    console.log('[VerifyIntent] PaymentIntent metadata:', { bookingId, requestId, status });
 
     if (status !== 'succeeded') {
       return res.status(400).json({ success: false, message: `PaymentIntent not paid (status: ${status})` });
@@ -1411,77 +1414,62 @@ router.get('/verify-intent', async (req, res) => {
 
     // If we have a requestId but no bookingId, create a booking from the request
     if (requestId && !bookingId) {
+      console.log('[VerifyIntent] Creating booking from request:', requestId);
       try {
-        // Get request details
-        const reqDetails = await pool.request()
+        // Get request details using direct query
+        const reqInfo = await pool.request()
           .input('RequestID', sql.Int, requestId)
-          .execute('bookings.sp_GetRequestDetails');
+          .query('SELECT UserID, VendorProfileID, EventDate, EventTime, EventEndTime, EventLocation, AttendeeCount, Budget, Services, SpecialRequests, EventName, EventType, TimeZone FROM bookings.BookingRequests WHERE RequestID = @RequestID');
         
-        if (reqDetails.recordset.length > 0) {
-          const reqData = reqDetails.recordset[0];
+        if (reqInfo.recordset.length > 0) {
+          const req = reqInfo.recordset[0];
+          console.log('[VerifyIntent] Found request:', { UserID: req.UserID, VendorProfileID: req.VendorProfileID });
           
-          // Get request user and vendor info
-          const reqInfo = await pool.request()
-            .input('RequestID', sql.Int, requestId)
-            .query('SELECT UserID, VendorProfileID, EventDate, EventTime, EventEndTime, EventLocation, AttendeeCount, Budget, Services, SpecialRequests, EventName, EventType, TimeZone FROM bookings.BookingRequests WHERE RequestID = @RequestID');
-          
-          if (reqInfo.recordset.length > 0) {
-            const request = reqInfo.recordset[0];
-            
-            // Parse services JSON to get price
-            let totalAmount = request.Budget || 0;
-            let serviceId = 1;
-            try {
-              const services = JSON.parse(request.Services || '[]');
-              if (services.length > 0) {
-                totalAmount = services.reduce((sum, s) => sum + (parseFloat(s.price) || 0), 0);
-                serviceId = services[0]?.serviceId || 1;
-              }
-            } catch (e) {}
-
-            // Create confirmed booking
-            const createResult = await pool.request()
-              .input('UserID', sql.Int, request.UserID)
-              .input('VendorProfileID', sql.Int, request.VendorProfileID)
-              .input('ServiceID', sql.Int, serviceId)
-              .input('EventDate', sql.DateTime, request.EventDate)
-              .input('EndDate', sql.DateTime, request.EventEndTime ? new Date(request.EventDate.toDateString() + ' ' + request.EventEndTime) : request.EventDate)
-              .input('TotalAmount', sql.Decimal(10, 2), totalAmount)
-              .input('AttendeeCount', sql.Int, request.AttendeeCount || 1)
-              .input('SpecialRequests', sql.NVarChar(sql.MAX), request.SpecialRequests)
-              .input('EventLocation', sql.NVarChar(500), request.EventLocation)
-              .input('EventName', sql.NVarChar(255), request.EventName)
-              .input('EventType', sql.NVarChar(100), request.EventType)
-              .input('TimeZone', sql.NVarChar(100), request.TimeZone)
-              .input('StripePaymentIntentID', sql.NVarChar(100), paymentIntentId)
-              .execute('bookings.sp_InsertConfirmedBooking');
-            
-            if (createResult.recordset.length > 0) {
-              bookingId = createResult.recordset[0].BookingID;
-              
-              // Insert booking services
-              try {
-                const services = JSON.parse(request.Services || '[]');
-                for (const svc of services) {
-                  await pool.request()
-                    .input('BookingID', sql.Int, bookingId)
-                    .input('ServiceID', sql.Int, svc.serviceId || 1)
-                    .input('Quantity', sql.Int, 1)
-                    .input('PriceAtBooking', sql.Decimal(10, 2), parseFloat(svc.price) || 0)
-                    .execute('bookings.sp_InsertBookingService');
-                }
-              } catch (e) { console.warn('[VerifyIntent] Insert booking services error:', e?.message); }
-              
-              // Update request status to confirmed
-              await pool.request()
-                .input('RequestID', sql.Int, requestId)
-                .input('PaymentIntentID', sql.NVarChar(100), paymentIntentId)
-                .query("UPDATE bookings.BookingRequests SET Status = 'confirmed', ConfirmedAt = GETDATE(), PaymentIntentID = @PaymentIntentID WHERE RequestID = @RequestID");
+          // Parse services JSON to get price
+          let totalAmount = req.Budget || 0;
+          let serviceId = null;
+          try {
+            const services = JSON.parse(req.Services || '[]');
+            if (services.length > 0) {
+              totalAmount = services.reduce((sum, s) => sum + (parseFloat(s.price) || 0), 0);
+              serviceId = services[0]?.serviceId || null;
             }
+          } catch (e) { console.warn('[VerifyIntent] Parse services error:', e?.message); }
+
+          // Create confirmed booking using direct INSERT
+          const insertResult = await pool.request()
+            .input('UserID', sql.Int, req.UserID)
+            .input('VendorProfileID', sql.Int, req.VendorProfileID)
+            .input('ServiceID', sql.Int, serviceId)
+            .input('EventDate', sql.DateTime, req.EventDate)
+            .input('TotalAmount', sql.Decimal(10, 2), totalAmount)
+            .input('AttendeeCount', sql.Int, req.AttendeeCount || 1)
+            .input('SpecialRequests', sql.NVarChar(sql.MAX), req.SpecialRequests)
+            .input('EventLocation', sql.NVarChar(500), req.EventLocation)
+            .input('StripePaymentIntentID', sql.NVarChar(100), paymentIntentId)
+            .query(`
+              INSERT INTO bookings.Bookings (UserID, VendorProfileID, ServiceID, EventDate, Status, AttendeeCount, SpecialRequests, TotalAmount, EventLocation, StripePaymentIntentID, FullAmountPaid, CreatedAt)
+              OUTPUT INSERTED.BookingID
+              VALUES (@UserID, @VendorProfileID, @ServiceID, @EventDate, 'confirmed', @AttendeeCount, @SpecialRequests, @TotalAmount, @EventLocation, @StripePaymentIntentID, 1, GETDATE())
+            `);
+          
+          if (insertResult.recordset && insertResult.recordset.length > 0) {
+            bookingId = insertResult.recordset[0].BookingID;
+            console.log('[VerifyIntent] Created booking:', bookingId);
+            
+            // Update request status to confirmed
+            await pool.request()
+              .input('RequestID', sql.Int, requestId)
+              .input('PaymentIntentID', sql.NVarChar(100), paymentIntentId)
+              .query("UPDATE bookings.BookingRequests SET Status = 'confirmed', ConfirmedAt = GETDATE(), PaymentIntentID = @PaymentIntentID WHERE RequestID = @RequestID");
+            
+            console.log('[VerifyIntent] Updated request status to confirmed');
           }
+        } else {
+          console.warn('[VerifyIntent] Request not found:', requestId);
         }
       } catch (reqErr) {
-        console.warn('[VerifyIntent] Create booking from request error:', reqErr?.message);
+        console.error('[VerifyIntent] Create booking from request error:', reqErr?.message, reqErr?.stack);
       }
     }
 
@@ -1490,11 +1478,13 @@ router.get('/verify-intent', async (req, res) => {
     }
 
     // Idempotently mark booking as paid/confirmed
-    const request = new sql.Request(pool);
-    request.input('BookingID', sql.Int, bookingId);
-    request.input('Status', sql.NVarChar(20), 'confirmed');
-    request.input('StripePaymentIntentID', sql.NVarChar(100), paymentIntentId);
-    await request.execute('payments.sp_MarkBookingPaid');
+    console.log('[VerifyIntent] Marking booking as paid:', bookingId);
+    const markPaidReq = new sql.Request(pool);
+    markPaidReq.input('BookingID', sql.Int, bookingId);
+    markPaidReq.input('Status', sql.NVarChar(20), 'confirmed');
+    markPaidReq.input('StripePaymentIntentID', sql.NVarChar(100), paymentIntentId);
+    const markResult = await markPaidReq.execute('payments.sp_MarkBookingPaid');
+    console.log('[VerifyIntent] Mark paid result:', markResult.recordset);
 
     // Record transaction and regenerate invoice
     try {
@@ -1502,8 +1492,12 @@ router.get('/verify-intent', async (req, res) => {
       binfoReq.input('BookingID', sql.Int, bookingId);
       const binfo = await binfoReq.execute('payments.sp_GetBookingUserVendor');
       const row = binfo.recordset[0] || {};
+      console.log('[VerifyIntent] Booking info:', row);
+      
       const paidAmount = ((pi && typeof pi.amount_received === 'number') ? pi.amount_received : (pi && typeof pi.amount === 'number' ? pi.amount : 0)) / 100;
       const exists = await existsRecentTransaction({ bookingId, amount: paidAmount, externalId: paymentIntentId, minutes: 240 });
+      console.log('[VerifyIntent] Transaction exists:', exists, 'Amount:', paidAmount);
+      
       if (!exists) {
         const txnCurrency = (pi && typeof pi.currency === 'string' && pi.currency) ? pi.currency.toUpperCase() : 'CAD';
         await recordTransaction({
@@ -1515,11 +1509,21 @@ router.get('/verify-intent', async (req, res) => {
           stripeChargeId: paymentIntentId,
           description: 'Stripe Payment (verified)'
         });
+        console.log('[VerifyIntent] Transaction recorded');
       }
+      
+      // Generate invoice
       if (invoicesRouter && typeof invoicesRouter.upsertInvoiceForBooking === 'function') {
-        try { await invoicesRouter.upsertInvoiceForBooking(await poolPromise, bookingId, { forceRegenerate: true }); } catch (_) {}
+        try { 
+          await invoicesRouter.upsertInvoiceForBooking(await poolPromise, bookingId, { forceRegenerate: true }); 
+          console.log('[VerifyIntent] Invoice generated for booking:', bookingId);
+        } catch (invErr) { 
+          console.warn('[VerifyIntent] Invoice generation error:', invErr?.message); 
+        }
+      } else {
+        console.warn('[VerifyIntent] invoicesRouter.upsertInvoiceForBooking not available');
       }
-    } catch (txErr) { console.warn('[VerifyIntent] recordTransaction error', txErr?.message); }
+    } catch (txErr) { console.error('[VerifyIntent] recordTransaction error', txErr?.message, txErr?.stack); }
 
     // Also update related booking request if exists (most recent for this user/vendor)
     const bookingInfoReq = pool.request();

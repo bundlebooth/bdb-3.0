@@ -55,16 +55,20 @@ function CheckoutForm({ onSuccess, onCancel, clientProvince, total }) {
         setError(submitError.message || 'Payment failed. Please try again.');
       } else if (paymentIntent && paymentIntent.status === 'succeeded') {
         // Verify payment and create booking record on backend
+        console.log('[Payment] Payment succeeded, verifying with backend...', paymentIntent.id);
         try {
           const verifyResponse = await fetch(`${API_BASE_URL}/payments/verify-intent?paymentIntentId=${paymentIntent.id}`, {
             headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
           });
           const verifyData = await verifyResponse.json();
+          console.log('[Payment] Verify response:', verifyData);
           if (!verifyResponse.ok) {
-            console.warn('Payment verification warning:', verifyData.message);
+            console.error('Payment verification failed:', verifyData.message);
+          } else {
+            console.log('[Payment] Booking created/updated successfully:', verifyData);
           }
         } catch (verifyErr) {
-          console.warn('Payment verification error:', verifyErr);
+          console.error('Payment verification error:', verifyErr);
         }
         onSuccess(paymentIntent);
       }
