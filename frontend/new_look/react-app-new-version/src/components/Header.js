@@ -185,52 +185,62 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
   return (
     <>
     <header className={`header ${isScrolled ? 'header-scrolled' : ''}`}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
-        <div className="logo" style={{ cursor: 'pointer' }} onClick={() => window.location.href = '/'}>
-          <img src="/planbeau_logo.svg" alt="PlanBeau" style={{ height: '50px', width: 'auto' }} />
+      <div className="header-left" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div className="logo" style={{ cursor: 'pointer', marginRight: '8px' }} onClick={() => window.location.href = '/'}>
+          <img src="/planbeau_logo.svg" alt="PlanBeau" className="header-logo-img" />
         </div>
         
-        {/* Page Tabs - Explore / Forum */}
-        <div style={{ display: 'flex', gap: '4px' }}>
+        {/* Page Tabs - Explore / Forum - Integrated into header */}
+        <div className="header-nav-tabs" style={{ 
+          display: 'flex', 
+          gap: '2px',
+          background: '#f3f4f6',
+          borderRadius: '10px',
+          padding: '4px'
+        }}>
           <button
             onClick={() => navigate('/')}
+            className="header-nav-tab"
             style={{
-              padding: '8px 16px',
-              background: location.pathname === '/' || location.pathname === '/explore' ? '#f3f4f6' : 'transparent',
+              padding: '8px 18px',
+              background: location.pathname === '/' || location.pathname === '/explore' ? 'white' : 'transparent',
               border: 'none',
-              borderRadius: '20px',
+              borderRadius: '8px',
               fontSize: '14px',
-              fontWeight: location.pathname === '/' || location.pathname === '/explore' ? 600 : 500,
-              color: location.pathname === '/' || location.pathname === '/explore' ? '#222' : '#666',
+              fontWeight: 500,
+              color: location.pathname === '/' || location.pathname === '/explore' ? '#111827' : '#6b7280',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
-              transition: 'all 0.2s'
+              transition: 'all 0.2s',
+              boxShadow: location.pathname === '/' || location.pathname === '/explore' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
             }}
           >
-            <i className="fas fa-compass" style={{ fontSize: '14px' }}></i>
-            Explore
+            <i className="fas fa-compass" style={{ fontSize: '13px' }}></i>
+            <span className="nav-tab-text">Explore</span>
           </button>
           <button
             onClick={() => navigate('/forum')}
+            className="header-nav-tab"
             style={{
-              padding: '8px 16px',
-              background: location.pathname.startsWith('/forum') ? '#f3f4f6' : 'transparent',
+              padding: '8px 18px',
+              background: location.pathname.startsWith('/forum') ? 'white' : 'transparent',
               border: 'none',
-              borderRadius: '20px',
+              borderRadius: '8px',
               fontSize: '14px',
-              fontWeight: location.pathname.startsWith('/forum') ? 600 : 500,
-              color: location.pathname.startsWith('/forum') ? '#222' : '#666',
+              fontWeight: 500,
+              color: location.pathname.startsWith('/forum') ? '#111827' : '#6b7280',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
-              transition: 'all 0.2s'
+              transition: 'all 0.2s',
+              boxShadow: location.pathname.startsWith('/forum') ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
             }}
           >
-            <i className="fas fa-comments" style={{ fontSize: '14px' }}></i>
-            Forum
+            <i className="fas fa-comments" style={{ fontSize: '13px' }}></i>
+            <span className="nav-tab-text">Forum</span>
           </button>
         </div>
       </div>

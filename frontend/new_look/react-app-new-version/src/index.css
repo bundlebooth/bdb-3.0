@@ -392,6 +392,7 @@ body {
     height: 4px;
     margin: 1rem 0;
     -webkit-appearance: none;
+    appearance: none;
     background: var(--border);
     border-radius: 2px;
 }
@@ -6202,6 +6203,7 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
     background: var(--border);
     outline: none;
     -webkit-appearance: none;
+    appearance: none;
 }
 
 .budget-slider-container input[type="range"]::-webkit-slider-thumb {
@@ -8139,6 +8141,7 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
         line-height: 1.5;
         margin-bottom: 0.75rem;
         -webkit-line-clamp: 2;
+        line-clamp: 2;
     }
 
     .vendor-actions {
@@ -8675,7 +8678,7 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
     .mobile-map-button {
         display: flex !important;
         position: fixed !important;
-        bottom: 20px !important;
+        bottom: 75px !important; /* Position above bottom nav (56px + 19px spacing) */
         left: 50% !important;
         transform: translateX(-50%) !important;
         background: #222 !important;
@@ -8687,7 +8690,7 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
         align-items: center !important;
         gap: 8px !important;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
-        z-index: 100 !important;
+        z-index: 999998 !important; /* Below bottom nav (999999) but above content */
         border: none !important;
         cursor: pointer !important;
         transition: all 0.2s ease !important;
@@ -9553,6 +9556,1385 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
     .landing-page,
     .become-vendor-landing {
         overflow-x: hidden;
+    }
+}
+
+/* ============================================
+   COMPREHENSIVE MOBILE & TABLET RESPONSIVE STYLES
+   ============================================ */
+
+/* Header Logo Responsive */
+.header-logo-img {
+    height: 40px;
+    width: auto;
+    transition: height 0.2s ease;
+}
+
+@media (max-width: 768px) {
+    .header-logo-img {
+        height: 32px !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .header-logo-img {
+        height: 28px !important;
+    }
+}
+
+/* Header Nav Tabs Responsive */
+.header-nav-tabs {
+    flex-shrink: 0;
+}
+
+@media (max-width: 900px) {
+    .header-nav-tabs {
+        padding: 3px !important;
+    }
+    
+    .header-nav-tab {
+        padding: 6px 12px !important;
+        font-size: 13px !important;
+    }
+}
+
+@media (max-width: 768px) {
+    .header-nav-tabs {
+        padding: 2px !important;
+    }
+    
+    .header-nav-tab {
+        padding: 6px 10px !important;
+        font-size: 12px !important;
+        gap: 4px !important;
+    }
+    
+    .header-nav-tab i {
+        font-size: 12px !important;
+    }
+}
+
+@media (max-width: 768px) {
+    .header-nav-tabs {
+        display: none !important;
+    }
+}
+
+/* ============================================
+   GLOBAL CIRCLE FIX - Ensure all circles stay circular
+   ============================================ */
+.nav-icon,
+#profile-btn,
+.user-avatar,
+.avatar,
+.avatar-circle,
+.profile-avatar,
+.vendor-avatar,
+.user-icon,
+.notification-badge,
+.step-number-circle,
+.overview-number {
+    aspect-ratio: 1 / 1 !important;
+    flex-shrink: 0 !important;
+}
+
+/* Ensure border-radius: 50% elements maintain aspect ratio */
+[style*="border-radius: 50%"],
+[style*="borderRadius: '50%'"] {
+    aspect-ratio: 1 / 1;
+    flex-shrink: 0;
+}
+
+/* ============================================
+   GLOBAL FONT CONSISTENCY
+   ============================================ */
+html, body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+}
+
+@media (max-width: 768px) {
+    html, body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+        font-size: 16px;
+        -webkit-text-size-adjust: 100%;
+    }
+}
+
+/* Mobile Bottom Navigation for Explore/Forum */
+.mobile-bottom-nav {
+    display: none;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: white;
+    border-top: 1px solid #e5e7eb;
+    padding: 4px 8px;
+    padding-bottom: max(4px, env(safe-area-inset-bottom, 4px));
+    z-index: 999999;
+    justify-content: space-around;
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.08);
+    pointer-events: auto !important;
+}
+
+@media (max-width: 768px) {
+    .mobile-bottom-nav {
+        display: flex !important;
+    }
+    
+    /* Add margin to footer to account for bottom nav */
+    .vv-footer {
+        margin-bottom: 56px !important;
+        padding-bottom: 1rem !important;
+    }
+    
+    /* Hide messaging widget on mobile when bottom nav is visible */
+    .messaging-widget,
+    .messaging-widget-container,
+    .chat-widget,
+    .messaging-fab {
+        display: none !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
+    }
+    
+    /* Ensure sticky booking bar doesn't overlap */
+    .sticky-booking-bar {
+        bottom: 56px !important;
+    }
+}
+
+.mobile-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    padding: 6px 12px;
+    border: none !important;
+    background: transparent;
+    color: #6b7280;
+    font-size: 10px;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: all 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    user-select: none;
+    pointer-events: auto !important;
+    position: relative;
+    z-index: 1;
+}
+
+.mobile-nav-item:hover,
+.mobile-nav-item:active {
+    background: rgba(94, 114, 228, 0.15);
+    color: #5e72e4;
+}
+
+.mobile-nav-item.active {
+    color: #5e72e4;
+    background: rgba(94, 114, 228, 0.1);
+}
+
+.mobile-nav-item i {
+    font-size: 20px;
+    pointer-events: none;
+}
+
+.mobile-nav-item span {
+    pointer-events: none;
+    font-weight: 500;
+}
+
+/* Dashboard Sidebar Mobile Responsive */
+@media (max-width: 768px) {
+    .dashboard-sidebar {
+        position: fixed !important;
+        left: -280px;
+        top: 0;
+        width: 280px !important;
+        height: 100vh;
+        z-index: 1100;
+        transition: left 0.3s ease;
+        background: white;
+        box-shadow: 4px 0 20px rgba(0,0,0,0.15);
+    }
+    
+    .dashboard-sidebar.open {
+        left: 0;
+    }
+    
+    .dashboard-container {
+        grid-template-columns: 1fr !important;
+    }
+    
+    .dashboard-content {
+        padding: 1rem !important;
+    }
+    
+    .user-profile-section {
+        padding: 1rem !important;
+    }
+    
+    .user-profile-section > div:first-child {
+        width: 36px !important;
+        height: 36px !important;
+        font-size: 14px !important;
+    }
+    
+    .user-profile-section span {
+        font-size: 13px !important;
+    }
+}
+
+/* Dashboard Cards Mobile */
+@media (max-width: 768px) {
+    .dashboard-card {
+        padding: 1rem !important;
+        margin-bottom: 1rem !important;
+        border-radius: 12px !important;
+    }
+    
+    .dashboard-card-title {
+        font-size: 1.1rem !important;
+    }
+    
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 0.75rem !important;
+    }
+    
+    .stat-card {
+        padding: 1rem !important;
+    }
+    
+    .stat-value {
+        font-size: 1.25rem !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .stats-grid {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+/* Booking Tabs Mobile */
+@media (max-width: 768px) {
+    .booking-tabs {
+        display: flex;
+        overflow-x: auto;
+        gap: 4px;
+        padding-bottom: 8px;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+    
+    .booking-tabs::-webkit-scrollbar {
+        display: none;
+    }
+    
+    .booking-tab {
+        flex-shrink: 0;
+        padding: 8px 14px !important;
+        font-size: 13px !important;
+        white-space: nowrap;
+    }
+}
+
+/* Booking Items Mobile */
+@media (max-width: 768px) {
+    .booking-item,
+    .request-item {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 12px !important;
+        padding: 1rem !important;
+    }
+    
+    .booking-item .date-badge,
+    .request-item .date-badge {
+        width: 100% !important;
+        flex-direction: row !important;
+        justify-content: flex-start !important;
+        gap: 8px !important;
+        padding: 8px 12px !important;
+        border-radius: 8px !important;
+    }
+    
+    .booking-item .booking-info,
+    .request-item .request-info {
+        width: 100% !important;
+    }
+    
+    .booking-item .booking-actions,
+    .request-item .request-actions {
+        width: 100% !important;
+        display: flex !important;
+        flex-wrap: wrap !important;
+        gap: 8px !important;
+        justify-content: flex-start !important;
+    }
+    
+    .booking-item .booking-actions button,
+    .request-item .request-actions button {
+        flex: 1 !important;
+        min-width: 80px !important;
+        padding: 10px 12px !important;
+        font-size: 13px !important;
+    }
+}
+
+/* Analytics Section Mobile */
+@media (max-width: 900px) {
+    #vendor-analytics-section > div[style*="grid-template-columns: repeat(auto-fit, minmax(400px"] {
+        grid-template-columns: 1fr !important;
+    }
+    
+    #vendor-analytics-section > div[style*="grid-template-columns: repeat(auto-fit, minmax(300px"] {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+@media (max-width: 768px) {
+    #vendor-analytics-section .dashboard-card {
+        padding: 1rem !important;
+    }
+    
+    #vendor-analytics-section h3 {
+        font-size: 0.9rem !important;
+    }
+}
+
+/* Vendor Profile Page Mobile */
+@media (max-width: 768px) {
+    .vendor-profile-container {
+        padding: 0 !important;
+    }
+    
+    .vendor-profile-header {
+        flex-direction: column !important;
+        padding: 1rem !important;
+        gap: 1rem !important;
+    }
+    
+    .vendor-profile-actions {
+        width: 100% !important;
+        flex-direction: row !important;
+        justify-content: space-between !important;
+    }
+    
+    .vendor-profile-actions button {
+        flex: 1 !important;
+        padding: 10px !important;
+        font-size: 13px !important;
+    }
+}
+
+/* Forum Page Mobile */
+@media (max-width: 768px) {
+    .forum-container {
+        padding: 1rem !important;
+    }
+    
+    .forum-header {
+        flex-direction: column !important;
+        gap: 1rem !important;
+        align-items: stretch !important;
+    }
+    
+    .forum-post-card {
+        padding: 1rem !important;
+    }
+    
+    .forum-post-header {
+        flex-direction: column !important;
+        gap: 8px !important;
+    }
+    
+    .forum-post-actions {
+        flex-wrap: wrap !important;
+        gap: 8px !important;
+    }
+    
+    .forum-post-actions button {
+        flex: 1 !important;
+        min-width: 80px !important;
+    }
+}
+
+/* Booking Wizard Mobile */
+@media (max-width: 768px) {
+    .booking-wizard-container {
+        padding: 1rem !important;
+    }
+    
+    .booking-wizard-steps {
+        flex-direction: row !important;
+        overflow-x: auto !important;
+        gap: 8px !important;
+        padding-bottom: 12px !important;
+    }
+    
+    .booking-wizard-step {
+        flex-shrink: 0 !important;
+        padding: 8px 12px !important;
+        font-size: 12px !important;
+    }
+    
+    .booking-wizard-content {
+        padding: 1rem !important;
+    }
+    
+    .booking-summary-card {
+        padding: 1rem !important;
+    }
+}
+
+/* Payment Modal Mobile */
+@media (max-width: 768px) {
+    .payment-modal-content {
+        width: 95% !important;
+        max-width: none !important;
+        margin: 1rem !important;
+        max-height: calc(100vh - 2rem) !important;
+    }
+    
+    .payment-modal-body {
+        padding: 1rem !important;
+    }
+    
+    .payment-summary {
+        padding: 1rem !important;
+    }
+}
+
+/* Invoice Page Mobile */
+@media (max-width: 768px) {
+    .invoice-container {
+        padding: 1rem !important;
+        margin: 0 !important;
+    }
+    
+    .invoice-header {
+        flex-direction: column !important;
+        gap: 1rem !important;
+        text-align: center !important;
+    }
+    
+    .invoice-details {
+        grid-template-columns: 1fr !important;
+    }
+    
+    .invoice-items-table {
+        font-size: 12px !important;
+    }
+    
+    .invoice-items-table th,
+    .invoice-items-table td {
+        padding: 8px 6px !important;
+    }
+}
+
+/* Become Vendor Page Mobile */
+@media (max-width: 768px) {
+    .become-vendor-container {
+        padding: 1rem !important;
+    }
+    
+    .vendor-setup-steps {
+        flex-direction: column !important;
+    }
+    
+    .vendor-setup-step {
+        width: 100% !important;
+    }
+    
+    .vendor-form-section {
+        padding: 1rem !important;
+    }
+    
+    .vendor-form-grid {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+/* Trending Vendors Carousel Mobile */
+@media (max-width: 768px) {
+    .trending-vendors-section {
+        padding: 1rem 0 !important;
+    }
+    
+    .trending-vendors-header {
+        padding: 0 1rem !important;
+        flex-direction: column !important;
+        gap: 8px !important;
+        align-items: flex-start !important;
+    }
+    
+    .trending-vendors-carousel {
+        padding: 0 1rem !important;
+    }
+    
+    .trending-vendor-card {
+        min-width: 200px !important;
+        max-width: 200px !important;
+    }
+}
+
+/* Service Cards Mobile */
+@media (max-width: 768px) {
+    .service-card {
+        padding: 1rem !important;
+    }
+    
+    .service-card-header {
+        flex-direction: column !important;
+        gap: 8px !important;
+        align-items: flex-start !important;
+    }
+    
+    .service-card-price {
+        font-size: 1.1rem !important;
+    }
+    
+    .service-card-actions {
+        width: 100% !important;
+    }
+    
+    .service-card-actions button {
+        width: 100% !important;
+    }
+}
+
+/* Calendar Mobile */
+@media (max-width: 768px) {
+    .calendar-container {
+        padding: 0.5rem !important;
+    }
+    
+    .calendar-header {
+        flex-direction: column !important;
+        gap: 8px !important;
+    }
+    
+    .calendar-grid {
+        font-size: 12px !important;
+    }
+    
+    .calendar-day {
+        padding: 4px !important;
+        min-height: 40px !important;
+    }
+}
+
+/* Messaging Widget Mobile */
+@media (max-width: 768px) {
+    .messaging-widget {
+        width: 100% !important;
+        height: 100% !important;
+        bottom: 0 !important;
+        right: 0 !important;
+        border-radius: 0 !important;
+        max-height: 100vh !important;
+    }
+    
+    .messaging-widget-header {
+        padding: 12px !important;
+    }
+    
+    .messaging-widget-body {
+        padding: 12px !important;
+    }
+    
+    .message-input-container {
+        padding: 12px !important;
+    }
+}
+
+/* Profile Modal Mobile */
+@media (max-width: 768px) {
+    .profile-modal-content {
+        width: 95% !important;
+        max-width: none !important;
+        margin: 1rem !important;
+        max-height: calc(100vh - 2rem) !important;
+    }
+    
+    .profile-modal-tabs {
+        overflow-x: auto !important;
+        flex-wrap: nowrap !important;
+    }
+    
+    .profile-modal-tab {
+        flex-shrink: 0 !important;
+        padding: 10px 16px !important;
+        font-size: 13px !important;
+    }
+}
+
+/* Admin Dashboard Mobile */
+@media (max-width: 768px) {
+    .admin-dashboard-container {
+        grid-template-columns: 1fr !important;
+    }
+    
+    .admin-sidebar {
+        position: fixed !important;
+        left: -280px !important;
+        width: 280px !important;
+        height: 100vh !important;
+        z-index: 1100 !important;
+        transition: left 0.3s ease !important;
+    }
+    
+    .admin-sidebar.open {
+        left: 0 !important;
+    }
+    
+    .admin-content {
+        padding: 1rem !important;
+    }
+    
+    .admin-panel-header {
+        flex-direction: column !important;
+        gap: 1rem !important;
+        align-items: stretch !important;
+    }
+    
+    .admin-data-table {
+        font-size: 12px !important;
+        display: block !important;
+        overflow-x: auto !important;
+    }
+}
+
+/* General Form Elements Mobile */
+@media (max-width: 768px) {
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    input[type="number"],
+    input[type="tel"],
+    input[type="date"],
+    input[type="time"],
+    select,
+    textarea {
+        font-size: 16px !important; /* Prevents iOS zoom */
+        padding: 12px !important;
+    }
+    
+    .form-row {
+        flex-direction: column !important;
+        gap: 1rem !important;
+    }
+    
+    .form-group {
+        width: 100% !important;
+    }
+}
+
+/* Buttons Mobile Touch Targets */
+@media (max-width: 768px) {
+    .btn,
+    button {
+        min-height: 44px;
+        padding: 12px 16px;
+    }
+    
+    .btn-sm {
+        min-height: 36px;
+        padding: 8px 12px;
+    }
+    
+    .btn-icon {
+        min-width: 44px;
+        min-height: 44px;
+    }
+}
+
+/* Tablet Specific Styles */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .app-container {
+        grid-template-columns: 1fr !important;
+    }
+    
+    .sidebar {
+        display: none;
+    }
+    
+    .main-content {
+        padding: 1.5rem;
+    }
+    
+    .vendor-grid {
+        grid-template-columns: repeat(3, 1fr) !important;
+    }
+    
+    .dashboard-container {
+        grid-template-columns: 220px 1fr !important;
+    }
+    
+    .dashboard-sidebar {
+        width: 220px !important;
+    }
+    
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+}
+
+/* Landscape Phone Orientation */
+@media (max-width: 900px) and (orientation: landscape) {
+    .header {
+        padding: 0.5rem 1rem !important;
+    }
+    
+    .header-logo-img {
+        height: 28px !important;
+    }
+    
+    .categories-nav {
+        padding: 0.25rem 0.5rem !important;
+        min-height: auto !important;
+    }
+    
+    .category-item {
+        padding: 0.25rem !important;
+    }
+    
+    .category-item i {
+        font-size: 1rem !important;
+    }
+    
+    .category-item span {
+        font-size: 0.65rem !important;
+    }
+}
+
+/* Safe Area Insets for Notched Devices */
+@supports (padding: max(0px)) {
+    .header {
+        padding-left: max(1rem, env(safe-area-inset-left));
+        padding-right: max(1rem, env(safe-area-inset-right));
+    }
+    
+    .mobile-bottom-nav {
+        padding-bottom: max(8px, env(safe-area-inset-bottom));
+    }
+    
+    .sticky-booking-bar {
+        padding-bottom: max(1rem, env(safe-area-inset-bottom));
+    }
+}
+
+/* ============================================
+   MOBILE UI FIXES - December 2024
+   ============================================ */
+
+/* 1. HEADER/LOGO - Constant size on mobile (no shrinking) */
+@media (max-width: 768px) {
+    .header {
+        padding: 0.75rem 1rem !important;
+    }
+    
+    .header .logo img,
+    .header-logo-img {
+        height: 36px !important;
+        min-height: 36px !important;
+        max-height: 36px !important;
+        width: auto !important;
+        transition: none !important;
+    }
+    
+    .header.header-scrolled .logo img,
+    .header.header-scrolled .header-logo-img {
+        height: 36px !important;
+        min-height: 36px !important;
+        max-height: 36px !important;
+    }
+}
+
+/* 2. CIRCULAR ICONS FIX - All icons/avatars must be perfectly circular */
+.search-btn-compact,
+.nav-icon,
+#profile-btn,
+.user-avatar,
+.avatar,
+.avatar-circle,
+.profile-avatar,
+.vendor-avatar,
+.user-icon,
+.notification-badge,
+.step-number-circle,
+.overview-number,
+.vendor-favorite,
+.lightbox-action-btn,
+.lightbox-close,
+.lightbox-nav,
+.nav-scroll-btn,
+.vendor-eye-icon,
+.remove-service-btn,
+.mobile-nav-item i,
+[style*="border-radius: 50%"],
+[style*="borderRadius: 50%"] {
+    aspect-ratio: 1 / 1 !important;
+    flex-shrink: 0 !important;
+}
+
+/* Specific fix for search button to be perfectly circular */
+.search-btn-compact {
+    width: 34px !important;
+    height: 34px !important;
+    min-width: 34px !important;
+    min-height: 34px !important;
+    max-width: 34px !important;
+    max-height: 34px !important;
+    border-radius: 50% !important;
+    padding: 0 !important;
+    aspect-ratio: 1 / 1 !important;
+}
+
+/* Profile button circular fix */
+#profile-btn {
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    min-height: 36px !important;
+    max-width: 36px !important;
+    max-height: 36px !important;
+    border-radius: 50% !important;
+    aspect-ratio: 1 / 1 !important;
+}
+
+@media (max-width: 768px) {
+    #profile-btn {
+        width: 32px !important;
+        height: 32px !important;
+        min-width: 32px !important;
+        min-height: 32px !important;
+        max-width: 32px !important;
+        max-height: 32px !important;
+    }
+    
+    .search-btn-compact {
+        width: 32px !important;
+        height: 32px !important;
+        min-width: 32px !important;
+        min-height: 32px !important;
+        max-width: 32px !important;
+        max-height: 32px !important;
+    }
+}
+
+/* 3. HORIZONTAL SCROLL FOR VENDOR CARDS ON MOBILE (Discovery Section) */
+@media (max-width: 768px) {
+    .vendor-section .vendor-grid {
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        scroll-snap-type: x mandatory !important;
+        -webkit-overflow-scrolling: touch !important;
+        scrollbar-width: none !important;
+        -ms-overflow-style: none !important;
+        gap: 12px !important;
+        padding: 0.5rem 0 1rem 0 !important;
+    }
+    
+    .vendor-section .vendor-grid::-webkit-scrollbar {
+        display: none !important;
+    }
+    
+    .vendor-section .vendor-grid .vendor-card {
+        flex: 0 0 160px !important;
+        min-width: 160px !important;
+        max-width: 160px !important;
+        scroll-snap-align: start !important;
+    }
+}
+
+/* 4. BOTTOM NAV - Hide on scroll, reappear when stopped */
+.mobile-bottom-nav {
+    transition: transform 0.3s ease, opacity 0.3s ease !important;
+}
+
+.mobile-bottom-nav.hidden {
+    transform: translateY(100%) !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
+.mobile-bottom-nav.visible {
+    transform: translateY(0) !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+}
+
+/* 5. SHOW MAP BUTTON - Position above bottom nav */
+@media (max-width: 768px) {
+    .mobile-map-button,
+    .show-map-btn,
+    .map-toggle-btn,
+    [class*="map-button"],
+    [class*="show-map"] {
+        bottom: 70px !important;
+        z-index: 999998 !important;
+    }
+    
+    /* Ensure map button is visible above bottom nav */
+    .view-controls {
+        position: fixed !important;
+        bottom: 70px !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        z-index: 999998 !important;
+        background: white !important;
+        padding: 8px 16px !important;
+        border-radius: 30px !important;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.15) !important;
+    }
+}
+
+/* 6. FORUM PAGE - Mobile Friendly Reddit-like Design */
+@media (max-width: 768px) {
+    /* Hide left sidebar on mobile */
+    .forum-container > div:first-child,
+    div[style*="width: 270px"],
+    div[style*="width: '270px'"] {
+        display: none !important;
+    }
+    
+    /* Main forum content takes full width */
+    .forum-container > div:last-child,
+    div[style*="flex: 1"][style*="background: #f8f9fa"] {
+        width: 100% !important;
+        padding: 12px !important;
+    }
+    
+    /* Forum post cards - mobile optimized */
+    .forum-post-card,
+    div[style*="background: white"][style*="borderRadius: 12px"][style*="padding: 1rem"] {
+        padding: 12px !important;
+        margin-bottom: 10px !important;
+        border-radius: 8px !important;
+    }
+    
+    /* Vote buttons - compact on mobile */
+    .forum-post-card > div:first-child,
+    div[style*="flexDirection: column"][style*="alignItems: center"][style*="minWidth: 40px"] {
+        min-width: 32px !important;
+        gap: 2px !important;
+    }
+    
+    /* Post title - readable size */
+    .forum-post-card h3,
+    div[style*="fontSize: 1.1rem"][style*="fontWeight: 600"] {
+        font-size: 0.95rem !important;
+        line-height: 1.3 !important;
+    }
+    
+    /* Post content preview */
+    .forum-post-card p,
+    div[style*="color: #666"][style*="fontSize: 0.9rem"] {
+        font-size: 0.85rem !important;
+        line-height: 1.4 !important;
+    }
+    
+    /* Sort/Search bar - stack on mobile */
+    div[style*="display: flex"][style*="gap: 12px"][style*="flexWrap: wrap"] {
+        flex-direction: column !important;
+        gap: 8px !important;
+    }
+    
+    /* Sort buttons - horizontal scroll */
+    div[style*="display: flex"][style*="gap: 4px"] {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        scrollbar-width: none !important;
+    }
+    
+    /* Create Post Modal - full screen on mobile */
+    div[style*="position: fixed"][style*="background: rgba(0,0,0,0.5)"] > div {
+        width: 100% !important;
+        max-width: 100% !important;
+        height: 100% !important;
+        max-height: 100% !important;
+        border-radius: 0 !important;
+        margin: 0 !important;
+    }
+}
+
+/* 7. MESSAGING WIDGET - Full screen on mobile when opened from bottom nav */
+@media (max-width: 768px) {
+    .messaging-widget.fullscreen,
+    .messaging-widget.mobile-fullscreen {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        max-width: 100% !important;
+        max-height: 100% !important;
+        border-radius: 0 !important;
+        z-index: 1000000 !important;
+    }
+    
+    /* Dashboard Messages Section - Full screen on mobile */
+    .dashboard-modal.messages-fullscreen .modal-content,
+    #dashboard-modal.messages-fullscreen .modal-content {
+        width: 100% !important;
+        height: 100% !important;
+        max-width: 100% !important;
+        max-height: 100% !important;
+        border-radius: 0 !important;
+        margin: 0 !important;
+    }
+}
+
+/* 8. GENERAL MOBILE RESPONSIVENESS IMPROVEMENTS */
+@media (max-width: 768px) {
+    /* Ensure no horizontal overflow */
+    body, html {
+        overflow-x: hidden !important;
+    }
+    
+    /* All modals - better mobile sizing */
+    .modal-content {
+        width: 95% !important;
+        max-width: 100% !important;
+        margin: 10px !important;
+        max-height: calc(100vh - 20px) !important;
+        border-radius: 16px !important;
+    }
+    
+    /* Full-screen modals on mobile */
+    .modal-content.fullscreen-mobile {
+        width: 100% !important;
+        height: 100% !important;
+        max-width: 100% !important;
+        max-height: 100% !important;
+        margin: 0 !important;
+        border-radius: 0 !important;
+    }
+    
+    /* Cards - consistent padding */
+    .dashboard-card,
+    .vendor-card,
+    .service-card,
+    .booking-card {
+        border-radius: 12px !important;
+    }
+    
+    /* Form inputs - prevent iOS zoom */
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    input[type="number"],
+    input[type="tel"],
+    input[type="date"],
+    input[type="time"],
+    select,
+    textarea {
+        font-size: 16px !important;
+    }
+    
+    /* Touch-friendly tap targets */
+    button,
+    .btn,
+    a.btn,
+    .nav-item,
+    .mobile-nav-item {
+        min-height: 44px !important;
+        min-width: 44px !important;
+    }
+    
+    /* Ensure content doesn't get cut off by bottom nav */
+    main,
+    .main-content,
+    .page-content {
+        padding-bottom: 80px !important;
+    }
+    
+    /* Footer spacing for bottom nav */
+    footer,
+    .footer,
+    .vv-footer {
+        margin-bottom: 60px !important;
+    }
+}
+
+/* ============================================
+   FORUM PAGE - MOBILE RESPONSIVE STYLES
+   ============================================ */
+@media (max-width: 768px) {
+    /* Forum layout - single column on mobile */
+    .forum-layout {
+        flex-direction: column !important;
+    }
+    
+    /* Hide sidebar on mobile */
+    .forum-sidebar {
+        display: none !important;
+    }
+    
+    /* Main content - full width */
+    .forum-main-content {
+        width: 100% !important;
+        padding: 12px !important;
+    }
+}
+
+/* ============================================
+   DASHBOARD MODAL - MESSAGES FULLSCREEN ON MOBILE
+   ============================================ */
+@media (max-width: 768px) {
+    /* When messages section is active, make modal fullscreen */
+    #dashboard-modal.messages-active .modal-content,
+    .dashboard-modal.messages-active .modal-content {
+        width: 100vw !important;
+        height: 100vh !important;
+        max-width: 100vw !important;
+        max-height: 100vh !important;
+        margin: 0 !important;
+        border-radius: 0 !important;
+    }
+    
+    #dashboard-modal.messages-active .modal,
+    .dashboard-modal.messages-active .modal {
+        padding: 0 !important;
+    }
+    
+    /* Messages section content - full height */
+    #dashboard-modal.messages-active .dashboard-content,
+    .dashboard-modal.messages-active .dashboard-content {
+        height: 100vh !important;
+        padding: 0 !important;
+    }
+}
+
+/* ============================================
+   MOBILE UI FIXES - December 2024 (Additional)
+   ============================================ */
+
+/* 1. FIX HEADER - Search bar overlapping user icon */
+@media (max-width: 768px) {
+    .header {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        padding: 8px 12px !important;
+        gap: 8px !important;
+    }
+    
+    .header-left {
+        flex-shrink: 0 !important;
+        min-width: auto !important;
+    }
+    
+    .header-left .logo {
+        margin-right: 0 !important;
+    }
+    
+    /* Hide nav tabs on mobile */
+    .header-nav-tabs {
+        display: none !important;
+    }
+    
+    /* Search container - take available space but don't overflow */
+    .search-container {
+        flex: 1 !important;
+        min-width: 0 !important;
+        max-width: calc(100% - 100px) !important;
+        margin: 0 8px !important;
+    }
+    
+    /* User nav - keep compact */
+    .user-nav {
+        flex-shrink: 0 !important;
+        gap: 4px !important;
+    }
+    
+    /* Hide non-essential buttons on mobile header */
+    .become-vendor-btn,
+    .complete-profile-btn,
+    .admin-dashboard-btn,
+    #whats-new-btn,
+    #notifications-btn {
+        display: none !important;
+    }
+}
+
+/* 2. FILTERS BAR - Sticky at top (not scrolling with content) */
+@media (max-width: 768px) {
+    .view-controls {
+        position: sticky !important;
+        top: 60px !important; /* Below header */
+        z-index: 100 !important;
+        background: white !important;
+        padding: 10px 12px !important;
+        margin: 0 -12px !important;
+        width: calc(100% + 24px) !important;
+        border-bottom: 1px solid #e5e7eb !important;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important;
+        display: flex !important;
+        gap: 8px !important;
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+    }
+    
+    .view-controls::-webkit-scrollbar {
+        display: none !important;
+    }
+    
+    /* Hide Show Map toggle in view controls on mobile - it's in bottom nav */
+    .view-controls > div:last-child {
+        display: none !important;
+    }
+    
+    .filter-btn {
+        flex-shrink: 0 !important;
+        padding: 8px 12px !important;
+        font-size: 13px !important;
+    }
+    
+    #sort-select {
+        flex-shrink: 0 !important;
+        padding: 8px 12px !important;
+        font-size: 13px !important;
+        min-width: 120px !important;
+    }
+}
+
+/* 3. VENDOR CARDS - Show 2 cards fully, enable touch swipe */
+@media (max-width: 768px) {
+    .vendor-section .vendor-grid,
+    .vendor-discovery-sections .vendor-grid {
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        scroll-snap-type: x mandatory !important;
+        -webkit-overflow-scrolling: touch !important;
+        scrollbar-width: none !important;
+        -ms-overflow-style: none !important;
+        gap: 10px !important;
+        padding: 8px 0 16px 0 !important;
+        margin: 0 !important;
+    }
+    
+    .vendor-section .vendor-grid::-webkit-scrollbar,
+    .vendor-discovery-sections .vendor-grid::-webkit-scrollbar {
+        display: none !important;
+    }
+    
+    /* Each card takes ~48% width to show 2 cards */
+    .vendor-section .vendor-grid .vendor-card,
+    .vendor-discovery-sections .vendor-grid .vendor-card {
+        flex: 0 0 calc(50% - 5px) !important;
+        min-width: calc(50% - 5px) !important;
+        max-width: calc(50% - 5px) !important;
+        scroll-snap-align: start !important;
+    }
+    
+    /* Hide navigation arrows on mobile - use swipe instead */
+    .vendor-section .nav-scroll-btn,
+    .vendor-discovery-sections .nav-scroll-btn {
+        display: none !important;
+    }
+}
+
+/* 4. LOGIN/PROFILE MODAL - Mobile Friendly */
+@media (max-width: 768px) {
+    #profile-modal .modal-content,
+    .profile-modal .modal-content {
+        width: 100% !important;
+        max-width: 100% !important;
+        height: 100% !important;
+        max-height: 100% !important;
+        margin: 0 !important;
+        border-radius: 0 !important;
+        display: flex !important;
+        flex-direction: column !important;
+    }
+    
+    #profile-modal .modal-header,
+    .profile-modal .modal-header {
+        padding: 16px !important;
+        border-bottom: 1px solid #e5e7eb !important;
+        flex-shrink: 0 !important;
+    }
+    
+    #profile-modal .modal-body,
+    .profile-modal .modal-body {
+        flex: 1 !important;
+        overflow-y: auto !important;
+        padding: 20px 16px !important;
+    }
+    
+    /* Form inputs */
+    #profile-modal input,
+    #profile-modal select,
+    .profile-modal input,
+    .profile-modal select {
+        width: 100% !important;
+        padding: 14px 16px !important;
+        font-size: 16px !important;
+        border-radius: 12px !important;
+        border: 1px solid #d1d5db !important;
+        margin-bottom: 12px !important;
+    }
+    
+    /* Buttons */
+    #profile-modal button[type="submit"],
+    #profile-modal .btn-primary,
+    .profile-modal button[type="submit"],
+    .profile-modal .btn-primary {
+        width: 100% !important;
+        padding: 14px 20px !important;
+        font-size: 16px !important;
+        border-radius: 12px !important;
+        margin-top: 8px !important;
+    }
+    
+    /* Google Sign-In button */
+    #profile-modal .g_id_signin,
+    .profile-modal .g_id_signin {
+        width: 100% !important;
+    }
+    
+    #profile-modal .g_id_signin > div,
+    .profile-modal .g_id_signin > div {
+        width: 100% !important;
+    }
+    
+    /* Account type selector */
+    #profile-modal .account-type-selector,
+    .profile-modal .account-type-selector {
+        display: flex !important;
+        gap: 12px !important;
+        margin-bottom: 16px !important;
+    }
+    
+    #profile-modal .account-type-selector button,
+    .profile-modal .account-type-selector button {
+        flex: 1 !important;
+        padding: 12px !important;
+        border-radius: 12px !important;
+    }
+}
+
+/* 5. HIDE FLOATING MAP BUTTON - It's now in bottom nav */
+@media (max-width: 768px) {
+    .mobile-map-button {
+        display: none !important;
     }
 }
 

@@ -5,6 +5,7 @@ import { API_BASE_URL, GOOGLE_MAPS_API_KEY } from '../config';
 import VendorSection from '../components/VendorSection';
 import VendorCard from '../components/VendorCard';
 import Footer from '../components/Footer';
+import MobileBottomNav from '../components/MobileBottomNav';
 import MessagingWidget from '../components/MessagingWidget';
 import ProfileModal from '../components/ProfileModal';
 import './LandingPage.css';
@@ -754,6 +755,13 @@ function LandingPage() {
       <Footer />
       <MessagingWidget />
       <ProfileModal isOpen={profileModalOpen} onClose={() => setProfileModalOpen(false)} />
+      <MobileBottomNav 
+        onOpenDashboard={(section) => {
+          // LandingPage is for unauthenticated users, so just open profile modal
+          setProfileModalOpen(true);
+        }}
+        onOpenProfile={() => setProfileModalOpen(true)}
+      />
     </div>
   );
 }

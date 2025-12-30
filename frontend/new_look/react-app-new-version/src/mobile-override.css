@@ -1,6 +1,38 @@
 /* MOBILE OVERRIDE CSS - FORCE ALL CHANGES */
 /* This file FORCES mobile changes with maximum specificity */
 
+/* 0. FORCE ALL CIRCLES TO BE CIRCLES - NOT OVALS */
+@media screen and (max-width: 768px) {
+    /* Force aspect ratio on ALL circular elements */
+    .nav-icon,
+    #profile-btn,
+    .user-avatar,
+    .avatar,
+    .avatar-circle,
+    .profile-avatar,
+    .vendor-avatar,
+    .user-icon,
+    .notification-badge,
+    .step-number-circle,
+    .overview-number,
+    .search-btn-compact,
+    .clear-field-btn,
+    .use-location-btn,
+    [style*="border-radius: 50%"],
+    [style*="borderRadius"] {
+        aspect-ratio: 1 / 1 !important;
+        flex-shrink: 0 !important;
+        min-width: unset !important;
+        max-width: unset !important;
+    }
+    
+    /* Ensure width and height are equal for circles */
+    .search-btn-compact {
+        width: 30px !important;
+        height: 30px !important;
+    }
+}
+
 /* 1. FORCE HEADER LAYOUT ON MOBILE */
 @media screen and (max-width: 768px) {
     /* FORCE header layout */
@@ -8,7 +40,16 @@
         display: flex !important;
         justify-content: space-between !important;
         align-items: center !important;
-        padding: 0.75rem 1rem !important;
+        padding: 0.5rem 0.75rem !important;
+        gap: 0.5rem !important;
+    }
+    
+    /* FORCE logo smaller on mobile */
+    .header .logo img,
+    .header-logo-img {
+        height: 28px !important;
+        width: auto !important;
+        flex-shrink: 0 !important;
     }
     
     /* FORCE HIDE vendor buttons */
@@ -19,30 +60,36 @@
         opacity: 0 !important;
     }
     
-    /* FORCE user nav to right */
+    /* FORCE user nav to right - don't squish */
     .user-nav {
         margin-left: auto !important;
         display: flex !important;
-        gap: 0.75rem !important;
+        gap: 0.5rem !important;
         align-items: center !important;
         justify-content: flex-end !important;
         width: auto !important;
         flex-shrink: 0 !important;
     }
     
-    /* FORCE header to use space-between */
-    .header {
-        display: flex !important;
-        justify-content: space-between !important;
-        align-items: center !important;
-        width: 100% !important;
+    /* FORCE search container proper sizing - not squished */
+    .search-container {
+        flex: 1 1 auto !important;
+        min-width: 120px !important;
+        max-width: none !important;
+        margin: 0 0.5rem !important;
     }
     
-    /* FORCE search container to not take full width */
-    .search-container {
-        flex: 1 !important;
-        max-width: 50% !important;
-        margin: 0 1rem !important;
+    /* FORCE enhanced search bar proper height */
+    .enhanced-search-bar {
+        min-height: 36px !important;
+        max-height: 36px !important;
+        border-radius: 20px !important;
+    }
+    
+    .compact-view {
+        min-height: 34px !important;
+        max-height: 34px !important;
+        padding: 4px 8px !important;
     }
     
     /* FORCE HIDE other nav icons */
@@ -54,64 +101,79 @@
         opacity: 0 !important;
     }
     
-    /* FORCE user icon larger */
+    /* FORCE user icon proper circle - not squished */
     .user-nav #profile-btn {
-        width: 44px !important;
-        height: 44px !important;
-        font-size: 18px !important;
+        width: 36px !important;
+        height: 36px !important;
+        min-width: 36px !important;
+        min-height: 36px !important;
+        font-size: 14px !important;
+        border-radius: 50% !important;
+        aspect-ratio: 1 / 1 !important;
+        flex-shrink: 0 !important;
     }
     
-    /* FORCE search container smaller */
-    .search-container {
-        flex: 1 !important;
-        max-width: 60% !important;
-        margin: 0 1rem !important;
+    /* FORCE nav icons proper circle */
+    .nav-icon {
+        width: 32px !important;
+        height: 32px !important;
+        min-width: 32px !important;
+        min-height: 32px !important;
+        border-radius: 50% !important;
+        aspect-ratio: 1 / 1 !important;
+        flex-shrink: 0 !important;
     }
 }
 
-/* 2. FORCE SEARCH BAR SMALLER ON MOBILE */
+/* 2. FORCE SEARCH BAR PROPER SIZE ON MOBILE */
 @media screen and (max-width: 768px) {
-    /* FORCE enhanced search bar smaller */
+    /* FORCE enhanced search bar proper size - not squished */
     .enhanced-search-bar {
         border: 1px solid #e5e5e5 !important;
         box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
-        max-height: 32px !important;
-        min-height: 32px !important;
+        min-height: 36px !important;
+        max-height: 36px !important;
+        border-radius: 20px !important;
     }
     
-    /* FORCE compact view smaller */
+    /* FORCE compact view proper size */
     .compact-view {
-        padding: 2px 2px 2px 8px !important;
-        min-height: 30px !important;
-        max-height: 30px !important;
+        padding: 4px 6px 4px 10px !important;
+        min-height: 34px !important;
+        max-height: 34px !important;
         align-items: center !important;
     }
     
-    /* FORCE compact fields smaller */
+    /* FORCE compact fields proper spacing */
     .compact-field {
         padding: 2px 4px !important;
     }
     
-    /* FORCE compact text smaller */
+    /* FORCE compact text readable */
     .compact-value {
-        font-size: 10px !important;
-        font-weight: 400 !important;
-        color: #666 !important;
+        font-size: 11px !important;
+        font-weight: 500 !important;
+        color: #333 !important;
     }
     
-    /* FORCE compact separator smaller */
+    /* FORCE compact separator */
     .compact-separator {
         font-size: 10px !important;
         color: #ddd !important;
-        padding: 0 2px !important;
+        padding: 0 3px !important;
     }
     
-    /* FORCE search button smaller */
+    /* FORCE search button proper circle */
     .search-btn-compact {
-        width: 26px !important;
-        height: 26px !important;
-        font-size: 10px !important;
-        background: var(--primary, #007bff) !important;
+        width: 28px !important;
+        height: 28px !important;
+        min-width: 28px !important;
+        min-height: 28px !important;
+        font-size: 11px !important;
+        background: var(--primary, #5e72e4) !important;
+        border-radius: 50% !important;
+        aspect-ratio: 1 / 1 !important;
+        flex-shrink: 0 !important;
     }
 }
 
@@ -277,3 +339,4 @@
         box-shadow: none !important;
     }
 }
+

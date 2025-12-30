@@ -7,6 +7,7 @@ import Footer from '../components/Footer';
 import ProfileModal from '../components/ProfileModal';
 import DashboardModal from '../components/DashboardModal';
 import MessagingWidget from '../components/MessagingWidget';
+import MobileBottomNav from '../components/MobileBottomNav';
 import EmojiPicker from 'emoji-picker-react';
 
 function ForumPage() {
@@ -224,9 +225,9 @@ function ForumPage() {
       <DashboardModal isOpen={dashboardModalOpen} onClose={() => setDashboardModalOpen(false)} initialSection={dashboardSection} />
       
       {/* Main Layout with Left Sidebar */}
-      <div style={{ display: 'flex', minHeight: 'calc(100vh - 80px)' }}>
+      <div className="forum-layout" style={{ display: 'flex', minHeight: 'calc(100vh - 80px)' }}>
         {/* Left Sidebar - Categories (Reddit-style) */}
-        <div style={{
+        <div className="forum-sidebar" style={{
           width: '270px',
           borderRight: '1px solid #edeff1',
           background: '#fff',
@@ -349,7 +350,7 @@ function ForumPage() {
         </div>
         
         {/* Main Content Area */}
-        <div style={{ flex: 1, background: '#f8f9fa', padding: '20px 24px' }}>
+        <div className="forum-main-content" style={{ flex: 1, background: '#f8f9fa', padding: '20px 24px' }}>
           <div style={{ maxWidth: '100%' }}>
             {/* Sort & Search Bar */}
             <div style={{
@@ -360,7 +361,8 @@ function ForumPage() {
               display: 'flex',
               alignItems: 'center',
               gap: '12px',
-              border: '1px solid #ccc'
+              border: '1px solid #ccc',
+              flexWrap: 'wrap'
             }}>
               <div style={{ display: 'flex', gap: '4px' }}>
                 {['newest', 'top', 'hot'].map(sort => (
@@ -711,6 +713,19 @@ function ForumPage() {
 
       <Footer />
       {currentUser && <MessagingWidget />}
+      <MobileBottomNav 
+        onOpenDashboard={(section) => {
+          if (section) {
+            const sectionMap = {
+              'messages': currentUser?.isVendor ? 'vendor-messages' : 'messages',
+              'dashboard': 'dashboard'
+            };
+            setDashboardSection(sectionMap[section] || section);
+          }
+          setDashboardModalOpen(true);
+        }}
+        onOpenProfile={() => setProfileModalOpen(true)}
+      />
     </div>
   );
 }

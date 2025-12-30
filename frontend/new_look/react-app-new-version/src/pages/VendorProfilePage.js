@@ -10,6 +10,7 @@ import SkeletonLoader from '../components/SkeletonLoader';
 import ProfileModal from '../components/ProfileModal';
 import DashboardModal from '../components/DashboardModal';
 import Footer from '../components/Footer';
+import MobileBottomNav from '../components/MobileBottomNav';
 import Breadcrumb from '../components/Breadcrumb';
 import SetupIncompleteBanner from '../components/SetupIncompleteBanner';
 import MessagingWidget from '../components/MessagingWidget';
@@ -225,6 +226,40 @@ function VendorProfilePage() {
   useEffect(() => {
     loadFavorites();
   }, [loadFavorites]);
+
+  // Track profile view when visiting vendor page
+  useEffect(() => {
+    if (vendorId) {
+      // Generate or retrieve session ID for deduplication
+      let sessionId = sessionStorage.getItem('vv_session_id');
+      if (!sessionId) {
+        sessionId = 'sess_' + Date.now() + '_' + Math.random().toString(36).substring(2, 15);
+        sessionStorage.setItem('vv_session_id', sessionId);
+      }
+      
+      // Track the profile view
+      const trackView = async () => {
+        try {
+          await fetch(`${API_BASE_URL}/analytics/track-view`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              vendorId: vendorId,
+              referrerUrl: document.referrer || window.location.href,
+              sessionId: sessionId
+            })
+          });
+        } catch (error) {
+          // Silently fail - view tracking is not critical
+          console.debug('Profile view tracking failed:', error);
+        }
+      };
+      
+      trackView();
+    }
+  }, [vendorId]);
 
   // Scroll to top when component mounts or vendorId changes
   useEffect(() => {
@@ -1848,6 +1883,19 @@ function VendorProfilePage() {
         <Footer />
       </div>
       <MessagingWidget />
+      <MobileBottomNav 
+        onOpenDashboard={(section) => {
+          if (section) {
+            const sectionMap = {
+              'messages': currentUser?.isVendor ? 'vendor-messages' : 'messages',
+              'dashboard': 'dashboard'
+            };
+            setDashboardSection(sectionMap[section] || section);
+          }
+          setDashboardModalOpen(true);
+        }}
+        onOpenProfile={() => setProfileModalOpen(true)}
+      />
     </div>
     </div>
   );

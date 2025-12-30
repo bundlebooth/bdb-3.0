@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { API_BASE_URL } from '../../../config';
+import { showBanner } from '../../../utils/banners';
+import { buildInvoiceUrl } from '../../../utils/urlHelpers';
 
 function VendorRequestsSection() {
   const { currentUser } = useAuth();
@@ -151,6 +153,51 @@ function VendorRequestsSection() {
     }
   };
 
+  // Handle View Invoice - uses public IDs
+  const handleViewInvoice = async (booking) => {
+    try {
+      if (!currentUser?.id) {
+        showBanner('Please log in to view invoice', 'error');
+        return;
+      }
+      
+      const bookingId = booking.bookingPublicId || booking.BookingID;
+      const response = await fetch(`${API_BASE_URL}/invoices/booking/${bookingId}?userId=${currentUser.id}`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.invoice?.InvoiceID) {
+          window.open(buildInvoiceUrl(data.invoice.InvoiceID, false), '_blank');
+        } else {
+          showBanner('Invoice not available yet', 'info');
+        }
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        showBanner(errorData.message || 'Could not load invoice', 'error');
+      }
+    } catch (error) {
+      console.error('Invoice error:', error);
+      showBanner('Failed to load invoice', 'error');
+    }
+  };
+
+  // Handle Chat - open conversation with client
+  const handleOpenChat = (booking) => {
+    if (booking.ConversationID) {
+      window.dispatchEvent(new CustomEvent('openMessagingWidget', { 
+        detail: { 
+          conversationId: booking.ConversationID,
+          clientName: booking.ClientName,
+          userId: booking.ClientUserID
+        } 
+      }));
+    } else {
+      showBanner('No conversation available for this booking', 'info');
+    }
+  };
+
   const renderBookingItem = (booking) => {
     const isPaid = booking.FullAmountPaid === true || booking.FullAmountPaid === 1 || booking._status === 'paid';
     const isDepositOnly = !isPaid && (booking.DepositPaid === true || booking.DepositPaid === 1);
@@ -259,12 +306,18 @@ function VendorRequestsSection() {
             )}
             {(s === 'confirmed' || s === 'accepted' || s === 'approved' || isPaid) && (
               <>
-                {booking.ConversationID && (
-                  <button className="btn btn-outline" style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '13px' }}>
-                    Chat
-                  </button>
-                )}
-                <button className="btn btn-outline" style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '13px' }}>
+                <button 
+                  className="btn btn-outline" 
+                  style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '13px' }}
+                  onClick={() => handleOpenChat(booking)}
+                >
+                  Chat
+                </button>
+                <button 
+                  className="btn btn-outline" 
+                  style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '13px' }}
+                  onClick={() => handleViewInvoice(booking)}
+                >
                   Invoice
                 </button>
               </>
@@ -310,38 +363,38 @@ function VendorRequestsSection() {
   return (
     <div id="vendor-requests-section">
       <div className="dashboard-card">
-        <div className="requests-filter-tabs" id="vendor-requests-tabs" style={{ marginBottom: '.8rem' }}>
+        <div className="booking-tabs">
           <button 
-            className={`tab-btn ${activeTab === 'all' ? 'active' : ''}`} 
-            data-status="all"
+            className={`booking-tab ${activeTab === 'all' ? 'active' : ''}`} 
+            data-tab="all"
             onClick={() => setActiveTab('all')}
           >
             All
           </button>
           <button 
-            className={`tab-btn ${activeTab === 'pending' ? 'active' : ''}`} 
-            data-status="pending"
+            className={`booking-tab ${activeTab === 'pending' ? 'active' : ''}`} 
+            data-tab="pending"
             onClick={() => setActiveTab('pending')}
           >
             Pending
           </button>
           <button 
-            className={`tab-btn ${activeTab === 'approved' ? 'active' : ''}`} 
-            data-status="approved"
+            className={`booking-tab ${activeTab === 'approved' ? 'active' : ''}`} 
+            data-tab="approved"
             onClick={() => setActiveTab('approved')}
           >
             Accepted
           </button>
           <button 
-            className={`tab-btn ${activeTab === 'declined' ? 'active' : ''}`} 
-            data-status="declined"
+            className={`booking-tab ${activeTab === 'declined' ? 'active' : ''}`} 
+            data-tab="declined"
             onClick={() => setActiveTab('declined')}
           >
             Declined
           </button>
           <button 
-            className={`tab-btn ${activeTab === 'expired' ? 'active' : ''}`} 
-            data-status="expired"
+            className={`booking-tab ${activeTab === 'expired' ? 'active' : ''}`} 
+            data-tab="expired"
             onClick={() => setActiveTab('expired')}
           >
             Expired

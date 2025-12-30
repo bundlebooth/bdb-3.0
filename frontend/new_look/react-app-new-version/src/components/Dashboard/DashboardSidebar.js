@@ -1,6 +1,18 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../../context/AuthContext';
 
 function DashboardSidebar({ menuItems, activeSection, onSectionChange, onLogout, sectionLabel, unified, onMenuToggle, mobileMenuOpen: externalMenuOpen, setMobileMenuOpen: externalSetMenuOpen }) {
+  const { currentUser } = useAuth();
+  
+  // Determine account type display
+  const getAccountTypeDisplay = () => {
+    if (!currentUser) return 'Client';
+    if (currentUser.isVendor) {
+      // Could be enhanced to show specific vendor type from profile
+      return 'Vendor';
+    }
+    return 'Client';
+  };
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [internalMenuOpen, setInternalMenuOpen] = useState(false);
   
@@ -65,7 +77,7 @@ function DashboardSidebar({ menuItems, activeSection, onSectionChange, onLogout,
             overflowY: 'auto'
           }}
         >
-          {/* Header with close button */}
+          {/* Header with user info */}
           <div style={{
             padding: '1rem',
             borderBottom: '1px solid #e5e7eb',
@@ -73,11 +85,38 @@ function DashboardSidebar({ menuItems, activeSection, onSectionChange, onLogout,
             alignItems: 'center',
             justifyContent: 'space-between'
           }}>
-            <img 
-              src="/planbeau_logo.svg" 
-              alt="PlanBeau" 
-              style={{ height: '36px', width: 'auto' }} 
-            />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '50%',
+                background: 'linear-gradient(135deg, #5e72e4 0%, #825ee4 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'white',
+                fontSize: '16px',
+                fontWeight: 600
+              }}>
+                {currentUser?.name?.charAt(0)?.toUpperCase() || 'U'}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                <span style={{ fontSize: '14px', fontWeight: 600, color: '#111827' }}>
+                  {currentUser?.name || 'User'}
+                </span>
+                <span style={{
+                  fontSize: '11px',
+                  fontWeight: 500,
+                  color: currentUser?.isVendor ? '#5e72e4' : '#10b981',
+                  background: currentUser?.isVendor ? 'rgba(94, 114, 228, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+                  padding: '2px 8px',
+                  borderRadius: '10px',
+                  display: 'inline-block'
+                }}>
+                  {getAccountTypeDisplay()}
+                </span>
+              </div>
+            </div>
             <button
               onClick={() => setMobileMenuOpen(false)}
               style={{
@@ -213,20 +252,54 @@ function DashboardSidebar({ menuItems, activeSection, onSectionChange, onLogout,
   return (
     <aside className="dashboard-sidebar">
       <div 
-        className="logo" 
+        className="user-profile-section" 
         style={{ 
-          padding: '1rem 0', 
+          padding: '1.25rem 1rem', 
           borderBottom: '1px solid var(--border)', 
           display: 'flex', 
           alignItems: 'center', 
-          justifyContent: 'center' 
+          gap: '12px'
         }}
       >
-        <img 
-          src="/planbeau_logo.svg" 
-          alt="PlanBeau" 
-          style={{ height: '40px', width: 'auto' }} 
-        />
+        <div style={{
+          width: '44px',
+          height: '44px',
+          borderRadius: '50%',
+          background: 'linear-gradient(135deg, #5e72e4 0%, #825ee4 100%)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: 'white',
+          fontSize: '18px',
+          fontWeight: 600,
+          flexShrink: 0
+        }}>
+          {currentUser?.name?.charAt(0)?.toUpperCase() || 'U'}
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
+          <span style={{ 
+            fontSize: '15px', 
+            fontWeight: 600, 
+            color: '#111827',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis'
+          }}>
+            {currentUser?.name || 'User'}
+          </span>
+          <span style={{
+            fontSize: '11px',
+            fontWeight: 500,
+            color: currentUser?.isVendor ? '#5e72e4' : '#10b981',
+            background: currentUser?.isVendor ? 'rgba(94, 114, 228, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+            padding: '2px 10px',
+            borderRadius: '10px',
+            display: 'inline-block',
+            width: 'fit-content'
+          }}>
+            {getAccountTypeDisplay()}
+          </span>
+        </div>
       </div>
       <ul className="dashboard-menu">
         {unified ? (

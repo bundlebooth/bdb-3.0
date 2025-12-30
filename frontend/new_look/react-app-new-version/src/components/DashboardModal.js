@@ -98,7 +98,7 @@ function DashboardModal({ isOpen, onClose, initialSection = 'dashboard' }) {
     return (
       <div 
         id="dashboard-modal" 
-        className="modal" 
+        className={`modal ${activeSection === 'messages' || activeSection === 'vendor-messages' ? 'messages-active' : ''}`}
         data-no-outside-close 
         style={{ 
           display: 'flex',

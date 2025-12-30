@@ -15,6 +15,7 @@ import SetupIncompleteBanner from '../components/SetupIncompleteBanner';
 import MessagingWidget from '../components/MessagingWidget';
 import AnnouncementDisplay from '../components/AnnouncementDisplay';
 import Footer from '../components/Footer';
+import MobileBottomNav from '../components/MobileBottomNav';
 import { showBanner } from '../utils/helpers';
 
 function IndexPage() {
@@ -1237,6 +1238,21 @@ function IndexPage() {
       
       <Footer />
       <MessagingWidget />
+      <MobileBottomNav 
+        onOpenDashboard={(section) => {
+          if (section) {
+            const sectionMap = {
+              'messages': currentUser?.isVendor ? 'vendor-messages' : 'messages',
+              'dashboard': 'dashboard'
+            };
+            setDashboardSection(sectionMap[section] || section);
+          }
+          setDashboardModalOpen(true);
+        }}
+        onOpenProfile={() => setProfileModalOpen(true)}
+        onToggleMap={() => setMobileMapOpen(true)}
+        mapActive={mobileMapOpen}
+      />
     </div>
   );
 }

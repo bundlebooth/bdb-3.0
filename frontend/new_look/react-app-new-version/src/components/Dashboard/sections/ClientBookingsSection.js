@@ -4,7 +4,7 @@ import { showBanner } from '../../../utils/banners';
 import { API_BASE_URL } from '../../../config';
 import { buildInvoiceUrl } from '../../../utils/urlHelpers';
 
-function ClientBookingsSection({ onPayNow }) {
+function ClientBookingsSection({ onPayNow, onOpenChat }) {
   const { currentUser } = useAuth();
   const [activeTab, setActiveTab] = useState('all');
   const [allBookings, setAllBookings] = useState([]);
@@ -72,9 +72,14 @@ function ClientBookingsSection({ onPayNow }) {
   // Handle View Invoice - uses public IDs
   const handleViewInvoice = async (booking) => {
     try {
+      if (!currentUser?.id) {
+        showBanner('Please log in to view invoice', 'error');
+        return;
+      }
+      
       // Use public ID from booking if available, otherwise use internal ID
       const bookingId = booking.bookingPublicId || booking.BookingID;
-      const response = await fetch(`${API_BASE_URL}/invoices/booking/${bookingId}`, {
+      const response = await fetch(`${API_BASE_URL}/invoices/booking/${bookingId}?userId=${currentUser.id}`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       
@@ -87,11 +92,28 @@ function ClientBookingsSection({ onPayNow }) {
           showBanner('Invoice not available yet', 'info');
         }
       } else {
-        showBanner('Could not load invoice', 'error');
+        const errorData = await response.json().catch(() => ({}));
+        showBanner(errorData.message || 'Could not load invoice', 'error');
       }
     } catch (error) {
       console.error('Invoice error:', error);
       showBanner('Failed to load invoice', 'error');
+    }
+  };
+
+  // Handle Chat - open conversation with vendor
+  const handleOpenChat = (booking) => {
+    if (booking.ConversationID) {
+      // Dispatch event to open messaging widget with this conversation
+      window.dispatchEvent(new CustomEvent('openMessagingWidget', { 
+        detail: { 
+          conversationId: booking.ConversationID,
+          vendorName: booking.VendorName,
+          vendorProfileId: booking.VendorProfileID
+        } 
+      }));
+    } else if (onOpenChat) {
+      onOpenChat(booking);
     }
   };
 
@@ -198,11 +220,13 @@ function ClientBookingsSection({ onPayNow }) {
             )}
             {(s === 'confirmed' || s === 'accepted' || s === 'approved' || isPaid) && (
               <>
-                {booking.ConversationID && (
-                  <button className="btn btn-outline" style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '13px' }}>
-                    Chat
-                  </button>
-                )}
+                <button 
+                  className="btn btn-outline" 
+                  style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '13px' }}
+                  onClick={() => handleOpenChat(booking)}
+                >
+                  Chat
+                </button>
                 <button 
                   className="btn btn-outline" 
                   style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '13px' }}
