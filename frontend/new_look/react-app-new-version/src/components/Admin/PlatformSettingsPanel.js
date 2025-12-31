@@ -101,7 +101,7 @@ const PlatformSettingsPanel = () => {
     tagline: 'Find and book the perfect vendors for your events',
     supportEmail: 'support@planbeau.com',
     supportPhone: '',
-    logoUrl: '/planbeau_logo.svg',
+    logoUrl: '/planbeau_logo.png',
     faviconUrl: '/favicon.ico',
     primaryColor: '#5e72e4',
     secondaryColor: '#2dce89',

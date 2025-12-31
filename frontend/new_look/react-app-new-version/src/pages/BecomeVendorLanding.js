@@ -154,7 +154,7 @@ const BecomeVendorLanding = () => {
       <header className={`vendor-landing-header ${isScrolled ? 'scrolled' : ''}`}>
         <div className="vendor-landing-header-content">
           <div className="vendor-landing-logo" onClick={() => navigate('/')}>
-            <img src="/planbeau_logo.svg" alt="PlanBeau" />
+            <img src="/images/logo.png" alt="PlanBeau" className="header-logo-img" />
           </div>
           <nav className="vendor-landing-nav">
             <a href="/explore" className="nav-link">Browse Vendors</a>

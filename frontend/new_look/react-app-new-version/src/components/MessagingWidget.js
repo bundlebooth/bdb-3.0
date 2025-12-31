@@ -1667,7 +1667,7 @@ function MessagingWidget() {
           }}>
             <div className="header-left" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <div className="logo" style={{ marginRight: '8px' }}>
-                <img src="/planbeau_logo.svg" alt="PlanBeau" className="header-logo-img" />
+                <img src="/images/logo.png" alt="PlanBeau" className="header-logo-img" />
               </div>
               <span style={{ fontSize: '16px', fontWeight: 600, color: '#1f2937' }}>
                 {mainView === 'home' ? 'Messages' : mainView === 'messages' ? 'Messages' : 'Help Center'}

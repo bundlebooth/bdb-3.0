@@ -187,7 +187,7 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
     <header className={`header ${isScrolled ? 'header-scrolled' : ''}`}>
       <div className="header-left" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
         <div className="logo" style={{ cursor: 'pointer', marginRight: '8px' }} onClick={() => window.location.href = '/'}>
-          <img src="/planbeau_logo.svg" alt="PlanBeau" className="header-logo-img" />
+          <img src="/images/logo.png" alt="PlanBeau" className="header-logo-img" />
         </div>
         
         {/* Page Tabs - Explore / Forum - Integrated into header */}

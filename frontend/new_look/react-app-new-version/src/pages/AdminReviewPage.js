@@ -143,7 +143,7 @@ const AdminReviewPage = () => {
       <header className="admin-header">
         <div className="header-content">
           <div className="logo" onClick={() => navigate('/')} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-            <img src="/planbeau_logo.svg" alt="PlanBeau" style={{ height: '50px', width: 'auto' }} />
+            <img src="/images/logo.png" alt="PlanBeau" style={{ height: '140px', width: 'auto' }} />
           </div>
           <h1>Admin: Vendor Profile Reviews</h1>
           <button className="btn-back" onClick={() => navigate('/')}>

@@ -169,7 +169,7 @@ const AdminDashboard = () => {
       <aside className="admin-sidebar">
         <div className="sidebar-header">
           <div className="logo" onClick={() => navigate('/')}>
-            <img src="/planbeau_logo.svg" alt="PlanBeau" />
+            <img src="/images/logo.png" alt="PlanBeau" />
             {!sidebarCollapsed && <span>Admin</span>}
           </div>
           <button 

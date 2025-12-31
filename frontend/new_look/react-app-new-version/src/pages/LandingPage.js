@@ -272,7 +272,7 @@ function LandingPage() {
       <header className={`landing-header ${isScrolled ? 'scrolled' : ''}`}>
         <div className="landing-header-content">
           <div className="landing-logo" onClick={() => navigate('/')}>
-            <img src="/planbeau_logo.svg" alt="PlanBeau" />
+            <img src="/images/logo.png" alt="PlanBeau" className="header-logo-img" />
           </div>
           <nav className="landing-nav">
             <a href="/become-a-vendor" className="nav-link">Become a Vendor</a>
