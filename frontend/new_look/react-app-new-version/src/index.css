@@ -10629,29 +10629,34 @@ html, body {
     }
 }
 
-/* 3. HORIZONTAL SCROLL FOR VENDOR CARDS ON MOBILE (Discovery Section) */
+/* 3. DISCOVERY SECTION - Horizontal carousel with same card size as main grid */
 @media (max-width: 768px) {
-    .vendor-section .vendor-grid {
+    .vendor-section .vendor-grid,
+    .vendor-section-grid,
+    .vendor-section-carousel {
         display: flex !important;
         flex-wrap: nowrap !important;
         overflow-x: auto !important;
-        overflow-y: hidden !important;
-        scroll-snap-type: x mandatory !important;
         -webkit-overflow-scrolling: touch !important;
+        scroll-snap-type: x mandatory !important;
         scrollbar-width: none !important;
-        -ms-overflow-style: none !important;
         gap: 12px !important;
         padding: 0.5rem 0 1rem 0 !important;
     }
     
-    .vendor-section .vendor-grid::-webkit-scrollbar {
+    .vendor-section .vendor-grid::-webkit-scrollbar,
+    .vendor-section-grid::-webkit-scrollbar,
+    .vendor-section-carousel::-webkit-scrollbar {
         display: none !important;
     }
     
-    .vendor-section .vendor-grid .vendor-card {
-        flex: 0 0 160px !important;
-        min-width: 160px !important;
-        max-width: 160px !important;
+    /* Cards same width as main grid (calc 50% - gap for 2 cards visible) */
+    .vendor-section .vendor-grid .vendor-card,
+    .vendor-section-grid .vendor-section-card-wrapper,
+    .vendor-section-carousel > div {
+        flex: 0 0 calc(50% - 6px) !important;
+        min-width: calc(50% - 6px) !important;
+        max-width: calc(50% - 6px) !important;
         scroll-snap-align: start !important;
     }
 }
@@ -11030,7 +11035,7 @@ html, body {
     }
 }
 
-/* 3. VENDOR CARDS - Horizontal scroll with touch swipe */
+/* 3. VENDOR CARDS - Horizontal carousel for discovery sections on mobile */
 @media (max-width: 768px) {
     .vendor-section .vendor-grid,
     .vendor-discovery-sections .vendor-grid {
@@ -11041,8 +11046,8 @@ html, body {
         scroll-snap-type: x mandatory !important;
         scrollbar-width: none !important;
         gap: 12px !important;
-        padding: 0.5rem 16px 1rem 16px !important;
-        margin: 0 -16px !important;
+        padding: 0.5rem 0 1rem 0 !important;
+        margin: 0 !important;
     }
     
     .vendor-section .vendor-grid::-webkit-scrollbar,
@@ -11050,12 +11055,12 @@ html, body {
         display: none !important;
     }
     
-    /* Each card takes ~45% width to show 2+ cards with peek */
+    /* Cards same width as main grid (50% for 2 cards visible) */
     .vendor-section .vendor-grid .vendor-card,
     .vendor-discovery-sections .vendor-grid .vendor-card {
-        flex: 0 0 45% !important;
-        min-width: 45% !important;
-        max-width: 45% !important;
+        flex: 0 0 calc(50% - 6px) !important;
+        min-width: calc(50% - 6px) !important;
+        max-width: calc(50% - 6px) !important;
         scroll-snap-align: start !important;
     }
     
