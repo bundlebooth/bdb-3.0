@@ -355,9 +355,9 @@ const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavori
       </div>
       
       {/* Card Content - Airbnb Style */}
-      <div style={{ padding: '10px 0 4px 0', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+      <div className="vendor-card-content" style={{ padding: '10px 0 4px 0', display: 'flex', flexDirection: 'column', gap: '2px' }}>
         {/* Line 1: Vendor Name with Online Status - Black, semibold */}
-        <div style={{ 
+        <div className="vendor-card-name-row" style={{ 
           fontSize: '15px', 
           color: '#222222', 
           lineHeight: '19px',
@@ -402,7 +402,7 @@ const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavori
         </div>
         
         {/* Line 2: City, Province - Gray, same size as price line */}
-        <div style={{ 
+        <div className="vendor-card-location" style={{ 
           fontSize: '13px', 
           color: '#717171',
           lineHeight: '17px',
@@ -412,7 +412,7 @@ const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavori
         </div>
         
         {/* Line 3: Starting from $X CAD · ★ Rating (count) - Single line */}
-        <div style={{ 
+        <div className="vendor-card-price-row" style={{ 
           fontSize: '13px',
           lineHeight: '17px',
           display: 'flex',
@@ -451,19 +451,21 @@ const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavori
         
         {/* Line 4: Discovery Analytics Badge - Only in discovery sections */}
         {showAnalyticsBadge && vendor.analyticsBadge && (
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '4px',
-            fontSize: '13px',
-            color: analyticsBadgeType === 'response' ? '#00A699' : 
-                   analyticsBadgeType === 'rating' ? '#FFB400' :
-                   analyticsBadgeType === 'bookings' ? '#EC4899' :
-                   analyticsBadgeType === 'distance' ? '#8B5CF6' :
-                   analyticsBadgeType === 'trending' ? '#FF6B35' : '#FF385C',
-            marginTop: '2px',
-            fontWeight: 500
-          }}>
+          <div 
+            className="vendor-card-analytics-badge"
+            style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '4px',
+              fontSize: '13px',
+              color: analyticsBadgeType === 'response' ? '#00A699' : 
+                     analyticsBadgeType === 'rating' ? '#FFB400' :
+                     analyticsBadgeType === 'bookings' ? '#EC4899' :
+                     analyticsBadgeType === 'distance' ? '#8B5CF6' :
+                     analyticsBadgeType === 'trending' ? '#FF6B35' : '#FF385C',
+              marginTop: '2px',
+              fontWeight: 500
+            }}>
             <i className={`fas ${
               analyticsBadgeType === 'response' ? 'fa-bolt' :
               analyticsBadgeType === 'rating' ? 'fa-star' :

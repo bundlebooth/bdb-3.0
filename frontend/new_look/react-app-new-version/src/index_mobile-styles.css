@@ -167,7 +167,7 @@ body {
     font-variant-numeric: tabular-nums; /* more even digit centering */
 }
 
-/* Categories Navigation */
+/* Categories Navigation - Fixed, no scroll animation */
 .categories-nav {
     grid-column: 1 / -1;
     background-color: var(--surface-bg);
@@ -180,55 +180,6 @@ body {
     z-index: 10; /* Below header (100) and modals (1000+), above content */
     backdrop-filter: blur(10px);
     box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-    transition: padding 0.3s ease, top 0.3s ease;
-}
-
-/* Categories nav when scrolled - icon-only compact mode */
-.categories-nav.scrolled {
-    padding: 0.3rem 1rem;
-    top: 50px; /* Adjust for smaller header */
-    background-color: rgba(255, 255, 255, 0.98);
-}
-
-.categories-nav.scrolled .category-item {
-    padding: 0.4rem 0.5rem;
-    /* Keep same min-width to maintain alignment */
-    min-width: 60px;
-}
-
-.categories-nav.scrolled .category-item span {
-    /* Hide text but keep space */
-    font-size: 0;
-    height: 0;
-    margin: 0;
-    padding: 0;
-    overflow: hidden;
-}
-
-.categories-nav.scrolled .category-item i {
-    font-size: 1.6rem;
-    margin-bottom: 0;
-    color: var(--text-light);
-}
-
-.categories-nav.scrolled .category-item:hover i,
-.categories-nav.scrolled .category-item.active i {
-    color: var(--primary);
-}
-
-.categories-nav.scrolled .category-item.active {
-    /* No background highlight - keep indicator bar instead */
-    background-color: transparent;
-    transform: scale(1);
-}
-
-.categories-nav.scrolled .category-item:hover {
-    background-color: transparent;
-}
-
-/* Keep category indicator visible when scrolled */
-.categories-nav.scrolled .category-indicator {
-    display: block;
 }
 
 .categories-list-wrapper {
@@ -8550,11 +8501,11 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
         background: transparent !important;
     }
     
-    /* Business name link style */
+    /* Business name - MUST match desktop: black, 15px, semibold */
     .vendor-card .vendor-card-business-name {
-        font-size: 14px !important;
-        color: #0066CC !important;
-        font-weight: 400 !important;
+        font-size: 15px !important;
+        color: #222222 !important;
+        font-weight: 600 !important;
     }
     
     /* Price, rating, response time row */
@@ -8565,10 +8516,10 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
         background: transparent !important;
     }
     
-    /* Location text */
-    .vendor-card > div:last-child > div:last-child {
+    /* Location text - but NOT analytics badge */
+    .vendor-card > div:last-child > div.vendor-card-location {
         font-size: 13px !important;
-        color: #222 !important;
+        color: #717171 !important;
     }
     
     /* Vendor grid - 2 columns on mobile */

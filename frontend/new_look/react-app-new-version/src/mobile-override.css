@@ -225,6 +225,30 @@
         padding: 10px 0 4px 0 !important;
     }
     
+    /* FORCE vendor card text to match desktop EXACTLY */
+    .vendor-card .vendor-card-business-name {
+        font-size: 15px !important;
+        color: #222222 !important;
+        font-weight: 600 !important;
+    }
+    
+    .vendor-card .vendor-card-location {
+        font-size: 13px !important;
+        color: #717171 !important;
+        font-weight: 400 !important;
+    }
+    
+    .vendor-card .vendor-card-price-row {
+        font-size: 13px !important;
+    }
+    
+    /* FORCE analytics badge to keep its inline color (orange/red for views) */
+    .vendor-card .vendor-card-analytics-badge {
+        font-size: 13px !important;
+        font-weight: 500 !important;
+    }
+    
+    
     /* FORCE vendor grid to be clean like desktop - fixed width cards */
     .vendor-grid {
         display: grid !important;

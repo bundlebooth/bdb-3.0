@@ -229,7 +229,6 @@ const categories = [
 
 function CategoriesNav({ activeCategory, onCategoryChange, loading = false }) {
   const [showScrollButtons, setShowScrollButtons] = useState(false);
-  const [isScrolled, setIsScrolled] = useState(false);
   const wrapperRef = useRef(null);
   const listRef = useRef(null);
   const indicatorRef = useRef(null);
@@ -274,24 +273,6 @@ function CategoriesNav({ activeCategory, onCategoryChange, loading = false }) {
     }
   }, [activeCategory, loading]);
 
-  // Handle scroll to shrink/expand categories nav
-  useEffect(() => {
-    let ticking = false;
-    
-    const handleScroll = () => {
-      if (!ticking) {
-        window.requestAnimationFrame(() => {
-          const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-          setIsScrolled(scrollTop > 1); // Shrink immediately on any scroll
-          ticking = false;
-        });
-        ticking = true;
-      }
-    };
-
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
 
   // Initial setup - skip transition on first render
   const isInitialMount = useRef(true);
