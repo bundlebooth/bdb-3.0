@@ -869,7 +869,8 @@
 
     /* Gallery responsive - single image on mobile */
     .image-gallery {
-        height: 250px;
+        height: auto;
+        aspect-ratio: 16 / 10;
         display: flex;
         flex-direction: column;
         border-radius: 12px;
@@ -879,7 +880,15 @@
     .image-gallery > .gallery-item.large-image {
         flex: 1;
         width: 100%;
-        border-radius: 12px;
+        height: 100%;
+        border-radius: 12px !important;
+    }
+    
+    .image-gallery > .gallery-item.large-image img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: center;
     }
 
     .image-gallery > .thumbnails-container {
@@ -1043,23 +1052,26 @@
     
     .sticky-booking-bar .message-btn,
     .sticky-booking-bar .book-btn {
-        flex: 1;
-        padding: 8px 12px;
+        flex: 0 1 auto;
+        padding: 6px 12px;
         background: transparent;
-        border: none;
+        border: none !important;
         border-radius: 8px;
         cursor: pointer;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 4px;
-        color: #717171;
+        gap: 2px;
+        color: #6b7280;
         font-size: 10px;
         font-weight: 500;
-        transition: background 0.2s, color 0.2s;
+        transition: all 0.15s ease;
         position: relative;
         z-index: 1;
+        -webkit-tap-highlight-color: transparent;
+        touch-action: manipulation;
+        user-select: none;
     }
     
     .sticky-booking-bar .message-btn i,
@@ -1075,18 +1087,23 @@
     }
     
     .sticky-booking-bar .message-btn {
-        color: #717171;
+        color: #6b7280;
     }
     
     .sticky-booking-bar .book-btn {
-        color: #717171;
+        color: #6b7280;
+        background: transparent;
     }
     
     .sticky-booking-bar .message-btn:hover,
-    .sticky-booking-bar .message-btn:active,
+    .sticky-booking-bar .message-btn:active {
+        background: rgba(94, 114, 228, 0.15);
+        color: #5e72e4;
+    }
+    
     .sticky-booking-bar .book-btn:hover,
     .sticky-booking-bar .book-btn:active {
-        background: rgba(94, 114, 228, 0.15);
+        background: rgba(94, 114, 228, 0.2);
         color: #5e72e4;
     }
     

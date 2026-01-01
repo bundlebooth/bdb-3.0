@@ -7,6 +7,7 @@ function MobileBottomNav({ onOpenDashboard, onOpenProfile, onOpenMessages, onOpe
   const location = useLocation();
   const { currentUser } = useAuth();
   const [activeTab, setActiveTab] = useState(null);
+  const [mobileMapOpen, setMobileMapOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
   const lastScrollY = useRef(0);
   const scrollTimeout = useRef(null);
@@ -16,6 +17,26 @@ function MobileBottomNav({ onOpenDashboard, onOpenProfile, onOpenMessages, onOpe
   const isAllowedPage = allowedPaths.some(path => 
     location.pathname === path || location.pathname.startsWith('/forum')
   );
+
+  // Listen for map open/close events from IndexPage
+  useEffect(() => {
+    const handleMapOpened = () => {
+      setMobileMapOpen(true);
+      setActiveTab('map');
+    };
+    const handleMapClosed = () => {
+      setMobileMapOpen(false);
+      setActiveTab(null);
+    };
+    
+    window.addEventListener('mobileMapOpened', handleMapOpened);
+    window.addEventListener('closeMobileMap', handleMapClosed);
+    
+    return () => {
+      window.removeEventListener('mobileMapOpened', handleMapOpened);
+      window.removeEventListener('closeMobileMap', handleMapClosed);
+    };
+  }, []);
 
   // Handle scroll to hide/show bottom nav
   useEffect(() => {
@@ -62,6 +83,7 @@ function MobileBottomNav({ onOpenDashboard, onOpenProfile, onOpenMessages, onOpe
     e.preventDefault();
     e.stopPropagation();
     setActiveTab(null);
+    setMobileMapOpen(false);
     // Close dashboard if open
     if (onCloseDashboard) onCloseDashboard();
     // Close messaging widget if open
@@ -77,10 +99,13 @@ function MobileBottomNav({ onOpenDashboard, onOpenProfile, onOpenMessages, onOpe
     e.preventDefault();
     e.stopPropagation();
     setActiveTab(null);
+    setMobileMapOpen(false);
     // Close dashboard if open
     if (onCloseDashboard) onCloseDashboard();
     // Close messaging widget if open
     window.dispatchEvent(new CustomEvent('closeMessagingWidget'));
+    // Close mobile map if open
+    window.dispatchEvent(new CustomEvent('closeMobileMap'));
     navigate('/forum');
     // Scroll to top
     window.scrollTo(0, 0);
@@ -89,8 +114,11 @@ function MobileBottomNav({ onOpenDashboard, onOpenProfile, onOpenMessages, onOpe
   const handleMessagesClick = (e) => {
     e.preventDefault();
     e.stopPropagation();
+    setMobileMapOpen(false);
     // Close dashboard if open
     if (onCloseDashboard) onCloseDashboard();
+    // Close mobile map if open
+    window.dispatchEvent(new CustomEvent('closeMobileMap'));
     if (currentUser) {
       setActiveTab('messages');
       // Open messaging widget instead of dashboard
@@ -101,6 +129,7 @@ function MobileBottomNav({ onOpenDashboard, onOpenProfile, onOpenMessages, onOpe
         window.dispatchEvent(new CustomEvent('openMessagingWidget', { detail: { showHome: true } }));
       }
     } else {
+      setActiveTab(null);
       if (onOpenProfile) {
         onOpenProfile();
       }
@@ -114,17 +143,26 @@ function MobileBottomNav({ onOpenDashboard, onOpenProfile, onOpenMessages, onOpe
     if (onCloseDashboard) onCloseDashboard();
     // Close messaging widget if open
     window.dispatchEvent(new CustomEvent('closeMessagingWidget'));
-    if (onOpenMap) {
-      setActiveTab('map');
+    
+    // If not on home page, navigate to home with map=true param
+    if (location.pathname !== '/' && location.pathname !== '/explore') {
+      navigate('/?openMap=true');
+    } else if (onOpenMap) {
+      // Already on home page, just open the map
       onOpenMap();
     }
+    setActiveTab('map');
+    setMobileMapOpen(true);
   };
 
   const handleAccountClick = (e) => {
     e.preventDefault();
     e.stopPropagation();
+    setMobileMapOpen(false);
     // Close messaging widget if open
     window.dispatchEvent(new CustomEvent('closeMessagingWidget'));
+    // Close mobile map if open
+    window.dispatchEvent(new CustomEvent('closeMobileMap'));
     if (currentUser) {
       setActiveTab('account');
       // Open dashboard fullscreen
@@ -134,6 +172,7 @@ function MobileBottomNav({ onOpenDashboard, onOpenProfile, onOpenMessages, onOpe
     } else {
       // Close dashboard if somehow open
       if (onCloseDashboard) onCloseDashboard();
+      setActiveTab(null);
       if (onOpenProfile) {
         onOpenProfile();
       }
@@ -149,7 +188,7 @@ function MobileBottomNav({ onOpenDashboard, onOpenProfile, onOpenMessages, onOpe
     <nav className={`mobile-bottom-nav ${isVisible ? 'visible' : 'hidden'}`} onClick={(e) => e.stopPropagation()}>
       <button 
         type="button"
-        className={`mobile-nav-item ${isActive(['/', '/explore']) && !activeTab ? 'active' : ''}`}
+        className={`mobile-nav-item ${isActive(['/', '/explore']) && !activeTab && !mobileMapOpen ? 'active' : ''}`}
         onClick={handleExploreClick}
       >
         <i className="fas fa-compass"></i>
@@ -159,7 +198,7 @@ function MobileBottomNav({ onOpenDashboard, onOpenProfile, onOpenMessages, onOpe
       {/* Map button - always visible on all allowed pages */}
       <button 
         type="button"
-        className={`mobile-nav-item ${activeTab === 'map' ? 'active' : ''}`}
+        className={`mobile-nav-item ${mobileMapOpen ? 'active' : ''}`}
         onClick={handleMapClick}
       >
         <i className="fas fa-map"></i>
@@ -168,7 +207,7 @@ function MobileBottomNav({ onOpenDashboard, onOpenProfile, onOpenMessages, onOpe
       
       <button 
         type="button"
-        className={`mobile-nav-item ${isActive('/forum') && !activeTab ? 'active' : ''}`}
+        className={`mobile-nav-item ${isActive('/forum') && !activeTab && !mobileMapOpen ? 'active' : ''}`}
         onClick={handleForumClick}
       >
         <i className="fas fa-comments"></i>
@@ -177,7 +216,7 @@ function MobileBottomNav({ onOpenDashboard, onOpenProfile, onOpenMessages, onOpe
       
       <button 
         type="button"
-        className={`mobile-nav-item ${activeTab === 'messages' ? 'active' : ''}`}
+        className={`mobile-nav-item ${activeTab === 'messages' && !mobileMapOpen ? 'active' : ''}`}
         onClick={handleMessagesClick}
       >
         <i className="fas fa-envelope"></i>
@@ -186,7 +225,7 @@ function MobileBottomNav({ onOpenDashboard, onOpenProfile, onOpenMessages, onOpe
       
       <button 
         type="button"
-        className={`mobile-nav-item ${activeTab === 'account' ? 'active' : ''}`}
+        className={`mobile-nav-item ${activeTab === 'account' && !mobileMapOpen ? 'active' : ''}`}
         onClick={handleAccountClick}
       >
         <i className="fas fa-user"></i>

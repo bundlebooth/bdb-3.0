@@ -1303,6 +1303,8 @@ function VendorProfilePage() {
   };
 
   if (loading) {
+    const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
+    
     return (
       <>
         <Header 
@@ -1314,82 +1316,92 @@ function VendorProfilePage() {
         />
         <div style={{ background: '#ffffff', minHeight: '100vh' }}>
           <div className="profile-container" style={{ background: '#ffffff' }}>
-            {/* Back Button Skeleton */}
-            <div className="skeleton" style={{ width: '150px', height: '40px', borderRadius: '12px', marginBottom: '2rem', background: '#e5e7eb' }}></div>
+            {/* Breadcrumb Skeleton */}
+            <div className="skeleton" style={{ width: isMobile ? '200px' : '300px', height: '20px', borderRadius: '6px', marginBottom: '1rem' }}></div>
 
-            {/* Image Gallery Skeleton - White background, no side bars */}
-            <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: '1fr 1fr', 
-              gap: '8px', 
-              borderRadius: '12px', 
-              overflow: 'hidden',
-              marginBottom: '1.5rem',
-              background: '#ffffff'
-            }}>
-              {/* Large image */}
+            {/* Image Gallery Skeleton - Responsive */}
+            {isMobile ? (
+              /* Mobile: Single image */
               <div style={{ 
-                aspectRatio: '4/3', 
-                background: '#e5e7eb',
-                borderRadius: '12px 0 0 12px',
-                animation: 'skeleton-shimmer 1.5s infinite',
-                backgroundImage: 'linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%)',
-                backgroundSize: '200% 100%'
-              }}></div>
-              {/* Thumbnails grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: '1fr 1fr', gap: '8px' }}>
-                {[1, 2, 3, 4].map((i) => (
-                  <div key={i} style={{ 
-                    background: '#e5e7eb',
-                    borderRadius: i === 2 ? '0 12px 0 0' : i === 4 ? '0 0 12px 0' : '0',
-                    animation: 'skeleton-shimmer 1.5s infinite',
-                    backgroundImage: 'linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%)',
-                    backgroundSize: '200% 100%'
-                  }}></div>
-                ))}
+                aspectRatio: '16/10',
+                borderRadius: '12px',
+                overflow: 'hidden',
+                marginBottom: '1rem'
+              }}>
+                <div className="skeleton" style={{ 
+                  width: '100%', 
+                  height: '100%',
+                  borderRadius: '12px'
+                }}></div>
               </div>
-            </div>
+            ) : (
+              /* Desktop: Grid layout */
+              <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: '1fr 1fr', 
+                gap: '8px', 
+                borderRadius: '12px', 
+                overflow: 'hidden',
+                marginBottom: '1.5rem',
+                height: '400px'
+              }}>
+                <div className="skeleton" style={{ 
+                  height: '100%',
+                  borderRadius: '12px 0 0 12px'
+                }}></div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: '1fr 1fr', gap: '8px' }}>
+                  {[1, 2, 3, 4].map((i) => (
+                    <div key={i} className="skeleton" style={{ 
+                      borderRadius: i === 2 ? '0 12px 0 0' : i === 4 ? '0 0 12px 0' : '0'
+                    }}></div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Header Skeleton */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
-              <div style={{ flex: 1 }}>
-                <div className="skeleton" style={{ width: '60%', height: '36px', marginBottom: '0.75rem', background: '#e5e7eb' }}></div>
-                <div className="skeleton" style={{ width: '40%', height: '20px', marginBottom: '0.5rem', background: '#e5e7eb' }}></div>
-              </div>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <div className="skeleton" style={{ width: '44px', height: '44px', borderRadius: '50%', background: '#e5e7eb' }}></div>
-                <div className="skeleton" style={{ width: '44px', height: '44px', borderRadius: '50%', background: '#e5e7eb' }}></div>
+            <div style={{ marginBottom: isMobile ? '1rem' : '2rem' }}>
+              <div className="skeleton" style={{ width: isMobile ? '80%' : '60%', height: isMobile ? '28px' : '36px', marginBottom: '0.5rem' }}></div>
+              <div className="skeleton" style={{ width: isMobile ? '60%' : '40%', height: '18px', marginBottom: '0.5rem' }}></div>
+              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem' }}>
+                <div className="skeleton" style={{ width: '60px', height: '24px', borderRadius: '12px' }}></div>
+                <div className="skeleton" style={{ width: '100px', height: '24px', borderRadius: '12px' }}></div>
               </div>
             </div>
 
-            {/* Content Layout Skeleton */}
-            <div style={{ display: 'flex', gap: '2rem' }}>
-              <div style={{ flex: 1 }}>
+            {/* Content Layout Skeleton - Responsive */}
+            <div style={{ 
+              display: isMobile ? 'flex' : 'grid',
+              flexDirection: 'column',
+              gridTemplateColumns: isMobile ? '1fr' : '1fr 320px',
+              gap: isMobile ? '1.5rem' : '3rem'
+            }}>
+              {/* Main Content */}
+              <div>
                 {/* About Section Skeleton */}
-                <div style={{ marginBottom: '2rem' }}>
-                  <div className="skeleton" style={{ width: '200px', height: '28px', marginBottom: '1rem', background: '#e5e7eb' }}></div>
-                  <div className="skeleton" style={{ width: '100%', height: '20px', marginBottom: '0.5rem', background: '#e5e7eb' }}></div>
-                  <div className="skeleton" style={{ width: '90%', height: '20px', marginBottom: '0.5rem', background: '#e5e7eb' }}></div>
-                  <div className="skeleton" style={{ width: '80%', height: '20px', background: '#e5e7eb' }}></div>
+                <div style={{ marginBottom: '1.5rem', paddingBottom: '1.5rem', borderBottom: '1px solid #e5e7eb' }}>
+                  <div className="skeleton" style={{ width: '150px', height: '24px', marginBottom: '1rem' }}></div>
+                  <div className="skeleton" style={{ width: '100%', height: '16px', marginBottom: '0.5rem' }}></div>
+                  <div className="skeleton" style={{ width: '95%', height: '16px', marginBottom: '0.5rem' }}></div>
+                  <div className="skeleton" style={{ width: '85%', height: '16px' }}></div>
                 </div>
 
                 {/* Services Section Skeleton */}
-                <div style={{ marginBottom: '2rem' }}>
-                  <div className="skeleton" style={{ width: '180px', height: '28px', marginBottom: '1rem', background: '#e5e7eb' }}></div>
-                  {[1, 2, 3].map((i) => (
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <div className="skeleton" style={{ width: '140px', height: '24px', marginBottom: '1rem' }}></div>
+                  {[1, 2].map((i) => (
                     <div key={i} style={{ 
                       padding: '1rem', 
                       border: '1px solid #e5e7eb', 
                       borderRadius: '12px', 
-                      marginBottom: '1rem',
-                      background: '#ffffff'
+                      marginBottom: '0.75rem'
                     }}>
                       <div style={{ display: 'flex', gap: '1rem' }}>
-                        <div className="skeleton" style={{ width: '80px', height: '80px', borderRadius: '12px', background: '#e5e7eb' }}></div>
+                        <div className="skeleton" style={{ width: '60px', height: '60px', borderRadius: '8px', flexShrink: 0 }}></div>
                         <div style={{ flex: 1 }}>
-                          <div className="skeleton" style={{ width: '60%', height: '20px', marginBottom: '0.5rem', background: '#e5e7eb' }}></div>
-                          <div className="skeleton" style={{ width: '100%', height: '16px', marginBottom: '0.5rem', background: '#e5e7eb' }}></div>
-                          <div className="skeleton" style={{ width: '40%', height: '16px', background: '#e5e7eb' }}></div>
+                          <div className="skeleton" style={{ width: '70%', height: '18px', marginBottom: '0.5rem' }}></div>
+                          <div className="skeleton" style={{ width: '100%', height: '14px', marginBottom: '0.25rem' }}></div>
+                          <div className="skeleton" style={{ width: '50%', height: '14px' }}></div>
                         </div>
                       </div>
                     </div>
@@ -1397,18 +1409,20 @@ function VendorProfilePage() {
                 </div>
               </div>
 
-              {/* Sidebar Skeleton */}
-              <div style={{ width: '350px', flexShrink: 0 }}>
-                <div style={{ 
-                  padding: '1.5rem', 
-                  border: '1px solid #e5e7eb', 
-                  borderRadius: '12px',
-                  background: '#ffffff'
-                }}>
-                  <div className="skeleton" style={{ width: '100%', height: '48px', borderRadius: '12px', marginBottom: '1rem', background: '#e5e7eb' }}></div>
-                  <div className="skeleton" style={{ width: '100%', height: '48px', borderRadius: '12px', background: '#e5e7eb' }}></div>
+              {/* Sidebar Skeleton - Hidden on mobile (shown as sticky bar) */}
+              {!isMobile && (
+                <div>
+                  <div style={{ 
+                    padding: '1.5rem', 
+                    border: '1px solid #e5e7eb', 
+                    borderRadius: '12px',
+                    boxShadow: '0 6px 16px rgba(0,0,0,0.12)'
+                  }}>
+                    <div className="skeleton" style={{ width: '100%', height: '44px', borderRadius: '8px', marginBottom: '1rem' }}></div>
+                    <div className="skeleton" style={{ width: '100%', height: '44px', borderRadius: '8px' }}></div>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         </div>

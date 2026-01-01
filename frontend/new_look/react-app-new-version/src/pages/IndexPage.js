@@ -51,6 +51,8 @@ function IndexPage() {
   useEffect(() => {
     if (mobileMapOpen) {
       document.body.classList.add('modal-open');
+      // Notify MobileBottomNav that map is open
+      window.dispatchEvent(new CustomEvent('mobileMapOpened'));
     } else {
       document.body.classList.remove('modal-open');
     }
@@ -546,6 +548,17 @@ function IndexPage() {
     const params = new URLSearchParams(location.search);
     const urlCategory = params.get('category') || 'all';
     const urlLocation = params.get('location') || '';
+    const openMap = params.get('openMap') === 'true';
+    
+    // Handle openMap parameter from MobileBottomNav
+    if (openMap) {
+      setMobileMapOpen(true);
+      // Remove the openMap param from URL to prevent re-triggering
+      const newParams = new URLSearchParams(location.search);
+      newParams.delete('openMap');
+      const newUrl = newParams.toString() ? `${location.pathname}?${newParams.toString()}` : location.pathname;
+      window.history.replaceState({}, '', newUrl);
+    }
     
     // Check if URL params differ from current state
     const categoryChanged = urlCategory !== currentCategory;

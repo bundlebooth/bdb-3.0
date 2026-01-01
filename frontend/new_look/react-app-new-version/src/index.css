@@ -8380,8 +8380,8 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
 }
 
 /* Footer Styles */
-.vv-footer { background-color: var(--surface-bg); border-top: 1px solid var(--border); }
-.vv-footer .vv-wrap { max-width: 1200px; margin: 0 auto; padding: 32px 16px; display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr; gap: 24px; align-items: start; }
+.vv-footer { background-color: var(--surface-bg); border-top: 1px solid var(--border); margin-bottom: 0; }
+.vv-footer .vv-wrap { max-width: 1200px; margin: 0 auto; padding: 24px 16px; display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr; gap: 24px; align-items: start; }
 .vv-footer .vv-brand { display: flex; flex-direction: column; gap: 12px; color: var(--text); }
 .vv-footer .vv-logo { display: flex; align-items: center; gap: 8px; font-weight: 700; color: var(--text); }
 .vv-footer .vv-tagline { color: var(--text-light); font-size: 0.95rem; }
@@ -10938,7 +10938,7 @@ html, body {
     .view-controls {
         position: sticky !important;
         top: 60px !important; /* Below header */
-        z-index: 100 !important;
+        z-index: 9 !important; /* Much lower than header (100) and categories-nav (10) to prevent overlap */
         background: white !important;
         padding: 10px 16px !important;
         margin: 0 !important;

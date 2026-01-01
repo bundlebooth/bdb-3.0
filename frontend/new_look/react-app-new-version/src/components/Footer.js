@@ -19,7 +19,7 @@ function Footer() {
       <div className="vv-wrap">
         <div className="vv-brand">
           <div className="vv-logo" onClick={() => handleNavigate('/')} style={{ cursor: 'pointer' }}>
-            <img src="/images/logo.png" alt="PlanBeau" style={{ height: '120px', width: 'auto' }} />
+            <img src="/images/logo.png" alt="PlanBeau" style={{ height: '80px', width: 'auto' }} />
           </div>
           <div className="vv-tagline">Get the app and plan on the go</div>
           <div className="vv-badges">
