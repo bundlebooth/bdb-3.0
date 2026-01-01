@@ -46,6 +46,18 @@ function IndexPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [sortBy, setSortBy] = useState('recommended');
   const [mobileMapOpen, setMobileMapOpen] = useState(false); // Mobile fullscreen map
+
+  // Prevent background scrolling when mobile map overlay is open
+  useEffect(() => {
+    if (mobileMapOpen) {
+      document.body.classList.add('modal-open');
+    } else {
+      document.body.classList.remove('modal-open');
+    }
+    return () => {
+      document.body.classList.remove('modal-open');
+    };
+  }, [mobileMapOpen]);
   
   // Vendor discovery sections state
   const [discoverySections, setDiscoverySections] = useState([]);
@@ -1083,15 +1095,6 @@ function IndexPage() {
                     cityFilter={detectedCity || filters.location}
                     categoryFilter={currentCategory}
                   />
-                  {/* Divider between discovery sections */}
-                  {index < discoverySections.length - 1 && (
-                    <div style={{
-                      maxWidth: '100%',
-                      margin: '32px 0',
-                      height: '1px',
-                      background: 'linear-gradient(to right, transparent, rgba(0, 0, 0, 0.08), transparent)'
-                    }}></div>
-                  )}
                 </React.Fragment>
               ))
             )}

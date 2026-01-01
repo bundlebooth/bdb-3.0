@@ -9238,41 +9238,6 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
         color: #717171 !important;
     }
     
-    /* Request to Book button - sticky at bottom */
-    .sticky-booking-bar {
-        position: fixed !important;
-        bottom: 0 !important;
-        left: 0 !important;
-        right: 0 !important;
-        background: white !important;
-        padding: 1rem !important;
-        border-top: 1px solid #ebebeb !important;
-        z-index: 100 !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: space-between !important;
-        gap: 1rem !important;
-    }
-    
-    .sticky-booking-bar .price-info {
-        font-size: 0.9rem !important;
-    }
-    
-    .sticky-booking-bar .price-info .price {
-        font-weight: 600 !important;
-    }
-    
-    .sticky-booking-bar .book-btn {
-        background: #5e72e4 !important;
-        color: white !important;
-        padding: 0.875rem 1.5rem !important;
-        border-radius: 8px !important;
-        font-weight: 600 !important;
-        font-size: 0.95rem !important;
-        border: none !important;
-        flex-shrink: 0 !important;
-    }
-    
     /* Hide desktop sidebar booking card */
     .sidebar-column .sidebar-card:first-child {
         display: none !important;

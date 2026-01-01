@@ -39,6 +39,12 @@ function ForumPage() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const emojiPickerRef = useRef(null);
 
+
+  // Handle opening map - navigate to explore page with map open
+  const handleOpenMap = () => {
+    navigate('/?map=true');
+  };
+
   // Handle emoji selection for post content
   const onEmojiClick = (emojiData) => {
     setNewPost(prev => ({ ...prev, content: prev.content + emojiData.emoji }));
@@ -795,6 +801,7 @@ function ForumPage() {
         }}
         onCloseDashboard={() => setDashboardModalOpen(false)}
         onOpenProfile={() => setProfileModalOpen(true)}
+        onOpenMap={handleOpenMap}
         onOpenMessages={() => {
           // Dispatch event to open messaging widget
           window.dispatchEvent(new CustomEvent('openMessagingWidget', { detail: {} }));

@@ -35,6 +35,12 @@ function VendorProfilePage() {
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [dashboardModalOpen, setDashboardModalOpen] = useState(false);
   const [dashboardSection, setDashboardSection] = useState('dashboard');
+
+
+  // Handle opening map - navigate to explore page with map open
+  const handleOpenMap = () => {
+    navigate('/?map=true');
+  };
   const [vendorFeatures, setVendorFeatures] = useState([]);
   const [portfolioAlbums, setPortfolioAlbums] = useState([]);
   const [recommendations, setRecommendations] = useState({ similar: [], nearby: [], popular: [] });
@@ -1830,51 +1836,21 @@ function VendorProfilePage() {
       {/* Recommendations Section */}
       {renderRecommendations()}
       
-      {/* Mobile Sticky Booking Bar */}
+      {/* Mobile Sticky Booking Bar - styled like bottom nav */}
       <div className="sticky-booking-bar">
         <button 
           className="message-btn" 
           onClick={handleMessageVendor}
-          style={{
-            flex: 1,
-            padding: '12px 16px',
-            background: 'white',
-            border: '1px solid #5e72e4',
-            borderRadius: '8px',
-            color: '#5e72e4',
-            fontWeight: '600',
-            fontSize: '14px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px',
-            cursor: 'pointer'
-          }}
         >
           <i className="fas fa-comment"></i>
-          Message
+          <span>Message</span>
         </button>
         <button 
           className="book-btn" 
           onClick={handleRequestBooking}
-          style={{
-            flex: 1,
-            padding: '12px 16px',
-            background: '#5e72e4',
-            border: 'none',
-            borderRadius: '8px',
-            color: 'white',
-            fontWeight: '600',
-            fontSize: '14px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px',
-            cursor: 'pointer'
-          }}
         >
           <i className="fas fa-calendar-check"></i>
-          Request Booking
+          <span>Request Booking</span>
         </button>
       </div>
       
@@ -1894,7 +1870,12 @@ function VendorProfilePage() {
           }
           setDashboardModalOpen(true);
         }}
+        onCloseDashboard={() => setDashboardModalOpen(false)}
         onOpenProfile={() => setProfileModalOpen(true)}
+        onOpenMap={handleOpenMap}
+        onOpenMessages={() => {
+          window.dispatchEvent(new CustomEvent('openMessagingWidget', { detail: {} }));
+        }}
       />
     </div>
     </div>

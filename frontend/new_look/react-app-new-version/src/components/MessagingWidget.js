@@ -43,6 +43,18 @@ function MessagingWidget() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // Prevent background scrolling when widget is open on mobile
+  useEffect(() => {
+    if (isOpen && isMobile) {
+      document.body.classList.add('modal-open');
+    } else {
+      document.body.classList.remove('modal-open');
+    }
+    return () => {
+      document.body.classList.remove('modal-open');
+    };
+  }, [isOpen, isMobile]);
+
   // Quick reply suggestions
   const quickReplies = [
     "Hi! 👋",

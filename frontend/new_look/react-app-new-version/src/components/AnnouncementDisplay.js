@@ -35,6 +35,18 @@ function AnnouncementDisplay() {
     loadAnnouncements();
   }, [loadAnnouncements]);
 
+  // Prevent background scrolling when popup is open
+  useEffect(() => {
+    if (showPopup) {
+      document.body.classList.add('modal-open');
+    } else {
+      document.body.classList.remove('modal-open');
+    }
+    return () => {
+      document.body.classList.remove('modal-open');
+    };
+  }, [showPopup]);
+
   // Dismiss announcement
   const dismissAnnouncement = async (id, isDismissible) => {
     if (!isDismissible) return;

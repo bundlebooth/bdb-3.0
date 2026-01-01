@@ -53,7 +53,7 @@ function DashboardModal({ isOpen, onClose, initialSection = 'dashboard' }) {
   useEffect(() => {
     if (isOpen) {
       setActiveSection(initialSection);
-      document.body.style.overflow = 'hidden';
+      document.body.classList.add('modal-open');
       
       // CRITICAL: Hide categories nav when modal is open to prevent overlap
       const categoriesNav = document.querySelector('.categories-nav');
@@ -61,7 +61,7 @@ function DashboardModal({ isOpen, onClose, initialSection = 'dashboard' }) {
         categoriesNav.style.display = 'none';
       }
     } else {
-      document.body.style.overflow = '';
+      document.body.classList.remove('modal-open');
       
       // Show categories nav when modal closes
       const categoriesNav = document.querySelector('.categories-nav');
@@ -71,7 +71,7 @@ function DashboardModal({ isOpen, onClose, initialSection = 'dashboard' }) {
     }
     
     return () => {
-      document.body.style.overflow = '';
+      document.body.classList.remove('modal-open');
       const categoriesNav = document.querySelector('.categories-nav');
       if (categoriesNav) {
         categoriesNav.style.display = 'flex';

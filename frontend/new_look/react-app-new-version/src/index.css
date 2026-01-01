@@ -34,6 +34,24 @@ body {
     color: var(--text);
 }
 
+/* Global scroll lock - prevents background scrolling when modals/overlays are open */
+body.modal-open,
+body.overlay-open {
+    overflow: hidden !important;
+    position: fixed !important;
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* Mobile-specific: also prevent touch scrolling */
+@media (max-width: 768px) {
+    body.modal-open,
+    body.overlay-open {
+        touch-action: none !important;
+        overscroll-behavior: none !important;
+    }
+}
+
 .app-container {
     display: grid;
     grid-template-columns: 300px 1fr 0px;
@@ -8432,7 +8450,7 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
         gap: 0.5rem !important;
     }
     
-    /* Hide non-essential nav items on mobile, keep profile button */
+    /* Hide all nav items on mobile - user icon moved to bottom nav */
     .header .user-nav .become-vendor-btn,
     .header .user-nav .complete-profile-btn {
         display: none !important;
@@ -8442,12 +8460,9 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
         display: none !important;
     }
     
-    /* Only show profile button */
+    /* Hide profile button on mobile - it's in the bottom nav now */
     .header .user-nav #profile-btn {
-        display: flex !important;
-        width: 32px !important;
-        height: 32px !important;
-        font-size: 0.85rem !important;
+        display: none !important;
     }
     
     /* ----------------------------------------
@@ -9006,17 +9021,9 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
    Like TagVenue reference: Full-width image, clean layout
    ============================================ */
 
-/* Hide sticky booking bar on desktop */
-.sticky-booking-bar {
-    display: none !important;
-}
+/* Sticky booking bar styling is in VendorProfilePage.css */
 
 @media (max-width: 768px) {
-    /* Show sticky booking bar on mobile */
-    .sticky-booking-bar {
-        display: flex !important;
-    }
-    
     /* Profile container - proper padding on mobile */
     .profile-container {
         padding: 0 1rem !important;
@@ -9297,41 +9304,6 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
     .pricing-item .price-label {
         font-size: 0.85rem !important;
         color: #717171 !important;
-    }
-    
-    /* Request to Book button - sticky at bottom */
-    .sticky-booking-bar {
-        position: fixed !important;
-        bottom: 0 !important;
-        left: 0 !important;
-        right: 0 !important;
-        background: white !important;
-        padding: 1rem !important;
-        border-top: 1px solid #ebebeb !important;
-        z-index: 100 !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: space-between !important;
-        gap: 1rem !important;
-    }
-    
-    .sticky-booking-bar .price-info {
-        font-size: 0.9rem !important;
-    }
-    
-    .sticky-booking-bar .price-info .price {
-        font-weight: 600 !important;
-    }
-    
-    .sticky-booking-bar .book-btn {
-        background: #5e72e4 !important;
-        color: white !important;
-        padding: 0.875rem 1.5rem !important;
-        border-radius: 8px !important;
-        font-weight: 600 !important;
-        font-size: 0.95rem !important;
-        border: none !important;
-        flex-shrink: 0 !important;
     }
     
     /* Hide desktop sidebar booking card */
@@ -9753,10 +9725,6 @@ html, body {
         z-index: 999999 !important;
     }
     
-    /* Ensure sticky booking bar doesn't overlap */
-    .sticky-booking-bar {
-        bottom: 56px !important;
-    }
 }
 
 .mobile-nav-item {
@@ -10525,9 +10493,6 @@ html, body {
         padding-bottom: max(8px, env(safe-area-inset-bottom));
     }
     
-    .sticky-booking-bar {
-        padding-bottom: max(1rem, env(safe-area-inset-bottom));
-    }
 }
 
 /* ============================================
@@ -10610,13 +10575,10 @@ html, body {
 }
 
 @media (max-width: 768px) {
-    #profile-btn {
-        width: 32px !important;
-        height: 32px !important;
-        min-width: 32px !important;
-        min-height: 32px !important;
-        max-width: 32px !important;
-        max-height: 32px !important;
+    /* Hide profile button on mobile - it's in the bottom nav */
+    .header #profile-btn,
+    .header .user-nav #profile-btn {
+        display: none !important;
     }
     
     .search-btn-compact {
@@ -10687,19 +10649,6 @@ html, body {
     [class*="show-map"] {
         bottom: 70px !important;
         z-index: 999998 !important;
-    }
-    
-    /* Ensure map button is visible above bottom nav */
-    .view-controls {
-        position: fixed !important;
-        bottom: 70px !important;
-        left: 50% !important;
-        transform: translateX(-50%) !important;
-        z-index: 999998 !important;
-        background: white !important;
-        padding: 8px 16px !important;
-        border-radius: 30px !important;
-        box-shadow: 0 2px 12px rgba(0,0,0,0.15) !important;
     }
 }
 
@@ -11000,16 +10949,16 @@ html, body {
         top: 60px !important; /* Below header */
         z-index: 100 !important;
         background: white !important;
-        padding: 10px 12px !important;
-        margin: 0 -12px !important;
-        width: calc(100% + 24px) !important;
+        padding: 10px 16px !important;
+        margin: 0 !important;
+        width: 100% !important;
         border-bottom: 1px solid #e5e7eb !important;
         box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important;
         display: flex !important;
-        gap: 8px !important;
+        gap: 10px !important;
         flex-wrap: nowrap !important;
-        overflow-x: auto !important;
-        -webkit-overflow-scrolling: touch !important;
+        overflow: visible !important;
+        box-sizing: border-box !important;
     }
     
     .view-controls::-webkit-scrollbar {
@@ -11023,15 +10972,24 @@ html, body {
     
     .filter-btn {
         flex-shrink: 0 !important;
-        padding: 8px 12px !important;
-        font-size: 13px !important;
+        padding: 10px 16px !important;
+        font-size: 14px !important;
+        border-radius: 8px !important;
+        border: 1px solid #ddd !important;
+        background: white !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+        white-space: nowrap !important;
     }
     
     #sort-select {
-        flex-shrink: 0 !important;
-        padding: 8px 12px !important;
-        font-size: 13px !important;
-        min-width: 120px !important;
+        flex: 1 !important;
+        padding: 10px 12px !important;
+        font-size: 14px !important;
+        min-width: 0 !important;
+        border-radius: 8px !important;
+        border: 1px solid #ddd !important;
     }
 }
 

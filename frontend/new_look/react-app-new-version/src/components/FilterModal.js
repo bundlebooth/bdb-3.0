@@ -17,6 +17,18 @@ function FilterModal({ isOpen, onClose, filters, onFilterChange, userLocation, o
       setUseCurrentLocation(true);
     }
   }, [userLocation]);
+
+  // Prevent background scrolling when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.classList.add('modal-open');
+    } else {
+      document.body.classList.remove('modal-open');
+    }
+    return () => {
+      document.body.classList.remove('modal-open');
+    };
+  }, [isOpen]);
   
   // Initialize Google Places Autocomplete
   useEffect(() => {

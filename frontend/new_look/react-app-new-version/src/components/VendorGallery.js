@@ -50,6 +50,18 @@ function VendorGallery({ images }) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [lightboxOpen, closeLightbox, nextLightboxImage, prevLightboxImage]);
 
+  // Prevent background scrolling when lightbox is open
+  useEffect(() => {
+    if (lightboxOpen) {
+      document.body.classList.add('modal-open');
+    } else {
+      document.body.classList.remove('modal-open');
+    }
+    return () => {
+      document.body.classList.remove('modal-open');
+    };
+  }, [lightboxOpen]);
+
   // Create placeholder images if no images available
   const placeholderImages = validImages.length === 0 ? 
     Array(5).fill(null).map((_, index) => ({
