@@ -10,7 +10,7 @@
 }
 
 .vendor-section {
-  margin-bottom: 2rem;
+  margin-bottom: 1.25rem;
   width: 100%;
   padding: 0;
   position: relative;
@@ -176,6 +176,11 @@
 }
 
 @media (max-width: 768px) {
+  /* Remove gap between sections on mobile */
+  .vendor-section {
+    margin-bottom: 0.75rem;
+  }
+  
   .vendor-section-title {
     font-size: 1rem;
     gap: 0.5rem;
@@ -199,29 +204,44 @@
     display: flex;
   }
   
-  /* MOBILE: 2-column grid layout */
+  /* MOBILE: Full viewport width carousel with peek on both sides */
   .vendor-section-scroll-container {
-    overflow: visible;
+    overflow-x: scroll !important;
+    overflow-y: hidden !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
+    /* Scroll snap for consistent display */
+    scroll-snap-type: x proximity !important;
   }
   
-  .vendor-section-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 0.75rem;
-    width: 100%;
-    transform: none !important;
-  }
-  
-  .vendor-section-card-wrapper {
-    width: 100%;
-    min-width: 0;
-    max-width: 100%;
-    flex: unset;
-  }
-  
-  /* Limit to 4 cards (2 rows) */
-  .vendor-section-card-wrapper:nth-child(n+5) {
+  .vendor-section-scroll-container::-webkit-scrollbar {
     display: none;
+  }
+  
+  /* Flex carousel - padding matches main-content (1rem) for alignment */
+  .vendor-section-carousel {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    gap: 12px !important;
+    transform: none !important;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+    width: max-content !important;
+  }
+  
+  /* Card width: 2 full cards + peek visible */
+  /* (100vw - 2rem padding - 12px gap) / 2.15 = 2 cards + peek */
+  .vendor-section-carousel > div {
+    flex: 0 0 calc((100vw - 2rem - 12px) / 2.15) !important;
+    width: calc((100vw - 2rem - 12px) / 2.15) !important;
+    min-width: calc((100vw - 2rem - 12px) / 2.15) !important;
+    max-width: calc((100vw - 2rem - 12px) / 2.15) !important;
+    scroll-snap-align: start !important;
   }
 }
 
@@ -245,14 +265,16 @@
     font-size: 0.7rem;
   }
   
-  /* Keep 2-column grid on small screens */
-  .vendor-section-card-wrapper {
-    width: 100%;
+  .vendor-section-carousel {
+    gap: 8px !important;
   }
   
-  .vendor-section-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 0.5rem;
+  /* Same sizing for smaller screens - with padding for alignment */
+  .vendor-section-carousel > div {
+    flex: 0 0 calc((100vw - 1.5rem - 8px) / 2.15) !important;
+    width: calc((100vw - 1.5rem - 8px) / 2.15) !important;
+    min-width: calc((100vw - 1.5rem - 8px) / 2.15) !important;
+    max-width: calc((100vw - 1.5rem - 8px) / 2.15) !important;
   }
 }
 

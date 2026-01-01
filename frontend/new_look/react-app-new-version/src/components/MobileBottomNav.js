@@ -66,6 +66,8 @@ function MobileBottomNav({ onOpenDashboard, onOpenProfile, onOpenMessages, onOpe
     if (onCloseDashboard) onCloseDashboard();
     // Close messaging widget if open
     window.dispatchEvent(new CustomEvent('closeMessagingWidget'));
+    // Close mobile map if open
+    window.dispatchEvent(new CustomEvent('closeMobileMap'));
     navigate('/');
     // Scroll to top
     window.scrollTo(0, 0);
@@ -108,12 +110,12 @@ function MobileBottomNav({ onOpenDashboard, onOpenProfile, onOpenMessages, onOpe
   const handleMapClick = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    setActiveTab('map');
     // Close dashboard if open
     if (onCloseDashboard) onCloseDashboard();
     // Close messaging widget if open
     window.dispatchEvent(new CustomEvent('closeMessagingWidget'));
     if (onOpenMap) {
+      setActiveTab('map');
       onOpenMap();
     }
   };

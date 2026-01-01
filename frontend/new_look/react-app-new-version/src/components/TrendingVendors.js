@@ -7,7 +7,15 @@ function TrendingVendors({ onViewVendor }) {
   const [trendingVendors, setTrendingVendors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const carouselRef = React.useRef(null);
+
+  // Track mobile state
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     loadTrendingVendors();
@@ -120,25 +128,29 @@ function TrendingVendors({ onViewVendor }) {
           </button>
         </div>
       </div>
-      <div style={{ position: 'relative', margin: '0 -24px' }}>
+      <div style={{ 
+        position: 'relative', 
+        margin: isMobile ? '0 -16px' : '0 -24px' 
+      }}>
         <div 
           ref={carouselRef}
           style={{ 
             display: 'flex',
-            gap: '16px',
+            gap: isMobile ? '10px' : '16px',
             overflowX: 'scroll',
             scrollBehavior: 'smooth',
             scrollbarWidth: 'none',
             msOverflowStyle: 'none',
             WebkitOverflowScrolling: 'touch',
-            padding: '0 24px'
+            padding: isMobile ? '0 16px' : '0 24px'
           }}
         >
           {loading ? (
             Array.from({ length: 5 }).map((_, index) => (
               <div key={index} style={{ 
-                flex: '0 0 auto',
-                width: '260px',
+                flex: isMobile ? '0 0 44%' : '0 0 auto',
+                width: isMobile ? '44%' : '260px',
+                minWidth: isMobile ? '44%' : '260px',
                 background: '#f8f9fa', 
                 borderRadius: '12px', 
                 padding: '1rem', 
@@ -175,7 +187,14 @@ function TrendingVendors({ onViewVendor }) {
                 analyticsBadge: badgeText
               };
               return (
-                <div key={vendor.VendorProfileID || vendor.id} style={{ flex: '0 0 auto', width: '260px' }}>
+                <div 
+                  key={vendor.VendorProfileID || vendor.id} 
+                  style={{ 
+                    flex: isMobile ? '0 0 44%' : '0 0 auto', 
+                    width: isMobile ? '44%' : '260px',
+                    minWidth: isMobile ? '44%' : '260px'
+                  }}
+                >
                   <VendorCard
                     vendor={vendorWithBadge}
                     isFavorite={false}

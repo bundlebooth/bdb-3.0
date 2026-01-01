@@ -31,6 +31,31 @@ function VendorSection({
   const [showModal, setShowModal] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [visibleCount, setVisibleCount] = useState(4);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const [mobileScrollState, setMobileScrollState] = useState({ canScrollLeft: false, canScrollRight: true });
+
+  // Track mobile state
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Track scroll position for mobile nav buttons
+  useEffect(() => {
+    if (!isMobile || !scrollContainerRef.current) return;
+    
+    const container = scrollContainerRef.current;
+    const handleScroll = () => {
+      const canScrollLeft = container.scrollLeft > 10;
+      const canScrollRight = container.scrollLeft < (container.scrollWidth - container.clientWidth - 10);
+      setMobileScrollState({ canScrollLeft, canScrollRight });
+    };
+    
+    container.addEventListener('scroll', handleScroll);
+    handleScroll(); // Initial check
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [isMobile]);
 
   // Memoize vendors length to avoid unnecessary re-renders
   const vendorsLength = vendors?.length || 0;
@@ -74,6 +99,17 @@ function VendorSection({
   const computedCanScrollRight = currentIndex < maxIndex;
 
   const scroll = (direction) => {
+    // On mobile, scroll by one card width
+    if (isMobile && scrollContainerRef.current) {
+      const container = scrollContainerRef.current;
+      // Card width: (100vw - 2rem - 12px) / 2.15 + 12px gap
+      const cardWidth = (window.innerWidth - 32 - 12) / 2.15 + 12;
+      const scrollAmount = direction === 'left' ? -cardWidth : cardWidth;
+      container.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+      return;
+    }
+    
+    // Desktop: use index-based scrolling
     const scrollAmount = 1; // Always scroll one card at a time
     const maxIndex = Math.max(0, vendors.length - visibleCount);
     
@@ -182,7 +218,7 @@ function VendorSection({
               <button 
                 className="vendor-section-nav-btn vendor-section-nav-btn-left"
                 onClick={() => scroll('left')}
-                disabled={!computedCanScrollLeft}
+                disabled={isMobile ? !mobileScrollState.canScrollLeft : !computedCanScrollLeft}
                 aria-label="Scroll left"
               >
                 <i className="fas fa-chevron-left"></i>
@@ -190,7 +226,7 @@ function VendorSection({
               <button 
                 className="vendor-section-nav-btn vendor-section-nav-btn-right"
                 onClick={() => scroll('right')}
-                disabled={!computedCanScrollRight}
+                disabled={isMobile ? !mobileScrollState.canScrollRight : !computedCanScrollRight}
                 aria-label="Scroll right"
               >
                 <i className="fas fa-chevron-right"></i>
@@ -199,10 +235,14 @@ function VendorSection({
           </div>
         </div>
       
-        <div className="vendor-section-scroll-container" ref={scrollContainerRef}>
+        <div 
+          className="vendor-section-scroll-container" 
+          ref={scrollContainerRef} 
+          style={isMobile ? {} : { marginRight: '-40px', paddingRight: '40px' }}
+        >
           <div 
             className="vendor-section-carousel"
-            style={{
+            style={isMobile ? {} : {
               display: 'flex',
               gap: '16px',
               transform: `translateX(-${currentIndex * 236}px)`,
@@ -214,7 +254,7 @@ function VendorSection({
               return (
                 <div 
                   key={vendorId}
-                  style={{
+                  style={isMobile ? {} : {
                     flex: '0 0 220px',
                     width: '220px'
                   }}

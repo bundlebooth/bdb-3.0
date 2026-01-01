@@ -58,6 +58,15 @@ function IndexPage() {
       document.body.classList.remove('modal-open');
     };
   }, [mobileMapOpen]);
+
+  // Listen for closeMobileMap event from MobileBottomNav
+  useEffect(() => {
+    const handleCloseMobileMap = () => {
+      setMobileMapOpen(false);
+    };
+    window.addEventListener('closeMobileMap', handleCloseMobileMap);
+    return () => window.removeEventListener('closeMobileMap', handleCloseMobileMap);
+  }, []);
   
   // Vendor discovery sections state
   const [discoverySections, setDiscoverySections] = useState([]);
@@ -944,10 +953,10 @@ function IndexPage() {
         userLocation={userLocation}
         vendorCount={serverTotalCount}
       />
-      <div className={`app-container sidebar-collapsed ${mapActive ? 'map-active' : ''}`} id="app-container" style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
+      <div className={`app-container sidebar-collapsed ${mapActive ? 'map-active' : ''}`} id="app-container" style={{ display: 'flex', flexDirection: 'column', width: '100%', overflow: 'visible' }}>
         <CategoriesNav activeCategory={currentCategory} onCategoryChange={handleCategoryChange} loading={loading} />
-        <div className="content-wrapper" style={{ display: 'flex', width: '100%', flex: 1 }}>
-          <main className="main-content" style={{ width: mapActive ? '65%' : '100%', padding: '2rem', overflowY: 'auto' }}>
+        <div className="content-wrapper" style={{ display: 'flex', width: '100%', flex: 1, overflow: 'visible' }}>
+          <main className="main-content" style={{ width: mapActive ? '65%' : '100%', overflowY: 'auto', overflowX: 'visible' }}>
           {currentUser?.vendorProfileId && (
             <>
               <SetupIncompleteBanner 
