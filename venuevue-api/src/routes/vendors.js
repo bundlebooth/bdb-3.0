@@ -2277,9 +2277,10 @@ router.get('/profile', async (req, res) => {
       console.warn('Setup progress query failed, using defaults:', progressError.message);
     }
 
-    // Fetch StripeAccountID, GooglePlaceID, and filter fields directly (not in stored procedure)
+    // Fetch StripeAccountID, GooglePlaceID, ProfileStatus, and filter fields directly (not in stored procedure)
     let stripeAccountId = null;
     let googlePlaceId = null;
+    let profileStatus = 'draft';
     let selectedFilters = [];
     try {
       const extraFieldsRequest = new sql.Request(pool);
@@ -2289,8 +2290,10 @@ router.get('/profile', async (req, res) => {
         const extraFields = extraFieldsResult.recordset[0];
         stripeAccountId = extraFields.StripeAccountID;
         googlePlaceId = extraFields.GooglePlaceID;
+        profileStatus = extraFields.ProfileStatus || 'draft';
         profileData.profile.StripeAccountID = stripeAccountId;
         profileData.profile.GooglePlaceID = googlePlaceId;
+        profileData.profile.ProfileStatus = profileStatus;
         profileData.profile.IsPremium = extraFields.IsPremium;
         profileData.profile.IsFeatured = extraFields.IsFeatured;
         profileData.profile.IsEcoFriendly = extraFields.IsEcoFriendly;
@@ -2316,6 +2319,21 @@ router.get('/profile', async (req, res) => {
       }
     } catch (extraFieldsError) {
       console.error('Extra fields query failed:', extraFieldsError.message);
+    }
+    
+    // Fallback: If ProfileStatus wasn't in extra fields, use stored procedure
+    if (!profileData.profile.ProfileStatus) {
+      try {
+        const statusRequest = new sql.Request(pool);
+        statusRequest.input('VendorProfileID', sql.Int, user.VendorProfileID);
+        const statusResult = await statusRequest.execute('vendors.sp_GetProfileStatus');
+        if (statusResult.recordset.length > 0) {
+          profileData.profile.ProfileStatus = statusResult.recordset[0].ProfileStatus || 'draft';
+        }
+      } catch (statusError) {
+        console.warn('ProfileStatus query failed:', statusError.message);
+        profileData.profile.ProfileStatus = 'draft';
+      }
     }
 
     // Return successful response with vendor profile data
@@ -5755,6 +5773,35 @@ router.post('/:vendorProfileId/submit-for-review', async (req, res) => {
     const { vendorProfileId } = req.params;
     
     const pool = await poolPromise;
+    
+    // First check current profile status to prevent re-submission using stored procedure
+    const checkRequest = new sql.Request(pool);
+    checkRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+    const checkResult = await checkRequest.execute('vendors.sp_GetProfileStatus');
+    
+    if (checkResult.recordset.length === 0) {
+      return res.status(404).json({ success: false, message: 'Vendor profile not found' });
+    }
+    
+    const currentStatus = checkResult.recordset[0].ProfileStatus;
+    
+    // Prevent re-submission if already pending or approved
+    if (currentStatus === 'pending_review') {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Your profile is already under review. Please wait for approval or feedback.',
+        status: currentStatus
+      });
+    }
+    
+    if (currentStatus === 'approved') {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Your profile has already been approved.',
+        status: currentStatus
+      });
+    }
+    
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, vendorProfileId);
     

@@ -748,15 +748,27 @@ function VendorProfilePage() {
   const renderEnhancedFAQs = () => {
     if (!faqs || faqs.length === 0) return null;
 
+    // Helper to parse answers (handles bullet points, newlines, etc.)
+    const parseAnswers = (answer) => {
+      if (!answer) return [];
+      const answerStr = String(answer);
+      // Clean up bullet points and split by newlines
+      const cleaned = answerStr.replace(/^[•\-]\s*/gm, '').trim();
+      if (cleaned.includes('\n')) {
+        return cleaned.split('\n').map(a => a.replace(/^[•\-]\s*/, '').trim()).filter(a => a);
+      }
+      return [cleaned];
+    };
+
     return (
       <div className="content-section">
         <h2>Things to know</h2>
-        <div>
+        <div style={{ marginTop: '1.5rem' }}>
           {faqs.map((faq, index) => {
             const answerType = (faq.AnswerType || '').trim().toLowerCase();
             const hasAnswerOptions = faq.AnswerOptions && faq.AnswerOptions !== 'null' && faq.AnswerOptions !== '';
             
-            let answerContent = null;
+            let answerItems = [];
 
             if ((answerType === 'multiple choice' || answerType === 'multiple_choice') && hasAnswerOptions) {
               try {
@@ -764,50 +776,47 @@ function VendorProfilePage() {
                 
                 if (Array.isArray(options) && options.length > 0) {
                   if (options[0] && typeof options[0] === 'object' && 'label' in options[0]) {
-                    const checkedOptions = options.filter(opt => opt.checked === true).map(opt => opt.label);
-                    
-                    if (checkedOptions.length > 0) {
-                      answerContent = (
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.5rem', marginTop: '0.75rem' }}>
-                          {checkedOptions.map((label, idx) => (
-                            <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                              <i className="fas fa-check" style={{ color: '#3b82f6', fontSize: '0.875rem' }}></i>
-                              <span style={{ color: '#2d3748', fontSize: '0.9375rem' }}>{label}</span>
-                            </div>
-                          ))}
-                        </div>
-                      );
-                    } else {
-                      answerContent = <div style={{ color: 'var(--text-light)', fontSize: '0.9rem', lineHeight: 1.6 }}>No options selected</div>;
-                    }
+                    answerItems = options.filter(opt => opt.checked === true).map(opt => opt.label);
                   } else {
-                    answerContent = (
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.5rem', marginTop: '0.75rem' }}>
-                        {options.map((option, idx) => (
-                          <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <i className="fas fa-check" style={{ color: '#3b82f6', fontSize: '0.875rem' }}></i>
-                            <span style={{ color: '#2d3748', fontSize: '0.9375rem' }}>{option}</span>
-                          </div>
-                        ))}
-                      </div>
-                    );
+                    answerItems = options;
                   }
-                } else {
-                  answerContent = <div style={{ color: 'var(--text-light)', fontSize: '0.9rem', lineHeight: 1.6 }}>{faq.Answer || 'No answer provided'}</div>;
                 }
               } catch (e) {
-                answerContent = <div style={{ color: 'var(--text-light)', fontSize: '0.9rem', lineHeight: 1.6 }}>{faq.Answer || 'No answer provided'}</div>;
+                answerItems = parseAnswers(faq.Answer);
               }
             } else {
-              answerContent = <div style={{ color: 'var(--text-light)', fontSize: '0.9rem', lineHeight: 1.6 }}>{faq.Answer || 'No answer provided'}</div>;
+              answerItems = parseAnswers(faq.Answer);
             }
 
             return (
-              <div key={index} style={{ padding: '1.5rem 0', borderBottom: index < faqs.length - 1 ? '1px solid #e5e7eb' : 'none' }}>
-                <div style={{ fontWeight: 600, color: 'var(--text)', fontSize: '1rem', marginBottom: '0.75rem' }}>
+              <div 
+                key={index} 
+                style={{ 
+                  padding: '1.25rem 0',
+                  borderBottom: index < faqs.length - 1 ? '1px solid #e5e7eb' : 'none'
+                }}
+              >
+                <div style={{ 
+                  fontWeight: 600, 
+                  color: '#111827', 
+                  fontSize: '1rem', 
+                  marginBottom: '0.75rem'
+                }}>
                   {faq.Question}
                 </div>
-                {answerContent}
+                <div style={{ color: '#4b5563', fontSize: '0.95rem', lineHeight: 1.7 }}>
+                  {answerItems.length === 0 ? (
+                    <span style={{ color: '#9ca3af', fontStyle: 'italic' }}>No answer provided</span>
+                  ) : answerItems.length === 1 ? (
+                    <span>{answerItems[0]}</span>
+                  ) : (
+                    <div style={{ display: 'grid', gap: '0.25rem' }}>
+                      {answerItems.map((item, idx) => (
+                        <div key={idx}>{item}</div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             );
           })}

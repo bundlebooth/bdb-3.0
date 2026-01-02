@@ -2102,12 +2102,22 @@ body:not(:has(.enhanced-search-container.expanded)) .pac-container {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 1rem;
+  width: 100%;
 }
 
 /* Force all grid items to have equal height within each row */
 .features-grid-3col > div {
-  min-height: 80px; /* Minimum height for all cards */
-  height: 100%; /* Fill the grid cell */
+  min-height: 90px;
+  height: 100%;
+  display: flex;
+}
+
+/* Make the inner clickable div fill the entire grid cell */
+.features-grid-3col > div > div {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  min-height: 90px;
 }
 
 @media (max-width: 1024px) {

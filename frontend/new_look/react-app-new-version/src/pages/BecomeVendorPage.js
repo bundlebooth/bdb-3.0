@@ -261,8 +261,8 @@ const BecomeVendorPage = () => {
     },
     {
       id: 'policies',
-      title: 'Set your policies and answer common questions',
-      subtitle: 'Help clients understand your terms and conditions',
+      title: 'Frequently Asked Questions',
+      subtitle: 'Add common questions to help clients learn about your services',
       component: PoliciesStep,
       required: false,
       skippable: true
@@ -302,6 +302,13 @@ const BecomeVendorPage = () => {
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [currentStep]);
+
+  // Force user to step 0 when profile is pending review or approved - block all navigation
+  useEffect(() => {
+    if (profileStatus === 'pending_review' || profileStatus === 'approved') {
+      setCurrentStep(0);
+    }
+  }, [profileStatus]);
 
   useEffect(() => {
     if (currentUser && formData.email === '') {
@@ -836,7 +843,7 @@ const BecomeVendorPage = () => {
       case 'google-reviews':
         return !!formData.googlePlaceId;
       case 'policies':
-        return !!(formData.cancellationPolicy || formData.depositPercentage || formData.paymentTerms || (formData.faqs && formData.faqs.length > 0));
+        return !!(formData.faqs && formData.faqs.length > 0);
       default:
         return false;
     }
@@ -860,6 +867,11 @@ const BecomeVendorPage = () => {
   };
 
   const handleNext = () => {
+    // Block navigation if profile is pending review or approved
+    if (profileStatus === 'pending_review' || profileStatus === 'approved') {
+      return;
+    }
+    
     // Only validate required steps
     const currentStepData = steps[currentStep];
     
@@ -912,6 +924,11 @@ const BecomeVendorPage = () => {
   };
 
   const handleBack = () => {
+    // Block navigation if profile is pending review or approved
+    if (profileStatus === 'pending_review' || profileStatus === 'approved') {
+      return;
+    }
+    
     if (currentStep > 0) {
       setIsTransitioning(true);
       setTimeout(() => {
@@ -1118,6 +1135,13 @@ const BecomeVendorPage = () => {
         return;
       }
 
+      // Prevent re-submission if already pending review
+      if (profileStatus === 'pending_review') {
+        showBanner('Your profile is already under review. Please wait for approval or feedback.', 'info');
+        setLoading(false);
+        return;
+      }
+
       // First save the current profile data
       await handleSaveProgress();
 
@@ -1195,6 +1219,155 @@ const BecomeVendorPage = () => {
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
             <div className="spinner"></div>
           </div>
+        ) : profileStatus === 'pending_review' ? (
+          /* Show pending review message immediately when landing on page */
+          <div style={{ padding: '3rem 1rem', maxWidth: '700px', margin: '0 auto' }}>
+            <div style={{ 
+              background: 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)', 
+              borderRadius: '16px', 
+              padding: '2.5rem',
+              border: '2px solid #3b82f6',
+              textAlign: 'center'
+            }}>
+              <div style={{ 
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '80px',
+                height: '80px',
+                borderRadius: '50%',
+                background: '#3b82f6',
+                marginBottom: '1.5rem'
+              }}>
+                <i className="fas fa-hourglass-half" style={{ fontSize: '2rem', color: 'white' }}></i>
+              </div>
+              <h2 style={{ fontSize: '1.75rem', marginBottom: '1rem', color: '#1e40af', fontWeight: '700' }}>
+                Profile Already Submitted
+              </h2>
+              <p style={{ color: '#1e3a8a', fontSize: '1.1rem', lineHeight: 1.7, marginBottom: '1.5rem' }}>
+                Your vendor profile has already been submitted and is currently being reviewed by our support team. 
+                Please wait for a response before making any changes. This process typically takes <strong>1-2 business days</strong>.
+              </p>
+              <div style={{ 
+                background: 'white', 
+                borderRadius: '12px', 
+                padding: '1.25rem',
+                marginBottom: '1.5rem'
+              }}>
+                <h4 style={{ margin: '0 0 0.75rem', color: '#1f2937', fontSize: '1rem', fontWeight: 600 }}>
+                  What happens next?
+                </h4>
+                <ul style={{ 
+                  margin: 0, 
+                  padding: '0 0 0 1.25rem', 
+                  textAlign: 'left',
+                  color: '#4b5563',
+                  fontSize: '0.95rem',
+                  lineHeight: 1.8
+                }}>
+                  <li>Our team will review your business information</li>
+                  <li>You'll receive an email notification once approved</li>
+                  <li>If changes are needed, we'll let you know what to update</li>
+                  <li>Once approved, your profile will be live and visible to clients</li>
+                </ul>
+              </div>
+              <div style={{ 
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                padding: '0.75rem 1.5rem',
+                background: '#3b82f6',
+                borderRadius: '8px',
+                color: 'white',
+                fontSize: '0.95rem',
+                fontWeight: 500,
+                marginBottom: '1.5rem'
+              }}>
+                <i className="fas fa-clock"></i>
+                <span>Status: Pending Review</span>
+              </div>
+              <div style={{ marginTop: '1rem' }}>
+                <button 
+                  onClick={() => navigate('/')}
+                  style={{
+                    padding: '0.75rem 2rem',
+                    background: 'white',
+                    border: '2px solid #3b82f6',
+                    borderRadius: '8px',
+                    color: '#3b82f6',
+                    fontSize: '1rem',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Return to Home
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : profileStatus === 'approved' ? (
+          /* Show approved message */
+          <div style={{ padding: '3rem 1rem', maxWidth: '700px', margin: '0 auto' }}>
+            <div style={{ 
+              background: 'linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)', 
+              borderRadius: '16px', 
+              padding: '2.5rem',
+              border: '2px solid #10b981',
+              textAlign: 'center'
+            }}>
+              <div style={{ 
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '80px',
+                height: '80px',
+                borderRadius: '50%',
+                background: '#10b981',
+                marginBottom: '1.5rem'
+              }}>
+                <i className="fas fa-check-circle" style={{ fontSize: '2rem', color: 'white' }}></i>
+              </div>
+              <h2 style={{ fontSize: '1.75rem', marginBottom: '1rem', color: '#166534', fontWeight: '700' }}>
+                Profile Approved!
+              </h2>
+              <p style={{ color: '#15803d', fontSize: '1.1rem', lineHeight: 1.7, marginBottom: '1.5rem' }}>
+                Congratulations! Your vendor profile has been approved and is now live. 
+                Clients can find and book your services.
+              </p>
+              <div style={{ 
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                padding: '0.75rem 1.5rem',
+                background: '#10b981',
+                borderRadius: '8px',
+                color: 'white',
+                fontSize: '0.95rem',
+                fontWeight: 500,
+                marginBottom: '1.5rem'
+              }}>
+                <i className="fas fa-check"></i>
+                <span>Status: Approved & Live</span>
+              </div>
+              <div style={{ marginTop: '1rem' }}>
+                <button 
+                  onClick={() => navigate('/dashboard')}
+                  style={{
+                    padding: '0.75rem 2rem',
+                    background: '#10b981',
+                    border: 'none',
+                    borderRadius: '8px',
+                    color: 'white',
+                    fontSize: '1rem',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Go to Dashboard
+                </button>
+              </div>
+            </div>
+          </div>
         ) : (
           <div className={`step-container ${isTransitioning ? 'fade-out' : ''}`} key={currentStep}>
             <div className="step-header">
@@ -1242,12 +1415,15 @@ const BecomeVendorPage = () => {
                 isStepCompleted={isStepCompleted}
                 setCurrentStep={setCurrentStep}
                 setFeaturesLoadedFromDB={setFeaturesLoadedFromDB}
+                profileStatus={profileStatus}
               />
             </div>
           </div>
         )}
       </main>
 
+      {/* Hide footer when profile is pending review or approved */}
+      {!(profileStatus === 'pending_review' || profileStatus === 'approved') && (
       <footer className="become-vendor-footer">
         <div className="footer-content">
           <button
@@ -1288,13 +1464,13 @@ const BecomeVendorPage = () => {
             <button
               className="btn-next"
               onClick={currentStep === steps.length - 1 ? handleGoLive : handleNext}
-              disabled={loading || (currentStep === 0 && !currentUser)}
-              style={currentStep === steps.length - 1 ? { background: '#10b981' } : {}}
+              disabled={loading || (currentStep === 0 && !currentUser) || (currentStep === steps.length - 1 && profileStatus === 'pending_review')}
+              style={currentStep === steps.length - 1 ? { background: profileStatus === 'pending_review' ? '#9ca3af' : '#10b981' } : {}}
             >
               {loading ? (
                 <span className="spinner-small"></span>
               ) : currentStep === steps.length - 1 ? (
-                'Go Live'
+                profileStatus === 'pending_review' ? 'Pending Review' : 'Go Live'
               ) : (
                 'Next'
               )}
@@ -1302,6 +1478,7 @@ const BecomeVendorPage = () => {
           </div>
         </div>
       </footer>
+      )}
     </div>
   );
 };
@@ -1309,7 +1486,7 @@ const BecomeVendorPage = () => {
 // STEP COMPONENTS BELOW
 // Due to file size, I'll add these as inline components
 
-function AccountStep({ currentUser, setFormData, formData, onAccountCreated, isExistingVendor, steps, isStepCompleted, setCurrentStep }) {
+function AccountStep({ currentUser, setFormData, formData, onAccountCreated, isExistingVendor, steps, isStepCompleted, setCurrentStep, profileStatus }) {
   const [mode, setMode] = useState('signup'); // 'signup' or 'login'
   const [accountData, setAccountData] = useState({
     name: '',
@@ -1323,6 +1500,202 @@ function AccountStep({ currentUser, setFormData, formData, onAccountCreated, isE
   const isVendorWithProfile = isExistingVendor || (currentUser?.isVendor && currentUser?.vendorProfileId);
 
   if (currentUser) {
+    // Show pending review message if profile is submitted
+    if (profileStatus === 'pending_review') {
+      return (
+        <div className="account-step">
+          <div style={{ padding: '2rem 1rem', maxWidth: '700px', margin: '0 auto' }}>
+            <div style={{ 
+              background: 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)', 
+              borderRadius: '16px', 
+              padding: '2.5rem',
+              border: '2px solid #3b82f6',
+              textAlign: 'center'
+            }}>
+              <div style={{ 
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '80px',
+                height: '80px',
+                borderRadius: '50%',
+                background: '#3b82f6',
+                marginBottom: '1.5rem'
+              }}>
+                <i className="fas fa-hourglass-half" style={{ fontSize: '2rem', color: 'white' }}></i>
+              </div>
+              <h2 style={{ fontSize: '1.75rem', marginBottom: '1rem', color: '#1e40af', fontWeight: '700' }}>
+                Profile Under Review
+              </h2>
+              <p style={{ color: '#1e3a8a', fontSize: '1.1rem', lineHeight: 1.7, marginBottom: '1.5rem' }}>
+                Your vendor profile has been submitted and is currently being reviewed by our support team. 
+                This process typically takes <strong>1-2 business days</strong>.
+              </p>
+              <div style={{ 
+                background: 'white', 
+                borderRadius: '12px', 
+                padding: '1.25rem',
+                marginBottom: '1.5rem'
+              }}>
+                <h4 style={{ margin: '0 0 0.75rem', color: '#1f2937', fontSize: '1rem', fontWeight: 600 }}>
+                  What happens next?
+                </h4>
+                <ul style={{ 
+                  margin: 0, 
+                  padding: '0 0 0 1.25rem', 
+                  textAlign: 'left',
+                  color: '#4b5563',
+                  fontSize: '0.95rem',
+                  lineHeight: 1.8
+                }}>
+                  <li>Our team will review your business information</li>
+                  <li>You'll receive an email notification once approved</li>
+                  <li>If changes are needed, we'll let you know what to update</li>
+                  <li>Once approved, your profile will be live and visible to clients</li>
+                </ul>
+              </div>
+              <div style={{ 
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                padding: '0.75rem 1.5rem',
+                background: '#3b82f6',
+                borderRadius: '8px',
+                color: 'white',
+                fontSize: '0.95rem',
+                fontWeight: 500
+              }}>
+                <i className="fas fa-clock"></i>
+                <span>Status: Pending Review</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Show approved message if profile is approved
+    if (profileStatus === 'approved') {
+      return (
+        <div className="account-step">
+          <div style={{ padding: '2rem 1rem', maxWidth: '700px', margin: '0 auto' }}>
+            <div style={{ 
+              background: 'linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)', 
+              borderRadius: '16px', 
+              padding: '2.5rem',
+              border: '2px solid #10b981',
+              textAlign: 'center'
+            }}>
+              <div style={{ 
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '80px',
+                height: '80px',
+                borderRadius: '50%',
+                background: '#10b981',
+                marginBottom: '1.5rem'
+              }}>
+                <i className="fas fa-check-circle" style={{ fontSize: '2rem', color: 'white' }}></i>
+              </div>
+              <h2 style={{ fontSize: '1.75rem', marginBottom: '1rem', color: '#166534', fontWeight: '700' }}>
+                Profile Approved!
+              </h2>
+              <p style={{ color: '#15803d', fontSize: '1.1rem', lineHeight: 1.7, marginBottom: '1.5rem' }}>
+                Congratulations! Your vendor profile has been approved and is now live. 
+                Clients can find and book your services.
+              </p>
+              <div style={{ 
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                padding: '0.75rem 1.5rem',
+                background: '#10b981',
+                borderRadius: '8px',
+                color: 'white',
+                fontSize: '0.95rem',
+                fontWeight: 500
+              }}>
+                <i className="fas fa-check"></i>
+                <span>Status: Approved & Live</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Show rejected message if profile needs changes
+    if (profileStatus === 'rejected') {
+      return (
+        <div className="account-step">
+          <div style={{ padding: '2rem 1rem', maxWidth: '700px', margin: '0 auto' }}>
+            <div style={{ 
+              background: 'linear-gradient(135deg, #fef2f2 0%, #fecaca 100%)', 
+              borderRadius: '16px', 
+              padding: '2.5rem',
+              border: '2px solid #ef4444',
+              textAlign: 'center'
+            }}>
+              <div style={{ 
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '80px',
+                height: '80px',
+                borderRadius: '50%',
+                background: '#ef4444',
+                marginBottom: '1.5rem'
+              }}>
+                <i className="fas fa-exclamation-circle" style={{ fontSize: '2rem', color: 'white' }}></i>
+              </div>
+              <h2 style={{ fontSize: '1.75rem', marginBottom: '1rem', color: '#991b1b', fontWeight: '700' }}>
+                Changes Requested
+              </h2>
+              <p style={{ color: '#b91c1c', fontSize: '1.1rem', lineHeight: 1.7, marginBottom: '1.5rem' }}>
+                Our team has reviewed your profile and requested some changes. 
+                Please review the feedback and update your profile accordingly.
+              </p>
+              <div style={{ 
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                padding: '0.75rem 1.5rem',
+                background: '#ef4444',
+                borderRadius: '8px',
+                color: 'white',
+                fontSize: '0.95rem',
+                fontWeight: 500
+              }}>
+                <i className="fas fa-edit"></i>
+                <span>Status: Changes Requested</span>
+              </div>
+            </div>
+            
+            {/* Show steps so they can make changes */}
+            {isVendorWithProfile && steps && (
+              <div style={{ marginTop: '2rem' }}>
+                <SetupIncompleteBanner
+                  steps={steps}
+                  isStepCompleted={isStepCompleted}
+                  onStepClick={(stepKey) => {
+                    const stepIndex = steps.findIndex(s => s.id === stepKey);
+                    if (stepIndex !== -1) {
+                      setCurrentStep(stepIndex);
+                    }
+                  }}
+                  hideButtons={true}
+                  maxWidth="900px"
+                  showAllSteps={true}
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // Default: Show normal step progress for draft profiles
     return (
       <div className="account-step">
         <div style={{ padding: '2rem 1rem' }}>
@@ -3286,9 +3659,30 @@ function QuestionnaireStep({ formData, setFormData, currentUser, setFeaturesLoad
     return icon.replace('fa-', '');
   };
 
-  // Show ALL categories - vendors can select any features regardless of their business type
+  // Filter categories based on selected primary and additional categories
   const getFilteredCategories = () => {
-    return categories;
+    const selectedCategoryIds = [
+      formData.primaryCategory,
+      ...(formData.additionalCategories || [])
+    ].filter(Boolean);
+    
+    if (selectedCategoryIds.length === 0) {
+      return categories; // Show all if no categories selected
+    }
+    
+    // Filter to only show categories that match selected ones
+    return categories.filter(cat => {
+      // Match by category name or ID
+      return selectedCategoryIds.some(selectedId => {
+        const catName = cat.categoryName?.toLowerCase() || '';
+        const selectedName = typeof selectedId === 'string' ? selectedId.toLowerCase() : '';
+        return catName === selectedName || 
+               catName.includes(selectedName) || 
+               selectedName.includes(catName) ||
+               cat.categoryId === selectedId ||
+               cat.categoryID === selectedId;
+      });
+    });
   };
 
   const filteredCategories = getFilteredCategories();
@@ -3384,24 +3778,6 @@ function QuestionnaireStep({ formData, setFormData, currentUser, setFeaturesLoad
           </div>
         )}
 
-        {filteredCategories.length > 0 && (
-          <div style={{ marginTop: '2rem', padding: '1rem 1.25rem', background: '#f8f9fa', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#6b7280', fontSize: '0.95rem' }}>
-              <i className="fas fa-check-circle" style={{ color: 'var(--primary)' }}></i>
-              <span><strong>{selectedFeatureIds.size}</strong> features selected</span>
-            </div>
-            {currentUser?.vendorProfileId && (
-              <button
-                onClick={handleSaveFeatures}
-                disabled={saving}
-                className="btn btn-primary"
-                style={{ padding: '0.5rem 1.5rem', fontSize: '0.9rem' }}
-              >
-                {saving ? 'Saving...' : 'Save Features'}
-              </button>
-            )}
-          </div>
-        )}
       </div>
     </div>
   );
@@ -4082,22 +4458,6 @@ function FiltersStep({ formData, setFormData, filterOptions, currentUser }) {
           })}
         </div>
 
-        <div style={{ marginTop: '2rem', padding: '1rem', background: '#f8f9fa', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#6b7280', fontSize: '0.95rem' }}>
-            <i className="fas fa-check-circle" style={{ color: 'var(--primary)' }}></i>
-            <span><strong>{selectedFilters.length}</strong> badges selected</span>
-          </div>
-          {currentUser?.vendorProfileId && (
-            <button
-              onClick={handleSaveFilters}
-              disabled={saving}
-              className="btn btn-primary"
-              style={{ padding: '0.5rem 1.5rem', fontSize: '0.9rem' }}
-            >
-              {saving ? 'Saving...' : 'Save Filters'}
-            </button>
-          )}
-        </div>
       </div>
     </div>
   );
@@ -4213,6 +4573,16 @@ function StripeStep({ formData, setFormData, currentUser }) {
   return (
     <div className="stripe-step">
       <div style={{ maxWidth: '100%', width: '100%' }}>
+        {/* Note - At Top */}
+        <div style={{ marginBottom: '1.5rem', padding: '1.5rem', background: '#fef3c7', borderRadius: '12px', border: '2px solid #fbbf24' }}>
+          <div style={{ display: 'flex', gap: '0.75rem' }}>
+            <i className="fas fa-info-circle" style={{ color: '#d97706', fontSize: '1.25rem', flexShrink: 0 }}></i>
+            <div style={{ fontSize: '0.9rem', color: '#78350f', lineHeight: 1.6 }}>
+              <strong>Note:</strong> You can skip this step for now and set up Stripe later from your dashboard. However, connecting Stripe is required to accept online payments from clients.
+            </div>
+          </div>
+        </div>
+
         <div style={{ marginBottom: '2rem', padding: '1.5rem', background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
             <i className="fab fa-stripe" style={{ color: '#635bff', fontSize: '1.5rem' }}></i>
@@ -4282,7 +4652,7 @@ function StripeStep({ formData, setFormData, currentUser }) {
                   gap: '0.75rem',
                   padding: '0.875rem 1.5rem',
                   fontSize: '1rem',
-                  background: stripeStatus.connected ? 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)' : 'linear-gradient(135deg, #635bff 0%, #5469d4 100%)',
+                  background: 'var(--primary)',
                   border: 'none',
                   opacity: (connecting || !currentUser?.vendorProfileId) ? 0.7 : 1
                 }}
@@ -4321,24 +4691,36 @@ function StripeStep({ formData, setFormData, currentUser }) {
                     <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.5rem', fontSize: '0.9rem', color: '#374151' }}>
                       Details Submitted
                     </label>
-                    <div style={{ padding: '0.75rem 1rem', background: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb', fontSize: '0.9rem' }}>
-                      {stripeStatus.detailsSubmitted ? '✓ Yes' : '✗ No'}
+                    <div style={{ padding: '0.75rem 1rem', background: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      {stripeStatus.detailsSubmitted ? (
+                        <><i className="fas fa-check-circle" style={{ color: '#16a34a' }}></i> <span style={{ color: '#16a34a', fontWeight: 500 }}>Yes</span></>
+                      ) : (
+                        <><i className="fas fa-times-circle" style={{ color: '#dc2626' }}></i> <span style={{ color: '#dc2626', fontWeight: 500 }}>No</span></>
+                      )}
                     </div>
                   </div>
                   <div>
                     <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.5rem', fontSize: '0.9rem', color: '#374151' }}>
                       Charges Enabled
                     </label>
-                    <div style={{ padding: '0.75rem 1rem', background: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb', fontSize: '0.9rem' }}>
-                      {stripeStatus.chargesEnabled ? '✓ Yes' : '✗ No'}
+                    <div style={{ padding: '0.75rem 1rem', background: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      {stripeStatus.chargesEnabled ? (
+                        <><i className="fas fa-check-circle" style={{ color: '#16a34a' }}></i> <span style={{ color: '#16a34a', fontWeight: 500 }}>Yes</span></>
+                      ) : (
+                        <><i className="fas fa-times-circle" style={{ color: '#dc2626' }}></i> <span style={{ color: '#dc2626', fontWeight: 500 }}>No</span></>
+                      )}
                     </div>
                   </div>
                   <div>
                     <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.5rem', fontSize: '0.9rem', color: '#374151' }}>
                       Payouts Enabled
                     </label>
-                    <div style={{ padding: '0.75rem 1rem', background: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb', fontSize: '0.9rem' }}>
-                      {stripeStatus.payoutsEnabled ? '✓ Yes' : '✗ No'}
+                    <div style={{ padding: '0.75rem 1rem', background: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      {stripeStatus.payoutsEnabled ? (
+                        <><i className="fas fa-check-circle" style={{ color: '#16a34a' }}></i> <span style={{ color: '#16a34a', fontWeight: 500 }}>Yes</span></>
+                      ) : (
+                        <><i className="fas fa-times-circle" style={{ color: '#dc2626' }}></i> <span style={{ color: '#dc2626', fontWeight: 500 }}>No</span></>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -4362,15 +4744,6 @@ function StripeStep({ formData, setFormData, currentUser }) {
             )}
           </div>
         )}
-
-        <div style={{ marginTop: '2rem', padding: '1.5rem', background: '#fef3c7', borderRadius: '12px', border: '2px solid #fbbf24' }}>
-          <div style={{ display: 'flex', gap: '0.75rem' }}>
-            <i className="fas fa-info-circle" style={{ color: '#d97706', fontSize: '1.25rem', flexShrink: 0 }}></i>
-            <div style={{ fontSize: '0.9rem', color: '#78350f', lineHeight: 1.6 }}>
-              <strong>Note:</strong> You can skip this step for now and set up Stripe later from your dashboard. However, connecting Stripe is required to accept online payments from clients.
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );
@@ -4515,6 +4888,16 @@ function GoogleReviewsStep({ formData, setFormData, currentUser }) {
   return (
     <div className="google-reviews-step">
       <div style={{ maxWidth: '100%', width: '100%' }}>
+        {/* Note - At Top */}
+        <div style={{ marginBottom: '1.5rem', padding: '1.5rem', background: '#fef3c7', borderRadius: '12px', border: '2px solid #fbbf24' }}>
+          <div style={{ display: 'flex', gap: '0.75rem' }}>
+            <i className="fas fa-info-circle" style={{ color: '#d97706', fontSize: '1.25rem', flexShrink: 0 }}></i>
+            <div style={{ fontSize: '0.9rem', color: '#78350f', lineHeight: 1.6 }}>
+              <strong>Note:</strong> You can skip this step for now and set up Google Reviews later from your dashboard. However, displaying reviews helps build trust and credibility with potential clients.
+            </div>
+          </div>
+        </div>
+
         <div style={{ marginBottom: '2rem', padding: '1.5rem', background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
             <svg width="24" height="24" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
@@ -4530,39 +4913,47 @@ function GoogleReviewsStep({ formData, setFormData, currentUser }) {
           </p>
         </div>
 
-        <div style={{ background: 'white', borderRadius: '16px', border: '1px solid #e5e7eb', padding: '3rem' }}>
-          <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
-            <div style={{
-              width: '96px',
-              height: '96px',
-              borderRadius: '50%',
-              background: 'linear-gradient(135deg, #4285f4 0%, #34a853 50%, #fbbc05 75%, #ea4335 100%)',
+        {/* Main Content */}
+        <div style={{ background: 'white', borderRadius: '16px', border: '1px solid #e5e7eb', padding: '2rem' }}>
+          {/* Connection Status */}
+          <div style={{ marginBottom: '1.5rem' }}>
+            <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.5rem', fontSize: '0.95rem' }}>
+              Connection Status
+            </label>
+            <div style={{ 
+              padding: '0.875rem 1rem', 
+              background: '#f9fafb', 
+              borderRadius: '8px', 
+              border: '1px solid #e5e7eb',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center',
-              margin: '0 auto 1.5rem'
+              gap: '0.75rem'
             }}>
-              <svg width="48" height="48" viewBox="0 0 24 24">
-                <path fill="white" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                <path fill="white" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                <path fill="white" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                <path fill="white" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-              </svg>
+              <i className={`fas ${verificationStatus === 'success' ? 'fa-check-circle' : 'fa-times-circle'}`} 
+                 style={{ color: verificationStatus === 'success' ? '#16a34a' : '#6b7280' }}></i>
+              <span style={{ fontWeight: 500 }}>
+                {!currentUser?.vendorProfileId 
+                  ? 'Complete profile first'
+                  : verificationStatus === 'success' 
+                    ? 'Connected and verified' 
+                    : 'Not connected'}
+              </span>
             </div>
-            
-            <h4 style={{ margin: '0 0 0.75rem', fontSize: '1.5rem', fontWeight: 600, color: '#111827' }}>
-              Google Reviews Integration
-            </h4>
-            <p style={{ margin: '0 0 2rem', color: '#6b7280', fontSize: '1rem', lineHeight: 1.6 }}>
-              Showcase your Google Business reviews to build trust with potential clients. Your star rating and recent reviews will be displayed on your profile.
+            <p style={{ color: '#6b7280', fontSize: '0.85rem', marginTop: '0.5rem' }}>
+              {!currentUser?.vendorProfileId 
+                ? 'You need to complete your basic profile before connecting Google Reviews.'
+                : verificationStatus === 'success'
+                  ? 'Your Google Reviews will be displayed on your profile.'
+                  : 'Enter your Google Place ID to display reviews on your profile.'}
             </p>
           </div>
 
-          <div style={{ maxWidth: '100%', width: '100%' }}>
-            <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.75rem', fontSize: '1rem', color: '#374151' }}>
+          {/* Google Place ID Input */}
+          <div style={{ marginBottom: '1.5rem' }}>
+            <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.5rem', fontSize: '0.95rem' }}>
               Google Place ID
             </label>
-            <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '0.75rem' }}>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
               <input
                 type="text"
                 placeholder="Enter your Google Place ID"
@@ -4570,114 +4961,91 @@ function GoogleReviewsStep({ formData, setFormData, currentUser }) {
                 onChange={(e) => setGooglePlaceId(e.target.value)}
                 style={{
                   flex: 1,
-                  padding: '0.875rem 1rem',
+                  minWidth: 0,
+                  padding: '0.625rem 0.875rem',
                   border: '1px solid #e5e7eb',
-                  borderRadius: '8px',
-                  fontSize: '1rem'
+                  borderRadius: '6px',
+                  fontSize: '0.9rem'
                 }}
               />
               <button
                 onClick={handleVerifyGooglePlace}
                 disabled={verifying || !googlePlaceId.trim()}
                 className="btn btn-primary"
-                style={{ minWidth: '120px', padding: '0.875rem 1.5rem' }}
+                style={{ 
+                  padding: '0.5rem 0.875rem',
+                  fontSize: '0.8rem',
+                  background: 'var(--primary)',
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0
+                }}
               >
-                {verifying ? (
-                  <span className="spinner-small"></span>
-                ) : (
-                  <>
-                    <i className="fas fa-check"></i> Verify
-                  </>
-                )}
+                {verifying ? 'Verifying...' : 'Verify'}
               </button>
             </div>
-            <small style={{ display: 'block', color: '#6b7280', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
+            <small style={{ display: 'block', color: '#6b7280', fontSize: '0.8rem', marginTop: '0.5rem' }}>
               <a href="https://developers.google.com/maps/documentation/places/web-service/place-id" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)', textDecoration: 'none', fontWeight: 500 }}>
-                <i className="fas fa-external-link-alt" style={{ marginRight: '0.5rem' }}></i>
+                <i className="fas fa-external-link-alt" style={{ marginRight: '0.35rem', fontSize: '0.7rem' }}></i>
                 How to find your Google Place ID
               </a>
             </small>
+          </div>
 
-            {verificationStatus === 'success' && (
-              <div style={{ padding: '1rem 1.5rem', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <i className="fas fa-check-circle" style={{ color: '#16a34a', fontSize: '1.25rem' }}></i>
-                <span style={{ color: '#15803d', fontSize: '1rem', fontWeight: 500 }}>Google reviews connected successfully!</span>
-              </div>
-            )}
-
-            {verificationStatus === 'error' && (
-              <div style={{ padding: '1rem 1.5rem', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <i className="fas fa-exclamation-circle" style={{ color: '#dc2626', fontSize: '1.25rem' }}></i>
-                <span style={{ color: '#991b1b', fontSize: '1rem', fontWeight: 500 }}>Invalid Place ID. Please check and try again.</span>
-              </div>
-            )}
-
-            {/* Preview Section */}
-            {previewData && verificationStatus === 'success' && (
-              <div style={{ marginTop: '1.5rem', padding: '1.5rem', background: '#f9fafb', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-                  <img 
-                    src="https://www.google.com/images/branding/googleg/1x/googleg_standard_color_128dp.png" 
-                    alt="Google" 
-                    style={{ width: '32px', height: '32px' }}
-                  />
-                  <div>
-                    <div style={{ fontWeight: 600, color: '#111827', fontSize: '0.95rem' }}>Google Reviews Preview</div>
-                    <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>Verified business reviews</div>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                  <div style={{ fontSize: '2.5rem', fontWeight: 700, color: '#111827', lineHeight: 1 }}>
-                    {(previewData.rating || 0).toFixed(1)}
-                  </div>
-                  <div>
-                    <div style={{ fontSize: '1rem', color: '#fbbc04', marginBottom: '0.125rem' }}>
-                      {'★'.repeat(Math.round(previewData.rating || 0))}{'☆'.repeat(5 - Math.round(previewData.rating || 0))}
-                    </div>
-                    <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>
-                      Based on {(previewData.user_ratings_total || 0).toLocaleString()} reviews
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Save Button */}
-            {currentUser?.vendorProfileId && (
+          {/* Preview Section - Only show when connected */}
+          {verificationStatus === 'success' && previewData && (
+            <>
               <div style={{ marginTop: '1.5rem' }}>
-                <button
-                  onClick={handleSaveGoogleReviews}
-                  disabled={saving || (googlePlaceId && verificationStatus !== 'success')}
-                  className="btn btn-primary"
-                  style={{ padding: '0.75rem 2rem' }}
-                >
-                  {saving ? 'Saving...' : 'Save Google Reviews Settings'}
-                </button>
+                <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.75rem', fontSize: '0.95rem', color: '#374151' }}>
+                  Google Reviews Preview
+                </label>
+                <div style={{ padding: '1.25rem', background: '#f9fafb', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+                    <svg width="28" height="28" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
+                      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                    </svg>
+                    <div>
+                      <div style={{ fontWeight: 600, color: '#111827', fontSize: '0.95rem' }}>Google Reviews</div>
+                      <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>Verified business reviews</div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <span style={{ fontSize: '2.25rem', fontWeight: 700, color: '#111827', lineHeight: 1 }}>{(previewData.rating || 0).toFixed(1)}</span>
+                    <div>
+                      <div style={{ color: '#fbbc04', fontSize: '1rem', marginBottom: '0.125rem' }}>{'★'.repeat(Math.round(previewData.rating || 0))}{'☆'.repeat(5 - Math.round(previewData.rating || 0))}</div>
+                      <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>Based on {(previewData.user_ratings_total || 0).toLocaleString()} reviews</div>
+                    </div>
+                  </div>
+                  <a 
+                    href={`https://www.google.com/maps/place/?q=place_id:${googlePlaceId}`} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', marginTop: '1rem', color: 'var(--primary)', fontSize: '0.875rem', textDecoration: 'none', fontWeight: 500 }}
+                  >
+                    View on Google Maps <i className="fas fa-external-link-alt" style={{ fontSize: '0.75rem' }}></i>
+                  </a>
+                </div>
               </div>
-            )}
-          </div>
+            </>
+          )}
 
-          <div style={{ marginTop: '3rem', padding: '1.5rem', background: '#f8f9fa', borderRadius: '12px' }}>
-            <h5 style={{ margin: '0 0 1rem', fontSize: '1rem', fontWeight: 600, color: '#111827' }}>
-              Benefits of connecting Google Reviews:
-            </h5>
-            <ul style={{ margin: 0, paddingLeft: '1.5rem', color: '#6b7280', fontSize: '0.95rem', lineHeight: 1.8 }}>
-              <li>Build trust with potential clients through authentic reviews</li>
-              <li>Display your star rating prominently on your profile</li>
-              <li>Showcase recent customer feedback automatically</li>
-              <li>Improve your visibility in search results</li>
-              <li>Stand out from competitors without reviews</li>
-            </ul>
-          </div>
-        </div>
-
-        <div style={{ marginTop: '2rem', padding: '1.5rem', background: '#fef3c7', borderRadius: '12px', border: '2px solid #fbbf24' }}>
-          <div style={{ display: 'flex', gap: '0.75rem' }}>
-            <i className="fas fa-info-circle" style={{ color: '#d97706', fontSize: '1.25rem', flexShrink: 0 }}></i>
-            <div style={{ fontSize: '0.9rem', color: '#78350f', lineHeight: 1.6 }}>
-              <strong>Note:</strong> You can skip this step for now and set up Google Reviews later from your dashboard. However, displaying reviews helps build trust and credibility with potential clients.
+          {/* Why Connect - Only show when not connected */}
+          {verificationStatus !== 'success' && (
+            <div style={{ marginTop: '2rem', padding: '1.5rem', background: '#f8f9fa', borderRadius: '12px' }}>
+              <h5 style={{ margin: '0 0 1rem', fontSize: '1rem', fontWeight: 600, color: '#111827' }}>
+                Why connect Google Reviews?
+              </h5>
+              <ul style={{ margin: 0, paddingLeft: '1.5rem', color: '#6b7280', fontSize: '0.95rem', lineHeight: 1.8 }}>
+                <li>Build trust with potential clients through authentic reviews</li>
+                <li>Display your star rating prominently on your profile</li>
+                <li>Showcase recent customer feedback automatically</li>
+                <li>Improve your visibility in search results</li>
+                <li>Stand out from competitors without reviews</li>
+              </ul>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
@@ -4688,8 +5056,9 @@ function GoogleReviewsStep({ formData, setFormData, currentUser }) {
 function PoliciesStep({ formData, onInputChange, setFormData, currentUser }) {
   const [loading, setLoading] = useState(true);
   const [faqs, setFaqs] = useState([]);
-  const [newFaq, setNewFaq] = useState({ question: '', answer: '' });
+  const [newFaq, setNewFaq] = useState({ question: '', answers: [''] });
   const [savingFaq, setSavingFaq] = useState(false);
+  const [editingFaq, setEditingFaq] = useState(null); // { index, question, answers }
 
   // Load existing FAQs
   useEffect(() => {
@@ -4710,19 +5079,27 @@ function PoliciesStep({ formData, onInputChange, setFormData, currentUser }) {
       if (response.ok) {
         const data = await response.json();
         const faqsArray = Array.isArray(data) ? data : (data.faqs || []);
-        setFaqs(faqsArray.map(faq => ({
-          id: faq.id || faq.FAQID,
-          question: faq.question || faq.Question,
-          answer: faq.answer || faq.Answer
-        })));
-        // Also update formData
-        setFormData(prev => ({
-          ...prev,
-          faqs: faqsArray.map(faq => ({
+        const mappedFaqs = faqsArray.map(faq => {
+          const answer = faq.answer || faq.Answer || '';
+          // Check if answer contains multiple answers (separated by newlines or bullet points)
+          let answers = [];
+          if (answer.includes('\n• ') || answer.includes('\n- ')) {
+            answers = answer.split(/\n[•-]\s*/).filter(a => a.trim());
+          } else if (answer.includes('\n')) {
+            answers = answer.split('\n').filter(a => a.trim());
+          } else {
+            answers = [answer];
+          }
+          return {
             id: faq.id || faq.FAQID,
             question: faq.question || faq.Question,
-            answer: faq.answer || faq.Answer
-          }))
+            answers: answers.length > 0 ? answers : ['']
+          };
+        });
+        setFaqs(mappedFaqs);
+        setFormData(prev => ({
+          ...prev,
+          faqs: mappedFaqs
         }));
       }
     } catch (error) {
@@ -4732,29 +5109,57 @@ function PoliciesStep({ formData, onInputChange, setFormData, currentUser }) {
     }
   };
 
+  const handleAddAnswer = () => {
+    setNewFaq(prev => ({ ...prev, answers: [...prev.answers, ''] }));
+  };
+
+  const handleRemoveAnswer = (index) => {
+    if (newFaq.answers.length > 1) {
+      setNewFaq(prev => ({
+        ...prev,
+        answers: prev.answers.filter((_, i) => i !== index)
+      }));
+    }
+  };
+
+  const handleAnswerChange = (index, value) => {
+    setNewFaq(prev => ({
+      ...prev,
+      answers: prev.answers.map((a, i) => i === index ? value : a)
+    }));
+  };
+
   const handleAddFaq = async () => {
-    if (!newFaq.question.trim() || !newFaq.answer.trim()) {
-      showBanner('Please fill in both question and answer', 'error');
+    const validAnswers = newFaq.answers.filter(a => a.trim());
+    if (!newFaq.question.trim() || validAnswers.length === 0) {
+      showBanner('Please fill in the question and at least one answer', 'error');
       return;
     }
 
+    // Format answers - if multiple, use bullet points
+    const formattedAnswer = validAnswers.length === 1 
+      ? validAnswers[0] 
+      : validAnswers.map(a => `• ${a}`).join('\n');
+
     if (!currentUser?.vendorProfileId) {
-      // Store locally if no vendorProfileId
-      const newFaqWithId = { ...newFaq, id: Date.now() };
+      const newFaqWithId = { 
+        id: Date.now(), 
+        question: newFaq.question, 
+        answers: validAnswers 
+      };
       setFaqs(prev => [...prev, newFaqWithId]);
       setFormData(prev => ({
         ...prev,
         faqs: [...(prev.faqs || []), newFaqWithId]
       }));
-      setNewFaq({ question: '', answer: '' });
+      setNewFaq({ question: '', answers: [''] });
       showBanner('FAQ added! It will be saved when you complete your profile.', 'success');
       return;
     }
 
     setSavingFaq(true);
     try {
-      // Get existing FAQs and add new one
-      const updatedFaqs = [...faqs, { question: newFaq.question, answer: newFaq.answer }];
+      const updatedFaqs = [...faqs, { question: newFaq.question, answer: formattedAnswer }];
       
       const response = await fetch(`${API_BASE_URL}/vendors/${currentUser.vendorProfileId}/faqs`, {
         method: 'POST',
@@ -4762,12 +5167,15 @@ function PoliciesStep({ formData, onInputChange, setFormData, currentUser }) {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
-        body: JSON.stringify({ faqs: updatedFaqs })
+        body: JSON.stringify({ faqs: updatedFaqs.map(f => ({ 
+          question: f.question, 
+          answer: f.answers ? (f.answers.length === 1 ? f.answers[0] : f.answers.map(a => `• ${a}`).join('\n')) : f.answer 
+        })) })
       });
 
       if (response.ok) {
         showBanner('FAQ added successfully!', 'success');
-        setNewFaq({ question: '', answer: '' });
+        setNewFaq({ question: '', answers: [''] });
         loadFAQs();
       } else {
         throw new Error('Failed to add FAQ');
@@ -4782,7 +5190,6 @@ function PoliciesStep({ formData, onInputChange, setFormData, currentUser }) {
 
   const handleDeleteFaq = async (faqId, index) => {
     if (!currentUser?.vendorProfileId || !faqId) {
-      // Local delete
       setFaqs(prev => prev.filter((_, i) => i !== index));
       setFormData(prev => ({
         ...prev,
@@ -4810,7 +5217,105 @@ function PoliciesStep({ formData, onInputChange, setFormData, currentUser }) {
     }
   };
 
-  // Use faqs from API if available, otherwise use formData
+  const handleEditFaq = (index) => {
+    const faq = displayFaqs[index];
+    setEditingFaq({
+      index,
+      id: faq.id,
+      question: faq.question,
+      answers: faq.answers || [faq.answer || '']
+    });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingFaq(null);
+  };
+
+  const handleEditAnswerChange = (answerIndex, value) => {
+    setEditingFaq(prev => ({
+      ...prev,
+      answers: prev.answers.map((a, i) => i === answerIndex ? value : a)
+    }));
+  };
+
+  const handleAddEditAnswer = () => {
+    setEditingFaq(prev => ({
+      ...prev,
+      answers: [...prev.answers, '']
+    }));
+  };
+
+  const handleRemoveEditAnswer = (answerIndex) => {
+    if (editingFaq.answers.length > 1) {
+      setEditingFaq(prev => ({
+        ...prev,
+        answers: prev.answers.filter((_, i) => i !== answerIndex)
+      }));
+    }
+  };
+
+  const handleSaveEdit = async () => {
+    const validAnswers = editingFaq.answers.filter(a => a.trim());
+    if (!editingFaq.question.trim() || validAnswers.length === 0) {
+      showBanner('Please fill in the question and at least one answer', 'error');
+      return;
+    }
+
+    const formattedAnswer = validAnswers.length === 1 
+      ? validAnswers[0] 
+      : validAnswers.map(a => `• ${a}`).join('\n');
+
+    if (!currentUser?.vendorProfileId) {
+      // Local update
+      const updatedFaqs = [...faqs];
+      updatedFaqs[editingFaq.index] = {
+        ...updatedFaqs[editingFaq.index],
+        question: editingFaq.question,
+        answers: validAnswers
+      };
+      setFaqs(updatedFaqs);
+      setFormData(prev => ({ ...prev, faqs: updatedFaqs }));
+      setEditingFaq(null);
+      showBanner('FAQ updated!', 'success');
+      return;
+    }
+
+    setSavingFaq(true);
+    try {
+      const updatedFaqs = faqs.map((f, i) => {
+        if (i === editingFaq.index) {
+          return { question: editingFaq.question, answer: formattedAnswer };
+        }
+        return { 
+          question: f.question, 
+          answer: f.answers ? (f.answers.length === 1 ? f.answers[0] : f.answers.map(a => `• ${a}`).join('\n')) : f.answer 
+        };
+      });
+
+      const response = await fetch(`${API_BASE_URL}/vendors/${currentUser.vendorProfileId}/faqs`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ faqs: updatedFaqs })
+      });
+
+      if (response.ok) {
+        showBanner('FAQ updated successfully!', 'success');
+        setEditingFaq(null);
+        loadFAQs();
+      } else {
+        throw new Error('Failed to update FAQ');
+      }
+    } catch (error) {
+      console.error('Error updating FAQ:', error);
+      showBanner('Failed to update FAQ', 'error');
+    } finally {
+      setSavingFaq(false);
+    }
+  };
+
   const displayFaqs = faqs.length > 0 ? faqs : (formData.faqs || []);
 
   return (
@@ -4818,283 +5323,534 @@ function PoliciesStep({ formData, onInputChange, setFormData, currentUser }) {
       <div style={{ maxWidth: '100%', width: '100%' }}>
         <div style={{ marginBottom: '2rem', padding: '1.5rem', background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
-            <i className="fas fa-file-contract" style={{ color: 'var(--primary)', fontSize: '1.25rem' }}></i>
-            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>Set Your Policies</h3>
+            <i className="fas fa-question-circle" style={{ color: 'var(--primary)', fontSize: '1.25rem' }}></i>
+            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>Frequently Asked Questions</h3>
           </div>
           <p style={{ margin: 0, color: '#6b7280', fontSize: '0.9rem', lineHeight: 1.6 }}>
-            Define your business policies and answer common questions to help clients understand your terms.
+            Add common questions and answers to help potential clients learn more about your services.
           </p>
         </div>
 
-        <div style={{ display: 'grid', gap: '2rem' }}>
-          {/* Cancellation Policy */}
-          <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '1.5rem' }}>
-            <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.75rem', fontSize: '1rem' }}>
-              <i className="fas fa-ban" style={{ color: 'var(--primary)', marginRight: '0.5rem' }}></i>
-              Cancellation Policy
-            </label>
-            <textarea
-              placeholder="Describe your cancellation policy (e.g., 'Full refund if cancelled 30 days before event...')"
-              value={formData.cancellationPolicy || ''}
-              onChange={(e) => onInputChange('cancellationPolicy', e.target.value)}
-              rows="4"
-              style={{
-                width: '100%',
-                padding: '0.875rem 1rem',
-                border: '1px solid #e5e7eb',
-                borderRadius: '8px',
-                fontSize: '0.95rem',
-                resize: 'vertical',
-                fontFamily: 'inherit'
-              }}
-            />
+        {loading && (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem' }}>
+            <div className="spinner"></div>
           </div>
+        )}
 
-          {/* Deposit & Payment */}
-          <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '1.5rem' }}>
-            <div style={{ display: 'grid', gap: '1.5rem' }}>
-              <div>
-                <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.75rem', fontSize: '1rem' }}>
-                  <i className="fas fa-percentage" style={{ color: 'var(--primary)', marginRight: '0.5rem' }}></i>
-                  Deposit Percentage
-                </label>
-                <input
-                  type="number"
-                  placeholder="e.g., 25"
-                  min="0"
-                  max="100"
-                  value={formData.depositPercentage || ''}
-                  onChange={(e) => onInputChange('depositPercentage', e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '0.875rem 1rem',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '8px',
-                    fontSize: '0.95rem'
-                  }}
-                />
-                <small style={{ display: 'block', marginTop: '0.5rem', color: '#6b7280', fontSize: '0.85rem' }}>
-                  Percentage of total cost required as deposit
-                </small>
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.75rem', fontSize: '1rem' }}>
-                  <i className="fas fa-credit-card" style={{ color: 'var(--primary)', marginRight: '0.5rem' }}></i>
-                  Payment Terms
-                </label>
-                <textarea
-                  placeholder="Describe your payment terms (e.g., '25% deposit required, balance due 7 days before event...')"
-                  value={formData.paymentTerms || ''}
-                  onChange={(e) => onInputChange('paymentTerms', e.target.value)}
-                  rows="3"
-                  style={{
-                    width: '100%',
-                    padding: '0.875rem 1rem',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '8px',
-                    fontSize: '0.95rem',
-                    resize: 'vertical',
-                    fontFamily: 'inherit'
-                  }}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* FAQs */}
-          <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '1.5rem' }}>
-            <h4 style={{ margin: '0 0 1.5rem', fontSize: '1.1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <i className="fas fa-question-circle" style={{ color: 'var(--primary)' }}></i>
-              Frequently Asked Questions
-            </h4>
-
-            {/* Loading State */}
-            {loading && (
-              <div style={{ display: 'flex', justifyContent: 'center', padding: '2rem' }}>
-                <div className="spinner"></div>
-              </div>
-            )}
-
+        {!loading && (
+          <div style={{ display: 'grid', gap: '1.5rem' }}>
             {/* Existing FAQs */}
-            {!loading && displayFaqs.length > 0 && (
-              <div style={{ marginBottom: '1.5rem', display: 'grid', gap: '1rem' }}>
+            {displayFaqs.length > 0 && (
+              <div style={{ display: 'grid', gap: '1rem' }}>
                 {displayFaqs.map((faq, index) => (
-                  <div key={faq.id || index} style={{ padding: '1rem', background: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.5rem' }}>
-                      <div style={{ display: 'flex', gap: '0.5rem', flex: 1 }}>
-                        <span style={{ 
-                          width: '24px', 
-                          height: '24px', 
-                          borderRadius: '50%', 
-                          background: 'var(--primary)', 
-                          color: 'white', 
-                          display: 'flex', 
-                          alignItems: 'center', 
-                          justifyContent: 'center', 
-                          fontSize: '0.8rem',
-                          fontWeight: 600,
-                          flexShrink: 0
-                        }}>
-                          Q
-                        </span>
-                        <strong style={{ fontSize: '0.95rem' }}>{faq.question}</strong>
+                  <div 
+                    key={faq.id || index} 
+                    style={{ 
+                      background: 'white', 
+                      borderRadius: '12px', 
+                      border: '1px solid #e5e7eb',
+                      overflow: 'hidden'
+                    }}
+                  >
+                    {/* Edit Mode */}
+                    {editingFaq && editingFaq.index === index ? (
+                      <div style={{ padding: '1.5rem' }}>
+                        <div style={{ marginBottom: '1rem' }}>
+                          <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.5rem', fontSize: '0.9rem', color: '#374151' }}>
+                            Question
+                          </label>
+                          <input
+                            type="text"
+                            value={editingFaq.question}
+                            onChange={(e) => setEditingFaq(prev => ({ ...prev, question: e.target.value }))}
+                            style={{
+                              width: '100%',
+                              padding: '0.75rem 1rem',
+                              border: '1px solid #e5e7eb',
+                              borderRadius: '8px',
+                              fontSize: '0.95rem',
+                              boxSizing: 'border-box'
+                            }}
+                          />
+                        </div>
+                        <div style={{ marginBottom: '1rem' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                            <label style={{ fontWeight: 600, fontSize: '0.9rem', color: '#374151' }}>
+                              Answer{editingFaq.answers.length > 1 ? 's' : ''}
+                            </label>
+                            <button
+                              type="button"
+                              onClick={handleAddEditAnswer}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                color: 'var(--primary)',
+                                cursor: 'pointer',
+                                fontSize: '0.85rem',
+                                fontWeight: 500
+                              }}
+                            >
+                              <i className="fas fa-plus"></i> Add answer
+                            </button>
+                          </div>
+                          <div style={{ display: 'grid', gap: '0.5rem' }}>
+                            {editingFaq.answers.map((answer, ansIdx) => (
+                              <div key={ansIdx} style={{ display: 'flex', gap: '0.5rem' }}>
+                                <textarea
+                                  value={answer}
+                                  onChange={(e) => handleEditAnswerChange(ansIdx, e.target.value)}
+                                  rows={2}
+                                  style={{
+                                    flex: 1,
+                                    padding: '0.75rem 1rem',
+                                    border: '1px solid #e5e7eb',
+                                    borderRadius: '8px',
+                                    fontSize: '0.95rem',
+                                    resize: 'vertical',
+                                    fontFamily: 'inherit',
+                                    boxSizing: 'border-box'
+                                  }}
+                                />
+                                {editingFaq.answers.length > 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveEditAnswer(ansIdx)}
+                                    style={{
+                                      background: '#fee2e2',
+                                      border: 'none',
+                                      color: '#dc2626',
+                                      cursor: 'pointer',
+                                      padding: '0.5rem',
+                                      borderRadius: '6px',
+                                      alignSelf: 'flex-start'
+                                    }}
+                                  >
+                                    <i className="fas fa-times"></i>
+                                  </button>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.75rem' }}>
+                          <button
+                            onClick={handleSaveEdit}
+                            disabled={savingFaq}
+                            className="btn btn-primary"
+                            style={{ padding: '0.5rem 1rem', fontSize: '0.9rem' }}
+                          >
+                            {savingFaq ? 'Saving...' : 'Save Changes'}
+                          </button>
+                          <button
+                            onClick={handleCancelEdit}
+                            style={{
+                              padding: '0.5rem 1rem',
+                              background: '#f3f4f6',
+                              border: '1px solid #e5e7eb',
+                              borderRadius: '8px',
+                              cursor: 'pointer',
+                              fontSize: '0.9rem'
+                            }}
+                          >
+                            Cancel
+                          </button>
+                        </div>
                       </div>
-                      <button
-                        onClick={() => handleDeleteFaq(faq.id, index)}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          color: '#ef4444',
-                          cursor: 'pointer',
-                          padding: '0.25rem',
-                          fontSize: '1rem'
-                        }}
-                      >
-                        <i className="fas fa-trash"></i>
-                      </button>
-                    </div>
-                    <div style={{ paddingLeft: '2rem', color: '#6b7280', fontSize: '0.9rem', lineHeight: 1.6 }}>
-                      {faq.answer}
-                    </div>
+                    ) : (
+                      <>
+                        {/* View Mode */}
+                        <div style={{ padding: '1rem 1.25rem' }}>
+                          <div style={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            alignItems: 'flex-start',
+                            marginBottom: '0.75rem'
+                          }}>
+                            <strong style={{ fontSize: '0.95rem', color: '#111827', flex: 1 }}>{faq.question}</strong>
+                            <div style={{ display: 'flex', gap: '0.5rem', marginLeft: '1rem' }}>
+                              <button
+                                onClick={() => handleEditFaq(index)}
+                                style={{
+                                  background: 'transparent',
+                                  border: 'none',
+                                  color: '#6b7280',
+                                  cursor: 'pointer',
+                                  padding: '0.25rem',
+                                  fontSize: '0.875rem'
+                                }}
+                                title="Edit FAQ"
+                              >
+                                <i className="fas fa-edit"></i>
+                              </button>
+                              <button
+                                onClick={() => handleDeleteFaq(faq.id, index)}
+                                style={{
+                                  background: 'transparent',
+                                  border: 'none',
+                                  color: '#dc2626',
+                                  cursor: 'pointer',
+                                  padding: '0.25rem',
+                                  fontSize: '0.875rem'
+                                }}
+                                title="Delete FAQ"
+                              >
+                                <i className="fas fa-trash"></i>
+                              </button>
+                            </div>
+                          </div>
+                          {/* Display answers - clean text format */}
+                          {(() => {
+                            let answers = faq.answers || [faq.answer || ''];
+                            if (!Array.isArray(answers)) answers = [answers];
+                            answers = answers.map(a => String(a || '').replace(/^[•\-]\s*/, '').trim()).filter(a => a);
+                            
+                            if (answers.length === 0) {
+                              return <p style={{ margin: 0, color: '#9ca3af', fontSize: '0.9rem', fontStyle: 'italic' }}>No answer provided</p>;
+                            }
+                            
+                            return (
+                              <div style={{ color: '#4b5563', fontSize: '0.9rem', lineHeight: 1.6 }}>
+                                {answers.map((answer, ansIdx) => (
+                                  <p key={ansIdx} style={{ margin: ansIdx > 0 ? '0.25rem 0 0' : 0 }}>{answer}</p>
+                                ))}
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      </>
+                    )}
                   </div>
                 ))}
               </div>
             )}
 
-            {/* Add New FAQ */}
-            <div style={{ display: 'grid', gap: '1rem' }}>
-              <div>
-                <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.5rem', fontSize: '0.9rem' }}>
-                  Question
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g., Do you travel for events?"
-                  value={newFaq.question}
-                  onChange={(e) => setNewFaq({ ...newFaq, question: e.target.value })}
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem 1rem',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '8px',
-                    fontSize: '0.95rem'
-                  }}
-                />
+            {/* Add New FAQ Card */}
+            <div style={{ 
+              background: 'white', 
+              borderRadius: '12px', 
+              border: '1px solid #e5e7eb',
+              padding: '1.5rem'
+            }}>
+              <div style={{ display: 'grid', gap: '1rem' }}>
+                <div>
+                  <label style={{ display: 'block', fontWeight: 500, marginBottom: '0.5rem', fontSize: '0.875rem', color: '#374151' }}>
+                    Question
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g., Do you travel for events?"
+                    value={newFaq.question}
+                    onChange={(e) => setNewFaq({ ...newFaq, question: e.target.value })}
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem 1rem',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                      fontSize: '0.9rem',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontWeight: 500, marginBottom: '0.5rem', fontSize: '0.875rem', color: '#374151' }}>
+                    Answer
+                  </label>
+                  <textarea
+                    placeholder="Provide a detailed answer..."
+                    value={newFaq.answers[0] || ''}
+                    onChange={(e) => setNewFaq({ ...newFaq, answers: [e.target.value] })}
+                    rows={3}
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem 1rem',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                      fontSize: '0.9rem',
+                      resize: 'vertical',
+                      fontFamily: 'inherit',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                </div>
+                <button
+                  onClick={handleAddFaq}
+                  disabled={savingFaq || !newFaq.question.trim() || !newFaq.answers.some(a => a.trim())}
+                  className="btn btn-primary"
+                  style={{ justifySelf: 'start', padding: '0.5rem 1.25rem', fontSize: '0.875rem' }}
+                >
+                  {savingFaq ? (
+                    <><i className="fas fa-spinner fa-spin"></i> Adding...</>
+                  ) : (
+                    <><i className="fas fa-plus"></i> Add FAQ</>
+                  )}
+                </button>
               </div>
-              <div>
-                <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.5rem', fontSize: '0.9rem' }}>
-                  Answer
-                </label>
-                <textarea
-                  placeholder="Provide a detailed answer..."
-                  value={newFaq.answer}
-                  onChange={(e) => setNewFaq({ ...newFaq, answer: e.target.value })}
-                  rows="3"
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem 1rem',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '8px',
-                    fontSize: '0.95rem',
-                    resize: 'vertical',
-                    fontFamily: 'inherit'
-                  }}
-                />
-              </div>
-              <button
-                onClick={handleAddFaq}
-                disabled={savingFaq || !newFaq.question.trim() || !newFaq.answer.trim()}
-                className="btn btn-outline"
-                style={{ justifySelf: 'start' }}
-              >
-                {savingFaq ? (
-                  <><i className="fas fa-spinner fa-spin"></i> Adding...</>
-                ) : (
-                  <><i className="fas fa-plus"></i> Add FAQ</>
-                )}
-              </button>
             </div>
+
+            {/* Empty State */}
+            {displayFaqs.length === 0 && (
+              <div style={{ 
+                textAlign: 'center', 
+                padding: '2rem', 
+                background: '#f9fafb', 
+                borderRadius: '12px',
+                border: '1px solid #e5e7eb'
+              }}>
+                <i className="fas fa-comments" style={{ fontSize: '2.5rem', color: '#d1d5db', marginBottom: '1rem', display: 'block' }}></i>
+                <p style={{ margin: 0, color: '#6b7280', fontSize: '0.95rem' }}>
+                  No FAQs added yet. Add your first question above to help clients learn more about your services.
+                </p>
+              </div>
+            )}
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
 }
 
 // Review Step - Full Implementation
-function ReviewStep({ formData, categories }) {
+function ReviewStep({ formData, categories, profileStatus }) {
   const getCategoryName = (categoryId) => {
     const category = categories.find(c => c.id === categoryId);
     return category ? category.name : categoryId;
   };
 
   const allCategories = [formData.primaryCategory, ...(formData.additionalCategories || [])].filter(Boolean);
+  
+  // Format service areas for display
+  const formatServiceAreas = () => {
+    if (!formData.serviceAreas || formData.serviceAreas.length === 0) return 'Not specified';
+    return formData.serviceAreas.map(area => {
+      if (typeof area === 'string') return area;
+      const city = area.city || area.name || '';
+      const province = area.province || area.state || '';
+      return [city, province].filter(Boolean).join(', ') || area.formattedAddress || 'Unknown';
+    }).join('; ');
+  };
+
+  // Format business hours for display
+  const formatBusinessHours = () => {
+    if (!formData.businessHours) return 'Not set';
+    const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    const openDays = days.filter(day => formData.businessHours[day]?.isAvailable !== false);
+    if (openDays.length === 0) return 'All days closed';
+    if (openDays.length === 7) return 'Open all week';
+    return `Open ${openDays.length} days/week`;
+  };
+
+  // Count services
+  const servicesCount = (formData.selectedServices || []).length;
+  
+  // Count social links
+  const socialLinksCount = Object.keys(formData).filter(k => ['facebook', 'instagram', 'twitter', 'linkedin', 'youtube', 'tiktok'].includes(k) && formData[k]).length;
 
   return (
     <div className="review-step">
       <div style={{ maxWidth: '100%', width: '100%' }}>
-        <div style={{ marginBottom: '2rem', padding: '1.5rem', background: '#f0f9ff', borderRadius: '12px', border: '1px solid #3b82f6' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
-            <i className="fas fa-check-circle" style={{ color: '#3b82f6', fontSize: '1.5rem' }}></i>
-            <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600 }}>Review Your Information</h3>
+        {/* Pending Review Notice */}
+        {profileStatus === 'pending_review' && (
+          <div style={{ marginBottom: '1.5rem', padding: '1.5rem', background: '#dbeafe', borderRadius: '12px', border: '2px solid #3b82f6' }}>
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <i className="fas fa-hourglass-half" style={{ color: '#2563eb', fontSize: '1.5rem', flexShrink: 0 }}></i>
+              <div>
+                <h4 style={{ margin: '0 0 0.5rem', fontSize: '1rem', fontWeight: 600, color: '#1e40af' }}>
+                  Profile Under Review
+                </h4>
+                <p style={{ margin: 0, fontSize: '0.9rem', color: '#1e3a8a', lineHeight: 1.6 }}>
+                  Your profile has been submitted and is currently under review by our team. This typically takes 1-2 business days. 
+                  You'll receive an email notification once your profile is approved or if any changes are requested. 
+                  You can still make edits from your dashboard while waiting.
+                </p>
+              </div>
+            </div>
           </div>
-          <p style={{ margin: 0, color: '#1e40af', fontSize: '0.9rem', lineHeight: 1.6 }}>
-            Please review your vendor profile information before submitting. You can always edit these details later from your dashboard.
-          </p>
-        </div>
+        )}
+
+        {/* Approval Notice - Only show if not pending */}
+        {profileStatus !== 'pending_review' && (
+          <div style={{ marginBottom: '1.5rem', padding: '1.5rem', background: '#fef3c7', borderRadius: '12px', border: '2px solid #f59e0b' }}>
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <i className="fas fa-clock" style={{ color: '#d97706', fontSize: '1.5rem', flexShrink: 0 }}></i>
+              <div>
+                <h4 style={{ margin: '0 0 0.5rem', fontSize: '1rem', fontWeight: 600, color: '#92400e' }}>
+                  Profile Approval Required
+                </h4>
+                <p style={{ margin: 0, fontSize: '0.9rem', color: '#78350f', lineHeight: 1.6 }}>
+                  After submitting your profile, our support team will review your information. This typically takes 1-2 business days. 
+                  You'll receive an email notification once your profile is approved and ready to go live. In the meantime, you can 
+                  access your dashboard to make any additional updates.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Submit Info - Only show if not pending */}
+        {profileStatus !== 'pending_review' && (
+          <div style={{ marginBottom: '2rem', padding: '1.25rem', background: '#f0fdf4', borderRadius: '12px', border: '1px solid #86efac' }}>
+            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+              <i className="fas fa-info-circle" style={{ color: '#16a34a', fontSize: '1.25rem', flexShrink: 0 }}></i>
+              <p style={{ margin: 0, fontSize: '0.9rem', color: '#166534', lineHeight: 1.5 }}>
+                Click <strong>"Go Live"</strong> to submit your profile for review. You can edit your information anytime from your dashboard.
+              </p>
+            </div>
+          </div>
+        )}
 
         <div style={{ display: 'grid', gap: '1.5rem' }}>
           {/* Business Information */}
           <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '1.5rem' }}>
-            <h4 style={{ margin: '0 0 1rem', fontSize: '1.1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--primary)' }}>
-              <i className="fas fa-building"></i> Business Information
+            <h4 style={{ margin: '0 0 1.25rem', fontSize: '1rem', fontWeight: 600, color: '#111827' }}>
+              Business Information
             </h4>
             <div style={{ display: 'grid', gap: '0.75rem', fontSize: '0.95rem' }}>
-              <div><strong>Business Name:</strong> {formData.businessName || 'Not provided'}</div>
-              <div><strong>Display Name:</strong> {formData.displayName || 'Not provided'}</div>
-              <div><strong>Categories:</strong> {allCategories.map(getCategoryName).join(', ') || 'Not selected'}</div>
-              <div><strong>Description:</strong> {formData.businessDescription || 'Not provided'}</div>
-              <div><strong>Years in Business:</strong> {formData.yearsInBusiness || 'Not provided'}</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: '0.5rem' }}>
+                <span style={{ color: '#6b7280' }}>Business Name:</span>
+                <span style={{ color: formData.businessName ? '#111827' : '#9ca3af' }}>{formData.businessName || 'Not provided'}</span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: '0.5rem' }}>
+                <span style={{ color: '#6b7280' }}>Display Name:</span>
+                <span style={{ color: formData.displayName ? '#111827' : '#9ca3af' }}>{formData.displayName || 'Not provided'}</span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: '0.5rem' }}>
+                <span style={{ color: '#6b7280' }}>Categories:</span>
+                <span style={{ color: allCategories.length > 0 ? '#111827' : '#9ca3af' }}>{allCategories.map(getCategoryName).join(', ') || 'Not selected'}</span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: '0.5rem' }}>
+                <span style={{ color: '#6b7280' }}>Description:</span>
+                <span style={{ color: formData.businessDescription ? '#111827' : '#9ca3af', lineHeight: 1.5 }}>
+                  {formData.businessDescription ? (formData.businessDescription.length > 200 ? formData.businessDescription.substring(0, 200) + '...' : formData.businessDescription) : 'Not provided'}
+                </span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: '0.5rem' }}>
+                <span style={{ color: '#6b7280' }}>Years in Business:</span>
+                <span style={{ color: formData.yearsInBusiness ? '#111827' : '#9ca3af' }}>{formData.yearsInBusiness || 'Not provided'}</span>
+              </div>
             </div>
           </div>
 
-          {/* Contact & Location */}
+          {/* Contact Information */}
           <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '1.5rem' }}>
-            <h4 style={{ margin: '0 0 1rem', fontSize: '1.1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--primary)' }}>
-              <i className="fas fa-map-marker-alt"></i> Contact & Location
+            <h4 style={{ margin: '0 0 1.25rem', fontSize: '1rem', fontWeight: 600, color: '#111827' }}>
+              Contact Information
             </h4>
             <div style={{ display: 'grid', gap: '0.75rem', fontSize: '0.95rem' }}>
-              <div><strong>Email:</strong> {formData.email || 'Not provided'}</div>
-              <div><strong>Phone:</strong> {formData.businessPhone || 'Not provided'}</div>
-              <div><strong>Website:</strong> {formData.website || 'Not provided'}</div>
-              <div><strong>Address:</strong> {formData.address || 'Not provided'}</div>
-              <div><strong>City:</strong> {formData.city || 'Not provided'}</div>
-              <div><strong>Province:</strong> {formData.province || 'Not provided'}</div>
-              <div><strong>Service Areas:</strong> {(formData.serviceAreas || []).join(', ') || 'Not specified'}</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: '0.5rem' }}>
+                <span style={{ color: '#6b7280' }}>Email:</span>
+                <span style={{ color: formData.email ? '#111827' : '#9ca3af' }}>{formData.email || 'Not provided'}</span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: '0.5rem' }}>
+                <span style={{ color: '#6b7280' }}>Phone:</span>
+                <span style={{ color: formData.businessPhone ? '#111827' : '#9ca3af' }}>{formData.businessPhone || 'Not provided'}</span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: '0.5rem' }}>
+                <span style={{ color: '#6b7280' }}>Website:</span>
+                <span style={{ color: formData.website ? '#111827' : '#9ca3af' }}>{formData.website || 'Not provided'}</span>
+              </div>
             </div>
           </div>
 
-          {/* Additional Details */}
+          {/* Location */}
           <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '1.5rem' }}>
-            <h4 style={{ margin: '0 0 1rem', fontSize: '1.1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--primary)' }}>
-              <i className="fas fa-info-circle"></i> Additional Details
+            <h4 style={{ margin: '0 0 1.25rem', fontSize: '1rem', fontWeight: 600, color: '#111827' }}>
+              Location
             </h4>
             <div style={{ display: 'grid', gap: '0.75rem', fontSize: '0.95rem' }}>
-              <div><strong>Features Selected:</strong> {(formData.selectedFeatures || []).length} features</div>
-              <div><strong>Photos Added:</strong> {(formData.photoURLs || []).length} photos</div>
-              <div><strong>Social Media:</strong> {Object.keys(formData).filter(k => ['facebook', 'instagram', 'twitter', 'linkedin', 'youtube', 'tiktok'].includes(k) && formData[k]).length} platforms connected</div>
-              <div><strong>Badges:</strong> {(formData.selectedFilters || []).length} badges enabled</div>
-              <div><strong>FAQs:</strong> {(formData.faqs || []).length} questions added</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: '0.5rem' }}>
+                <span style={{ color: '#6b7280' }}>Address:</span>
+                <span style={{ color: formData.address ? '#111827' : '#9ca3af' }}>{formData.address || 'Not provided'}</span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: '0.5rem' }}>
+                <span style={{ color: '#6b7280' }}>City:</span>
+                <span style={{ color: formData.city ? '#111827' : '#9ca3af' }}>{formData.city || 'Not provided'}</span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: '0.5rem' }}>
+                <span style={{ color: '#6b7280' }}>Province:</span>
+                <span style={{ color: formData.province ? '#111827' : '#9ca3af' }}>{formData.province || 'Not provided'}</span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: '0.5rem' }}>
+                <span style={{ color: '#6b7280' }}>Postal Code:</span>
+                <span style={{ color: formData.postalCode ? '#111827' : '#9ca3af' }}>{formData.postalCode || 'Not provided'}</span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: '0.5rem' }}>
+                <span style={{ color: '#6b7280' }}>Service Areas:</span>
+                <span style={{ color: formData.serviceAreas?.length > 0 ? '#111827' : '#9ca3af' }}>{formatServiceAreas()}</span>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div style={{ marginTop: '2rem', padding: '1.5rem', background: '#fef3c7', borderRadius: '12px', border: '2px solid #f59e0b' }}>
-          <div style={{ display: 'flex', gap: '0.75rem' }}>
-            <i className="fas fa-lightbulb" style={{ color: '#d97706', fontSize: '1.25rem', flexShrink: 0 }}></i>
-            <div style={{ fontSize: '0.9rem', color: '#78350f', lineHeight: 1.6 }}>
-              <strong>Ready to go live?</strong> Click "Complete Setup" to create your vendor profile. You'll be redirected to your dashboard where you can manage your profile, view bookings, and connect with clients.
+          {/* Services & Availability */}
+          <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '1.5rem' }}>
+            <h4 style={{ margin: '0 0 1.25rem', fontSize: '1rem', fontWeight: 600, color: '#111827' }}>
+              Services & Availability
+            </h4>
+            <div style={{ display: 'grid', gap: '0.75rem', fontSize: '0.95rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: '0.5rem' }}>
+                <span style={{ color: '#6b7280' }}>Services:</span>
+                <span style={{ color: servicesCount > 0 ? '#111827' : '#9ca3af' }}>
+                  {servicesCount > 0 ? `${servicesCount} service${servicesCount > 1 ? 's' : ''} configured` : 'No services added'}
+                </span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: '0.5rem' }}>
+                <span style={{ color: '#6b7280' }}>Business Hours:</span>
+                <span style={{ color: '#111827' }}>{formatBusinessHours()}</span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: '0.5rem' }}>
+                <span style={{ color: '#6b7280' }}>Timezone:</span>
+                <span style={{ color: formData.timezone ? '#111827' : '#9ca3af' }}>{formData.timezone || 'Not set'}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Profile Enhancements */}
+          <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '1.5rem' }}>
+            <h4 style={{ margin: '0 0 1.25rem', fontSize: '1rem', fontWeight: 600, color: '#111827' }}>
+              Profile Enhancements
+            </h4>
+            <div style={{ display: 'grid', gap: '0.75rem', fontSize: '0.95rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: '0.5rem' }}>
+                <span style={{ color: '#6b7280' }}>Photos:</span>
+                <span style={{ color: (formData.photoURLs || []).length > 0 ? '#111827' : '#9ca3af' }}>
+                  {(formData.photoURLs || []).length > 0 ? `${(formData.photoURLs || []).length} photos uploaded` : 'No photos uploaded'}
+                </span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: '0.5rem' }}>
+                <span style={{ color: '#6b7280' }}>Features:</span>
+                <span style={{ color: (formData.selectedFeatures || []).length > 0 ? '#111827' : '#9ca3af' }}>
+                  {(formData.selectedFeatures || []).length > 0 ? `${(formData.selectedFeatures || []).length} features selected` : 'No features selected'}
+                </span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: '0.5rem' }}>
+                <span style={{ color: '#6b7280' }}>Social Links:</span>
+                <span style={{ color: socialLinksCount > 0 ? '#111827' : '#9ca3af' }}>
+                  {socialLinksCount > 0 ? `${socialLinksCount} platform${socialLinksCount > 1 ? 's' : ''} connected` : 'No social links added'}
+                </span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: '0.5rem' }}>
+                <span style={{ color: '#6b7280' }}>Badges:</span>
+                <span style={{ color: (formData.selectedFilters || []).length > 0 ? '#111827' : '#9ca3af' }}>
+                  {(formData.selectedFilters || []).length > 0 ? `${(formData.selectedFilters || []).length} badge${(formData.selectedFilters || []).length > 1 ? 's' : ''} enabled` : 'No badges enabled'}
+                </span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: '0.5rem' }}>
+                <span style={{ color: '#6b7280' }}>FAQs:</span>
+                <span style={{ color: (formData.faqs || []).length > 0 ? '#111827' : '#9ca3af' }}>
+                  {(formData.faqs || []).length > 0 ? `${(formData.faqs || []).length} question${(formData.faqs || []).length > 1 ? 's' : ''} added` : 'No FAQs added'}
+                </span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: '0.5rem' }}>
+                <span style={{ color: '#6b7280' }}>Stripe:</span>
+                <span style={{ color: formData.stripeConnected ? '#16a34a' : '#9ca3af' }}>
+                  {formData.stripeConnected ? 'Connected' : 'Not connected'}
+                </span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: '0.5rem' }}>
+                <span style={{ color: '#6b7280' }}>Google Reviews:</span>
+                <span style={{ color: formData.googlePlaceId ? '#16a34a' : '#9ca3af' }}>
+                  {formData.googlePlaceId ? 'Connected' : 'Not connected'}
+                </span>
+              </div>
             </div>
           </div>
         </div>
