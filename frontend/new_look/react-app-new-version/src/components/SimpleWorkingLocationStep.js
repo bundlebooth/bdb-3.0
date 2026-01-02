@@ -173,6 +173,7 @@ function SimpleWorkingLocationStep({ formData, setFormData }) {
               className="form-input"
               placeholder="Start typing your address..."
               autoComplete="off"
+              defaultValue={formData.address || ''}
               style={{
                 width: '100%',
                 padding: '0.875rem 1rem',
@@ -312,7 +313,16 @@ function SimpleWorkingLocationStep({ formData, setFormData }) {
           {formData.serviceAreas && formData.serviceAreas.length > 0 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '1rem' }}>
               {formData.serviceAreas.map((area, index) => {
-                const label = [area.city, area.province || area.state].filter(Boolean).join(', ');
+                // Handle both object format and string format for service areas
+                let label;
+                if (typeof area === 'string') {
+                  label = area;
+                } else {
+                  // Use city + province, or formattedAddress, or just the area name
+                  const city = area.city || area.name || '';
+                  const province = area.province || area.state || '';
+                  label = [city, province].filter(Boolean).join(', ') || area.formattedAddress || 'Unknown';
+                }
                 return (
                   <span
                     key={index}

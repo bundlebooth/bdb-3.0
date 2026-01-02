@@ -369,15 +369,35 @@ const BecomeVendorPage = () => {
           // Map business hours from database format to form format
           const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
           const hoursMap = {};
+          
+          // Helper to format time for HTML time input (HH:MM format)
+          const formatTimeForInput = (timeStr) => {
+            if (!timeStr) return null;
+            // Handle various time formats: "09:00:00", "09:00", "9:00 AM", etc.
+            const str = String(timeStr);
+            // If it's already in HH:MM format, return as-is
+            if (/^\d{2}:\d{2}$/.test(str)) return str;
+            // If it has seconds (HH:MM:SS), strip them
+            if (/^\d{2}:\d{2}:\d{2}$/.test(str)) return str.substring(0, 5);
+            // Try to parse other formats
+            const match = str.match(/(\d{1,2}):(\d{2})/);
+            if (match) {
+              const hours = match[1].padStart(2, '0');
+              const mins = match[2];
+              return `${hours}:${mins}`;
+            }
+            return null;
+          };
+          
           businessHours.forEach(hour => {
             // DayOfWeek is a number 0-6 (Sunday=0, Monday=1, etc.)
             const dayIndex = typeof hour.DayOfWeek === 'number' ? hour.DayOfWeek : parseInt(hour.DayOfWeek);
             const day = dayNames[dayIndex];
             if (day) {
               hoursMap[day] = {
-                isAvailable: hour.IsAvailable || false,
-                openTime: hour.OpenTime || '09:00',
-                closeTime: hour.CloseTime || '17:00'
+                isAvailable: hour.IsAvailable !== false && hour.IsAvailable !== 0,
+                openTime: formatTimeForInput(hour.OpenTime) || '09:00',
+                closeTime: formatTimeForInput(hour.CloseTime) || '17:00'
               };
             }
           });
@@ -387,12 +407,16 @@ const BecomeVendorPage = () => {
           const primaryCat = categories.find(c => c.IsPrimary)?.Category || categories[0]?.Category || '';
           const additionalCats = categories.filter(c => !c.IsPrimary).map(c => c.Category);
 
-          // Map service areas to simple format
+          // Map service areas to format expected by SimpleWorkingLocationStep
           const mappedServiceAreas = serviceAreas.map(area => ({
             id: area.VendorServiceAreaID,
-            name: area.CityName,
-            state: area.StateProvince,
-            country: area.Country
+            city: area.CityName || area.City || '',
+            province: area.StateProvince || area.Province || area.State || '',
+            state: area.StateProvince || area.Province || area.State || '',
+            country: area.Country || 'Canada',
+            name: area.CityName || area.City || '',
+            placeId: area.PlaceID || null,
+            formattedAddress: [area.CityName || area.City, area.StateProvince || area.Province].filter(Boolean).join(', ')
           }));
 
           // Extract photo URLs from images
@@ -428,15 +452,21 @@ const BecomeVendorPage = () => {
             longitude: profile.Longitude || null,
             serviceAreas: mappedServiceAreas,
             
-            // Services
+            // Services - map to the format expected by ServicesStep
             selectedServices: services.map(s => ({
-              id: s.VendorServiceID,
-              categoryName: s.CategoryName,
+              serviceId: s.VendorServiceID || s.PredefinedServiceID,
               serviceName: s.ServiceName,
-              description: s.ServiceDescription,
-              price: s.Price,
-              duration: s.DurationMinutes,
-              maxAttendees: s.MaxAttendees
+              category: s.CategoryName,
+              description: s.ServiceDescription || s.VendorDescription || '',
+              pricingModel: s.PricingModel === 'time_based' ? 'hourly' : 
+                           s.PricingModel === 'fixed_price' ? 'fixed' : 
+                           s.PricingModel === 'per_attendee' ? 'per_person' : 'hourly',
+              baseRate: s.BaseRate || s.FixedPrice || s.PricePerPerson || s.Price || '',
+              baseDuration: s.BaseDurationMinutes ? (s.BaseDurationMinutes / 60).toString() : 
+                           s.DurationMinutes ? (s.DurationMinutes / 60).toString() : '2',
+              overtimeRate: s.OvertimeRatePerHour || '',
+              minAttendees: s.MinimumAttendees || '',
+              maxAttendees: s.MaximumAttendees || s.MaxAttendees || ''
             })),
             
             // Business Hours
@@ -3131,7 +3161,7 @@ function QuestionnaireStep({ formData, setFormData, currentUser, setFeaturesLoad
       setLoading(true);
       
       // Fetch all features grouped by category
-      const response = await fetch(`${API_BASE_URL}/vendor-features/all-grouped`, {
+      const response = await fetch(`${API_BASE_URL}/vendors/features/all-grouped`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       
@@ -3144,7 +3174,7 @@ function QuestionnaireStep({ formData, setFormData, currentUser, setFeaturesLoad
       
       // Load vendor's existing selections if vendorProfileId exists
       if (currentUser?.vendorProfileId) {
-        const selectionsResponse = await fetch(`${API_BASE_URL}/vendor-features/vendor/${currentUser.vendorProfileId}`, {
+        const selectionsResponse = await fetch(`${API_BASE_URL}/vendors/features/vendor/${currentUser.vendorProfileId}`, {
           headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
         });
         
@@ -3196,7 +3226,7 @@ function QuestionnaireStep({ formData, setFormData, currentUser, setFeaturesLoad
     try {
       const featureIdsArray = Array.from(selectedFeatureIds);
       
-      const response = await fetch(`${API_BASE_URL}/vendor-features/vendor/${currentUser.vendorProfileId}`, {
+      const response = await fetch(`${API_BASE_URL}/vendors/features/vendor/${currentUser.vendorProfileId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
