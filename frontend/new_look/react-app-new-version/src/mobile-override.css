@@ -1,9 +1,36 @@
 /* MOBILE OVERRIDE CSS - FORCE ALL CHANGES */
 /* This file FORCES mobile changes with maximum specificity */
 
+/* FORCE NO TRANSITIONS ON HEADER AND CATEGORIES NAV */
+.header,
+.header *,
+.categories-nav,
+.categories-nav *,
+.category-item,
+.category-item *,
+.icon-wrapper,
+.icon-wrapper * {
+    transition: none !important;
+    animation: none !important;
+}
+
+/* FORCE category icon circles to NEVER change size */
+.category-item .icon-wrapper > div:first-child,
+.category-item [style*="border-radius: 50%"],
+.category-item [style*="borderRadius"] {
+    width: 48px !important;
+    height: 48px !important;
+    min-width: 48px !important;
+    min-height: 48px !important;
+    max-width: 48px !important;
+    max-height: 48px !important;
+    transition: none !important;
+    animation: none !important;
+}
+
 /* 0. FORCE ALL CIRCLES TO BE CIRCLES - NOT OVALS */
 @media screen and (max-width: 768px) {
-    /* Force aspect ratio on ALL circular elements */
+    /* Force aspect ratio on ALL circular elements - EXCEPT category icons */
     .nav-icon,
     #profile-btn,
     .user-avatar,
@@ -17,13 +44,9 @@
     .overview-number,
     .search-btn-compact,
     .clear-field-btn,
-    .use-location-btn,
-    [style*="border-radius: 50%"],
-    [style*="borderRadius"] {
+    .use-location-btn {
         aspect-ratio: 1 / 1 !important;
         flex-shrink: 0 !important;
-        min-width: unset !important;
-        max-width: unset !important;
     }
     
     /* Ensure width and height are equal for circles */

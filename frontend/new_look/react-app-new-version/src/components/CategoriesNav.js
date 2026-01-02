@@ -244,13 +244,13 @@ function CategoriesNav({ activeCategory, onCategoryChange, loading = false }) {
     if (loading) return; // Don't update during loading
     
     const activeIndex = categories.findIndex(cat => cat.key === activeCategory);
-    if (activeIndex >= 0 && indicatorRef.current && listRef.current) {
+    if (activeIndex >= 0 && indicatorRef.current && listRef.current && wrapperRef.current) {
       const items = listRef.current.querySelectorAll('.category-item:not(.skeleton)');
       if (items[activeIndex]) {
         const item = items[activeIndex];
-        const itemRect = item.getBoundingClientRect();
-        const listRect = listRef.current.getBoundingClientRect();
-        const left = itemRect.left - listRect.left + listRef.current.scrollLeft;
+        
+        // Calculate position relative to the categories list (stays fixed under selected category)
+        const left = item.offsetLeft;
         const width = item.offsetWidth;
         
         // Skip transition on initial load to prevent animation from left edge
@@ -285,18 +285,11 @@ function CategoriesNav({ activeCategory, onCategoryChange, loading = false }) {
     window.addEventListener('resize', checkScrollButtons);
     window.addEventListener('resize', () => updateIndicator(false));
     
-    // Also update indicator when wrapper scrolls (without transition skip)
-    const wrapper = wrapperRef.current;
-    if (wrapper) {
-      wrapper.addEventListener('scroll', () => updateIndicator(false));
-    }
+    // No scroll listener - indicator stays fixed under selected category
     
     return () => {
       window.removeEventListener('resize', checkScrollButtons);
       window.removeEventListener('resize', () => updateIndicator(false));
-      if (wrapper) {
-        wrapper.removeEventListener('scroll', () => updateIndicator(false));
-      }
     };
   }, [checkScrollButtons, updateIndicator]);
 
@@ -386,6 +379,15 @@ function CategoriesNav({ activeCategory, onCategoryChange, loading = false }) {
                 data-category={category.key}
                 onClick={() => onCategoryChange(category.key)}
                 title={category.label}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '0.25rem 0.5rem 0.75rem 0.5rem',
+                  minWidth: '60px',
+                  flex: '0 0 auto'
+                }}
               >
                 <div 
                   className="icon-wrapper"
@@ -406,7 +408,6 @@ function CategoriesNav({ activeCategory, onCategoryChange, loading = false }) {
                       borderRadius: '50%',
                       backgroundColor: category.bgColor,
                       opacity: 0.4,
-                      transition: 'all 0.3s ease',
                       position: 'absolute',
                       top: '50%',
                       left: '50%',
@@ -422,13 +423,14 @@ function CategoriesNav({ activeCategory, onCategoryChange, loading = false }) {
                   lineHeight: '1.2',
                   textAlign: 'center',
                   width: '100%',
-                  fontWeight: 'normal'
+                  fontWeight: 'normal',
+                  fontSize: '0.85rem'
                 }}>{category.label}</span>
               </div>
             ))
           )}
+          {!loading && <div className="category-indicator" ref={indicatorRef} id="category-indicator"></div>}
         </div>
-        {!loading && <div className="category-indicator" ref={indicatorRef} id="category-indicator"></div>}
       </div>
       <button
         className="nav-scroll-btn right"

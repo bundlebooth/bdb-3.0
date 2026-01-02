@@ -68,7 +68,6 @@ body {
     position: sticky;
     top: 0;
     z-index: 100; /* Higher than categories nav (10) but below modals (1000+) */
-    transition: padding 0.3s ease, box-shadow 0.3s ease;
 }
 
 /* Header when scrolled - NO shrink effect, keep everything fixed */
@@ -226,11 +225,15 @@ body {
     border-radius: 12px;
     font-size: 0.85rem;
     cursor: pointer;
-    transition: color 0.3s ease, transform 0.3s ease, padding 0.3s ease, font-size 0.3s ease;
     position: relative;
     color: var(--text-light);
     min-width: 60px;
     flex: 0 0 auto;
+}
+
+.category-item,
+.category-item * {
+    transition: none !important;
 }
 
 .category-item i {
@@ -238,16 +241,11 @@ body {
     margin-bottom: 0.25rem;
     display: block;
     color: var(--text-light);
-    transition: color 0.3s ease, font-size 0.3s ease;
 }
 
 .category-item:hover,
 .category-item.active {
     color: var(--primary);
-}
-
-.category-item.active {
-    transform: scale(1.1);
 }
 
 .category-item.active i {
@@ -8873,9 +8871,6 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
         top: 45px !important;
     }
     
-    .categories-nav.scrolled {
-        top: 40px !important;
-    }
     
     .category-item {
         padding: 0.4rem 0.6rem !important;

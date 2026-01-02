@@ -73,7 +73,7 @@ body.overlay-open {
     grid-template-columns: 0px 1fr 35%;
 }
 
-/* Header */
+/* Header - Fixed height to prevent shrinking on scroll */
 .header {
     grid-column: 1 / -1;
     display: flex;
@@ -81,18 +81,14 @@ body.overlay-open {
     justify-content: space-between;
     padding: 1rem 2rem;
     background-color: white;
-    box-shadow: none;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
     border-bottom: 1px solid var(--border);
     position: sticky;
     top: 0;
     z-index: 100;
-    transition: padding 0.3s ease, box-shadow 0.3s ease;
-}
-
-/* Header when scrolled - NO shrink effect, keep everything fixed */
-.header.header-scrolled {
-    padding: 1rem 2rem; /* Same as non-scrolled */
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    height: 66px;
+    min-height: 66px;
+    max-height: 66px;
 }
 
 /* Logo stays fixed size */
@@ -185,26 +181,31 @@ body.overlay-open {
     font-variant-numeric: tabular-nums; /* more even digit centering */
 }
 
-/* Categories Navigation */
+/* Categories Navigation - Fixed height to prevent shrinking on scroll */
 .categories-nav {
     grid-column: 1 / -1;
     background-color: white;
     border-bottom: 1px solid var(--border);
+    border-top: none;
     padding: 0.75rem 2rem;
     display: flex;
     align-items: center;
     position: sticky;
-    top: 80px; /* Positioned below the header */
-    z-index: 10; /* Below header (100) and modals (1000+), above content */
+    top: 66px; /* Position directly below header */
+    z-index: 99; /* Below header (100) but above content */
     box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    height: 90px;
     min-height: 90px;
+    max-height: 90px;
 }
 
 .categories-list-wrapper {
     flex-grow: 1;
     overflow-x: auto;
+    overflow-y: visible;
     white-space: nowrap;
-    padding: 0.5rem 0;
+    padding: 0;
+    margin-bottom: 0;
 
     -webkit-overflow-scrolling: touch;
 }
@@ -225,6 +226,8 @@ body.overlay-open {
     align-items: center;
     min-width: min-content;
     gap: 2rem;
+    position: relative; /* For indicator positioning */
+    padding: 8px 0; /* Space for icons and indicator */
 }
 
 /* When categories overflow, maintain spacing instead of condensing */
@@ -236,45 +239,62 @@ body.overlay-open {
 }
 
 .category-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 0.25rem 0.5rem;
-    border-radius: 12px;
-    font-size: 0.85rem;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0.25rem 0.5rem !important;
+    padding-bottom: 0.75rem !important;
+    border-radius: 12px !important;
+    font-size: 0.85rem !important;
     cursor: pointer;
-    transition: color 0.3s ease, transform 0.3s ease, padding 0.3s ease, font-size 0.3s ease;
     position: relative;
     color: var(--text-light);
-    min-width: 60px;
-    flex: 0 0 auto;
+    min-width: 60px !important;
+    flex: 0 0 auto !important;
 }
 
 .category-item i {
-    font-size: 1.5rem;
-    margin-bottom: 0.25rem;
+    font-size: 1.5rem !important;
+    margin-bottom: 0.25rem !important;
     display: block;
     color: var(--text-light);
-    transition: color 0.3s ease, font-size 0.3s ease;
 }
 
-.category-item:hover,
-.category-item.active {
+.category-item span {
+    font-size: 0.85rem !important;
+}
+
+.category-item .icon-wrapper {
+    width: 50px !important;
+    height: 40px !important;
+}
+
+.category-item .icon-wrapper > div:first-child {
+    width: 48px !important;
+    height: 48px !important;
+}
+
+.category-item:hover {
     color: var(--primary);
 }
 
 .category-item.active {
-    transform: scale(1.1);
-}
-
-.category-item.active i {
     color: var(--primary);
 }
 
-/* Animated underline indicator */
+.category-item.active::after {
+    display: none;
+}
+
+.category-item.active i,
+.category-item.active svg {
+    color: var(--primary);
+}
+
+/* Animated underline indicator - indicator is now inside categories-list */
 .categories-list-wrapper {
-    position: relative;
+    position: static;
 }
 
 .category-indicator {
@@ -282,14 +302,11 @@ body.overlay-open {
     bottom: 0;
     left: 0;
     width: 60px;
-    height: 3px;
+    height: 2px;
     background: var(--primary);
-    border-radius: 1.5px;
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     pointer-events: none;
-    z-index: 1;
-    opacity: 1;
-    will-change: transform, width;
+    z-index: 100;
 }
 
 /* New styles for scroll buttons */
@@ -305,7 +322,6 @@ body.overlay-open {
     font-size: 0.9rem;
     color: #6b7280;
     cursor: pointer;
-    transition: all 0.2s ease;
     flex-shrink: 0;
     margin: 0 0.5rem;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
@@ -319,9 +335,6 @@ body.overlay-open {
     box-shadow: 0 2px 6px rgba(94, 114, 228, 0.3);
 }
 
-.nav-scroll-btn:active {
-    transform: scale(0.95);
-}
 
 /* Filter Sidebar */
 .sidebar {
@@ -5464,12 +5477,6 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
         -webkit-overflow-scrolling: touch;
     }
 
-    .category-item {
-        padding: 0.5rem 0.75rem;
-        font-size: 0.8rem;
-        white-space: nowrap;
-    }
-
     .dashboard-container {
         grid-template-columns: 60px 1fr;
         position: relative;
@@ -8075,20 +8082,6 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
         padding: 0 0.25rem;
     }
 
-    .category-item {
-        min-width: 65px;
-        padding: 0.25rem;
-    }
-
-    .category-item i {
-        font-size: 1.4rem;
-        margin-bottom: 0.15rem;
-    }
-
-    .category-item span {
-        font-size: 0.75rem;
-    }
-
     /* Main content */
     .main-content {
         padding: 1rem;
@@ -8303,18 +8296,6 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
         padding: 0.875rem;
     }
 
-    .category-item {
-        min-width: 60px;
-    }
-
-    .category-item i {
-        font-size: 1.3rem;
-    }
-
-    .category-item span {
-        font-size: 0.7rem;
-    }
-    
     /* Login Modal - Extra Small */
     #twofa-code-inputs .otp-digit {
         width: 36px !important;
@@ -8986,29 +8967,21 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
 }
 
 /* ============================================
-   8. CATEGORIES NAV - Mobile Compact
+   8. CATEGORIES NAV - Mobile Compact (Fixed height)
    ============================================ */
 @media (max-width: 768px) {
+    .header {
+        height: 45px !important;
+        min-height: 45px !important;
+        max-height: 45px !important;
+    }
+    
     .categories-nav {
-        padding: 0.5rem 0.75rem !important;
+        padding: 0.25rem 0.75rem !important;
         top: 45px !important;
-    }
-    
-    .categories-nav.scrolled {
-        top: 40px !important;
-    }
-    
-    .category-item {
-        padding: 0.4rem 0.6rem !important;
-        min-width: 50px !important;
-    }
-    
-    .category-item i {
-        font-size: 1.25rem !important;
-    }
-    
-    .category-item span {
-        font-size: 0.7rem !important;
+        height: 85px !important;
+        min-height: 85px !important;
+        max-height: 85px !important;
     }
 }
 
@@ -9454,30 +9427,6 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
     .main-content {
         padding: 1rem;
     }
-    
-    /* Categories nav mobile */
-    .categories-nav {
-        padding: 0.5rem 0.75rem;
-        top: 55px;
-    }
-    
-    .categories-list {
-        gap: 1rem;
-        justify-content: flex-start;
-    }
-    
-    .category-item {
-        min-width: 50px;
-        padding: 0.25rem 0.35rem;
-    }
-    
-    .category-item i {
-        font-size: 1.25rem;
-    }
-    
-    .category-item span {
-        font-size: 0.7rem;
-    }
 }
 
 /* Mobile Vendor Grid */
@@ -9570,7 +9519,7 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
 .header-logo-img {
     height: 40px;
     width: auto;
-    transition: height 0.2s ease;
+    transition: none;
 }
 
 @media (max-width: 768px) {
@@ -10536,31 +10485,58 @@ html, body {
     }
 }
 
-/* Landscape Phone Orientation */
-@media (max-width: 900px) and (orientation: landscape) {
-    .header {
-        padding: 0.5rem 1rem !important;
+/* Landscape Phone Orientation - Only for actual mobile devices in landscape */
+@media (max-width: 900px) and (orientation: landscape) and (hover: none) and (pointer: coarse) {
+    /* Force mobile bottom nav to show in landscape */
+    .mobile-bottom-nav {
+        display: flex !important;
     }
     
-    .header-logo-img {
-        height: 28px !important;
+    /* Hide desktop elements in landscape mobile */
+    .header .user-nav .become-vendor-btn,
+    .header .user-nav .complete-profile-btn,
+    .header .user-nav .admin-dashboard-btn {
+        display: none !important;
     }
     
-    .categories-nav {
-        padding: 0.25rem 0.5rem !important;
-        min-height: auto !important;
+    /* Vendor cards - 3 per row in landscape */
+    .vendor-section .vendor-grid .vendor-card,
+    .vendor-section-grid .vendor-section-card-wrapper {
+        flex: 0 0 calc(33.333% - 8px) !important;
+        min-width: calc(33.333% - 8px) !important;
+        max-width: calc(33.333% - 8px) !important;
     }
     
-    .category-item {
-        padding: 0.25rem !important;
+    /* Compact vendor cards in landscape */
+    .vendor-card {
+        border-radius: 8px !important;
     }
     
-    .category-item i {
-        font-size: 1rem !important;
+    .vendor-card .vendor-image {
+        height: 100px !important;
     }
     
-    .category-item span {
-        font-size: 0.65rem !important;
+    .vendor-card .vendor-info {
+        padding: 8px !important;
+    }
+    
+    .vendor-card .vendor-name {
+        font-size: 0.85rem !important;
+    }
+    
+    .vendor-card .vendor-category,
+    .vendor-card .vendor-location {
+        font-size: 0.7rem !important;
+    }
+    
+    /* Main content area adjustments */
+    .main-content {
+        padding-bottom: 60px !important;
+    }
+    
+    /* Footer margin for bottom nav */
+    .vv-footer {
+        margin-bottom: 56px !important;
     }
 }
 
@@ -10585,6 +10561,16 @@ html, body {
 @media (max-width: 768px) {
     .header {
         padding: 0.75rem 1rem !important;
+        height: 45px !important;
+        min-height: 45px !important;
+        max-height: 45px !important;
+    }
+    
+    .categories-nav {
+        height: 85px !important;
+        min-height: 85px !important;
+        max-height: 85px !important;
+        top: 45px !important;
     }
     
     .header .logo img,
@@ -10985,6 +10971,16 @@ html, body {
         justify-content: space-between !important;
         padding: 8px 12px !important;
         gap: 8px !important;
+        height: 45px !important;
+        min-height: 45px !important;
+        max-height: 45px !important;
+    }
+    
+    .categories-nav {
+        height: 85px !important;
+        min-height: 85px !important;
+        max-height: 85px !important;
+        top: 45px !important;
     }
     
     .header-left {

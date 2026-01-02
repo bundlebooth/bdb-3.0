@@ -23,7 +23,7 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
   const [notificationsBadge, setNotificationsBadge] = useState(0);
   const [dashboardOpen, setDashboardOpen] = useState(false);
   const [notificationDropdownOpen, setNotificationDropdownOpen] = useState(false);
-  const [isScrolled, setIsScrolled] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false); // No longer used - kept for compatibility
   const [profileIncomplete, setProfileIncomplete] = useState(false);
   const [whatsNewOpen, setWhatsNewOpen] = useState(false);
   const [announcementCount, setAnnouncementCount] = useState(0);
@@ -46,24 +46,7 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
     return () => window.removeEventListener('openDashboard', handleOpenDashboard);
   }, [currentUser]);
 
-  // Handle scroll to shrink/expand header
-  useEffect(() => {
-    let ticking = false;
-    
-    const handleScroll = () => {
-      if (!ticking) {
-        window.requestAnimationFrame(() => {
-          const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-          setIsScrolled(scrollTop > 1); // Shrink immediately on any scroll
-          ticking = false;
-        });
-        ticking = true;
-      }
-    };
-
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  // Scroll detection removed - no animation on scroll
 
   // Check vendor profile completion status
   useEffect(() => {
@@ -184,7 +167,7 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
 
   return (
     <>
-    <header className={`header ${isScrolled ? 'header-scrolled' : ''}`}>
+    <header className="header">
       <div className="header-left" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
         <div className="logo" style={{ cursor: 'pointer', marginRight: '8px' }} onClick={() => window.location.href = '/'}>
           <img src="/images/logo.png" alt="PlanBeau" className="header-logo-img" />

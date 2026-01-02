@@ -3,7 +3,6 @@
   width: 100%;
   max-width: 100%;
   margin: 0 auto;
-  transition: all 0.3s ease;
   position: relative;
   z-index: 101;
 }
@@ -27,7 +26,6 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   border: 1px solid #e0e0e0;
   overflow: visible;
-  transition: all 0.3s ease;
   position: relative;
 }
 
@@ -49,7 +47,6 @@
 .compact-field {
   cursor: pointer;
   padding: 10px 18px;
-  transition: background-color 0.2s ease;
   display: flex;
   align-items: center;
   gap: 4px;
@@ -93,7 +90,6 @@
   padding: 4px;
   margin-left: 6px;
   font-size: 12px;
-  transition: color 0.2s ease;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -239,9 +235,6 @@
   line-height: 1.2;
 }
 
-.enhanced-search-container.scrolled .field-content input {
-  font-size: 13px;
-}
 
 .field-content input::placeholder {
   color: #717171;
@@ -268,9 +261,6 @@
   text-overflow: ellipsis;
 }
 
-.enhanced-search-container.scrolled .date-display {
-  font-size: 13px;
-}
 
 /* Clear button for expanded view fields */
 .clear-field-btn {
@@ -336,10 +326,6 @@
   white-space: nowrap;
 }
 
-.enhanced-search-container.scrolled .search-btn {
-  padding: 10px 20px;
-  font-size: 13px;
-}
 
 .search-btn:hover {
   background: #0056b3;
@@ -354,9 +340,6 @@
   font-size: 14px;
 }
 
-.enhanced-search-container.scrolled .search-btn i {
-  font-size: 13px;
-}
 
 .search-btn-text {
   display: inline;
