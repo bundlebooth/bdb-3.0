@@ -5062,6 +5062,98 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
 }
 
 /* Vendor Setup Wizard Styles */
+
+/* Form inputs for vendor setup wizard */
+.form-input,
+.form-textarea {
+    width: 100%;
+    padding: 0.875rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-family: inherit;
+    background-color: white;
+    box-sizing: border-box;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.form-input:focus,
+.form-textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(94, 114, 228, 0.12);
+}
+
+.form-textarea {
+    resize: vertical;
+    min-height: 120px;
+    line-height: 1.5;
+}
+
+/* Vendor setup wizard step containers - full width */
+.business-details-step,
+.contact-step,
+.location-step,
+.categories-step,
+.services-step,
+.business-hours-step,
+.questionnaire-step,
+.gallery-step,
+.social-media-step,
+.filters-step,
+.stripe-step,
+.google-reviews-step,
+.policies-step,
+.review-step {
+    width: 100%;
+    max-width: 100%;
+}
+
+/* Categories grid for vendor setup */
+.categories-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+    width: 100%;
+}
+
+/* Mobile responsive for vendor setup wizard */
+@media (max-width: 768px) {
+    .form-input,
+    .form-textarea {
+        padding: 0.75rem;
+        font-size: 16px; /* Prevents iOS zoom on focus */
+    }
+    
+    .categories-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .business-details-step,
+    .contact-step,
+    .location-step,
+    .categories-step,
+    .services-step,
+    .business-hours-step,
+    .questionnaire-step,
+    .gallery-step,
+    .social-media-step,
+    .filters-step,
+    .stripe-step,
+    .google-reviews-step,
+    .policies-step,
+    .review-step {
+        padding: 0 0.5rem;
+    }
+    
+    /* Stack 2-column grids on mobile */
+    .location-step div[style*="grid-template-columns: 1fr 1fr"],
+    .business-details-step div[style*="grid-template-columns"],
+    .contact-step div[style*="grid-template-columns"] {
+        grid-template-columns: 1fr !important;
+    }
+}
+
 .step-indicator {
     font-size: 0.9rem;
     font-weight: 500;

@@ -160,7 +160,7 @@ function SimpleWorkingLocationStep({ formData, setFormData }) {
 
   return (
     <div className="location-step">
-      <div style={{ maxWidth: '700px', margin: '0 auto' }}>
+      <div style={{ maxWidth: '100%', width: '100%' }}>
         
         {/* Street Address with Google Autocomplete */}
         <div className="form-group" style={{ marginBottom: '1.5rem' }}>

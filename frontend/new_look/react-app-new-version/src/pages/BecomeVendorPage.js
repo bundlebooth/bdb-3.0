@@ -2156,7 +2156,7 @@ function LocationStep({ formData, onInputChange, setFormData, provinces, googleM
 
   return (
     <div className="location-step">
-      <div style={{ maxWidth: '700px', margin: '0 auto' }}>
+      <div style={{ maxWidth: '100%', width: '100%' }}>
         {/* Street Address with Google Autocomplete */}
         <div className="form-group" style={{ marginBottom: '1.5rem' }}>
           <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.5rem', fontSize: '0.95rem' }}>
@@ -3001,7 +3001,7 @@ function BusinessHoursStep({ formData, setFormData }) {
 
   return (
     <div className="business-hours-step">
-      <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+      <div style={{ maxWidth: '100%', width: '100%' }}>
         <div style={{ marginBottom: '2rem', padding: '1.5rem', background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
             <i className="fas fa-info-circle" style={{ color: 'var(--primary)', fontSize: '1.25rem' }}></i>
@@ -3273,7 +3273,7 @@ function QuestionnaireStep({ formData, setFormData, currentUser, setFeaturesLoad
 
   return (
     <div className="questionnaire-step">
-      <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
+      <div style={{ maxWidth: '100%', width: '100%' }}>
         {filteredCategories.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '3rem', background: '#f9fafb', borderRadius: '12px', border: '2px dashed #e5e7eb' }}>
             <i className="fas fa-info-circle" style={{ fontSize: '3rem', color: 'var(--text-light)', marginBottom: '1rem' }}></i>
@@ -3547,7 +3547,7 @@ function GalleryStep({ formData, setFormData, currentUser }) {
 
   return (
     <div className="gallery-step">
-      <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+      <div style={{ maxWidth: '100%', width: '100%' }}>
         <div style={{ marginBottom: '2rem', padding: '1.5rem', background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
             <i className="fas fa-images" style={{ color: 'var(--primary)', fontSize: '1.25rem' }}></i>
@@ -3831,7 +3831,7 @@ function SocialMediaStep({ formData, onInputChange, setFormData, currentUser }) 
 
   return (
     <div className="social-media-step">
-      <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+      <div style={{ maxWidth: '100%', width: '100%' }}>
         <div style={{ marginBottom: '2rem', padding: '1.5rem', background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
             <i className="fas fa-share-alt" style={{ color: 'var(--primary)', fontSize: '1.25rem' }}></i>
@@ -3988,7 +3988,7 @@ function FiltersStep({ formData, setFormData, filterOptions, currentUser }) {
 
   return (
     <div className="filters-step">
-      <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+      <div style={{ maxWidth: '100%', width: '100%' }}>
         <div style={{ marginBottom: '2rem', padding: '1.5rem', background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
             <i className="fas fa-tags" style={{ color: 'var(--primary)', fontSize: '1.25rem' }}></i>
@@ -4182,7 +4182,7 @@ function StripeStep({ formData, setFormData, currentUser }) {
 
   return (
     <div className="stripe-step">
-      <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+      <div style={{ maxWidth: '100%', width: '100%' }}>
         <div style={{ marginBottom: '2rem', padding: '1.5rem', background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
             <i className="fab fa-stripe" style={{ color: '#635bff', fontSize: '1.5rem' }}></i>
@@ -4484,7 +4484,7 @@ function GoogleReviewsStep({ formData, setFormData, currentUser }) {
 
   return (
     <div className="google-reviews-step">
-      <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+      <div style={{ maxWidth: '100%', width: '100%' }}>
         <div style={{ marginBottom: '2rem', padding: '1.5rem', background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
             <svg width="24" height="24" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
@@ -4523,12 +4523,12 @@ function GoogleReviewsStep({ formData, setFormData, currentUser }) {
             <h4 style={{ margin: '0 0 0.75rem', fontSize: '1.5rem', fontWeight: 600, color: '#111827' }}>
               Google Reviews Integration
             </h4>
-            <p style={{ margin: '0 0 2rem', color: '#6b7280', fontSize: '1rem', lineHeight: 1.6, maxWidth: '500px', marginLeft: 'auto', marginRight: 'auto' }}>
+            <p style={{ margin: '0 0 2rem', color: '#6b7280', fontSize: '1rem', lineHeight: 1.6 }}>
               Showcase your Google Business reviews to build trust with potential clients. Your star rating and recent reviews will be displayed on your profile.
             </p>
           </div>
 
-          <div style={{ maxWidth: '600px', margin: '0 auto' }}>
+          <div style={{ maxWidth: '100%', width: '100%' }}>
             <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.75rem', fontSize: '1rem', color: '#374151' }}>
               Google Place ID
             </label>
@@ -4785,7 +4785,7 @@ function PoliciesStep({ formData, onInputChange, setFormData, currentUser }) {
 
   return (
     <div className="policies-step">
-      <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+      <div style={{ maxWidth: '100%', width: '100%' }}>
         <div style={{ marginBottom: '2rem', padding: '1.5rem', background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
             <i className="fas fa-file-contract" style={{ color: 'var(--primary)', fontSize: '1.25rem' }}></i>
@@ -5003,7 +5003,7 @@ function ReviewStep({ formData, categories }) {
 
   return (
     <div className="review-step">
-      <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+      <div style={{ maxWidth: '100%', width: '100%' }}>
         <div style={{ marginBottom: '2rem', padding: '1.5rem', background: '#f0f9ff', borderRadius: '12px', border: '1px solid #3b82f6' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
             <i className="fas fa-check-circle" style={{ color: '#3b82f6', fontSize: '1.5rem' }}></i>
