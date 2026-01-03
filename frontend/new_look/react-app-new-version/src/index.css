@@ -3084,8 +3084,8 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
     align-items: center;
     gap: 0.75rem;
     padding: 0.875rem 1.25rem;
-    border-radius: var(--radius);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15), 0 2px 6px rgba(0, 0, 0, 0.08);
+    border-radius: 999px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     border: 1px solid var(--border);
     background: #ffffff;
     color: var(--text);
@@ -3096,10 +3096,18 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
 .app-banner.app-banner--removing {
     animation: bannerSlideOut 0.3s cubic-bezier(0.4, 0, 1, 1) forwards;
 }
-.app-banner--success { border-color: #10b98133; background: #ecfdf5; color: #065f46; }
-.app-banner--error { border-color: #ef444433; background: #fef2f2; color: #991b1b; }
-.app-banner--info, .app-banner--notice { border-color: #3b82f633; background: #eff6ff; color: #1e40af; }
-.app-banner--favorite { border-color: #ef444433; background: #fef2f2; color: #991b1b; }
+.app-banner--success { border-color: #10b981; background: #ecfdf5; color: #065f46; }
+.app-banner--success .app-banner__icon { color: #10b981; }
+.app-banner--success .app-banner__title { color: #065f46; }
+.app-banner--error { border-color: #ef4444; background: #fef2f2; color: #991b1b; }
+.app-banner--error .app-banner__icon { color: #ef4444; }
+.app-banner--error .app-banner__title { color: #991b1b; }
+.app-banner--info, .app-banner--notice { border-color: #3b82f6; background: #eff6ff; color: #1e40af; }
+.app-banner--info .app-banner__icon, .app-banner--notice .app-banner__icon { color: #3b82f6; }
+.app-banner--info .app-banner__title, .app-banner--notice .app-banner__title { color: #1e40af; }
+.app-banner--favorite { border-color: #ef4444; background: #fef2f2; color: #991b1b; }
+.app-banner--favorite .app-banner__icon { color: #ef4444; }
+.app-banner--favorite .app-banner__title { color: #991b1b; }
 .app-banner__title { font-weight: 600; }
 .app-banner__icon { display: inline-flex; width: 20px; height: 20px; align-items: center; justify-content: center; }
 .app-banner__close {

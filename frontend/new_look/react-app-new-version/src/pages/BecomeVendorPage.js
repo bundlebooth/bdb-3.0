@@ -16,8 +16,29 @@ const BecomeVendorPage = () => {
   const location = useLocation();
   const { currentUser, setCurrentUser } = useAuth();
   
-  // Initialize to step 1 (welcome page) if user is logged in, unless there's a target step
+  // Step IDs for mapping URL params to step indices
+  const stepIds = ['account', 'categories', 'business-details', 'contact', 'location', 'services', 'business-hours', 'questionnaire', 'gallery', 'social-media', 'filters', 'stripe', 'google-reviews', 'policies', 'review'];
+
+  // Check URL step param ONCE at mount time - this is the source of truth
+  const urlStepRef = useRef(null);
+  if (urlStepRef.current === null) {
+    const urlParams = new URLSearchParams(window.location.search);
+    const stepParam = urlParams.get('step');
+    if (stepParam) {
+      const targetIndex = stepIds.indexOf(stepParam);
+      urlStepRef.current = targetIndex !== -1 ? targetIndex : false;
+    } else {
+      urlStepRef.current = false;
+    }
+  }
+
+  // Initialize step - URL param takes absolute priority
   const getInitialStep = () => {
+    // URL step param is the highest priority
+    if (urlStepRef.current !== false) {
+      return urlStepRef.current;
+    }
+    
     if (!currentUser) return 0;
     
     // Check if we're returning from a save (stored in sessionStorage)
@@ -27,9 +48,15 @@ const BecomeVendorPage = () => {
       return parseInt(savedStep);
     }
     
-    // If coming from "Complete Profile Setup", always start at step 1
+    // If coming from "Complete Profile Setup" via state, always start at step 1
     if (location.state?.resetToFirst) return 1;
-    // If there's a target step, we'll handle it in useEffect
+    
+    // If navigating to a specific step from banner click via state
+    if (location.state?.targetStep) {
+      const targetIndex = stepIds.indexOf(location.state.targetStep);
+      if (targetIndex !== -1) return targetIndex;
+    }
+    
     return 1;
   };
   
@@ -305,9 +332,13 @@ const BecomeVendorPage = () => {
   }, [currentStep]);
 
   // Force user to step 0 when profile is pending review or approved - block all navigation
+  // BUT allow URL step param to override this for direct navigation
   useEffect(() => {
     if (profileStatus === 'pending_review' || profileStatus === 'approved') {
-      setCurrentStep(0);
+      // If URL step param was set at mount, respect it - don't force to step 0
+      if (urlStepRef.current === false) {
+        setCurrentStep(0);
+      }
     }
   }, [profileStatus]);
 
@@ -595,35 +626,19 @@ const BecomeVendorPage = () => {
     fetchExistingVendorData();
   }, [currentUser, initialDataLoaded]);
 
-  // Handle navigation from SetupIncompleteBanner with targetStep (via URL param or state)
-  useEffect(() => {
-    // Check URL query parameter first (for new tab navigation)
-    const urlParams = new URLSearchParams(location.search);
-    const stepFromUrl = urlParams.get('step');
-    
-    // Check state (for same-tab navigation)
-    const stepFromState = location.state?.targetStep;
-    
-    const targetStep = stepFromUrl || stepFromState;
-    
-    if (targetStep && steps.length > 0 && !location.state?.resetToFirst) {
-      const targetStepIndex = steps.findIndex(s => s.id === targetStep);
-      if (targetStepIndex !== -1) {
-        setCurrentStep(targetStepIndex);
-      }
-      // Clear the state after using it (but keep URL param visible)
-      if (stepFromState) {
-        window.history.replaceState({}, document.title);
-      }
-    }
-  }, [location.search, location.state?.targetStep, steps]);
-  
-  // Update URL when step changes to keep it in sync
+  // Update URL when step changes to keep it in sync (but don't on initial mount if URL already has step)
+  const hasUpdatedUrl = useRef(false);
   useEffect(() => {
     if (steps.length > 0 && currentStep >= 0) {
+      // Skip first update if URL already had a step param
+      if (!hasUpdatedUrl.current && urlStepRef.current !== false) {
+        hasUpdatedUrl.current = true;
+        return;
+      }
+      hasUpdatedUrl.current = true;
       const currentStepId = steps[currentStep]?.id;
       if (currentStepId) {
-        window.history.replaceState({}, document.title, `/become-a-vendor?step=${currentStepId}`);
+        window.history.replaceState({}, document.title, `/become-a-vendor/setup?step=${currentStepId}`);
       }
     }
   }, [currentStep, steps]);
@@ -855,6 +870,12 @@ const BecomeVendorPage = () => {
     setCurrentUser(userData);
     window.currentUser = userData;
     
+    // If URL step param was set at mount, respect it
+    if (urlStepRef.current !== false) {
+      setCurrentStep(urlStepRef.current);
+      return;
+    }
+    
     // If user is an existing vendor with a profile, stay on step 0 (welcome)
     // to let the useEffect fetch their data and show the progress indicators
     // This matches the behavior of "Complete Profile Setup" button
@@ -868,8 +889,8 @@ const BecomeVendorPage = () => {
   };
 
   const handleNext = () => {
-    // Block navigation if profile is pending review or approved
-    if (profileStatus === 'pending_review' || profileStatus === 'approved') {
+    // Block navigation if profile is pending review or approved (unless URL step param was used)
+    if ((profileStatus === 'pending_review' || profileStatus === 'approved') && urlStepRef.current === false) {
       return;
     }
     
@@ -925,8 +946,8 @@ const BecomeVendorPage = () => {
   };
 
   const handleBack = () => {
-    // Block navigation if profile is pending review or approved
-    if (profileStatus === 'pending_review' || profileStatus === 'approved') {
+    // Block navigation if profile is pending review or approved (unless URL step param was used)
+    if ((profileStatus === 'pending_review' || profileStatus === 'approved') && urlStepRef.current === false) {
       return;
     }
     
@@ -1235,8 +1256,8 @@ const BecomeVendorPage = () => {
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
             <div className="spinner"></div>
           </div>
-        ) : profileStatus === 'pending_review' ? (
-          /* Show pending review message immediately when landing on page */
+        ) : profileStatus === 'pending_review' && urlStepRef.current === false ? (
+          /* Show pending review message only if NOT navigating via URL step param */
           <div style={{ padding: '3rem 1rem', maxWidth: '700px', margin: '0 auto' }}>
             <div style={{ 
               background: 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)', 
@@ -1321,8 +1342,8 @@ const BecomeVendorPage = () => {
               </div>
             </div>
           </div>
-        ) : profileStatus === 'approved' ? (
-          /* Show approved message */
+        ) : profileStatus === 'approved' && urlStepRef.current === false ? (
+          /* Show approved message only if NOT navigating via URL step param */
           <div style={{ padding: '3rem 1rem', maxWidth: '700px', margin: '0 auto' }}>
             <div style={{ 
               background: 'linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)', 
@@ -1439,7 +1460,7 @@ const BecomeVendorPage = () => {
       </main>
 
       {/* Fixed footer navigation - v2 */}
-      {!(profileStatus === 'pending_review' || profileStatus === 'approved') && (
+      {(!(profileStatus === 'pending_review' || profileStatus === 'approved') || urlStepRef.current !== false) && (
       <div 
         id="vendor-footer-fixed"
         style={{

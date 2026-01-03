@@ -178,7 +178,11 @@
 @media (max-width: 768px) {
   /* Remove gap between sections on mobile */
   .vendor-section {
-    margin-bottom: 0.75rem;
+    margin-bottom: 0 !important;
+  }
+  
+  .vendor-discovery-sections {
+    gap: 0 !important;
   }
   
   .vendor-section-title {

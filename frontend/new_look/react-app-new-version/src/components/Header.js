@@ -267,9 +267,8 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
           <button 
             className="complete-profile-btn"
             onClick={() => {
-              // Force open in new tab to avoid state conflicts
-              const url = buildBecomeVendorUrl({ source: 'header', ref: 'complete_profile' });
-              window.open(url, '_blank');
+              // Navigate directly to step-by-step process (skip landing page) for signed-in vendors
+              navigate('/become-a-vendor/setup?step=categories');
             }}
             style={{
               padding: '0.5rem 1rem',

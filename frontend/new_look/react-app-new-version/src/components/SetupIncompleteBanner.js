@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
 
@@ -29,12 +30,15 @@ function SetupIncompleteBanner({
   showAllSteps = false,
   profileStatus = 'draft'
 }) {
+  const navigate = useNavigate();
   const { currentUser } = useAuth();
   // formData structure MUST match BecomeVendorPage.js exactly
   const [formData, setFormData] = useState(null);
   const [dismissed, setDismissed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [fetchedProfileStatus, setFetchedProfileStatus] = useState('draft');
+  const [completedCollapsed, setCompletedCollapsed] = useState(true);
+  const [incompleteCollapsed, setIncompleteCollapsed] = useState(false);
   const fetchStartedRef = useRef(false);
 
   // Determine if we're in "inline mode" (used within BecomeVendorPage with steps prop)
@@ -364,14 +368,16 @@ function SetupIncompleteBanner({
   };
 
   const handleContinue = () => {
-    window.open('/become-a-vendor', '_blank');
+    // Navigate directly to step-by-step process (skip landing page) for signed-in vendors
+    navigate('/become-a-vendor/setup?step=categories');
   };
 
   const handleSectionClick = (stepKey) => {
-    window.open(`/become-a-vendor?step=${stepKey}`, '_blank');
+    // Navigate to specific step directly using URL query param
+    navigate(`/become-a-vendor/setup?step=${stepKey}`);
   };
 
-  // Handle step click - use custom handler if provided, otherwise open in new tab
+  // Handle step click - use custom handler if provided, otherwise navigate to step
   const handleStepClick = (stepKey) => {
     if (onStepClick) {
       onStepClick(stepKey);
@@ -556,11 +562,81 @@ function SetupIncompleteBanner({
         
         {incompleteSteps.length > 0 && (
           <div style={{ marginTop: '8px' }}>
-            <div style={{ fontWeight: 600, color: '#7c2d12', marginBottom: '6px', fontSize: '.9rem' }}>
+            <div 
+              style={{ 
+                fontWeight: 600, 
+                color: '#7c2d12', 
+                marginBottom: '6px', 
+                fontSize: '.9rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                cursor: 'pointer'
+              }}
+              onClick={() => setIncompleteCollapsed(!incompleteCollapsed)}
+            >
               Incomplete ({incompleteSteps.length}/{totalSteps})
+              <i 
+                className={`fas fa-chevron-${incompleteCollapsed ? 'down' : 'up'}`} 
+                style={{ fontSize: '10px', color: '#7c2d12' }}
+              ></i>
             </div>
+            {!incompleteCollapsed && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                {incompleteSteps.map((step) => {
+                  const stepKey = step.key || step;
+                  return (
+                    <span
+                      key={stepKey}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        background: 'rgba(239, 68, 68, 0.12)',
+                        color: '#111827',
+                        border: '1px solid #ef4444',
+                        borderRadius: '999px',
+                        padding: '6px 12px',
+                        fontSize: '12px',
+                        whiteSpace: 'nowrap',
+                        cursor: 'pointer'
+                      }}
+                      onClick={() => handleStepClick(stepKey)}
+                      title={`Click to complete: ${step.label || stepKey}`}
+                    >
+                      <i className="fas fa-times-circle" style={{ color: '#ef4444' }}></i>
+                      {step.label || stepKey}
+                    </span>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+        
+        <div style={{ marginTop: '10px' }}>
+          <div 
+            style={{ 
+              fontWeight: 600, 
+              color: '#166534', 
+              marginBottom: '6px', 
+              fontSize: '.9rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              cursor: 'pointer'
+            }}
+            onClick={() => setCompletedCollapsed(!completedCollapsed)}
+          >
+            Completed ({completedSteps.length}/{totalSteps})
+            <i 
+              className={`fas fa-chevron-${completedCollapsed ? 'down' : 'up'}`} 
+              style={{ fontSize: '10px', color: '#166534' }}
+            ></i>
+          </div>
+          {!completedCollapsed && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-              {incompleteSteps.map((step) => {
+              {completedSteps.map((step) => {
                 const stepKey = step.key || step;
                 return (
                   <span
@@ -569,59 +645,25 @@ function SetupIncompleteBanner({
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: '6px',
-                      background: '#ffedd5',
-                      color: '#7c2d12',
-                      border: '1px solid #fed7aa',
+                      background: 'rgba(16, 185, 129, 0.12)',
+                      color: '#111827',
+                      border: '1px solid #10b981',
                       borderRadius: '999px',
-                      padding: '4px 10px',
-                      fontSize: '.85rem',
+                      padding: '6px 12px',
+                      fontSize: '12px',
                       whiteSpace: 'nowrap',
                       cursor: 'pointer'
                     }}
                     onClick={() => handleStepClick(stepKey)}
-                    title={`Click to complete: ${step.label || stepKey}`}
+                    title={`Review: ${step.label || stepKey}`}
                   >
-                    <i className="fas fa-circle-xmark"></i>
+                    <i className="fas fa-check-circle" style={{ color: '#10b981' }}></i>
                     {step.label || stepKey}
                   </span>
                 );
               })}
             </div>
-          </div>
-        )}
-        
-        <div style={{ marginTop: '10px' }}>
-          <div style={{ fontWeight: 600, color: '#166534', marginBottom: '6px', fontSize: '.9rem' }}>
-            Completed ({completedSteps.length}/{totalSteps})
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-            {completedSteps.map((step) => {
-              const stepKey = step.key || step;
-              return (
-                <span
-                  key={stepKey}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    background: '#d1fae5',
-                    color: '#065f46',
-                    border: '1px solid #6ee7b7',
-                    borderRadius: '999px',
-                    padding: '4px 10px',
-                    fontSize: '.85rem',
-                    whiteSpace: 'nowrap',
-                    cursor: 'pointer'
-                  }}
-                  onClick={() => handleStepClick(stepKey)}
-                  title={`Review: ${step.label || stepKey}`}
-                >
-                  <i className="fas fa-circle-check"></i>
-                  {step.label || stepKey}
-                </span>
-              );
-            })}
-          </div>
+          )}
         </div>
       </div>
     </div>
