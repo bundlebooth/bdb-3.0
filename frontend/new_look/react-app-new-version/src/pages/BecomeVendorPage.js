@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import ReactDOM from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL, GOOGLE_MAPS_API_KEY } from '../config';
@@ -1181,7 +1182,15 @@ const BecomeVendorPage = () => {
 
   return (
     <div className="become-vendor-page">
-      <header className="become-vendor-header">
+      <header 
+        className="become-vendor-header"
+        style={{
+          position: 'sticky',
+          top: 0,
+          zIndex: 9999,
+          backgroundColor: '#ffffff'
+        }}
+      >
         <div className="header-content">
           <div className="logo" onClick={() => navigate('/')} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
             <img src="/images/logo.png" alt="PlanBeau" style={{ height: '50px', width: 'auto' }} />
@@ -1205,16 +1214,23 @@ const BecomeVendorPage = () => {
             </button>
           </div>
         </div>
+        {/* Progress bar inside header - inherits sticky positioning */}
+        <div style={{
+          width: '100%',
+          height: '4px',
+          backgroundColor: '#f3f4f6'
+        }}>
+          <div style={{ 
+            width: `${progress}%`,
+            height: '100%',
+            background: '#5e72e4',
+            transition: 'width 0.4s ease',
+            borderRadius: '0 2px 2px 0'
+          }}></div>
+        </div>
       </header>
 
-      <div className="progress-container">
-        <div className="progress-bar" style={{ 
-          width: `${progress}%`,
-          background: '#5e72e4'
-        }}></div>
-      </div>
-
-      <main className="become-vendor-main">
+      <main className="become-vendor-main" style={{ paddingBottom: '100px' }}>
         {loadingProfile ? (
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
             <div className="spinner"></div>
@@ -1422,10 +1438,30 @@ const BecomeVendorPage = () => {
         )}
       </main>
 
-      {/* Hide footer when profile is pending review or approved */}
+      {/* Fixed footer navigation - v2 */}
       {!(profileStatus === 'pending_review' || profileStatus === 'approved') && (
-      <footer className="become-vendor-footer">
-        <div className="footer-content">
+      <div 
+        id="vendor-footer-fixed"
+        style={{
+          position: 'fixed',
+          bottom: '0px',
+          left: '0px',
+          right: '0px',
+          zIndex: 99999,
+          backgroundColor: '#ffffff',
+          boxShadow: '0 -2px 10px rgba(0, 0, 0, 0.15)',
+          padding: '12px 16px',
+          borderTop: '1px solid #e5e7eb'
+        }}
+      >
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center',
+          maxWidth: '1280px',
+          margin: '0 auto',
+          width: '100%'
+        }}>
           <button
             className="btn-back"
             onClick={handleBack}
@@ -1435,8 +1471,7 @@ const BecomeVendorPage = () => {
             Back
           </button>
           
-          
-          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
             {currentUser && currentStep > 0 && (
               <button
                 className="btn-save"
@@ -1477,7 +1512,7 @@ const BecomeVendorPage = () => {
             </button>
           </div>
         </div>
-      </footer>
+      </div>
       )}
     </div>
   );
@@ -2949,11 +2984,17 @@ function ServicesStep({ formData, setFormData }) {
         </p>
       </div>
 
-      {/* Selected Services List */}
+      {/* Available Services Header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+        <h5 style={{ margin: 0, color: 'var(--primary)' }}>Available Services</h5>
+        <span style={{ color: 'var(--text-light)', fontSize: '0.9rem' }}>
+          {formData.selectedServices.length} added
+        </span>
+      </div>
+
+      {/* Selected Services List - Same style as ServicesPackagesPanel */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem', width: '100%' }}>
         {formData.selectedServices.map((service, index) => {
-          const isEditing = editingServiceId === service.serviceId;
-          
           const getCategoryIcon = () => {
             const catLower = (service.category || '').toLowerCase();
             const nameLower = (service.serviceName || '').toLowerCase();
@@ -2982,204 +3023,115 @@ function ServicesStep({ formData, setFormData }) {
           };
           
           return (
-            <React.Fragment key={`service-${service.serviceId}-${index}`}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <div style={{ 
-                  flex: 1,
-                  padding: '1.25rem', 
-                  background: '#fff', 
-                  border: '1px solid #e5e7eb', 
-                  borderRadius: '12px',
-                  position: 'relative'
+            <div key={`service-${service.serviceId}-${index}`} style={{ padding: '1rem', background: '#fff', border: '1px solid var(--border)', borderRadius: '8px' }}>
+              <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+                {/* Service Icon */}
+                <div style={{
+                  flexShrink: 0,
+                  width: '60px',
+                  height: '60px',
+                  borderRadius: '8px',
+                  background: 'var(--secondary)',
+                  border: '1px solid var(--border)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
                 }}>
-                  {/* Pricing positioned at top right - matching vendor profile */}
-                  <div style={{ 
-                    position: 'absolute',
-                    top: '1.25rem',
-                    right: '1.25rem',
-                    textAlign: 'right', 
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'flex-end',
-                    gap: '0.25rem'
-                  }}>
-                    <div style={{ 
-                      fontSize: '1.25rem', 
-                      fontWeight: 700, 
-                      color: '#111827',
-                      lineHeight: '1'
-                    }}>
-                      {service.baseRate ? `$${parseFloat(service.baseRate).toFixed(0)}` : '$0'}
-                    </div>
-                    <div style={{ 
-                      fontSize: '0.625rem', 
-                      color: '#9ca3af',
-                      fontWeight: 500,
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.5px',
-                      lineHeight: '1'
-                    }}>
-                      {service.pricingModel === 'hourly' ? 'BASE PRICE' : service.pricingModel === 'fixed' ? 'FIXED PRICE' : 'PER PERSON'}
-                    </div>
-                    {service.pricingModel === 'hourly' && service.overtimeRate && (
-                      <div style={{ 
-                        fontSize: '0.875rem', 
-                        fontWeight: 600, 
-                        color: '#111827',
-                        lineHeight: '1',
-                        marginTop: '0.25rem'
-                      }}>
-                        ${parseFloat(service.overtimeRate).toFixed(0)} <span style={{ 
-                          fontSize: '0.75rem', 
-                          color: '#9ca3af',
-                          fontWeight: 400
-                        }}>/hr overtime</span>
-                      </div>
-                    )}
-                  </div>
-
-                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
-                    {/* Service Icon */}
-                    <div style={{
-                      flexShrink: 0,
-                      width: '60px',
-                      height: '60px',
-                      borderRadius: '10px',
-                      background: '#f3f4f6',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}>
-                      <i className={`fas ${getCategoryIcon()}`} style={{ color: '#5e72e4', fontSize: '1.5rem' }}></i>
-                    </div>
-                    
-                    {/* Service Details */}
-                    <div style={{ flex: 1, minWidth: 0, paddingRight: '120px' }}>
-                      <h3 style={{ fontSize: '1.125rem', fontWeight: 600, color: '#111827', margin: '0 0 0.5rem 0' }}>
+                  <i className={`fas ${getCategoryIcon()}`} style={{ color: 'var(--primary)', fontSize: '1.5rem' }}></i>
+                </div>
+                
+                {/* Service Details */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text)', margin: '0 0 0.35rem 0' }}>
                         {service.serviceName}
                       </h3>
                       
-                      {/* Metadata row - all on same line */}
-                      <div style={{ 
-                        display: 'flex', 
-                        gap: '1rem', 
-                        fontSize: '0.875rem', 
-                        color: '#6b7280',
-                        marginBottom: service.description ? '0.75rem' : 0,
-                        flexWrap: 'wrap',
-                        alignItems: 'center'
-                      }}>
+                      {/* Category & Duration Row */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.8rem', color: 'var(--text-light)', marginBottom: '0.25rem', flexWrap: 'wrap' }}>
                         {service.category && (
-                          <span style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
-                            <i className="fas fa-tag"></i>
+                          <span>
+                            <i className="fas fa-tag" style={{ marginRight: '0.25rem' }}></i>
                             {service.category}
                           </span>
                         )}
-                        {service.baseDuration && (
-                          <span style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
-                            <i className="fas fa-clock"></i>
-                            {service.baseDuration >= 1 
-                              ? Math.floor(service.baseDuration) + 'h' + (service.baseDuration % 1 > 0 ? ' ' + Math.round((service.baseDuration % 1) * 60) + 'm' : '')
-                              : (service.baseDuration * 60) + 'm'}
-                          </span>
-                        )}
+                        <span>
+                          <i className="fas fa-clock" style={{ marginRight: '0.25rem' }}></i>
+                          {service.baseDuration 
+                            ? (service.baseDuration >= 1 
+                                ? Math.floor(service.baseDuration) + ' hour' + (service.baseDuration >= 2 ? 's' : '') 
+                                : (service.baseDuration * 60) + ' min')
+                            : 'Not set'}
+                        </span>
                       </div>
                       
-                      {service.description && (
-                        <p style={{ fontSize: '0.9375rem', color: '#4b5563', lineHeight: '1.6', margin: 0 }}>
-                          {service.description}
-                        </p>
-                      )}
+                      {/* Pricing Info Row */}
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-light)' }}>
+                        <i className="fas fa-dollar-sign" style={{ marginRight: '0.25rem' }}></i>
+                        <span>{getPricingDisplay()}</span>
+                      </div>
+                    </div>
+                    
+                    {/* Action Buttons */}
+                    <div className="action-btn-group">
+                      <button
+                        type="button"
+                        className="action-btn action-btn-edit"
+                        onClick={() => handleEditService(service)}
+                        title="Edit service"
+                      >
+                        <i className="fas fa-pen"></i>
+                      </button>
+                      <button
+                        type="button"
+                        className="action-btn action-btn-delete"
+                        onClick={() => handleRemoveService(service.serviceId)}
+                        title="Remove service"
+                      >
+                        <i className="fas fa-trash-alt"></i>
+                      </button>
                     </div>
                   </div>
                 </div>
-                
-                {/* Action Buttons - Outside card on the right */}
-                <div style={{ 
-                  display: 'flex', 
-                  gap: '0.375rem',
-                  flexShrink: 0
-                }}>
-                  <button
-                    type="button"
-                    onClick={() => handleEditService(service)}
-                    title="Edit"
-                    style={{ 
-                      width: '32px',
-                      height: '32px',
-                      borderRadius: '50%',
-                      background: 'white',
-                      color: '#5e72e4',
-                      border: '1.5px solid #5e72e4',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '0.75rem',
-                      transition: 'all 0.2s ease',
-                      boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
-                    }}
-                    onMouseOver={(e) => {
-                      e.currentTarget.style.background = '#5e72e4';
-                      e.currentTarget.style.color = 'white';
-                      e.currentTarget.style.transform = 'scale(1.05)';
-                    }}
-                    onMouseOut={(e) => {
-                      e.currentTarget.style.background = 'white';
-                      e.currentTarget.style.color = '#5e72e4';
-                      e.currentTarget.style.transform = 'scale(1)';
-                    }}
-                  >
-                    <i className="fas fa-edit"></i>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveService(service.serviceId)}
-                    title="Remove"
-                    style={{ 
-                      width: '32px',
-                      height: '32px',
-                      borderRadius: '50%',
-                      background: 'white',
-                      color: '#dc2626',
-                      border: '1.5px solid #dc2626',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '0.75rem',
-                      transition: 'all 0.2s ease',
-                      boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
-                    }}
-                    onMouseOver={(e) => {
-                      e.currentTarget.style.background = '#dc2626';
-                      e.currentTarget.style.color = 'white';
-                      e.currentTarget.style.transform = 'scale(1.05)';
-                    }}
-                    onMouseOut={(e) => {
-                      e.currentTarget.style.background = 'white';
-                      e.currentTarget.style.color = '#dc2626';
-                      e.currentTarget.style.transform = 'scale(1)';
-                    }}
-                  >
-                    <i className="fas fa-trash"></i>
-                  </button>
-                </div>
               </div>
-
-            </React.Fragment>
+            </div>
           );
         })}
+        
+        {/* Add Service Card - Same style as ServicesPackagesPanel */}
+        <div 
+          onClick={() => setShowModal(true)}
+          style={{
+            width: '100%',
+            border: '2px dashed var(--border)',
+            borderRadius: '12px',
+            background: '#f8fafc',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '16px',
+            cursor: 'pointer',
+            transition: 'all 0.2s'
+          }}
+          onMouseOver={(e) => {
+            e.currentTarget.style.borderColor = 'var(--primary)';
+            e.currentTarget.style.background = '#f0f4ff';
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.borderColor = 'var(--border)';
+            e.currentTarget.style.background = '#f8fafc';
+          }}
+        >
+          <div style={{ textAlign: 'center', color: '#64748b' }}>
+            <div style={{ fontSize: '28px', lineHeight: 1, marginBottom: '8px' }}>
+              <i className="fas fa-plus-circle"></i>
+            </div>
+            <div style={{ fontWeight: 600 }}>Add a service</div>
+            <div style={{ fontSize: '0.85rem' }}>Click to choose from the list</div>
+          </div>
+        </div>
       </div>
-
-      {/* Add Service Button */}
-      <button
-        type="button"
-        className="btn-add-service"
-        onClick={() => setShowModal(true)}
-      >
-        + Add Service
-      </button>
 
       {/* Service Selection Modal */}
       {showModal && (
@@ -3974,13 +3926,14 @@ function GalleryStep({ formData, setFormData, currentUser }) {
               displayPhotos.map((photo, index) => (
                 <div
                   key={photo.id || index}
+                  className="gallery-photo-card"
                   style={{
                     position: 'relative',
                     aspectRatio: '1',
                     borderRadius: '12px',
                     overflow: 'hidden',
-                    border: '1px solid #e5e7eb',
-                    background: '#f3f4f6'
+                    background: '#f3f4f6',
+                    border: photo.isPrimary ? '2px solid var(--primary)' : '1px solid var(--border)'
                   }}
                 >
                   <img
@@ -3992,43 +3945,51 @@ function GalleryStep({ formData, setFormData, currentUser }) {
                       e.target.parentElement.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#9ca3af"><i class="fas fa-image" style="font-size:2rem"></i></div>';
                     }}
                   />
+                  {/* Primary badge */}
                   {photo.isPrimary && (
                     <div style={{
                       position: 'absolute',
-                      top: '0.5rem',
-                      left: '0.5rem',
+                      top: '8px',
+                      left: '8px',
                       background: 'var(--primary)',
                       color: 'white',
-                      padding: '0.25rem 0.5rem',
+                      padding: '4px 8px',
                       borderRadius: '4px',
-                      fontSize: '0.75rem',
+                      fontSize: '11px',
                       fontWeight: 600
                     }}>
-                      Primary
+                      COVER
                     </div>
                   )}
-                  <button
-                    onClick={() => handleDeletePhoto(photo.id, index)}
-                    style={{
-                      position: 'absolute',
-                      top: '0.5rem',
-                      right: '0.5rem',
-                      background: 'rgba(239, 68, 68, 0.9)',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '6px',
-                      padding: '0.5rem',
-                      cursor: 'pointer',
-                      fontSize: '0.9rem',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      width: '32px',
-                      height: '32px'
-                    }}
-                  >
-                    <i className="fas fa-trash"></i>
-                  </button>
+                  {/* Action button - bottom with gradient overlay (Airbnb style) */}
+                  <div style={{
+                    position: 'absolute',
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    padding: '24px 8px 8px',
+                    background: 'linear-gradient(transparent, rgba(0,0,0,0.5))',
+                    display: 'flex',
+                    justifyContent: 'flex-end',
+                    alignItems: 'center'
+                  }}>
+                    <button
+                      type="button"
+                      onClick={() => handleDeletePhoto(photo.id, index)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: 'white',
+                        fontSize: '13px',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        textDecoration: 'underline',
+                        padding: '4px'
+                      }}
+                    >
+                      Remove
+                    </button>
+                  </div>
                 </div>
               ))
             )}
@@ -5396,16 +5357,10 @@ function PoliciesStep({ formData, onInputChange, setFormData, currentUser }) {
                                 {editingFaq.answers.length > 1 && (
                                   <button
                                     type="button"
+                                    className="action-btn action-btn-delete"
                                     onClick={() => handleRemoveEditAnswer(ansIdx)}
-                                    style={{
-                                      background: '#fee2e2',
-                                      border: 'none',
-                                      color: '#dc2626',
-                                      cursor: 'pointer',
-                                      padding: '0.5rem',
-                                      borderRadius: '6px',
-                                      alignSelf: 'flex-start'
-                                    }}
+                                    title="Remove answer"
+                                    style={{ alignSelf: 'flex-start' }}
                                   >
                                     <i className="fas fa-times"></i>
                                   </button>
@@ -5449,34 +5404,22 @@ function PoliciesStep({ formData, onInputChange, setFormData, currentUser }) {
                             marginBottom: '0.75rem'
                           }}>
                             <strong style={{ fontSize: '0.95rem', color: '#111827', flex: 1 }}>{faq.question}</strong>
-                            <div style={{ display: 'flex', gap: '0.5rem', marginLeft: '1rem' }}>
+                            <div className="action-btn-group">
                               <button
+                                type="button"
+                                className="action-btn action-btn-edit"
                                 onClick={() => handleEditFaq(index)}
-                                style={{
-                                  background: 'transparent',
-                                  border: 'none',
-                                  color: '#6b7280',
-                                  cursor: 'pointer',
-                                  padding: '0.25rem',
-                                  fontSize: '0.875rem'
-                                }}
                                 title="Edit FAQ"
                               >
-                                <i className="fas fa-edit"></i>
+                                <i className="fas fa-pen"></i>
                               </button>
                               <button
+                                type="button"
+                                className="action-btn action-btn-delete"
                                 onClick={() => handleDeleteFaq(faq.id, index)}
-                                style={{
-                                  background: 'transparent',
-                                  border: 'none',
-                                  color: '#dc2626',
-                                  cursor: 'pointer',
-                                  padding: '0.25rem',
-                                  fontSize: '0.875rem'
-                                }}
                                 title="Delete FAQ"
                               >
-                                <i className="fas fa-trash"></i>
+                                <i className="fas fa-trash-alt"></i>
                               </button>
                             </div>
                           </div>

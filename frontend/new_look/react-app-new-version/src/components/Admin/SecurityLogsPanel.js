@@ -211,7 +211,7 @@ const SecurityLogsPanel = () => {
       'Approved Vendor': { class: 'badge-success', icon: 'fa-check' },
       'Rejected Vendor': { class: 'badge-danger', icon: 'fa-times' },
       'Suspended User': { class: 'badge-dark', icon: 'fa-ban' },
-      'Deleted Review': { class: 'badge-danger', icon: 'fa-trash' },
+      'Deleted Review': { class: 'badge-danger', icon: 'fa-trash-alt' },
       'Issued Refund': { class: 'badge-info', icon: 'fa-undo' },
       'Updated Settings': { class: 'badge-purple', icon: 'fa-cog' }
     };

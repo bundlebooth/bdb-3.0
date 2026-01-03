@@ -103,7 +103,7 @@ const UserManagementPanel = () => {
 
   const getAccountTypeBadge = (user) => {
     if (user.IsAdmin) {
-      return <span className="status-badge badge-purple"><i className="fas fa-crown"></i> Admin</span>;
+      return <span className="status-badge badge-purple"><i className="fas fa-shield-alt"></i> Admin</span>;
     }
     if (user.IsVendor) {
       return <span className="status-badge badge-info"><i className="fas fa-store"></i> Vendor</span>;
@@ -325,7 +325,7 @@ const UserManagementPanel = () => {
                         title="Edit User"
                         onClick={() => { setSelectedUser(user); setModalType('edit'); }}
                       >
-                        <i className="fas fa-edit"></i>
+                        <i className="fas fa-pen"></i>
                       </button>
                       <button
                         className="action-btn activity"

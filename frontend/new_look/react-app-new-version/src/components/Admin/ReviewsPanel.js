@@ -220,7 +220,7 @@ const ReviewsPanel = () => {
                     className="action-btn edit"
                     onClick={() => { setSelectedReview(review); setModalType('edit'); }}
                   >
-                    <i className="fas fa-sticky-note"></i> Add Note
+                    <i className="fas fa-pen"></i> Add Note
                   </button>
                   {review.IsFlagged ? (
                     <button
@@ -241,7 +241,7 @@ const ReviewsPanel = () => {
                     className="action-btn delete"
                     onClick={() => handleDeleteReview(review.ReviewID)}
                   >
-                    <i className="fas fa-trash"></i> Delete
+                    <i className="fas fa-trash-alt"></i> Delete
                   </button>
                 </div>
               </div>

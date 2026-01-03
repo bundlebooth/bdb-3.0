@@ -224,7 +224,7 @@ const BookingManagementPanel = () => {
                         title="Edit Booking"
                         onClick={() => { setSelectedBooking(booking); setModalType('edit'); }}
                       >
-                        <i className="fas fa-edit"></i>
+                        <i className="fas fa-pen"></i>
                       </button>
                       {booking.Status !== 'Cancelled' && booking.Status !== 'Completed' && (
                         <button

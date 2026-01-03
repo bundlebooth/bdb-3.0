@@ -257,42 +257,20 @@ function ClientInvoicesSection() {
                         <td className="nowrap ta-center" style={{ whiteSpace: 'nowrap', padding: '6px 8px', border: '1px solid var(--border, #e5e7eb)', background: 'var(--secondary, #fff)', textAlign: 'center' }}>
                           <div className="inv-actions" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
                             <button 
-                              className="btn btn-icon" 
+                              className="action-btn action-btn-view" 
                               title="View invoice" 
                               aria-label="View invoice" 
                               onClick={() => handleViewInvoice(b)}
-                              style={{ 
-                                margin: 0, 
-                                padding: '6px', 
-                                background: 'transparent', 
-                                border: 'none', 
-                                cursor: 'pointer',
-                                color: '#6b7280',
-                                transition: 'color 0.2s'
-                              }}
-                              onMouseEnter={(e) => e.currentTarget.style.color = '#5e72e4'}
-                              onMouseLeave={(e) => e.currentTarget.style.color = '#6b7280'}
                             >
-                              <i className="fa-solid fa-eye" aria-hidden="true" style={{ fontSize: '16px' }}></i>
+                              <i className="fas fa-eye" aria-hidden="true"></i>
                             </button>
                             <button 
-                              className="btn btn-icon" 
+                              className="action-btn action-btn-view" 
                               title="Download PDF" 
                               aria-label="Download PDF" 
                               onClick={() => handleDownloadInvoice(b)}
-                              style={{ 
-                                margin: 0, 
-                                padding: '6px', 
-                                background: 'transparent', 
-                                border: 'none', 
-                                cursor: 'pointer',
-                                color: '#6b7280',
-                                transition: 'color 0.2s'
-                              }}
-                              onMouseEnter={(e) => e.currentTarget.style.color = '#5e72e4'}
-                              onMouseLeave={(e) => e.currentTarget.style.color = '#6b7280'}
                             >
-                              <i className="fa-solid fa-cloud-arrow-down" aria-hidden="true" style={{ fontSize: '16px' }}></i>
+                              <i className="fas fa-download" aria-hidden="true"></i>
                             </button>
                           </div>
                         </td>

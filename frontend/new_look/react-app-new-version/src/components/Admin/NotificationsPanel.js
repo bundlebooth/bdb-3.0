@@ -166,7 +166,7 @@ const TemplatesSection = ({ templates, loading, onEdit, onRefresh }) => {
                           {template.type === 'email' ? 'Email' : 'SMS'}
                         </span>
                         <button className="action-btn edit" onClick={() => onEdit(template)}>
-                          <i className="fas fa-edit"></i>
+                          <i className="fas fa-pen"></i>
                         </button>
                       </div>
                     </div>
@@ -397,10 +397,10 @@ const AutomationSection = () => {
                 <span className="toggle-slider"></span>
               </label>
               <button className="action-btn edit">
-                <i className="fas fa-edit"></i>
+                <i className="fas fa-pen"></i>
               </button>
               <button className="action-btn delete">
-                <i className="fas fa-trash"></i>
+                <i className="fas fa-trash-alt"></i>
               </button>
             </div>
           </div>

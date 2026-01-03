@@ -1009,7 +1009,7 @@ function IndexPage() {
                       }}
                       title="Change location"
                     >
-                      <i className="fas fa-edit"></i>
+                      <i className="fas fa-pen"></i>
                     </button>
                   </>
                 )}

@@ -289,12 +289,13 @@ function GalleryMediaPanel({ onBack, vendorProfileId }) {
               photos.map((photo, index) => (
                 <div
                   key={photo.id}
+                  className="gallery-photo-card"
                   style={{
                     position: 'relative',
                     aspectRatio: '1',
-                    borderRadius: 'var(--radius)',
+                    borderRadius: '12px',
                     overflow: 'hidden',
-                    border: photo.isPrimary ? '3px solid var(--primary)' : '1px solid var(--border)'
+                    border: photo.isPrimary ? '2px solid var(--primary)' : '1px solid var(--border)'
                   }}
                 >
                   <img
@@ -302,47 +303,67 @@ function GalleryMediaPanel({ onBack, vendorProfileId }) {
                     alt={`Gallery ${index + 1}`}
                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                   />
+                  {/* Primary badge */}
                   {photo.isPrimary && (
                     <div style={{
                       position: 'absolute',
-                      top: '0.5rem',
-                      left: '0.5rem',
+                      top: '8px',
+                      left: '8px',
                       background: 'var(--primary)',
                       color: 'white',
-                      padding: '0.25rem 0.5rem',
+                      padding: '4px 8px',
                       borderRadius: '4px',
-                      fontSize: '0.75rem',
+                      fontSize: '11px',
                       fontWeight: 600
                     }}>
-                      PRIMARY
+                      COVER
                     </div>
                   )}
+                  {/* Action buttons - bottom with gradient overlay */}
                   <div style={{
                     position: 'absolute',
                     bottom: 0,
                     left: 0,
                     right: 0,
-                    background: 'rgba(0,0,0,0.7)',
-                    padding: '0.5rem',
+                    padding: '24px 8px 8px',
+                    background: 'linear-gradient(transparent, rgba(0,0,0,0.5))',
                     display: 'flex',
-                    gap: '0.5rem',
-                    justifyContent: 'center'
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
                   }}>
-                    {!photo.isPrimary && (
+                    {!photo.isPrimary ? (
                       <button
-                        className="btn btn-sm"
+                        type="button"
                         onClick={() => handleSetPrimary(photo.id)}
-                        style={{ background: 'white', color: 'var(--text)', fontSize: '0.75rem', padding: '0.25rem 0.5rem' }}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: 'white',
+                          fontSize: '13px',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          textDecoration: 'underline',
+                          padding: '4px'
+                        }}
                       >
-                        Set Primary
+                        Make cover
                       </button>
-                    )}
+                    ) : <span />}
                     <button
-                      className="btn btn-sm"
+                      type="button"
                       onClick={() => handleDeletePhoto(photo.id)}
-                      style={{ background: 'var(--error)', color: 'white', fontSize: '0.75rem', padding: '0.25rem 0.5rem' }}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: 'white',
+                        fontSize: '13px',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        textDecoration: 'underline',
+                        padding: '4px'
+                      }}
                     >
-                      <i className="fas fa-trash"></i>
+                      Remove
                     </button>
                   </div>
                 </div>
@@ -447,20 +468,20 @@ function GalleryMediaPanel({ onBack, vendorProfileId }) {
                           <i className="fas fa-eye" style={{ marginRight: '0.5rem' }}></i>View
                         </button>
                         <button 
-                          className="btn btn-outline" 
-                          style={{ padding: '0.5rem 0.75rem' }} 
+                          type="button"
+                          className="action-btn action-btn-edit" 
                           title="Edit album"
                           onClick={() => handleEditAlbum(album)}
                         >
-                          <i className="fas fa-edit"></i>
+                          <i className="fas fa-pen"></i>
                         </button>
                         <button 
-                          className="btn btn-outline" 
-                          style={{ padding: '0.5rem 0.75rem', color: 'var(--error)', borderColor: 'var(--error)' }}
+                          type="button"
+                          className="action-btn action-btn-delete"
                           title="Delete album"
                           onClick={() => handleDeleteAlbum(album.id)}
                         >
-                          <i className="fas fa-trash"></i>
+                          <i className="fas fa-trash-alt"></i>
                         </button>
                       </div>
                     </div>

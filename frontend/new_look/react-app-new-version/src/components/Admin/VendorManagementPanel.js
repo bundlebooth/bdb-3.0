@@ -466,7 +466,7 @@ const VendorManagementPanel = () => {
                         title="Edit Vendor"
                         onClick={() => { setSelectedVendor(vendor); setModalType('edit'); }}
                       >
-                        <i className="fas fa-edit"></i>
+                        <i className="fas fa-pen"></i>
                       </button>
                       {vendor.ProfileStatus === 'Pending' && (
                         <>

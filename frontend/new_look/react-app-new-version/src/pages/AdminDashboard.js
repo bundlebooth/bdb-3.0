@@ -720,10 +720,10 @@ const FAQManagementPanel = () => {
               <option value="Account">Account</option>
             </select>
             <div style={{ display: 'flex', gap: '12px' }}>
-              <button onClick={() => handleSave(newFaq)} style={{ background: '#5e72e4', color: 'white', padding: '10px 20px', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>
+              <button className="btn btn-primary" onClick={() => handleSave(newFaq)}>
                 Save FAQ
               </button>
-              <button onClick={() => { setShowAddForm(false); setNewFaq({ question: '', answer: '', category: 'General', displayOrder: 0 }); }} style={{ background: '#f0f0f0', color: '#333', padding: '10px 20px', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>
+              <button className="btn btn-outline" onClick={() => { setShowAddForm(false); setNewFaq({ question: '', answer: '', category: 'General', displayOrder: 0 }); }}>
                 Cancel
               </button>
             </div>
@@ -761,8 +761,8 @@ const FAQManagementPanel = () => {
                     style={{ padding: '10px', border: '1px solid #e0e0e0', borderRadius: '6px' }}
                   />
                   <div style={{ display: 'flex', gap: '8px' }}>
-                    <button onClick={() => handleSave({ ...faq, question: faq.Question, answer: faq.Answer, category: faq.Category, displayOrder: faq.DisplayOrder, isActive: faq.IsActive })} style={{ background: '#5e72e4', color: 'white', padding: '8px 16px', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>Save</button>
-                    <button onClick={() => setEditingFaq(null)} style={{ background: '#f0f0f0', padding: '8px 16px', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>Cancel</button>
+                    <button className="btn btn-primary btn-sm" onClick={() => handleSave({ ...faq, question: faq.Question, answer: faq.Answer, category: faq.Category, displayOrder: faq.DisplayOrder, isActive: faq.IsActive })}>Save</button>
+                    <button className="btn btn-outline btn-sm" onClick={() => setEditingFaq(null)}>Cancel</button>
                   </div>
                 </div>
               ) : (
@@ -774,8 +774,8 @@ const FAQManagementPanel = () => {
                       <p style={{ margin: 0, fontSize: '13px', color: '#666', lineHeight: '1.5' }}>{faq.Answer}</p>
                     </div>
                     <div style={{ display: 'flex', gap: '8px' }}>
-                      <button onClick={() => setEditingFaq(faq.FAQID)} style={{ background: 'none', border: 'none', color: '#5e72e4', cursor: 'pointer' }}><i className="fas fa-edit"></i></button>
-                      <button onClick={() => handleDelete(faq.FAQID)} style={{ background: 'none', border: 'none', color: '#f5365c', cursor: 'pointer' }}><i className="fas fa-trash"></i></button>
+                      <button onClick={() => setEditingFaq(faq.FAQID)} className="action-btn action-btn-edit" title="Edit FAQ"><i className="fas fa-pen"></i></button>
+                      <button onClick={() => handleDelete(faq.FAQID)} className="action-btn action-btn-delete" title="Delete FAQ"><i className="fas fa-trash-alt"></i></button>
                     </div>
                   </div>
                 </>
@@ -923,7 +923,7 @@ const CommissionSettingsPanel = () => {
                 onChange={(e) => setTestAmount(parseFloat(e.target.value) || 0)}
                 style={{ flex: 1, padding: '12px', border: '1px solid #e0e0e0', borderRadius: '8px' }}
               />
-              <button onClick={calculateBreakdown} style={{ background: '#5e72e4', color: 'white', padding: '12px 24px', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>
+              <button className="btn btn-primary" onClick={calculateBreakdown}>
                 Calculate
               </button>
             </div>

@@ -352,21 +352,22 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
                         </div>
                         
                         {/* Action Buttons */}
-                        <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
+                        <div className="action-btn-group">
                           <button
                             type="button"
-                            className="btn btn-outline"
+                            className="action-btn action-btn-edit"
                             onClick={() => handleEditService(service)}
-                            style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
+                            title="Edit service"
                           >
-                            <i className="fas fa-edit" style={{ marginRight: '0.25rem' }}></i>Edit
+                            <i className="fas fa-pen"></i>
                           </button>
                           <button
                             type="button"
+                            className="action-btn action-btn-delete"
                             onClick={() => handleRemoveService(service.id)}
-                            style={{ padding: '0.4rem 0.65rem', background: '#fee', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '6px', cursor: 'pointer' }}
+                            title="Remove service"
                           >
-                            <i className="fas fa-times"></i>
+                            <i className="fas fa-trash-alt"></i>
                           </button>
                         </div>
                       </div>

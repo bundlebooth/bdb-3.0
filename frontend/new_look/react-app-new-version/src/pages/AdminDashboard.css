@@ -702,61 +702,11 @@
   color: white;
 }
 
-/* Action Buttons */
+/* Action Buttons - uses global styles from index.css */
 .action-buttons {
   display: flex;
   gap: 0.5rem;
-}
-
-.action-btn {
-  width: 32px;
-  height: 32px;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  display: flex;
   align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-}
-
-.action-btn.view {
-  background: #dbeafe;
-  color: #2563eb;
-}
-
-.action-btn.edit {
-  background: #fef3c7;
-  color: #d97706;
-}
-
-.action-btn.approve {
-  background: #d1fae5;
-  color: #059669;
-}
-
-.action-btn.reject, .action-btn.delete {
-  background: #fee2e2;
-  color: #dc2626;
-}
-
-.action-btn.suspend {
-  background: #374151;
-  color: white;
-}
-
-.action-btn.analytics {
-  background: #ede9fe;
-  color: #7c3aed;
-}
-
-.action-btn.password {
-  background: #f3f4f6;
-  color: #6b7280;
-}
-
-.action-btn:hover {
-  transform: scale(1.1);
 }
 
 /* Visibility Toggle */

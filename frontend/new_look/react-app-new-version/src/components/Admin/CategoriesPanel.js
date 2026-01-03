@@ -149,7 +149,7 @@ const CategoriesPanel = () => {
                       onClick={() => { setSelectedCategory(category); setModalType('edit'); }}
                       title="Edit"
                     >
-                      <i className="fas fa-edit"></i>
+                      <i className="fas fa-pen"></i>
                     </button>
                     <button
                       className="action-btn services"
@@ -163,7 +163,7 @@ const CategoriesPanel = () => {
                       onClick={() => handleDeleteCategory(category.CategoryID)}
                       title="Delete"
                     >
-                      <i className="fas fa-trash"></i>
+                      <i className="fas fa-trash-alt"></i>
                     </button>
                   </div>
                 </div>
@@ -184,10 +184,10 @@ const CategoriesPanel = () => {
                             <i className={`fas fa-eye${sub.IsVisible ? '' : '-slash'}`}></i>
                           </button>
                           <button className="action-btn small edit">
-                            <i className="fas fa-edit"></i>
+                            <i className="fas fa-pen"></i>
                           </button>
                           <button className="action-btn small delete">
-                            <i className="fas fa-trash"></i>
+                            <i className="fas fa-trash-alt"></i>
                           </button>
                         </div>
                       </div>
@@ -508,7 +508,7 @@ const ServicesModal = ({ category, onClose }) => {
                           className="action-btn delete"
                           onClick={() => handleDeleteService(service.ServiceID)}
                         >
-                          <i className="fas fa-trash"></i>
+                          <i className="fas fa-trash-alt"></i>
                         </button>
                       </td>
                     </tr>

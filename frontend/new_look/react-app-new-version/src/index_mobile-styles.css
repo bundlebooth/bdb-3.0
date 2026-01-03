@@ -8302,30 +8302,46 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
 
 @media (max-width: 768px) {
     /* ----------------------------------------
-       1. HEADER - Sign in button to the right
+       1. HEADER - Logo, Search, Profile in row
        ---------------------------------------- */
     .header {
         display: flex !important;
         flex-direction: row !important;
         align-items: center !important;
         justify-content: space-between !important;
-        padding: 0.5rem 0.75rem !important;
-        gap: 0.5rem !important;
+        padding: 0.75rem 1rem !important;
+        gap: 0.75rem !important;
         flex-wrap: nowrap !important;
+        height: auto !important;
+        min-height: 60px !important;
+        max-height: none !important;
+    }
+    
+    /* Header left - just logo, hide nav tabs */
+    .header .header-left {
+        flex: 0 0 auto !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 0 !important;
     }
     
     .header .logo {
         flex: 0 0 auto !important;
-        order: 1 !important;
+        margin-right: 0 !important;
     }
     
     .header .logo img {
-        height: 28px !important;
+        height: 32px !important;
     }
     
+    /* Hide nav tabs on mobile */
+    .header .header-nav-tabs {
+        display: none !important;
+    }
+    
+    /* Search container takes remaining space */
     .header .search-container {
         flex: 1 1 auto !important;
-        order: 2 !important;
         margin: 0 0.5rem !important;
         min-width: 0 !important;
         max-width: none !important;
@@ -8333,7 +8349,6 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
     
     .header .user-nav {
         flex: 0 0 auto !important;
-        order: 3 !important;
         display: flex !important;
         align-items: center !important;
         gap: 0.5rem !important;
@@ -8341,7 +8356,8 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
     
     /* Hide non-essential nav items on mobile, keep profile button */
     .header .user-nav .become-vendor-btn,
-    .header .user-nav .complete-profile-btn {
+    .header .user-nav .complete-profile-btn,
+    .header .user-nav .admin-dashboard-btn {
         display: none !important;
     }
     

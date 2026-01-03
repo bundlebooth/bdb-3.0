@@ -164,11 +164,12 @@ function FAQsPanel({ onBack, vendorProfileId }) {
                       </h4>
                     </div>
                     <button
-                      className="btn btn-outline btn-sm"
+                      type="button"
+                      className="action-btn action-btn-delete"
                       onClick={() => handleDeleteFAQ(faq.id || index)}
-                      style={{ color: 'var(--error)' }}
+                      title="Delete FAQ"
                     >
-                      <i className="fas fa-trash"></i>
+                      <i className="fas fa-trash-alt"></i>
                     </button>
                   </div>
                   <div style={{ display: 'flex', gap: '0.75rem', paddingLeft: '2.5rem' }}>

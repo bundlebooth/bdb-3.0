@@ -216,7 +216,7 @@ const BannersGrid = ({ banners, onEdit, onDelete, onToggle }) => {
             </div>
             <div className="banner-actions">
               <button className="action-btn edit" onClick={() => onEdit(banner)}>
-                <i className="fas fa-edit"></i>
+                <i className="fas fa-pen"></i>
               </button>
               <button
                 className={`action-btn ${banner.IsActive ? 'deactivate' : 'activate'}`}
@@ -225,7 +225,7 @@ const BannersGrid = ({ banners, onEdit, onDelete, onToggle }) => {
                 <i className={`fas fa-${banner.IsActive ? 'eye-slash' : 'eye'}`}></i>
               </button>
               <button className="action-btn delete" onClick={() => onDelete(banner.BannerID)}>
-                <i className="fas fa-trash"></i>
+                <i className="fas fa-trash-alt"></i>
               </button>
             </div>
           </div>
@@ -259,10 +259,10 @@ const PagesTable = ({ pages, onEdit, onDelete }) => {
                   <i className="fas fa-external-link-alt"></i>
                 </button>
                 <button className="action-btn edit" onClick={() => onEdit(page)}>
-                  <i className="fas fa-edit"></i>
+                  <i className="fas fa-pen"></i>
                 </button>
                 <button className="action-btn delete" onClick={() => onDelete(page.PageID)}>
-                  <i className="fas fa-trash"></i>
+                  <i className="fas fa-trash-alt"></i>
                 </button>
               </div>
             </td>
@@ -306,7 +306,7 @@ const AnnouncementsTable = ({ announcements, onEdit, onDelete, onToggle }) => {
             <td>
               <div className="action-buttons">
                 <button className="action-btn edit" onClick={() => onEdit(ann)}>
-                  <i className="fas fa-edit"></i>
+                  <i className="fas fa-pen"></i>
                 </button>
                 <button
                   className={`action-btn ${ann.IsActive ? 'deactivate' : 'activate'}`}
@@ -315,7 +315,7 @@ const AnnouncementsTable = ({ announcements, onEdit, onDelete, onToggle }) => {
                   <i className={`fas fa-${ann.IsActive ? 'pause' : 'play'}`}></i>
                 </button>
                 <button className="action-btn delete" onClick={() => onDelete(ann.AnnouncementID)}>
-                  <i className="fas fa-trash"></i>
+                  <i className="fas fa-trash-alt"></i>
                 </button>
               </div>
             </td>
@@ -340,10 +340,10 @@ const FAQTable = ({ faqs, onEdit, onDelete }) => {
             </div>
             <div className="faq-actions">
               <button className="action-btn edit" onClick={() => onEdit(faq)}>
-                <i className="fas fa-edit"></i>
+                <i className="fas fa-pen"></i>
               </button>
               <button className="action-btn delete" onClick={() => onDelete(faq.FAQID)}>
-                <i className="fas fa-trash"></i>
+                <i className="fas fa-trash-alt"></i>
               </button>
             </div>
           </div>
