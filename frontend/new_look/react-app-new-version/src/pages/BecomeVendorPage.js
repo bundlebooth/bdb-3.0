@@ -3445,71 +3445,53 @@ function BusinessHoursStep({ formData, setFormData }) {
           </p>
         </div>
 
-        <div style={{ display: 'grid', gap: '1rem' }}>
+        <div className="business-hours-list" style={{ display: 'grid', gap: '1rem' }}>
           {daysOfWeek.map(day => (
             <div
               key={day.key}
+              className="business-hours-day-row"
               style={{
-                display: 'grid',
-                gridTemplateColumns: '120px 1fr auto',
-                gap: '1rem',
-                alignItems: 'center',
-                padding: '1.25rem',
+                padding: '1rem',
                 border: '1px solid #e5e7eb',
                 borderRadius: '12px',
                 background: formData.businessHours[day.key]?.isAvailable === false ? '#f9fafb' : 'white',
                 transition: 'all 0.2s'
               }}
             >
-              <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{day.label}</div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: formData.businessHours[day.key]?.isAvailable !== false ? '0.75rem' : '0' }}>
+                <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{day.label}</div>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', userSelect: 'none' }}>
+                  <input
+                    type="checkbox"
+                    checked={formData.businessHours[day.key]?.isAvailable === false}
+                    onChange={() => handleToggleClosed(day.key)}
+                    style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                  />
+                  <span style={{ fontSize: '0.85rem', fontWeight: 500, color: '#6b7280' }}>Closed</span>
+                </label>
+              </div>
               
-              {formData.businessHours[day.key]?.isAvailable !== false ? (
-                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <label style={{ fontSize: '0.85rem', color: 'var(--text-light)', fontWeight: 500 }}>Open:</label>
+              {formData.businessHours[day.key]?.isAvailable !== false && (
+                <div className="business-hours-times">
+                  <div className="time-field">
+                    <label>Open:</label>
                     <input
                       type="time"
                       value={formData.businessHours[day.key]?.openTime || '09:00'}
                       onChange={(e) => handleHourChange(day.key, 'openTime', e.target.value)}
-                      style={{ 
-                        padding: '0.5rem', 
-                        border: '1px solid var(--border)', 
-                        borderRadius: '8px',
-                        fontSize: '0.9rem'
-                      }}
                     />
                   </div>
-                  <span style={{ color: 'var(--text-light)', fontWeight: 600 }}>-</span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <label style={{ fontSize: '0.85rem', color: 'var(--text-light)', fontWeight: 500 }}>Close:</label>
+                  <span className="time-separator">-</span>
+                  <div className="time-field">
+                    <label>Close:</label>
                     <input
                       type="time"
                       value={formData.businessHours[day.key]?.closeTime || '17:00'}
                       onChange={(e) => handleHourChange(day.key, 'closeTime', e.target.value)}
-                      style={{ 
-                        padding: '0.5rem', 
-                        border: '1px solid var(--border)', 
-                        borderRadius: '8px',
-                        fontSize: '0.9rem'
-                      }}
                     />
                   </div>
                 </div>
-              ) : (
-                <div style={{ color: 'var(--text-light)', fontStyle: 'italic', fontSize: '0.95rem' }}>
-                  Closed
-                </div>
               )}
-
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', userSelect: 'none' }}>
-                <input
-                  type="checkbox"
-                  checked={formData.businessHours[day.key]?.isAvailable === false}
-                  onChange={() => handleToggleClosed(day.key)}
-                  style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-                />
-                <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>Closed</span>
-              </label>
             </div>
           ))}
         </div>
@@ -3982,7 +3964,7 @@ function GalleryStep({ formData, setFormData, currentUser }) {
 
         {/* Photo Grid */}
         {!loading && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
+          <div className="gallery-photo-grid">
             {displayPhotos.length === 0 ? (
               <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '3rem', background: '#f9fafb', borderRadius: '12px', border: '2px dashed #e5e7eb' }}>
                 <i className="fas fa-images" style={{ fontSize: '3rem', color: 'var(--text-light)', marginBottom: '1rem' }}></i>

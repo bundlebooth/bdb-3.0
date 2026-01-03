@@ -164,6 +164,76 @@
   margin-bottom: 1.5rem;
 }
 
+/* Gallery Photo Grid */
+.gallery-photo-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+/* Business Hours Step - Mobile-Friendly Layout */
+.business-hours-times {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.business-hours-times .time-field {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+  min-width: 110px;
+}
+
+.business-hours-times .time-field label {
+  font-size: 0.8rem;
+  color: #6b7280;
+  font-weight: 500;
+  white-space: nowrap;
+  margin-bottom: 0;
+}
+
+.business-hours-times .time-field input[type="time"] {
+  padding: 0.5rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  flex: 1;
+  min-width: 0;
+  max-width: 120px;
+}
+
+.business-hours-times .time-separator {
+  color: #6b7280;
+  font-weight: 600;
+}
+
+/* Business Hours Mobile */
+@media (max-width: 480px) {
+  .business-hours-times {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .business-hours-times .time-field {
+    width: 100%;
+    min-width: 100%;
+  }
+
+  .business-hours-times .time-field input[type="time"] {
+    max-width: none;
+    width: 100%;
+  }
+
+  .business-hours-times .time-separator {
+    display: none;
+  }
+}
+
 /* Section Headers within Steps */
 .step-content h3,
 .step-content h4 {
@@ -566,14 +636,20 @@
   }
 
   .become-vendor-footer {
-    padding: 1rem;
+    padding: 0.75rem 1rem;
+  }
+
+  .become-vendor-footer .footer-content {
+    gap: 0.5rem;
   }
 
   .btn-back,
-  .btn-next {
-    padding: 0.75rem 1.25rem;
-    font-size: 0.95rem;
-    min-width: 100px;
+  .btn-next,
+  .btn-save,
+  .btn-skip {
+    padding: 0.65rem 1rem;
+    font-size: 0.875rem;
+    min-width: 70px;
   }
 
   .review-value {
@@ -597,6 +673,20 @@
   .become-vendor-header .btn-text {
     font-size: 0.85rem;
     padding: 0.5rem;
+  }
+
+  /* Smaller buttons on very small screens */
+  .become-vendor-footer {
+    padding: 0.6rem 0.75rem;
+  }
+
+  .btn-back,
+  .btn-next,
+  .btn-save,
+  .btn-skip {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8rem;
+    min-width: 60px;
   }
 }
 
@@ -2137,4 +2227,152 @@ body.modal-open {
   overflow: hidden;
   position: fixed;
   width: 100%;
+}
+
+/* Mobile-specific step content fixes */
+@media (max-width: 768px) {
+  /* Business Hours Step Mobile */
+  .hours-item {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+    padding: 1rem;
+  }
+
+  .hours-day {
+    min-width: auto;
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .hours-times {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .time-input {
+    flex: 1;
+    min-width: 0;
+    max-width: 45%;
+  }
+
+  /* Questionnaire/Features Step Mobile */
+  .features-grid-3col {
+    grid-template-columns: 1fr !important;
+    gap: 0.75rem;
+  }
+
+  .features-grid-3col > div {
+    min-height: 70px;
+  }
+
+  .features-grid-3col > div > div {
+    min-height: 70px;
+    padding: 0.75rem !important;
+  }
+
+  /* Gallery Step Mobile - 3 columns with square images */
+  .gallery-photo-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 0.5rem !important;
+  }
+
+  .gallery-photo-grid > div {
+    border-radius: 8px !important;
+  }
+
+  /* Social Media Step Mobile */
+  .social-media-item {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+
+  .social-media-item .input-with-prefix {
+    width: 100%;
+  }
+
+  .social-media-item .input-with-prefix input {
+    width: 100%;
+  }
+
+  /* Filters Step Mobile */
+  .filters-grid {
+    grid-template-columns: 1fr !important;
+    gap: 0.75rem;
+  }
+
+  /* Stripe Step Mobile */
+  .stripe-connect-card {
+    padding: 1.25rem;
+  }
+
+  /* Google Reviews Step Mobile */
+  .google-reviews-card {
+    padding: 1.25rem;
+  }
+
+  /* Policies/FAQs Step Mobile */
+  .faq-item {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .faq-content {
+    width: 100%;
+  }
+
+  .add-faq-form {
+    padding: 1rem;
+  }
+
+  /* Review Step Mobile */
+  .review-section {
+    padding-bottom: 1.25rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .review-item {
+    flex-direction: column;
+    gap: 0.25rem;
+    align-items: flex-start;
+  }
+
+  .review-value {
+    max-width: 100%;
+    text-align: left;
+  }
+
+}
+
+@media (max-width: 480px) {
+  /* Even smaller screens */
+  .hours-times {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .time-input {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  /* Make form inputs full width */
+  .form-input,
+  .form-select,
+  .form-textarea {
+    font-size: 16px; /* Prevent zoom on iOS */
+  }
+
+  /* Compact step header */
+  .step-header h1,
+  .step-title {
+    font-size: 1.25rem !important;
+    line-height: 1.2 !important;
+  }
+
+  .step-header p,
+  .step-subtitle {
+    font-size: 0.95rem !important;
+  }
 }
