@@ -277,16 +277,12 @@ function BookingPage() {
     
     setAvailableTimeSlots(newSlots);
     
-    // Set date and times in one update
-    const newStartTime = newSlots.length > 0 ? newSlots[0] : '';
-    const endIndex = Math.min(6, newSlots.length - 1);
-    const newEndTime = newSlots.length > 0 ? newSlots[endIndex] : '';
-    
+    // Set date only - don't auto-select times, let user choose
     setBookingData(prev => ({
       ...prev,
       eventDate: dateString,
-      eventTime: newStartTime,
-      eventEndTime: newEndTime
+      eventTime: '',
+      eventEndTime: ''
     }));
   };
 
@@ -451,6 +447,10 @@ function BookingPage() {
       }
       if (!bookingData.eventTime) {
         alert('Please select a start time');
+        return false;
+      }
+      if (!bookingData.eventEndTime) {
+        alert('Please select an end time');
         return false;
       }
       if (!bookingData.attendeeCount || bookingData.attendeeCount < 1) {
@@ -701,15 +701,6 @@ function BookingPage() {
               ]} />
             )}
 
-            {/* Setup Incomplete Banner for Vendors */}
-            {currentUser?.vendorProfileId && (
-              <SetupIncompleteBanner 
-                onContinueSetup={() => {
-                  setDashboardSection('vendor-settings');
-                  setDashboardModalOpen(true);
-                }}
-              />
-            )}
             
             <h1 className="booking-title">Request to book</h1>
             
@@ -870,34 +861,37 @@ function BookingPage() {
                       required
                     >
                       {bookingData.eventDate ? (
-                        availableTimeSlots.length > 0 ? (
-                          availableTimeSlots.map((time) => {
-                            const [hour, min] = time.split(':').map(Number);
-                            const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-                            const period = hour < 12 ? 'AM' : 'PM';
-                            return (
-                              <option key={time} value={time}>
-                                {displayHour}:{min.toString().padStart(2, '0')} {period}
-                              </option>
-                            );
-                          })
-                        ) : (
-                          // Fallback: Show default business hours (9 AM - 5 PM) if no slots generated
-                          Array.from({ length: 17 }, (_, i) => {
-                            const totalMinutes = 540 + (i * 30); // Start at 9:00 AM (540 minutes)
-                            const hour = Math.floor(totalMinutes / 60);
-                            const min = totalMinutes % 60;
-                            if (hour >= 17) return null; // Stop at 5 PM
-                            const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-                            const period = hour < 12 ? 'AM' : 'PM';
-                            const timeStr = `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`;
-                            return (
-                              <option key={timeStr} value={timeStr}>
-                                {displayHour}:{min.toString().padStart(2, '0')} {period}
-                              </option>
-                            );
-                          }).filter(Boolean)
-                        )
+                        <>
+                          <option value="">Select a time</option>
+                          {availableTimeSlots.length > 0 ? (
+                            availableTimeSlots.map((time) => {
+                              const [hour, min] = time.split(':').map(Number);
+                              const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+                              const period = hour < 12 ? 'AM' : 'PM';
+                              return (
+                                <option key={time} value={time}>
+                                  {displayHour}:{min.toString().padStart(2, '0')} {period}
+                                </option>
+                              );
+                            })
+                          ) : (
+                            // Fallback: Show default business hours (9 AM - 5 PM) if no slots generated
+                            Array.from({ length: 17 }, (_, i) => {
+                              const totalMinutes = 540 + (i * 30); // Start at 9:00 AM (540 minutes)
+                              const hour = Math.floor(totalMinutes / 60);
+                              const min = totalMinutes % 60;
+                              if (hour >= 17) return null; // Stop at 5 PM
+                              const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+                              const period = hour < 12 ? 'AM' : 'PM';
+                              const timeStr = `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`;
+                              return (
+                                <option key={timeStr} value={timeStr}>
+                                  {displayHour}:{min.toString().padStart(2, '0')} {period}
+                                </option>
+                              );
+                            }).filter(Boolean)
+                          )}
+                        </>
                       ) : (
                         <option value="">Select a date first</option>
                       )}
@@ -907,7 +901,7 @@ function BookingPage() {
                   {/* End Time */}
                   <div className="form-group">
                     <label htmlFor="event-end-time" className="form-label" style={{ display: 'block', fontWeight: '600', marginBottom: '0.5rem', color: '#222' }}>
-                      End Time (Optional)
+                      End Time <span className="required-asterisk" style={{ color: '#ef4444' }}>*</span>
                     </label>
                     <select
                       id="event-end-time"
@@ -925,35 +919,39 @@ function BookingPage() {
                       value={bookingData.eventEndTime}
                       onChange={handleInputChange}
                       disabled={!bookingData.eventDate}
+                      required
                     >
                       {bookingData.eventDate ? (
-                        (availableTimeSlots.length > 0 ? availableTimeSlots : 
-                          Array.from({ length: 17 }, (_, i) => {
-                            const totalMinutes = 540 + (i * 30);
-                            const hour = Math.floor(totalMinutes / 60);
-                            const min = totalMinutes % 60;
-                            if (hour >= 17) return null;
-                            return `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`;
-                          }).filter(Boolean)
-                        )
-                          .filter((time) => {
-                            if (!bookingData.eventTime) return true;
-                            const [startHour, startMin] = bookingData.eventTime.split(':').map(Number);
-                            const [timeHour, timeMin] = time.split(':').map(Number);
-                            const startMinutes = startHour * 60 + startMin;
-                            const timeMinutes = timeHour * 60 + timeMin;
-                            return timeMinutes > startMinutes;
-                          })
-                          .map((time) => {
-                            const [hour, min] = time.split(':').map(Number);
-                            const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-                            const period = hour < 12 ? 'AM' : 'PM';
-                            return (
-                              <option key={time} value={time}>
-                                {displayHour}:{min.toString().padStart(2, '0')} {period}
-                              </option>
-                            );
-                          })
+                        <>
+                          <option value="">Select a time</option>
+                          {(availableTimeSlots.length > 0 ? availableTimeSlots : 
+                            Array.from({ length: 17 }, (_, i) => {
+                              const totalMinutes = 540 + (i * 30);
+                              const hour = Math.floor(totalMinutes / 60);
+                              const min = totalMinutes % 60;
+                              if (hour >= 17) return null;
+                              return `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`;
+                            }).filter(Boolean)
+                          )
+                            .filter((time) => {
+                              if (!bookingData.eventTime) return true;
+                              const [startHour, startMin] = bookingData.eventTime.split(':').map(Number);
+                              const [timeHour, timeMin] = time.split(':').map(Number);
+                              const startMinutes = startHour * 60 + startMin;
+                              const timeMinutes = timeHour * 60 + timeMin;
+                              return timeMinutes > startMinutes;
+                            })
+                            .map((time) => {
+                              const [hour, min] = time.split(':').map(Number);
+                              const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+                              const period = hour < 12 ? 'AM' : 'PM';
+                              return (
+                                <option key={time} value={time}>
+                                  {displayHour}:{min.toString().padStart(2, '0')} {period}
+                                </option>
+                              );
+                            })}
+                        </>
                       ) : (
                         <option value="">Select a date first</option>
                       )}

@@ -1520,15 +1520,6 @@ function VendorProfilePage() {
           <span>Back to search</span>
         </button>
 
-        {/* Setup Incomplete Banner for Vendors */}
-        {currentUser?.vendorProfileId && (
-          <SetupIncompleteBanner 
-            onContinueSetup={() => {
-              setDashboardSection('vendor-settings');
-              setDashboardModalOpen(true);
-            }}
-          />
-        )}
 
         {/* Breadcrumb Navigation with Save/Share */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>

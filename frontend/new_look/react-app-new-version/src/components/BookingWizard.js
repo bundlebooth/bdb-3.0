@@ -91,6 +91,10 @@ function BookingWizard({ vendorId, onClose, onSuccess }) {
         showBanner('Please select a start time', 'error');
         return false;
       }
+      if (!bookingData.eventEndTime) {
+        showBanner('Please select an end time', 'error');
+        return false;
+      }
       if (!bookingData.attendeeCount || bookingData.attendeeCount < 1) {
         showBanner('Please enter the number of guests', 'error');
         return false;
@@ -269,12 +273,13 @@ function BookingWizard({ vendorId, onClose, onSuccess }) {
 
                 <div className="form-row">
                   <div className="form-group">
-                    <label className="form-label">End Time (Optional)</label>
+                    <label className="form-label">End Time <span className="required-asterisk">*</span></label>
                     <input
                       type="time"
                       className="form-input"
                       value={bookingData.eventEndTime}
                       onChange={(e) => handleInputChange('eventEndTime', e.target.value)}
+                      required
                     />
                   </div>
                   <div className="form-group">

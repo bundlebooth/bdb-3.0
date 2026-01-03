@@ -767,6 +767,11 @@ select.form-input:focus {
         margin: 0;
     }
 
+    /* Hide booking summary section on mobile */
+    .booking-summary-section {
+        display: none !important;
+    }
+
     .booking-title {
         font-size: 1.5rem;
     }

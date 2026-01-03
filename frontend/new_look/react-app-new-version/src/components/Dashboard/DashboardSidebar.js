@@ -31,6 +31,32 @@ function DashboardSidebar({ menuItems, activeSection, onSectionChange, onLogout,
     return () => window.removeEventListener('resize', handleResize);
   }, [setMobileMenuOpen]);
 
+  // Prevent background scrolling and hide bottom nav when mobile menu is open
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+      // Hide mobile bottom nav
+      const bottomNav = document.querySelector('.mobile-bottom-nav');
+      if (bottomNav) {
+        bottomNav.style.display = 'none';
+      }
+    } else {
+      document.body.style.overflow = '';
+      // Show mobile bottom nav again
+      const bottomNav = document.querySelector('.mobile-bottom-nav');
+      if (bottomNav && window.innerWidth <= 768) {
+        bottomNav.style.display = 'flex';
+      }
+    }
+    return () => {
+      document.body.style.overflow = '';
+      const bottomNav = document.querySelector('.mobile-bottom-nav');
+      if (bottomNav && window.innerWidth <= 768) {
+        bottomNav.style.display = 'flex';
+      }
+    };
+  }, [mobileMenuOpen]);
+
   const handleMenuItemClick = (itemId) => {
     onSectionChange(itemId);
     if (isMobile) {
