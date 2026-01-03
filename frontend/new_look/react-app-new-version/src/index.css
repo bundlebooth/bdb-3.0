@@ -299,7 +299,7 @@ body.overlay-open {
 
 .category-indicator {
     position: absolute;
-    bottom: 0;
+    bottom: -8px; /* Offset to align with nav border (accounts for categories-list padding) */
     left: 0;
     width: 60px;
     height: 3px;

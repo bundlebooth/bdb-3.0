@@ -259,15 +259,15 @@ body {
 
 .category-indicator {
     position: absolute;
-    bottom: 0;
+    bottom: -8px; /* Offset to align with nav border (accounts for categories-list padding) */
     left: 0;
     width: 60px;
     height: 3px;
     background: var(--primary);
     border-radius: 1.5px;
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     pointer-events: none;
-    z-index: 1;
+    z-index: 100;
     opacity: 1;
 }
 
@@ -8365,12 +8365,9 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
         display: none !important;
     }
     
-    /* Only show profile button */
+    /* Hide profile button on mobile - it's in the bottom nav */
     .header .user-nav #profile-btn {
-        display: flex !important;
-        width: 32px !important;
-        height: 32px !important;
-        font-size: 0.85rem !important;
+        display: none !important;
     }
     
     /* ----------------------------------------
@@ -8623,7 +8620,7 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
 
 @media (max-width: 768px) {
     .mobile-map-button {
-        display: flex !important;
+        display: none !important;
         position: fixed !important;
         bottom: 20px !important;
         left: 50% !important;
@@ -9255,4 +9252,3 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
         padding-bottom: 80px !important;
     }
 }
-

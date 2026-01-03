@@ -124,16 +124,10 @@
         opacity: 0 !important;
     }
     
-    /* FORCE user icon proper circle - not squished */
+    /* FORCE HIDE user icon on mobile - it's in the bottom nav */
     .user-nav #profile-btn {
-        width: 36px !important;
-        height: 36px !important;
-        min-width: 36px !important;
-        min-height: 36px !important;
-        font-size: 14px !important;
-        border-radius: 50% !important;
-        aspect-ratio: 1 / 1 !important;
-        flex-shrink: 0 !important;
+        display: none !important;
+        visibility: hidden !important;
     }
     
     /* FORCE nav icons proper circle */
@@ -314,11 +308,10 @@
         visibility: hidden !important;
     }
     
-    /* FORCE show mobile map button */
+    /* FORCE HIDE mobile map button - it's in the bottom nav */
     .mobile-map-button {
-        display: flex !important;
-        visibility: visible !important;
-        padding: 0.5rem 1rem !important;
+        display: none !important;
+        visibility: hidden !important;
         background: var(--primary, #007bff) !important;
         color: white !important;
         border: none !important;

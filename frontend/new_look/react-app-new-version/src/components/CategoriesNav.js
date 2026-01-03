@@ -231,7 +231,6 @@ function CategoriesNav({ activeCategory, onCategoryChange, loading = false }) {
   const [showScrollButtons, setShowScrollButtons] = useState(false);
   const wrapperRef = useRef(null);
   const listRef = useRef(null);
-  const indicatorRef = useRef(null);
 
   const checkScrollButtons = useCallback(() => {
     if (listRef.current && wrapperRef.current) {
@@ -240,71 +239,15 @@ function CategoriesNav({ activeCategory, onCategoryChange, loading = false }) {
     }
   }, []);
 
-  const updateIndicator = useCallback((skipTransition = false) => {
-    if (loading) return; // Don't update during loading
-    
-    const activeIndex = categories.findIndex(cat => cat.key === activeCategory);
-    if (activeIndex >= 0 && indicatorRef.current && listRef.current && wrapperRef.current) {
-      const items = listRef.current.querySelectorAll('.category-item:not(.skeleton)');
-      if (items[activeIndex]) {
-        const item = items[activeIndex];
-        
-        // Calculate position relative to the categories list (stays fixed under selected category)
-        const left = item.offsetLeft;
-        const width = item.offsetWidth;
-        
-        // Skip transition on initial load to prevent animation from left edge
-        if (skipTransition) {
-          indicatorRef.current.style.transition = 'none';
-        }
-        
-        indicatorRef.current.style.width = `${width}px`;
-        indicatorRef.current.style.transform = `translateX(${left}px)`;
-        
-        // Re-enable transition after initial positioning
-        if (skipTransition) {
-          requestAnimationFrame(() => {
-            if (indicatorRef.current) {
-              indicatorRef.current.style.transition = 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
-            }
-          });
-        }
-      }
-    }
-  }, [activeCategory, loading]);
 
 
-  // Initial setup - skip transition on first render
-  const isInitialMount = useRef(true);
-  
   useEffect(() => {
     checkScrollButtons();
-    // Skip transition on initial mount
-    updateIndicator(true);
-    
     window.addEventListener('resize', checkScrollButtons);
-    window.addEventListener('resize', () => updateIndicator(false));
-    
-    // No scroll listener - indicator stays fixed under selected category
-    
     return () => {
       window.removeEventListener('resize', checkScrollButtons);
-      window.removeEventListener('resize', () => updateIndicator(false));
     };
-  }, [checkScrollButtons, updateIndicator]);
-
-  useEffect(() => {
-    // Skip transition only on initial mount, animate on subsequent changes
-    const timer = setTimeout(() => {
-      if (isInitialMount.current) {
-        updateIndicator(true); // No animation on first load
-        isInitialMount.current = false;
-      } else {
-        updateIndicator(false); // Animate on category change
-      }
-    }, 50);
-    return () => clearTimeout(timer);
-  }, [activeCategory, loading, updateIndicator]);
+  }, [checkScrollButtons]);
 
   const scroll = (direction) => {
     if (wrapperRef.current) {
@@ -386,7 +329,8 @@ function CategoriesNav({ activeCategory, onCategoryChange, loading = false }) {
                   justifyContent: 'center',
                   padding: '0.25rem 0.5rem 0.75rem 0.5rem',
                   minWidth: '60px',
-                  flex: '0 0 auto'
+                  flex: '0 0 auto',
+                  position: 'relative'
                 }}
               >
                 <div 
@@ -426,10 +370,24 @@ function CategoriesNav({ activeCategory, onCategoryChange, loading = false }) {
                   fontWeight: 'normal',
                   fontSize: '0.85rem'
                 }}>{category.label}</span>
+                {/* Indicator bar below selected category */}
+                {activeCategory === category.key && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      bottom: '0',
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      width: '80%',
+                      height: '3px',
+                      backgroundColor: 'var(--primary)',
+                      borderRadius: '2px'
+                    }}
+                  ></div>
+                )}
               </div>
             ))
           )}
-          {!loading && <div className="category-indicator" ref={indicatorRef} id="category-indicator"></div>}
         </div>
       </div>
       <button
