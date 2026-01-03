@@ -82,7 +82,7 @@ const VendorManagementPanel = () => {
       if (response.ok) {
         showBanner('Vendor rejected and hidden from platform', 'success');
         fetchVendors();
-        setSelectedVendor(null);
+        setSelectedVendor(null); 
         setModalType(null);
       }
     } catch (error) {
