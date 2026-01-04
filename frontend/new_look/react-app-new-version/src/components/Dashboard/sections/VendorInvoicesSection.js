@@ -274,7 +274,7 @@ function VendorInvoicesSection() {
                     
                     return (
                       <tr key={b.InvoiceID || b.BookingID || `invoice-${b.InvoiceNumber}-${dateStr}`} style={{ borderBottom: '1px solid var(--border, #e5e7eb)' }}>
-                        <td className="nowrap ta-center" style={{ whiteSpace: 'nowrap', padding: '6px 8px', border: '1px solid var(--border, #e5e7eb)', background: 'var(--secondary, #fff)', textAlign: 'center' }}>
+                        <td className="nowrap ta-center" style={{ whiteSpace: 'nowrap', padding: '6px 8px', border: '1px solid var(--border, #e5e7eb)', background: '#fff', textAlign: 'center' }}>
                           <div className="inv-actions" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
                             <button 
                               className="action-btn action-btn-view" 
@@ -294,18 +294,18 @@ function VendorInvoicesSection() {
                             </button>
                           </div>
                         </td>
-                        <td className="nowrap" style={{ whiteSpace: 'nowrap', color: '#111827', padding: '6px 8px', border: '1px solid var(--border, #e5e7eb)', background: 'var(--secondary, #fff)' }}>{invNum}</td>
-                        <td className="nowrap" style={{ whiteSpace: 'nowrap', color: '#374151', padding: '6px 8px', border: '1px solid var(--border, #e5e7eb)', background: 'var(--secondary, #fff)' }}>{dateStr}</td>
-                        <td className="nowrap" style={{ whiteSpace: 'nowrap', color: '#111827', padding: '6px 8px', border: '1px solid var(--border, #e5e7eb)', background: 'var(--secondary, #fff)' }}>{name}</td>
-                        <td className="nowrap" style={{ whiteSpace: 'nowrap', color: '#111827', padding: '6px 8px', border: '1px solid var(--border, #e5e7eb)', background: 'var(--secondary, #fff)' }}>{svc}</td>
-                        <td className="nowrap" style={{ whiteSpace: 'nowrap', color: '#6b7280', padding: '6px 8px', border: '1px solid var(--border, #e5e7eb)', background: 'var(--secondary, #fff)' }}>{timeTxt}</td>
-                        <td className="nowrap" style={{ whiteSpace: 'nowrap', color: '#6b7280', padding: '6px 8px', border: '1px solid var(--border, #e5e7eb)', background: 'var(--secondary, #fff)' }}>{typ}</td>
-                        <td className="nowrap" style={{ whiteSpace: 'nowrap', color: '#6b7280', padding: '6px 8px', border: '1px solid var(--border, #e5e7eb)', background: 'var(--secondary, #fff)' }}>{tz}</td>
-                        <td className="nowrap" style={{ whiteSpace: 'nowrap', color: '#6b7280', padding: '6px 8px', border: '1px solid var(--border, #e5e7eb)', background: 'var(--secondary, #fff)' }}>{loc}</td>
-                        <td className="ta-right nowrap" style={{ whiteSpace: 'nowrap', color: '#6b7280', textAlign: 'right', padding: '6px 8px', border: '1px solid var(--border, #e5e7eb)', background: 'var(--secondary, #fff)' }}>{guests}</td>
-                        <td className="nowrap" style={{ whiteSpace: 'nowrap', textTransform: 'capitalize', color: '#374151', padding: '6px 8px', border: '1px solid var(--border, #e5e7eb)', background: 'var(--secondary, #fff)' }}>{statusLabel}</td>
-                        <td className="ta-right nowrap" style={{ whiteSpace: 'nowrap', color: '#111827', textAlign: 'right', padding: '6px 8px', border: '1px solid var(--border, #e5e7eb)', background: 'var(--secondary, #fff)' }}>{total}</td>
-                        <td className="ta-right nowrap" style={{ whiteSpace: 'nowrap', color: '#374151', textAlign: 'right', padding: '6px 8px', border: '1px solid var(--border, #e5e7eb)', background: 'var(--secondary, #fff)' }}>{due}</td>
+                        <td className="nowrap" style={{ whiteSpace: 'nowrap', color: '#111827', padding: '6px 8px', border: '1px solid var(--border, #e5e7eb)', background: '#fff' }}>{invNum}</td>
+                        <td className="nowrap" style={{ whiteSpace: 'nowrap', color: '#374151', padding: '6px 8px', border: '1px solid var(--border, #e5e7eb)', background: '#fff' }}>{dateStr}</td>
+                        <td className="nowrap" style={{ whiteSpace: 'nowrap', color: '#111827', padding: '6px 8px', border: '1px solid var(--border, #e5e7eb)', background: '#fff' }}>{name}</td>
+                        <td className="nowrap" style={{ whiteSpace: 'nowrap', color: '#111827', padding: '6px 8px', border: '1px solid var(--border, #e5e7eb)', background: '#fff' }}>{svc}</td>
+                        <td className="nowrap" style={{ whiteSpace: 'nowrap', color: '#6b7280', padding: '6px 8px', border: '1px solid var(--border, #e5e7eb)', background: '#fff' }}>{timeTxt}</td>
+                        <td className="nowrap" style={{ whiteSpace: 'nowrap', color: '#6b7280', padding: '6px 8px', border: '1px solid var(--border, #e5e7eb)', background: '#fff' }}>{typ}</td>
+                        <td className="nowrap" style={{ whiteSpace: 'nowrap', color: '#6b7280', padding: '6px 8px', border: '1px solid var(--border, #e5e7eb)', background: '#fff' }}>{tz}</td>
+                        <td className="nowrap" style={{ whiteSpace: 'nowrap', color: '#6b7280', padding: '6px 8px', border: '1px solid var(--border, #e5e7eb)', background: '#fff' }}>{loc}</td>
+                        <td className="ta-right nowrap" style={{ whiteSpace: 'nowrap', color: '#6b7280', textAlign: 'right', padding: '6px 8px', border: '1px solid var(--border, #e5e7eb)', background: '#fff' }}>{guests}</td>
+                        <td className="nowrap" style={{ whiteSpace: 'nowrap', textTransform: 'capitalize', color: '#374151', padding: '6px 8px', border: '1px solid var(--border, #e5e7eb)', background: '#fff' }}>{statusLabel}</td>
+                        <td className="ta-right nowrap" style={{ whiteSpace: 'nowrap', color: '#111827', textAlign: 'right', padding: '6px 8px', border: '1px solid var(--border, #e5e7eb)', background: '#fff' }}>{total}</td>
+                        <td className="ta-right nowrap" style={{ whiteSpace: 'nowrap', color: '#374151', textAlign: 'right', padding: '6px 8px', border: '1px solid var(--border, #e5e7eb)', background: '#fff' }}>{due}</td>
                       </tr>
                     );
                   })}

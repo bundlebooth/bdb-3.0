@@ -153,6 +153,11 @@ body.overlay-open {
     align-items: center;
 }
 
+/* User menu button (hamburger + avatar) - desktop default */
+.user-menu-button {
+    display: flex;
+}
+
 .nav-icon {
     position: relative;
     color: var(--text);
@@ -9765,47 +9770,79 @@ html, body {
     
 }
 
-.mobile-nav-item {
+.mobile-bottom-nav .mobile-nav-item {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     gap: 2px;
-    padding: 6px 12px;
+    padding: 6px 0;
     border: none !important;
-    background: transparent;
+    background: transparent !important;
     color: #6b7280;
     font-size: 10px;
     cursor: pointer;
-    border-radius: 8px;
-    transition: all 0.15s ease;
+    transition: color 0.15s ease;
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
     user-select: none;
     pointer-events: auto !important;
     position: relative;
     z-index: 1;
+    flex: 1;
 }
 
-.mobile-nav-item:hover,
-.mobile-nav-item:active {
-    background: rgba(94, 114, 228, 0.15);
+.mobile-bottom-nav .mobile-nav-item:hover,
+.mobile-bottom-nav .mobile-nav-item:active {
     color: #5e72e4;
+    background: transparent !important;
 }
 
-.mobile-nav-item.active {
+.mobile-bottom-nav .mobile-nav-item.active {
     color: #5e72e4;
-    background: rgba(94, 114, 228, 0.1);
+    background: transparent !important;
 }
 
-.mobile-nav-item i {
-    font-size: 20px;
+/* Icon styling - no pill background */
+.mobile-bottom-nav .mobile-nav-item .nav-icon-pill {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent !important;
+    width: auto !important;
+    height: auto !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+}
+
+.mobile-bottom-nav .mobile-nav-item.active .nav-icon-pill {
+    background: transparent !important;
+}
+
+.mobile-bottom-nav .mobile-nav-item i {
+    font-size: 18px;
     pointer-events: none;
 }
 
-.mobile-nav-item span {
+.mobile-bottom-nav .mobile-nav-item .nav-label {
     pointer-events: none;
     font-weight: 500;
+    font-size: 10px;
+}
+
+/* User avatar in bottom nav */
+.mobile-bottom-nav .mobile-nav-item .nav-user-avatar {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background-color: var(--primary, #5e72e4);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 600;
+    pointer-events: none;
 }
 
 /* Dashboard Sidebar Mobile Responsive */
@@ -11559,5 +11596,17 @@ html, body {
         min-width: 36px;
         min-height: 36px;
         font-size: 0.85rem;
+    }
+}
+
+/* MOBILE: Hide user menu button (hamburger + avatar) - Account is in bottom nav */
+@media screen and (max-width: 768px) {
+    .user-menu-button {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        width: 0 !important;
+        height: 0 !important;
+        overflow: hidden !important;
     }
 }

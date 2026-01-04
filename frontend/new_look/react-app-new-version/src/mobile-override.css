@@ -130,6 +130,12 @@
         visibility: hidden !important;
     }
     
+    /* FORCE HIDE user menu button (hamburger + avatar) on mobile - Account is in bottom nav */
+    .user-menu-button {
+        display: none !important;
+        visibility: hidden !important;
+    }
+    
     /* FORCE nav icons proper circle */
     .nav-icon {
         width: 32px !important;

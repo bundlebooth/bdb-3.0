@@ -3738,18 +3738,30 @@ function QuestionnaireStep({ formData, setFormData, currentUser, setFeaturesLoad
   );
 }
 
-// Gallery Step - Full Implementation (uses dedicated API like dashboard)
+// Gallery Step - Full Implementation with Drag-to-Reorder and Cover Photo Selection (Airbnb style)
 function GalleryStep({ formData, setFormData, currentUser }) {
   const [loading, setLoading] = useState(true);
   const [photos, setPhotos] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [urlInput, setUrlInput] = useState('');
+  const [draggedIndex, setDraggedIndex] = useState(null);
+  const [dragOverIndex, setDragOverIndex] = useState(null);
+  
+  const MIN_PHOTOS = 5;
 
   // Load existing photos
   useEffect(() => {
     if (currentUser?.vendorProfileId) {
       loadPhotos();
     } else {
+      // Initialize from formData if no vendorProfileId
+      const existingPhotos = (formData.photoURLs || []).map((url, i) => ({
+        id: `local-${i}`,
+        url,
+        isPrimary: i === 0,
+        sortOrder: i
+      }));
+      setPhotos(existingPhotos);
       setLoading(false);
     }
   }, [currentUser?.vendorProfileId]);
@@ -3764,16 +3776,23 @@ function GalleryStep({ formData, setFormData, currentUser }) {
       if (response.ok) {
         const data = await response.json();
         const images = Array.isArray(data) ? data : [];
-        setPhotos(images.map(img => ({
+        const mappedPhotos = images.map((img, idx) => ({
           id: img.id || img.ImageID,
           url: img.url || img.ImageURL,
           caption: img.caption || img.Caption,
-          isPrimary: img.isPrimary || img.IsPrimary
-        })));
-        // Also update formData
+          isPrimary: img.isPrimary || img.IsPrimary || idx === 0,
+          sortOrder: img.sortOrder || img.SortOrder || idx
+        })).sort((a, b) => a.sortOrder - b.sortOrder);
+        
+        // Ensure first photo is marked as primary if none is set
+        if (mappedPhotos.length > 0 && !mappedPhotos.some(p => p.isPrimary)) {
+          mappedPhotos[0].isPrimary = true;
+        }
+        
+        setPhotos(mappedPhotos);
         setFormData(prev => ({
           ...prev,
-          photoURLs: images.map(img => img.url || img.ImageURL)
+          photoURLs: mappedPhotos.map(img => img.url)
         }));
       }
     } catch (error) {
@@ -3789,10 +3808,23 @@ function GalleryStep({ formData, setFormData, currentUser }) {
 
     if (!currentUser?.vendorProfileId) {
       // If no vendorProfileId, just store locally
-      const fileURLs = files.map(file => URL.createObjectURL(file));
+      const newPhotos = files.map((file, i) => ({
+        id: `local-${Date.now()}-${i}`,
+        url: URL.createObjectURL(file),
+        isPrimary: photos.length === 0 && i === 0,
+        sortOrder: photos.length + i
+      }));
+      
+      const updatedPhotos = [...photos, ...newPhotos];
+      // Ensure first photo is cover if none set
+      if (!updatedPhotos.some(p => p.isPrimary) && updatedPhotos.length > 0) {
+        updatedPhotos[0].isPrimary = true;
+      }
+      
+      setPhotos(updatedPhotos);
       setFormData(prev => ({
         ...prev,
-        photoURLs: [...(prev.photoURLs || []), ...fileURLs]
+        photoURLs: updatedPhotos.map(p => p.url)
       }));
       showBanner('Photos added! They will be saved when you complete your profile.', 'success');
       return;
@@ -3832,10 +3864,18 @@ function GalleryStep({ formData, setFormData, currentUser }) {
     }
 
     if (!currentUser?.vendorProfileId) {
-      // If no vendorProfileId, just store locally
+      const newPhoto = {
+        id: `local-${Date.now()}`,
+        url: urlInput.trim(),
+        isPrimary: photos.length === 0,
+        sortOrder: photos.length
+      };
+      
+      const updatedPhotos = [...photos, newPhoto];
+      setPhotos(updatedPhotos);
       setFormData(prev => ({
         ...prev,
-        photoURLs: [...(prev.photoURLs || []), urlInput.trim()]
+        photoURLs: updatedPhotos.map(p => p.url)
       }));
       setUrlInput('');
       showBanner('Photo added! It will be saved when you complete your profile.', 'success');
@@ -3862,10 +3902,17 @@ function GalleryStep({ formData, setFormData, currentUser }) {
       }
     } catch (error) {
       console.error('Error adding photo:', error);
-      // Fallback to local storage
+      const newPhoto = {
+        id: `local-${Date.now()}`,
+        url: urlInput.trim(),
+        isPrimary: photos.length === 0,
+        sortOrder: photos.length
+      };
+      const updatedPhotos = [...photos, newPhoto];
+      setPhotos(updatedPhotos);
       setFormData(prev => ({
         ...prev,
-        photoURLs: [...(prev.photoURLs || []), urlInput.trim()]
+        photoURLs: updatedPhotos.map(p => p.url)
       }));
       setUrlInput('');
       showBanner('Photo added locally. It will be saved when you complete your profile.', 'success');
@@ -3875,11 +3922,17 @@ function GalleryStep({ formData, setFormData, currentUser }) {
   };
 
   const handleDeletePhoto = async (photoId, index) => {
-    if (!currentUser?.vendorProfileId || !photoId) {
+    if (!currentUser?.vendorProfileId || !photoId || String(photoId).startsWith('local-')) {
       // Local delete
+      const updatedPhotos = photos.filter((_, i) => i !== index);
+      // If deleted photo was primary, make first remaining photo primary
+      if (photos[index]?.isPrimary && updatedPhotos.length > 0) {
+        updatedPhotos[0].isPrimary = true;
+      }
+      setPhotos(updatedPhotos);
       setFormData(prev => ({
         ...prev,
-        photoURLs: prev.photoURLs.filter((_, i) => i !== index)
+        photoURLs: updatedPhotos.map(p => p.url)
       }));
       showBanner('Photo removed', 'success');
       return;
@@ -3903,21 +3956,199 @@ function GalleryStep({ formData, setFormData, currentUser }) {
     }
   };
 
-  // Use photos from API if available, otherwise use formData
-  const displayPhotos = photos.length > 0 ? photos : (formData.photoURLs || []).map((url, i) => ({ id: null, url, index: i }));
+  // Set photo as cover
+  const handleSetAsCover = async (photoId, index) => {
+    const updatedPhotos = photos.map((p, i) => ({
+      ...p,
+      isPrimary: i === index
+    }));
+    
+    // Move the cover photo to first position
+    const coverPhoto = updatedPhotos.splice(index, 1)[0];
+    updatedPhotos.unshift(coverPhoto);
+    
+    // Update sort orders
+    updatedPhotos.forEach((p, i) => {
+      p.sortOrder = i;
+    });
+    
+    setPhotos(updatedPhotos);
+    setFormData(prev => ({
+      ...prev,
+      photoURLs: updatedPhotos.map(p => p.url)
+    }));
+
+    // If we have a vendorProfileId, save to API
+    if (currentUser?.vendorProfileId && photoId && !String(photoId).startsWith('local-')) {
+      try {
+        await fetch(`${API_BASE_URL}/vendors/${currentUser.vendorProfileId}/images/${photoId}/primary`, {
+          method: 'PUT',
+          headers: { 
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        // Also save the new order
+        await savePhotoOrder(updatedPhotos);
+      } catch (error) {
+        console.error('Error setting cover photo:', error);
+      }
+    }
+    
+    showBanner('Cover photo updated!', 'success');
+  };
+
+  // Save photo order to API
+  const savePhotoOrder = async (orderedPhotos) => {
+    if (!currentUser?.vendorProfileId) return;
+    
+    try {
+      const orderData = orderedPhotos
+        .filter(p => p.id && !String(p.id).startsWith('local-'))
+        .map((p, idx) => ({
+          imageId: p.id,
+          sortOrder: idx
+        }));
+      
+      if (orderData.length > 0) {
+        await fetch(`${API_BASE_URL}/vendors/${currentUser.vendorProfileId}/images/reorder`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ images: orderData })
+        });
+      }
+    } catch (error) {
+      console.error('Error saving photo order:', error);
+    }
+  };
+
+  // Drag and drop handlers
+  const handleDragStart = (e, index) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/html', e.target.outerHTML);
+    e.target.style.opacity = '0.5';
+  };
+
+  const handleDragEnd = (e) => {
+    e.target.style.opacity = '1';
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
+
+  const handleDragOver = (e, index) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (index !== dragOverIndex) {
+      setDragOverIndex(index);
+    }
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (e, dropIndex) => {
+    e.preventDefault();
+    
+    if (draggedIndex === null || draggedIndex === dropIndex) {
+      setDraggedIndex(null);
+      setDragOverIndex(null);
+      return;
+    }
+
+    const updatedPhotos = [...photos];
+    const [draggedPhoto] = updatedPhotos.splice(draggedIndex, 1);
+    updatedPhotos.splice(dropIndex, 0, draggedPhoto);
+    
+    // Update sort orders and primary status
+    updatedPhotos.forEach((p, i) => {
+      p.sortOrder = i;
+      p.isPrimary = i === 0; // First photo is always cover
+    });
+
+    setPhotos(updatedPhotos);
+    setFormData(prev => ({
+      ...prev,
+      photoURLs: updatedPhotos.map(p => p.url)
+    }));
+    
+    // Save order to API
+    savePhotoOrder(updatedPhotos);
+    
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+    
+    if (dropIndex === 0 || draggedIndex === 0) {
+      showBanner('Cover photo updated!', 'success');
+    }
+  };
+
+  const photosNeeded = Math.max(0, MIN_PHOTOS - photos.length);
+  const hasEnoughPhotos = photos.length >= MIN_PHOTOS;
 
   return (
     <div className="gallery-step">
       <div style={{ maxWidth: '100%', width: '100%' }}>
-        <div style={{ marginBottom: '2rem', padding: '1.5rem', background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
-            <i className="fas fa-images" style={{ color: 'var(--primary)', fontSize: '1.25rem' }}></i>
-            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>Showcase Your Work</h3>
-          </div>
-          <p style={{ margin: 0, color: '#6b7280', fontSize: '0.9rem', lineHeight: 1.6 }}>
-            Add photos to showcase your work and attract more clients. You can upload files or add images by URL.
-          </p>
+        {/* Header with title and Add more button */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+          <h2 style={{ margin: 0, fontSize: '1.75rem', fontWeight: 600, color: '#222' }}>
+            {photos.length >= MIN_PHOTOS ? 'Your listing looks great!' : 'Add some photos of your work'}
+          </h2>
+          {photos.length > 0 && (
+            <button
+              type="button"
+              onClick={() => document.getElementById('photo-upload-input').click()}
+              disabled={uploading}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                padding: '0.625rem 1rem',
+                background: 'white',
+                border: '1px solid #222',
+                borderRadius: '8px',
+                fontSize: '0.875rem',
+                fontWeight: 500,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              <i className="fas fa-plus"></i> Add more
+            </button>
+          )}
         </div>
+        
+        {/* Subtitle */}
+        <p style={{ margin: '0 0 1.5rem', color: '#717171', fontSize: '1rem' }}>
+          {photos.length >= MIN_PHOTOS 
+            ? 'Rearrange by dragging.' 
+            : `Upload at least ${MIN_PHOTOS} photos. ${photosNeeded > 0 ? `You need ${photosNeeded} more.` : ''}`
+          }
+        </p>
+
+        {/* Minimum photos warning */}
+        {!hasEnoughPhotos && photos.length > 0 && (
+          <div style={{ 
+            marginBottom: '1.5rem', 
+            padding: '1rem', 
+            background: '#fef3c7', 
+            borderRadius: '8px', 
+            border: '1px solid #fcd34d',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.75rem'
+          }}>
+            <i className="fas fa-exclamation-triangle" style={{ color: '#d97706' }}></i>
+            <p style={{ margin: 0, color: '#92400e', fontSize: '0.9rem' }}>
+              You need at least {MIN_PHOTOS} photos to publish your listing. Add {photosNeeded} more photo{photosNeeded > 1 ? 's' : ''}.
+            </p>
+          </div>
+        )}
 
         {!currentUser?.vendorProfileId && (
           <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#e0f2fe', borderRadius: '8px', border: '1px solid #7dd3fc' }}>
@@ -3935,156 +4166,345 @@ function GalleryStep({ formData, setFormData, currentUser }) {
           </div>
         )}
 
-        {/* Photo Grid */}
+        {/* Photo Grid - Airbnb style with drag and drop */}
         {!loading && (
-          <div className="gallery-photo-grid">
-            {displayPhotos.length === 0 ? (
-              <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '3rem', background: '#f9fafb', borderRadius: '12px', border: '2px dashed #e5e7eb' }}>
-                <i className="fas fa-images" style={{ fontSize: '3rem', color: 'var(--text-light)', marginBottom: '1rem' }}></i>
-                <p style={{ color: 'var(--text-light)', margin: 0 }}>No photos added yet</p>
-              </div>
-            ) : (
-              displayPhotos.map((photo, index) => (
-                <div
-                  key={photo.id || index}
-                  className="gallery-photo-card"
-                  style={{
-                    position: 'relative',
-                    aspectRatio: '1',
-                    borderRadius: '12px',
-                    overflow: 'hidden',
-                    background: '#f3f4f6',
-                    border: photo.isPrimary ? '2px solid var(--primary)' : '1px solid var(--border)'
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+            gap: '1rem',
+            marginBottom: '1.5rem'
+          }}>
+            {photos.map((photo, index) => (
+              <div
+                key={photo.id || index}
+                draggable
+                onDragStart={(e) => handleDragStart(e, index)}
+                onDragEnd={handleDragEnd}
+                onDragOver={(e) => handleDragOver(e, index)}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => handleDrop(e, index)}
+                style={{
+                  position: 'relative',
+                  aspectRatio: index === 0 ? '16/10' : '1',
+                  gridColumn: index === 0 ? 'span 2' : 'span 1',
+                  gridRow: index === 0 ? 'span 2' : 'span 1',
+                  borderRadius: '12px',
+                  overflow: 'hidden',
+                  background: '#f3f4f6',
+                  border: dragOverIndex === index ? '2px dashed #5e72e4' : (photo.isPrimary ? '3px solid #5e72e4' : '1px solid #e5e7eb'),
+                  cursor: 'grab',
+                  transition: 'transform 0.2s, border 0.2s',
+                  transform: dragOverIndex === index ? 'scale(1.02)' : 'scale(1)'
+                }}
+              >
+                <img
+                  src={photo.url}
+                  alt={`Gallery ${index + 1}`}
+                  style={{ 
+                    width: '100%', 
+                    height: '100%', 
+                    objectFit: 'cover',
+                    pointerEvents: 'none'
                   }}
-                >
-                  <img
-                    src={photo.url}
-                    alt={`Gallery ${index + 1}`}
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    onError={(e) => {
-                      e.target.style.display = 'none';
-                      e.target.parentElement.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#9ca3af"><i class="fas fa-image" style="font-size:2rem"></i></div>';
-                    }}
-                  />
-                  {/* Primary badge */}
-                  {photo.isPrimary && (
-                    <div style={{
-                      position: 'absolute',
-                      top: '8px',
-                      left: '8px',
-                      background: 'var(--primary)',
-                      color: 'white',
-                      padding: '4px 8px',
-                      borderRadius: '4px',
-                      fontSize: '11px',
-                      fontWeight: 600
-                    }}>
-                      COVER
-                    </div>
-                  )}
-                  {/* Action button - bottom with gradient overlay (Airbnb style) */}
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                  }}
+                />
+                
+                {/* Cover badge */}
+                {index === 0 && (
                   <div style={{
                     position: 'absolute',
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    padding: '24px 8px 8px',
-                    background: 'linear-gradient(transparent, rgba(0,0,0,0.5))',
-                    display: 'flex',
-                    justifyContent: 'flex-end',
-                    alignItems: 'center'
+                    top: '12px',
+                    left: '12px',
+                    background: 'white',
+                    color: '#222',
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
                   }}>
-                    <button
-                      type="button"
-                      onClick={() => handleDeletePhoto(photo.id, index)}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        color: 'white',
-                        fontSize: '13px',
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        textDecoration: 'underline',
-                        padding: '4px'
-                      }}
-                    >
-                      Remove
-                    </button>
+                    Cover
+                  </div>
+                )}
+                
+                {/* Action buttons overlay */}
+                <div style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  background: 'rgba(0,0,0,0)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  padding: '8px',
+                  opacity: 0,
+                  transition: 'opacity 0.2s, background 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.opacity = '1';
+                  e.currentTarget.style.background = 'rgba(0,0,0,0.3)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.opacity = '0';
+                  e.currentTarget.style.background = 'rgba(0,0,0,0)';
+                }}
+                >
+                  {/* Top right - menu button */}
+                  <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                    <div style={{ position: 'relative' }}>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const menu = e.currentTarget.nextElementSibling;
+                          menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+                        }}
+                        style={{
+                          background: 'white',
+                          border: 'none',
+                          borderRadius: '50%',
+                          width: '32px',
+                          height: '32px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          boxShadow: '0 2px 4px rgba(0,0,0,0.15)'
+                        }}
+                      >
+                        <i className="fas fa-ellipsis-h" style={{ fontSize: '14px', color: '#222' }}></i>
+                      </button>
+                      
+                      {/* Dropdown menu */}
+                      <div style={{
+                        display: 'none',
+                        position: 'absolute',
+                        top: '100%',
+                        right: 0,
+                        marginTop: '4px',
+                        background: 'white',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                        overflow: 'hidden',
+                        minWidth: '140px',
+                        zIndex: 10
+                      }}>
+                        {index !== 0 && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSetAsCover(photo.id, index);
+                              e.currentTarget.parentElement.style.display = 'none';
+                            }}
+                            style={{
+                              display: 'block',
+                              width: '100%',
+                              padding: '12px 16px',
+                              background: 'none',
+                              border: 'none',
+                              textAlign: 'left',
+                              fontSize: '14px',
+                              cursor: 'pointer',
+                              color: '#222'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.background = '#f7f7f7'}
+                            onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+                          >
+                            <i className="fas fa-star" style={{ marginRight: '8px' }}></i>
+                            Make cover
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeletePhoto(photo.id, index);
+                            e.currentTarget.parentElement.style.display = 'none';
+                          }}
+                          style={{
+                            display: 'block',
+                            width: '100%',
+                            padding: '12px 16px',
+                            background: 'none',
+                            border: 'none',
+                            textAlign: 'left',
+                            fontSize: '14px',
+                            cursor: 'pointer',
+                            color: '#c13515'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = '#f7f7f7'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+                        >
+                          <i className="fas fa-trash-alt" style={{ marginRight: '8px' }}></i>
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Bottom - drag indicator */}
+                  <div style={{ display: 'flex', justifyContent: 'center' }}>
+                    <div style={{
+                      background: 'white',
+                      padding: '4px 12px',
+                      borderRadius: '4px',
+                      fontSize: '12px',
+                      color: '#222',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}>
+                      <i className="fas fa-grip-vertical"></i>
+                      Drag to reorder
+                    </div>
                   </div>
                 </div>
-              ))
-            )}
+              </div>
+            ))}
+            
+            {/* Add more placeholder card */}
+            <div
+              onClick={() => document.getElementById('photo-upload-input').click()}
+              style={{
+                aspectRatio: '1',
+                borderRadius: '12px',
+                border: '2px dashed #b0b0b0',
+                background: '#f7f7f7',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                transition: 'border-color 0.2s, background 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = '#222';
+                e.currentTarget.style.background = '#f0f0f0';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = '#b0b0b0';
+                e.currentTarget.style.background = '#f7f7f7';
+              }}
+            >
+              <i className="fas fa-image" style={{ fontSize: '24px', color: '#717171', marginBottom: '8px' }}></i>
+              <span style={{ fontSize: '14px', color: '#717171' }}>Add more</span>
+            </div>
           </div>
         )}
 
-        {/* Upload Controls */}
-        <div style={{ display: 'grid', gap: '1.5rem' }}>
-          {/* File Upload */}
-          <div style={{ padding: '1.5rem', background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
-            <h4 style={{ margin: '0 0 1rem', fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <i className="fas fa-upload"></i> Upload Photos
-            </h4>
-            <input
-              type="file"
-              id="photo-upload-input"
-              multiple
-              accept="image/*"
-              onChange={handleFileUpload}
-              style={{ display: 'none' }}
-            />
+        {/* Hidden file input */}
+        <input
+          type="file"
+          id="photo-upload-input"
+          multiple
+          accept="image/*"
+          onChange={handleFileUpload}
+          style={{ display: 'none' }}
+        />
+
+        {/* Upload area for empty state */}
+        {!loading && photos.length === 0 && (
+          <div
+            onClick={() => document.getElementById('photo-upload-input').click()}
+            style={{
+              padding: '4rem 2rem',
+              background: '#f7f7f7',
+              borderRadius: '12px',
+              border: '2px dashed #b0b0b0',
+              textAlign: 'center',
+              cursor: 'pointer',
+              transition: 'border-color 0.2s'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.borderColor = '#222'}
+            onMouseLeave={(e) => e.currentTarget.style.borderColor = '#b0b0b0'}
+          >
+            <i className="fas fa-cloud-upload-alt" style={{ fontSize: '3rem', color: '#717171', marginBottom: '1rem' }}></i>
+            <p style={{ margin: '0 0 0.5rem', fontSize: '1.125rem', fontWeight: 500, color: '#222' }}>
+              Drag your photos here
+            </p>
+            <p style={{ margin: 0, color: '#717171', fontSize: '0.9rem' }}>
+              Choose at least {MIN_PHOTOS} photos
+            </p>
             <button
-              className="btn btn-outline"
-              onClick={() => document.getElementById('photo-upload-input').click()}
+              type="button"
               disabled={uploading}
-              style={{ width: '100%', padding: '0.875rem', fontSize: '1rem' }}
+              style={{
+                marginTop: '1.5rem',
+                padding: '0.75rem 1.5rem',
+                background: 'white',
+                border: '1px solid #222',
+                borderRadius: '8px',
+                fontSize: '1rem',
+                fontWeight: 500,
+                cursor: 'pointer'
+              }}
             >
-              {uploading ? (
-                <>
-                  <span className="spinner-small"></span> Uploading...
-                </>
-              ) : (
-                <>
-                  <i className="fas fa-cloud-upload-alt"></i> Choose Files
-                </>
-              )}
+              {uploading ? 'Uploading...' : 'Upload from your device'}
             </button>
           </div>
+        )}
 
-          {/* URL Input */}
-          <div style={{ padding: '1.5rem', background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
-            <h4 style={{ margin: '0 0 1rem', fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <i className="fas fa-link"></i> Add Image by URL
-            </h4>
-            <div style={{ display: 'flex', gap: '0.75rem' }}>
-              <input
-                type="url"
-                placeholder="https://example.com/image.jpg"
-                value={urlInput}
-                onChange={(e) => setUrlInput(e.target.value)}
-                style={{
-                  flex: 1,
-                  padding: '0.875rem 1rem',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '8px',
-                  fontSize: '0.95rem'
-                }}
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    handleAddPhotoByUrl();
-                  }
-                }}
-              />
-              <button
-                className="btn btn-primary"
-                onClick={handleAddPhotoByUrl}
-                style={{ padding: '0.875rem 1.5rem' }}
-              >
-                <i className="fas fa-plus"></i> Add
-              </button>
-            </div>
+        {/* URL Input - collapsible */}
+        <details style={{ marginTop: '1.5rem' }}>
+          <summary style={{ 
+            cursor: 'pointer', 
+            fontSize: '0.9rem', 
+            color: '#717171',
+            padding: '0.5rem 0'
+          }}>
+            Or add image by URL
+          </summary>
+          <div style={{ 
+            display: 'flex', 
+            gap: '0.75rem', 
+            marginTop: '0.75rem',
+            padding: '1rem',
+            background: '#f7f7f7',
+            borderRadius: '8px'
+          }}>
+            <input
+              type="url"
+              placeholder="https://example.com/image.jpg"
+              value={urlInput}
+              onChange={(e) => setUrlInput(e.target.value)}
+              style={{
+                flex: 1,
+                padding: '0.75rem 1rem',
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+                fontSize: '0.9rem'
+              }}
+              onKeyPress={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleAddPhotoByUrl();
+                }
+              }}
+            />
+            <button
+              type="button"
+              onClick={handleAddPhotoByUrl}
+              disabled={uploading}
+              style={{
+                padding: '0.75rem 1.25rem',
+                background: '#222',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '0.9rem',
+                fontWeight: 500,
+                cursor: 'pointer'
+              }}
+            >
+              Add
+            </button>
           </div>
-        </div>
+        </details>
       </div>
     </div>
   );

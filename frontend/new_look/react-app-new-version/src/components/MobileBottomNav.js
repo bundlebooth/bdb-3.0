@@ -165,10 +165,8 @@ function MobileBottomNav({ onOpenDashboard, onOpenProfile, onOpenMessages, onOpe
     window.dispatchEvent(new CustomEvent('closeMobileMap'));
     if (currentUser) {
       setActiveTab('account');
-      // Open dashboard fullscreen
-      if (onOpenDashboard) {
-        onOpenDashboard('dashboard');
-      }
+      // Open the sidebar menu (same as hamburger menu in header)
+      window.dispatchEvent(new CustomEvent('openUserSidebar'));
     } else {
       // Close dashboard if somehow open
       if (onCloseDashboard) onCloseDashboard();
@@ -192,7 +190,7 @@ function MobileBottomNav({ onOpenDashboard, onOpenProfile, onOpenMessages, onOpe
         onClick={handleExploreClick}
       >
         <i className="fas fa-compass"></i>
-        <span>Explore</span>
+        <span className="nav-label">Explore</span>
       </button>
       
       {/* Map button - always visible on all allowed pages */}
@@ -202,7 +200,7 @@ function MobileBottomNav({ onOpenDashboard, onOpenProfile, onOpenMessages, onOpe
         onClick={handleMapClick}
       >
         <i className="fas fa-map"></i>
-        <span>Map</span>
+        <span className="nav-label">Map</span>
       </button>
       
       <button 
@@ -211,7 +209,7 @@ function MobileBottomNav({ onOpenDashboard, onOpenProfile, onOpenMessages, onOpe
         onClick={handleForumClick}
       >
         <i className="fas fa-comments"></i>
-        <span>Forum</span>
+        <span className="nav-label">Forum</span>
       </button>
       
       <button 
@@ -220,7 +218,7 @@ function MobileBottomNav({ onOpenDashboard, onOpenProfile, onOpenMessages, onOpe
         onClick={handleMessagesClick}
       >
         <i className="fas fa-envelope"></i>
-        <span>Messages</span>
+        <span className="nav-label">Messages</span>
       </button>
       
       <button 
@@ -228,8 +226,14 @@ function MobileBottomNav({ onOpenDashboard, onOpenProfile, onOpenMessages, onOpe
         className={`mobile-nav-item ${activeTab === 'account' && !mobileMapOpen ? 'active' : ''}`}
         onClick={handleAccountClick}
       >
-        <i className="fas fa-user"></i>
-        <span>{currentUser ? 'Account' : 'Login'}</span>
+        {currentUser ? (
+          <div className="nav-user-avatar">
+            {currentUser.name?.charAt(0).toUpperCase() || 'U'}
+          </div>
+        ) : (
+          <i className="fas fa-user"></i>
+        )}
+        <span className="nav-label">{currentUser ? 'Account' : 'Login'}</span>
       </button>
     </nav>
   );

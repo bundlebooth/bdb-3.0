@@ -25,8 +25,11 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
   const [notificationDropdownOpen, setNotificationDropdownOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false); // No longer used - kept for compatibility
   const [profileIncomplete, setProfileIncomplete] = useState(false);
+  const [profileStatus, setProfileStatus] = useState(null); // 'live', 'submitted', 'incomplete'
   const [whatsNewOpen, setWhatsNewOpen] = useState(false);
   const [announcementCount, setAnnouncementCount] = useState(0);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [hasVendorProfile, setHasVendorProfile] = useState(false);
   const notificationBtnRef = useRef(null);
 
   // Clear any dashboard hash on mount to prevent auto-opening
@@ -35,16 +38,32 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
       window.history.replaceState(null, null, window.location.pathname);
     }
 
-    // Listen for custom dashboard open event
-    const handleOpenDashboard = () => {
+    // Listen for custom dashboard open event - now navigates to dashboard page
+    const handleOpenDashboard = (event) => {
       if (currentUser) {
-        setDashboardOpen(true);
+        const section = event?.detail?.section;
+        if (section) {
+          navigate(`/dashboard?section=${section}`);
+        } else {
+          navigate('/dashboard');
+        }
+      }
+    };
+
+    // Listen for openUserSidebar event from MobileBottomNav
+    const handleOpenUserSidebar = () => {
+      if (currentUser) {
+        setSidebarOpen(true);
       }
     };
 
     window.addEventListener('openDashboard', handleOpenDashboard);
-    return () => window.removeEventListener('openDashboard', handleOpenDashboard);
-  }, [currentUser]);
+    window.addEventListener('openUserSidebar', handleOpenUserSidebar);
+    return () => {
+      window.removeEventListener('openDashboard', handleOpenDashboard);
+      window.removeEventListener('openUserSidebar', handleOpenUserSidebar);
+    };
+  }, [currentUser, navigate]);
 
   // Scroll detection removed - no animation on scroll
 
@@ -52,6 +71,7 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
   useEffect(() => {
     if (!currentUser?.isVendor || !currentUser?.id) {
       setProfileIncomplete(false);
+      setProfileStatus(null);
       return;
     }
 
@@ -64,7 +84,21 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
         if (response.ok) {
           const data = await response.json();
           const isComplete = data.allRequiredComplete ?? data?.setupStatus?.allRequiredComplete;
+          const isLive = data.isLive ?? data?.setupStatus?.isLive ?? false;
+          const isSubmitted = data.isSubmitted ?? data?.setupStatus?.isSubmitted ?? false;
+          
           setProfileIncomplete(!isComplete);
+          
+          // Determine profile status
+          if (isLive) {
+            setProfileStatus('live');
+          } else if (isSubmitted) {
+            setProfileStatus('submitted');
+          } else if (!isComplete) {
+            setProfileStatus('incomplete');
+          } else {
+            setProfileStatus('complete');
+          }
         }
       } catch (error) {
         console.error('Failed to check profile status:', error);
@@ -72,6 +106,30 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
     };
 
     checkProfileStatus();
+  }, [currentUser]);
+
+  // Check if user has vendor profile
+  useEffect(() => {
+    if (!currentUser?.id) {
+      setHasVendorProfile(false);
+      return;
+    }
+    
+    const checkVendorProfile = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/vendors/profile?userId=${currentUser.id}`, {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setHasVendorProfile(!!data.vendorProfileId);
+        }
+      } catch (error) {
+        console.error('Failed to check vendor profile:', error);
+      }
+    };
+    
+    checkVendorProfile();
   }, [currentUser]);
 
   // Load notification badges
@@ -173,59 +231,6 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
           <img src="/images/logo.png" alt="PlanBeau" className="header-logo-img" />
         </div>
         
-        {/* Page Tabs - Explore / Forum - Integrated into header */}
-        <div className="header-nav-tabs" style={{ 
-          display: 'flex', 
-          gap: '2px',
-          background: '#f3f4f6',
-          borderRadius: '10px',
-          padding: '4px'
-        }}>
-          <button
-            onClick={() => navigate('/')}
-            className="header-nav-tab"
-            style={{
-              padding: '8px 18px',
-              background: location.pathname === '/' || location.pathname === '/explore' ? 'white' : 'transparent',
-              border: 'none',
-              borderRadius: '8px',
-              fontSize: '14px',
-              fontWeight: 500,
-              color: location.pathname === '/' || location.pathname === '/explore' ? '#111827' : '#6b7280',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              transition: 'all 0.2s',
-              boxShadow: location.pathname === '/' || location.pathname === '/explore' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
-            }}
-          >
-            <i className="fas fa-compass" style={{ fontSize: '13px' }}></i>
-            <span className="nav-tab-text">Explore</span>
-          </button>
-          <button
-            onClick={() => navigate('/forum')}
-            className="header-nav-tab"
-            style={{
-              padding: '8px 18px',
-              background: location.pathname.startsWith('/forum') ? 'white' : 'transparent',
-              border: 'none',
-              borderRadius: '8px',
-              fontSize: '14px',
-              fontWeight: 500,
-              color: location.pathname.startsWith('/forum') ? '#111827' : '#6b7280',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              transition: 'all 0.2s',
-              boxShadow: location.pathname.startsWith('/forum') ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
-            }}
-          >
-            <i className="fas fa-comments" style={{ fontSize: '13px' }}></i>
-            <span className="nav-tab-text">Forum</span>
-          </button>
-        </div>
       </div>
 
       {isExplorePage && (
@@ -261,41 +266,6 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
             onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
           >
             Become A Vendor
-          </button>
-        )}
-        {currentUser?.isVendor && profileIncomplete && isExplorePage && (
-          <button 
-            className="complete-profile-btn"
-            onClick={() => {
-              // Navigate directly to step-by-step process (skip landing page) for signed-in vendors
-              navigate('/become-a-vendor/setup?step=categories');
-            }}
-            style={{
-              padding: '0.5rem 1rem',
-              backgroundColor: '#fff8e1',
-              color: '#f57c00',
-              border: '1px solid #ffe0b2',
-              borderRadius: '8px',
-              fontSize: '0.95rem',
-              fontWeight: '500',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-              marginRight: '0.5rem',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem'
-            }}
-            onMouseEnter={(e) => {
-              e.target.style.backgroundColor = '#ffecb3';
-              e.target.style.borderColor = '#ffcc80';
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.backgroundColor = '#fff8e1';
-              e.target.style.borderColor = '#ffe0b2';
-            }}
-          >
-            <i className="fas fa-exclamation-triangle" style={{ fontSize: '0.9rem' }}></i>
-            Complete Profile Setup
           </button>
         )}
         {(currentUser?.isAdmin === true || currentUser?.isAdmin === 1 || currentUser?.IsAdmin === true || currentUser?.IsAdmin === 1) && (
@@ -367,27 +337,70 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
             {notificationsBadge}
           </span>
         </div>
+        {/* User menu button - hamburger + avatar like dashboard - hidden on mobile via CSS */}
         <div
-          className="nav-icon"
-          id="profile-btn"
-          onClick={() => currentUser ? setDashboardOpen(true) : onProfileClick()}
+          className="user-menu-button"
+          onClick={() => currentUser ? setSidebarOpen(true) : onProfileClick()}
           style={{
-            backgroundColor: 'var(--primary)',
-            color: 'white',
-            borderRadius: '50%',
-            width: '36px',
-            height: '36px',
-            display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer'
+            gap: '8px',
+            padding: '4px 4px 4px 12px',
+            border: '1px solid #ddd',
+            borderRadius: '24px',
+            cursor: 'pointer',
+            backgroundColor: 'white',
+            transition: 'box-shadow 0.2s',
+            position: 'relative'
           }}
+          onMouseEnter={(e) => e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)'}
+          onMouseLeave={(e) => e.currentTarget.style.boxShadow = 'none'}
         >
-          {currentUser ? currentUser.name.charAt(0).toUpperCase() : 'S'}
+          <i className="fas fa-bars" style={{ fontSize: '14px', color: '#222' }}></i>
+          <div
+            style={{
+              backgroundColor: 'var(--primary)',
+              color: 'white',
+              borderRadius: '50%',
+              width: '32px',
+              height: '32px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '14px',
+              fontWeight: 600,
+              position: 'relative'
+            }}
+          >
+            {currentUser ? currentUser.name.charAt(0).toUpperCase() : 'S'}
+            {/* Exclamation mark indicator for incomplete profile */}
+            {profileIncomplete && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '-4px',
+                  right: '-4px',
+                  width: '16px',
+                  height: '16px',
+                  borderRadius: '50%',
+                  backgroundColor: '#f59e0b',
+                  color: 'white',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  border: '2px solid white',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+                }}
+              >
+                !
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Dashboard Modal */}
+      {/* Dashboard Modal - kept for backwards compatibility with openDashboard events */}
       <DashboardModal 
         isOpen={dashboardOpen} 
         onClose={() => setDashboardOpen(false)} 
@@ -400,6 +413,289 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
         anchorEl={notificationBtnRef.current}
       />
     </header>
+    
+    {/* User Menu Sidebar - Giggster style */}
+    {sidebarOpen && currentUser && (
+      <>
+        <div 
+          className="sidebar-overlay" 
+          onClick={() => setSidebarOpen(false)}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            zIndex: 999
+          }}
+        />
+        <div 
+          className="sidebar-menu"
+          style={{
+            position: 'fixed',
+            top: 0,
+            right: 0,
+            width: '320px',
+            maxWidth: '85vw',
+            height: '100vh',
+            background: 'white',
+            zIndex: 1000,
+            overflowY: 'auto',
+            boxShadow: '-4px 0 20px rgba(0, 0, 0, 0.15)',
+            animation: 'slideInRight 0.2s ease-out'
+          }}
+        >
+          {/* Close button */}
+          <button 
+            onClick={() => setSidebarOpen(false)}
+            style={{
+              position: 'absolute',
+              top: '20px',
+              right: '20px',
+              background: 'none',
+              border: 'none',
+              fontSize: '20px',
+              color: '#666',
+              cursor: 'pointer',
+              padding: '8px'
+            }}
+          >
+            <i className="fas fa-times"></i>
+          </button>
+          
+          {/* User info */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '16px',
+            padding: '32px 24px 24px',
+            borderBottom: '1px solid #e5e5e5'
+          }}>
+            <div style={{
+              width: '56px',
+              height: '56px',
+              borderRadius: '50%',
+              background: 'linear-gradient(135deg, #5e72e4 0%, #825ee4 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'white',
+              fontSize: '22px',
+              fontWeight: 600,
+              flexShrink: 0
+            }}>
+              {currentUser?.name?.charAt(0)?.toUpperCase() || 'U'}
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: '18px', fontWeight: 600, color: '#222', marginBottom: '2px' }}>
+                {currentUser?.name}
+              </div>
+              <div style={{ fontSize: '14px', color: '#666', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {currentUser?.email}
+              </div>
+            </div>
+          </div>
+          
+          {/* Account section with toggle and profile status */}
+          {hasVendorProfile && (
+            <div style={{ padding: '16px 0', borderBottom: '1px solid #e5e5e5' }}>
+              <div style={{ padding: '8px 24px', fontSize: '12px', fontWeight: 600, color: '#999', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Account
+              </div>
+              <div 
+                onClick={() => {
+                  // Just toggle - don't navigate anywhere
+                  // The toggle visual will update, user stays on current page
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '14px 24px',
+                  cursor: 'pointer'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <i className="fas fa-exchange-alt" style={{ width: '24px', textAlign: 'center', color: '#666' }}></i>
+                  <span style={{ fontSize: '16px', color: '#222' }}>Switch to Vendor</span>
+                </div>
+                <div style={{
+                  width: '48px',
+                  height: '26px',
+                  borderRadius: '13px',
+                  background: '#e5e5e5',
+                  position: 'relative'
+                }}>
+                  <div style={{
+                    position: 'absolute',
+                    top: '3px',
+                    left: '3px',
+                    width: '20px',
+                    height: '20px',
+                    borderRadius: '50%',
+                    background: 'white',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+                  }} />
+                </div>
+              </div>
+              
+              {/* Profile Setup Status Button - Simple clean design */}
+              <button 
+                onClick={() => { 
+                  if (profileStatus === 'incomplete') {
+                    navigate('/become-a-vendor/setup?step=categories');
+                  } else {
+                    navigate('/dashboard?section=vendor-business-profile');
+                  }
+                  setSidebarOpen(false); 
+                }}
+                style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'space-between',
+                  gap: '16px', 
+                  width: '100%',
+                  padding: '14px 24px', 
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '16px', 
+                  color: '#222', 
+                  cursor: 'pointer', 
+                  textAlign: 'left'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <i className="fas fa-user-check" style={{ width: '24px', textAlign: 'center', color: '#666' }}></i>
+                  <span>Profile Setup</span>
+                </div>
+                <span style={{
+                  padding: '4px 8px',
+                  borderRadius: '4px',
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  background: profileStatus === 'live' ? '#dcfce7' : 
+                              profileStatus === 'submitted' ? '#dbeafe' : 
+                              profileStatus === 'complete' ? '#dcfce7' : '#fef3c7',
+                  color: profileStatus === 'live' ? '#166534' : 
+                         profileStatus === 'submitted' ? '#1e40af' : 
+                         profileStatus === 'complete' ? '#166534' : '#92400e'
+                }}>
+                  {profileStatus === 'live' && 'Live'}
+                  {profileStatus === 'submitted' && 'Pending'}
+                  {profileStatus === 'complete' && 'Complete'}
+                  {profileStatus === 'incomplete' && 'Incomplete'}
+                  {!profileStatus && 'Setup'}
+                </span>
+              </button>
+            </div>
+          )}
+          
+          {/* Actions section - moved above Dashboard */}
+          <div style={{ padding: '16px 0', borderBottom: '1px solid #e5e5e5' }}>
+            <div style={{ padding: '8px 24px', fontSize: '12px', fontWeight: 600, color: '#999', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              Actions
+            </div>
+            <button 
+              onClick={() => { navigate('/'); setSidebarOpen(false); }}
+              style={{ display: 'flex', alignItems: 'center', gap: '16px', width: '100%', padding: '14px 24px', background: 'none', border: 'none', fontSize: '16px', color: '#222', cursor: 'pointer', textAlign: 'left' }}
+            >
+              <i className="fas fa-compass" style={{ width: '24px', textAlign: 'center', color: '#666' }}></i>
+              <span>Explore Vendors</span>
+            </button>
+            <button 
+              onClick={() => { navigate('/forum'); setSidebarOpen(false); }}
+              style={{ display: 'flex', alignItems: 'center', gap: '16px', width: '100%', padding: '14px 24px', background: 'none', border: 'none', fontSize: '16px', color: '#222', cursor: 'pointer', textAlign: 'left' }}
+            >
+              <i className="fas fa-comments" style={{ width: '24px', textAlign: 'center', color: '#666' }}></i>
+              <span>Forum</span>
+            </button>
+          </div>
+          
+          {/* Dashboard section */}
+          <div style={{ padding: '16px 0', borderBottom: '1px solid #e5e5e5' }}>
+            <div style={{ padding: '8px 24px', fontSize: '12px', fontWeight: 600, color: '#999', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              Dashboard
+            </div>
+            <button 
+              onClick={() => { navigate('/dashboard?section=dashboard'); setSidebarOpen(false); }}
+              style={{ display: 'flex', alignItems: 'center', gap: '16px', width: '100%', padding: '14px 24px', background: 'none', border: 'none', fontSize: '16px', color: '#222', cursor: 'pointer', textAlign: 'left' }}
+            >
+              <i className="fas fa-th-large" style={{ width: '24px', textAlign: 'center', color: '#666' }}></i>
+              <span>Dashboard</span>
+            </button>
+            <button 
+              onClick={() => { navigate('/dashboard?section=bookings'); setSidebarOpen(false); }}
+              style={{ display: 'flex', alignItems: 'center', gap: '16px', width: '100%', padding: '14px 24px', background: 'none', border: 'none', fontSize: '16px', color: '#222', cursor: 'pointer', textAlign: 'left' }}
+            >
+              <i className="fas fa-calendar-check" style={{ width: '24px', textAlign: 'center', color: '#666' }}></i>
+              <span>Bookings</span>
+            </button>
+            <button 
+              onClick={() => { navigate('/dashboard?section=messages'); setSidebarOpen(false); }}
+              style={{ display: 'flex', alignItems: 'center', gap: '16px', width: '100%', padding: '14px 24px', background: 'none', border: 'none', fontSize: '16px', color: '#222', cursor: 'pointer', textAlign: 'left' }}
+            >
+              <i className="fas fa-comments" style={{ width: '24px', textAlign: 'center', color: '#666' }}></i>
+              <span>Messages</span>
+            </button>
+            <button 
+              onClick={() => { navigate('/dashboard?section=invoices'); setSidebarOpen(false); }}
+              style={{ display: 'flex', alignItems: 'center', gap: '16px', width: '100%', padding: '14px 24px', background: 'none', border: 'none', fontSize: '16px', color: '#222', cursor: 'pointer', textAlign: 'left' }}
+            >
+              <i className="fas fa-file-invoice-dollar" style={{ width: '24px', textAlign: 'center', color: '#666' }}></i>
+              <span>Invoices</span>
+            </button>
+            {hasVendorProfile && (
+              <>
+                <button 
+                  onClick={() => { navigate('/dashboard?section=business-profile'); setSidebarOpen(false); }}
+                  style={{ display: 'flex', alignItems: 'center', gap: '16px', width: '100%', padding: '14px 24px', background: 'none', border: 'none', fontSize: '16px', color: '#222', cursor: 'pointer', textAlign: 'left' }}
+                >
+                  <i className="fas fa-store" style={{ width: '24px', textAlign: 'center', color: '#666' }}></i>
+                  <span>Business Profile</span>
+                </button>
+                <button 
+                  onClick={() => { navigate('/dashboard?section=reviews'); setSidebarOpen(false); }}
+                  style={{ display: 'flex', alignItems: 'center', gap: '16px', width: '100%', padding: '14px 24px', background: 'none', border: 'none', fontSize: '16px', color: '#222', cursor: 'pointer', textAlign: 'left' }}
+                >
+                  <i className="fas fa-star" style={{ width: '24px', textAlign: 'center', color: '#666' }}></i>
+                  <span>Reviews</span>
+                </button>
+                <button 
+                  onClick={() => { navigate('/dashboard?section=analytics'); setSidebarOpen(false); }}
+                  style={{ display: 'flex', alignItems: 'center', gap: '16px', width: '100%', padding: '14px 24px', background: 'none', border: 'none', fontSize: '16px', color: '#222', cursor: 'pointer', textAlign: 'left' }}
+                >
+                  <i className="fas fa-chart-line" style={{ width: '24px', textAlign: 'center', color: '#666' }}></i>
+                  <span>Analytics</span>
+                </button>
+              </>
+            )}
+            <button 
+              onClick={() => { navigate('/dashboard?section=settings'); setSidebarOpen(false); }}
+              style={{ display: 'flex', alignItems: 'center', gap: '16px', width: '100%', padding: '14px 24px', background: 'none', border: 'none', fontSize: '16px', color: '#222', cursor: 'pointer', textAlign: 'left' }}
+            >
+              <i className="fas fa-cog" style={{ width: '24px', textAlign: 'center', color: '#666' }}></i>
+              <span>Settings</span>
+            </button>
+          </div>
+          
+          {/* Log Out */}
+          <div style={{ padding: '16px 0' }}>
+            <button 
+              onClick={() => {
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                window.location.href = '/';
+              }}
+              style={{ display: 'flex', alignItems: 'center', gap: '16px', width: '100%', padding: '14px 24px', background: 'none', border: 'none', fontSize: '16px', color: '#c13515', cursor: 'pointer', textAlign: 'left' }}
+            >
+              <i className="fas fa-sign-out-alt" style={{ width: '24px', textAlign: 'center', color: '#c13515' }}></i>
+              <span>Log Out</span>
+            </button>
+          </div>
+        </div>
+      </>
+    )}
     
     {/* What's New Sidebar - Rendered outside header for proper z-index */}
     <WhatsNewSidebar 
