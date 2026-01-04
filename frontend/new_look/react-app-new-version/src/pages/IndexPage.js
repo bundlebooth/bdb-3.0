@@ -1056,7 +1056,7 @@ function IndexPage() {
                         left: 0,
                         right: 0,
                         bottom: 0,
-                        backgroundColor: mapActive ? '#34D399' : '#E5E7EB',
+                        backgroundColor: mapActive ? '#3b82f6' : '#E5E7EB',
                         borderRadius: '24px',
                         transition: 'background-color 0.3s',
                         display: 'flex',
@@ -1071,12 +1071,8 @@ function IndexPage() {
                           backgroundColor: 'white',
                           borderRadius: '50%',
                           transition: 'left 0.3s',
-                          boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center'
+                          boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
                         }}>
-                          {mapActive && <span style={{ color: '#34D399', fontSize: '12px' }}>✓</span>}
                         </span>
                       </span>
                     </label>

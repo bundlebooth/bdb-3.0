@@ -55,10 +55,12 @@
 .compact-location {
   flex: 1;
   padding-left: 16px;
+  justify-content: flex-end;
 }
 
 .compact-date {
-  flex: 0 0 auto;
+  flex: 1;
+  justify-content: flex-start;
 }
 
 .compact-field:hover {
