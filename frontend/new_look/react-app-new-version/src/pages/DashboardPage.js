@@ -24,13 +24,15 @@ import VendorReviewsSection from '../components/Dashboard/sections/VendorReviews
 import VendorAnalyticsSection from '../components/Dashboard/sections/VendorAnalyticsSection';
 import VendorSettingsSection from '../components/Dashboard/sections/VendorSettingsSection';
 
+import UnifiedSidebar from '../components/UnifiedSidebar';
+
 import './DashboardPage.css';
 import '../index.css';
 
 function DashboardPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { currentUser, logout } = useAuth();
+  const { currentUser, logout, loading: authLoading } = useAuth();
   const { notificationCount } = useNotifications();
   
   // Get initial section from URL or state
@@ -54,20 +56,53 @@ function DashboardPage() {
   const [bookingsRefreshKey, setBookingsRefreshKey] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const [viewMode, setViewMode] = useState('auto'); // 'auto', 'client', 'vendor'
+  // Get view mode from localStorage
+  const getViewMode = () => {
+    const stored = localStorage.getItem('viewMode');
+    if (stored === 'vendor' || stored === 'client') return stored;
+    return currentUser?.isVendor ? 'vendor' : 'client';
+  };
+  
+  const [viewMode, setViewMode] = useState(getViewMode());
 
   const isVendor = currentUser?.isVendor || currentUser?.userType === 'vendor';
   const hasVendorProfile = !!currentUser?.vendorProfileId;
   
-  // Determine which view to show based on viewMode
-  const showVendorView = viewMode === 'vendor' || (viewMode === 'auto' && isVendor);
+  // Determine which view to show based on viewMode from localStorage
+  const showVendorView = viewMode === 'vendor';
 
-  // Redirect if not logged in
+  // Listen for viewModeChanged events to update immediately
   useEffect(() => {
-    if (!currentUser) {
+    const handleViewModeChange = (event) => {
+      const newMode = event.detail?.mode;
+      if (newMode) {
+        console.log('DashboardPage: viewModeChanged event received, new mode:', newMode);
+        setViewMode(newMode);
+        // Reset to dashboard section when switching
+        setActiveSection('dashboard');
+      }
+    };
+    
+    window.addEventListener('viewModeChanged', handleViewModeChange);
+    return () => window.removeEventListener('viewModeChanged', handleViewModeChange);
+  }, []);
+
+  // Update activeSection when URL changes (for sidebar navigation)
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const sectionParam = params.get('section');
+    if (sectionParam) {
+      console.log('DashboardPage: URL section changed to:', sectionParam);
+      setActiveSection(sectionParam);
+    }
+  }, [location.search]);
+
+  // Redirect if not logged in (but wait for auth to finish loading)
+  useEffect(() => {
+    if (!authLoading && !currentUser) {
       navigate('/');
     }
-  }, [currentUser, navigate]);
+  }, [currentUser, authLoading, navigate]);
 
   // Load client dashboard data
   const loadClientData = useCallback(async () => {
@@ -295,6 +330,15 @@ function DashboardPage() {
     }
   };
 
+  // Show loading while auth is checking
+  if (authLoading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <div className="spinner"></div>
+      </div>
+    );
+  }
+
   if (!currentUser) {
     return null;
   }
@@ -390,111 +434,8 @@ function DashboardPage() {
         </div>
       </header>
       
-      {/* Sidebar Menu - Giggster style */}
-      {mobileMenuOpen && (
-        <>
-          <div className="sidebar-overlay" onClick={() => setMobileMenuOpen(false)} />
-          <div className="sidebar-menu">
-            {/* Close button */}
-            <button className="sidebar-close" onClick={() => setMobileMenuOpen(false)}>
-              <i className="fas fa-times"></i>
-            </button>
-            
-            {/* User info */}
-            <div className="sidebar-user-info">
-              <div className="sidebar-avatar">
-                {currentUser?.name?.charAt(0)?.toUpperCase() || 'U'}
-              </div>
-              <div className="sidebar-user-details">
-                <div className="sidebar-user-name">{currentUser?.name}</div>
-                <div className="sidebar-user-email">{currentUser?.email}</div>
-              </div>
-            </div>
-            
-            {/* View mode toggle */}
-            {hasVendorProfile && (
-              <div className="sidebar-section">
-                <div className="sidebar-section-title">Account</div>
-                <div 
-                  className="sidebar-toggle-item"
-                  onClick={() => { handleViewModeSwitch(showVendorView ? 'client' : 'vendor'); }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '14px 24px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                    <i className="fas fa-exchange-alt" style={{ width: '24px', textAlign: 'center', color: '#666' }}></i>
-                    <span style={{ fontSize: '16px', color: '#222' }}>Switch to {showVendorView ? 'Client' : 'Vendor'}</span>
-                  </div>
-                  <div style={{
-                    width: '48px',
-                    height: '26px',
-                    borderRadius: '13px',
-                    background: showVendorView ? 'var(--primary, #5e72e4)' : '#e5e5e5',
-                    position: 'relative',
-                    transition: 'background 0.2s'
-                  }}>
-                    <div style={{
-                      position: 'absolute',
-                      top: '3px',
-                      left: showVendorView ? '25px' : '3px',
-                      width: '20px',
-                      height: '20px',
-                      borderRadius: '50%',
-                      background: 'white',
-                      boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-                      transition: 'left 0.2s'
-                    }} />
-                  </div>
-                </div>
-                <div style={{ padding: '0 24px 8px', fontSize: '13px', color: '#888' }}>
-                  Currently viewing as: <strong style={{ color: '#222' }}>{showVendorView ? 'Vendor' : 'Client'}</strong>
-                </div>
-              </div>
-            )}
-            
-            {/* Actions - moved above Dashboard */}
-            <div className="sidebar-section">
-              <div className="sidebar-section-title">Actions</div>
-              <button className="sidebar-item" onClick={() => { handleSwitchToExploring(); setMobileMenuOpen(false); }}>
-                <i className="fas fa-compass"></i>
-                <span>Explore Vendors</span>
-              </button>
-              <button className="sidebar-item" onClick={() => { navigate('/forum'); setMobileMenuOpen(false); }}>
-                <i className="fas fa-comments"></i>
-                <span>Forum</span>
-              </button>
-            </div>
-            
-            {/* Dashboard Pages */}
-            <div className="sidebar-section">
-              <div className="sidebar-section-title">{showVendorView ? 'Vendor' : 'Client'} Dashboard</div>
-              {topNavTabs.map(tab => (
-                <button
-                  key={tab.id}
-                  className={`sidebar-item ${activeSection === tab.id ? 'active' : ''}`}
-                  onClick={() => { handleSectionChange(tab.id); setMobileMenuOpen(false); }}
-                >
-                  <i className={`fas ${tab.icon}`}></i>
-                  <span>{tab.label}</span>
-                </button>
-              ))}
-            </div>
-            
-            {/* Log Out */}
-            <div className="sidebar-section">
-              <button className="sidebar-item logout" onClick={handleLogout}>
-                <i className="fas fa-sign-out-alt"></i>
-                <span>Log Out</span>
-              </button>
-            </div>
-          </div>
-        </>
-      )}
+      {/* Unified Sidebar Component */}
+      <UnifiedSidebar isOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
 
       {/* Main Content */}
       <main className="dashboard-page-content">

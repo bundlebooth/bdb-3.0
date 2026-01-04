@@ -6,6 +6,7 @@ import DashboardModal from './DashboardModal';
 import NotificationDropdown from './NotificationDropdown';
 import EnhancedSearchBar from './EnhancedSearchBar';
 import WhatsNewSidebar from './WhatsNewSidebar';
+import UnifiedSidebar from './UnifiedSidebar';
 import { getUnreadNotificationCount, updatePageTitle } from '../utils/notifications';
 import { buildBecomeVendorUrl } from '../utils/urlHelpers';
 import './EnhancedSearchBar.css';
@@ -30,8 +31,25 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
   const [announcementCount, setAnnouncementCount] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [hasVendorProfile, setHasVendorProfile] = useState(false);
-  const [isVendorMode, setIsVendorMode] = useState(false); // Toggle between client/vendor view
+  const [vendorLogoUrl, setVendorLogoUrl] = useState(null);
   const notificationBtnRef = useRef(null);
+  
+  // Get view mode from localStorage
+  const getViewMode = () => {
+    const stored = localStorage.getItem('viewMode');
+    if (stored === 'vendor' || stored === 'client') return stored;
+    return currentUser?.isVendor ? 'vendor' : 'client';
+  };
+  const [isVendorMode, setIsVendorMode] = useState(getViewMode() === 'vendor');
+  
+  // Listen for viewModeChanged events
+  useEffect(() => {
+    const handleViewModeChange = () => {
+      setIsVendorMode(getViewMode() === 'vendor');
+    };
+    window.addEventListener('viewModeChanged', handleViewModeChange);
+    return () => window.removeEventListener('viewModeChanged', handleViewModeChange);
+  }, []);
 
   // Clear any dashboard hash on mount to prevent auto-opening
   useEffect(() => {
@@ -125,6 +143,12 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
         if (response.ok) {
           const data = await response.json();
           setHasVendorProfile(!!data.vendorProfileId);
+          
+          // Get vendor logo URL
+          const logoUrl = data.logoUrl || data.LogoURL || data.data?.profile?.LogoURL || data.data?.profile?.logoUrl;
+          if (logoUrl) {
+            setVendorLogoUrl(logoUrl);
+          }
         }
       } catch (error) {
         console.error('Failed to check vendor profile:', error);
@@ -358,47 +382,63 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
           onMouseLeave={(e) => e.currentTarget.style.boxShadow = 'none'}
         >
           <i className="fas fa-bars" style={{ fontSize: '14px', color: '#222' }}></i>
-          <div
-            style={{
-              backgroundColor: 'var(--primary)',
-              color: 'white',
-              borderRadius: '50%',
-              width: '32px',
-              height: '32px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '14px',
-              fontWeight: 600,
-              position: 'relative'
-            }}
-          >
-            {currentUser ? currentUser.name.charAt(0).toUpperCase() : 'S'}
-            {/* Exclamation mark indicator for incomplete profile */}
-            {profileIncomplete && (
-              <div
-                style={{
-                  position: 'absolute',
-                  top: '-4px',
-                  right: '-4px',
-                  width: '16px',
-                  height: '16px',
-                  borderRadius: '50%',
-                  backgroundColor: '#f59e0b',
-                  color: 'white',
-                  fontSize: '11px',
-                  fontWeight: 700,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  border: '2px solid white',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
-                }}
-              >
-                !
-              </div>
-            )}
-          </div>
+          {/* Show profile pic based on mode */}
+          {(isVendorMode && vendorLogoUrl) || currentUser?.profilePicture ? (
+            <img
+              src={isVendorMode && vendorLogoUrl ? vendorLogoUrl : currentUser?.profilePicture}
+              alt="Profile"
+              style={{
+                borderRadius: '50%',
+                width: '32px',
+                height: '32px',
+                objectFit: 'cover',
+                position: 'relative',
+                border: '1px solid #e0e0e0'
+              }}
+            />
+          ) : (
+            <div
+              style={{
+                backgroundColor: 'var(--primary)',
+                color: 'white',
+                borderRadius: '50%',
+                width: '32px',
+                height: '32px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '14px',
+                fontWeight: 600,
+                position: 'relative'
+              }}
+            >
+              {currentUser ? currentUser.name.charAt(0).toUpperCase() : 'S'}
+            </div>
+          )}
+          {/* Exclamation mark indicator for incomplete profile - only show if NOT live */}
+          {profileIncomplete && profileStatus !== 'live' && (
+            <div
+              style={{
+                position: 'absolute',
+                top: '0px',
+                right: '0px',
+                width: '16px',
+                height: '16px',
+                borderRadius: '50%',
+                backgroundColor: '#f59e0b',
+                color: 'white',
+                fontSize: '11px',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: '2px solid white',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+              }}
+            >
+              !
+            </div>
+          )}
         </div>
       </div>
 
@@ -416,287 +456,8 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
       />
     </header>
     
-    {/* User Menu Sidebar - Giggster style */}
-    {sidebarOpen && currentUser && (
-      <>
-        <div 
-          className="sidebar-overlay" 
-          onClick={() => setSidebarOpen(false)}
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0, 0, 0, 0.5)',
-            zIndex: 999
-          }}
-        />
-        <div 
-          className="sidebar-menu"
-          style={{
-            position: 'fixed',
-            top: 0,
-            right: 0,
-            width: '320px',
-            maxWidth: '85vw',
-            height: '100vh',
-            background: 'white',
-            zIndex: 1000,
-            overflowY: 'auto',
-            boxShadow: '-4px 0 20px rgba(0, 0, 0, 0.15)',
-            animation: 'slideInRight 0.2s ease-out'
-          }}
-        >
-          {/* Close button */}
-          <button 
-            onClick={() => setSidebarOpen(false)}
-            style={{
-              position: 'absolute',
-              top: '20px',
-              right: '20px',
-              background: 'none',
-              border: 'none',
-              fontSize: '20px',
-              color: '#666',
-              cursor: 'pointer',
-              padding: '8px'
-            }}
-          >
-            <i className="fas fa-times"></i>
-          </button>
-          
-          {/* User info */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            padding: '24px 20px 20px',
-            borderBottom: '1px solid #e5e5e5'
-          }}>
-            <div style={{
-              width: '44px',
-              height: '44px',
-              borderRadius: '50%',
-              background: 'linear-gradient(135deg, #5e72e4 0%, #825ee4 100%)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'white',
-              fontSize: '18px',
-              fontWeight: 600,
-              flexShrink: 0
-            }}>
-              {currentUser?.name?.charAt(0)?.toUpperCase() || 'U'}
-            </div>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: '15px', fontWeight: 600, color: '#222', marginBottom: '2px' }}>
-                {currentUser?.name}
-              </div>
-              <div style={{ fontSize: '12px', color: '#666', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {currentUser?.email}
-              </div>
-            </div>
-          </div>
-          
-          {/* Account section with toggle and profile status */}
-          {hasVendorProfile && (
-            <div style={{ padding: '12px 0', borderBottom: '1px solid #e5e5e5' }}>
-              <div style={{ padding: '6px 20px', fontSize: '11px', fontWeight: 600, color: '#999', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                Account
-              </div>
-              <div 
-                onClick={() => setIsVendorMode(!isVendorMode)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '10px 20px',
-                  cursor: 'pointer'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <i className="fas fa-exchange-alt" style={{ width: '20px', textAlign: 'center', color: '#666', fontSize: '14px' }}></i>
-                  <span style={{ fontSize: '14px', color: '#222' }}>Switch to {isVendorMode ? 'Client' : 'Vendor'}</span>
-                </div>
-                <div style={{
-                  width: '40px',
-                  height: '22px',
-                  borderRadius: '11px',
-                  background: isVendorMode ? 'var(--primary, #5e72e4)' : '#e5e5e5',
-                  position: 'relative',
-                  transition: 'background 0.2s'
-                }}>
-                  <div style={{
-                    position: 'absolute',
-                    top: '2px',
-                    left: isVendorMode ? '20px' : '2px',
-                    width: '18px',
-                    height: '18px',
-                    borderRadius: '50%',
-                    background: 'white',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-                    transition: 'left 0.2s'
-                  }} />
-                </div>
-              </div>
-              
-              {/* Profile Setup Status Button - Simple clean design */}
-              <button 
-                onClick={() => { 
-                  if (profileStatus === 'incomplete') {
-                    navigate('/become-a-vendor/setup?step=categories');
-                  } else {
-                    navigate('/dashboard?section=vendor-business-profile');
-                  }
-                  setSidebarOpen(false); 
-                }}
-                style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'space-between',
-                  gap: '12px', 
-                  width: '100%',
-                  padding: '10px 20px', 
-                  background: 'none',
-                  border: 'none',
-                  fontSize: '14px', 
-                  color: '#222', 
-                  cursor: 'pointer', 
-                  textAlign: 'left'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <i className="fas fa-user-check" style={{ width: '20px', textAlign: 'center', color: '#666', fontSize: '14px' }}></i>
-                  <span>Profile Setup</span>
-                </div>
-                <span style={{
-                  padding: '3px 6px',
-                  borderRadius: '4px',
-                  fontSize: '10px',
-                  fontWeight: 600,
-                  background: profileStatus === 'live' ? '#dcfce7' : 
-                              profileStatus === 'submitted' ? '#dbeafe' : 
-                              profileStatus === 'complete' ? '#dcfce7' : '#fef3c7',
-                  color: profileStatus === 'live' ? '#166534' : 
-                         profileStatus === 'submitted' ? '#1e40af' : 
-                         profileStatus === 'complete' ? '#166534' : '#92400e'
-                }}>
-                  {profileStatus === 'live' && 'Live'}
-                  {profileStatus === 'submitted' && 'Pending'}
-                  {profileStatus === 'complete' && 'Complete'}
-                  {profileStatus === 'incomplete' && 'Incomplete'}
-                  {!profileStatus && 'Setup'}
-                </span>
-              </button>
-            </div>
-          )}
-          
-          {/* Actions section - moved above Dashboard */}
-          <div style={{ padding: '12px 0', borderBottom: '1px solid #e5e5e5' }}>
-            <div style={{ padding: '6px 20px', fontSize: '11px', fontWeight: 600, color: '#999', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              Actions
-            </div>
-            <button 
-              onClick={() => { navigate('/'); setSidebarOpen(false); }}
-              style={{ display: 'flex', alignItems: 'center', gap: '12px', width: '100%', padding: '10px 20px', background: 'none', border: 'none', fontSize: '14px', color: '#222', cursor: 'pointer', textAlign: 'left' }}
-            >
-              <i className="fas fa-compass" style={{ width: '20px', textAlign: 'center', color: '#666', fontSize: '14px' }}></i>
-              <span>Explore Vendors</span>
-            </button>
-            <button 
-              onClick={() => { navigate('/forum'); setSidebarOpen(false); }}
-              style={{ display: 'flex', alignItems: 'center', gap: '12px', width: '100%', padding: '10px 20px', background: 'none', border: 'none', fontSize: '14px', color: '#222', cursor: 'pointer', textAlign: 'left' }}
-            >
-              <i className="fas fa-comments" style={{ width: '20px', textAlign: 'center', color: '#666', fontSize: '14px' }}></i>
-              <span>Forum</span>
-            </button>
-          </div>
-          
-          {/* Dashboard section */}
-          <div style={{ padding: '12px 0', borderBottom: '1px solid #e5e5e5' }}>
-            <div style={{ padding: '6px 20px', fontSize: '11px', fontWeight: 600, color: '#999', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              Dashboard
-            </div>
-            <button 
-              onClick={() => { navigate('/dashboard?section=dashboard'); setSidebarOpen(false); }}
-              style={{ display: 'flex', alignItems: 'center', gap: '12px', width: '100%', padding: '10px 20px', background: 'none', border: 'none', fontSize: '14px', color: '#222', cursor: 'pointer', textAlign: 'left' }}
-            >
-              <i className="fas fa-th-large" style={{ width: '20px', textAlign: 'center', color: '#666', fontSize: '14px' }}></i>
-              <span>Dashboard</span>
-            </button>
-            <button 
-              onClick={() => { navigate('/dashboard?section=bookings'); setSidebarOpen(false); }}
-              style={{ display: 'flex', alignItems: 'center', gap: '12px', width: '100%', padding: '10px 20px', background: 'none', border: 'none', fontSize: '14px', color: '#222', cursor: 'pointer', textAlign: 'left' }}
-            >
-              <i className="fas fa-calendar-check" style={{ width: '20px', textAlign: 'center', color: '#666', fontSize: '14px' }}></i>
-              <span>Bookings</span>
-            </button>
-            <button 
-              onClick={() => { navigate('/dashboard?section=messages'); setSidebarOpen(false); }}
-              style={{ display: 'flex', alignItems: 'center', gap: '12px', width: '100%', padding: '10px 20px', background: 'none', border: 'none', fontSize: '14px', color: '#222', cursor: 'pointer', textAlign: 'left' }}
-            >
-              <i className="fas fa-comments" style={{ width: '20px', textAlign: 'center', color: '#666', fontSize: '14px' }}></i>
-              <span>Messages</span>
-            </button>
-            <button 
-              onClick={() => { navigate('/dashboard?section=invoices'); setSidebarOpen(false); }}
-              style={{ display: 'flex', alignItems: 'center', gap: '12px', width: '100%', padding: '10px 20px', background: 'none', border: 'none', fontSize: '14px', color: '#222', cursor: 'pointer', textAlign: 'left' }}
-            >
-              <i className="fas fa-file-invoice-dollar" style={{ width: '20px', textAlign: 'center', color: '#666', fontSize: '14px' }}></i>
-              <span>Invoices</span>
-            </button>
-            {hasVendorProfile && (
-              <>
-                <button 
-                  onClick={() => { navigate('/dashboard?section=business-profile'); setSidebarOpen(false); }}
-                  style={{ display: 'flex', alignItems: 'center', gap: '12px', width: '100%', padding: '10px 20px', background: 'none', border: 'none', fontSize: '14px', color: '#222', cursor: 'pointer', textAlign: 'left' }}
-                >
-                  <i className="fas fa-store" style={{ width: '20px', textAlign: 'center', color: '#666', fontSize: '14px' }}></i>
-                  <span>Business Profile</span>
-                </button>
-                <button 
-                  onClick={() => { navigate('/dashboard?section=reviews'); setSidebarOpen(false); }}
-                  style={{ display: 'flex', alignItems: 'center', gap: '12px', width: '100%', padding: '10px 20px', background: 'none', border: 'none', fontSize: '14px', color: '#222', cursor: 'pointer', textAlign: 'left' }}
-                >
-                  <i className="fas fa-star" style={{ width: '20px', textAlign: 'center', color: '#666', fontSize: '14px' }}></i>
-                  <span>Reviews</span>
-                </button>
-                <button 
-                  onClick={() => { navigate('/dashboard?section=analytics'); setSidebarOpen(false); }}
-                  style={{ display: 'flex', alignItems: 'center', gap: '12px', width: '100%', padding: '10px 20px', background: 'none', border: 'none', fontSize: '14px', color: '#222', cursor: 'pointer', textAlign: 'left' }}
-                >
-                  <i className="fas fa-chart-line" style={{ width: '20px', textAlign: 'center', color: '#666', fontSize: '14px' }}></i>
-                  <span>Analytics</span>
-                </button>
-              </>
-            )}
-            <button 
-              onClick={() => { navigate('/dashboard?section=settings'); setSidebarOpen(false); }}
-              style={{ display: 'flex', alignItems: 'center', gap: '12px', width: '100%', padding: '10px 20px', background: 'none', border: 'none', fontSize: '14px', color: '#222', cursor: 'pointer', textAlign: 'left' }}
-            >
-              <i className="fas fa-cog" style={{ width: '20px', textAlign: 'center', color: '#666', fontSize: '14px' }}></i>
-              <span>Settings</span>
-            </button>
-          </div>
-          
-          {/* Log Out */}
-          <div style={{ padding: '12px 0' }}>
-            <button 
-              onClick={() => {
-                localStorage.removeItem('token');
-                localStorage.removeItem('user');
-                window.location.href = '/';
-              }}
-              style={{ display: 'flex', alignItems: 'center', gap: '12px', width: '100%', padding: '10px 20px', background: 'none', border: 'none', fontSize: '14px', color: '#c13515', cursor: 'pointer', textAlign: 'left' }}
-            >
-              <i className="fas fa-sign-out-alt" style={{ width: '20px', textAlign: 'center', color: '#c13515', fontSize: '14px' }}></i>
-              <span>Log Out</span>
-            </button>
-          </div>
-        </div>
-      </>
-    )}
+    {/* Unified Sidebar Component */}
+    <UnifiedSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
     
     {/* What's New Sidebar - Rendered outside header for proper z-index */}
     <WhatsNewSidebar 

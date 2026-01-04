@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { API_BASE_URL } from '../config';
 
 function MobileBottomNav({ onOpenDashboard, onOpenProfile, onOpenMessages, onOpenMap, onCloseDashboard }) {
   const navigate = useNavigate();
@@ -9,8 +10,50 @@ function MobileBottomNav({ onOpenDashboard, onOpenProfile, onOpenMessages, onOpe
   const [activeTab, setActiveTab] = useState(null);
   const [mobileMapOpen, setMobileMapOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
+  const [vendorLogoUrl, setVendorLogoUrl] = useState(null);
   const lastScrollY = useRef(0);
   const scrollTimeout = useRef(null);
+  
+  // Get view mode from localStorage
+  const getViewMode = () => {
+    const stored = localStorage.getItem('viewMode');
+    if (stored === 'vendor' || stored === 'client') return stored;
+    return currentUser?.isVendor ? 'vendor' : 'client';
+  };
+  const [isVendorMode, setIsVendorMode] = useState(getViewMode() === 'vendor');
+  
+  // Listen for viewModeChanged events
+  useEffect(() => {
+    const handleViewModeChange = () => {
+      setIsVendorMode(getViewMode() === 'vendor');
+    };
+    window.addEventListener('viewModeChanged', handleViewModeChange);
+    return () => window.removeEventListener('viewModeChanged', handleViewModeChange);
+  }, []);
+  
+  // Fetch vendor logo
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    
+    const fetchVendorLogo = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/vendors/profile?userId=${currentUser.id}`, {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          const logoUrl = data.logoUrl || data.LogoURL || data.data?.profile?.LogoURL || data.data?.profile?.logoUrl;
+          if (logoUrl) {
+            setVendorLogoUrl(logoUrl);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch vendor logo:', error);
+      }
+    };
+    
+    fetchVendorLogo();
+  }, [currentUser?.id]);
 
   // Pages where bottom nav should be visible
   const allowedPaths = ['/', '/explore', '/forum'];
@@ -227,9 +270,24 @@ function MobileBottomNav({ onOpenDashboard, onOpenProfile, onOpenMessages, onOpe
         onClick={handleAccountClick}
       >
         {currentUser ? (
-          <div className="nav-user-avatar">
-            {currentUser.name?.charAt(0).toUpperCase() || 'U'}
-          </div>
+          (isVendorMode && vendorLogoUrl) || currentUser?.profilePicture ? (
+            <img
+              src={isVendorMode && vendorLogoUrl ? vendorLogoUrl : currentUser?.profilePicture}
+              alt="Profile"
+              className="nav-user-avatar-img"
+              style={{
+                width: '24px',
+                height: '24px',
+                borderRadius: '50%',
+                objectFit: 'cover',
+                border: '1px solid #e0e0e0'
+              }}
+            />
+          ) : (
+            <div className="nav-user-avatar">
+              {currentUser.name?.charAt(0).toUpperCase() || 'U'}
+            </div>
+          )
         ) : (
           <i className="fas fa-user"></i>
         )}

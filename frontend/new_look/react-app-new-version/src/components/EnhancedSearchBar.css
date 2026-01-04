@@ -55,7 +55,7 @@
 .compact-location {
   flex: 1;
   padding-left: 16px;
-  justify-content: flex-end;
+  justify-content: flex-start;
 }
 
 .compact-date {

@@ -1802,21 +1802,203 @@ function MessagingWidget() {
               </div>
             )}
 
-            {/* Messages View - show conversations or chat */}
-            {mainView === 'messages' && (
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                <p style={{ padding: '20px', color: '#666', textAlign: 'center' }}>
-                  Messages view - desktop widget
-                </p>
+            {/* Messages View - show conversations list */}
+            {mainView === 'messages' && view === 'conversations' && (
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                {/* Role Toggle */}
+                {currentUser?.isVendor && (
+                  <div style={{ 
+                    display: 'flex', 
+                    borderBottom: '1px solid #e0e0e0',
+                    background: '#f9f9f9'
+                  }}>
+                    <button
+                      onClick={() => setMessageRole('client')}
+                      style={{
+                        flex: 1,
+                        padding: '12px',
+                        border: 'none',
+                        background: messageRole === 'client' ? 'white' : 'transparent',
+                        borderBottom: messageRole === 'client' ? '2px solid #5e72e4' : '2px solid transparent',
+                        cursor: 'pointer',
+                        fontWeight: messageRole === 'client' ? 600 : 400,
+                        color: messageRole === 'client' ? '#5e72e4' : '#666',
+                        fontSize: '13px'
+                      }}
+                    >
+                      As Client
+                    </button>
+                    <button
+                      onClick={() => setMessageRole('vendor')}
+                      style={{
+                        flex: 1,
+                        padding: '12px',
+                        border: 'none',
+                        background: messageRole === 'vendor' ? 'white' : 'transparent',
+                        borderBottom: messageRole === 'vendor' ? '2px solid #5e72e4' : '2px solid transparent',
+                        cursor: 'pointer',
+                        fontWeight: messageRole === 'vendor' ? 600 : 400,
+                        color: messageRole === 'vendor' ? '#5e72e4' : '#666',
+                        fontSize: '13px'
+                      }}
+                    >
+                      As Vendor
+                    </button>
+                  </div>
+                )}
+                
+                {/* Conversations List */}
+                <div style={{ flex: 1, overflowY: 'auto' }}>
+                  {loading ? (
+                    <div style={{ padding: '40px', textAlign: 'center' }}>
+                      <div className="spinner" style={{ margin: '0 auto' }}></div>
+                    </div>
+                  ) : filteredConversations.length === 0 ? (
+                    <div style={{ padding: '40px 20px', textAlign: 'center', color: '#666' }}>
+                      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" style={{ margin: '0 auto 12px', opacity: 0.3 }}>
+                        <path d="M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2Z" fill="#ddd"/>
+                      </svg>
+                      <p style={{ fontSize: '14px', fontWeight: 500, marginBottom: '4px' }}>No conversations yet</p>
+                      <p style={{ fontSize: '13px', opacity: 0.7 }}>Start chatting with vendors</p>
+                    </div>
+                  ) : (
+                    filteredConversations.map((conv) => (
+                      <div
+                        key={conv.id}
+                        onClick={() => openConversation(conv)}
+                        style={{ 
+                          cursor: 'pointer',
+                          padding: '14px 16px',
+                          borderBottom: '1px solid #f0f0f0',
+                          display: 'flex',
+                          gap: '12px',
+                          alignItems: 'center',
+                          transition: 'background 0.2s'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = '#f9f9f9'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                      >
+                        <div style={{
+                          width: '40px',
+                          height: '40px',
+                          borderRadius: '50%',
+                          background: '#5e72e4',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: 'white',
+                          fontSize: '16px',
+                          fontWeight: 600,
+                          flexShrink: 0
+                        }}>
+                          {(conv.OtherPartyName || 'U')[0].toUpperCase()}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '2px', color: '#222' }}>
+                            {conv.OtherPartyName || 'Unknown'}
+                          </div>
+                          <div style={{ 
+                            fontSize: '12px', 
+                            color: '#717171',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap'
+                          }}>
+                            {conv.lastMessageContent || 'No messages yet'}
+                          </div>
+                        </div>
+                        {conv.unreadCount > 0 && (
+                          <span style={{
+                            background: '#ff385c',
+                            color: 'white',
+                            borderRadius: '10px',
+                            padding: '2px 6px',
+                            fontSize: '11px',
+                            fontWeight: 600,
+                            minWidth: '18px',
+                            textAlign: 'center'
+                          }}>
+                            {conv.unreadCount}
+                          </span>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
             )}
 
-            {/* Help View */}
+            {/* Help View - show FAQs and support options */}
             {mainView === 'help' && (
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                <p style={{ padding: '20px', color: '#666', textAlign: 'center' }}>
-                  Help view - desktop widget
-                </p>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
+                  {/* Quick Actions */}
+                  <div style={{ marginBottom: '20px' }}>
+                    <h4 style={{ fontSize: '13px', fontWeight: 600, marginBottom: '12px', color: '#222' }}>Quick Actions</h4>
+                    <div 
+                      onClick={() => setShowTicketForm(true)}
+                      style={{
+                        padding: '12px 16px',
+                        background: '#f9f9f9',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        marginBottom: '8px'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                          <path d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z" stroke="#5e72e4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          <path d="M14 2V8H20" stroke="#5e72e4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          <path d="M12 18V12" stroke="#5e72e4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          <path d="M9 15H15" stroke="#5e72e4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                        <span style={{ fontWeight: 500, fontSize: '13px', color: '#222' }}>Submit a Support Ticket</span>
+                      </div>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                        <path d="M9 18L15 12L9 6" stroke="#717171" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </div>
+                  </div>
+                  
+                  {/* FAQs */}
+                  <div>
+                    <h4 style={{ fontSize: '13px', fontWeight: 600, marginBottom: '12px', color: '#222' }}>Frequently Asked Questions</h4>
+                    {faqs.length > 0 ? faqs.slice(0, 5).map((faq) => (
+                      <div key={faq.FAQID} style={{ borderBottom: '1px solid #f0f0f0' }}>
+                        <div 
+                          onClick={() => setExpandedFaq(expandedFaq === faq.FAQID ? null : faq.FAQID)}
+                          style={{
+                            padding: '12px 0',
+                            fontSize: '13px',
+                            color: '#222',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center'
+                          }}
+                        >
+                          <span>{faq.Question}</span>
+                          <svg 
+                            width="14" height="14" viewBox="0 0 24 24" fill="none"
+                            style={{ transform: expandedFaq === faq.FAQID ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s', flexShrink: 0 }}
+                          >
+                            <path d="M6 9L12 15L18 9" stroke="#666" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        </div>
+                        {expandedFaq === faq.FAQID && (
+                          <div style={{ padding: '0 0 12px 0', fontSize: '12px', color: '#666', lineHeight: '1.5' }}>
+                            {faq.Answer}
+                          </div>
+                        )}
+                      </div>
+                    )) : (
+                      <p style={{ color: '#999', fontSize: '12px' }}>Loading FAQs...</p>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
           </div>
