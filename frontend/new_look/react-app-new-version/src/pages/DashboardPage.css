@@ -80,6 +80,22 @@
   color: var(--primary, #5e72e4);
 }
 
+/* Notification Badge for Nav Tabs */
+.nav-badge {
+  background: #ef4444;
+  color: white;
+  font-size: 11px;
+  font-weight: 600;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 5px;
+  margin-left: 6px;
+}
+
 .dashboard-nav-tab.active {
   color: var(--primary, #5e72e4);
   font-weight: 500;

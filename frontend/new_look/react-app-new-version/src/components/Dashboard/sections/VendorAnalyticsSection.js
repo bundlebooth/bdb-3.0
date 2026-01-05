@@ -63,68 +63,293 @@ function VendorAnalyticsSection() {
     try {
       setLoading(true);
       
-      // Fetch analytics data
-      const response = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/analytics?range=${dateRange}`, {
+      // Convert date range to days
+      const daysMap = { '7d': 7, '30d': 30, '90d': 90, '1y': 365 };
+      const daysBack = daysMap[dateRange] || 30;
+      
+      // Fetch analytics data from correct endpoint
+      const response = await fetch(`${API_BASE_URL}/analytics/vendor/${vendorProfileId}?daysBack=${daysBack}`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       
       if (response.ok) {
         const data = await response.json();
-        setAnalytics(prev => ({
-          ...prev,
-          ...data.analytics
-        }));
+        
+        // Also fetch bookings data for revenue and status breakdown
+        const bookingsResponse = await fetch(`${API_BASE_URL}/bookings/vendor/${vendorProfileId}`, {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        
+        let bookingsData = { bookings: [], requests: [] };
+        if (bookingsResponse.ok) {
+          bookingsData = await bookingsResponse.json();
+        }
+        
+        // Calculate analytics from real data
+        const allBookings = [...(bookingsData.bookings || []), ...(bookingsData.requests || [])];
+        const totalRevenue = allBookings
+          .filter(b => b.FullAmountPaid || b._status === 'paid')
+          .reduce((sum, b) => sum + (Number(b.TotalAmount) || 0), 0);
+        
+        const statusCounts = {
+          pending: allBookings.filter(b => b._status === 'pending').length,
+          confirmed: allBookings.filter(b => ['confirmed', 'accepted', 'approved'].includes(b._status)).length,
+          completed: allBookings.filter(b => b._status === 'completed' || b._status === 'paid').length,
+          cancelled: allBookings.filter(b => b._status === 'cancelled' || b._status === 'declined').length
+        };
+        
+        // Build monthly data from daily views
+        const monthlyViews = [];
+        const monthlyRevenue = [];
+        const monthlyBookings = [];
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const currentMonth = new Date().getMonth();
+        
+        for (let i = 5; i >= 0; i--) {
+          const monthIndex = (currentMonth - i + 12) % 12;
+          monthlyViews.push({ month: months[monthIndex], views: 0 });
+          monthlyRevenue.push({ month: months[monthIndex], revenue: 0 });
+          monthlyBookings.push({ month: months[monthIndex], bookings: 0 });
+        }
+        
+        // Aggregate daily views into monthly
+        if (data.dailyViews) {
+          data.dailyViews.forEach(day => {
+            const date = new Date(day.ViewDate);
+            const monthName = months[date.getMonth()];
+            const monthEntry = monthlyViews.find(m => m.month === monthName);
+            if (monthEntry) {
+              monthEntry.views += day.ViewCount || 0;
+            }
+          });
+        }
+        
+        // Aggregate bookings by month - use EventDate or CreatedAt
+        allBookings.forEach(booking => {
+          const dateStr = booking.EventDate || booking.CreatedAt || booking.createdAt;
+          if (dateStr) {
+            const date = new Date(dateStr);
+            if (!isNaN(date.getTime())) {
+              const monthName = months[date.getMonth()];
+              const bookingEntry = monthlyBookings.find(m => m.month === monthName);
+              const revenueEntry = monthlyRevenue.find(m => m.month === monthName);
+              if (bookingEntry) {
+                bookingEntry.bookings += 1;
+              }
+              if (revenueEntry) {
+                // Count revenue for paid bookings
+                const isPaid = booking.FullAmountPaid || booking._status === 'paid' || booking._status === 'completed';
+                if (isPaid) {
+                  revenueEntry.revenue += Number(booking.TotalAmount) || 0;
+                }
+              }
+            }
+          }
+        });
+        
+        // Fetch favorites count
+        let favoriteCount = 0;
+        try {
+          const favResponse = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/favorites/count`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+          });
+          if (favResponse.ok) {
+            const favData = await favResponse.json();
+            favoriteCount = favData.count || 0;
+          }
+        } catch (e) { /* ignore */ }
+        
+        // Fetch reviews
+        let reviewCount = 0;
+        let avgRating = 0;
+        try {
+          const reviewResponse = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/reviews`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+          });
+          if (reviewResponse.ok) {
+            const reviewData = await reviewResponse.json();
+            const reviews = reviewData.reviews || [];
+            reviewCount = reviews.length;
+            if (reviewCount > 0) {
+              avgRating = reviews.reduce((sum, r) => sum + (r.Rating || 0), 0) / reviewCount;
+            }
+          }
+        } catch (e) { /* ignore */ }
+        
+        setAnalytics({
+          views: data.summary?.totalViews || 0,
+          bookings: allBookings.length,
+          revenue: totalRevenue,
+          conversionRate: data.summary?.totalViews > 0 ? ((allBookings.length / data.summary.totalViews) * 100).toFixed(1) : 0,
+          avgResponseTime: 0,
+          favoriteCount,
+          reviewCount,
+          avgRating: avgRating || 0,
+          monthlyViews,
+          monthlyBookings,
+          monthlyRevenue,
+          bookingsByStatus: statusCounts,
+          revenueByMonth: monthlyRevenue
+        });
       } else {
-        // Generate sample data for display if API fails
-        generateSampleData();
+        // If analytics API fails, still try to load bookings data
+        await loadBookingsOnly();
       }
     } catch (error) {
       console.error('Failed to load analytics:', error);
-      generateSampleData();
+      // Still try to load bookings data even if analytics fails
+      await loadBookingsOnly();
     } finally {
       setLoading(false);
     }
   };
 
-  const generateSampleData = () => {
-    // Generate realistic sample data for the charts
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-    const currentMonth = new Date().getMonth();
-    const last6Months = [];
-    for (let i = 5; i >= 0; i--) {
-      const monthIndex = (currentMonth - i + 12) % 12;
-      last6Months.push(['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][monthIndex]);
+  // Load only bookings data when analytics API fails
+  const loadBookingsOnly = async () => {
+    try {
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const currentMonth = new Date().getMonth();
+      
+      // Initialize monthly arrays
+      const monthlyViews = [];
+      const monthlyRevenue = [];
+      const monthlyBookings = [];
+      for (let i = 5; i >= 0; i--) {
+        const monthIndex = (currentMonth - i + 12) % 12;
+        monthlyViews.push({ month: months[monthIndex], views: 0 });
+        monthlyRevenue.push({ month: months[monthIndex], revenue: 0 });
+        monthlyBookings.push({ month: months[monthIndex], bookings: 0 });
+      }
+      
+      // Fetch bookings
+      const bookingsResponse = await fetch(`${API_BASE_URL}/bookings/vendor/${vendorProfileId}`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      
+      let allBookings = [];
+      if (bookingsResponse.ok) {
+        const bookingsData = await bookingsResponse.json();
+        allBookings = [...(bookingsData.bookings || []), ...(bookingsData.requests || [])];
+      }
+      
+      // Calculate real metrics
+      const totalRevenue = allBookings
+        .filter(b => b.FullAmountPaid || b._status === 'paid')
+        .reduce((sum, b) => sum + (Number(b.TotalAmount) || 0), 0);
+      
+      const statusCounts = {
+        pending: allBookings.filter(b => b._status === 'pending').length,
+        confirmed: allBookings.filter(b => ['confirmed', 'accepted', 'approved'].includes(b._status)).length,
+        completed: allBookings.filter(b => b._status === 'completed' || b._status === 'paid').length,
+        cancelled: allBookings.filter(b => b._status === 'cancelled' || b._status === 'declined').length
+      };
+      
+      // Aggregate bookings by month - use EventDate or CreatedAt
+      allBookings.forEach(booking => {
+        const dateStr = booking.EventDate || booking.CreatedAt || booking.createdAt;
+        if (dateStr) {
+          const date = new Date(dateStr);
+          if (!isNaN(date.getTime())) {
+            const monthName = months[date.getMonth()];
+            const bookingEntry = monthlyBookings.find(m => m.month === monthName);
+            const revenueEntry = monthlyRevenue.find(m => m.month === monthName);
+            if (bookingEntry) {
+              bookingEntry.bookings += 1;
+            }
+            if (revenueEntry) {
+              const isPaid = booking.FullAmountPaid || booking._status === 'paid' || booking._status === 'completed';
+              if (isPaid) {
+                revenueEntry.revenue += Number(booking.TotalAmount) || 0;
+              }
+            }
+          }
+        }
+      });
+      
+      // Fetch favorites count
+      let favoriteCount = 0;
+      try {
+        const favResponse = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/favorites/count`, {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        if (favResponse.ok) {
+          const favData = await favResponse.json();
+          favoriteCount = favData.count || 0;
+        }
+      } catch (e) { /* ignore */ }
+      
+      // Fetch reviews
+      let reviewCount = 0;
+      let avgRating = 0;
+      try {
+        const reviewResponse = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/reviews`, {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        if (reviewResponse.ok) {
+          const reviewData = await reviewResponse.json();
+          const reviews = reviewData.reviews || [];
+          reviewCount = reviews.length;
+          if (reviewCount > 0) {
+            avgRating = reviews.reduce((sum, r) => sum + (r.Rating || 0), 0) / reviewCount;
+          }
+        }
+      } catch (e) { /* ignore */ }
+      
+      setAnalytics({
+        views: 0,
+        bookings: allBookings.length,
+        revenue: totalRevenue,
+        conversionRate: 0,
+        avgResponseTime: 0,
+        favoriteCount,
+        reviewCount,
+        avgRating: avgRating || 0,
+        monthlyViews,
+        monthlyBookings,
+        monthlyRevenue,
+        bookingsByStatus: statusCounts,
+        revenueByMonth: monthlyRevenue
+      });
+    } catch (error) {
+      console.error('Failed to load bookings data:', error);
     }
-    
-    setAnalytics({
-      views: Math.floor(Math.random() * 500) + 100,
-      bookings: Math.floor(Math.random() * 30) + 5,
-      revenue: Math.floor(Math.random() * 10000) + 2000,
-      conversionRate: (Math.random() * 10 + 2).toFixed(1),
-      avgResponseTime: Math.floor(Math.random() * 120) + 30,
-      favoriteCount: Math.floor(Math.random() * 50) + 10,
-      reviewCount: Math.floor(Math.random() * 20) + 3,
-      avgRating: (Math.random() * 1 + 4).toFixed(1),
-      monthlyViews: last6Months.map(() => Math.floor(Math.random() * 100) + 20),
-      monthlyBookings: last6Months.map(() => Math.floor(Math.random() * 10) + 1),
-      monthlyRevenue: last6Months.map(() => Math.floor(Math.random() * 3000) + 500),
-      bookingsByStatus: {
-        pending: Math.floor(Math.random() * 5) + 1,
-        confirmed: Math.floor(Math.random() * 10) + 3,
-        completed: Math.floor(Math.random() * 20) + 5,
-        cancelled: Math.floor(Math.random() * 3)
-      },
-      revenueByMonth: last6Months,
-      labels: last6Months
-    });
+  };
+
+  // Extract labels and data from monthly arrays
+  const getMonthLabels = () => {
+    if (Array.isArray(analytics.monthlyViews) && analytics.monthlyViews.length > 0 && analytics.monthlyViews[0]?.month) {
+      return analytics.monthlyViews.map(m => m.month);
+    }
+    return ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+  };
+  
+  const getViewsData = () => {
+    if (Array.isArray(analytics.monthlyViews) && analytics.monthlyViews.length > 0 && analytics.monthlyViews[0]?.views !== undefined) {
+      return analytics.monthlyViews.map(m => m.views);
+    }
+    return [0, 0, 0, 0, 0, 0];
+  };
+  
+  const getRevenueData = () => {
+    if (Array.isArray(analytics.monthlyRevenue) && analytics.monthlyRevenue.length > 0 && analytics.monthlyRevenue[0]?.revenue !== undefined) {
+      return analytics.monthlyRevenue.map(m => m.revenue);
+    }
+    return [0, 0, 0, 0, 0, 0];
+  };
+  
+  const getBookingsData = () => {
+    if (Array.isArray(analytics.monthlyBookings) && analytics.monthlyBookings.length > 0 && analytics.monthlyBookings[0]?.bookings !== undefined) {
+      return analytics.monthlyBookings.map(m => m.bookings);
+    }
+    return [0, 0, 0, 0, 0, 0];
   };
 
   // Chart configurations
   const viewsChartData = {
-    labels: analytics.labels || analytics.revenueByMonth || ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+    labels: getMonthLabels(),
     datasets: [{
       label: 'Profile Views',
-      data: analytics.monthlyViews || [45, 62, 78, 95, 110, 125],
+      data: getViewsData(),
       fill: true,
       backgroundColor: 'rgba(94, 114, 228, 0.1)',
       borderColor: '#5e72e4',
@@ -138,10 +363,10 @@ function VendorAnalyticsSection() {
   };
 
   const revenueChartData = {
-    labels: analytics.labels || analytics.revenueByMonth || ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+    labels: getMonthLabels(),
     datasets: [{
       label: 'Revenue ($)',
-      data: analytics.monthlyRevenue || [1200, 1800, 2200, 2800, 3200, 3800],
+      data: getRevenueData(),
       backgroundColor: 'rgba(16, 185, 129, 0.8)',
       borderColor: '#10b981',
       borderWidth: 1,
@@ -150,10 +375,10 @@ function VendorAnalyticsSection() {
   };
 
   const bookingsChartData = {
-    labels: analytics.labels || analytics.revenueByMonth || ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+    labels: getMonthLabels(),
     datasets: [{
       label: 'Bookings',
-      data: analytics.monthlyBookings || [3, 5, 4, 7, 6, 8],
+      data: getBookingsData(),
       backgroundColor: 'rgba(139, 92, 246, 0.8)',
       borderColor: '#8b5cf6',
       borderWidth: 1,
@@ -165,10 +390,10 @@ function VendorAnalyticsSection() {
     labels: ['Pending', 'Confirmed', 'Completed', 'Cancelled'],
     datasets: [{
       data: [
-        analytics.bookingsByStatus?.pending || 2,
-        analytics.bookingsByStatus?.confirmed || 5,
-        analytics.bookingsByStatus?.completed || 12,
-        analytics.bookingsByStatus?.cancelled || 1
+        analytics.bookingsByStatus?.pending || 0,
+        analytics.bookingsByStatus?.confirmed || 0,
+        analytics.bookingsByStatus?.completed || 0,
+        analytics.bookingsByStatus?.cancelled || 0
       ],
       backgroundColor: ['#f59e0b', '#3b82f6', '#10b981', '#ef4444'],
       borderWidth: 0

@@ -56,6 +56,10 @@ function DashboardPage() {
   const [bookingsRefreshKey, setBookingsRefreshKey] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [notificationCounts, setNotificationCounts] = useState({
+    pendingBookings: 0,
+    unreadMessages: 0
+  });
   // Get view mode from localStorage
   const getViewMode = () => {
     const stored = localStorage.getItem('viewMode');
@@ -117,6 +121,26 @@ function DashboardPage() {
     return () => window.removeEventListener('viewModeChanged', handleViewModeChange);
   }, [activeSection]);
 
+  // Listen for navigateToMessages events from booking sections
+  useEffect(() => {
+    const handleNavigateToMessages = (event) => {
+      const { conversationId, otherPartyName } = event.detail || {};
+      console.log('DashboardPage: navigateToMessages event received', { conversationId, otherPartyName });
+      
+      // Navigate to messages section
+      setActiveSection('messages');
+      
+      // Store the conversation to open in sessionStorage so UnifiedMessagesSection can pick it up
+      if (conversationId) {
+        sessionStorage.setItem('openConversationId', conversationId);
+        sessionStorage.setItem('openConversationName', otherPartyName || '');
+      }
+    };
+    
+    window.addEventListener('navigateToMessages', handleNavigateToMessages);
+    return () => window.removeEventListener('navigateToMessages', handleNavigateToMessages);
+  }, []);
+
   // Update activeSection when URL changes (for sidebar navigation)
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -126,6 +150,86 @@ function DashboardPage() {
       setActiveSection(sectionParam);
     }
   }, [location.search]);
+
+  // Load notification counts
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    
+    const loadNotificationCounts = async () => {
+      try {
+        let pendingBookings = 0;
+        let unreadMessages = 0;
+        
+        // Get pending bookings count based on view mode
+        if (showVendorView && currentUser?.vendorProfileId) {
+          const bookingsResp = await fetch(`${API_BASE_URL}/vendor/${currentUser.vendorProfileId}/bookings/all`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+          });
+          if (bookingsResp.ok) {
+            const bookings = await bookingsResp.json();
+            pendingBookings = (bookings || []).filter(b => 
+              (b.Status || '').toLowerCase() === 'pending'
+            ).length;
+          }
+        } else {
+          const bookingsResp = await fetch(`${API_BASE_URL}/users/${currentUser.id}/bookings/all`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+          });
+          if (bookingsResp.ok) {
+            const bookings = await bookingsResp.json();
+            pendingBookings = (bookings || []).filter(b => 
+              (b.Status || '').toLowerCase() === 'pending'
+            ).length;
+          }
+        }
+        
+        // Get unread messages count from both client and vendor conversations
+        // Client conversations
+        try {
+          const clientMsgResp = await fetch(`${API_BASE_URL}/messages/conversations/user/${currentUser.id}`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+          });
+          if (clientMsgResp.ok) {
+            const data = await clientMsgResp.json();
+            const convs = data.conversations || data || [];
+            const clientUnread = convs.reduce((sum, c) => {
+              const count = c.unreadCount || c.UnreadCount || c.unread_count || c.Unread || 0;
+              return sum + (typeof count === 'number' ? count : parseInt(count) || 0);
+            }, 0);
+            unreadMessages += clientUnread;
+          }
+        } catch (e) { console.error('Error fetching client messages:', e); }
+        
+        // Vendor conversations (if vendor)
+        if (currentUser?.vendorProfileId) {
+          try {
+            const vendorMsgResp = await fetch(`${API_BASE_URL}/messages/conversations/vendor/${currentUser.vendorProfileId}`, {
+              headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+            });
+            if (vendorMsgResp.ok) {
+              const data = await vendorMsgResp.json();
+              const convs = data.conversations || data || [];
+              const vendorUnread = convs.reduce((sum, c) => {
+                const count = c.unreadCount || c.UnreadCount || c.unread_count || c.Unread || 0;
+                return sum + (typeof count === 'number' ? count : parseInt(count) || 0);
+              }, 0);
+              unreadMessages += vendorUnread;
+            }
+          } catch (e) { console.error('Error fetching vendor messages:', e); }
+        }
+        
+        setNotificationCounts({ pendingBookings, unreadMessages });
+      } catch (error) {
+        console.error('Error loading notification counts:', error);
+      }
+    };
+    
+    loadNotificationCounts();
+    
+    // Refresh counts every 30 seconds
+    const interval = setInterval(loadNotificationCounts, 30000);
+    return () => clearInterval(interval);
+  }, [currentUser?.id, currentUser?.vendorProfileId, showVendorView]);
 
   // Redirect if not logged in (but wait for auth to finish loading)
   useEffect(() => {
@@ -385,15 +489,28 @@ function DashboardPage() {
 
           {/* Desktop Navigation Tabs */}
           <nav className="dashboard-top-nav desktop-only">
-            {topNavTabs.map(tab => (
-              <button
-                key={tab.id}
-                className={`dashboard-nav-tab ${activeSection === tab.id ? 'active' : ''}`}
-                onClick={() => handleSectionChange(tab.id)}
-              >
-                <span>{tab.label}</span>
-              </button>
-            ))}
+            {topNavTabs.map(tab => {
+              // Determine badge count for this tab
+              let badgeCount = 0;
+              if ((tab.id === 'bookings' || tab.id === 'vendor-requests') && notificationCounts.pendingBookings > 0) {
+                badgeCount = notificationCounts.pendingBookings;
+              } else if (tab.id === 'messages' && notificationCounts.unreadMessages > 0) {
+                badgeCount = notificationCounts.unreadMessages;
+              }
+              
+              return (
+                <button
+                  key={tab.id}
+                  className={`dashboard-nav-tab ${activeSection === tab.id ? 'active' : ''}`}
+                  onClick={() => handleSectionChange(tab.id)}
+                >
+                  <span>{tab.label}</span>
+                  {badgeCount > 0 && (
+                    <span className="nav-badge">{badgeCount}</span>
+                  )}
+                </button>
+              );
+            })}
           </nav>
           
           {/* Mobile Navigation Dropdown - only shown on mobile */}

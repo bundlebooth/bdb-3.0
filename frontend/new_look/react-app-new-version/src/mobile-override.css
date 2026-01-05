@@ -165,18 +165,27 @@
         min-height: 34px !important;
         max-height: 34px !important;
         align-items: center !important;
+        display: flex !important;
+        width: 100% !important;
     }
     
-    /* FORCE compact fields proper spacing */
+    /* FORCE compact fields to show */
     .compact-field {
         padding: 2px 4px !important;
+        display: flex !important;
+        flex: 1 !important;
+        min-width: 0 !important;
     }
     
-    /* FORCE compact text readable */
+    /* FORCE compact text readable and visible */
     .compact-value {
         font-size: 11px !important;
         font-weight: 500 !important;
         color: #333 !important;
+        display: block !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
     }
     
     /* FORCE compact separator */

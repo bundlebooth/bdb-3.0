@@ -36,7 +36,8 @@ function VendorDashboardSection({ data, loading, onSectionChange }) {
             id: conv.id || conv.ConversationID,
             name: conv.OtherPartyName || conv.userName || 'Unknown',
             last: conv.lastMessageContent || conv.LastMessageContent || '',
-            ts: new Date(conv.lastMessageCreatedAt || conv.LastMessageCreatedAt || conv.createdAt || Date.now())
+            ts: new Date(conv.lastMessageCreatedAt || conv.LastMessageCreatedAt || conv.createdAt || Date.now()),
+            profilePicUrl: conv.OtherPartyAvatar || conv.OtherPartyLogo || null
           })).sort((a,b) => b.ts - a.ts);
           setMessages(conversations.slice(0, 5));
         }
@@ -122,15 +123,44 @@ function VendorDashboardSection({ data, loading, onSectionChange }) {
   const renderMessageItem = (message) => {
     const initials = (message.name || 'U').trim().charAt(0).toUpperCase();
     const timeStr = message.ts ? message.ts.toLocaleString([], { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) : '';
+    const profilePic = message.profilePicUrl || message.ProfilePicUrl || message.userProfilePic;
+    
+    // Avatar style matching Messages section exactly
+    const avatarStyle = {
+      width: '40px',
+      height: '40px',
+      borderRadius: '50%',
+      backgroundColor: '#5e72e4',
+      color: 'white',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontWeight: 600,
+      fontSize: '15px',
+      flexShrink: 0
+    };
     
     return (
       <div 
         key={message.id} 
         className="message-preview-item"
-        onClick={() => handleKPIClick('vendor-messages')}
+        onClick={() => handleKPIClick('messages')}
         style={{ cursor: 'pointer' }}
       >
-        <div className="preview-avatar">{initials}</div>
+        {profilePic ? (
+          <img 
+            src={profilePic} 
+            alt={message.name || 'User'} 
+            style={{ ...avatarStyle, objectFit: 'cover' }}
+            onError={(e) => {
+              e.target.style.display = 'none';
+              e.target.nextSibling.style.display = 'flex';
+            }}
+          />
+        ) : null}
+        <div style={{ ...avatarStyle, display: profilePic ? 'none' : 'flex' }}>
+          {initials}
+        </div>
         <div className="preview-content">
           <div className="preview-name">{message.name}</div>
           <div className="preview-snippet">{message.last}</div>

@@ -3,14 +3,18 @@ import { useAuth } from '../../../context/AuthContext';
 import { API_BASE_URL } from '../../../config';
 import { showBanner } from '../../../utils/banners';
 import { buildInvoiceUrl } from '../../../utils/urlHelpers';
+import BookingDetailsModal from '../BookingDetailsModal';
 
 function VendorRequestsSection() {
   const { currentUser } = useAuth();
   const [activeTab, setActiveTab] = useState('all');
   const [allBookings, setAllBookings] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [expandedDetails, setExpandedDetails] = useState({});
   const [vendorProfileId, setVendorProfileId] = useState(null);
+  const [selectedBooking, setSelectedBooking] = useState(null);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [sortBy, setSortBy] = useState('eventDate'); // 'eventDate', 'requestedOn', 'client'
+  const [openActionMenu, setOpenActionMenu] = useState(null);
 
   // Fetch vendor profile ID first
   useEffect(() => {
@@ -73,12 +77,11 @@ function VendorRequestsSection() {
       const data = await resp.json();
       const bookings = Array.isArray(data) ? data : [];
       
-      // Normalize status and sort by date
+      // Normalize status
       const normalized = bookings.map(b => ({ 
         ...b, 
         _status: ((b.Status || '').toString().toLowerCase()) 
-      }));
-      normalized.sort((a, b) => new Date(a.EventDate) - new Date(b.EventDate));
+      }))
       
       setAllBookings(normalized);
     } catch (error) {
@@ -89,22 +92,77 @@ function VendorRequestsSection() {
     }
   }, [vendorProfileId]);
 
+  // Sort bookings based on selected sort option
+  const sortBookings = (bookings) => {
+    const sorted = [...bookings];
+    switch (sortBy) {
+      case 'eventDate':
+        sorted.sort((a, b) => new Date(b.EventDate || 0) - new Date(a.EventDate || 0));
+        break;
+      case 'requestedOn':
+        sorted.sort((a, b) => new Date(b.CreatedAt || 0) - new Date(a.CreatedAt || 0));
+        break;
+      case 'client':
+        sorted.sort((a, b) => (a.ClientName || '').localeCompare(b.ClientName || ''));
+        break;
+      default:
+        sorted.sort((a, b) => new Date(b.EventDate || 0) - new Date(a.EventDate || 0));
+    }
+    return sorted;
+  };
+
   const getFilteredBookings = () => {
     const acceptedStatuses = new Set(['accepted', 'approved', 'confirmed', 'paid']);
     
-    if (activeTab === 'all') return allBookings;
-    if (activeTab === 'pending') return allBookings.filter(b => b._status === 'pending');
-    if (activeTab === 'approved') return allBookings.filter(b => acceptedStatuses.has(b._status));
-    if (activeTab === 'declined') return allBookings.filter(b => b._status === 'declined');
-    if (activeTab === 'expired') return allBookings.filter(b => b._status === 'expired');
-    return allBookings;
+    let filtered;
+    if (activeTab === 'all') filtered = allBookings;
+    else if (activeTab === 'pending') filtered = allBookings.filter(b => b._status === 'pending');
+    else if (activeTab === 'approved') filtered = allBookings.filter(b => acceptedStatuses.has(b._status));
+    else if (activeTab === 'declined') filtered = allBookings.filter(b => b._status === 'declined');
+    else if (activeTab === 'expired') filtered = allBookings.filter(b => b._status === 'expired');
+    else filtered = allBookings;
+    
+    return sortBookings(filtered);
   };
 
-  const toggleDetails = (id) => {
-    setExpandedDetails(prev => ({
-      ...prev,
-      [id]: !prev[id]
-    }));
+  // Get detailed status label for vendor view
+  const getDetailedStatus = (booking) => {
+    const s = booking._status;
+    const isPaid = booking.FullAmountPaid === true || booking.FullAmountPaid === 1;
+    const isDepositOnly = !isPaid && (booking.DepositPaid === true || booking.DepositPaid === 1);
+    
+    if (isPaid) {
+      return { label: 'Paid', icon: 'fa-check-circle', color: '#10b981', borderStyle: 'solid' };
+    }
+    if (s === 'pending') {
+      return { label: 'Awaiting Your Approval', icon: 'fa-clock', color: '#f59e0b', borderStyle: 'dashed' };
+    }
+    if (s === 'confirmed' || s === 'accepted' || s === 'approved') {
+      if (isDepositOnly) {
+        return { label: 'Awaiting Client Balance', icon: 'fa-credit-card', color: '#3b82f6', borderStyle: 'dashed' };
+      }
+      return { label: 'Awaiting Client Payment', icon: 'fa-credit-card', color: '#3b82f6', borderStyle: 'dashed' };
+    }
+    if (s === 'declined') {
+      return { label: 'Declined', icon: 'fa-times-circle', color: '#ef4444', borderStyle: 'dashed' };
+    }
+    if (s === 'expired') {
+      return { label: 'Expired', icon: 'fa-clock', color: '#6b7280', borderStyle: 'dashed' };
+    }
+    if (s === 'cancelled') {
+      return { label: 'Cancelled', icon: 'fa-times-circle', color: '#ef4444', borderStyle: 'dashed' };
+    }
+    return { label: 'Pending', icon: 'fa-clock', color: '#f59e0b', borderStyle: 'dashed' };
+  };
+
+  const handleShowDetails = (booking) => {
+    setSelectedBooking(booking);
+    setShowDetailsModal(true);
+  };
+
+  const handleCloseDetails = () => {
+    setShowDetailsModal(false);
+    setSelectedBooking(null);
   };
 
   const handleApproveRequest = async (requestId) => {
@@ -183,19 +241,48 @@ function VendorRequestsSection() {
     }
   };
 
-  // Handle Chat - open conversation with client
-  const handleOpenChat = (booking) => {
-    if (booking.ConversationID) {
-      window.dispatchEvent(new CustomEvent('openMessagingWidget', { 
-        detail: { 
-          conversationId: booking.ConversationID,
-          clientName: booking.ClientName,
-          userId: booking.ClientUserID
-        } 
-      }));
-    } else {
-      showBanner('No conversation available for this booking', 'info');
+  // Handle Chat - navigate to Messages section and open conversation
+  const handleOpenChat = async (booking) => {
+    // If no conversation exists, create one first
+    if (!booking.ConversationID) {
+      try {
+        const response = await fetch(`${API_BASE_URL}/messages/conversations`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            userId: currentUser.id,
+            vendorProfileId: vendorProfileId,
+            clientUserId: booking.ClientUserID,
+            subject: `Booking: ${booking.EventName || booking.ServiceName || 'Service Request'}`,
+            bookingId: booking.BookingID || booking.RequestID
+          })
+        });
+        
+        if (!response.ok) {
+          showBanner('Could not start conversation', 'error');
+          return;
+        }
+        
+        const data = await response.json();
+        booking.ConversationID = data.conversationId;
+        loadBookings();
+      } catch (error) {
+        console.error('Error starting conversation:', error);
+        showBanner('Could not start conversation', 'error');
+        return;
+      }
     }
+    
+    // Navigate to Messages section with conversation ID
+    window.dispatchEvent(new CustomEvent('navigateToMessages', { 
+      detail: { 
+        conversationId: booking.ConversationID,
+        otherPartyName: booking.ClientName
+      } 
+    }));
   };
 
   const renderBookingItem = (booking) => {
@@ -213,27 +300,17 @@ function VendorRequestsSection() {
       timeStr = `${startTime} - ${endTime}`;
     }
 
-    // Status badge
+    // Get detailed status
     const s = booking._status || 'pending';
-    const statusMap = {
-      pending:  { icon: 'fa-clock', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.12)', label: 'Pending' },
-      confirmed:{ icon: 'fa-check-circle', color: '#10b981', bg: 'rgba(16, 185, 129, 0.12)', label: 'Confirmed' },
-      accepted: { icon: 'fa-check-circle', color: '#10b981', bg: 'rgba(16, 185, 129, 0.12)', label: 'Accepted' },
-      approved: { icon: 'fa-check-circle', color: '#10b981', bg: 'rgba(16, 185, 129, 0.12)', label: 'Accepted' },
-      paid:     { icon: 'fa-check-circle', color: '#10b981', bg: 'rgba(16, 185, 129, 0.12)', label: 'Paid' },
-      cancelled:{ icon: 'fa-times-circle', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.12)', label: 'Cancelled' },
-      declined: { icon: 'fa-times-circle', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.12)', label: 'Declined' }
-    };
-    const status = isPaid ? 'paid' : s;
-    const statusCfg = statusMap[status] || statusMap.pending;
+    const statusCfg = getDetailedStatus(booking);
 
     // Use RequestID for pending requests, BookingID for confirmed bookings
     const itemId = booking.RequestID || booking.BookingID;
     const isRequest = !!booking.RequestID;
-    const isExpanded = expandedDetails[itemId];
+    const isMenuOpen = openActionMenu === itemId;
 
     return (
-      <div key={itemId} className="booking-item has-details">
+      <div key={itemId} className="booking-item">
         <div className="booking-date-section">
           <div className="booking-month">{month}</div>
           <div className="booking-day">{day}</div>
@@ -268,92 +345,98 @@ function VendorRequestsSection() {
               <span className="booking-time">{timeStr}</span>
             </div>
           )}
-          {booking.TotalAmount && (
+          {booking.TotalAmount != null && booking.TotalAmount !== '' && (
             <div className="booking-price-row">
-              <i className="fas fa-dollar-sign" style={{ color: '#6b7280', fontSize: '12px' }}></i>
+              <i className="fas fa-credit-card" style={{ color: '#6b7280', fontSize: '12px' }}></i>
               <span className="booking-price">${Number(booking.TotalAmount).toLocaleString()}</span>
             </div>
           )}
         </div>
-        <div className="booking-actions" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '12px', paddingRight: '10px' }}>
-          <div className="status-col" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px', margin: '8px 10px 8px 0', padding: '2px 0' }}>
-            <div className="request-status-badge" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '999px', fontSize: '12px', background: statusCfg.bg, color: '#111827', border: `1px solid ${statusCfg.color}` }}>
+        <div className="booking-actions" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px', paddingRight: '10px' }}>
+          <div className="status-col" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+            <div className="request-status-badge" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '999px', fontSize: '12px', background: `${statusCfg.color}10`, color: '#111827', border: `1px ${statusCfg.borderStyle || 'solid'} ${statusCfg.color}` }}>
               <i className={`fas ${statusCfg.icon}`} style={{ color: statusCfg.color }}></i>
               <span>{statusCfg.label}</span>
             </div>
+            {s === 'declined' && booking.DeclineReason && (
+              <div style={{ fontSize: '11px', color: '#ef4444', textAlign: 'right', maxWidth: '180px' }}>
+                Reason: {booking.DeclineReason}
+              </div>
+            )}
           </div>
-          <button className="link-btn" onClick={() => toggleDetails(itemId)} style={{ marginTop: '2px' }}>
-            {isExpanded ? 'Less info' : 'More info'}
-          </button>
           <div className="actions-row" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             {s === 'pending' && isRequest && (
               <>
                 <button 
-                  className="btn btn-primary" 
-                  style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '13px', background: '#10b981', border: 'none', color: 'white' }}
+                  style={{ padding: '6px 14px', borderRadius: '6px', fontSize: '13px', fontWeight: 500, background: '#10b981', color: 'white', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
                   onClick={() => handleApproveRequest(booking.RequestID)}
                 >
-                  <i className="fas fa-check" style={{ marginRight: '4px' }}></i> Approve
+                  <i className="fas fa-check" style={{ fontSize: '11px' }}></i>
+                  Approve
                 </button>
                 <button 
-                  className="btn btn-outline" 
-                  style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '13px', color: '#ef4444', borderColor: '#ef4444' }}
+                  style={{ padding: '6px 14px', borderRadius: '6px', fontSize: '13px', fontWeight: 500, background: '#ef4444', color: 'white', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
                   onClick={() => handleDeclineRequest(booking.RequestID)}
                 >
-                  <i className="fas fa-times" style={{ marginRight: '4px' }}></i> Decline
+                  <i className="fas fa-times" style={{ fontSize: '11px' }}></i>
+                  Decline
                 </button>
               </>
             )}
-            {(s === 'confirmed' || s === 'accepted' || s === 'approved' || isPaid) && (
-              <>
-                <button 
-                  className="btn btn-outline" 
-                  style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '13px' }}
-                  onClick={() => handleOpenChat(booking)}
-                >
-                  Chat
-                </button>
-                <button 
-                  className="btn btn-outline" 
-                  style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '13px' }}
-                  onClick={() => handleViewInvoice(booking)}
-                >
-                  Invoice
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-        {isExpanded && (
-          <div className="request-details" style={{ gridColumn: '1 / -1', padding: '1rem', background: '#f9fafb', borderTop: '1px solid var(--border)' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-              {booking.EventName && (
-                <div className="request-detail-row">
-                  <span className="request-detail-label">Event Name</span>
-                  <span className="request-detail-value">{booking.EventName}</span>
-                </div>
-              )}
-              {booking.EventType && (
-                <div className="request-detail-row">
-                  <span className="request-detail-label">Event</span>
-                  <span className="request-detail-value">{booking.EventType}</span>
-                </div>
-              )}
-              {booking.AttendeeCount && (
-                <div className="request-detail-row">
-                  <span className="request-detail-label">Attendees</span>
-                  <span className="request-detail-value">{booking.AttendeeCount}</span>
-                </div>
-              )}
-              {booking.SpecialRequests && (
-                <div className="request-detail-row" style={{ gridColumn: 'span 2' }}>
-                  <span className="request-detail-label">Special Requests</span>
-                  <span className="request-detail-value">{booking.SpecialRequests}</span>
+            <button 
+              className="link-btn" 
+              onClick={() => handleShowDetails(booking)} 
+              style={{ padding: '6px 14px', borderRadius: '6px', fontSize: '13px', fontWeight: 500, background: 'white', color: '#374151', border: '1px solid #d1d5db', cursor: 'pointer' }}
+            >
+              More info
+            </button>
+            {/* Three-dot action menu */}
+            <div style={{ position: 'relative' }}>
+              <button
+                onClick={() => setOpenActionMenu(isMenuOpen ? null : itemId)}
+                style={{ padding: '6px 10px', borderRadius: '6px', fontSize: '14px', background: 'white', color: '#374151', border: '1px solid #d1d5db', cursor: 'pointer' }}
+              >
+                <i className="fas fa-ellipsis-v"></i>
+              </button>
+              {isMenuOpen && (
+                <div style={{ 
+                  position: 'absolute', 
+                  right: 0, 
+                  top: '100%', 
+                  marginTop: '4px',
+                  background: 'white', 
+                  border: '1px solid #e5e7eb', 
+                  borderRadius: '8px', 
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)', 
+                  zIndex: 100,
+                  minWidth: '150px',
+                  overflow: 'hidden'
+                }}>
+                  <button
+                    onClick={() => { handleOpenChat(booking); setOpenActionMenu(null); }}
+                    style={{ width: '100%', padding: '10px 14px', border: 'none', background: 'white', textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: '#374151' }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = '#f3f4f6'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                  >
+                    <i className="fas fa-comment" style={{ color: '#6b7280', width: '16px' }}></i>
+                    Message Client
+                  </button>
+                  {isPaid && (
+                    <button
+                      onClick={() => { handleViewInvoice(booking); setOpenActionMenu(null); }}
+                      style={{ width: '100%', padding: '10px 14px', border: 'none', background: 'white', textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: '#374151', borderTop: '1px solid #f3f4f6' }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = '#f3f4f6'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                    >
+                      <i className="fas fa-file-invoice" style={{ color: '#6b7280', width: '16px' }}></i>
+                      View Invoice
+                    </button>
+                  )}
                 </div>
               )}
             </div>
           </div>
-        )}
+        </div>
       </div>
     );
   };
@@ -362,7 +445,27 @@ function VendorRequestsSection() {
 
   return (
     <div id="vendor-requests-section">
+      <BookingDetailsModal 
+        isOpen={showDetailsModal} 
+        onClose={handleCloseDetails} 
+        booking={selectedBooking} 
+      />
       <div className="dashboard-card">
+        {/* Sort dropdown */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '12px 16px', borderBottom: '1px solid #e5e7eb' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '13px', color: '#6b7280' }}>Sort by:</span>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '13px', color: '#374151', background: 'white', cursor: 'pointer' }}
+            >
+              <option value="eventDate">Event Date</option>
+              <option value="requestedOn">Requested On</option>
+              <option value="client">Client Name</option>
+            </select>
+          </div>
+        </div>
         <div className="booking-tabs">
           <button 
             className={`booking-tab ${activeTab === 'all' ? 'active' : ''}`} 

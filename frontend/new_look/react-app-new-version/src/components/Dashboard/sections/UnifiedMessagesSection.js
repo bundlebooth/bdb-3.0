@@ -6,7 +6,12 @@ function UnifiedMessagesSection({ onSectionChange }) {
   const { currentUser } = useAuth();
   const [conversations, setConversations] = useState([]);
   const [allConversations, setAllConversations] = useState({ client: [], vendor: [] });
-  const [messageRole, setMessageRole] = useState('client'); // 'client' or 'vendor' - for desktop tabs
+  // Use viewMode from localStorage instead of separate toggle
+  const getMessageRole = () => {
+    const stored = localStorage.getItem('viewMode');
+    return stored === 'vendor' ? 'vendor' : 'client';
+  };
+  const [messageRole, setMessageRole] = useState(getMessageRole());
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
@@ -15,8 +20,100 @@ function UnifiedMessagesSection({ onSectionChange }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [showChatView, setShowChatView] = useState(false); // For mobile: show chat instead of list
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showGifPicker, setShowGifPicker] = useState(false);
+  const [gifSearchQuery, setGifSearchQuery] = useState('');
+  const [bookingInfo, setBookingInfo] = useState(null); // Booking info for current conversation
   const messagesEndRef = useRef(null);
   const prevRoleRef = useRef(messageRole);
+  
+  // Quick reply suggestions
+  const quickReplies = ['Hi! 👋', 'Hello!', 'Thanks!', 'Great! 👍', 'Sounds good!', 'Perfect!'];
+  
+  // Emoji categories with full emoji sets
+  const [emojiCategory, setEmojiCategory] = useState('smileys');
+  const [emojiSearch, setEmojiSearch] = useState('');
+  const [gifs, setGifs] = useState([]);
+  const [gifsLoading, setGifsLoading] = useState(false);
+  
+  const emojiCategories = {
+    smileys: { icon: '😀', name: 'Smileys', emojis: ['😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '🙃', '😉', '😊', '😇', '🥰', '😍', '🤩', '😘', '😗', '☺️', '😚', '😙', '🥲', '😋', '😛', '😜', '🤪', '😝', '🤑', '🤗', '🤭', '🤫', '🤔', '🤐', '🤨', '😐', '😑', '😶', '😏', '😒', '🙄', '😬', '🤥', '😌', '😔', '😪', '🤤', '😴', '😷', '🤒', '🤕', '🤢', '🤮', '🤧', '🥵', '🥶', '🥴', '😵', '🤯', '🤠', '🥳', '🥸', '😎', '🤓', '🧐'] },
+    gestures: { icon: '👋', name: 'Gestures', emojis: ['👋', '🤚', '🖐️', '✋', '🖖', '👌', '🤌', '🤏', '✌️', '🤞', '🤟', '🤘', '🤙', '👈', '👉', '👆', '🖕', '👇', '☝️', '👍', '👎', '✊', '👊', '🤛', '🤜', '👏', '🙌', '👐', '🤲', '🤝', '🙏', '✍️', '💅', '🤳', '💪', '🦾', '🦿', '🦵', '🦶', '👂', '🦻', '👃', '🧠', '🫀', '🫁', '🦷', '🦴', '👀', '👁️', '👅', '👄'] },
+    hearts: { icon: '❤️', name: 'Hearts', emojis: ['❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💔', '❣️', '💕', '💞', '💓', '💗', '💖', '💘', '💝', '💟', '♥️', '💌', '💋', '😻', '😽', '🫶'] },
+    celebration: { icon: '🎉', name: 'Celebration', emojis: ['🎉', '🎊', '🎈', '🎁', '🎀', '🎂', '🍰', '🧁', '🥳', '🥂', '🍾', '✨', '🌟', '⭐', '💫', '🔥', '💥', '🎆', '🎇', '🏆', '🥇', '🥈', '🥉', '🏅', '🎖️', '🎗️', '🎯', '🎪', '🎭', '🎨'] },
+    nature: { icon: '🌸', name: 'Nature', emojis: ['🌸', '💮', '🏵️', '🌹', '🥀', '🌺', '🌻', '🌼', '🌷', '🌱', '🪴', '🌲', '🌳', '🌴', '🌵', '🌾', '🌿', '☘️', '🍀', '🍁', '🍂', '🍃', '🌍', '🌎', '🌏', '🌑', '🌒', '🌓', '🌔', '🌕', '🌖', '🌗', '🌘', '🌙', '🌚', '🌛', '🌜', '☀️', '🌝', '🌞', '⭐', '🌟', '🌠', '☁️', '⛅', '🌈', '☔', '❄️', '🌊'] },
+    food: { icon: '🍕', name: 'Food', emojis: ['🍕', '🍔', '🍟', '🌭', '🍿', '🧂', '🥓', '🥚', '🍳', '🧇', '🥞', '🧈', '🍞', '🥐', '🥖', '🥨', '🧀', '🥗', '🥙', '🥪', '🌮', '🌯', '🫔', '🥫', '🍝', '🍜', '🍲', '🍛', '🍣', '🍱', '🥟', '🍤', '🍙', '🍚', '🍘', '🍥', '🥠', '🍦', '🍧', '🍨', '🍩', '🍪', '🎂', '🍰', '🧁', '🥧', '🍫', '🍬', '🍭', '🍮', '☕', '🍵', '🧃', '🥤', '🍶', '🍺', '🍻', '🥂', '🍷', '🥃', '🍸', '🍹', '🧉'] },
+    objects: { icon: '💡', name: 'Objects', emojis: ['💡', '🔦', '🏮', '📱', '💻', '⌨️', '🖥️', '🖨️', '🖱️', '💾', '💿', '📀', '📷', '📸', '📹', '🎥', '📽️', '🎬', '📺', '📻', '🎙️', '🎚️', '🎛️', '⏱️', '⏲️', '⏰', '🕰️', '📡', '🔋', '🔌', '💰', '💵', '💴', '💶', '💷', '💳', '💎', '⚖️', '🔧', '🔨', '⚒️', '🛠️', '⛏️', '🔩', '⚙️', '🔗', '📎', '🖇️', '📏', '📐', '✂️', '📌', '📍', '🔐', '🔑', '🗝️'] },
+    symbols: { icon: '✅', name: 'Symbols', emojis: ['✅', '❌', '❓', '❗', '‼️', '⁉️', '💯', '🔴', '🟠', '🟡', '🟢', '🔵', '🟣', '⚫', '⚪', '🟤', '🔶', '🔷', '🔸', '🔹', '🔺', '🔻', '💠', '🔘', '🔳', '🔲', '▪️', '▫️', '◾', '◽', '◼️', '◻️', '⬛', '⬜', '🟥', '🟧', '🟨', '🟩', '🟦', '🟪', '⏩', '⏪', '⏫', '⏬', '➡️', '⬅️', '⬆️', '⬇️', '↗️', '↘️', '↙️', '↖️', '↕️', '↔️', '🔄', '🔃', '🔀', '🔁', '🔂', '▶️', '⏸️', '⏹️', '⏺️', '⏭️', '⏮️', '🔼', '🔽'] }
+  };
+  
+  // Get filtered emojis based on search
+  const getFilteredEmojis = () => {
+    if (!emojiSearch) return emojiCategories[emojiCategory].emojis;
+    const allEmojis = Object.values(emojiCategories).flatMap(cat => cat.emojis);
+    return allEmojis;
+  };
+  
+  // Giphy API key (public SDK key)
+  const GIPHY_API_KEY = 'GlVGYHkr3WSBnllca54iNt0yFbjz7L65';
+  
+  // Fetch GIFs from Giphy API
+  const fetchGifs = async (query = '') => {
+    setGifsLoading(true);
+    try {
+      const endpoint = query 
+        ? `https://api.giphy.com/v1/gifs/search?api_key=${GIPHY_API_KEY}&q=${encodeURIComponent(query)}&limit=24&rating=g`
+        : `https://api.giphy.com/v1/gifs/trending?api_key=${GIPHY_API_KEY}&limit=24&rating=g`;
+      
+      const response = await fetch(endpoint);
+      const data = await response.json();
+      
+      if (data.data && data.data.length > 0) {
+        setGifs(data.data.map(gif => ({
+          id: gif.id,
+          url: gif.images.fixed_height.url,
+          preview: gif.images.fixed_height_still?.url || gif.images.fixed_height.url,
+          alt: gif.title || 'GIF'
+        })));
+      } else {
+        setGifs([]);
+      }
+    } catch (error) {
+      console.error('Error fetching GIFs:', error);
+      setGifs([]);
+    }
+    setGifsLoading(false);
+  };
+  
+  // Load trending GIFs when picker opens
+  useEffect(() => {
+    if (showGifPicker) {
+      fetchGifs();
+    }
+  }, [showGifPicker]);
+  
+  // Handle GIF search
+  const handleGifSearch = () => {
+    if (gifSearchQuery.trim()) {
+      fetchGifs(gifSearchQuery.trim());
+    } else {
+      fetchGifs();
+    }
+  };
+  
+  // Function to send GIF as message
+  const handleSendGif = (gifUrl) => {
+    if (!selectedConversation) return;
+    // Send the GIF URL as a message
+    const gifMessage = gifUrl;
+    setNewMessage(gifMessage);
+    setShowGifPicker(false);
+    // Auto-send after setting
+    setTimeout(() => {
+      const sendBtn = document.getElementById('send-message-btn');
+      if (sendBtn) sendBtn.click();
+    }, 100);
+  };
   
   // Handle window resize for mobile detection
   useEffect(() => {
@@ -161,6 +258,127 @@ function UnifiedMessagesSection({ onSectionChange }) {
     loadConversations();
   }, [loadConversations]);
 
+  // Check for conversation to open from sessionStorage (from Chat button click)
+  useEffect(() => {
+    const checkForOpenConversation = () => {
+      const conversationId = sessionStorage.getItem('openConversationId');
+      const otherPartyName = sessionStorage.getItem('openConversationName');
+      
+      if (conversationId && conversations.length > 0) {
+        // Find the conversation in our list
+        const conv = conversations.find(c => 
+          c.id === conversationId || 
+          c.id === parseInt(conversationId) ||
+          c.ConversationID === conversationId ||
+          c.ConversationID === parseInt(conversationId)
+        );
+        
+        if (conv) {
+          setSelectedConversation(conv);
+          if (isMobile) {
+            setShowChatView(true);
+          }
+        } else {
+          // Conversation not in current list, create a temporary one
+          setSelectedConversation({
+            id: conversationId,
+            OtherPartyName: otherPartyName || 'Chat',
+            type: viewMode === 'vendor' ? 'vendor' : 'client'
+          });
+          if (isMobile) {
+            setShowChatView(true);
+          }
+        }
+        
+        // Clear the sessionStorage
+        sessionStorage.removeItem('openConversationId');
+        sessionStorage.removeItem('openConversationName');
+      }
+    };
+    
+    checkForOpenConversation();
+  }, [conversations, isMobile]);
+
+  // Load booking info for the selected conversation
+  useEffect(() => {
+    const loadBookingInfo = async () => {
+      if (!selectedConversation) {
+        setBookingInfo(null);
+        return;
+      }
+      
+      try {
+        const convId = selectedConversation.id || selectedConversation.ConversationID;
+        const convType = selectedConversation.type;
+        
+        // Fetch bookings to find one associated with this conversation
+        let bookings = [];
+        if (convType === 'vendor' && vendorProfileId) {
+          const resp = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/bookings/all`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+          });
+          if (resp.ok) bookings = await resp.json();
+        } else if (currentUser?.id) {
+          const resp = await fetch(`${API_BASE_URL}/users/${currentUser.id}/bookings/all`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+          });
+          if (resp.ok) bookings = await resp.json();
+        }
+        
+        // Find booking with matching conversation ID or other party
+        const otherPartyName = selectedConversation.OtherPartyName || selectedConversation.userName;
+        const matchingBooking = bookings.find(b => {
+          if (b.ConversationID && (b.ConversationID === convId || b.ConversationID === parseInt(convId))) {
+            return true;
+          }
+          // Match by name if no conversation ID
+          if (convType === 'vendor' && b.ClientName === otherPartyName) return true;
+          if (convType === 'client' && b.VendorName === otherPartyName) return true;
+          return false;
+        });
+        
+        if (matchingBooking) {
+          const status = (matchingBooking.Status || '').toLowerCase();
+          // Only show banner for pending or confirmed bookings
+          if (['pending', 'confirmed', 'accepted', 'approved'].includes(status)) {
+            setBookingInfo({
+              serviceName: matchingBooking.ServiceName || 'Service',
+              eventDate: matchingBooking.EventDate,
+              status: status,
+              totalAmount: matchingBooking.TotalAmount
+            });
+          } else {
+            setBookingInfo(null);
+          }
+        } else {
+          setBookingInfo(null);
+        }
+      } catch (error) {
+        console.error('Error loading booking info:', error);
+        setBookingInfo(null);
+      }
+    };
+    
+    loadBookingInfo();
+  }, [selectedConversation, vendorProfileId, currentUser?.id]);
+
+  // Get viewMode from localStorage
+  const viewMode = localStorage.getItem('viewMode') || 'client';
+
+  // Listen for viewMode changes from sidebar toggle
+  useEffect(() => {
+    const handleViewModeChange = (event) => {
+      const newMode = event.detail?.mode;
+      if (newMode) {
+        const newRole = newMode === 'vendor' ? 'vendor' : 'client';
+        setMessageRole(newRole);
+      }
+    };
+    
+    window.addEventListener('viewModeChanged', handleViewModeChange);
+    return () => window.removeEventListener('viewModeChanged', handleViewModeChange);
+  }, []);
+
   // Update displayed conversations when role changes on desktop
   useEffect(() => {
     if (!isMobile) {
@@ -287,13 +505,30 @@ function UnifiedMessagesSection({ onSectionChange }) {
         onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.backgroundColor = '#f8f9fa'; }}
         onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = isSelected ? '#f5f5f5' : 'white'; }}
       >
-        {/* Avatar */}
+        {/* Avatar - show profile pic if available */}
+        {conv.OtherPartyAvatar || conv.userProfilePic || conv.profilePicUrl ? (
+          <img 
+            src={conv.OtherPartyAvatar || conv.userProfilePic || conv.profilePicUrl}
+            alt={conv.userName || 'User'}
+            style={{
+              width: '48px',
+              height: '48px',
+              borderRadius: '50%',
+              objectFit: 'cover',
+              flexShrink: 0
+            }}
+            onError={(e) => {
+              e.target.style.display = 'none';
+              e.target.nextSibling.style.display = 'flex';
+            }}
+          />
+        ) : null}
         <div style={{
           width: '48px',
           height: '48px',
           borderRadius: '50%',
           backgroundColor: '#5e72e4',
-          display: 'flex',
+          display: conv.OtherPartyAvatar || conv.userProfilePic || conv.profilePicUrl ? 'none' : 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           color: 'white',
@@ -321,9 +556,19 @@ function UnifiedMessagesSection({ onSectionChange }) {
             fontWeight: hasUnread ? 500 : 400,
             overflow: 'hidden', 
             textOverflow: 'ellipsis', 
-            whiteSpace: 'nowrap'
+            whiteSpace: 'nowrap',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px'
           }}>
-            {conv.lastMessageContent || 'No messages yet'}
+            {conv.lastMessageContent && isGifUrl(conv.lastMessageContent) ? (
+              <>
+                <i className="fas fa-image" style={{ fontSize: '12px', color: '#9ca3af' }}></i>
+                <span>GIF</span>
+              </>
+            ) : (
+              conv.lastMessageContent || 'No messages yet'
+            )}
           </div>
         </div>
         
@@ -349,9 +594,16 @@ function UnifiedMessagesSection({ onSectionChange }) {
     );
   };
 
+  // Check if content is a GIF URL
+  const isGifUrl = (content) => {
+    if (!content) return false;
+    return content.match(/\.(gif)$/i) || content.includes('giphy.com') || content.includes('tenor.com');
+  };
+
   const renderMessage = (message) => {
     const isOwnMessage = message.SenderID === currentUser?.id || 
                          (selectedConversation?.type === 'vendor' && message.SenderID === vendorProfileId);
+    const isGif = isGifUrl(message.Content);
     
     return (
       <div 
@@ -363,14 +615,27 @@ function UnifiedMessagesSection({ onSectionChange }) {
         }}
       >
         <div style={{ 
-          padding: '10px 14px', 
+          padding: isGif ? '4px' : '10px 14px', 
           borderRadius: isOwnMessage ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
-          backgroundColor: isOwnMessage ? '#5e72e4' : '#f0f0f0',
+          backgroundColor: isGif ? 'transparent' : (isOwnMessage ? '#5e72e4' : '#f0f0f0'),
           color: isOwnMessage ? 'white' : '#1a1a1a',
           maxWidth: '70%',
-          boxShadow: '0 1px 2px rgba(0,0,0,0.08)'
+          boxShadow: isGif ? 'none' : '0 1px 2px rgba(0,0,0,0.08)'
         }}>
-          <div style={{ marginBottom: '4px', wordBreak: 'break-word' }}>{message.Content}</div>
+          {isGif ? (
+            <img 
+              src={message.Content} 
+              alt="GIF" 
+              style={{ 
+                maxWidth: '200px', 
+                maxHeight: '200px', 
+                borderRadius: '12px',
+                display: 'block'
+              }} 
+            />
+          ) : (
+            <div style={{ marginBottom: '4px', wordBreak: 'break-word' }}>{message.Content}</div>
+          )}
           <div style={{ 
             fontSize: '11px', 
             opacity: 0.7,
@@ -398,90 +663,20 @@ function UnifiedMessagesSection({ onSectionChange }) {
       backgroundColor: 'white',
       height: '100%'
     }}>
-      {/* Header */}
+      {/* Header - compact, no title since it's in the dashboard nav */}
       <div style={{ 
-        padding: '20px 24px', 
+        padding: '12px 16px', 
         borderBottom: '1px solid #e5e5e5'
       }}>
-        <h2 style={{ margin: 0, fontSize: '24px', fontWeight: 600, color: '#222' }}>
-          Messages
-        </h2>
-        <p style={{ margin: '4px 0 0', fontSize: '14px', color: '#666' }}>
+        <p style={{ margin: 0, fontSize: '13px', color: '#666' }}>
           {filteredConversations.length} conversation{filteredConversations.length !== 1 ? 's' : ''}
         </p>
       </div>
       
-      {/* Role Tabs - Only show on desktop if user is a vendor */}
-      {!isMobile && currentUser?.isVendor && (
-        <div style={{ 
-          display: 'flex', 
-          borderBottom: '1px solid #e5e5e5',
-          padding: '0 16px',
-          background: 'white'
-        }}>
-          <button
-            onClick={() => setMessageRole('client')}
-            style={{
-              flex: 1,
-              padding: '12px 16px',
-              border: 'none',
-              background: 'transparent',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: messageRole === 'client' ? 600 : 400,
-              color: messageRole === 'client' ? '#5e72e4' : '#666',
-              borderBottom: messageRole === 'client' ? '2px solid #5e72e4' : '2px solid transparent',
-              transition: 'all 0.2s'
-            }}
-          >
-            As Client
-            {allConversations.client.length > 0 && (
-              <span style={{ 
-                marginLeft: '6px', 
-                background: messageRole === 'client' ? '#5e72e4' : '#e0e0e0',
-                color: messageRole === 'client' ? 'white' : '#666',
-                padding: '2px 6px',
-                borderRadius: '10px',
-                fontSize: '11px'
-              }}>
-                {allConversations.client.length}
-              </span>
-            )}
-          </button>
-          <button
-            onClick={() => setMessageRole('vendor')}
-            style={{
-              flex: 1,
-              padding: '12px 16px',
-              border: 'none',
-              background: 'transparent',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: messageRole === 'vendor' ? 600 : 400,
-              color: messageRole === 'vendor' ? '#5e72e4' : '#666',
-              borderBottom: messageRole === 'vendor' ? '2px solid #5e72e4' : '2px solid transparent',
-              transition: 'all 0.2s'
-            }}
-          >
-            As Vendor
-            {allConversations.vendor.length > 0 && (
-              <span style={{ 
-                marginLeft: '6px', 
-                background: messageRole === 'vendor' ? '#5e72e4' : '#e0e0e0',
-                color: messageRole === 'vendor' ? 'white' : '#666',
-                padding: '2px 6px',
-                borderRadius: '10px',
-                fontSize: '11px'
-              }}>
-                {allConversations.vendor.length}
-              </span>
-            )}
-          </button>
-        </div>
-      )}
+      {/* Role is now determined by sidebar toggle - no separate tabs needed */}
       
       {/* Search */}
-      <div style={{ padding: '16px 24px', borderBottom: '1px solid #e5e5e5' }}>
+      <div style={{ padding: '12px 16px', borderBottom: '1px solid #e5e5e5' }}>
         <input
           type="text"
           placeholder="Search conversations..."
@@ -489,10 +684,10 @@ function UnifiedMessagesSection({ onSectionChange }) {
           onChange={(e) => setSearchQuery(e.target.value)}
           style={{
             width: '100%',
-            padding: '12px 16px',
+            padding: '10px 14px',
             border: '1px solid #e5e5e5',
             borderRadius: '8px',
-            fontSize: '15px',
+            fontSize: '14px',
             outline: 'none',
             boxSizing: 'border-box'
           }}
@@ -557,23 +752,39 @@ function UnifiedMessagesSection({ onSectionChange }) {
         
         {selectedConversation ? (
           <>
-            <div style={{
-              width: '44px',
-              height: '44px',
-              borderRadius: '50%',
-              backgroundColor: '#5e72e4',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'white',
-              fontWeight: 600,
-              fontSize: '16px'
-            }}>
-              {(selectedConversation.userName || 'U').charAt(0).toUpperCase()}
+            <div style={{ position: 'relative' }}>
+              <div style={{
+                width: '44px',
+                height: '44px',
+                borderRadius: '50%',
+                backgroundColor: '#5e72e4',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'white',
+                fontWeight: 600,
+                fontSize: '16px'
+              }}>
+                {(selectedConversation.userName || 'U').charAt(0).toUpperCase()}
+              </div>
+              {/* Online indicator */}
+              <div style={{
+                position: 'absolute',
+                bottom: '2px',
+                right: '2px',
+                width: '12px',
+                height: '12px',
+                borderRadius: '50%',
+                backgroundColor: '#10b981',
+                border: '2px solid white'
+              }}></div>
             </div>
             <div>
               <div style={{ fontWeight: 600, color: '#222', fontSize: '16px' }}>
                 {selectedConversation.userName || 'Unknown'}
+              </div>
+              <div style={{ fontSize: '12px', color: '#10b981' }}>
+                Online now
               </div>
             </div>
           </>
@@ -581,6 +792,48 @@ function UnifiedMessagesSection({ onSectionChange }) {
           <div style={{ color: '#666', fontSize: '15px' }}>Select a conversation</div>
         )}
       </div>
+      
+      {/* Booking info banner - clean white style */}
+      {bookingInfo && (
+        <div style={{
+          padding: '10px 16px',
+          backgroundColor: 'white',
+          borderBottom: '1px solid #e5e7eb',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '12px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <i className="fas fa-calendar-alt" style={{ color: '#5e72e4', fontSize: '14px' }}></i>
+            <div>
+              <div style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '1px' }}>
+                Upcoming Booking:
+              </div>
+              <div style={{ fontSize: '13px', fontWeight: 500, color: '#374151' }}>
+                {bookingInfo.serviceName}
+              </div>
+              <div style={{ fontSize: '12px', color: '#6b7280' }}>
+                {bookingInfo.eventDate ? new Date(bookingInfo.eventDate).toLocaleDateString('en-US', { 
+                  weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' 
+                }) : 'Date TBD'}
+                {bookingInfo.totalAmount && ` • $${Number(bookingInfo.totalAmount).toLocaleString()}`}
+              </div>
+            </div>
+          </div>
+          <span style={{
+            padding: '4px 10px',
+            borderRadius: '999px',
+            fontSize: '11px',
+            fontWeight: 500,
+            backgroundColor: 'white',
+            color: bookingInfo.status === 'pending' ? '#d97706' : '#059669',
+            border: `1px solid ${bookingInfo.status === 'pending' ? '#fcd34d' : '#10b981'}`
+          }}>
+            {bookingInfo.status === 'pending' ? 'Pending' : 'Confirmed'}
+          </span>
+        </div>
+      )}
       
       {/* Messages container */}
       <div style={{ 
@@ -616,11 +869,293 @@ function UnifiedMessagesSection({ onSectionChange }) {
       {/* Message input */}
       {selectedConversation && (
         <div style={{ 
-          padding: '16px 24px', 
+          padding: '12px 16px', 
           borderTop: '1px solid #e5e5e5',
-          backgroundColor: 'white'
+          backgroundColor: 'white',
+          position: 'relative'
         }}>
-          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          {/* Quick replies - always visible above input */}
+          <div style={{ 
+            display: 'flex', 
+            gap: '6px', 
+            flexWrap: 'wrap', 
+            marginBottom: '10px'
+          }}>
+            {quickReplies.map((reply, idx) => (
+              <button
+                key={idx}
+                onClick={async () => {
+                  setNewMessage(reply);
+                  // Auto-send after a brief delay
+                  setTimeout(() => {
+                    const sendBtn = document.getElementById('send-message-btn');
+                    if (sendBtn) sendBtn.click();
+                  }, 100);
+                }}
+                style={{
+                  padding: '5px 10px',
+                  borderRadius: '14px',
+                  border: '1px solid #e5e7eb',
+                  background: 'white',
+                  fontSize: '12px',
+                  color: '#374151',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  whiteSpace: 'nowrap'
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = '#f3f4f6'; e.currentTarget.style.borderColor = '#d1d5db'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'white'; e.currentTarget.style.borderColor = '#e5e7eb'; }}
+              >
+                {reply}
+              </button>
+            ))}
+          </div>
+          
+          {/* Emoji picker - full featured with categories */}
+          {showEmojiPicker && (
+            <div style={{ 
+              position: 'absolute',
+              bottom: '100%',
+              left: '16px',
+              marginBottom: '8px',
+              background: 'white',
+              border: '1px solid #e5e7eb',
+              borderRadius: '12px',
+              padding: '10px',
+              boxShadow: '0 -4px 12px rgba(0,0,0,0.15)',
+              zIndex: 100,
+              width: '300px',
+              maxWidth: 'calc(100vw - 48px)',
+              overflow: 'hidden'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <span style={{ fontSize: '13px', fontWeight: 500, color: '#374151' }}>Emojis</span>
+                <button 
+                  onClick={() => setShowEmojiPicker(false)}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', fontSize: '14px', padding: '4px' }}
+                >
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
+              {/* Search */}
+              <input
+                type="text"
+                placeholder="Search emojis..."
+                value={emojiSearch}
+                onChange={(e) => setEmojiSearch(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '6px 10px',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  marginBottom: '8px',
+                  outline: 'none',
+                  boxSizing: 'border-box'
+                }}
+              />
+              {/* Category tabs */}
+              <div style={{ display: 'flex', gap: '2px', marginBottom: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
+                {Object.entries(emojiCategories).map(([key, cat]) => (
+                  <button
+                    key={key}
+                    onClick={() => setEmojiCategory(key)}
+                    style={{
+                      padding: '4px 6px',
+                      border: 'none',
+                      background: emojiCategory === key ? '#e5e7eb' : 'transparent',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      fontSize: '16px'
+                    }}
+                    title={cat.name}
+                  >
+                    {cat.icon}
+                  </button>
+                ))}
+              </div>
+              {/* Emoji grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: '2px', maxHeight: '180px', overflowY: 'auto' }}>
+                {getFilteredEmojis().map((emoji, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => { setNewMessage(prev => prev + emoji); }}
+                    style={{
+                      padding: '4px',
+                      border: 'none',
+                      background: 'transparent',
+                      fontSize: '18px',
+                      cursor: 'pointer',
+                      borderRadius: '4px',
+                      transition: 'background 0.15s',
+                      width: '32px',
+                      height: '32px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = '#f3f4f6'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          
+          {/* GIF picker with Giphy integration */}
+          {showGifPicker && (
+            <div style={{ 
+              position: 'absolute',
+              bottom: '100%',
+              left: '16px',
+              marginBottom: '8px',
+              background: 'white',
+              border: '1px solid #e5e7eb',
+              borderRadius: '12px',
+              padding: '12px',
+              boxShadow: '0 -4px 12px rgba(0,0,0,0.15)',
+              zIndex: 100,
+              width: '340px',
+              maxWidth: 'calc(100vw - 48px)'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <span style={{ fontSize: '13px', fontWeight: 500, color: '#374151' }}>GIFs</span>
+                <button 
+                  onClick={() => setShowGifPicker(false)}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', fontSize: '14px', padding: '4px' }}
+                >
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
+              <div style={{ display: 'flex', gap: '6px', marginBottom: '10px' }}>
+                <input
+                  type="text"
+                  placeholder="Search GIFs..."
+                  value={gifSearchQuery}
+                  onChange={(e) => setGifSearchQuery(e.target.value)}
+                  onKeyPress={(e) => { if (e.key === 'Enter') fetchGifs(gifSearchQuery); }}
+                  style={{
+                    flex: 1,
+                    padding: '8px 12px',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
+                />
+                <button
+                  onClick={() => fetchGifs(gifSearchQuery)}
+                  style={{
+                    padding: '8px 12px',
+                    background: '#5e72e4',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontSize: '12px'
+                  }}
+                >
+                  Search
+                </button>
+              </div>
+              <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: 'repeat(2, 1fr)', 
+                gap: '6px',
+                maxHeight: '280px',
+                overflowY: 'auto',
+                paddingRight: '4px'
+              }}>
+                {gifsLoading ? (
+                  <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px 20px', color: '#6b7280' }}>
+                    <i className="fas fa-spinner fa-spin" style={{ marginRight: '8px' }}></i>
+                    Loading GIFs...
+                  </div>
+                ) : gifs.length > 0 ? (
+                  gifs.map((gif) => (
+                    <button
+                      key={gif.id}
+                      onClick={() => handleSendGif(gif.url)}
+                      style={{
+                        padding: 0,
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '8px',
+                        background: '#f9fafb',
+                        cursor: 'pointer',
+                        overflow: 'hidden',
+                        height: '100px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                    >
+                      <img 
+                        src={gif.url} 
+                        alt={gif.alt}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        loading="lazy"
+                      />
+                    </button>
+                  ))
+                ) : (
+                  <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '20px', color: '#6b7280' }}>
+                    No GIFs match your search
+                  </div>
+                )}
+              </div>
+              <div style={{ marginTop: '8px', fontSize: '10px', color: '#9ca3af', textAlign: 'center' }}>
+                Powered by GIPHY
+              </div>
+            </div>
+          )}
+          
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            {/* Emoji button */}
+            <button 
+              onClick={() => { setShowEmojiPicker(!showEmojiPicker); setShowGifPicker(false); }}
+              style={{ 
+                width: '36px',
+                height: '36px',
+                borderRadius: '50%',
+                border: '1px solid #e5e7eb',
+                backgroundColor: showEmojiPicker ? '#f3f4f6' : 'white',
+                color: '#6b7280',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '16px',
+                flexShrink: 0
+              }}
+              title="Emojis"
+            >
+              😊
+            </button>
+            {/* GIF button */}
+            <button 
+              onClick={() => { setShowGifPicker(!showGifPicker); setShowEmojiPicker(false); }}
+              style={{ 
+                width: '36px',
+                height: '36px',
+                borderRadius: '50%',
+                border: '1px solid #e5e7eb',
+                backgroundColor: showGifPicker ? '#f3f4f6' : 'white',
+                color: '#6b7280',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '12px',
+                fontWeight: 700,
+                flexShrink: 0
+              }}
+              title="GIFs"
+            >
+              GIF
+            </button>
             <input 
               type="text" 
               placeholder="Type your message..." 
@@ -629,19 +1164,21 @@ function UnifiedMessagesSection({ onSectionChange }) {
               onKeyPress={(e) => { if (e.key === 'Enter') handleSendMessage(); }}
               style={{ 
                 flex: 1, 
-                padding: '14px 18px', 
+                padding: '10px 14px', 
                 border: '1px solid #e5e5e5', 
-                borderRadius: '24px',
+                borderRadius: '20px',
                 outline: 'none',
-                fontSize: '15px'
+                fontSize: '14px',
+                minWidth: 0
               }}
             />
             <button 
+              id="send-message-btn"
               onClick={handleSendMessage}
               disabled={!newMessage.trim()}
               style={{ 
-                width: '48px',
-                height: '48px',
+                width: '36px',
+                height: '36px',
                 borderRadius: '50%',
                 border: 'none',
                 backgroundColor: newMessage.trim() ? '#5e72e4' : '#ddd',
@@ -649,10 +1186,11 @@ function UnifiedMessagesSection({ onSectionChange }) {
                 cursor: newMessage.trim() ? 'pointer' : 'not-allowed',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center'
+                justifyContent: 'center',
+                flexShrink: 0
               }}
             >
-              <i className="fas fa-paper-plane"></i>
+              <i className="fas fa-paper-plane" style={{ fontSize: '14px' }}></i>
             </button>
           </div>
         </div>

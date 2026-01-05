@@ -363,10 +363,18 @@ function MessagingWidget() {
     setConversations(currentConvs);
   }, [messageRole, allConversations]);
 
+  // State for booking info to display at top of chat
+  const [activeBookingInfo, setActiveBookingInfo] = useState(null);
+
   // Listen for openMessagingWidget events from other components
   useEffect(() => {
     const handleOpenWidget = async (event) => {
-      const { conversationId, vendorProfileId, vendorName, showHome } = event.detail || {};
+      const { conversationId, vendorProfileId, vendorName, showHome, bookingInfo } = event.detail || {};
+      
+      // Store booking info if provided
+      if (bookingInfo) {
+        setActiveBookingInfo(bookingInfo);
+      }
       
       // Open the widget
       setIsOpen(true);
@@ -374,6 +382,7 @@ function MessagingWidget() {
       // If showHome is true or no specific conversation requested, show home view
       if (showHome || (!conversationId && !vendorProfileId)) {
         setMainView('home');
+        setActiveBookingInfo(null);
         return;
       }
       
@@ -966,6 +975,46 @@ function MessagingWidget() {
                   </div>
                 </div>
               </div>
+              
+              {/* Booking Info Banner */}
+              {activeBookingInfo && (
+                <div style={{
+                  padding: '10px 16px',
+                  background: '#f0f4ff',
+                  borderBottom: '1px solid #e0e7ff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px'
+                }}>
+                  <i className="fas fa-calendar-check" style={{ color: '#5e72e4', fontSize: '14px' }}></i>
+                  <div style={{ flex: 1, fontSize: '13px' }}>
+                    <span style={{ fontWeight: 600, color: '#374151' }}>
+                      {activeBookingInfo.eventName || 'Booking'}
+                    </span>
+                    {activeBookingInfo.eventDate && (
+                      <span style={{ color: '#6b7280', marginLeft: '8px' }}>
+                        {new Date(activeBookingInfo.eventDate).toLocaleDateString('en-US', { 
+                          month: 'short', 
+                          day: 'numeric',
+                          year: 'numeric'
+                        })}
+                      </span>
+                    )}
+                  </div>
+                  <span style={{
+                    padding: '3px 8px',
+                    borderRadius: '999px',
+                    fontSize: '11px',
+                    fontWeight: 500,
+                    background: activeBookingInfo.status === 'paid' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(245, 158, 11, 0.12)',
+                    color: activeBookingInfo.status === 'paid' ? '#10b981' : '#f59e0b',
+                    border: `1px ${activeBookingInfo.status === 'paid' ? 'solid' : 'dashed'} ${activeBookingInfo.status === 'paid' ? '#10b981' : '#f59e0b'}`
+                  }}>
+                    {activeBookingInfo.status === 'paid' ? 'Paid' : activeBookingInfo.status === 'pending' ? 'Pending' : 'Confirmed'}
+                  </span>
+                </div>
+              )}
+              
               <div className="chat-messages-container" style={{
                 flex: 1,
                 overflow: 'auto',

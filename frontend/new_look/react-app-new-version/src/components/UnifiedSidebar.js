@@ -12,6 +12,10 @@ function UnifiedSidebar({ isOpen, onClose }) {
   const [hasVendorProfile, setHasVendorProfile] = useState(false);
   const [profileStatus, setProfileStatus] = useState(null);
   const [vendorLogoUrl, setVendorLogoUrl] = useState(null);
+  const [notificationCounts, setNotificationCounts] = useState({
+    pendingBookings: 0,
+    unreadMessages: 0
+  });
   
   // Get view mode from localStorage
   const getViewMode = () => {
@@ -85,6 +89,88 @@ function UnifiedSidebar({ isOpen, onClose }) {
     
     checkVendorProfile();
   }, [currentUser?.id, currentUser?.isVendor]);
+
+  // Load notification counts
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    
+    const loadNotificationCounts = async () => {
+      try {
+        let pendingBookings = 0;
+        let unreadMessages = 0;
+        
+        // Get pending bookings count based on mode (use state, not localStorage)
+        if (isVendorMode && currentUser?.vendorProfileId) {
+          // Vendor: count pending requests
+          const bookingsResp = await fetch(`${API_BASE_URL}/vendor/${currentUser.vendorProfileId}/bookings/all`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+          });
+          if (bookingsResp.ok) {
+            const bookings = await bookingsResp.json();
+            pendingBookings = (bookings || []).filter(b => 
+              (b.Status || '').toLowerCase() === 'pending'
+            ).length;
+          }
+        } else {
+          // Client: count pending bookings
+          const bookingsResp = await fetch(`${API_BASE_URL}/users/${currentUser.id}/bookings/all`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+          });
+          if (bookingsResp.ok) {
+            const bookings = await bookingsResp.json();
+            pendingBookings = (bookings || []).filter(b => 
+              (b.Status || '').toLowerCase() === 'pending'
+            ).length;
+          }
+        }
+        
+        // Get unread messages count from both client and vendor conversations
+        // Client conversations
+        try {
+          const clientMsgResp = await fetch(`${API_BASE_URL}/messages/conversations/user/${currentUser.id}`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+          });
+          if (clientMsgResp.ok) {
+            const data = await clientMsgResp.json();
+            const convs = data.conversations || data || [];
+            const clientUnread = convs.reduce((sum, c) => {
+              const count = c.unreadCount || c.UnreadCount || c.unread_count || c.Unread || 0;
+              return sum + (typeof count === 'number' ? count : parseInt(count) || 0);
+            }, 0);
+            unreadMessages += clientUnread;
+          }
+        } catch (e) { console.error('Error fetching client messages:', e); }
+        
+        // Vendor conversations (if vendor)
+        if (currentUser?.vendorProfileId) {
+          try {
+            const vendorMsgResp = await fetch(`${API_BASE_URL}/messages/conversations/vendor/${currentUser.vendorProfileId}`, {
+              headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+            });
+            if (vendorMsgResp.ok) {
+              const data = await vendorMsgResp.json();
+              const convs = data.conversations || data || [];
+              const vendorUnread = convs.reduce((sum, c) => {
+                const count = c.unreadCount || c.UnreadCount || c.unread_count || c.Unread || 0;
+                return sum + (typeof count === 'number' ? count : parseInt(count) || 0);
+              }, 0);
+              unreadMessages += vendorUnread;
+            }
+          } catch (e) { console.error('Error fetching vendor messages:', e); }
+        }
+        
+        setNotificationCounts({ pendingBookings, unreadMessages });
+      } catch (error) {
+        console.error('Error loading notification counts:', error);
+      }
+    };
+    
+    loadNotificationCounts();
+    
+    // Refresh counts every 30 seconds when sidebar is open
+    const interval = setInterval(loadNotificationCounts, 30000);
+    return () => clearInterval(interval);
+  }, [currentUser?.id, currentUser?.vendorProfileId, isVendorMode]);
 
   const handleToggleViewMode = () => {
     const newMode = isVendorMode ? 'client' : 'vendor';
@@ -209,10 +295,16 @@ function UnifiedSidebar({ isOpen, onClose }) {
           <button className="unified-sidebar-item" onClick={() => handleNavigate('/dashboard?section=bookings')}>
             <i className="fas fa-calendar-check"></i>
             <span>Bookings</span>
+            {notificationCounts.pendingBookings > 0 && (
+              <span className="unified-sidebar-badge">{notificationCounts.pendingBookings}</span>
+            )}
           </button>
           <button className="unified-sidebar-item" onClick={() => handleNavigate('/dashboard?section=messages')}>
             <i className="fas fa-comments"></i>
             <span>Messages</span>
+            {notificationCounts.unreadMessages > 0 && (
+              <span className="unified-sidebar-badge">{notificationCounts.unreadMessages}</span>
+            )}
           </button>
           <button className="unified-sidebar-item" onClick={() => handleNavigate('/dashboard?section=invoices')}>
             <i className="fas fa-file-invoice-dollar"></i>

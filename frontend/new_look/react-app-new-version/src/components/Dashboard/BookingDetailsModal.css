@@ -1,0 +1,251 @@
+/* Booking Details Modal - Clean Card Style */
+.booking-details-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.booking-details-modal {
+  background: white;
+  border-radius: 8px;
+  width: 100%;
+  max-width: 380px;
+  max-height: 80vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+}
+
+/* Header */
+.booking-details-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.booking-details-header h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.booking-details-close {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  color: #9ca3af;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+}
+
+.booking-details-close:hover {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+/* Content */
+.booking-details-content {
+  padding: 16px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+/* Status Badge */
+.booking-details-status {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 14px;
+}
+
+.status-badge-large {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.status-badge-large i {
+  font-size: 10px;
+}
+
+/* Details List */
+.booking-details-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.booking-detail-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.booking-detail-item:last-child {
+  border-bottom: none;
+}
+
+.booking-detail-item.full-width {
+  grid-column: span 1;
+}
+
+.detail-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: #f9fafb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.detail-icon i {
+  font-size: 11px;
+  color: #6b7280;
+}
+
+.detail-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
+  flex: 1;
+}
+
+.detail-label {
+  font-size: 10px;
+  color: #9ca3af;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.detail-value {
+  font-size: 13px;
+  color: #111827;
+  font-weight: 500;
+  word-break: break-word;
+}
+
+.detail-value.price {
+  font-size: 14px;
+  font-weight: 600;
+  color: #059669;
+}
+
+.detail-value.notes {
+  font-weight: 400;
+  line-height: 1.4;
+  color: #4b5563;
+  font-size: 12px;
+}
+
+.paid-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 2px 6px;
+  background: #d1fae5;
+  color: #059669;
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 600;
+}
+
+/* Footer */
+.booking-details-footer {
+  padding: 12px 16px;
+  border-top: 1px solid #f3f4f6;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.btn-close-modal {
+  padding: 6px 16px;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #374151;
+  cursor: pointer;
+}
+
+.btn-close-modal:hover {
+  background: #f9fafb;
+}
+
+/* Mobile Responsive */
+@media (max-width: 600px) {
+  .booking-details-modal-overlay {
+    padding: 0;
+    align-items: flex-end;
+  }
+
+  .booking-details-modal {
+    max-width: 100%;
+    max-height: 80vh;
+    border-radius: 12px 12px 0 0;
+  }
+
+  .booking-details-header {
+    padding: 12px 14px;
+  }
+
+  .booking-details-content {
+    padding: 14px;
+  }
+
+  .booking-detail-item {
+    padding: 8px 0;
+    gap: 8px;
+  }
+
+  .detail-icon {
+    width: 24px;
+    height: 24px;
+  }
+
+  .detail-icon i {
+    font-size: 10px;
+  }
+
+  .detail-label {
+    font-size: 9px;
+  }
+
+  .detail-value {
+    font-size: 12px;
+  }
+
+  .booking-details-footer {
+    padding: 10px 14px;
+  }
+
+  .btn-close-modal {
+    width: 100%;
+    padding: 8px;
+  }
+}

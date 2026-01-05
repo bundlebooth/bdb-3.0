@@ -256,7 +256,7 @@ function ServiceCard({ service, variant = 'display', isSelected = false, onSelec
       position: 'relative'
     }}>
       {/* Pricing positioned at top right */}
-      <div style={{ 
+      <div className="service-card-pricing" style={{ 
         position: 'absolute',
         top: '1.25rem',
         right: '1.25rem',
@@ -303,8 +303,8 @@ function ServiceCard({ service, variant = 'display', isSelected = false, onSelec
         )}
       </div>
 
-      <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
-        <div style={{
+      <div className="service-card-row" style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+        <div className="service-card-icon" style={{
           flexShrink: 0,
           width: '60px',
           height: '60px',
@@ -317,7 +317,7 @@ function ServiceCard({ service, variant = 'display', isSelected = false, onSelec
           <i className={`fas ${getCategoryIcon()}`} style={{ color: '#5e72e4', fontSize: '1.5rem' }}></i>
         </div>
         
-        <div style={{ flex: 1, minWidth: 0, paddingRight: '120px' }}>
+        <div className="service-card-content" style={{ flex: 1, minWidth: 0, paddingRight: '120px' }}>
           <h3 style={{ fontSize: '1.125rem', fontWeight: 600, color: '#111827', margin: '0 0 0.5rem 0' }}>
             {serviceName}
           </h3>

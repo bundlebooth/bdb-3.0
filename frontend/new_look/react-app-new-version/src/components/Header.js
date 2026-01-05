@@ -368,7 +368,6 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
           className="user-menu-button"
           onClick={() => currentUser ? setSidebarOpen(true) : onProfileClick()}
           style={{
-            alignItems: 'center',
             gap: '8px',
             padding: '4px 4px 4px 12px',
             border: '1px solid #ddd',

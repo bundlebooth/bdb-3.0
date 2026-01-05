@@ -42,7 +42,8 @@ function ClientDashboardSection({ data, loading, onSectionChange }) {
               id: conv.id || conv.ConversationID,
               name: conv.OtherPartyName || conv.userName || 'Unknown',
               last: conv.lastMessageContent || conv.LastMessageContent || '',
-              ts: isValidTs ? parsedTs : null
+              ts: isValidTs ? parsedTs : null,
+              profilePicUrl: conv.OtherPartyAvatar || conv.OtherPartyLogo || null
             };
           }).sort((a,b) => (b.ts || new Date(0)) - (a.ts || new Date(0)));
           setMessages(conversations.slice(0, 5));
@@ -129,6 +130,22 @@ function ClientDashboardSection({ data, loading, onSectionChange }) {
     const initials = (message.name || 'U').trim().charAt(0).toUpperCase();
     const isValidTs = message.ts && !isNaN(message.ts.getTime());
     const timeStr = isValidTs ? message.ts.toLocaleString([], { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) : '';
+    const profilePic = message.profilePicUrl || message.ProfilePicUrl || message.userProfilePic;
+    
+    // Avatar style matching Messages section exactly - circular blue
+    const avatarStyle = {
+      width: '40px',
+      height: '40px',
+      borderRadius: '50%',
+      backgroundColor: '#5e72e4',
+      color: 'white',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontWeight: 600,
+      fontSize: '15px',
+      flexShrink: 0
+    };
     
     return (
       <div 
@@ -137,7 +154,20 @@ function ClientDashboardSection({ data, loading, onSectionChange }) {
         onClick={() => handleKPIClick('messages')}
         style={{ cursor: 'pointer' }}
       >
-        <div className="preview-avatar">{initials}</div>
+        {profilePic ? (
+          <img 
+            src={profilePic} 
+            alt={message.name || 'User'} 
+            style={{ ...avatarStyle, objectFit: 'cover' }}
+            onError={(e) => {
+              e.target.style.display = 'none';
+              e.target.nextSibling.style.display = 'flex';
+            }}
+          />
+        ) : null}
+        <div style={{ ...avatarStyle, display: profilePic ? 'none' : 'flex' }}>
+          {initials}
+        </div>
         <div className="preview-content">
           <div className="preview-name">{message.name}</div>
           <div className="preview-snippet">{message.last}</div>
