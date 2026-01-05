@@ -94,8 +94,7 @@ function UnifiedSidebar({ isOpen, onClose }) {
     // Dispatch event so other components can react immediately
     window.dispatchEvent(new CustomEvent('viewModeChanged', { detail: { mode: newMode } }));
     
-    // Close sidebar after toggle
-    onClose();
+    // Don't close sidebar - let user continue navigating
   };
 
   const handleNavigate = (path) => {

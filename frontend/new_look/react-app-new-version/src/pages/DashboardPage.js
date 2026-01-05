@@ -71,21 +71,51 @@ function DashboardPage() {
   // Determine which view to show based on viewMode from localStorage
   const showVendorView = viewMode === 'vendor';
 
+  // Map equivalent sections between client and vendor modes
+  const mapSectionToMode = (currentSection, toVendorMode) => {
+    const clientToVendor = {
+      'dashboard': 'vendor-dashboard',
+      'bookings': 'vendor-requests',
+      'invoices': 'vendor-invoices',
+      'reviews': 'vendor-reviews',
+      'settings': 'vendor-settings',
+      'messages': 'messages', // shared
+    };
+    
+    const vendorToClient = {
+      'vendor-dashboard': 'dashboard',
+      'vendor-requests': 'bookings',
+      'vendor-invoices': 'invoices',
+      'vendor-reviews': 'reviews',
+      'vendor-settings': 'settings',
+      'vendor-business-profile': 'dashboard', // no client equivalent
+      'vendor-analytics': 'dashboard', // no client equivalent
+      'messages': 'messages', // shared
+    };
+    
+    if (toVendorMode) {
+      return clientToVendor[currentSection] || 'vendor-dashboard';
+    } else {
+      return vendorToClient[currentSection] || 'dashboard';
+    }
+  };
+
   // Listen for viewModeChanged events to update immediately
   useEffect(() => {
     const handleViewModeChange = (event) => {
       const newMode = event.detail?.mode;
       if (newMode) {
         console.log('DashboardPage: viewModeChanged event received, new mode:', newMode);
+        const toVendorMode = newMode === 'vendor';
+        const mappedSection = mapSectionToMode(activeSection, toVendorMode);
         setViewMode(newMode);
-        // Reset to dashboard section when switching
-        setActiveSection('dashboard');
+        setActiveSection(mappedSection);
       }
     };
     
     window.addEventListener('viewModeChanged', handleViewModeChange);
     return () => window.removeEventListener('viewModeChanged', handleViewModeChange);
-  }, []);
+  }, [activeSection]);
 
   // Update activeSection when URL changes (for sidebar navigation)
   useEffect(() => {
