@@ -123,6 +123,12 @@
   flex: 1;
 }
 
+/* Mobile Page Selector - hidden on desktop */
+.mobile-page-selector {
+  display: none;
+  position: relative;
+}
+
 .mobile-nav-trigger {
   display: flex;
   align-items: center;
@@ -282,6 +288,7 @@
 .user-menu-btn {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 12px;
   padding: 5px 5px 5px 12px;
   background: white;
@@ -289,6 +296,7 @@
   border-radius: 24px;
   cursor: pointer;
   transition: box-shadow 0.2s;
+  height: 42px;
 }
 
 .user-menu-btn:hover {
@@ -298,6 +306,12 @@
 .user-menu-btn .fa-bars {
   font-size: 14px;
   color: #222;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  height: 32px;
+  width: 16px;
 }
 
 .user-avatar {
@@ -690,21 +704,38 @@
     display: none;
   }
   
-  .mobile-nav-dropdown {
-    display: block;
+  /* Hide mobile nav dropdown from header on mobile - it will appear below header */
+  .dashboard-header-content .mobile-nav-dropdown {
+    display: none;
   }
   
   .desktop-only {
     display: none !important;
   }
 
+  /* Dashboard page layout for mobile */
+  .dashboard-page {
+    overflow-x: hidden;
+  }
+
   .dashboard-page-content {
-    padding: 24px 16px;
+    padding: 0 16px 16px 16px;
+    overflow-x: hidden;
+    min-height: 0;
   }
 
   .dashboard-header-content {
     padding: 0 16px;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .dashboard-page-header {
     height: 56px;
+    min-height: 56px;
+    max-height: 56px;
   }
 
   .dashboard-logo img {
@@ -718,27 +749,69 @@
   /* Messages on mobile */
   .dashboard-page .messages-section,
   .dashboard-page .unified-messages-section {
-    height: calc(100vh - 56px - 48px);
-    max-height: calc(100vh - 56px - 48px);
+    height: calc(100vh - 56px - 60px - 16px);
+    max-height: calc(100vh - 56px - 60px - 16px);
     border-radius: 8px;
+    margin: 0;
   }
 
-  /* User menu button smaller */
+  /* User menu button - keep hamburger and avatar centered */
   .user-menu-btn {
-    padding: 4px 4px 4px 8px;
-    gap: 8px;
+    padding: 4px 4px 4px 10px;
+    gap: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 40px;
+  }
+
+  /* Keep hamburger icon visible on mobile */
+  .user-menu-btn .fa-bars {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    line-height: 1;
   }
 
   .user-avatar {
-    width: 28px;
-    height: 28px;
+    width: 32px;
+    height: 32px;
+    font-size: 13px;
+  }
+
+  /* Mobile page selector below header */
+  .mobile-page-selector {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 12px 16px;
+    background: white;
+    border-bottom: 1px solid #e5e5e5;
+  }
+
+  .mobile-page-selector .mobile-nav-trigger {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 4px;
+    background: none;
+    border: none;
+    font-size: 18px;
+    font-weight: 600;
+    color: #222;
+    cursor: pointer;
+  }
+
+  .mobile-page-selector .mobile-nav-trigger i {
     font-size: 12px;
+    color: #666;
   }
 }
 
 @media (max-width: 480px) {
   .dashboard-page-content {
-    padding: 20px 12px;
+    padding: 0 12px 12px 12px;
   }
 
   .dashboard-header-content {
@@ -749,8 +822,9 @@
     font-size: 16px;
   }
 
+  /* Keep hamburger visible on small mobile too */
   .user-menu-btn .fa-bars {
-    display: none;
+    display: block !important;
   }
 
   .user-dropdown-menu {
@@ -792,4 +866,98 @@
 .dashboard-page .card,
 .dashboard-page [class*="card"] {
   background: white !important;
+}
+
+/* Mobile-specific fixes for scroll and spacing */
+@media (max-width: 768px) {
+  /* Prevent horizontal scroll on all dashboard pages */
+  .dashboard-page,
+  .dashboard-page-content,
+  .dashboard-page-content > div {
+    overflow-x: hidden !important;
+    max-width: 100vw;
+  }
+
+  /* Remove extra bottom spacing on all sections */
+  .dashboard-page .messages-section,
+  .dashboard-page .unified-messages-section,
+  .dashboard-page .client-dashboard-section,
+  .dashboard-page .vendor-dashboard-section,
+  .dashboard-page .bookings-section,
+  .dashboard-page .invoices-section,
+  .dashboard-page .favorites-section,
+  .dashboard-page .reviews-section,
+  .dashboard-page .settings-section,
+  .dashboard-page .analytics-section,
+  .dashboard-page .business-profile-section {
+    margin-bottom: 0 !important;
+    padding-bottom: 0 !important;
+  }
+
+  /* Ensure content fills available space without extra padding */
+  .dashboard-page-content > div {
+    margin: 0 !important;
+    max-width: 100% !important;
+  }
+
+  /* Mobile nav menu positioning for page selector */
+  .mobile-page-selector .mobile-nav-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    min-width: 240px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.15);
+    z-index: 100;
+    padding: 8px 0;
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+
+  .mobile-page-selector .mobile-nav-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.2);
+    z-index: 99;
+  }
+
+  .mobile-page-selector .mobile-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 12px 20px;
+    background: none;
+    border: none;
+    font-size: 15px;
+    color: #222;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.15s;
+  }
+
+  .mobile-page-selector .mobile-nav-item:hover {
+    background: #f5f5f5;
+  }
+
+  .mobile-page-selector .mobile-nav-item.active {
+    color: var(--primary, #5e72e4);
+    font-weight: 500;
+    background: #f8f8ff;
+  }
+
+  .mobile-page-selector .mobile-nav-item i {
+    width: 20px;
+    text-align: center;
+    color: #888;
+    font-size: 14px;
+  }
+
+  .mobile-page-selector .mobile-nav-item.active i {
+    color: var(--primary, #5e72e4);
+  }
 }

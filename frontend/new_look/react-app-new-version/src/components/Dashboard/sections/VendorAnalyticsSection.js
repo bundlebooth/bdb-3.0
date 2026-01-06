@@ -67,137 +67,55 @@ function VendorAnalyticsSection() {
       const daysMap = { '7d': 7, '30d': 30, '90d': 90, '1y': 365 };
       const daysBack = daysMap[dateRange] || 30;
       
-      // Fetch analytics data from correct endpoint
-      const response = await fetch(`${API_BASE_URL}/analytics/vendor/${vendorProfileId}?daysBack=${daysBack}`, {
+      // Use the new dashboard endpoint that returns everything from stored procedure
+      const response = await fetch(`${API_BASE_URL}/analytics/vendor/${vendorProfileId}/dashboard?daysBack=${daysBack}`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       
       if (response.ok) {
         const data = await response.json();
         
-        // Also fetch bookings data for revenue and status breakdown
-        const bookingsResponse = await fetch(`${API_BASE_URL}/bookings/vendor/${vendorProfileId}`, {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        });
+        // Transform monthly data for charts
+        const monthlyViews = (data.monthlyData || []).map(m => ({
+          month: m.monthLabel,
+          monthKey: m.monthKey,
+          views: m.views || 0
+        }));
         
-        let bookingsData = { bookings: [], requests: [] };
-        if (bookingsResponse.ok) {
-          bookingsData = await bookingsResponse.json();
-        }
+        const monthlyBookings = (data.monthlyData || []).map(m => ({
+          month: m.monthLabel,
+          monthKey: m.monthKey,
+          bookings: m.bookings || 0
+        }));
         
-        // Calculate analytics from real data
-        const allBookings = [...(bookingsData.bookings || []), ...(bookingsData.requests || [])];
-        const totalRevenue = allBookings
-          .filter(b => b.FullAmountPaid || b._status === 'paid')
-          .reduce((sum, b) => sum + (Number(b.TotalAmount) || 0), 0);
-        
-        const statusCounts = {
-          pending: allBookings.filter(b => b._status === 'pending').length,
-          confirmed: allBookings.filter(b => ['confirmed', 'accepted', 'approved'].includes(b._status)).length,
-          completed: allBookings.filter(b => b._status === 'completed' || b._status === 'paid').length,
-          cancelled: allBookings.filter(b => b._status === 'cancelled' || b._status === 'declined').length
-        };
-        
-        // Build monthly data from daily views
-        const monthlyViews = [];
-        const monthlyRevenue = [];
-        const monthlyBookings = [];
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        const currentMonth = new Date().getMonth();
-        
-        for (let i = 5; i >= 0; i--) {
-          const monthIndex = (currentMonth - i + 12) % 12;
-          monthlyViews.push({ month: months[monthIndex], views: 0 });
-          monthlyRevenue.push({ month: months[monthIndex], revenue: 0 });
-          monthlyBookings.push({ month: months[monthIndex], bookings: 0 });
-        }
-        
-        // Aggregate daily views into monthly
-        if (data.dailyViews) {
-          data.dailyViews.forEach(day => {
-            const date = new Date(day.ViewDate);
-            const monthName = months[date.getMonth()];
-            const monthEntry = monthlyViews.find(m => m.month === monthName);
-            if (monthEntry) {
-              monthEntry.views += day.ViewCount || 0;
-            }
-          });
-        }
-        
-        // Aggregate bookings by month - use EventDate or CreatedAt
-        allBookings.forEach(booking => {
-          const dateStr = booking.EventDate || booking.CreatedAt || booking.createdAt;
-          if (dateStr) {
-            const date = new Date(dateStr);
-            if (!isNaN(date.getTime())) {
-              const monthName = months[date.getMonth()];
-              const bookingEntry = monthlyBookings.find(m => m.month === monthName);
-              const revenueEntry = monthlyRevenue.find(m => m.month === monthName);
-              if (bookingEntry) {
-                bookingEntry.bookings += 1;
-              }
-              if (revenueEntry) {
-                // Count revenue for paid bookings
-                const isPaid = booking.FullAmountPaid || booking._status === 'paid' || booking._status === 'completed';
-                if (isPaid) {
-                  revenueEntry.revenue += Number(booking.TotalAmount) || 0;
-                }
-              }
-            }
-          }
-        });
-        
-        // Fetch favorites count
-        let favoriteCount = 0;
-        try {
-          const favResponse = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/favorites/count`, {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-          });
-          if (favResponse.ok) {
-            const favData = await favResponse.json();
-            favoriteCount = favData.count || 0;
-          }
-        } catch (e) { /* ignore */ }
-        
-        // Fetch reviews
-        let reviewCount = 0;
-        let avgRating = 0;
-        try {
-          const reviewResponse = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/reviews`, {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-          });
-          if (reviewResponse.ok) {
-            const reviewData = await reviewResponse.json();
-            const reviews = reviewData.reviews || [];
-            reviewCount = reviews.length;
-            if (reviewCount > 0) {
-              avgRating = reviews.reduce((sum, r) => sum + (r.Rating || 0), 0) / reviewCount;
-            }
-          }
-        } catch (e) { /* ignore */ }
+        const monthlyRevenue = (data.monthlyData || []).map(m => ({
+          month: m.monthLabel,
+          monthKey: m.monthKey,
+          revenue: m.revenue || 0
+        }));
         
         setAnalytics({
           views: data.summary?.totalViews || 0,
-          bookings: allBookings.length,
-          revenue: totalRevenue,
-          conversionRate: data.summary?.totalViews > 0 ? ((allBookings.length / data.summary.totalViews) * 100).toFixed(1) : 0,
+          bookings: data.summary?.totalBookings || 0,
+          revenue: data.summary?.totalRevenue || 0,
+          conversionRate: data.summary?.conversionRate || 0,
           avgResponseTime: 0,
-          favoriteCount,
-          reviewCount,
-          avgRating: avgRating || 0,
+          favoriteCount: data.additionalMetrics?.favoriteCount || 0,
+          reviewCount: data.additionalMetrics?.reviewCount || 0,
+          avgRating: data.additionalMetrics?.avgRating || 5.0,
           monthlyViews,
           monthlyBookings,
           monthlyRevenue,
-          bookingsByStatus: statusCounts,
+          bookingsByStatus: data.bookingsByStatus || { pending: 0, confirmed: 0, completed: 0, cancelled: 0 },
           revenueByMonth: monthlyRevenue
         });
       } else {
-        // If analytics API fails, still try to load bookings data
+        // If dashboard API fails, fall back to loading bookings only
+        console.error('Dashboard API failed:', response.status);
         await loadBookingsOnly();
       }
     } catch (error) {
       console.error('Failed to load analytics:', error);
-      // Still try to load bookings data even if analytics fails
       await loadBookingsOnly();
     } finally {
       setLoading(false);
@@ -208,17 +126,26 @@ function VendorAnalyticsSection() {
   const loadBookingsOnly = async () => {
     try {
       const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      const currentMonth = new Date().getMonth();
+      const daysMap = { '7d': 7, '30d': 30, '90d': 90, '1y': 365 };
+      const daysBack = daysMap[dateRange] || 30;
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - daysBack);
+      startDate.setHours(0, 0, 0, 0);
       
-      // Initialize monthly arrays
+      // Initialize monthly arrays with year awareness
       const monthlyViews = [];
       const monthlyRevenue = [];
       const monthlyBookings = [];
-      for (let i = 5; i >= 0; i--) {
-        const monthIndex = (currentMonth - i + 12) % 12;
-        monthlyViews.push({ month: months[monthIndex], views: 0 });
-        monthlyRevenue.push({ month: months[monthIndex], revenue: 0 });
-        monthlyBookings.push({ month: months[monthIndex], bookings: 0 });
+      const numPeriods = dateRange === '1y' ? 12 : 6;
+      const now = new Date();
+      
+      for (let i = numPeriods - 1; i >= 0; i--) {
+        const periodDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const monthKey = `${periodDate.getFullYear()}-${String(periodDate.getMonth() + 1).padStart(2, '0')}`;
+        const monthLabel = months[periodDate.getMonth()];
+        monthlyViews.push({ month: monthLabel, monthKey, views: 0 });
+        monthlyRevenue.push({ month: monthLabel, monthKey, revenue: 0 });
+        monthlyBookings.push({ month: monthLabel, monthKey, bookings: 0 });
       }
       
       // Fetch bookings
@@ -229,35 +156,46 @@ function VendorAnalyticsSection() {
       let allBookings = [];
       if (bookingsResponse.ok) {
         const bookingsData = await bookingsResponse.json();
-        allBookings = [...(bookingsData.bookings || []), ...(bookingsData.requests || [])];
+        const allBookingsRaw = [...(bookingsData.bookings || []), ...(bookingsData.requests || [])];
+        // Filter by date range
+        allBookings = allBookingsRaw.filter(booking => {
+          const dateStr = booking.EventDate || booking.CreatedAt || booking.createdAt;
+          if (!dateStr) return true;
+          const bookingDate = new Date(dateStr);
+          return !isNaN(bookingDate.getTime()) && bookingDate >= startDate;
+        });
       }
       
       // Calculate real metrics
+      // Note: Status field from DB is PascalCase, normalize to lowercase for comparison
+      const getStatus = (b) => (b.Status || b._status || '').toLowerCase();
+      
       const totalRevenue = allBookings
-        .filter(b => b.FullAmountPaid || b._status === 'paid')
+        .filter(b => b.FullAmountPaid || getStatus(b) === 'paid' || getStatus(b) === 'completed')
         .reduce((sum, b) => sum + (Number(b.TotalAmount) || 0), 0);
       
       const statusCounts = {
-        pending: allBookings.filter(b => b._status === 'pending').length,
-        confirmed: allBookings.filter(b => ['confirmed', 'accepted', 'approved'].includes(b._status)).length,
-        completed: allBookings.filter(b => b._status === 'completed' || b._status === 'paid').length,
-        cancelled: allBookings.filter(b => b._status === 'cancelled' || b._status === 'declined').length
+        pending: allBookings.filter(b => getStatus(b) === 'pending').length,
+        confirmed: allBookings.filter(b => ['confirmed', 'accepted', 'approved'].includes(getStatus(b))).length,
+        completed: allBookings.filter(b => getStatus(b) === 'completed' || getStatus(b) === 'paid').length,
+        cancelled: allBookings.filter(b => getStatus(b) === 'cancelled' || getStatus(b) === 'declined').length
       };
       
-      // Aggregate bookings by month - use EventDate or CreatedAt
+      // Aggregate bookings by month with year awareness
       allBookings.forEach(booking => {
         const dateStr = booking.EventDate || booking.CreatedAt || booking.createdAt;
         if (dateStr) {
           const date = new Date(dateStr);
           if (!isNaN(date.getTime())) {
-            const monthName = months[date.getMonth()];
-            const bookingEntry = monthlyBookings.find(m => m.month === monthName);
-            const revenueEntry = monthlyRevenue.find(m => m.month === monthName);
+            const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+            const bookingEntry = monthlyBookings.find(m => m.monthKey === monthKey);
+            const revenueEntry = monthlyRevenue.find(m => m.monthKey === monthKey);
             if (bookingEntry) {
               bookingEntry.bookings += 1;
             }
             if (revenueEntry) {
-              const isPaid = booking.FullAmountPaid || booking._status === 'paid' || booking._status === 'completed';
+              const status = getStatus(booking);
+              const isPaid = booking.FullAmountPaid || status === 'paid' || status === 'completed';
               if (isPaid) {
                 revenueEntry.revenue += Number(booking.TotalAmount) || 0;
               }

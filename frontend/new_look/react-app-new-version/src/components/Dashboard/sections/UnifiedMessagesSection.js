@@ -101,18 +101,43 @@ function UnifiedMessagesSection({ onSectionChange }) {
     }
   };
   
-  // Function to send GIF as message
-  const handleSendGif = (gifUrl) => {
+  // Function to send GIF as message - directly submit without showing in text box
+  const handleSendGif = async (gifUrl) => {
     if (!selectedConversation) return;
-    // Send the GIF URL as a message
-    const gifMessage = gifUrl;
-    setNewMessage(gifMessage);
     setShowGifPicker(false);
-    // Auto-send after setting
-    setTimeout(() => {
-      const sendBtn = document.getElementById('send-message-btn');
-      if (sendBtn) sendBtn.click();
-    }, 100);
+    
+    // Directly send the GIF URL as a message
+    const senderId = selectedConversation.type === 'vendor' ? vendorProfileId : currentUser?.id;
+    
+    try {
+      if (window.socket) {
+        window.socket.emit('send-message', {
+          conversationId: selectedConversation.id,
+          senderId: senderId,
+          content: gifUrl
+        });
+        setTimeout(() => loadMessages(selectedConversation.id, selectedConversation.type), 500);
+      } else {
+        const response = await fetch(`${API_BASE_URL}/messages`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({
+            conversationId: selectedConversation.id,
+            senderId: senderId,
+            content: gifUrl
+          })
+        });
+        
+        if (response.ok) {
+          loadMessages(selectedConversation.id, selectedConversation.type);
+        }
+      }
+    } catch (error) {
+      console.error('Error sending GIF:', error);
+    }
   };
   
   // Handle window resize for mobile detection
@@ -885,12 +910,38 @@ function UnifiedMessagesSection({ onSectionChange }) {
               <button
                 key={idx}
                 onClick={async () => {
-                  setNewMessage(reply);
-                  // Auto-send after a brief delay
-                  setTimeout(() => {
-                    const sendBtn = document.getElementById('send-message-btn');
-                    if (sendBtn) sendBtn.click();
-                  }, 100);
+                  // Directly send quick reply without showing in text box
+                  const senderId = selectedConversation.type === 'vendor' ? vendorProfileId : currentUser?.id;
+                  
+                  try {
+                    if (window.socket) {
+                      window.socket.emit('send-message', {
+                        conversationId: selectedConversation.id,
+                        senderId: senderId,
+                        content: reply
+                      });
+                      setTimeout(() => loadMessages(selectedConversation.id, selectedConversation.type), 500);
+                    } else {
+                      const response = await fetch(`${API_BASE_URL}/messages`, {
+                        method: 'POST',
+                        headers: {
+                          'Content-Type': 'application/json',
+                          'Authorization': `Bearer ${localStorage.getItem('token')}`
+                        },
+                        body: JSON.stringify({
+                          conversationId: selectedConversation.id,
+                          senderId: senderId,
+                          content: reply
+                        })
+                      });
+                      
+                      if (response.ok) {
+                        loadMessages(selectedConversation.id, selectedConversation.type);
+                      }
+                    }
+                  } catch (error) {
+                    console.error('Error sending quick reply:', error);
+                  }
                 }}
                 style={{
                   padding: '5px 10px',

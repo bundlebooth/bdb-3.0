@@ -347,7 +347,7 @@ function VendorRequestsSection() {
           )}
           {booking.TotalAmount != null && booking.TotalAmount !== '' && (
             <div className="booking-price-row">
-              <i className="fas fa-credit-card" style={{ color: '#6b7280', fontSize: '12px' }}></i>
+              <i className="fas fa-dollar-sign" style={{ color: '#6b7280', fontSize: '12px' }}></i>
               <span className="booking-price">${Number(booking.TotalAmount).toLocaleString()}</span>
             </div>
           )}
@@ -367,29 +367,67 @@ function VendorRequestsSection() {
           <div className="actions-row" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             {s === 'pending' && isRequest && (
               <>
-                <button 
-                  style={{ padding: '6px 14px', borderRadius: '6px', fontSize: '13px', fontWeight: 500, background: '#10b981', color: 'white', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+                <span 
                   onClick={() => handleApproveRequest(booking.RequestID)}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    padding: '7px 18px',
+                    background: '#10b981',
+                    color: 'white',
+                    borderRadius: '6px',
+                    fontSize: '13px',
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap'
+                  }}
                 >
-                  <i className="fas fa-check" style={{ fontSize: '11px' }}></i>
+                  <i className="fas fa-check" style={{ fontSize: '10px' }}></i>
                   Approve
-                </button>
-                <button 
-                  style={{ padding: '6px 14px', borderRadius: '6px', fontSize: '13px', fontWeight: 500, background: '#ef4444', color: 'white', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+                </span>
+                <span 
                   onClick={() => handleDeclineRequest(booking.RequestID)}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    padding: '7px 18px',
+                    background: '#ef4444',
+                    color: 'white',
+                    borderRadius: '6px',
+                    fontSize: '13px',
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap'
+                  }}
                 >
-                  <i className="fas fa-times" style={{ fontSize: '11px' }}></i>
+                  <i className="fas fa-times" style={{ fontSize: '10px' }}></i>
                   Decline
-                </button>
+                </span>
               </>
             )}
-            <button 
-              className="link-btn" 
+            <span 
               onClick={() => handleShowDetails(booking)} 
-              style={{ padding: '6px 14px', borderRadius: '6px', fontSize: '13px', fontWeight: 500, background: 'white', color: '#374151', border: '1px solid #d1d5db', cursor: 'pointer' }}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '7px 18px',
+                borderRadius: '6px',
+                fontSize: '13px',
+                fontWeight: 500,
+                background: 'white',
+                color: '#374151',
+                border: '1px solid #d1d5db',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap'
+              }}
             >
               More info
-            </button>
+            </span>
             {/* Three-dot action menu */}
             <div style={{ position: 'relative' }}>
               <button
@@ -451,21 +489,6 @@ function VendorRequestsSection() {
         booking={selectedBooking} 
       />
       <div className="dashboard-card">
-        {/* Sort dropdown */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '12px 16px', borderBottom: '1px solid #e5e7eb' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '13px', color: '#6b7280' }}>Sort by:</span>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '13px', color: '#374151', background: 'white', cursor: 'pointer' }}
-            >
-              <option value="eventDate">Event Date</option>
-              <option value="requestedOn">Requested On</option>
-              <option value="client">Client Name</option>
-            </select>
-          </div>
-        </div>
         <div className="booking-tabs">
           <button 
             className={`booking-tab ${activeTab === 'all' ? 'active' : ''}`} 
@@ -502,6 +525,21 @@ function VendorRequestsSection() {
           >
             Expired
           </button>
+        </div>
+        {/* Sort dropdown - below tabs */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '12px 16px', borderBottom: '1px solid #e5e7eb' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '13px', color: '#6b7280' }}>Sort by:</span>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '13px', color: '#374151', background: 'white', cursor: 'pointer' }}
+            >
+              <option value="eventDate">Event Date</option>
+              <option value="requestedOn">Requested On</option>
+              <option value="client">Client Name</option>
+            </select>
+          </div>
         </div>
         <div className="booking-content">
           <div id={`${activeTab}-bookings`} className="booking-tab-content active">

@@ -267,6 +267,83 @@ router.get('/vendor/:vendorId/trends', authenticate, async (req, res) => {
 });
 
 // =============================================
+// Get Vendor Dashboard Analytics (all-in-one)
+// GET /api/analytics/vendor/:vendorId/dashboard
+// Protected - requires authentication
+// =============================================
+router.get('/vendor/:vendorId/dashboard', authenticate, async (req, res) => {
+    try {
+        const { vendorId } = req.params;
+        const { daysBack = 180 } = req.query;
+
+        const pool = await poolPromise;
+
+        // Verify the vendor belongs to the requesting user (or user is admin)
+        const vendorCheck = await pool.request()
+            .input('VendorProfileID', sql.Int, vendorId)
+            .execute('vendors.sp_GetVendorOwner');
+
+        if (vendorCheck.recordset.length === 0) {
+            return res.status(404).json({ error: 'Vendor not found' });
+        }
+
+        const vendorOwnerID = vendorCheck.recordset[0].UserID;
+        
+        if (req.user.userId !== vendorOwnerID && !req.user.isAdmin) {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+
+        // Call the stored procedure
+        const result = await pool.request()
+            .input('VendorProfileID', sql.Int, vendorId)
+            .input('DaysBack', sql.Int, parseInt(daysBack))
+            .execute('analytics.sp_GetVendorDashboardAnalytics');
+
+        // Parse the 4 result sets
+        const monthlyData = result.recordsets[0] || [];
+        const summary = result.recordsets[1]?.[0] || { TotalViews: 0, TotalBookings: 0, TotalRevenue: 0 };
+        const statusBreakdown = result.recordsets[2]?.[0] || { PendingCount: 0, ConfirmedCount: 0, CompletedCount: 0, CancelledCount: 0 };
+        const additionalMetrics = result.recordsets[3]?.[0] || { FavoriteCount: 0, ReviewCount: 0, AvgRating: 5.0 };
+
+        res.json({
+            success: true,
+            monthlyData: monthlyData.map(m => ({
+                monthLabel: m.MonthLabel,
+                monthKey: m.MonthKey,
+                views: m.ViewCount,
+                bookings: m.BookingCount,
+                revenue: m.Revenue
+            })),
+            summary: {
+                totalViews: summary.TotalViews,
+                totalBookings: summary.TotalBookings,
+                totalRevenue: summary.TotalRevenue,
+                conversionRate: summary.TotalViews > 0 
+                    ? ((summary.TotalBookings / summary.TotalViews) * 100).toFixed(1) 
+                    : 0
+            },
+            bookingsByStatus: {
+                pending: statusBreakdown.PendingCount,
+                confirmed: statusBreakdown.ConfirmedCount,
+                completed: statusBreakdown.CompletedCount,
+                cancelled: statusBreakdown.CancelledCount
+            },
+            additionalMetrics: {
+                favoriteCount: additionalMetrics.FavoriteCount,
+                reviewCount: additionalMetrics.ReviewCount,
+                avgRating: additionalMetrics.AvgRating
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching vendor dashboard analytics:', error);
+        res.status(500).json({ 
+            error: 'Failed to fetch vendor dashboard analytics',
+            details: error.message 
+        });
+    }
+});
+
+// =============================================
 // Get Simple View Count (for public display)
 // GET /api/analytics/vendor/:vendorId/view-count
 // Public endpoint

@@ -2854,15 +2854,21 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
 }
 
 .btn-pay-now {
-    background: #3b82f6;
-    color: white;
-    border: none;
-    padding: 8px 16px;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
+    background: #10b981 !important;
+    color: white !important;
+    border: none !important;
+    padding: 8px 24px !important;
+    border-radius: 6px !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    cursor: pointer !important;
     transition: all 0.2s ease;
+    min-width: 120px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    white-space: nowrap !important;
 }
 
 .btn-pay-now:hover {
@@ -4400,7 +4406,7 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
 }
 .overview-grid {
     display: grid;
-    grid-template-columns: 1fr minmax(320px, 420px);
+    grid-template-columns: 1fr 1fr;
     gap: 1.25rem;
     align-items: start;
     width: 100%;
@@ -4408,7 +4414,7 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
     margin: 0 auto;
 }
 .overview-grid > * { min-width: 0; }
-@media (max-width: 1200px) {
+@media (max-width: 768px) {
     .overview-grid { grid-template-columns: 1fr; }
 }
 

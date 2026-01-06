@@ -368,19 +368,23 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
           className="user-menu-button"
           onClick={() => currentUser ? setSidebarOpen(true) : onProfileClick()}
           style={{
-            gap: '8px',
-            padding: '4px 4px 4px 12px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '12px',
+            padding: '5px 5px 5px 12px',
             border: '1px solid #ddd',
             borderRadius: '24px',
             cursor: 'pointer',
             backgroundColor: 'white',
             transition: 'box-shadow 0.2s',
-            position: 'relative'
+            position: 'relative',
+            height: '42px'
           }}
           onMouseEnter={(e) => e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)'}
           onMouseLeave={(e) => e.currentTarget.style.boxShadow = 'none'}
         >
-          <i className="fas fa-bars" style={{ fontSize: '14px', color: '#222' }}></i>
+          <i className="fas fa-bars" style={{ fontSize: '14px', color: '#222', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '32px', width: '16px' }}></i>
           {/* Show profile pic based on mode */}
           {(isVendorMode && vendorLogoUrl) || currentUser?.profilePicture ? (
             <img

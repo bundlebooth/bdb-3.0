@@ -513,7 +513,7 @@ function DashboardPage() {
             })}
           </nav>
           
-          {/* Mobile Navigation Dropdown - only shown on mobile */}
+          {/* Mobile Navigation Dropdown - hidden in header on mobile, shown on tablet/desktop */}
           <div className="mobile-nav-dropdown">
             <button 
               className="mobile-nav-trigger"
@@ -527,29 +527,6 @@ function DashboardPage() {
               <>
                 <div className="mobile-nav-overlay" onClick={() => setMobileNavOpen(false)} />
                 <div className="mobile-nav-menu">
-                  {/* View mode switcher for users who are both client and vendor */}
-                  {hasVendorProfile && (
-                    <>
-                      <div className="mobile-nav-section-title">View as</div>
-                      <button 
-                        className={`mobile-nav-item ${showVendorView ? '' : 'active'}`}
-                        onClick={() => { handleViewModeSwitch('client'); setMobileNavOpen(false); }}
-                      >
-                        <i className="fas fa-user"></i>
-                        <span>Client</span>
-                      </button>
-                      <button 
-                        className={`mobile-nav-item ${showVendorView ? 'active' : ''}`}
-                        onClick={() => { handleViewModeSwitch('vendor'); setMobileNavOpen(false); }}
-                      >
-                        <i className="fas fa-store"></i>
-                        <span>Vendor</span>
-                      </button>
-                      <div className="mobile-nav-divider" />
-                    </>
-                  )}
-                  
-                  <div className="mobile-nav-section-title">Pages</div>
                   {topNavTabs.map(tab => (
                     <button
                       key={tab.id}
@@ -583,6 +560,35 @@ function DashboardPage() {
       
       {/* Unified Sidebar Component */}
       <UnifiedSidebar isOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
+
+      {/* Mobile Page Selector - shown below header on mobile only */}
+      <div className="mobile-page-selector">
+        <button 
+          className="mobile-nav-trigger"
+          onClick={() => setMobileNavOpen(!mobileNavOpen)}
+        >
+          <span>{getCurrentSectionLabel()}</span>
+          <i className={`fas fa-chevron-${mobileNavOpen ? 'up' : 'down'}`}></i>
+        </button>
+        
+        {mobileNavOpen && (
+          <>
+            <div className="mobile-nav-overlay" onClick={() => setMobileNavOpen(false)} />
+            <div className="mobile-nav-menu">
+              {topNavTabs.map(tab => (
+                <button
+                  key={tab.id}
+                  className={`mobile-nav-item ${activeSection === tab.id ? 'active' : ''}`}
+                  onClick={() => { handleSectionChange(tab.id); setMobileNavOpen(false); }}
+                >
+                  <i className={`fas ${tab.icon}`}></i>
+                  <span>{tab.label}</span>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
 
       {/* Main Content */}
       <main className="dashboard-page-content">

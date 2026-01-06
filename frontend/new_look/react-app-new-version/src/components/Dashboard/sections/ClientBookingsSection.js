@@ -286,21 +286,46 @@ function ClientBookingsSection({ onPayNow, onOpenChat }) {
           </div>
           <div className="actions-row" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             {(s === 'confirmed' || s === 'accepted' || s === 'approved') && !isPaid && (
-              <button 
-                style={{ padding: '6px 14px', borderRadius: '6px', fontSize: '13px', fontWeight: 500, background: '#10b981', color: 'white', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+              <span 
                 onClick={() => handlePayNow(booking)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  padding: '7px 18px',
+                  background: '#10b981',
+                  color: 'white',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap'
+                }}
               >
-                <i className="fas fa-check" style={{ fontSize: '11px' }}></i>
+                <i className="fas fa-check" style={{ fontSize: '10px' }}></i>
                 {isDepositOnly ? 'Pay Balance' : 'Pay Now'}
-              </button>
+              </span>
             )}
-            <button 
-              className="link-btn" 
+            <span 
               onClick={() => handleShowDetails(booking)} 
-              style={{ padding: '6px 14px', borderRadius: '6px', fontSize: '13px', fontWeight: 500, background: 'white', color: '#374151', border: '1px solid #d1d5db', cursor: 'pointer' }}
+              style={{ 
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '7px 18px', 
+                borderRadius: '6px', 
+                fontSize: '13px', 
+                fontWeight: 500, 
+                background: 'white', 
+                color: '#374151', 
+                border: '1px solid #d1d5db', 
+                cursor: 'pointer',
+                whiteSpace: 'nowrap'
+              }}
             >
               More info
-            </button>
+            </span>
             {/* Three-dot action menu */}
             <div style={{ position: 'relative' }}>
               <button
@@ -362,21 +387,6 @@ function ClientBookingsSection({ onPayNow, onOpenChat }) {
         booking={selectedBooking} 
       />
       <div className="dashboard-card">
-        {/* Sort dropdown */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '12px 16px', borderBottom: '1px solid #e5e7eb' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '13px', color: '#6b7280' }}>Sort by:</span>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '13px', color: '#374151', background: 'white', cursor: 'pointer' }}
-            >
-              <option value="eventDate">Event Date</option>
-              <option value="requestedOn">Requested On</option>
-              <option value="vendor">Vendor Name</option>
-            </select>
-          </div>
-        </div>
         <div className="booking-tabs">
           <button 
             className={`booking-tab ${activeTab === 'all' ? 'active' : ''}`} 
@@ -413,6 +423,21 @@ function ClientBookingsSection({ onPayNow, onOpenChat }) {
           >
             Expired
           </button>
+        </div>
+        {/* Sort dropdown - below tabs */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '12px 16px', borderBottom: '1px solid #e5e7eb' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '13px', color: '#6b7280' }}>Sort by:</span>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '13px', color: '#374151', background: 'white', cursor: 'pointer' }}
+            >
+              <option value="eventDate">Event Date</option>
+              <option value="requestedOn">Requested On</option>
+              <option value="vendor">Vendor Name</option>
+            </select>
+          </div>
         </div>
         <div className="booking-content">
           <div id={`${activeTab}-bookings`} className="booking-tab-content active">
