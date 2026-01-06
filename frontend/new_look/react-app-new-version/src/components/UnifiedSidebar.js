@@ -7,7 +7,7 @@ import './UnifiedSidebar.css';
 function UnifiedSidebar({ isOpen, onClose }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { currentUser } = useAuth();
+  const { currentUser, logout } = useAuth();
   
   const [hasVendorProfile, setHasVendorProfile] = useState(false);
   const [profileStatus, setProfileStatus] = useState(null);
@@ -189,10 +189,19 @@ function UnifiedSidebar({ isOpen, onClose }) {
   };
 
   const handleLogout = () => {
+    // Clear all localStorage items first
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    localStorage.removeItem('userSession');
     localStorage.removeItem('viewMode');
-    window.location.href = '/';
+    
+    // Call AuthContext logout to clear state
+    if (logout) {
+      logout();
+    }
+    
+    // Force full page reload to home
+    window.location.replace('/');
   };
 
   // Get profile picture based on mode
@@ -262,12 +271,15 @@ function UnifiedSidebar({ isOpen, onClose }) {
             >
               <i className="fas fa-user-check"></i>
               <span>Profile Setup</span>
-              <span className={`unified-sidebar-status-badge ${profileStatus}`}>
-                {profileStatus === 'live' && 'Live'}
-                {profileStatus === 'submitted' && 'Pending'}
-                {profileStatus === 'incomplete' && 'Incomplete'}
-                {!profileStatus && 'Setup'}
-              </span>
+              {!profileStatus ? (
+                <div className="spinner" style={{ width: '16px', height: '16px', marginLeft: 'auto', borderWidth: '2px' }}></div>
+              ) : (
+                <span className={`unified-sidebar-status-badge ${profileStatus}`}>
+                  {profileStatus === 'live' && 'Live'}
+                  {profileStatus === 'submitted' && 'Pending'}
+                  {profileStatus === 'incomplete' && 'Incomplete'}
+                </span>
+              )}
             </button>
           </div>
         )}

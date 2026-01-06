@@ -303,7 +303,7 @@ router.get('/vendor/:vendorId/dashboard', authenticate, async (req, res) => {
         const monthlyData = result.recordsets[0] || [];
         const summary = result.recordsets[1]?.[0] || { TotalViews: 0, TotalBookings: 0, TotalRevenue: 0 };
         const statusBreakdown = result.recordsets[2]?.[0] || { PendingCount: 0, ConfirmedCount: 0, CompletedCount: 0, CancelledCount: 0 };
-        const additionalMetrics = result.recordsets[3]?.[0] || { FavoriteCount: 0, ReviewCount: 0, AvgRating: 5.0 };
+        const additionalMetrics = result.recordsets[3]?.[0] || { FavoriteCount: 0, ReviewCount: 0, AvgRating: 5.0, AvgResponseTime: 0 };
 
         res.json({
             success: true,
@@ -331,7 +331,8 @@ router.get('/vendor/:vendorId/dashboard', authenticate, async (req, res) => {
             additionalMetrics: {
                 favoriteCount: additionalMetrics.FavoriteCount,
                 reviewCount: additionalMetrics.ReviewCount,
-                avgRating: additionalMetrics.AvgRating
+                avgRating: additionalMetrics.AvgRating,
+                avgResponseTime: additionalMetrics.AvgResponseTime || 0
             }
         });
     } catch (error) {

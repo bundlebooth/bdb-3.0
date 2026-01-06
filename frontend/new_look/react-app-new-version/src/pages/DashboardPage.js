@@ -228,7 +228,19 @@ function DashboardPage() {
     
     // Refresh counts every 30 seconds
     const interval = setInterval(loadNotificationCounts, 30000);
-    return () => clearInterval(interval);
+    
+    // Listen for message sent/received events to refresh counts immediately
+    const handleMessageEvent = () => {
+      loadNotificationCounts();
+    };
+    window.addEventListener('messageSent', handleMessageEvent);
+    window.addEventListener('messageReceived', handleMessageEvent);
+    
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('messageSent', handleMessageEvent);
+      window.removeEventListener('messageReceived', handleMessageEvent);
+    };
   }, [currentUser?.id, currentUser?.vendorProfileId, showVendorView]);
 
   // Redirect if not logged in (but wait for auth to finish loading)

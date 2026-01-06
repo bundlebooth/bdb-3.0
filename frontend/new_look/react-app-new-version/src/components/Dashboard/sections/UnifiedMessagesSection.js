@@ -17,6 +17,7 @@ function UnifiedMessagesSection({ onSectionChange }) {
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [vendorProfileId, setVendorProfileId] = useState(null);
+  const [vendorProfileChecked, setVendorProfileChecked] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [showChatView, setShowChatView] = useState(false); // For mobile: show chat instead of list
@@ -101,10 +102,50 @@ function UnifiedMessagesSection({ onSectionChange }) {
     }
   };
   
+  // Helper function to update conversation list with new message immediately
+  const updateConversationWithMessage = (content) => {
+    if (!selectedConversation) return;
+    
+    // Update the conversation in the list immediately (optimistic update)
+    setConversations(prevConvs => {
+      return prevConvs.map(conv => {
+        if (conv.id === selectedConversation.id) {
+          return {
+            ...conv,
+            lastMessageContent: content,
+            lastMessageCreatedAt: new Date().toISOString()
+          };
+        }
+        return conv;
+      });
+    });
+    
+    // Also update allConversations
+    setAllConversations(prev => {
+      const updateList = (list) => list.map(conv => {
+        if (conv.id === selectedConversation.id) {
+          return {
+            ...conv,
+            lastMessageContent: content,
+            lastMessageCreatedAt: new Date().toISOString()
+          };
+        }
+        return conv;
+      });
+      return {
+        client: updateList(prev.client),
+        vendor: updateList(prev.vendor)
+      };
+    });
+  };
+
   // Function to send GIF as message - directly submit without showing in text box
   const handleSendGif = async (gifUrl) => {
     if (!selectedConversation) return;
     setShowGifPicker(false);
+    
+    // Immediately update conversation list (optimistic update)
+    updateConversationWithMessage(gifUrl);
     
     // Directly send the GIF URL as a message
     const senderId = selectedConversation.type === 'vendor' ? vendorProfileId : currentUser?.id;
@@ -116,7 +157,10 @@ function UnifiedMessagesSection({ onSectionChange }) {
           senderId: senderId,
           content: gifUrl
         });
-        setTimeout(() => loadMessages(selectedConversation.id, selectedConversation.type), 500);
+        setTimeout(() => {
+          loadMessages(selectedConversation.id, selectedConversation.type);
+          window.dispatchEvent(new CustomEvent('messageSent'));
+        }, 300);
       } else {
         const response = await fetch(`${API_BASE_URL}/messages`, {
           method: 'POST',
@@ -133,6 +177,7 @@ function UnifiedMessagesSection({ onSectionChange }) {
         
         if (response.ok) {
           loadMessages(selectedConversation.id, selectedConversation.type);
+          window.dispatchEvent(new CustomEvent('messageSent'));
         }
       }
     } catch (error) {
@@ -157,7 +202,17 @@ function UnifiedMessagesSection({ onSectionChange }) {
   // Get vendor profile ID if user is a vendor
   useEffect(() => {
     const getVendorProfileId = async () => {
-      if (!currentUser?.id || !currentUser?.isVendor) return;
+      if (!currentUser?.id) {
+        setVendorProfileChecked(true);
+        return;
+      }
+      
+      if (!currentUser?.isVendor) {
+        // Not a vendor, mark as checked so we can proceed with loading
+        setVendorProfileChecked(true);
+        return;
+      }
+      
       try {
         const response = await fetch(`${API_BASE_URL}/vendors/profile?userId=${currentUser.id}`, {
           headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
@@ -168,6 +223,8 @@ function UnifiedMessagesSection({ onSectionChange }) {
         }
       } catch (error) {
         console.error('Error getting vendor profile:', error);
+      } finally {
+        setVendorProfileChecked(true);
       }
     };
     getVendorProfileId();
@@ -454,6 +511,9 @@ function UnifiedMessagesSection({ onSectionChange }) {
     if (e) e.preventDefault();
     if (!newMessage.trim() || !selectedConversation) return;
     
+    // Immediately update conversation list (optimistic update)
+    updateConversationWithMessage(newMessage.trim());
+    
     // Determine sender ID based on conversation type
     const senderId = selectedConversation.type === 'vendor' ? vendorProfileId : currentUser?.id;
     
@@ -465,7 +525,11 @@ function UnifiedMessagesSection({ onSectionChange }) {
           content: newMessage.trim()
         });
         setNewMessage('');
-        setTimeout(() => loadMessages(selectedConversation.id, selectedConversation.type), 500);
+        setTimeout(() => {
+          loadMessages(selectedConversation.id, selectedConversation.type);
+          // Dispatch event to refresh notification counts
+          window.dispatchEvent(new CustomEvent('messageSent'));
+        }, 300);
       } else {
         const response = await fetch(`${API_BASE_URL}/messages`, {
           method: 'POST',
@@ -483,6 +547,8 @@ function UnifiedMessagesSection({ onSectionChange }) {
         if (response.ok) {
           setNewMessage('');
           loadMessages(selectedConversation.id, selectedConversation.type);
+          // Dispatch event to refresh notification counts
+          window.dispatchEvent(new CustomEvent('messageSent'));
         }
       }
     } catch (error) {
@@ -693,9 +759,16 @@ function UnifiedMessagesSection({ onSectionChange }) {
         padding: '12px 16px', 
         borderBottom: '1px solid #e5e5e5'
       }}>
-        <p style={{ margin: 0, fontSize: '13px', color: '#666' }}>
-          {filteredConversations.length} conversation{filteredConversations.length !== 1 ? 's' : ''}
-        </p>
+        {(loading || !vendorProfileChecked) ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div className="spinner" style={{ width: '14px', height: '14px', borderWidth: '2px' }}></div>
+            <span style={{ margin: 0, fontSize: '13px', color: '#666' }}>Loading conversations...</span>
+          </div>
+        ) : (
+          <p style={{ margin: 0, fontSize: '13px', color: '#666' }}>
+            {filteredConversations.length} conversation{filteredConversations.length !== 1 ? 's' : ''}
+          </p>
+        )}
       </div>
       
       {/* Role is now determined by sidebar toggle - no separate tabs needed */}
@@ -721,10 +794,9 @@ function UnifiedMessagesSection({ onSectionChange }) {
       
       {/* Conversations list */}
       <div style={{ flex: 1, overflowY: 'auto' }}>
-        {loading ? (
+        {(loading || !vendorProfileChecked) ? (
           <div style={{ padding: '40px', textAlign: 'center' }}>
             <div className="spinner" style={{ margin: '0 auto' }}></div>
-            <p style={{ marginTop: '16px', color: '#666', fontSize: '14px' }}>Loading...</p>
           </div>
         ) : filteredConversations.length === 0 ? (
           <div style={{ padding: '40px', textAlign: 'center' }}>
@@ -910,6 +982,9 @@ function UnifiedMessagesSection({ onSectionChange }) {
               <button
                 key={idx}
                 onClick={async () => {
+                  // Immediately update conversation list (optimistic update)
+                  updateConversationWithMessage(reply);
+                  
                   // Directly send quick reply without showing in text box
                   const senderId = selectedConversation.type === 'vendor' ? vendorProfileId : currentUser?.id;
                   
@@ -920,7 +995,10 @@ function UnifiedMessagesSection({ onSectionChange }) {
                         senderId: senderId,
                         content: reply
                       });
-                      setTimeout(() => loadMessages(selectedConversation.id, selectedConversation.type), 500);
+                      setTimeout(() => {
+                        loadMessages(selectedConversation.id, selectedConversation.type);
+                        window.dispatchEvent(new CustomEvent('messageSent'));
+                      }, 300);
                     } else {
                       const response = await fetch(`${API_BASE_URL}/messages`, {
                         method: 'POST',
@@ -937,6 +1015,7 @@ function UnifiedMessagesSection({ onSectionChange }) {
                       
                       if (response.ok) {
                         loadMessages(selectedConversation.id, selectedConversation.type);
+                        window.dispatchEvent(new CustomEvent('messageSent'));
                       }
                     }
                   } catch (error) {

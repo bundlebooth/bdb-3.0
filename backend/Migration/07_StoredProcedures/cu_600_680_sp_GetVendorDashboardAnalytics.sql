@@ -100,11 +100,34 @@ BEGIN
     WHERE VendorProfileID = @VendorProfileID
       AND ISNULL(EventDate, CreatedAt) >= @StartDate;
     
-    -- Result Set 4: Additional metrics (Favorites is in users schema)
+    -- Result Set 4: Additional metrics (Favorites, Reviews, Avg Response Time)
+    -- Avg Response Time: Calculate average time between client message and vendor's first reply
+    DECLARE @AvgResponseMinutes INT = 0;
+    
+    ;WITH VendorResponses AS (
+        SELECT 
+            m1.ConversationID,
+            m1.CreatedAt AS ClientMessageTime,
+            MIN(m2.CreatedAt) AS VendorReplyTime
+        FROM messages.Messages m1
+        INNER JOIN messages.Conversations c ON m1.ConversationID = c.ConversationID
+        INNER JOIN messages.Messages m2 ON m1.ConversationID = m2.ConversationID
+            AND m2.CreatedAt > m1.CreatedAt
+            AND m2.SenderID != m1.SenderID
+        WHERE c.VendorProfileID = @VendorProfileID
+          AND m1.SenderID = c.UserID  -- Message from client
+          AND m1.CreatedAt >= @StartDate
+        GROUP BY m1.ConversationID, m1.MessageID, m1.CreatedAt
+    )
+    SELECT @AvgResponseMinutes = ISNULL(AVG(DATEDIFF(MINUTE, ClientMessageTime, VendorReplyTime)), 0)
+    FROM VendorResponses
+    WHERE VendorReplyTime IS NOT NULL;
+    
     SELECT 
         (SELECT COUNT(*) FROM users.Favorites WHERE VendorProfileID = @VendorProfileID) AS FavoriteCount,
         (SELECT COUNT(*) FROM vendors.Reviews WHERE VendorProfileID = @VendorProfileID) AS ReviewCount,
-        (SELECT ISNULL(AVG(CAST(Rating AS FLOAT)), 5.0) FROM vendors.Reviews WHERE VendorProfileID = @VendorProfileID) AS AvgRating;
+        (SELECT ISNULL(AVG(CAST(Rating AS FLOAT)), 5.0) FROM vendors.Reviews WHERE VendorProfileID = @VendorProfileID) AS AvgRating,
+        @AvgResponseMinutes AS AvgResponseTime;
 END;
 GO
 

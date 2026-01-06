@@ -25,7 +25,11 @@ function VendorAnalyticsSection() {
     monthlyBookings: [],
     monthlyRevenue: [],
     bookingsByStatus: { pending: 0, confirmed: 0, completed: 0, cancelled: 0 },
-    revenueByMonth: []
+    revenueByMonth: [],
+    // Period comparison data
+    viewsChange: 0,
+    bookingsChange: 0,
+    revenueChange: 0
   });
 
   useEffect(() => {
@@ -94,12 +98,27 @@ function VendorAnalyticsSection() {
           revenue: m.revenue || 0
         }));
         
+        // Calculate period-over-period changes from monthly data
+        const calcPeriodChange = (monthlyArr, valueKey) => {
+          if (!monthlyArr || monthlyArr.length < 2) return 0;
+          const currentPeriod = monthlyArr.slice(-Math.ceil(monthlyArr.length / 2));
+          const previousPeriod = monthlyArr.slice(0, Math.floor(monthlyArr.length / 2));
+          const currentSum = currentPeriod.reduce((sum, m) => sum + (m[valueKey] || 0), 0);
+          const previousSum = previousPeriod.reduce((sum, m) => sum + (m[valueKey] || 0), 0);
+          if (previousSum === 0) return currentSum > 0 ? 100 : 0;
+          return Math.round(((currentSum - previousSum) / previousSum) * 100);
+        };
+        
+        const viewsChange = calcPeriodChange(monthlyViews, 'views');
+        const bookingsChange = calcPeriodChange(monthlyBookings, 'bookings');
+        const revenueChange = calcPeriodChange(monthlyRevenue, 'revenue');
+        
         setAnalytics({
           views: data.summary?.totalViews || 0,
           bookings: data.summary?.totalBookings || 0,
           revenue: data.summary?.totalRevenue || 0,
           conversionRate: data.summary?.conversionRate || 0,
-          avgResponseTime: 0,
+          avgResponseTime: data.additionalMetrics?.avgResponseTime || 0,
           favoriteCount: data.additionalMetrics?.favoriteCount || 0,
           reviewCount: data.additionalMetrics?.reviewCount || 0,
           avgRating: data.additionalMetrics?.avgRating || 5.0,
@@ -107,8 +126,18 @@ function VendorAnalyticsSection() {
           monthlyBookings,
           monthlyRevenue,
           bookingsByStatus: data.bookingsByStatus || { pending: 0, confirmed: 0, completed: 0, cancelled: 0 },
-          revenueByMonth: monthlyRevenue
+          revenueByMonth: monthlyRevenue,
+          viewsChange,
+          bookingsChange,
+          revenueChange
         });
+      } else if (response.status === 401) {
+        // Token expired or invalid - redirect to login
+        console.error('Authentication failed - redirecting to login');
+        localStorage.removeItem('token');
+        localStorage.removeItem('userSession');
+        window.location.href = '/';
+        return;
       } else {
         // If dashboard API fails, fall back to loading bookings only
         console.error('Dashboard API failed:', response.status);
@@ -389,7 +418,6 @@ function VendorAnalyticsSection() {
         <div className="dashboard-card">
           <div style={{ textAlign: 'center', padding: '3rem' }}>
             <div className="spinner" style={{ margin: '0 auto' }}></div>
-            <p style={{ marginTop: '1rem', color: '#6b7280' }}>Loading analytics...</p>
           </div>
         </div>
       </div>
@@ -436,8 +464,8 @@ function VendorAnalyticsSection() {
                 <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>{analytics.views?.toLocaleString() || 0}</div>
               </div>
             </div>
-            <div style={{ fontSize: '12px', color: '#10b981', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <i className="fas fa-arrow-up"></i> +12% from last period
+            <div style={{ fontSize: '12px', color: analytics.viewsChange >= 0 ? '#10b981' : '#ef4444', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <i className={`fas fa-arrow-${analytics.viewsChange >= 0 ? 'up' : 'down'}`}></i> {analytics.viewsChange >= 0 ? '+' : ''}{analytics.viewsChange}% from last period
             </div>
           </div>
           
@@ -451,8 +479,8 @@ function VendorAnalyticsSection() {
                 <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>{analytics.bookings || 0}</div>
               </div>
             </div>
-            <div style={{ fontSize: '12px', color: '#10b981', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <i className="fas fa-arrow-up"></i> +8% from last period
+            <div style={{ fontSize: '12px', color: analytics.bookingsChange >= 0 ? '#10b981' : '#ef4444', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <i className={`fas fa-arrow-${analytics.bookingsChange >= 0 ? 'up' : 'down'}`}></i> {analytics.bookingsChange >= 0 ? '+' : ''}{analytics.bookingsChange}% from last period
             </div>
           </div>
           
@@ -466,8 +494,8 @@ function VendorAnalyticsSection() {
                 <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>${(analytics.revenue || 0).toLocaleString()}</div>
               </div>
             </div>
-            <div style={{ fontSize: '12px', color: '#10b981', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <i className="fas fa-arrow-up"></i> +15% from last period
+            <div style={{ fontSize: '12px', color: analytics.revenueChange >= 0 ? '#10b981' : '#ef4444', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <i className={`fas fa-arrow-${analytics.revenueChange >= 0 ? 'up' : 'down'}`}></i> {analytics.revenueChange >= 0 ? '+' : ''}{analytics.revenueChange}% from last period
             </div>
           </div>
           
