@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
@@ -25,6 +25,12 @@ function UnifiedSidebar({ isOpen, onClose }) {
   };
   
   const [isVendorMode, setIsVendorMode] = useState(getViewMode() === 'vendor');
+
+  // Get current section from URL
+  const currentSection = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    return params.get('section') || 'dashboard';
+  }, [location.search]);
 
   // Sync with localStorage on mount and when it changes
   useEffect(() => {
@@ -300,45 +306,53 @@ function UnifiedSidebar({ isOpen, onClose }) {
         {/* Dashboard section */}
         <div className="unified-sidebar-section">
           <div className="unified-sidebar-section-title">DASHBOARD</div>
-          <button className="unified-sidebar-item" onClick={() => handleNavigate('/dashboard?section=dashboard')}>
+          <button className={`unified-sidebar-item ${currentSection === 'dashboard' || currentSection === 'vendor-dashboard' ? 'active' : ''}`} onClick={() => handleNavigate('/dashboard?section=dashboard')}>
+            {(currentSection === 'dashboard' || currentSection === 'vendor-dashboard') && <span className="unified-sidebar-active-dot"></span>}
             <i className="fas fa-layer-group"></i>
             <span>Dashboard</span>
           </button>
-          <button className="unified-sidebar-item" onClick={() => handleNavigate('/dashboard?section=bookings')}>
+          <button className={`unified-sidebar-item ${currentSection === 'bookings' || currentSection === 'vendor-requests' ? 'active' : ''}`} onClick={() => handleNavigate('/dashboard?section=bookings')}>
+            {(currentSection === 'bookings' || currentSection === 'vendor-requests') && <span className="unified-sidebar-active-dot"></span>}
             <i className="fas fa-calendar-check"></i>
             <span>Bookings</span>
             {notificationCounts.pendingBookings > 0 && (
               <span className="unified-sidebar-badge">{notificationCounts.pendingBookings}</span>
             )}
           </button>
-          <button className="unified-sidebar-item" onClick={() => handleNavigate('/dashboard?section=messages')}>
+          <button className={`unified-sidebar-item ${currentSection === 'messages' ? 'active' : ''}`} onClick={() => handleNavigate('/dashboard?section=messages')}>
+            {currentSection === 'messages' && <span className="unified-sidebar-active-dot"></span>}
             <i className="fas fa-comments"></i>
             <span>Messages</span>
             {notificationCounts.unreadMessages > 0 && (
               <span className="unified-sidebar-badge">{notificationCounts.unreadMessages}</span>
             )}
           </button>
-          <button className="unified-sidebar-item" onClick={() => handleNavigate('/dashboard?section=invoices')}>
+          <button className={`unified-sidebar-item ${currentSection === 'invoices' || currentSection === 'vendor-invoices' ? 'active' : ''}`} onClick={() => handleNavigate('/dashboard?section=invoices')}>
+            {(currentSection === 'invoices' || currentSection === 'vendor-invoices') && <span className="unified-sidebar-active-dot"></span>}
             <i className="fas fa-file-invoice-dollar"></i>
             <span>Invoices</span>
           </button>
           {hasVendorProfile && (
             <>
-              <button className="unified-sidebar-item" onClick={() => handleNavigate('/dashboard?section=business-profile')}>
+              <button className={`unified-sidebar-item ${currentSection === 'vendor-business-profile' ? 'active' : ''}`} onClick={() => handleNavigate('/dashboard?section=business-profile')}>
+                {currentSection === 'vendor-business-profile' && <span className="unified-sidebar-active-dot"></span>}
                 <i className="fas fa-store"></i>
                 <span>Business Profile</span>
               </button>
-              <button className="unified-sidebar-item" onClick={() => handleNavigate('/dashboard?section=reviews')}>
+              <button className={`unified-sidebar-item ${currentSection === 'reviews' || currentSection === 'vendor-reviews' ? 'active' : ''}`} onClick={() => handleNavigate('/dashboard?section=reviews')}>
+                {(currentSection === 'reviews' || currentSection === 'vendor-reviews') && <span className="unified-sidebar-active-dot"></span>}
                 <i className="fas fa-star"></i>
                 <span>Reviews</span>
               </button>
-              <button className="unified-sidebar-item" onClick={() => handleNavigate('/dashboard?section=analytics')}>
+              <button className={`unified-sidebar-item ${currentSection === 'vendor-analytics' ? 'active' : ''}`} onClick={() => handleNavigate('/dashboard?section=analytics')}>
+                {currentSection === 'vendor-analytics' && <span className="unified-sidebar-active-dot"></span>}
                 <i className="fas fa-chart-line"></i>
                 <span>Analytics</span>
               </button>
             </>
           )}
-          <button className="unified-sidebar-item" onClick={() => handleNavigate('/dashboard?section=settings')}>
+          <button className={`unified-sidebar-item ${currentSection === 'settings' || currentSection === 'vendor-settings' ? 'active' : ''}`} onClick={() => handleNavigate('/dashboard?section=settings')}>
+            {(currentSection === 'settings' || currentSection === 'vendor-settings') && <span className="unified-sidebar-active-dot"></span>}
             <i className="fas fa-cog"></i>
             <span>Settings</span>
           </button>

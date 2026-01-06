@@ -4344,7 +4344,7 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
 .kpi-icon.bookings { background:#eef2ff; color:#4f46e5; }
 .kpi-icon.reviews { background:#fff7ed; color:#b45309; }
 .kpi-icon.rating { background:#ecfeff; color:#0891b2; }
-.kpi-icon.favorites { background:#f0fdf4; color:#16a34a; }
+.kpi-icon.favorites { background:#fef2f2; color:#ef4444; }
 .kpi-icon.requests { background:#fef3c7; color:#d97706; }
 .kpi-icon.messages { background:#e0f2fe; color:#0284c7; }
 .kpi-content { display:flex; flex-direction: column; }

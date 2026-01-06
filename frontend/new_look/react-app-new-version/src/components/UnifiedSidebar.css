@@ -173,6 +173,20 @@
   color: var(--primary, #5e72e4);
 }
 
+/* Active page blue dot indicator */
+.unified-sidebar-active-dot {
+  position: absolute;
+  left: 10px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--primary, #5e72e4);
+}
+
+.unified-sidebar-item {
+  position: relative;
+}
+
 /* Toggle Item */
 .unified-sidebar-toggle-item {
   display: flex;

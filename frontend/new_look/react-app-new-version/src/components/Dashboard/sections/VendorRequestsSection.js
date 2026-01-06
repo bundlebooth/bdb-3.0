@@ -310,15 +310,15 @@ function VendorRequestsSection() {
     const isMenuOpen = openActionMenu === itemId;
 
     return (
-      <div key={itemId} className="booking-item">
-        <div className="booking-date-section">
+      <div key={itemId} className="booking-item" style={{ padding: '10px 12px', marginBottom: '8px' }}>
+        <div className="booking-date-section" style={{ minWidth: '40px' }}>
           <div className="booking-month">{month}</div>
           <div className="booking-day">{day}</div>
           <div className="booking-weekday">{weekday}</div>
         </div>
-        <div className="booking-info">
+        <div className="booking-info" style={{ gap: '2px' }}>
           <div className="booking-client" style={{ gap: '6px', marginBottom: 0 }}>
-            <span className="booking-client-name" style={{ fontSize: '16px', fontWeight: 700, color: '#111827' }}>
+            <span className="booking-client-name" style={{ fontSize: '14px', fontWeight: 700, color: '#111827' }}>
               {booking.ClientName || 'Client'}
             </span>
           </div>
@@ -526,39 +526,43 @@ function VendorRequestsSection() {
             Expired
           </button>
         </div>
-        {/* Sort dropdown - below tabs */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '12px 16px', borderBottom: '1px solid #e5e7eb' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '13px', color: '#6b7280' }}>Sort by:</span>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '13px', color: '#374151', background: 'white', cursor: 'pointer' }}
-            >
-              <option value="eventDate">Event Date</option>
-              <option value="requestedOn">Requested On</option>
-              <option value="client">Client Name</option>
-            </select>
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '4rem' }}>
+            <div className="spinner" style={{ margin: '0 auto' }}></div>
           </div>
-        </div>
-        <div className="booking-content">
-          <div id={`${activeTab}-bookings`} className="booking-tab-content active">
-            <div className="booking-count">
-              {filteredBookings.length} {activeTab === 'pending' ? 'requests' : 'items'}
+        ) : (
+          <>
+            {/* Sort dropdown - below tabs */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '12px 16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '13px', color: '#6b7280' }}>Sort by:</span>
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '13px', color: '#374151', background: 'white', cursor: 'pointer' }}
+                >
+                  <option value="eventDate">Event Date</option>
+                  <option value="requestedOn">Requested On</option>
+                  <option value="client">Client Name</option>
+                </select>
+              </div>
             </div>
-            <div id={`${activeTab}-bookings-list`}>
-              {loading ? (
-                <div style={{ textAlign: 'center', padding: '3rem' }}>
-                  <div className="spinner" style={{ margin: '0 auto' }}></div>
+            <div className="booking-content">
+              <div id={`${activeTab}-bookings`} className="booking-tab-content active">
+                <div className="booking-count">
+                  {filteredBookings.length} {activeTab === 'pending' ? 'requests' : 'bookings'}
                 </div>
-              ) : filteredBookings.length > 0 ? (
-                filteredBookings.map(renderBookingItem)
-              ) : (
-                <div className="empty-state">No booking requests yet.</div>
-              )}
+                <div id={`${activeTab}-bookings-list`}>
+                  {filteredBookings.length > 0 ? (
+                    filteredBookings.map(renderBookingItem)
+                  ) : (
+                    <div className="empty-state">No booking requests yet.</div>
+                  )}
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
+          </>
+        )}
       </div>
     </div>
   );

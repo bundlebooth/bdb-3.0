@@ -245,12 +245,23 @@ export function useHeartbeat() {
     const token = localStorage.getItem('token');
     if (!token) return;
 
+    let lastHeartbeat = 0;
+    const MIN_HEARTBEAT_INTERVAL = 10000; // Minimum 10 seconds between heartbeats
+
     const sendHeartbeat = async () => {
+      const now = Date.now();
+      // Prevent sending heartbeats too frequently
+      if (now - lastHeartbeat < MIN_HEARTBEAT_INTERVAL) return;
+      lastHeartbeat = now;
+      
       try {
+        const currentToken = localStorage.getItem('token');
+        if (!currentToken) return;
+        
         await fetch(`${API_BASE_URL}/users/heartbeat`, {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${token}`,
+            'Authorization': `Bearer ${currentToken}`,
             'Content-Type': 'application/json'
           }
         });
@@ -259,36 +270,57 @@ export function useHeartbeat() {
       }
     };
 
-    // Send initial heartbeat
+    // Send initial heartbeat immediately
     sendHeartbeat();
 
     // Send heartbeat every 2 minutes
     const interval = setInterval(sendHeartbeat, 2 * 60 * 1000);
 
-    // Also send heartbeat on user activity
+    // Track last activity time
+    let lastActivityTime = Date.now();
+    
+    // Send heartbeat on any user activity (debounced)
+    let activityTimeout = null;
     const handleActivity = () => {
-      sendHeartbeat();
+      lastActivityTime = Date.now();
+      
+      // Clear any pending timeout
+      if (activityTimeout) {
+        clearTimeout(activityTimeout);
+      }
+      
+      // Send heartbeat after short delay to batch rapid events
+      activityTimeout = setTimeout(() => {
+        sendHeartbeat();
+      }, 1000); // 1 second debounce
     };
 
-    // Debounce activity events
-    let activityTimeout;
-    const debouncedActivity = () => {
-      clearTimeout(activityTimeout);
-      activityTimeout = setTimeout(handleActivity, 30000); // Max once per 30 seconds
+    // Listen to various user activity events
+    window.addEventListener('mousemove', handleActivity);
+    window.addEventListener('keydown', handleActivity);
+    window.addEventListener('click', handleActivity);
+    window.addEventListener('scroll', handleActivity);
+    window.addEventListener('touchstart', handleActivity);
+    window.addEventListener('focus', handleActivity);
+    
+    // Also send heartbeat when page becomes visible
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        sendHeartbeat();
+      }
     };
-
-    window.addEventListener('mousemove', debouncedActivity);
-    window.addEventListener('keydown', debouncedActivity);
-    window.addEventListener('click', debouncedActivity);
-    window.addEventListener('scroll', debouncedActivity);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       clearInterval(interval);
-      clearTimeout(activityTimeout);
-      window.removeEventListener('mousemove', debouncedActivity);
-      window.removeEventListener('keydown', debouncedActivity);
-      window.removeEventListener('click', debouncedActivity);
-      window.removeEventListener('scroll', debouncedActivity);
+      if (activityTimeout) clearTimeout(activityTimeout);
+      window.removeEventListener('mousemove', handleActivity);
+      window.removeEventListener('keydown', handleActivity);
+      window.removeEventListener('click', handleActivity);
+      window.removeEventListener('scroll', handleActivity);
+      window.removeEventListener('touchstart', handleActivity);
+      window.removeEventListener('focus', handleActivity);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, []);
 }

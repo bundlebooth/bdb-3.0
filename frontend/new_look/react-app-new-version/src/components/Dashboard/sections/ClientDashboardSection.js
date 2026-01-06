@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { API_BASE_URL } from '../../../config';
 import { useAuth } from '../../../context/AuthContext';
 
-function ClientDashboardSection({ data, loading, onSectionChange }) {
+function ClientDashboardSection({ data, loading, onSectionChange, onPayNow }) {
   const { currentUser } = useAuth();
   const [messages, setMessages] = useState([]);
   const [loadingMessages, setLoadingMessages] = useState(true);
@@ -66,62 +66,161 @@ function ClientDashboardSection({ data, loading, onSectionChange }) {
     const eventDate = rawDate ? new Date(rawDate) : null;
     const isValidDate = eventDate && !isNaN(eventDate.getTime());
     
-    const month = isValidDate ? eventDate.toLocaleDateString('en-US', { month: 'short' }) : 'TBD';
+    const month = isValidDate ? eventDate.toLocaleDateString('en-US', { month: 'short' }).toUpperCase() : 'TBD';
     const day = isValidDate ? eventDate.getDate() : '--';
     const weekday = isValidDate ? eventDate.toLocaleDateString('en-US', { weekday: 'short' }) : '';
     const startTime = isValidDate ? eventDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : 'TBD';
     const endTime = isValidDate ? new Date(eventDate.getTime() + 90 * 60000).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '';
     const timeStr = isValidDate ? `${startTime} - ${endTime}` : 'Time TBD';
 
-    let actionButtons = '';
-    if (booking.Status === 'confirmed') {
-      if (isPaid) {
-        actionButtons = '<button class="btn-paid">✓ Paid</button>';
-      } else if (isDepositOnly) {
-        actionButtons = `<button class="btn-pay-now">Pay Balance</button>`;
-      } else {
-        actionButtons = '<button class="btn-pay-now">Pay Now</button>';
-      }
-    } else if ((booking.Status || '').toString().toLowerCase() === 'paid') {
-      actionButtons = '<button class="btn-paid">✓ Paid</button>';
-    }
-    if (booking.Status === 'confirmed' || (booking.Status || '').toString().toLowerCase() === 'paid') {
-      actionButtons += '<a href="#" class="link-btn" style="margin-left: 10px;">Invoice</a>';
-    }
+    const s = (booking.Status || '').toString().toLowerCase();
+    const showPayNow = s === 'confirmed' && !isPaid;
+    const showPayBalance = s === 'confirmed' && isDepositOnly;
+    const showPaid = isPaid || s === 'paid';
+    const showInvoice = s === 'confirmed' || s === 'paid' || isPaid;
+    
+    // Status configuration matching bookings page exactly
+    const statusMap = {
+      pending:   { icon: 'fa-clock', color: '#f59e0b', label: 'Pending', borderStyle: 'dashed' },
+      confirmed: { icon: 'fa-check-circle', color: '#10b981', label: 'Confirmed', borderStyle: 'dashed' },
+      accepted:  { icon: 'fa-check-circle', color: '#10b981', label: 'Confirmed', borderStyle: 'dashed' },
+      approved:  { icon: 'fa-check-circle', color: '#10b981', label: 'Confirmed', borderStyle: 'dashed' },
+      paid:      { icon: 'fa-check-circle', color: '#10b981', label: 'Paid', borderStyle: 'solid' },
+      declined:  { icon: 'fa-times-circle', color: '#ef4444', label: 'Declined', borderStyle: 'dashed' },
+      cancelled: { icon: 'fa-ban', color: '#6b7280', label: 'Cancelled', borderStyle: 'dashed' },
+      expired:   { icon: 'fa-clock', color: '#6b7280', label: 'Expired', borderStyle: 'dashed' }
+    };
+    const status = showPaid ? 'paid' : s;
+    const cfg = statusMap[status] || statusMap.pending;
 
     return (
-      <div key={booking.BookingID || booking.BookingRequestId} className="booking-item">
-        <div className="booking-date-section">
+      <div key={booking.BookingID || booking.BookingRequestId} className="booking-item" style={{ padding: '10px 12px', marginBottom: '8px' }}>
+        <div className="booking-date-section" style={{ minWidth: '40px' }}>
           <div className="booking-month">{month}</div>
           <div className="booking-day">{day}</div>
           <div className="booking-weekday">{weekday}</div>
         </div>
-        <div className="booking-info">
-          <div className="booking-client">
-            <i className="fas fa-store" style={{ color: '#6b7280', fontSize: '12px' }}></i>
-            <span className="booking-client-name">{booking.VendorName || 'Vendor'}</span>
+        <div className="booking-info" style={{ gap: '2px' }}>
+          {/* Row 1: Name (bold, no icon) */}
+          <div className="booking-client" style={{ gap: '6px', marginBottom: 0 }}>
+            <span className="booking-client-name" style={{ fontSize: '14px', fontWeight: 700, color: '#111827' }}>
+              {booking.VendorName || 'Vendor'}
+            </span>
           </div>
+          {/* Row 2: Service name */}
           <div className="booking-service-row">
-            <span className="booking-service">{booking.ServiceName || 'Confirmed Booking'}</span>
+            <span className="booking-service">{booking.ServiceName || 'Booking'}</span>
           </div>
+          {/* Row 3: Location with icon */}
+          {booking.Location && (
+            <div className="booking-location-row">
+              <i className="fas fa-map-marker-alt" style={{ color: '#6b7280', fontSize: '12px' }}></i>
+              <span className="booking-location" style={{ maxWidth: '520px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {booking.Location}
+              </span>
+            </div>
+          )}
+          {/* Row 4: Date with icon */}
+          {eventDate && (
+            <div className="booking-date-row">
+              <i className="fas fa-calendar-alt" style={{ color: '#6b7280', fontSize: '12px' }}></i>
+              <span className="booking-date">{eventDate.toLocaleDateString()}</span>
+            </div>
+          )}
+          {/* Row 5: Time with icon */}
           <div className="booking-time-row">
             <i className="fas fa-clock" style={{ color: '#6b7280', fontSize: '12px' }}></i>
             <span className="booking-time">{timeStr}</span>
           </div>
-          {booking.TotalAmount && (
+          {/* Row 6: Price with $ icon */}
+          {booking.TotalAmount != null && booking.TotalAmount !== '' && (
             <div className="booking-price-row">
               <i className="fas fa-dollar-sign" style={{ color: '#6b7280', fontSize: '12px' }}></i>
-              <span className="booking-price">${Number(booking.TotalAmount).toLocaleString()}</span>
-            </div>
-          )}
-          {booking.Location && (
-            <div className="booking-location-row">
-              <i className="fas fa-map-marker-alt" style={{ color: '#6b7280', fontSize: '12px' }}></i>
-              <span className="booking-location">{booking.Location}</span>
+              <span className="booking-price" style={{ color: '#10b981', fontWeight: 600 }}>${Number(booking.TotalAmount).toLocaleString()}</span>
             </div>
           )}
         </div>
-        <div className="booking-actions" dangerouslySetInnerHTML={{ __html: actionButtons }}></div>
+        {/* Actions column - Status badge + Pay Now / Invoice */}
+        <div className="booking-actions" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px', paddingRight: '10px' }}>
+          <div className="status-col" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+            <div className="request-status-badge" style={{ 
+              display: 'inline-flex', 
+              alignItems: 'center', 
+              gap: '6px', 
+              padding: '6px 12px', 
+              borderRadius: '999px', 
+              fontSize: '12px',
+              background: `${cfg.color}10`, 
+              color: '#111827', 
+              border: `1px ${cfg.borderStyle || 'solid'} ${cfg.color}` 
+            }}>
+              <i className={`fas ${cfg.icon}`} style={{ color: cfg.color }}></i>
+              <span>{cfg.label}</span>
+            </div>
+          </div>
+          <div className="actions-row" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            {showPayNow && !showPayBalance && (
+              <span 
+                onClick={() => onPayNow && onPayNow(booking)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  padding: '7px 18px',
+                  background: '#10b981',
+                  color: 'white',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                Pay Now
+              </span>
+            )}
+            {showPayBalance && (
+              <span 
+                onClick={() => onPayNow && onPayNow(booking)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  padding: '7px 18px',
+                  background: '#10b981',
+                  color: 'white',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                Pay Balance
+              </span>
+            )}
+            {showInvoice && (
+              <span style={{ 
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '7px 18px', 
+                borderRadius: '6px', 
+                fontSize: '13px', 
+                fontWeight: 500, 
+                background: 'white', 
+                color: '#374151', 
+                border: '1px solid #d1d5db', 
+                cursor: 'pointer',
+                whiteSpace: 'nowrap'
+              }}>
+                Invoice
+              </span>
+            )}
+          </div>
+        </div>
       </div>
     );
   };

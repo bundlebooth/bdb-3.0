@@ -6,20 +6,84 @@ function VendorDashboardSection({ data, loading, onSectionChange }) {
   const { currentUser } = useAuth();
   const [messages, setMessages] = useState([]);
   const [loadingMessages, setLoadingMessages] = useState(true);
+  const [kpiData, setKpiData] = useState({ upcomingBookings: 0, pendingRequests: 0, unreadMessages: 0 });
+  const [recentBookings, setRecentBookings] = useState([]);
+  const [loadingBookings, setLoadingBookings] = useState(true);
   const now = new Date();
   const month = now.toLocaleString('en-US', { month: 'long' });
   const day = now.getDate();
   const year = now.getFullYear();
   const weekday = now.toLocaleString('en-US', { weekday: 'long' });
 
-  const upcomingBookings = data?.upcomingBookings || 0;
-  const pendingRequests = data?.pendingRequests || 0;
+  // Fetch KPI data and recent bookings
+  useEffect(() => {
+    const fetchKPIsAndBookings = async () => {
+      if (!currentUser?.vendorProfileId) return;
+      
+      try {
+        setLoadingBookings(true);
+        // Fetch all bookings to calculate accurate KPIs
+        const bookingsResp = await fetch(`${API_BASE_URL}/vendor/${currentUser.vendorProfileId}/bookings/all`, {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        
+        if (bookingsResp.ok) {
+          const bookings = await bookingsResp.json();
+          const nowDate = new Date();
+          
+          // Count upcoming bookings (future events with accepted/confirmed/paid status)
+          const upcoming = (bookings || []).filter(b => {
+            const eventDate = new Date(b.EventDate);
+            const status = (b.Status || '').toLowerCase();
+            return eventDate >= nowDate && ['accepted', 'confirmed', 'paid', 'approved'].includes(status);
+          }).length;
+          
+          // Count pending requests
+          const pending = (bookings || []).filter(b => 
+            (b.Status || '').toLowerCase() === 'pending'
+          ).length;
+          
+          setKpiData(prev => ({ ...prev, upcomingBookings: upcoming, pendingRequests: pending }));
+          
+          // Get recent bookings (sorted by event date, most recent first)
+          const sortedBookings = (bookings || [])
+            .sort((a, b) => new Date(b.EventDate) - new Date(a.EventDate))
+            .slice(0, 5);
+          setRecentBookings(sortedBookings);
+        }
+        
+        // Fetch unread messages count
+        const msgResp = await fetch(`${API_BASE_URL}/messages/conversations/vendor/${currentUser.vendorProfileId}`, {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        
+        if (msgResp.ok) {
+          const msgData = await msgResp.json();
+          const convs = msgData.conversations || msgData || [];
+          const unread = convs.reduce((sum, c) => {
+            const count = c.unreadCount || c.UnreadCount || c.unread_count || c.Unread || 0;
+            return sum + (typeof count === 'number' ? count : parseInt(count) || 0);
+          }, 0);
+          setKpiData(prev => ({ ...prev, unreadMessages: unread }));
+        }
+      } catch (error) {
+        console.error('Error fetching KPI data:', error);
+      } finally {
+        setLoadingBookings(false);
+      }
+    };
+    
+    fetchKPIsAndBookings();
+  }, [currentUser?.vendorProfileId]);
+
+  const upcomingBookings = kpiData.upcomingBookings;
+  const pendingRequests = kpiData.pendingRequests;
   const avgRating = (() => {
     const val = data?.stats?.averageRating ?? data?.stats?.AvgRating ?? data?.averageRating ?? 0;
     const n = parseFloat(val);
     return isNaN(n) ? 0 : n;
   })();
-  const unreadMessages = data?.unreadMessages || 0;
+  const unreadMessages = kpiData.unreadMessages || data?.unreadMessages || 0;
 
   // Load messages on mount
   useEffect(() => {
@@ -69,52 +133,99 @@ function VendorDashboardSection({ data, loading, onSectionChange }) {
   }
 
   const renderBookingItem = (booking) => {
-    const eventDate = new Date(booking.EventDate);
-    const month = eventDate.toLocaleDateString('en-US', { month: 'short' });
-    const day = eventDate.getDate();
-    const weekday = eventDate.toLocaleDateString('en-US', { weekday: 'short' });
-    const startTime = eventDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-    const endTime = new Date(eventDate.getTime() + 90 * 60000).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-    const timeStr = `${startTime} - ${endTime}`;
+    const eventDate = booking.EventDate ? new Date(booking.EventDate) : null;
+    let month = '', day = '', weekday = '', timeStr = '';
+    if (eventDate) {
+      month = eventDate.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
+      day = eventDate.getDate();
+      weekday = eventDate.toLocaleDateString('en-US', { weekday: 'short' });
+      const startTime = booking.StartTime || eventDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+      const endTime = booking.EndTime || new Date(eventDate.getTime() + 90 * 60000).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+      timeStr = `${startTime} - ${endTime}`;
+    }
 
-    const isPaid = booking.FullAmountPaid === true || booking.FullAmountPaid === 1;
-    const status = (booking.Status || '').toString().toLowerCase();
-    const statusText = isPaid ? 'Paid' : (status === 'confirmed' ? 'Accepted' : (status.charAt(0).toUpperCase() + status.slice(1)));
+    const s = (booking.Status || '').toString().toLowerCase();
+    const isPaid = booking.FullAmountPaid === true || booking.FullAmountPaid === 1 || s === 'paid';
+    
+    // Status configuration matching bookings page exactly
+    const statusMap = {
+      pending:   { icon: 'fa-clock', color: '#f59e0b', label: 'Pending', borderStyle: 'dashed' },
+      confirmed: { icon: 'fa-check-circle', color: '#10b981', label: 'Confirmed', borderStyle: 'dashed' },
+      accepted:  { icon: 'fa-check-circle', color: '#10b981', label: 'Confirmed', borderStyle: 'dashed' },
+      approved:  { icon: 'fa-check-circle', color: '#10b981', label: 'Confirmed', borderStyle: 'dashed' },
+      paid:      { icon: 'fa-check-circle', color: '#10b981', label: 'Paid', borderStyle: 'solid' },
+      declined:  { icon: 'fa-times-circle', color: '#ef4444', label: 'Declined', borderStyle: 'dashed' },
+      cancelled: { icon: 'fa-ban', color: '#6b7280', label: 'Cancelled', borderStyle: 'dashed' },
+      expired:   { icon: 'fa-clock', color: '#6b7280', label: 'Expired', borderStyle: 'dashed' }
+    };
+    const status = isPaid ? 'paid' : s;
+    const cfg = statusMap[status] || statusMap.pending;
 
     return (
-      <div key={booking.BookingID} className="booking-item">
-        <div className="booking-date-section">
+      <div key={booking.BookingID || booking.RequestID} className="booking-item" style={{ padding: '10px 12px', marginBottom: '8px' }}>
+        <div className="booking-date-section" style={{ minWidth: '40px' }}>
           <div className="booking-month">{month}</div>
           <div className="booking-day">{day}</div>
           <div className="booking-weekday">{weekday}</div>
         </div>
-        <div className="booking-info">
-          <div className="booking-client">
-            <i className="fas fa-user" style={{ color: '#6b7280', fontSize: '12px' }}></i>
-            <span className="booking-client-name">{booking.ClientName || 'Client'}</span>
+        <div className="booking-info" style={{ gap: '2px' }}>
+          {/* Row 1: Name (bold, no icon) */}
+          <div className="booking-client" style={{ gap: '6px', marginBottom: 0 }}>
+            <span className="booking-client-name" style={{ fontSize: '14px', fontWeight: 700, color: '#111827' }}>
+              {booking.ClientName || 'Client'}
+            </span>
           </div>
+          {/* Row 2: Service name */}
           <div className="booking-service-row">
-            <span className="booking-service">{booking.ServiceName || 'Confirmed Booking'}</span>
+            <span className="booking-service">{booking.ServiceName || 'Booking'}</span>
           </div>
-          <div className="booking-time-row">
-            <i className="fas fa-clock" style={{ color: '#6b7280', fontSize: '12px' }}></i>
-            <span className="booking-time">{timeStr}</span>
-          </div>
-          {booking.TotalAmount && (
-            <div className="booking-price-row">
-              <i className="fas fa-dollar-sign" style={{ color: '#6b7280', fontSize: '12px' }}></i>
-              <span className="booking-price">${Number(booking.TotalAmount).toLocaleString()}</span>
-            </div>
-          )}
+          {/* Row 3: Location with icon */}
           {booking.Location && (
             <div className="booking-location-row">
               <i className="fas fa-map-marker-alt" style={{ color: '#6b7280', fontSize: '12px' }}></i>
-              <span className="booking-location">{booking.Location}</span>
+              <span className="booking-location" style={{ maxWidth: '520px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {booking.Location}
+              </span>
+            </div>
+          )}
+          {/* Row 4: Date with icon */}
+          {eventDate && (
+            <div className="booking-date-row">
+              <i className="fas fa-calendar-alt" style={{ color: '#6b7280', fontSize: '12px' }}></i>
+              <span className="booking-date">{eventDate.toLocaleDateString()}</span>
+            </div>
+          )}
+          {/* Row 5: Time with icon */}
+          {timeStr && (
+            <div className="booking-time-row">
+              <i className="fas fa-clock" style={{ color: '#6b7280', fontSize: '12px' }}></i>
+              <span className="booking-time">{timeStr}</span>
+            </div>
+          )}
+          {/* Row 6: Price with $ icon */}
+          {booking.TotalAmount != null && booking.TotalAmount !== '' && (
+            <div className="booking-price-row">
+              <i className="fas fa-dollar-sign" style={{ color: '#6b7280', fontSize: '12px' }}></i>
+              <span className="booking-price" style={{ color: '#10b981', fontWeight: 600 }}>${Number(booking.TotalAmount).toLocaleString()}</span>
             </div>
           )}
         </div>
-        <div className="booking-actions">
-          <span className={`request-status ${status}`} style={{ marginRight: '12px', padding: '4px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 500, textTransform: 'capitalize' }}>{statusText}</span>
+        {/* Status badge in actions column */}
+        <div className="booking-actions" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+          <div className="request-status-badge" style={{ 
+            display: 'inline-flex', 
+            alignItems: 'center', 
+            gap: '6px', 
+            padding: '6px 12px', 
+            borderRadius: '999px', 
+            fontSize: '12px',
+            background: `${cfg.color}10`, 
+            color: '#111827', 
+            border: `1px ${cfg.borderStyle || 'solid'} ${cfg.color}` 
+          }}>
+            <i className={`fas ${cfg.icon}`} style={{ color: cfg.color }}></i>
+            <span>{cfg.label}</span>
+          </div>
         </div>
       </div>
     );
@@ -245,8 +356,12 @@ function VendorDashboardSection({ data, loading, onSectionChange }) {
         <div className="dashboard-card">
           <h2 className="dashboard-card-title">Recent Bookings</h2>
           <div id="vendor-recent-bookings" className="dashboard-fixed-list">
-            {data?.recentBookings && data.recentBookings.length > 0 ? (
-              data.recentBookings.slice(0, 3).map(renderBookingItem)
+            {loadingBookings ? (
+              <div style={{ textAlign: 'center', padding: '2rem' }}>
+                <div className="spinner" style={{ margin: '0 auto' }}></div>
+              </div>
+            ) : recentBookings.length > 0 ? (
+              recentBookings.slice(0, 3).map(renderBookingItem)
             ) : (
               <div className="empty-state">No recent bookings.</div>
             )}

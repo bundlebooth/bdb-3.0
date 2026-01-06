@@ -116,6 +116,13 @@
   display: flex;
 }
 
+/* Header notifications button */
+.header-notifications-btn.desktop-only {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* Mobile Navigation Dropdown - hidden on desktop */
 .mobile-nav-dropdown {
   display: none;

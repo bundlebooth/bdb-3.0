@@ -60,6 +60,7 @@ function DashboardPage() {
     pendingBookings: 0,
     unreadMessages: 0
   });
+  const [vendorLogoUrl, setVendorLogoUrl] = useState(null);
   // Get view mode from localStorage
   const getViewMode = () => {
     const stored = localStorage.getItem('viewMode');
@@ -250,6 +251,30 @@ function DashboardPage() {
     }
   }, [currentUser, authLoading, navigate]);
 
+  // Fetch vendor logo for profile picture
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    
+    const fetchVendorLogo = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/vendors/profile?userId=${currentUser.id}`, {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          const logoUrl = data.logoUrl || data.LogoURL || data.data?.profile?.LogoURL || data.data?.profile?.logoUrl;
+          if (logoUrl) {
+            setVendorLogoUrl(logoUrl);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch vendor logo:', error);
+      }
+    };
+    
+    fetchVendorLogo();
+  }, [currentUser?.id]);
+
   // Load client dashboard data
   const loadClientData = useCallback(async () => {
     if (!currentUser?.id) return;
@@ -310,10 +335,11 @@ function DashboardPage() {
 
   // Load vendor dashboard data
   const loadVendorData = useCallback(async () => {
-    if (!currentUser?.vendorProfileId) return;
+    if (!currentUser?.id) return;
     
     try {
-      const response = await fetch(`${API_BASE_URL}/vendors/${currentUser.vendorProfileId}/dashboard`, {
+      // Note: The vendor dashboard API expects UserID, not VendorProfileID
+      const response = await fetch(`${API_BASE_URL}/vendor/${currentUser.id}/dashboard`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       
@@ -418,7 +444,7 @@ function DashboardPage() {
     switch (activeSection) {
       // Client sections
       case 'dashboard':
-        return <ClientDashboardSection data={clientData} loading={loading && !clientData} onSectionChange={handleSectionChange} />;
+        return <ClientDashboardSection data={clientData} loading={loading && !clientData} onSectionChange={handleSectionChange} onPayNow={handlePayNow} />;
       case 'bookings':
         return <ClientBookingsSection key={bookingsRefreshKey} onPayNow={handlePayNow} />;
       case 'invoices':
@@ -461,7 +487,7 @@ function DashboardPage() {
       default:
         return showVendorView 
           ? <VendorDashboardSection data={vendorData} loading={loading && !vendorData} onSectionChange={handleSectionChange} />
-          : <ClientDashboardSection data={clientData} loading={loading && !clientData} onSectionChange={handleSectionChange} />;
+          : <ClientDashboardSection data={clientData} loading={loading && !clientData} onSectionChange={handleSectionChange} onPayNow={handlePayNow} />;
     }
   };
 
@@ -562,9 +588,23 @@ function DashboardPage() {
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
               <i className="fas fa-bars"></i>
-              <div className="user-avatar">
-                {currentUser?.name?.charAt(0)?.toUpperCase() || 'U'}
-              </div>
+              {(() => {
+                const profilePic = showVendorView && vendorLogoUrl 
+                  ? vendorLogoUrl 
+                  : (currentUser?.profilePicture || currentUser?.ProfilePicture);
+                return profilePic ? (
+                  <img 
+                    src={profilePic} 
+                    alt="Profile"
+                    className="user-avatar"
+                    style={{ objectFit: 'cover' }}
+                  />
+                ) : (
+                  <div className="user-avatar">
+                    {currentUser?.name?.charAt(0)?.toUpperCase() || 'U'}
+                  </div>
+                );
+              })()}
             </button>
           </div>
         </div>

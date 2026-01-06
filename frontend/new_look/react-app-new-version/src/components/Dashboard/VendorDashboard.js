@@ -40,7 +40,8 @@ function VendorDashboard({ activeSection, onSectionChange, onLogout }) {
         return;
       }
       
-      const response = await fetch(`${API_BASE_URL}/vendors/${currentUser.vendorProfileId}/dashboard`, {
+      // Note: The vendor dashboard API expects UserID, not VendorProfileID
+      const response = await fetch(`${API_BASE_URL}/vendor/${currentUser.id}/dashboard`, {
         headers: { 
           'Authorization': `Bearer ${localStorage.getItem('token')}` 
         }

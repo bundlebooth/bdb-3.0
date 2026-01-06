@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { API_BASE_URL } from '../../../config';
+import { useUserOnlineStatus, useVendorOnlineStatus } from '../../../hooks/useOnlineStatus';
+import BookingDetailsModal from '../BookingDetailsModal';
 
 function UnifiedMessagesSection({ onSectionChange }) {
   const { currentUser } = useAuth();
@@ -25,8 +27,39 @@ function UnifiedMessagesSection({ onSectionChange }) {
   const [showGifPicker, setShowGifPicker] = useState(false);
   const [gifSearchQuery, setGifSearchQuery] = useState('');
   const [bookingInfo, setBookingInfo] = useState(null); // Booking info for current conversation
+  const [selectedBookingForDetails, setSelectedBookingForDetails] = useState(null); // For More Info modal
   const messagesEndRef = useRef(null);
   const prevRoleRef = useRef(messageRole);
+  
+  // Get online status for the other party
+  // When viewing as client: other party is a vendor - use vendorOnlineStatuses
+  // When viewing as vendor: other party is a client (user) - use userOnlineStatuses
+  const otherPartyVendorId = selectedConversation?.otherPartyVendorProfileId;
+  const otherPartyUserId = selectedConversation?.otherPartyUserId;
+  
+  const { statuses: vendorOnlineStatuses } = useVendorOnlineStatus(
+    otherPartyVendorId ? [otherPartyVendorId] : [],
+    { enabled: !!otherPartyVendorId, refreshInterval: 180000 } // 3 minutes, same as VendorProfilePage
+  );
+  
+  const { statuses: userOnlineStatuses } = useUserOnlineStatus(
+    otherPartyUserId ? [otherPartyUserId] : [],
+    { enabled: !!otherPartyUserId, refreshInterval: 180000 } // 3 minutes
+  );
+  
+  // Get the online status for the current conversation's other party
+  const getOtherPartyOnlineStatus = () => {
+    // If viewing as client, other party is vendor
+    if (selectedConversation?.type === 'client' && otherPartyVendorId) {
+      return vendorOnlineStatuses[otherPartyVendorId];
+    }
+    // If viewing as vendor, other party is user (client)
+    if (selectedConversation?.type === 'vendor' && otherPartyUserId) {
+      return userOnlineStatuses[otherPartyUserId];
+    }
+    return null;
+  };
+  const otherPartyOnlineStatus = getOtherPartyOnlineStatus();
   
   // Quick reply suggestions
   const quickReplies = ['Hi! 👋', 'Hello!', 'Thanks!', 'Great! 👍', 'Sounds good!', 'Perfect!'];
@@ -253,6 +286,7 @@ function UnifiedMessagesSection({ onSectionChange }) {
             userName: conv.OtherPartyName || conv.userName || 'Unknown User',
             OtherPartyName: conv.OtherPartyName || conv.userName || 'Unknown User',
             OtherPartyAvatar: conv.OtherPartyAvatar || conv.OtherPartyLogo,
+            otherPartyVendorProfileId: conv.VendorProfileID || conv.vendorProfileId, // For online status lookup
             lastMessageContent: conv.lastMessageContent || conv.LastMessageContent || 'No messages yet',
             lastMessageCreatedAt: conv.lastMessageCreatedAt || conv.LastMessageCreatedAt || conv.createdAt,
             lastMessageSenderId: conv.lastMessageSenderId || conv.LastMessageSenderID,
@@ -279,6 +313,7 @@ function UnifiedMessagesSection({ onSectionChange }) {
               userName: conv.OtherPartyName || conv.userName || 'Unknown User',
               OtherPartyName: conv.OtherPartyName || conv.userName || 'Unknown User',
               OtherPartyAvatar: conv.OtherPartyAvatar || conv.OtherPartyLogo,
+              otherPartyUserId: conv.userId || conv.UserID, // For online status lookup (client user ID) - API returns userId
               lastMessageContent: conv.lastMessageContent || conv.LastMessageContent || 'No messages yet',
               lastMessageCreatedAt: conv.lastMessageCreatedAt || conv.LastMessageCreatedAt || conv.createdAt,
               lastMessageSenderId: conv.lastMessageSenderId || conv.LastMessageSenderID,
@@ -418,13 +453,20 @@ function UnifiedMessagesSection({ onSectionChange }) {
         
         if (matchingBooking) {
           const status = (matchingBooking.Status || '').toLowerCase();
-          // Only show banner for pending or confirmed bookings
-          if (['pending', 'confirmed', 'accepted', 'approved'].includes(status)) {
+          const eventDate = new Date(matchingBooking.EventDate);
+          const now = new Date();
+          const isPastBooking = eventDate < now;
+          
+          // Only show banner for pending or confirmed bookings that haven't passed
+          if (!isPastBooking && ['pending', 'confirmed', 'accepted', 'approved', 'paid'].includes(status)) {
             setBookingInfo({
+              ...matchingBooking, // Store full booking for More Info modal
               serviceName: matchingBooking.ServiceName || 'Service',
               eventDate: matchingBooking.EventDate,
-              status: status,
-              totalAmount: matchingBooking.TotalAmount
+              startTime: matchingBooking.StartTime,
+              endTime: matchingBooking.EndTime,
+              location: matchingBooking.Location || matchingBooking.EventLocation,
+              status: status
             });
           } else {
             setBookingInfo(null);
@@ -688,56 +730,100 @@ function UnifiedMessagesSection({ onSectionChange }) {
     return content.match(/\.(gif)$/i) || content.includes('giphy.com') || content.includes('tenor.com');
   };
 
-  const renderMessage = (message) => {
+  // Helper to get date string for day dividers
+  const getDateString = (dateStr) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return '';
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    
+    if (date.toDateString() === today.toDateString()) return 'Today';
+    if (date.toDateString() === yesterday.toDateString()) return 'Yesterday';
+    return date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
+  const renderMessage = (message, index, allMessages) => {
     const isOwnMessage = message.SenderID === currentUser?.id || 
                          (selectedConversation?.type === 'vendor' && message.SenderID === vendorProfileId);
     const isGif = isGifUrl(message.Content);
     
+    // Check if we need a day divider
+    const currentDate = message.CreatedAt ? new Date(message.CreatedAt).toDateString() : '';
+    const prevMessage = index > 0 ? allMessages[index - 1] : null;
+    const prevDate = prevMessage?.CreatedAt ? new Date(prevMessage.CreatedAt).toDateString() : '';
+    const showDayDivider = currentDate && currentDate !== prevDate;
+    
     return (
-      <div 
-        key={message.MessageID || message.id} 
-        style={{ 
-          marginBottom: '12px',
-          display: 'flex',
-          justifyContent: isOwnMessage ? 'flex-end' : 'flex-start'
-        }}
-      >
-        <div style={{ 
-          padding: isGif ? '4px' : '10px 14px', 
-          borderRadius: isOwnMessage ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
-          backgroundColor: isGif ? 'transparent' : (isOwnMessage ? '#5e72e4' : '#f0f0f0'),
-          color: isOwnMessage ? 'white' : '#1a1a1a',
-          maxWidth: '70%',
-          boxShadow: isGif ? 'none' : '0 1px 2px rgba(0,0,0,0.08)'
-        }}>
-          {isGif ? (
-            <img 
-              src={message.Content} 
-              alt="GIF" 
-              style={{ 
-                maxWidth: '200px', 
-                maxHeight: '200px', 
-                borderRadius: '12px',
-                display: 'block'
-              }} 
-            />
-          ) : (
-            <div style={{ marginBottom: '4px', wordBreak: 'break-word' }}>{message.Content}</div>
-          )}
-          <div style={{ 
-            fontSize: '11px', 
-            opacity: 0.7,
-            textAlign: isOwnMessage ? 'right' : 'left'
+      <React.Fragment key={message.MessageID || message.id}>
+        {/* Day divider */}
+        {showDayDivider && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            margin: '16px 0',
+            gap: '12px'
           }}>
-            {(() => {
-              if (!message.CreatedAt) return '';
-              const date = new Date(message.CreatedAt);
-              if (isNaN(date.getTime())) return '';
-              return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            })() || ''}
+            <div style={{ flex: 1, height: '1px', backgroundColor: '#e5e7eb' }}></div>
+            <span style={{ 
+              fontSize: '11px', 
+              color: '#9ca3af', 
+              fontWeight: 500,
+              padding: '4px 12px',
+              backgroundColor: '#f3f4f6',
+              borderRadius: '12px'
+            }}>
+              {getDateString(message.CreatedAt)}
+            </span>
+            <div style={{ flex: 1, height: '1px', backgroundColor: '#e5e7eb' }}></div>
+          </div>
+        )}
+        <div 
+          style={{ 
+            marginBottom: '10px',
+            display: 'flex',
+            justifyContent: isOwnMessage ? 'flex-end' : 'flex-start'
+          }}
+        >
+          <div style={{ 
+            padding: isGif ? '4px' : '8px 12px', 
+            borderRadius: isOwnMessage ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
+            backgroundColor: isGif ? 'transparent' : (isOwnMessage ? '#5e72e4' : '#f0f0f0'),
+            color: isOwnMessage ? 'white' : '#1a1a1a',
+            maxWidth: '70%',
+            boxShadow: isGif ? 'none' : '0 1px 2px rgba(0,0,0,0.08)'
+          }}>
+            {isGif ? (
+              <img 
+                src={message.Content} 
+                alt="GIF" 
+                style={{ 
+                  maxWidth: '200px', 
+                  maxHeight: '200px', 
+                  borderRadius: '12px',
+                  display: 'block'
+                }} 
+              />
+            ) : (
+              <div style={{ marginBottom: '3px', wordBreak: 'break-word', fontSize: '13px' }}>{message.Content}</div>
+            )}
+            <div style={{ 
+              fontSize: '10px', 
+              opacity: 0.7,
+              textAlign: isOwnMessage ? 'right' : 'left'
+            }}>
+              {(() => {
+                if (!message.CreatedAt) return '';
+                const date = new Date(message.CreatedAt);
+                if (isNaN(date.getTime())) return '';
+                return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+              })() || ''}
+            </div>
           </div>
         </div>
-      </div>
+      </React.Fragment>
     );
   };
 
@@ -885,7 +971,7 @@ function UnifiedMessagesSection({ onSectionChange }) {
                 width: '12px',
                 height: '12px',
                 borderRadius: '50%',
-                backgroundColor: '#10b981',
+                backgroundColor: otherPartyOnlineStatus?.isOnline ? '#10b981' : '#9ca3af',
                 border: '2px solid white'
               }}></div>
             </div>
@@ -893,8 +979,10 @@ function UnifiedMessagesSection({ onSectionChange }) {
               <div style={{ fontWeight: 600, color: '#222', fontSize: '16px' }}>
                 {selectedConversation.userName || 'Unknown'}
               </div>
-              <div style={{ fontSize: '12px', color: '#10b981' }}>
-                Online now
+              <div style={{ fontSize: '12px', color: otherPartyOnlineStatus?.isOnline ? '#10b981' : '#9ca3af' }}>
+                {otherPartyOnlineStatus?.isOnline 
+                  ? 'Online' 
+                  : (otherPartyOnlineStatus?.lastActiveText || 'Offline')}
               </div>
             </div>
           </>
@@ -903,17 +991,24 @@ function UnifiedMessagesSection({ onSectionChange }) {
         )}
       </div>
       
-      {/* Booking info banner - clean white style */}
+      {/* Booking info banner - clean white style, clickable to open More Info */}
       {bookingInfo && (
-        <div style={{
-          padding: '10px 16px',
-          backgroundColor: 'white',
-          borderBottom: '1px solid #e5e7eb',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: '12px'
-        }}>
+        <div 
+          onClick={() => setSelectedBookingForDetails(bookingInfo)}
+          style={{
+            padding: '10px 16px',
+            backgroundColor: 'white',
+            borderBottom: '1px solid #e5e7eb',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '12px',
+            cursor: 'pointer',
+            transition: 'background-color 0.15s'
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
+          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
+        >
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <i className="fas fa-calendar-alt" style={{ color: '#5e72e4', fontSize: '14px' }}></i>
             <div>
@@ -923,25 +1018,57 @@ function UnifiedMessagesSection({ onSectionChange }) {
               <div style={{ fontSize: '13px', fontWeight: 500, color: '#374151' }}>
                 {bookingInfo.serviceName}
               </div>
-              <div style={{ fontSize: '12px', color: '#6b7280' }}>
-                {bookingInfo.eventDate ? new Date(bookingInfo.eventDate).toLocaleDateString('en-US', { 
-                  weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' 
-                }) : 'Date TBD'}
-                {bookingInfo.totalAmount && ` • $${Number(bookingInfo.totalAmount).toLocaleString()}`}
+              <div style={{ fontSize: '12px', color: '#6b7280', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                <span>
+                  {bookingInfo.eventDate ? new Date(bookingInfo.eventDate).toLocaleDateString('en-US', { 
+                    weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' 
+                  }) : 'Date TBD'}
+                  {bookingInfo.startTime && ` • ${bookingInfo.startTime}`}
+                  {bookingInfo.endTime && ` - ${bookingInfo.endTime}`}
+                </span>
+                {bookingInfo.location && (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <i className="fas fa-map-marker-alt" style={{ fontSize: '10px', color: '#9ca3af' }}></i>
+                    {bookingInfo.location}
+                  </span>
+                )}
               </div>
             </div>
           </div>
-          <span style={{
-            padding: '4px 10px',
-            borderRadius: '999px',
-            fontSize: '11px',
-            fontWeight: 500,
-            backgroundColor: 'white',
-            color: bookingInfo.status === 'pending' ? '#d97706' : '#059669',
-            border: `1px solid ${bookingInfo.status === 'pending' ? '#fcd34d' : '#10b981'}`
-          }}>
-            {bookingInfo.status === 'pending' ? 'Pending' : 'Confirmed'}
-          </span>
+          {(() => {
+            // Use same logic as BookingDetailsModal for consistency
+            const s = (bookingInfo.Status || bookingInfo.status || 'pending').toString().toLowerCase();
+            const isPaid = bookingInfo.FullAmountPaid === true || bookingInfo.FullAmountPaid === 1 || s === 'paid';
+            const statusMap = {
+              pending:   { icon: 'fa-clock', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.08)', label: 'Pending', borderStyle: 'dashed' },
+              confirmed: { icon: 'fa-check-circle', color: '#10b981', bg: 'rgba(16, 185, 129, 0.08)', label: 'Confirmed', borderStyle: 'dashed' },
+              accepted:  { icon: 'fa-check-circle', color: '#10b981', bg: 'rgba(16, 185, 129, 0.08)', label: 'Confirmed', borderStyle: 'dashed' },
+              approved:  { icon: 'fa-check-circle', color: '#10b981', bg: 'rgba(16, 185, 129, 0.08)', label: 'Confirmed', borderStyle: 'dashed' },
+              paid:      { icon: 'fa-check-circle', color: '#10b981', bg: 'rgba(16, 185, 129, 0.12)', label: 'Paid', borderStyle: 'solid' },
+              cancelled: { icon: 'fa-times-circle', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.08)', label: 'Cancelled', borderStyle: 'dashed' },
+              declined:  { icon: 'fa-times-circle', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.08)', label: 'Declined', borderStyle: 'dashed' },
+              expired:   { icon: 'fa-clock', color: '#6b7280', bg: 'rgba(107, 114, 128, 0.08)', label: 'Expired', borderStyle: 'dashed' }
+            };
+            const status = isPaid ? 'paid' : s;
+            const cfg = statusMap[status] || statusMap.pending;
+            return (
+              <span style={{
+                padding: '4px 10px',
+                borderRadius: '999px',
+                fontSize: '11px',
+                fontWeight: 500,
+                backgroundColor: cfg.bg,
+                color: cfg.color,
+                border: `1px ${cfg.borderStyle || 'solid'} ${cfg.color}`,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}>
+                <i className={`fas ${cfg.icon}`} style={{ fontSize: '10px' }}></i>
+                {cfg.label}
+              </span>
+            );
+          })()}
         </div>
       )}
       
@@ -970,7 +1097,7 @@ function UnifiedMessagesSection({ onSectionChange }) {
           </div>
         ) : (
           <>
-            {messages.map(renderMessage)}
+            {messages.map((message, index) => renderMessage(message, index, messages))}
             <div ref={messagesEndRef} />
           </>
         )}
@@ -1361,6 +1488,13 @@ function UnifiedMessagesSection({ onSectionChange }) {
           {renderChatArea()}
         </>
       )}
+      
+      {/* Booking Details Modal - use the same component as Bookings page */}
+      <BookingDetailsModal 
+        isOpen={!!selectedBookingForDetails} 
+        onClose={() => setSelectedBookingForDetails(null)} 
+        booking={selectedBookingForDetails} 
+      />
     </div>
   );
 }
