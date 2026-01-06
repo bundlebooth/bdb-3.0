@@ -29,6 +29,7 @@ BEGIN
         u.UserID,
         u.Name AS UserName,
         u.Email AS UserEmail,
+        u.ProfileImageURL AS UserProfilePic,
         ISNULL(m.Content, '') AS LastMessageContent,
         ISNULL(m.CreatedAt, c.CreatedAt) AS LastMessageCreatedAt,
         ISNULL(m.SenderID, 0) AS LastMessageSenderID,
@@ -45,7 +46,7 @@ BEGIN
         )
     LEFT JOIN Messages m2 ON c.ConversationID = m2.ConversationID
     WHERE c.VendorProfileID = @VendorProfileID
-    GROUP BY c.ConversationID, c.CreatedAt, u.UserID, u.Name, u.Email, m.Content, m.CreatedAt, m.SenderID, vp.UserID
+    GROUP BY c.ConversationID, c.CreatedAt, u.UserID, u.Name, u.Email, u.ProfileImageURL, m.Content, m.CreatedAt, m.SenderID, vp.UserID
     ORDER BY ISNULL(m.CreatedAt, c.CreatedAt) DESC;
 END
 GO

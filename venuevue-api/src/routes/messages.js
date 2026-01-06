@@ -509,6 +509,10 @@ router.get('/conversations/vendor/:vendorId', async (req, res) => {
       userId: conv.UserID,
       userName: conv.UserName,
       userEmail: conv.UserEmail,
+      // Map UserName to OtherPartyName so frontend displays the client's name (not vendor's own name)
+      OtherPartyName: conv.UserName,
+      OtherPartyAvatar: conv.UserProfilePic || null,
+      OtherPartyType: 'user',
       lastMessageContent: conv.LastMessageContent,
       lastMessageCreatedAt: conv.LastMessageCreatedAt,
       lastMessageSenderId: conv.LastMessageSenderID,

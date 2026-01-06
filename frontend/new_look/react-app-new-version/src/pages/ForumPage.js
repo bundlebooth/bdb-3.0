@@ -198,7 +198,10 @@ function ForumPage() {
 
   // Format time ago
   const formatTimeAgo = (dateStr) => {
+    if (!dateStr) return '';
     const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return '';
+    
     const now = new Date();
     const diffMs = now - date;
     const diffMins = Math.floor(diffMs / 60000);
@@ -572,9 +575,81 @@ function ForumPage() {
                       <p style={{ color: '#666', fontSize: '0.9rem', lineHeight: 1.5, marginBottom: '0.75rem' }}>
                         {post.Content.length > 200 ? post.Content.substring(0, 200) + '...' : post.Content}
                       </p>
-                      <div style={{ display: 'flex', gap: '1rem', color: '#999', fontSize: '0.8rem' }}>
-                        <span><i className="fas fa-comment" style={{ marginRight: '0.25rem' }}></i> {post.CommentCount} comments</span>
-                        <span><i className="fas fa-eye" style={{ marginRight: '0.25rem' }}></i> {post.ViewCount} views</span>
+                      <div style={{ display: 'flex', gap: '0.5rem', color: '#878a8c', fontSize: '0.75rem', flexWrap: 'wrap' }}>
+                        <button
+                          onClick={() => navigate(`/forum/post/${post.Slug}`)}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            color: '#878a8c',
+                            fontSize: '0.75rem',
+                            fontWeight: 700,
+                            padding: '4px 8px',
+                            borderRadius: '4px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}
+                          onMouseEnter={(e) => e.target.style.background = '#f6f7f8'}
+                          onMouseLeave={(e) => e.target.style.background = 'transparent'}
+                        >
+                          <i className="fas fa-comment-alt"></i> {post.CommentCount} Comments
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigator.clipboard.writeText(window.location.origin + `/forum/post/${post.Slug}`);
+                            alert('Link copied to clipboard!');
+                          }}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            color: '#878a8c',
+                            fontSize: '0.75rem',
+                            fontWeight: 700,
+                            padding: '4px 8px',
+                            borderRadius: '4px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}
+                          onMouseEnter={(e) => e.target.style.background = '#f6f7f8'}
+                          onMouseLeave={(e) => e.target.style.background = 'transparent'}
+                        >
+                          <i className="fas fa-share"></i> Share
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (!currentUser) {
+                              setProfileModalOpen(true);
+                              return;
+                            }
+                            alert('Post saved!');
+                          }}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            color: '#878a8c',
+                            fontSize: '0.75rem',
+                            fontWeight: 700,
+                            padding: '4px 8px',
+                            borderRadius: '4px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}
+                          onMouseEnter={(e) => e.target.style.background = '#f6f7f8'}
+                          onMouseLeave={(e) => e.target.style.background = 'transparent'}
+                        >
+                          <i className="fas fa-bookmark"></i> Save
+                        </button>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 8px' }}>
+                          <i className="fas fa-eye"></i> {post.ViewCount}
+                        </span>
                       </div>
                     </div>
                   </div>

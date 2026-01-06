@@ -596,7 +596,13 @@ function VendorAnalyticsSection() {
                 <i className="fas fa-clock" style={{ color: '#8b5cf6' }}></i>
                 <span style={{ color: '#4b5563', fontSize: '14px' }}>Avg Response Time</span>
               </div>
-              <span style={{ fontWeight: 600, color: '#111827' }}>{analytics.avgResponseTime || 0} min</span>
+              <span style={{ fontWeight: 600, color: '#111827' }}>
+                {analytics.avgResponseTime ? (
+                  analytics.avgResponseTime >= 60 
+                    ? `${Math.round(analytics.avgResponseTime / 60)} hr${Math.round(analytics.avgResponseTime / 60) !== 1 ? 's' : ''}`
+                    : `${Math.round(analytics.avgResponseTime)} min`
+                ) : '0 min'}
+              </span>
             </div>
           </div>
         </div>

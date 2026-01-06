@@ -147,8 +147,8 @@ function UnifiedMessagesSection({ onSectionChange }) {
     // Immediately update conversation list (optimistic update)
     updateConversationWithMessage(gifUrl);
     
-    // Directly send the GIF URL as a message
-    const senderId = selectedConversation.type === 'vendor' ? vendorProfileId : currentUser?.id;
+    // Directly send the GIF URL as a message - always use currentUser.id
+    const senderId = currentUser?.id;
     
     try {
       if (window.socket) {
@@ -317,11 +317,8 @@ function UnifiedMessagesSection({ onSectionChange }) {
     if (!conversationId) return;
     
     try {
-      const queryParam = conversationType === 'vendor' 
-        ? `vendorProfileId=${vendorProfileId}` 
-        : `userId=${currentUser?.id}`;
-      
-      const response = await fetch(`${API_BASE_URL}/messages/conversation/${conversationId}?${queryParam}`, {
+      // Always use userId - the API requires a UserID, not VendorProfileID
+      const response = await fetch(`${API_BASE_URL}/messages/conversation/${conversationId}?userId=${currentUser?.id}`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       
@@ -334,7 +331,7 @@ function UnifiedMessagesSection({ onSectionChange }) {
       console.error('Error loading messages:', error);
       setMessages([]);
     }
-  }, [currentUser?.id, vendorProfileId]);
+  }, [currentUser?.id]);
 
   useEffect(() => {
     loadConversations();
@@ -514,8 +511,8 @@ function UnifiedMessagesSection({ onSectionChange }) {
     // Immediately update conversation list (optimistic update)
     updateConversationWithMessage(newMessage.trim());
     
-    // Determine sender ID based on conversation type
-    const senderId = selectedConversation.type === 'vendor' ? vendorProfileId : currentUser?.id;
+    // Sender ID is always the current user's ID (not vendorProfileId which is a profile ID, not a user ID)
+    const senderId = currentUser?.id;
     
     try {
       if (window.socket) {
@@ -850,12 +847,28 @@ function UnifiedMessagesSection({ onSectionChange }) {
         {selectedConversation ? (
           <>
             <div style={{ position: 'relative' }}>
+              {selectedConversation.OtherPartyAvatar ? (
+                <img
+                  src={selectedConversation.OtherPartyAvatar}
+                  alt={selectedConversation.userName || 'User'}
+                  style={{
+                    width: '44px',
+                    height: '44px',
+                    borderRadius: '50%',
+                    objectFit: 'cover'
+                  }}
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                    e.target.nextSibling.style.display = 'flex';
+                  }}
+                />
+              ) : null}
               <div style={{
                 width: '44px',
                 height: '44px',
                 borderRadius: '50%',
                 backgroundColor: '#5e72e4',
-                display: 'flex',
+                display: selectedConversation.OtherPartyAvatar ? 'none' : 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 color: 'white',
@@ -985,8 +998,8 @@ function UnifiedMessagesSection({ onSectionChange }) {
                   // Immediately update conversation list (optimistic update)
                   updateConversationWithMessage(reply);
                   
-                  // Directly send quick reply without showing in text box
-                  const senderId = selectedConversation.type === 'vendor' ? vendorProfileId : currentUser?.id;
+                  // Directly send quick reply without showing in text box - always use currentUser.id
+                  const senderId = currentUser?.id;
                   
                   try {
                     if (window.socket) {

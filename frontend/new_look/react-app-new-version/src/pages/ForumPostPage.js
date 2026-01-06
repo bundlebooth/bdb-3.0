@@ -20,6 +20,83 @@ function ForumPostPage() {
   const [replyTo, setReplyTo] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   
+  // Emoji and GIF picker state
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showGifPicker, setShowGifPicker] = useState(false);
+  const [emojiCategory, setEmojiCategory] = useState('smileys');
+  const [gifs, setGifs] = useState([]);
+  const [gifsLoading, setGifsLoading] = useState(false);
+  const [gifSearchQuery, setGifSearchQuery] = useState('');
+  const [selectedGif, setSelectedGif] = useState(null); // Store selected GIF separately
+  
+  // Emoji categories
+  const emojiCategories = {
+    smileys: { icon: '😀', name: 'Smileys', emojis: ['😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '🙃', '😉', '😊', '😇', '🥰', '😍', '🤩', '😘', '😗', '☺️', '😚', '😙', '🥲', '😋', '😛', '😜', '🤪', '😝', '🤑', '🤗', '🤭', '🤫', '🤔', '🤐', '🤨', '😐', '😑', '😶', '😏', '😒', '🙄', '😬', '🤥', '😌', '😔', '😪', '🤤', '😴', '😷', '🤒', '🤕', '🤢', '🤮', '🤧', '🥵', '🥶', '🥴', '😵', '🤯', '🤠', '🥳', '🥸', '😎', '🤓', '🧐'] },
+    gestures: { icon: '👋', name: 'Gestures', emojis: ['👋', '🤚', '🖐️', '✋', '🖖', '👌', '🤌', '🤏', '✌️', '🤞', '🤟', '🤘', '🤙', '👈', '👉', '👆', '🖕', '👇', '☝️', '👍', '👎', '✊', '👊', '🤛', '🤜', '👏', '🙌', '👐', '🤲', '🤝', '🙏', '✍️', '💅', '🤳', '💪'] },
+    hearts: { icon: '❤️', name: 'Hearts', emojis: ['❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💔', '❣️', '💕', '💞', '💓', '💗', '💖', '💘', '💝', '💟', '♥️', '💌', '💋', '😻', '😽', '🫶'] },
+    celebration: { icon: '🎉', name: 'Celebration', emojis: ['🎉', '🎊', '🎈', '🎁', '🎀', '🎂', '🍰', '🧁', '🥳', '🥂', '🍾', '✨', '🌟', '⭐', '💫', '🔥', '💥', '🎆', '🎇', '🏆', '🥇', '🥈', '🥉', '🏅', '🎖️', '🎗️', '🎯', '🎪', '🎭', '🎨'] }
+  };
+  
+  // Giphy API key
+  const GIPHY_API_KEY = 'GlVGYHkr3WSBnllca54iNt0yFbjz7L65';
+  
+  // Fetch GIFs
+  const fetchGifs = async (query = '') => {
+    setGifsLoading(true);
+    try {
+      const endpoint = query 
+        ? `https://api.giphy.com/v1/gifs/search?api_key=${GIPHY_API_KEY}&q=${encodeURIComponent(query)}&limit=24&rating=g`
+        : `https://api.giphy.com/v1/gifs/trending?api_key=${GIPHY_API_KEY}&limit=24&rating=g`;
+      
+      const response = await fetch(endpoint);
+      const data = await response.json();
+      
+      if (data.data && data.data.length > 0) {
+        setGifs(data.data.map(gif => ({
+          id: gif.id,
+          url: gif.images.fixed_height.url,
+          preview: gif.images.fixed_height_still?.url || gif.images.fixed_height.url,
+          alt: gif.title || 'GIF'
+        })));
+      } else {
+        setGifs([]);
+      }
+    } catch (error) {
+      console.error('Error fetching GIFs:', error);
+      setGifs([]);
+    }
+    setGifsLoading(false);
+  };
+  
+  // Load trending GIFs when picker opens
+  useEffect(() => {
+    if (showGifPicker) {
+      fetchGifs();
+    }
+  }, [showGifPicker]);
+  
+  // Insert emoji into comment
+  const insertEmoji = (emoji) => {
+    setNewComment(prev => prev + emoji);
+  };
+  
+  // Select GIF - store it separately, don't put URL in textarea
+  const selectGif = (gifUrl) => {
+    setSelectedGif(gifUrl);
+    setShowGifPicker(false);
+  };
+  
+  // Remove selected GIF
+  const removeSelectedGif = () => {
+    setSelectedGif(null);
+  };
+  
+  // Check if content is a GIF URL
+  const isGifUrl = (content) => {
+    if (!content) return false;
+    return content.match(/\.(gif)$/i) || content.includes('giphy.com') || content.includes('tenor.com');
+  };
+  
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [dashboardModalOpen, setDashboardModalOpen] = useState(false);
   const [dashboardSection, setDashboardSection] = useState('dashboard');
@@ -124,7 +201,13 @@ function ForumPostPage() {
       return;
     }
     
-    if (!newComment.trim()) return;
+    // Allow submit if there's text OR a selected GIF
+    if (!newComment.trim() && !selectedGif) return;
+    
+    // Combine text and GIF URL for submission
+    const commentContent = selectedGif 
+      ? (newComment.trim() ? `${newComment.trim()}\n${selectedGif}` : selectedGif)
+      : newComment;
     
     setSubmitting(true);
     try {
@@ -134,7 +217,7 @@ function ForumPostPage() {
         body: JSON.stringify({
           postId: post.PostID,
           authorId: currentUser.id,
-          content: newComment,
+          content: commentContent,
           parentCommentId: replyTo?.CommentID || null
         })
       });
@@ -142,6 +225,7 @@ function ForumPostPage() {
       const data = await response.json();
       if (data.success) {
         setNewComment('');
+        setSelectedGif(null); // Clear selected GIF
         setReplyTo(null);
         loadPost(); // Reload to get updated comments
       }
@@ -154,7 +238,10 @@ function ForumPostPage() {
 
   // Format time ago
   const formatTimeAgo = (dateStr) => {
+    if (!dateStr) return '';
     const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return '';
+    
     const now = new Date();
     const diffMs = now - date;
     const diffMins = Math.floor(diffMs / 60000);
@@ -227,9 +314,34 @@ function ForumPostPage() {
                 <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>{comment.AuthorName}</span>
                 <span style={{ color: '#999', fontSize: '0.75rem' }}>• {formatTimeAgo(comment.CreatedAt)}</span>
               </div>
-              <p style={{ color: '#333', lineHeight: 1.6, marginBottom: '0.5rem' }}>
-                {comment.IsDeleted ? <em style={{ color: '#999' }}>[deleted]</em> : comment.Content}
-              </p>
+              <div style={{ color: '#333', lineHeight: 1.6, marginBottom: '0.5rem' }}>
+                {comment.IsDeleted ? (
+                  <em style={{ color: '#999' }}>[deleted]</em>
+                ) : (
+                  <>
+                    {/* Render text content (excluding GIF URLs) */}
+                    {comment.Content.split('\n').map((line, idx) => {
+                      if (isGifUrl(line)) {
+                        return (
+                          <img 
+                            key={idx}
+                            src={line} 
+                            alt="GIF" 
+                            style={{ 
+                              maxWidth: '300px', 
+                              maxHeight: '200px', 
+                              borderRadius: '8px',
+                              display: 'block',
+                              marginTop: idx > 0 ? '8px' : 0
+                            }} 
+                          />
+                        );
+                      }
+                      return line ? <p key={idx} style={{ margin: idx > 0 ? '8px 0 0 0' : 0 }}>{line}</p> : null;
+                    })}
+                  </>
+                )}
+              </div>
               {!comment.IsDeleted && (
                 <button
                   onClick={() => setReplyTo(comment)}
@@ -404,9 +516,88 @@ function ForumPostPage() {
                 />
               )}
 
-              <div style={{ display: 'flex', gap: '1.5rem', marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb', color: '#666', fontSize: '0.875rem' }}>
-                <span><i className="fas fa-comment" style={{ marginRight: '0.5rem' }}></i>{post.CommentCount} comments</span>
-                <span><i className="fas fa-eye" style={{ marginRight: '0.5rem' }}></i>{post.ViewCount} views</span>
+              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb', color: '#878a8c', fontSize: '0.75rem', flexWrap: 'wrap' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 8px', fontWeight: 700 }}>
+                  <i className="fas fa-comment-alt"></i> {post.CommentCount} Comments
+                </span>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(window.location.href);
+                    alert('Link copied to clipboard!');
+                  }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: '#878a8c',
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    padding: '4px 8px',
+                    borderRadius: '4px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                  onMouseEnter={(e) => e.target.style.background = '#f6f7f8'}
+                  onMouseLeave={(e) => e.target.style.background = 'transparent'}
+                >
+                  <i className="fas fa-share"></i> Share
+                </button>
+                <button
+                  onClick={() => {
+                    if (!currentUser) {
+                      setProfileModalOpen(true);
+                      return;
+                    }
+                    alert('Post saved!');
+                  }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: '#878a8c',
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    padding: '4px 8px',
+                    borderRadius: '4px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                  onMouseEnter={(e) => e.target.style.background = '#f6f7f8'}
+                  onMouseLeave={(e) => e.target.style.background = 'transparent'}
+                >
+                  <i className="fas fa-bookmark"></i> Save
+                </button>
+                <button
+                  onClick={() => {
+                    if (!currentUser) {
+                      setProfileModalOpen(true);
+                      return;
+                    }
+                    alert('Thank you for your report. We will review this post.');
+                  }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: '#878a8c',
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    padding: '4px 8px',
+                    borderRadius: '4px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                  onMouseEnter={(e) => e.target.style.background = '#f6f7f8'}
+                  onMouseLeave={(e) => e.target.style.background = 'transparent'}
+                >
+                  <i className="fas fa-flag"></i> Report
+                </button>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 8px' }}>
+                  <i className="fas fa-eye"></i> {post.ViewCount} views
+                </span>
               </div>
             </div>
           </div>
@@ -446,23 +637,257 @@ function ForumPostPage() {
             </div>
           )}
           <form onSubmit={handleSubmitComment}>
-            <textarea
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              placeholder={currentUser ? "What are your thoughts?" : "Please log in to comment"}
-              disabled={!currentUser || post.IsLocked}
-              rows={4}
-              style={{
-                width: '100%',
-                padding: '0.75rem',
-                border: '1px solid #ddd',
-                borderRadius: '8px',
-                fontSize: '0.9rem',
-                resize: 'vertical',
-                marginBottom: '1rem'
-              }}
-            />
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <div style={{ position: 'relative' }}>
+              <textarea
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                placeholder={currentUser ? "What are your thoughts?" : "Please log in to comment"}
+                disabled={!currentUser || post.IsLocked}
+                rows={selectedGif ? 2 : 4}
+                style={{
+                  width: '100%',
+                  padding: '0.75rem',
+                  border: '1px solid #ddd',
+                  borderRadius: '8px',
+                  fontSize: '0.9rem',
+                  resize: 'vertical',
+                  marginBottom: '0.5rem'
+                }}
+              />
+              
+              {/* Selected GIF Preview */}
+              {selectedGif && (
+                <div style={{
+                  position: 'relative',
+                  display: 'inline-block',
+                  marginBottom: '0.5rem'
+                }}>
+                  <img 
+                    src={selectedGif} 
+                    alt="Selected GIF" 
+                    style={{
+                      maxWidth: '200px',
+                      maxHeight: '150px',
+                      borderRadius: '8px',
+                      border: '1px solid #e5e7eb'
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={removeSelectedGif}
+                    style={{
+                      position: 'absolute',
+                      top: '-8px',
+                      right: '-8px',
+                      width: '24px',
+                      height: '24px',
+                      borderRadius: '50%',
+                      background: '#ef4444',
+                      color: 'white',
+                      border: 'none',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '14px',
+                      fontWeight: 'bold'
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
+              )}
+              
+              {/* Emoji Picker */}
+              {showEmojiPicker && (
+                <div style={{
+                  position: 'absolute',
+                  bottom: '100%',
+                  left: 0,
+                  marginBottom: '8px',
+                  background: 'white',
+                  borderRadius: '12px',
+                  boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+                  padding: '12px',
+                  width: '280px',
+                  zIndex: 100
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <span style={{ fontSize: '13px', fontWeight: 500, color: '#374151' }}>Emojis</span>
+                    <button 
+                      onClick={() => setShowEmojiPicker(false)}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', fontSize: '14px', padding: '4px' }}
+                    >
+                      <i className="fas fa-times"></i>
+                    </button>
+                  </div>
+                  <div style={{ display: 'flex', gap: '4px', marginBottom: '8px', borderBottom: '1px solid #e5e7eb', paddingBottom: '8px' }}>
+                    {Object.entries(emojiCategories).map(([key, cat]) => (
+                      <button
+                        key={key}
+                        onClick={() => setEmojiCategory(key)}
+                        style={{
+                          padding: '6px 8px',
+                          background: emojiCategory === key ? '#f3f4f6' : 'transparent',
+                          border: 'none',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          fontSize: '16px'
+                        }}
+                        title={cat.name}
+                      >
+                        {cat.icon}
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: '2px', maxHeight: '150px', overflowY: 'auto' }}>
+                    {emojiCategories[emojiCategory].emojis.map((emoji, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => insertEmoji(emoji)}
+                        style={{
+                          padding: '4px',
+                          background: 'transparent',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          fontSize: '18px',
+                          transition: 'background 0.15s'
+                        }}
+                        onMouseEnter={(e) => e.target.style.background = '#f3f4f6'}
+                        onMouseLeave={(e) => e.target.style.background = 'transparent'}
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* GIF Picker */}
+              {showGifPicker && (
+                <div style={{
+                  position: 'absolute',
+                  bottom: '100%',
+                  left: 0,
+                  marginBottom: '8px',
+                  background: 'white',
+                  borderRadius: '12px',
+                  boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+                  padding: '12px',
+                  width: '320px',
+                  zIndex: 100
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <span style={{ fontSize: '13px', fontWeight: 500, color: '#374151' }}>GIFs</span>
+                    <button 
+                      onClick={() => setShowGifPicker(false)}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', fontSize: '14px', padding: '4px' }}
+                    >
+                      <i className="fas fa-times"></i>
+                    </button>
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                    <input
+                      type="text"
+                      placeholder="Search GIFs..."
+                      value={gifSearchQuery}
+                      onChange={(e) => setGifSearchQuery(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && fetchGifs(gifSearchQuery)}
+                      style={{
+                        flex: 1,
+                        padding: '8px 12px',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '6px',
+                        fontSize: '13px'
+                      }}
+                    />
+                    <button
+                      onClick={() => fetchGifs(gifSearchQuery)}
+                      style={{
+                        padding: '8px 12px',
+                        background: '#6366f1',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <i className="fas fa-search"></i>
+                    </button>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px', maxHeight: '200px', overflowY: 'auto' }}>
+                    {gifsLoading ? (
+                      <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '20px' }}>
+                        <div className="spinner" style={{ width: '24px', height: '24px', margin: '0 auto' }}></div>
+                      </div>
+                    ) : gifs.map(gif => (
+                      <img
+                        key={gif.id}
+                        src={gif.preview}
+                        alt={gif.alt}
+                        onClick={() => selectGif(gif.url)}
+                        style={{
+                          width: '100%',
+                          height: '80px',
+                          objectFit: 'cover',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          transition: 'transform 0.15s'
+                        }}
+                        onMouseEnter={(e) => { e.target.src = gif.url; e.target.style.transform = 'scale(1.05)'; }}
+                        onMouseLeave={(e) => { e.target.src = gif.preview; e.target.style.transform = 'scale(1)'; }}
+                      />
+                    ))}
+                  </div>
+                  <div style={{ marginTop: '8px', textAlign: 'center' }}>
+                    <img src="https://giphy.com/static/img/poweredby_giphy.png" alt="Powered by GIPHY" style={{ height: '14px', opacity: 0.6 }} />
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              {/* Emoji and GIF buttons */}
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  type="button"
+                  onClick={() => { setShowEmojiPicker(!showEmojiPicker); setShowGifPicker(false); }}
+                  disabled={!currentUser || post.IsLocked}
+                  style={{
+                    padding: '8px 12px',
+                    background: showEmojiPicker ? '#f3f4f6' : 'white',
+                    border: '1px solid #ddd',
+                    borderRadius: '6px',
+                    cursor: currentUser && !post.IsLocked ? 'pointer' : 'not-allowed',
+                    fontSize: '16px',
+                    opacity: currentUser && !post.IsLocked ? 1 : 0.5
+                  }}
+                  title="Add emoji"
+                >
+                  😀
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setShowGifPicker(!showGifPicker); setShowEmojiPicker(false); }}
+                  disabled={!currentUser || post.IsLocked}
+                  style={{
+                    padding: '8px 12px',
+                    background: showGifPicker ? '#f3f4f6' : 'white',
+                    border: '1px solid #ddd',
+                    borderRadius: '6px',
+                    cursor: currentUser && !post.IsLocked ? 'pointer' : 'not-allowed',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    color: '#6b7280',
+                    opacity: currentUser && !post.IsLocked ? 1 : 0.5
+                  }}
+                  title="Add GIF"
+                >
+                  GIF
+                </button>
+              </div>
+              
               <button
                 type="submit"
                 disabled={!currentUser || !newComment.trim() || submitting || post.IsLocked}

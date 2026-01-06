@@ -143,10 +143,11 @@ function VendorMessagesSection({ onSectionChange }) {
     
     try {
       // Use Socket.IO if available, otherwise HTTP
+      // Always use currentUser.id as senderId (not vendorProfileId which is a profile ID, not a user ID)
       if (window.socket) {
         window.socket.emit('send-message', {
           conversationId: selectedConversation.id,
-          senderId: vendorProfileId,
+          senderId: currentUser?.id,
           content: newMessage.trim()
         });
         setNewMessage('');
@@ -161,7 +162,7 @@ function VendorMessagesSection({ onSectionChange }) {
           },
           body: JSON.stringify({
             conversationId: selectedConversation.id,
-            senderId: vendorProfileId,
+            senderId: currentUser?.id,
             content: newMessage.trim()
           })
         });
