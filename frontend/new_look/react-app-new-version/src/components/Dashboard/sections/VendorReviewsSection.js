@@ -80,15 +80,16 @@ function VendorReviewsSection() {
     
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/reviews/all`, {
+      // Use the endpoint that returns full review data with survey ratings
+      const response = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/reviews`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       
-      if (!response.ok) throw new Error('Failed to fetch all vendor reviews');
-      const reviewsData = await response.json();
-      setReviews(Array.isArray(reviewsData) ? reviewsData : []);
+      if (!response.ok) throw new Error('Failed to fetch vendor reviews');
+      const data = await response.json();
+      setReviews(data.reviews || []);
     } catch (error) {
-      console.error('Error loading all vendor reviews:', error);
+      console.error('Error loading vendor reviews:', error);
       setReviews([]);
     } finally {
       setLoading(false);
@@ -116,7 +117,7 @@ function VendorReviewsSection() {
               <div className="review-date" style={{ fontSize: '0.85rem', color: '#6b7280' }}>{review.relative_time_description}</div>
             </div>
           </div>
-          <div className="review-rating" style={{ color: '#f59e0b', marginBottom: '0.5rem' }}>
+          <div className="review-rating" style={{ color: '#5e72e4', marginBottom: '0.5rem' }}>
             {'★'.repeat(review.rating || 0)}{'☆'.repeat(5 - (review.rating || 0))}
           </div>
           <div className="review-text" style={{ color: '#374151', lineHeight: 1.5 }}>{review.text}</div>
@@ -124,28 +125,93 @@ function VendorReviewsSection() {
       );
     }
     
+    // Calculate relative time
+    const getRelativeTime = (dateStr) => {
+      if (!dateStr) return '';
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return '';
+      const now = new Date();
+      const diffMs = now - date;
+      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+      const diffWeeks = Math.floor(diffDays / 7);
+      const diffMonths = Math.floor(diffDays / 30);
+      const diffYears = Math.floor(diffDays / 365);
+      if (diffDays === 0) return 'Today';
+      if (diffDays === 1) return 'Yesterday';
+      if (diffDays < 7) return `${diffDays} days ago`;
+      if (diffWeeks === 1) return '1 week ago';
+      if (diffWeeks < 4) return `${diffWeeks} weeks ago`;
+      if (diffMonths === 1) return '1 month ago';
+      if (diffMonths < 12) return `${diffMonths} months ago`;
+      if (diffYears === 1) return '1 year ago';
+      return `${diffYears} years ago`;
+    };
+
+    // Survey ratings for detailed display
+    const surveyRatings = [
+      { label: 'Quality', value: review.QualityRating },
+      { label: 'Communication', value: review.CommunicationRating },
+      { label: 'Value', value: review.ValueRating },
+      { label: 'Punctuality', value: review.PunctualityRating },
+      { label: 'Professionalism', value: review.ProfessionalismRating }
+    ].filter(r => r.value != null && r.value > 0);
+
     return (
       <div key={review.ReviewID || review.id} className="review-card" style={{ 
-        padding: '1rem', 
+        padding: '1.25rem', 
         borderBottom: '1px solid #e5e7eb',
         marginBottom: '0.5rem'
       }}>
-        <div className="review-header" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-          <div className="reviewer" style={{ fontWeight: 600, color: '#111827' }}>{review.ClientName || review.ReviewerName || 'Client'}</div>
-          <div className="review-date" style={{ fontSize: '0.85rem', color: '#6b7280' }}>{(() => {
-            if (!review.CreatedAt) return 'N/A';
-            const date = new Date(review.CreatedAt);
-            if (isNaN(date.getTime())) return 'N/A';
-            return date.toLocaleDateString();
-          })()}</div>
+        <div className="review-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <div className="reviewer" style={{ fontWeight: 600, color: '#111827' }}>{review.ClientName || review.ReviewerName || 'Client'}</div>
+            <div className="review-date" style={{ fontSize: '0.85rem', color: '#6b7280' }}>{getRelativeTime(review.CreatedAt)}</div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ color: '#5e72e4', fontSize: '0.9rem' }}>
+              {'★'.repeat(review.Rating || 0)}{'☆'.repeat(5 - (review.Rating || 0))}
+            </span>
+            <span style={{ fontWeight: 600, color: '#111827' }}>{review.Rating}/5</span>
+          </div>
         </div>
-        <div className="review-rating" style={{ color: '#f59e0b', marginBottom: '0.5rem' }}>
-          {'★'.repeat(review.Rating)}{'☆'.repeat(5 - review.Rating)}
-        </div>
+        
         {review.Title && (
-          <div className="review-title" style={{ fontWeight: 500, marginBottom: '0.25rem' }}>{review.Title}</div>
+          <div className="review-title" style={{ fontWeight: 600, color: '#374151', marginBottom: '0.5rem' }}>{review.Title}</div>
         )}
-        <div className="review-text" style={{ color: '#374151', lineHeight: 1.5 }}>{review.Comment}</div>
+        
+        {review.Comment && review.Comment !== review.Title && (
+          <div className="review-text" style={{ color: '#4b5563', lineHeight: 1.6, marginBottom: '0.75rem' }}>{review.Comment}</div>
+        )}
+
+        {/* Survey Ratings - Like Client My Reviews */}
+        {surveyRatings.length > 0 && (
+          <div style={{ 
+            display: 'flex', 
+            flexWrap: 'wrap', 
+            gap: '12px', 
+            padding: '12px', 
+            background: '#f9fafb', 
+            borderRadius: '8px',
+            marginTop: '12px'
+          }}>
+            {surveyRatings.map(r => (
+              <div key={r.label} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontSize: '13px', color: '#6b7280' }}>{r.label}:</span>
+                <span style={{ color: '#5e72e4', fontSize: '12px' }}>
+                  {'★'.repeat(r.value)}{'☆'.repeat(5 - r.value)}
+                </span>
+              </div>
+            ))}
+            {review.WouldRecommend !== undefined && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontSize: '13px', color: '#6b7280' }}>Would Recommend:</span>
+                <span style={{ fontSize: '13px', fontWeight: 600, color: review.WouldRecommend ? '#10b981' : '#ef4444' }}>
+                  {review.WouldRecommend ? 'Yes' : 'No'}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     );
   };
@@ -234,30 +300,35 @@ function VendorReviewsSection() {
         )}
 
         {/* Rating Summary */}
-        {(showGoogleReviews ? hasGoogleReviews : hasPlatformReviews) && (
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '1rem',
-            marginBottom: '1rem',
-            padding: '1rem',
-            background: '#f9fafb',
-            borderRadius: '8px'
-          }}>
-            <div style={{ fontSize: '2rem', fontWeight: 700, color: '#111827' }}>
-              {showGoogleReviews ? (googleReviews?.rating?.toFixed(1) || '0.0') : '5.0'}
-            </div>
-            <div>
-              <div style={{ color: '#f59e0b', marginBottom: '0.25rem' }}>
-                {'★'.repeat(Math.round(showGoogleReviews ? (googleReviews?.rating || 0) : 5))}
-                {'☆'.repeat(5 - Math.round(showGoogleReviews ? (googleReviews?.rating || 0) : 5))}
+        {(showGoogleReviews ? hasGoogleReviews : hasPlatformReviews) && (() => {
+          const avgRating = showGoogleReviews 
+            ? (googleReviews?.rating || 0)
+            : (reviews.length > 0 ? reviews.reduce((sum, r) => sum + (r.Rating || 0), 0) / reviews.length : 0);
+          return (
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '1rem',
+              marginBottom: '1rem',
+              padding: '1rem',
+              background: '#f9fafb',
+              borderRadius: '8px'
+            }}>
+              <div style={{ fontSize: '2rem', fontWeight: 700, color: '#111827' }}>
+                {avgRating.toFixed(1)}
               </div>
-              <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>
-                Based on {showGoogleReviews ? (googleReviews?.user_ratings_total || googleReviews?.reviews?.length || 0) : reviews.length} {showGoogleReviews ? 'Google ' : ''}reviews
+              <div>
+                <div style={{ color: '#5e72e4', marginBottom: '0.25rem' }}>
+                  {'★'.repeat(Math.round(avgRating))}
+                  {'☆'.repeat(5 - Math.round(avgRating))}
+                </div>
+                <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>
+                  Based on {showGoogleReviews ? (googleReviews?.user_ratings_total || googleReviews?.reviews?.length || 0) : reviews.length} {showGoogleReviews ? 'Google ' : ''}reviews
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         <div id="vendor-reviews">
           {googleReviewsLoading && showGoogleReviews ? (

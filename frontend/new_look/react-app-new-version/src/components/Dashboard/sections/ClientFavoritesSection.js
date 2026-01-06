@@ -45,19 +45,50 @@ function ClientFavoritesSection() {
 
   const handleUnfavorite = useCallback(async (vendorId) => {
     try {
-      await fetch(`${API_BASE_URL}/favorites/${currentUser.id}/${vendorId}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      const resp = await fetch(`${API_BASE_URL}/users/favorites/toggle`, {
+        method: 'POST',
+        headers: { 
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ userId: currentUser.id, vendorProfileId: vendorId })
       });
-      loadFavorites();
+      if (resp.ok) {
+        loadFavorites();
+      }
     } catch (error) {
       console.error('Error removing favorite:', error);
     }
   }, [currentUser, loadFavorites]);
 
-  const handleMessage = (vendor) => {
+  const handleMessage = async (vendor) => {
     const vendorId = vendor.VendorProfileID || vendor.id;
-    navigate(`/dashboard?section=messages&vendorId=${vendorId}`);
+    try {
+      // Create or get conversation with vendor
+      const resp = await fetch(`${API_BASE_URL}/messages/conversations`, {
+        method: 'POST',
+        headers: { 
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ 
+          userId: currentUser.id, 
+          vendorProfileId: vendorId,
+          subject: 'New Inquiry'
+        })
+      });
+      
+      if (resp.ok) {
+        const data = await resp.json();
+        navigate(`/dashboard?section=messages&conversationId=${data.conversationId}`);
+      } else {
+        // Fallback to just navigating with vendorId
+        navigate(`/dashboard?section=messages&vendorId=${vendorId}`);
+      }
+    } catch (error) {
+      console.error('Error creating conversation:', error);
+      navigate(`/dashboard?section=messages&vendorId=${vendorId}`);
+    }
   };
 
   const handleViewProfile = (vendor) => {
@@ -238,9 +269,71 @@ function ClientFavoritesSection() {
     );
   }
 
+  // Calculate stats
+  const totalFavorites = favorites.length;
+  const avgRating = favorites.length > 0 
+    ? (favorites.reduce((sum, v) => sum + (parseFloat(v.averageRating) || 0), 0) / favorites.length).toFixed(1)
+    : '0.0';
+  const categories = [...new Set(favorites.map(v => v.CategoryName || v.Category).filter(Boolean))];
+
   return (
     <div id="favorites-section">
-      <div className="dashboard-card" style={{ padding: '20px' }}>
+      <div className="dashboard-card" style={{ padding: '24px' }}>
+        {/* Header with stats */}
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          marginBottom: '24px',
+          paddingBottom: '16px',
+          borderBottom: '1px solid #e5e7eb'
+        }}>
+          <div>
+            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: '#111827' }}>
+              <i className="fas fa-heart" style={{ color: '#ef4444', marginRight: '8px' }}></i>
+              My Favorites
+            </h3>
+            <p style={{ margin: '4px 0 0 0', fontSize: '14px', color: '#6b7280' }}>
+              Vendors you've saved for later
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: '24px' }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '24px', fontWeight: 700, color: '#5e72e4' }}>{totalFavorites}</div>
+              <div style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase' }}>Saved</div>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '24px', fontWeight: 700, color: '#f59e0b' }}>
+                <span style={{ fontSize: '16px', marginRight: '2px' }}>★</span>{avgRating}
+              </div>
+              <div style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase' }}>Avg Rating</div>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '24px', fontWeight: 700, color: '#10b981' }}>{categories.length}</div>
+              <div style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase' }}>Categories</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Category tags */}
+        {categories.length > 0 && (
+          <div style={{ marginBottom: '20px', display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+            {categories.map(cat => (
+              <span key={cat} style={{ 
+                padding: '4px 12px', 
+                background: '#f3f4f6', 
+                borderRadius: '16px', 
+                fontSize: '12px', 
+                color: '#374151',
+                fontWeight: 500
+              }}>
+                {cat}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Vendor grid */}
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',

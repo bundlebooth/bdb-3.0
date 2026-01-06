@@ -164,6 +164,7 @@ BEGIN
             v.Rooms,
             v.LogoURL,
             v.CreatedAt,
+            v.GooglePlaceId,
             ISNULL(p.MinPrice, 0) AS MinPrice,
             p.MinServiceName,
             ISNULL(s.AverageRating, 0) AS AverageRating,
@@ -266,6 +267,7 @@ BEGIN
         f.Categories,
         f.DistanceMiles,
         f.CreatedAt,
+        f.GooglePlaceId,
         t.TotalCount,
         NULL AS services,
         NULL AS reviews

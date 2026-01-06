@@ -429,7 +429,16 @@ router.get('/user/:userId', async (req, res) => {
       .input('UserID', sql.Int, parseInt(userId, 10))
       .execute('invoices.sp_GetUserInvoices');
     
-    res.json({ success: true, invoices: result.recordset || [] });
+    // Convert date objects to ISO strings for proper JSON serialization
+    const invoices = (result.recordset || []).map(inv => ({
+      ...inv,
+      IssueDate: inv.IssueDate instanceof Date ? inv.IssueDate.toISOString() : inv.IssueDate,
+      DueDate: inv.DueDate instanceof Date ? inv.DueDate.toISOString() : inv.DueDate,
+      EventDate: inv.EventDate instanceof Date ? inv.EventDate.toISOString() : inv.EventDate,
+      EndDate: inv.EndDate instanceof Date ? inv.EndDate.toISOString() : inv.EndDate
+    }));
+    
+    res.json({ success: true, invoices });
   } catch (err) {
     console.error('List user invoices error:', err);
     res.status(500).json({ success: false, message: 'Failed to list invoices', error: err.message });
@@ -446,7 +455,16 @@ router.get('/vendor/:vendorProfileId', async (req, res) => {
       .input('VendorProfileID', sql.Int, parseInt(vendorProfileId, 10))
       .execute('invoices.sp_GetVendorInvoices');
     
-    res.json({ success: true, invoices: result.recordset || [] });
+    // Convert date objects to ISO strings for proper JSON serialization
+    const invoices = (result.recordset || []).map(inv => ({
+      ...inv,
+      IssueDate: inv.IssueDate instanceof Date ? inv.IssueDate.toISOString() : inv.IssueDate,
+      DueDate: inv.DueDate instanceof Date ? inv.DueDate.toISOString() : inv.DueDate,
+      EventDate: inv.EventDate instanceof Date ? inv.EventDate.toISOString() : inv.EventDate,
+      EndDate: inv.EndDate instanceof Date ? inv.EndDate.toISOString() : inv.EndDate
+    }));
+    
+    res.json({ success: true, invoices });
   } catch (err) {
     console.error('List vendor invoices error:', err);
     res.status(500).json({ success: false, message: 'Failed to list invoices', error: err.message });

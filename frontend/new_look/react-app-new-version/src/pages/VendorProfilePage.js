@@ -89,6 +89,7 @@ function VendorProfilePage() {
         loadVendorFeatures(vendorDetails.profile.VendorProfileID);
         loadPortfolioAlbums(vendorDetails.profile.VendorProfileID);
         loadRecommendations(vendorId, vendorDetails);
+        loadReviewsWithSurvey(vendorDetails.profile.VendorProfileID);
         
         // Load Google Reviews if Google Place ID exists
         if (vendorDetails.profile.GooglePlaceId) {
@@ -143,6 +144,22 @@ function VendorProfilePage() {
       }
     } catch (error) {
       console.error('Error loading portfolio albums:', error);
+    }
+  }, []);
+
+  // Load reviews with survey ratings (separate call to get full review data)
+  const loadReviewsWithSurvey = useCallback(async (vendorProfileId) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/reviews`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.reviews) {
+          // Update vendor state with full review data including survey ratings
+          setVendor(prev => prev ? { ...prev, reviews: data.reviews } : prev);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading reviews with survey:', error);
     }
   }, []);
 
@@ -632,7 +649,6 @@ function VendorProfilePage() {
               alignItems: 'center',
               gap: '0.5rem'
             }}>
-              <i className="fas fa-route" style={{ color: '#3b82f6', fontSize: '0.875rem' }}></i>
               Areas We Serve
             </h3>
             <div style={{ 
@@ -866,7 +882,13 @@ function VendorProfilePage() {
               color: 'var(--text)', 
               lineHeight: 1
             }}>
-              {showGoogleReviews ? (googleReviews?.rating?.toFixed(1) || '4.8') : '4.9'}
+              {showGoogleReviews 
+                ? (googleReviews?.rating?.toFixed(1) || 'N/A') 
+                : (reviews && reviews.length > 0 
+                    ? (reviews.reduce((sum, r) => sum + (r.Rating || 0), 0) / reviews.length).toFixed(1)
+                    : 'N/A'
+                  )
+              }
             </div>
             <div>
               <div style={{ 
@@ -874,13 +896,13 @@ function VendorProfilePage() {
                 color: 'var(--primary)',
                 marginBottom: '0.125rem'
               }}>
-                {'★'.repeat(5)}
+                {'★'.repeat(Math.round(reviews && reviews.length > 0 ? reviews.reduce((sum, r) => sum + (r.Rating || 0), 0) / reviews.length : 5))}
               </div>
               <div style={{ 
                 fontSize: '0.8rem', 
                 color: 'var(--text-light)'
               }}>
-                Based on {showGoogleReviews ? (googleReviews?.user_ratings_total || 565) : (reviews?.length || 91)} {showGoogleReviews ? 'Google ' : ''}reviews
+                Based on {showGoogleReviews ? (googleReviews?.user_ratings_total || 0) : (reviews?.length || 0)} {showGoogleReviews ? 'Google ' : ''}reviews
               </div>
             </div>
           </div>
@@ -961,36 +983,35 @@ function VendorProfilePage() {
           
           return (
             <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-              gap: '16px',
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '12px 24px',
               padding: '20px',
               background: '#f9fafb',
               borderRadius: '12px',
               marginBottom: '1.5rem'
             }}>
               {averages.map(avg => (
-                <div key={avg.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: '14px', color: '#374151' }}>{avg.label}</span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div key={avg.label} style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: '180px' }}>
+                  <span style={{ fontSize: '13px', color: '#374151', whiteSpace: 'nowrap' }}>{avg.label}</span>
+                  <div style={{ 
+                    width: '60px', 
+                    height: '6px', 
+                    background: '#e5e7eb', 
+                    borderRadius: '3px',
+                    overflow: 'hidden',
+                    flexShrink: 0
+                  }}>
                     <div style={{ 
-                      width: '100px', 
-                      height: '6px', 
-                      background: '#e5e7eb', 
-                      borderRadius: '3px',
-                      overflow: 'hidden'
-                    }}>
-                      <div style={{ 
-                        width: `${(avg.value / 5) * 100}%`, 
-                        height: '100%', 
-                        background: '#5e72e4',
-                        borderRadius: '3px'
-                      }} />
-                    </div>
-                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#111827', minWidth: '28px' }}>
-                      {avg.value.toFixed(1)}
-                    </span>
+                      width: `${(avg.value / 5) * 100}%`, 
+                      height: '100%', 
+                      background: '#5e72e4',
+                      borderRadius: '3px'
+                    }} />
                   </div>
+                  <span style={{ fontSize: '13px', fontWeight: 600, color: '#111827' }}>
+                    {avg.value.toFixed(1)}
+                  </span>
                 </div>
               ))}
             </div>
@@ -1016,7 +1037,9 @@ function VendorProfilePage() {
                       width: '40px', 
                       height: '40px', 
                       borderRadius: '50%', 
-                      background: showGoogleReviews && review.profile_photo_url ? `url(${review.profile_photo_url})` : 'var(--primary)', 
+                      background: showGoogleReviews 
+                        ? (review.profile_photo_url ? `url(${review.profile_photo_url})` : 'var(--primary)')
+                        : (review.ReviewerAvatar ? `url(${review.ReviewerAvatar})` : 'var(--primary)'), 
                       backgroundSize: 'cover',
                       backgroundPosition: 'center',
                       display: 'flex',
@@ -1027,31 +1050,50 @@ function VendorProfilePage() {
                       fontSize: '0.9rem',
                       flexShrink: 0
                     }}>
-                      {(!showGoogleReviews || !review.profile_photo_url) && (
-                        showGoogleReviews 
-                          ? (review.author_name?.charAt(0) || '?')
-                          : (review.ReviewerName?.charAt(0) || 'A')
-                      )}
+                      {showGoogleReviews 
+                        ? (!review.profile_photo_url && (review.author_name?.charAt(0) || '?'))
+                        : (!review.ReviewerAvatar && (review.ReviewerName?.charAt(0) || 'A'))
+                      }
                     </div>
 
                     <div style={{ flex: 1 }}>
                       {/* Reviewer Info */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
                         <div style={{ fontWeight: 600, color: 'var(--text)', fontSize: '0.95rem' }}>
                           {showGoogleReviews ? (review.author_name || 'Anonymous') : (review.ReviewerName || 'Anonymous')}
                         </div>
-                        <div style={{ fontSize: '0.85rem', color: 'var(--text-light)' }}>
+                        <span style={{ fontSize: '0.85rem', color: '#9ca3af' }}>
                           {showGoogleReviews 
                             ? (review.relative_time_description || '')
                             : (() => {
-                                const rawDate = review.CreatedAt || review.createdAt || review.ReviewDate;
-                                if (!rawDate) return '';
+                                const rawDate = review.CreatedAt || review.createdAt || review.ReviewDate || review.created_at;
+                                if (!rawDate) {
+                                  return 'recently';
+                                }
                                 const date = new Date(rawDate);
-                                if (isNaN(date.getTime())) return '';
-                                return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+                                if (isNaN(date.getTime())) {
+                                  return 'recently';
+                                }
+                                
+                                const now = new Date();
+                                const diffMs = now - date;
+                                const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                                const diffWeeks = Math.floor(diffDays / 7);
+                                const diffMonths = Math.floor(diffDays / 30);
+                                const diffYears = Math.floor(diffDays / 365);
+                                
+                                if (diffDays === 0) return 'today';
+                                if (diffDays === 1) return 'yesterday';
+                                if (diffDays < 7) return `${diffDays} days ago`;
+                                if (diffWeeks === 1) return '1 week ago';
+                                if (diffWeeks < 4) return `${diffWeeks} weeks ago`;
+                                if (diffMonths === 1) return '1 month ago';
+                                if (diffMonths < 12) return `${diffMonths} months ago`;
+                                if (diffYears === 1) return '1 year ago';
+                                return `${diffYears} years ago`;
                               })()
                           }
-                        </div>
+                        </span>
                       </div>
 
                       {/* Rating */}

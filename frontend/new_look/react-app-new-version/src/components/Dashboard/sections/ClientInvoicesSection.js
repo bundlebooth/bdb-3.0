@@ -12,17 +12,21 @@ function ClientInvoicesSection() {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortKey, setSortKey] = useState('date');
   const [sortDir, setSortDir] = useState('desc');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 15;
 
   // Handle view invoice - navigate to invoice page using public IDs
   const handleViewInvoice = (invoice) => {
-    // Use public ID if available, otherwise use internal ID
-    const bookingId = invoice.bookingPublicId || invoice.BookingID || invoice.bookingId;
-    const invoiceId = invoice.invoicePublicId || invoice.InvoiceID;
+    const bookingId = invoice.BookingID || invoice.bookingId;
+    const invoiceId = invoice.InvoiceID || invoice.invoiceId;
     
+    // Prefer booking-based invoice URL as it auto-generates if missing
     if (bookingId) {
-      navigate(buildInvoiceUrl(invoice.BookingID || invoice.bookingId, true));
+      navigate(buildInvoiceUrl(bookingId, true));
     } else if (invoiceId) {
-      navigate(buildInvoiceUrl(invoice.InvoiceID, false));
+      navigate(buildInvoiceUrl(invoiceId, false));
+    } else {
+      console.error('No booking or invoice ID found:', invoice);
     }
   };
 
@@ -83,11 +87,13 @@ function ClientInvoicesSection() {
   const normalize = (v) => (v || '').toString().toLowerCase();
   
   const formatDate = (d) => {
+    if (!d) return '—';
     try {
       const dt = new Date(d);
+      if (isNaN(dt.getTime())) return '—';
       return dt.toLocaleDateString([], { month: 'short', day: '2-digit', year: 'numeric' });
     } catch {
-      return '';
+      return '—';
     }
   };
 
@@ -120,8 +126,8 @@ function ClientInvoicesSection() {
     arr.sort((a, b) => {
       let av, bv;
       if (sortKey === 'date') {
-        av = new Date(a.EventDate || 0);
-        bv = new Date(b.EventDate || 0);
+        av = new Date(a.IssueDate || a.EventDate || 0);
+        bv = new Date(b.IssueDate || b.EventDate || 0);
       } else if (sortKey === 'amount') {
         av = Number(a.TotalAmount || 0);
         bv = Number(b.TotalAmount || 0);
@@ -134,12 +140,12 @@ function ClientInvoicesSection() {
       } else if (sortKey === 'invoice') {
         av = a.InvoiceNumber || '';
         bv = b.InvoiceNumber || '';
-      } else if (sortKey === 'due') {
-        av = new Date(a.DueDate || 0);
-        bv = new Date(b.DueDate || 0);
+      } else if (sortKey === 'service') {
+        av = normalize(a.ServicesSummary || a.ServiceName || '');
+        bv = normalize(b.ServicesSummary || b.ServiceName || '');
       } else {
-        av = new Date(a.EventDate || 0);
-        bv = new Date(b.EventDate || 0);
+        av = new Date(a.IssueDate || a.EventDate || 0);
+        bv = new Date(b.IssueDate || b.EventDate || 0);
       }
       if (av < bv) return -1 * dir;
       if (av > bv) return 1 * dir;
@@ -159,6 +165,13 @@ function ClientInvoicesSection() {
   };
 
   const filteredInvoices = getFilteredAndSorted();
+  const totalPages = Math.ceil(filteredInvoices.length / itemsPerPage);
+  const paginatedInvoices = filteredInvoices.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
 
   if (loading) {
     return (
@@ -186,114 +199,250 @@ function ClientInvoicesSection() {
     );
   }
 
+  // Get status badge styling
+  const getStatusStyle = (status) => {
+    const s = (status || '').toLowerCase();
+    if (s === 'paid') return { bg: '#dcfce7', color: '#166534' };
+    if (s === 'confirmed' || s === 'accepted') return { bg: '#dbeafe', color: '#1e40af' };
+    if (s === 'pending' || s === 'issued') return { bg: '#fef3c7', color: '#92400e' };
+    if (s === 'cancelled' || s === 'canceled') return { bg: '#fee2e2', color: '#991b1b' };
+    return { bg: '#f3f4f6', color: '#374151' };
+  };
+
   return (
     <div id="invoices-section">
-      <div className="dashboard-card">
-        <div id="client-invoices-list">
-          <div className="invoices-toolbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', gap: '8px', flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-              <input 
-                type="text" 
-                placeholder="Search by name, status, invoice #, service" 
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                style={{ padding: '8px 10px', border: '1px solid var(--border, #e5e7eb)', borderRadius: '6px', minWidth: '260px' }}
-              />
-              <button className="btn btn-outline btn-sm" onClick={() => setSearchTerm('')}>Clear</button>
-            </div>
-            <div style={{ color: '#6b7280', fontSize: '.9rem' }}>
-              {filteredInvoices.length} item{filteredInvoices.length !== 1 ? 's' : ''}
-            </div>
+      <div className="dashboard-card" style={{ padding: 0, overflow: 'hidden' }}>
+        {/* Header */}
+        <div style={{ padding: '20px 24px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <input 
+              type="text" 
+              placeholder="Search invoices..." 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              style={{ 
+                padding: '10px 14px', 
+                border: '1px solid #e5e7eb', 
+                borderRadius: '8px', 
+                fontSize: '14px',
+                width: '280px',
+                outline: 'none'
+              }}
+            />
+            {searchTerm && (
+              <button 
+                onClick={() => setSearchTerm('')}
+                style={{ padding: '8px 16px', background: '#f3f4f6', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', color: '#374151' }}
+              >
+                Clear
+              </button>
+            )}
           </div>
-          <div className="invoices-table-wrap">
-            <div style={{ overflow: 'auto' }}>
-              <table role="table" aria-label="Invoices" className="invoices-table" style={{ borderCollapse: 'collapse', width: '100%' }}>
-                <thead>
-                  <tr>
-                    <th className="ta-center" style={{ padding: '6px 8px', border: '1px solid var(--border, #e5e7eb)', background: '#f9fafb', color: '#374151', fontWeight: 600, position: 'sticky', top: 0, zIndex: 1 }}>Actions</th>
-                    <th className={`sortable ${sortKey === 'invoice' ? (sortDir === 'asc' ? 'sorted-asc' : 'sorted-desc') : ''}`} onClick={() => handleSort('invoice')} style={{ padding: '6px 8px', border: '1px solid var(--border, #e5e7eb)', background: '#f9fafb', color: '#374151', fontWeight: 600, cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, zIndex: 1 }}>Invoice #{sortKey === 'invoice' && (sortDir === 'asc' ? ' ▲' : ' ▼')}</th>
-                    <th className={`sortable ${sortKey === 'date' ? (sortDir === 'asc' ? 'sorted-asc' : 'sorted-desc') : ''}`} onClick={() => handleSort('date')} style={{ padding: '6px 8px', border: '1px solid var(--border, #e5e7eb)', background: '#f9fafb', color: '#374151', fontWeight: 600, cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, zIndex: 1 }}>Date{sortKey === 'date' && (sortDir === 'asc' ? ' ▲' : ' ▼')}</th>
-                    <th className={`sortable ${sortKey === 'name' ? (sortDir === 'asc' ? 'sorted-asc' : 'sorted-desc') : ''}`} onClick={() => handleSort('name')} style={{ padding: '6px 8px', border: '1px solid var(--border, #e5e7eb)', background: '#f9fafb', color: '#374151', fontWeight: 600, cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, zIndex: 1 }}>Vendor{sortKey === 'name' && (sortDir === 'asc' ? ' ▲' : ' ▼')}</th>
-                    <th className="sortable" style={{ padding: '6px 8px', border: '1px solid var(--border, #e5e7eb)', background: '#f9fafb', color: '#374151', fontWeight: 600, cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, zIndex: 1 }}>Service</th>
-                    <th className="sortable" style={{ padding: '6px 8px', border: '1px solid var(--border, #e5e7eb)', background: '#f9fafb', color: '#374151', fontWeight: 600, cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, zIndex: 1 }}>Time</th>
-                    <th className="sortable" style={{ padding: '6px 8px', border: '1px solid var(--border, #e5e7eb)', background: '#f9fafb', color: '#374151', fontWeight: 600, cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, zIndex: 1 }}>Type</th>
-                    <th className="sortable" style={{ padding: '6px 8px', border: '1px solid var(--border, #e5e7eb)', background: '#f9fafb', color: '#374151', fontWeight: 600, cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, zIndex: 1 }}>Timezone</th>
-                    <th className="sortable" style={{ padding: '6px 8px', border: '1px solid var(--border, #e5e7eb)', background: '#f9fafb', color: '#374151', fontWeight: 600, cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, zIndex: 1 }}>Location</th>
-                    <th className="sortable ta-right" style={{ padding: '6px 8px', border: '1px solid var(--border, #e5e7eb)', background: '#f9fafb', color: '#374151', fontWeight: 600, cursor: 'pointer', userSelect: 'none', textAlign: 'right', position: 'sticky', top: 0, zIndex: 1 }}>Guests</th>
-                    <th className={`sortable ${sortKey === 'status' ? (sortDir === 'asc' ? 'sorted-asc' : 'sorted-desc') : ''}`} onClick={() => handleSort('status')} style={{ padding: '6px 8px', border: '1px solid var(--border, #e5e7eb)', background: '#f9fafb', color: '#374151', fontWeight: 600, cursor: 'pointer', userSelect: 'none', position: 'sticky', top: 0, zIndex: 1 }}>Status{sortKey === 'status' && (sortDir === 'asc' ? ' ▲' : ' ▼')}</th>
-                    <th className={`sortable ta-right ${sortKey === 'amount' ? (sortDir === 'asc' ? 'sorted-asc' : 'sorted-desc') : ''}`} onClick={() => handleSort('amount')} style={{ padding: '6px 8px', border: '1px solid var(--border, #e5e7eb)', background: '#f9fafb', color: '#374151', fontWeight: 600, cursor: 'pointer', userSelect: 'none', textAlign: 'right', position: 'sticky', top: 0, zIndex: 1 }}>Amount{sortKey === 'amount' && (sortDir === 'asc' ? ' ▲' : ' ▼')}</th>
-                    <th className={`sortable ta-right ${sortKey === 'due' ? (sortDir === 'asc' ? 'sorted-asc' : 'sorted-desc') : ''}`} onClick={() => handleSort('due')} style={{ padding: '6px 8px', border: '1px solid var(--border, #e5e7eb)', background: '#f9fafb', color: '#374151', fontWeight: 600, cursor: 'pointer', userSelect: 'none', textAlign: 'right', position: 'sticky', top: 0, zIndex: 1 }}>Due Date{sortKey === 'due' && (sortDir === 'asc' ? ' ▲' : ' ▼')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredInvoices.map(b => {
-                    const eventDate = b.EventDate ? new Date(b.EventDate) : null;
-                    const dateStr = eventDate ? formatDate(eventDate) : '';
-                    const name = b.VendorName || 'Vendor';
-                    const total = b.TotalAmount != null ? `$${Number(b.TotalAmount).toFixed(2)}` : '';
-                    const statusRaw = (b.InvoiceStatus || b.Status || '').toString().toLowerCase();
-                    const statusLabel = statusRaw === 'confirmed' ? 'Accepted' : (statusRaw.charAt(0).toUpperCase() + statusRaw.slice(1));
-                    const invNum = b.InvoiceNumber || '—';
-                    const due = b.DueDate ? formatDate(b.DueDate) : '—';
-                    const svc = b.ServicesSummary || '—';
-                    const typ = b.EventType || '';
-                    const loc = b.EventLocation || '';
-                    const tz = b.TimeZone || '';
-                    const guests = b.AttendeeCount != null ? b.AttendeeCount : '';
-                    
-                    let timeTxt = '';
-                    if (b.EventDate) {
-                      try {
-                        const bd = new Date(b.EventDate);
-                        const ed = b.EndDate ? new Date(b.EndDate) : null;
-                        const t1 = bd.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-                        const t2 = ed ? ed.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : null;
-                        timeTxt = t2 ? `${t1} — ${t2}` : `${t1}`;
-                      } catch {}
-                    }
-                    
-                    return (
-                      <tr key={b.InvoiceID || b.BookingID || `invoice-${b.InvoiceNumber}-${dateStr}`} style={{ borderBottom: '1px solid var(--border, #e5e7eb)' }}>
-                        <td className="nowrap ta-center" style={{ whiteSpace: 'nowrap', padding: '6px 8px', border: '1px solid var(--border, #e5e7eb)', background: 'var(--secondary, #fff)', textAlign: 'center' }}>
-                          <div className="inv-actions" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-                            <button 
-                              className="action-btn action-btn-view" 
-                              title="View invoice" 
-                              aria-label="View invoice" 
-                              onClick={() => handleViewInvoice(b)}
-                            >
-                              <i className="fas fa-eye" aria-hidden="true"></i>
-                            </button>
-                            <button 
-                              className="action-btn action-btn-view" 
-                              title="Download PDF" 
-                              aria-label="Download PDF" 
-                              onClick={() => handleDownloadInvoice(b)}
-                            >
-                              <i className="fas fa-download" aria-hidden="true"></i>
-                            </button>
-                          </div>
-                        </td>
-                        <td className="nowrap" style={{ whiteSpace: 'nowrap', color: '#111827', padding: '6px 8px', border: '1px solid var(--border, #e5e7eb)', background: 'var(--secondary, #fff)' }}>{invNum}</td>
-                        <td className="nowrap" style={{ whiteSpace: 'nowrap', color: '#374151', padding: '6px 8px', border: '1px solid var(--border, #e5e7eb)', background: 'var(--secondary, #fff)' }}>{dateStr}</td>
-                        <td className="nowrap" style={{ whiteSpace: 'nowrap', color: '#111827', padding: '6px 8px', border: '1px solid var(--border, #e5e7eb)', background: 'var(--secondary, #fff)' }}>{name}</td>
-                        <td className="nowrap" style={{ whiteSpace: 'nowrap', color: '#111827', padding: '6px 8px', border: '1px solid var(--border, #e5e7eb)', background: 'var(--secondary, #fff)' }}>{svc}</td>
-                        <td className="nowrap" style={{ whiteSpace: 'nowrap', color: '#6b7280', padding: '6px 8px', border: '1px solid var(--border, #e5e7eb)', background: 'var(--secondary, #fff)' }}>{timeTxt}</td>
-                        <td className="nowrap" style={{ whiteSpace: 'nowrap', color: '#6b7280', padding: '6px 8px', border: '1px solid var(--border, #e5e7eb)', background: 'var(--secondary, #fff)' }}>{typ}</td>
-                        <td className="nowrap" style={{ whiteSpace: 'nowrap', color: '#6b7280', padding: '6px 8px', border: '1px solid var(--border, #e5e7eb)', background: 'var(--secondary, #fff)' }}>{tz}</td>
-                        <td className="nowrap" style={{ whiteSpace: 'nowrap', color: '#6b7280', padding: '6px 8px', border: '1px solid var(--border, #e5e7eb)', background: 'var(--secondary, #fff)' }}>{loc}</td>
-                        <td className="ta-right nowrap" style={{ whiteSpace: 'nowrap', color: '#6b7280', textAlign: 'right', padding: '6px 8px', border: '1px solid var(--border, #e5e7eb)', background: 'var(--secondary, #fff)' }}>{guests}</td>
-                        <td className="nowrap" style={{ whiteSpace: 'nowrap', textTransform: 'capitalize', color: '#374151', padding: '6px 8px', border: '1px solid var(--border, #e5e7eb)', background: 'var(--secondary, #fff)' }}>{statusLabel}</td>
-                        <td className="ta-right nowrap" style={{ whiteSpace: 'nowrap', color: '#111827', textAlign: 'right', padding: '6px 8px', border: '1px solid var(--border, #e5e7eb)', background: 'var(--secondary, #fff)' }}>{total}</td>
-                        <td className="ta-right nowrap" style={{ whiteSpace: 'nowrap', color: '#374151', textAlign: 'right', padding: '6px 8px', border: '1px solid var(--border, #e5e7eb)', background: 'var(--secondary, #fff)' }}>{due}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          <span style={{ color: '#6b7280', fontSize: '14px' }}>{filteredInvoices.length} invoices</span>
         </div>
+
+        {/* Table */}
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>
+                <th onClick={() => handleSort('invoice')} style={{ padding: '14px 20px', textAlign: 'left', fontSize: '12px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.5px', background: '#fafafa', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                  Invoice {sortKey === 'invoice' && <span style={{ color: '#5e72e4' }}>{sortDir === 'asc' ? '↑' : '↓'}</span>}
+                </th>
+                <th onClick={() => handleSort('date')} style={{ padding: '14px 20px', textAlign: 'left', fontSize: '12px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.5px', background: '#fafafa', cursor: 'pointer', whiteSpace: 'nowrap', minWidth: '120px' }}>
+                  Date {sortKey === 'date' && <span style={{ color: '#5e72e4' }}>{sortDir === 'asc' ? '↑' : '↓'}</span>}
+                </th>
+                <th onClick={() => handleSort('name')} style={{ padding: '14px 20px', textAlign: 'left', fontSize: '12px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.5px', background: '#fafafa', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                  Vendor {sortKey === 'name' && <span style={{ color: '#5e72e4' }}>{sortDir === 'asc' ? '↑' : '↓'}</span>}
+                </th>
+                <th onClick={() => handleSort('service')} style={{ padding: '14px 20px', textAlign: 'left', fontSize: '12px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.5px', background: '#fafafa', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                  Service {sortKey === 'service' && <span style={{ color: '#5e72e4' }}>{sortDir === 'asc' ? '↑' : '↓'}</span>}
+                </th>
+                <th onClick={() => handleSort('status')} style={{ padding: '14px 20px', textAlign: 'center', fontSize: '12px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.5px', background: '#fafafa', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                  Status {sortKey === 'status' && <span style={{ color: '#5e72e4' }}>{sortDir === 'asc' ? '↑' : '↓'}</span>}
+                </th>
+                <th onClick={() => handleSort('amount')} style={{ padding: '14px 20px', textAlign: 'right', fontSize: '12px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.5px', background: '#fafafa', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                  Amount {sortKey === 'amount' && <span style={{ color: '#5e72e4' }}>{sortDir === 'asc' ? '↑' : '↓'}</span>}
+                </th>
+                <th style={{ padding: '14px 20px', textAlign: 'center', fontSize: '12px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.5px', background: '#fafafa', whiteSpace: 'nowrap' }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {paginatedInvoices.map((b, idx) => {
+                const invNum = b.InvoiceNumber || `INV-${b.InvoiceID || b.BookingID}`;
+                
+                // Try to get date from various fields, or extract from invoice number
+                let dateStr = 'N/A';
+                const issueDate = b.IssueDate || b.EventDate || b.CreatedAt || b.created_at;
+                if (issueDate) {
+                  dateStr = formatDate(issueDate);
+                } else if (invNum) {
+                  // Extract date from invoice number format: INV-XX-YYYYMMDDHHmmss
+                  const match = invNum.match(/(\d{4})(\d{2})(\d{2})/);
+                  if (match) {
+                    const [, year, month, day] = match;
+                    const extractedDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+                    if (!isNaN(extractedDate.getTime())) {
+                      dateStr = formatDate(extractedDate);
+                    }
+                  }
+                }
+                
+                const name = b.VendorName || 'Vendor';
+                const total = b.TotalAmount != null ? `$${Number(b.TotalAmount).toFixed(2)}` : '$0.00';
+                const statusRaw = (b.InvoiceStatus || b.Status || 'pending').toString().toLowerCase();
+                const statusLabel = statusRaw === 'confirmed' ? 'Accepted' : statusRaw.charAt(0).toUpperCase() + statusRaw.slice(1);
+                const svc = b.ServicesSummary || b.ServiceName || 'Service';
+                const statusStyle = getStatusStyle(statusRaw);
+                
+                return (
+                  <tr key={b.InvoiceID || b.BookingID || `invoice-${idx}`} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                    <td style={{ padding: '16px 20px' }}>
+                      <span style={{ fontWeight: 500, color: '#111827', fontSize: '14px' }}>{invNum}</span>
+                    </td>
+                    <td style={{ padding: '16px 20px', color: '#6b7280', fontSize: '14px', whiteSpace: 'nowrap', minWidth: '120px' }}>{dateStr}</td>
+                    <td style={{ padding: '16px 20px', fontWeight: 500, color: '#111827', fontSize: '14px' }}>{name}</td>
+                    <td style={{ padding: '16px 20px', color: '#6b7280', fontSize: '14px', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{svc}</td>
+                    <td style={{ padding: '16px 20px', textAlign: 'center' }}>
+                      <span style={{ 
+                        display: 'inline-block', 
+                        padding: '4px 12px', 
+                        borderRadius: '20px', 
+                        fontSize: '12px', 
+                        fontWeight: 500,
+                        background: statusStyle.bg, 
+                        color: statusStyle.color 
+                      }}>
+                        {statusLabel}
+                      </span>
+                    </td>
+                    <td style={{ padding: '16px 20px', textAlign: 'right', fontWeight: 600, color: '#111827', fontSize: '14px' }}>{total}</td>
+                    <td style={{ padding: '16px 20px', textAlign: 'center' }}>
+                      <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
+                        <button 
+                          onClick={() => handleViewInvoice(b)}
+                          style={{ 
+                            padding: '6px 12px', 
+                            background: '#5e72e4', 
+                            color: 'white',
+                            border: 'none', 
+                            borderRadius: '6px', 
+                            cursor: 'pointer', 
+                            fontSize: '12px',
+                            fontWeight: 500,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}
+                        >
+                          <i className="fas fa-eye" style={{ fontSize: '11px' }}></i> View
+                        </button>
+                        <button 
+                          onClick={() => handleDownloadInvoice(b)}
+                          style={{ 
+                            padding: '6px 12px', 
+                            background: 'white', 
+                            color: '#374151',
+                            border: '1px solid #e5e7eb', 
+                            borderRadius: '6px', 
+                            cursor: 'pointer', 
+                            fontSize: '12px',
+                            fontWeight: 500,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}
+                        >
+                          <i className="fas fa-download" style={{ fontSize: '11px' }}></i>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div style={{ 
+            padding: '16px 24px', 
+            borderTop: '1px solid #e5e7eb',
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center'
+          }}>
+            <span style={{ color: '#6b7280', fontSize: '14px' }}>
+              Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredInvoices.length)} of {filteredInvoices.length}
+            </span>
+            <div style={{ display: 'flex', gap: '4px' }}>
+              <button
+                onClick={() => setCurrentPage(1)}
+                disabled={currentPage === 1}
+                style={{ 
+                  padding: '6px 10px', 
+                  border: '1px solid #e5e7eb', 
+                  borderRadius: '6px', 
+                  background: 'white',
+                  color: currentPage === 1 ? '#d1d5db' : '#374151',
+                  cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                  fontSize: '13px'
+                }}
+              >
+                «
+              </button>
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                style={{ 
+                  padding: '6px 10px', 
+                  border: '1px solid #e5e7eb', 
+                  borderRadius: '6px', 
+                  background: 'white',
+                  color: currentPage === 1 ? '#d1d5db' : '#374151',
+                  cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                  fontSize: '13px'
+                }}
+              >
+                ‹
+              </button>
+              <span style={{ padding: '6px 12px', color: '#374151', fontSize: '13px' }}>
+                {currentPage} / {totalPages}
+              </span>
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                style={{ 
+                  padding: '6px 10px', 
+                  border: '1px solid #e5e7eb', 
+                  borderRadius: '6px', 
+                  background: 'white',
+                  color: currentPage === totalPages ? '#d1d5db' : '#374151',
+                  cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+                  fontSize: '13px'
+                }}
+              >
+                ›
+              </button>
+              <button
+                onClick={() => setCurrentPage(totalPages)}
+                disabled={currentPage === totalPages}
+                style={{ 
+                  padding: '6px 10px', 
+                  border: '1px solid #e5e7eb', 
+                  borderRadius: '6px', 
+                  background: 'white',
+                  color: currentPage === totalPages ? '#d1d5db' : '#374151',
+                  cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+                  fontSize: '13px'
+                }}
+              >
+                »
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

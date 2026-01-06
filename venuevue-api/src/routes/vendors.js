@@ -376,6 +376,48 @@ router.get('/trending', async (req, res) => {
   }
 });
 
+// Simple in-memory cache for Google reviews (expires after 1 hour)
+const googleReviewsCache = new Map();
+const GOOGLE_CACHE_TTL = 60 * 60 * 1000; // 1 hour
+
+// Helper function to fetch Google reviews for a vendor
+async function fetchGoogleReviews(googlePlaceId) {
+  if (!googlePlaceId) return null;
+  
+  // Check cache first
+  const cached = googleReviewsCache.get(googlePlaceId);
+  if (cached && Date.now() - cached.timestamp < GOOGLE_CACHE_TTL) {
+    return cached.data;
+  }
+  
+  const googleApiKey = process.env.GOOGLE_PLACES_API_KEY || process.env.GOOGLE_MAPS_API_KEY;
+  if (!googleApiKey) return null;
+  
+  try {
+    const response = await axios.get('https://maps.googleapis.com/maps/api/place/details/json', {
+      params: {
+        place_id: googlePlaceId,
+        fields: 'rating,user_ratings_total',
+        key: googleApiKey
+      },
+      timeout: 3000 // 3 second timeout
+    });
+    
+    if (response.data.status === 'OK') {
+      const data = {
+        googleRating: response.data.result.rating || 0,
+        googleReviewCount: response.data.result.user_ratings_total || 0
+      };
+      // Cache the result
+      googleReviewsCache.set(googlePlaceId, { data, timestamp: Date.now() });
+      return data;
+    }
+  } catch (err) {
+    // Silently fail - Google reviews are optional
+  }
+  return null;
+}
+
 // Helper function to enhance vendor data with Cloudinary images
 async function enhanceVendorWithImages(vendor, pool) {
   try {
@@ -406,11 +448,21 @@ async function enhanceVendorWithImages(vendor, pool) {
     // Get featured image (primary image or first image)
     const featuredImage = images.find(img => img.isPrimary) || images[0] || null;
     
+    // Fetch Google reviews if vendor has a googlePlaceId and no in-app reviews
+    let googleData = {};
+    if (vendor.googlePlaceId && (!vendor.totalReviews || vendor.totalReviews === 0)) {
+      const googleReviews = await fetchGoogleReviews(vendor.googlePlaceId);
+      if (googleReviews) {
+        googleData = googleReviews;
+      }
+    }
+    
     return {
       ...vendor,
       featuredImage: featuredImage,
       images: images,
-      imageCount: images.length
+      imageCount: images.length,
+      ...googleData
     };
 
   } catch (error) {
@@ -578,7 +630,9 @@ router.get('/', async (req, res) => {
       // For discovery sections
       createdAt: vendor.CreatedAt || null,
       avgResponseMinutes: vendor.AvgResponseMinutes || null,
-      profileViews: vendor.ProfileViews || 0
+      profileViews: vendor.ProfileViews || 0,
+      // Google reviews data
+      googlePlaceId: vendor.GooglePlaceId || vendor.GooglePlaceID || null
     }));
 
     // City filtering is now handled by the stored procedure
@@ -639,38 +693,44 @@ router.get('/', async (req, res) => {
         analyticsBadgeType: 'trending'
       });
       
-      // Most Booked - sorted by booking count
+      // Most Booked - sorted by booking count (only show vendors with actual bookings)
       const mostBookedVendors = [...formattedVendors]
+        .filter(v => v.bookingCount && v.bookingCount > 0)
         .sort((a, b) => (b.bookingCount || 0) - (a.bookingCount || 0))
         .slice(0, 20)
         .map(v => ({
           ...v,
-          analyticsBadge: v.bookingCount > 0 ? `${v.bookingCount} bookings this month` : 'Popular choice'
+          analyticsBadge: `${v.bookingCount} booking${v.bookingCount > 1 ? 's' : ''} this month`
         }));
-      discoverySections.push({
-        id: 'most-booked',
-        title: 'Most Booked',
-        description: 'Vendors with the most bookings',
-        vendors: mostBookedVendors,
-        showAnalyticsBadge: true,
-        analyticsBadgeType: 'bookings'
-      });
+      if (mostBookedVendors.length > 0) {
+        discoverySections.push({
+          id: 'most-booked',
+          title: 'Most Booked',
+          description: 'Vendors with the most bookings',
+          vendors: mostBookedVendors,
+          showAnalyticsBadge: true,
+          analyticsBadgeType: 'bookings'
+        });
+      }
       
       // Quick Responders - show vendors with response time data
-      // If no real data, show top vendors with estimated response times
+      // Include vendors with response times up to 24 hours (1440 minutes)
       let responsiveVendors = [...formattedVendors]
-        .filter(v => v.avgResponseMinutes && v.avgResponseMinutes > 0 && v.avgResponseMinutes <= 120)
+        .filter(v => v.avgResponseMinutes != null && v.avgResponseMinutes >= 0)
         .sort((a, b) => (a.avgResponseMinutes || 999) - (b.avgResponseMinutes || 999))
         .slice(0, 8)
         .map(v => {
           const mins = v.avgResponseMinutes;
           let responseText;
-          if (mins < 60) {
+          if (mins === 0) {
+            responseText = 'Replies instantly';
+          } else if (mins < 60) {
             responseText = `Replies in ~${mins} min`;
-          } else if (mins < 120) {
-            responseText = `Replies in ~${Math.round(mins / 60)} hr`;
+          } else if (mins < 1440) {
+            const hours = Math.round(mins / 60);
+            responseText = `Replies in ~${hours} hr${hours > 1 ? 's' : ''}`;
           } else {
-            responseText = 'Replies within a few hours';
+            responseText = 'Replies within a day';
           }
           return {
             ...v,
@@ -678,24 +738,7 @@ router.get('/', async (req, res) => {
           };
         });
       
-      // If no vendors with real response data, show top-rated vendors as "typically responsive"
-      if (responsiveVendors.length < 4) {
-        const topResponsive = [...formattedVendors]
-          .filter(v => !responsiveVendors.find(rv => rv.id === v.id))
-          .sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0))
-          .slice(0, 8 - responsiveVendors.length)
-          .map((v, idx) => {
-            // Assign estimated response times based on rating/activity
-            const estimatedMins = [30, 45, 60, 90][idx % 4];
-            return {
-              ...v,
-              analyticsBadge: estimatedMins < 60 ? `Typically replies in ~${estimatedMins} min` : `Typically replies in ~1 hr`
-            };
-          });
-        responsiveVendors = [...responsiveVendors, ...topResponsive];
-      }
-      
-      // Always add Quick Responders section
+      // Add Quick Responders section if we have vendors with response data
       if (responsiveVendors.length > 0) {
         discoverySections.push({
           id: 'quick-responders',
@@ -1128,7 +1171,9 @@ router.get('/search-by-categories', async (req, res) => {
         // For discovery sections
         createdAt: vendor.CreatedAt || null,
         avgResponseMinutes: vendor.AvgResponseMinutes || null,
-        profileViews: vendor.ProfileViews || 0
+        profileViews: vendor.ProfileViews || 0,
+        // Google reviews data
+        googlePlaceId: vendor.GooglePlaceId || vendor.GooglePlaceID || null
       }));
 
       // City filtering is now handled by the stored procedure
@@ -1190,58 +1235,49 @@ router.get('/search-by-categories', async (req, res) => {
         analyticsBadgeType: 'trending'
       });
       
-      // Most Booked - sorted by booking count
+      // Most Booked - sorted by booking count (only show vendors with actual bookings)
       const mostBookedVendors = [...allVendors]
+        .filter(v => v.bookingCount && v.bookingCount > 0)
         .sort((a, b) => (b.bookingCount || 0) - (a.bookingCount || 0))
         .slice(0, 20)
         .map(v => ({
           ...v,
-          analyticsBadge: v.bookingCount > 0 ? `${v.bookingCount} bookings this month` : 'Popular choice'
+          analyticsBadge: `${v.bookingCount} booking${v.bookingCount > 1 ? 's' : ''} this month`
         }));
-      discoverySections.push({
-        id: 'most-booked',
-        title: 'Most Booked',
-        description: 'Vendors with the most bookings',
-        vendors: mostBookedVendors,
-        showAnalyticsBadge: true,
-        analyticsBadgeType: 'bookings'
-      });
+      if (mostBookedVendors.length > 0) {
+        discoverySections.push({
+          id: 'most-booked',
+          title: 'Most Booked',
+          description: 'Vendors with the most bookings',
+          vendors: mostBookedVendors,
+          showAnalyticsBadge: true,
+          analyticsBadgeType: 'bookings'
+        });
+      }
       
       // Quick Responders - show vendors with response time data
+      // Include vendors with response times up to 24 hours (1440 minutes)
       let responsiveVendors = [...allVendors]
-        .filter(v => v.avgResponseMinutes && v.avgResponseMinutes > 0 && v.avgResponseMinutes <= 120)
+        .filter(v => v.avgResponseMinutes != null && v.avgResponseMinutes >= 0)
         .sort((a, b) => (a.avgResponseMinutes || 999) - (b.avgResponseMinutes || 999))
         .slice(0, 8)
         .map(v => {
           const mins = v.avgResponseMinutes;
           let responseText;
-          if (mins < 60) {
+          if (mins === 0) {
+            responseText = 'Replies instantly';
+          } else if (mins < 60) {
             responseText = `Replies in ~${mins} min`;
-          } else if (mins < 120) {
-            responseText = `Replies in ~${Math.round(mins / 60)} hr`;
+          } else if (mins < 1440) {
+            const hours = Math.round(mins / 60);
+            responseText = `Replies in ~${hours} hr${hours > 1 ? 's' : ''}`;
           } else {
-            responseText = 'Replies within a few hours';
+            responseText = 'Replies within a day';
           }
           return { ...v, analyticsBadge: responseText };
         });
       
-      // If no vendors with real response data, show top-rated vendors as "typically responsive"
-      if (responsiveVendors.length < 4) {
-        const topResponsive = [...allVendors]
-          .filter(v => !responsiveVendors.find(rv => rv.id === v.id))
-          .sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0))
-          .slice(0, 8 - responsiveVendors.length)
-          .map((v, idx) => {
-            const estimatedMins = [30, 45, 60, 90][idx % 4];
-            return {
-              ...v,
-              analyticsBadge: estimatedMins < 60 ? `Typically replies in ~${estimatedMins} min` : `Typically replies in ~1 hr`
-            };
-          });
-        responsiveVendors = [...responsiveVendors, ...topResponsive];
-      }
-      
-      // Always add Quick Responders section
+      // Add Quick Responders section if we have vendors with response data
       if (responsiveVendors.length > 0) {
         discoverySections.push({
           id: 'quick-responders',

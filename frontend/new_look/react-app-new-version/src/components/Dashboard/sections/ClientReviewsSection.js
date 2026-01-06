@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { API_BASE_URL } from '../../../config';
+import { showBanner } from '../../../utils/banners';
 
 function ClientReviewsSection() {
   const { currentUser } = useAuth();
@@ -116,6 +117,7 @@ function ClientReviewsSection() {
       const data = await resp.json();
       if (data.success) {
         setShowReviewModal(false);
+        showBanner('Your review has been submitted successfully!', 'success');
         loadData(); // Reload to update lists
       } else {
         alert(data.message || 'Failed to submit review');

@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import { API_BASE_URL } from '../../../config';
 import { useVendorOnlineStatus } from '../../../hooks/useOnlineStatus';
 import { buildVendorProfileUrl } from '../../../utils/urlHelpers';
 
 function ClientMessagesSection({ onSectionChange }) {
+  const [searchParams] = useSearchParams();
   const { currentUser } = useAuth();
   const [conversations, setConversations] = useState([]);
   const [selectedConversation, setSelectedConversation] = useState(null);
@@ -107,6 +109,18 @@ function ClientMessagesSection({ onSectionChange }) {
     loadConversations();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser?.id]);
+
+  // Handle URL parameter for conversationId - auto-select the conversation
+  useEffect(() => {
+    const conversationIdParam = searchParams.get('conversationId');
+    if (conversationIdParam && conversations.length > 0) {
+      const targetConv = conversations.find(c => String(c.id) === conversationIdParam);
+      if (targetConv) {
+        setSelectedConversation(targetConv);
+        hasAutoSelected.current = true;
+      }
+    }
+  }, [searchParams, conversations]);
 
   // Load messages when conversation changes
   useEffect(() => {
