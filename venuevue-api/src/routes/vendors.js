@@ -6180,10 +6180,14 @@ router.get('/features/vendor/:vendorProfileId/summary', async (req, res) => {
 // (Merged from reviews.js)
 // ============================================
 
-// POST /api/vendors/reviews/submit - Submit a review for a vendor
+// POST /api/vendors/reviews/submit - Submit a review for a vendor with survey
 router.post('/reviews/submit', async (req, res) => {
   try {
-    const { userId, vendorProfileId, rating, comment } = req.body;
+    const { 
+      userId, vendorProfileId, bookingId, rating, title, comment,
+      qualityRating, communicationRating, valueRating, 
+      punctualityRating, professionalismRating, wouldRecommend 
+    } = req.body;
 
     if (!userId || !vendorProfileId || !rating || !comment) {
       return res.status(400).json({ 
@@ -6197,10 +6201,26 @@ router.post('/reviews/submit', async (req, res) => {
     
     request.input('UserID', sql.Int, userId);
     request.input('VendorProfileID', sql.Int, vendorProfileId);
+    request.input('BookingID', sql.Int, bookingId || null);
     request.input('Rating', sql.Int, rating);
+    request.input('Title', sql.NVarChar(100), title || null);
     request.input('Comment', sql.NVarChar(sql.MAX), comment);
+    request.input('QualityRating', sql.TinyInt, qualityRating || null);
+    request.input('CommunicationRating', sql.TinyInt, communicationRating || null);
+    request.input('ValueRating', sql.TinyInt, valueRating || null);
+    request.input('PunctualityRating', sql.TinyInt, punctualityRating || null);
+    request.input('ProfessionalismRating', sql.TinyInt, professionalismRating || null);
+    request.input('WouldRecommend', sql.Bit, wouldRecommend != null ? wouldRecommend : null);
     
     const result = await request.execute('vendors.sp_SubmitReview');
+    
+    // Check for error message (already reviewed)
+    if (result.recordset[0]?.ErrorMessage) {
+      return res.status(400).json({
+        success: false,
+        message: result.recordset[0].ErrorMessage
+      });
+    }
     
     res.json({
       success: true,

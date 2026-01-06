@@ -22,15 +22,35 @@ SELECT
     f.FavoriteID,
     f.UserID,
     f.VendorProfileID,
+    v.BusinessName,
     v.BusinessName AS VendorName,
     v.BusinessDescription,
-    (SELECT STRING_AGG(vc.Category, ', ') FROM vendors.VendorCategories vc WHERE vc.VendorProfileID = v.VendorProfileID) AS Categories,
-    (SELECT AVG(CAST(r.Rating AS DECIMAL(3,1))) FROM vendors.Reviews r WHERE r.VendorProfileID = v.VendorProfileID AND r.IsApproved = 1) AS AverageRating,
-    (SELECT COUNT(*) FROM vendors.Reviews r WHERE r.VendorProfileID = v.VendorProfileID AND r.IsApproved = 1) AS ReviewCount,
-    (SELECT TOP 1 p.ImageURL FROM vendors.VendorPortfolio p WHERE p.VendorProfileID = v.VendorProfileID ORDER BY p.DisplayOrder) AS PortfolioImage,
+    v.City,
+    v.State,
+    v.Country,
+    v.LogoURL,
+    v.IsPremium,
+    v.IsEcoFriendly,
+    v.IsAwardWinning,
+    COALESCE(v.AvgRating, (SELECT AVG(CAST(r.Rating AS DECIMAL(3,1))) FROM vendors.Reviews r WHERE r.VendorProfileID = v.VendorProfileID AND r.IsApproved = 1)) AS averageRating,
+    COALESCE(v.TotalReviews, (SELECT COUNT(*) FROM vendors.Reviews r WHERE r.VendorProfileID = v.VendorProfileID AND r.IsApproved = 1)) AS totalReviews,
+    COALESCE(
+        (SELECT TOP 1 vi.ImageURL FROM vendors.VendorImages vi WHERE vi.VendorProfileID = v.VendorProfileID AND vi.ImageURL NOT LIKE '%placehold%' ORDER BY vi.ImageID),
+        (SELECT TOP 1 p.ImageURL FROM vendors.VendorPortfolio p WHERE p.VendorProfileID = v.VendorProfileID AND p.ImageURL NOT LIKE '%placehold%' ORDER BY p.DisplayOrder),
+        (SELECT TOP 1 vi.ImageURL FROM vendors.VendorImages vi WHERE vi.VendorProfileID = v.VendorProfileID ORDER BY vi.ImageID),
+        (SELECT TOP 1 p.ImageURL FROM vendors.VendorPortfolio p WHERE p.VendorProfileID = v.VendorProfileID ORDER BY p.DisplayOrder)
+    ) AS FeaturedImageURL,
+    COALESCE(
+        (SELECT TOP 1 vi.ImageURL FROM vendors.VendorImages vi WHERE vi.VendorProfileID = v.VendorProfileID AND vi.ImageURL NOT LIKE '%placehold%' ORDER BY vi.ImageID),
+        (SELECT TOP 1 p.ImageURL FROM vendors.VendorPortfolio p WHERE p.VendorProfileID = v.VendorProfileID AND p.ImageURL NOT LIKE '%placehold%' ORDER BY p.DisplayOrder),
+        (SELECT TOP 1 vi.ImageURL FROM vendors.VendorImages vi WHERE vi.VendorProfileID = v.VendorProfileID ORDER BY vi.ImageID),
+        (SELECT TOP 1 p.ImageURL FROM vendors.VendorPortfolio p WHERE p.VendorProfileID = v.VendorProfileID ORDER BY p.DisplayOrder)
+    ) AS PortfolioImage,
+    (SELECT MIN(s.Price) FROM vendors.Services s WHERE s.VendorProfileID = v.VendorProfileID AND s.IsActive = 1) AS MinPrice,
     f.CreatedAt
 FROM users.Favorites f
-JOIN vendors.VendorProfiles v ON f.VendorProfileID = v.VendorProfileID;
+JOIN vendors.VendorProfiles v ON f.VendorProfileID = v.VendorProfileID
+WHERE v.IsVisible = 1;
 GO
 
 PRINT 'View [users].[vw_UserFavorites] created successfully.';

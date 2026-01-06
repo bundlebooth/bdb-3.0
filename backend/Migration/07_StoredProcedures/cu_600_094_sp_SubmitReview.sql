@@ -20,14 +20,51 @@ GO
 CREATE   PROCEDURE [vendors].[sp_SubmitReview]
     @UserID INT,
     @VendorProfileID INT,
+    @BookingID INT = NULL,
     @Rating INT,
-    @Comment NVARCHAR(MAX)
+    @Title NVARCHAR(100) = NULL,
+    @Comment NVARCHAR(MAX),
+    @QualityRating TINYINT = NULL,
+    @CommunicationRating TINYINT = NULL,
+    @ValueRating TINYINT = NULL,
+    @PunctualityRating TINYINT = NULL,
+    @ProfessionalismRating TINYINT = NULL,
+    @WouldRecommend BIT = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
 
-    INSERT INTO vendors.Reviews (UserID, VendorProfileID, Rating, Comment, CreatedAt)
-    VALUES (@UserID, @VendorProfileID, @Rating, @Comment, GETDATE());
+    -- Check if user already reviewed this booking
+    IF @BookingID IS NOT NULL AND EXISTS (
+        SELECT 1 FROM vendors.Reviews 
+        WHERE UserID = @UserID AND BookingID = @BookingID
+    )
+    BEGIN
+        -- Return error - already reviewed
+        SELECT NULL AS ReviewID, 'You have already reviewed this booking' AS ErrorMessage;
+        RETURN;
+    END
+
+    INSERT INTO vendors.Reviews (
+        UserID, VendorProfileID, BookingID, Rating, Title, Comment,
+        QualityRating, CommunicationRating, ValueRating, 
+        PunctualityRating, ProfessionalismRating, WouldRecommend,
+        IsApproved, CreatedAt
+    )
+    VALUES (
+        @UserID, @VendorProfileID, @BookingID, @Rating, @Title, @Comment,
+        @QualityRating, @CommunicationRating, @ValueRating,
+        @PunctualityRating, @ProfessionalismRating, @WouldRecommend,
+        1, GETDATE()
+    );
+
+    -- Update vendor's average rating and total reviews
+    UPDATE vendors.VendorProfiles
+    SET 
+        AvgRating = (SELECT AVG(CAST(Rating AS DECIMAL(3,2))) FROM vendors.Reviews WHERE VendorProfileID = @VendorProfileID AND IsApproved = 1),
+        TotalReviews = (SELECT COUNT(*) FROM vendors.Reviews WHERE VendorProfileID = @VendorProfileID AND IsApproved = 1),
+        LastReviewDate = GETDATE()
+    WHERE VendorProfileID = @VendorProfileID;
 
     SELECT TOP 1 *
     FROM vendors.Reviews

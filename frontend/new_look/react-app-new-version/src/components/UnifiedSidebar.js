@@ -14,7 +14,8 @@ function UnifiedSidebar({ isOpen, onClose }) {
   const [vendorLogoUrl, setVendorLogoUrl] = useState(null);
   const [notificationCounts, setNotificationCounts] = useState({
     pendingBookings: 0,
-    unreadMessages: 0
+    unreadMessages: 0,
+    pendingReviews: 0
   });
   
   // Get view mode from localStorage
@@ -104,6 +105,7 @@ function UnifiedSidebar({ isOpen, onClose }) {
       try {
         let pendingBookings = 0;
         let unreadMessages = 0;
+        let pendingReviews = 0;
         
         // Get pending bookings count based on mode (use state, not localStorage)
         if (isVendorMode && currentUser?.vendorProfileId) {
@@ -127,6 +129,22 @@ function UnifiedSidebar({ isOpen, onClose }) {
             pendingBookings = (bookings || []).filter(b => 
               (b.Status || '').toLowerCase() === 'pending'
             ).length;
+            
+            // Calculate pending reviews (past paid bookings not yet reviewed)
+            const reviewsResp = await fetch(`${API_BASE_URL}/users/${currentUser.id}/reviews`, {
+              headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+            });
+            const reviewsData = reviewsResp.ok ? await reviewsResp.json() : [];
+            const reviewedBookingIds = new Set((Array.isArray(reviewsData) ? reviewsData : []).map(r => r.BookingID));
+            const now = new Date();
+            pendingReviews = (bookings || []).filter(b => {
+              const eventDate = new Date(b.EventDate);
+              const isPast = eventDate < now;
+              const isPaid = b.FullAmountPaid === true || b.FullAmountPaid === 1 || 
+                           (b.Status || '').toLowerCase() === 'paid';
+              const notReviewed = !reviewedBookingIds.has(b.BookingID);
+              return isPast && isPaid && notReviewed;
+            }).length;
           }
         }
         
@@ -165,7 +183,7 @@ function UnifiedSidebar({ isOpen, onClose }) {
           } catch (e) { console.error('Error fetching vendor messages:', e); }
         }
         
-        setNotificationCounts({ pendingBookings, unreadMessages });
+        setNotificationCounts({ pendingBookings, unreadMessages, pendingReviews });
       } catch (error) {
         console.error('Error loading notification counts:', error);
       }
@@ -332,17 +350,25 @@ function UnifiedSidebar({ isOpen, onClose }) {
             <i className="fas fa-file-invoice-dollar"></i>
             <span>Invoices</span>
           </button>
+          <button className={`unified-sidebar-item ${currentSection === 'favorites' ? 'active' : ''}`} onClick={() => handleNavigate('/dashboard?section=favorites')}>
+            {currentSection === 'favorites' && <span className="unified-sidebar-active-dot"></span>}
+            <i className="fas fa-heart"></i>
+            <span>Favorites</span>
+          </button>
+          <button className={`unified-sidebar-item ${currentSection === 'reviews' || currentSection === 'vendor-reviews' ? 'active' : ''}`} onClick={() => handleNavigate('/dashboard?section=reviews')}>
+            {(currentSection === 'reviews' || currentSection === 'vendor-reviews') && <span className="unified-sidebar-active-dot"></span>}
+            <i className="fas fa-star"></i>
+            <span>Reviews</span>
+            {notificationCounts.pendingReviews > 0 && (
+              <span className="unified-sidebar-badge">{notificationCounts.pendingReviews}</span>
+            )}
+          </button>
           {hasVendorProfile && (
             <>
               <button className={`unified-sidebar-item ${currentSection === 'vendor-business-profile' ? 'active' : ''}`} onClick={() => handleNavigate('/dashboard?section=business-profile')}>
                 {currentSection === 'vendor-business-profile' && <span className="unified-sidebar-active-dot"></span>}
                 <i className="fas fa-store"></i>
                 <span>Business Profile</span>
-              </button>
-              <button className={`unified-sidebar-item ${currentSection === 'reviews' || currentSection === 'vendor-reviews' ? 'active' : ''}`} onClick={() => handleNavigate('/dashboard?section=reviews')}>
-                {(currentSection === 'reviews' || currentSection === 'vendor-reviews') && <span className="unified-sidebar-active-dot"></span>}
-                <i className="fas fa-star"></i>
-                <span>Reviews</span>
               </button>
               <button className={`unified-sidebar-item ${currentSection === 'vendor-analytics' ? 'active' : ''}`} onClick={() => handleNavigate('/dashboard?section=analytics')}>
                 {currentSection === 'vendor-analytics' && <span className="unified-sidebar-active-dot"></span>}

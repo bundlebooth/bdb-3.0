@@ -112,7 +112,8 @@ BEGIN
     ORDER BY DisplayOrder;
 
     -- Vendor reviews (recordset 5)
-    SELECT ReviewID, ReviewerName, Rating, Comment, CreatedAt
+    SELECT ReviewID, ReviewerName, ReviewerAvatar, Rating, Title, Comment, CreatedAt,
+           QualityRating, CommunicationRating, ValueRating, PunctualityRating, ProfessionalismRating, WouldRecommend
     FROM vw_VendorReviews 
     WHERE VendorProfileID = @VendorProfileID 
     ORDER BY CreatedAt DESC;

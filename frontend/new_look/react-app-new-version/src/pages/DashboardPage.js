@@ -58,7 +58,8 @@ function DashboardPage() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [notificationCounts, setNotificationCounts] = useState({
     pendingBookings: 0,
-    unreadMessages: 0
+    unreadMessages: 0,
+    pendingReviews: 0
   });
   const [vendorLogoUrl, setVendorLogoUrl] = useState(null);
   // Get view mode from localStorage
@@ -160,6 +161,7 @@ function DashboardPage() {
       try {
         let pendingBookings = 0;
         let unreadMessages = 0;
+        let pendingReviews = 0;
         
         // Get pending bookings count based on view mode
         if (showVendorView && currentUser?.vendorProfileId) {
@@ -181,6 +183,22 @@ function DashboardPage() {
             pendingBookings = (bookings || []).filter(b => 
               (b.Status || '').toLowerCase() === 'pending'
             ).length;
+            
+            // Calculate pending reviews (past paid bookings not yet reviewed)
+            const reviewsResp = await fetch(`${API_BASE_URL}/users/${currentUser.id}/reviews`, {
+              headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+            });
+            const reviewsData = reviewsResp.ok ? await reviewsResp.json() : [];
+            const reviewedBookingIds = new Set((Array.isArray(reviewsData) ? reviewsData : []).map(r => r.BookingID));
+            const now = new Date();
+            pendingReviews = (bookings || []).filter(b => {
+              const eventDate = new Date(b.EventDate);
+              const isPast = eventDate < now;
+              const isPaid = b.FullAmountPaid === true || b.FullAmountPaid === 1 || 
+                           (b.Status || '').toLowerCase() === 'paid';
+              const notReviewed = !reviewedBookingIds.has(b.BookingID);
+              return isPast && isPaid && notReviewed;
+            }).length;
           }
         }
         
@@ -219,7 +237,7 @@ function DashboardPage() {
           } catch (e) { console.error('Error fetching vendor messages:', e); }
         }
         
-        setNotificationCounts({ pendingBookings, unreadMessages });
+        setNotificationCounts({ pendingBookings, unreadMessages, pendingReviews });
       } catch (error) {
         console.error('Error loading notification counts:', error);
       }
@@ -534,6 +552,8 @@ function DashboardPage() {
                 badgeCount = notificationCounts.pendingBookings;
               } else if (tab.id === 'messages' && notificationCounts.unreadMessages > 0) {
                 badgeCount = notificationCounts.unreadMessages;
+              } else if (tab.id === 'reviews' && notificationCounts.pendingReviews > 0) {
+                badgeCount = notificationCounts.pendingReviews;
               }
               
               return (

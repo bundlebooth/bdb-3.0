@@ -77,7 +77,7 @@ function ClientDashboardSection({ data, loading, onSectionChange, onPayNow }) {
     const showPayNow = s === 'confirmed' && !isPaid;
     const showPayBalance = s === 'confirmed' && isDepositOnly;
     const showPaid = isPaid || s === 'paid';
-    const showInvoice = s === 'confirmed' || s === 'paid' || isPaid;
+    const showInvoice = s === 'paid' || isPaid;
     
     // Status configuration matching bookings page exactly
     const statusMap = {

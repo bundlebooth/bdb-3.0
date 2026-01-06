@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { API_BASE_URL } from '../../../config';
 import { useVendorOnlineStatus } from '../../../hooks/useOnlineStatus';
+import { buildVendorProfileUrl } from '../../../utils/urlHelpers';
 
 function ClientMessagesSection({ onSectionChange }) {
   const { currentUser } = useAuth();
@@ -290,7 +291,23 @@ function ClientMessagesSection({ onSectionChange }) {
             {/* Chat header with online status */}
             <div id="chat-header" style={{ padding: '1rem', borderBottom: '1px solid var(--border)', background: 'white' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div id="chat-partner-name" style={{ fontWeight: 600, color: selectedConversation ? '#111' : '#666' }}>
+                <div 
+                  id="chat-partner-name" 
+                  onClick={() => {
+                    if (selectedConversation?.VendorProfileID) {
+                      const url = buildVendorProfileUrl(selectedConversation.VendorProfileID, selectedConversation.vendorPublicId, selectedConversation.OtherPartyName);
+                      window.open(url, '_blank');
+                    }
+                  }}
+                  style={{ 
+                    fontWeight: 600, 
+                    color: selectedConversation ? '#5e72e4' : '#666',
+                    cursor: selectedConversation?.VendorProfileID ? 'pointer' : 'default',
+                    textDecoration: selectedConversation?.VendorProfileID ? 'none' : 'none'
+                  }}
+                  onMouseEnter={(e) => { if (selectedConversation?.VendorProfileID) e.currentTarget.style.textDecoration = 'underline'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.textDecoration = 'none'; }}
+                >
                   {selectedConversation ? (selectedConversation.OtherPartyName || 'Unknown') : 'Select a conversation'}
                 </div>
                 {/* Online status indicator */}

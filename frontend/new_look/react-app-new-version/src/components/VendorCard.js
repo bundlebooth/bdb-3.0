@@ -27,6 +27,8 @@ const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavori
     
     // Add other image fields if not already included
     const otherImages = [
+      vendor.PortfolioImage,
+      vendor.portfolioImage,
       vendor.image,
       vendor.ImageURL,
       vendor.imageURL,
@@ -165,7 +167,7 @@ const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavori
       }}
     >
       {/* Image Container - Square aspect ratio like Airbnb */}
-      <div style={{ position: 'relative', width: '100%', aspectRatio: '1 / 1', overflow: 'hidden', borderRadius: '12px' }}>
+      <div style={{ position: 'relative', width: '100%', paddingTop: '100%', overflow: 'hidden', borderRadius: '12px', background: '#f3f4f6' }}>
         <img
           src={imageUrl}
           alt={vendor.BusinessName || vendor.name}
@@ -173,6 +175,9 @@ const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavori
             e.target.src = 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png';
           }}
           style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
             width: '100%',
             height: '100%',
             objectFit: 'cover',

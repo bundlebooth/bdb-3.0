@@ -939,6 +939,64 @@ function VendorProfilePage() {
           </div>
         </div>
 
+        {/* Average Survey Ratings - Only show for PlanBeau reviews */}
+        {!showGoogleReviews && reviews && reviews.length > 0 && (() => {
+          // Calculate averages for each survey category
+          const surveyCategories = [
+            { key: 'QualityRating', label: 'Quality of Service' },
+            { key: 'CommunicationRating', label: 'Communication' },
+            { key: 'ValueRating', label: 'Value for Money' },
+            { key: 'PunctualityRating', label: 'Punctuality' },
+            { key: 'ProfessionalismRating', label: 'Professionalism' }
+          ];
+          
+          const averages = surveyCategories.map(cat => {
+            const validRatings = reviews.filter(r => r[cat.key] != null && r[cat.key] > 0);
+            if (validRatings.length === 0) return null;
+            const avg = validRatings.reduce((sum, r) => sum + r[cat.key], 0) / validRatings.length;
+            return { label: cat.label, value: avg };
+          }).filter(Boolean);
+          
+          if (averages.length === 0) return null;
+          
+          return (
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+              gap: '16px',
+              padding: '20px',
+              background: '#f9fafb',
+              borderRadius: '12px',
+              marginBottom: '1.5rem'
+            }}>
+              {averages.map(avg => (
+                <div key={avg.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '14px', color: '#374151' }}>{avg.label}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ 
+                      width: '100px', 
+                      height: '6px', 
+                      background: '#e5e7eb', 
+                      borderRadius: '3px',
+                      overflow: 'hidden'
+                    }}>
+                      <div style={{ 
+                        width: `${(avg.value / 5) * 100}%`, 
+                        height: '100%', 
+                        background: '#5e72e4',
+                        borderRadius: '3px'
+                      }} />
+                    </div>
+                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#111827', minWidth: '28px' }}>
+                      {avg.value.toFixed(1)}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
+
         {/* Review Content */}
         <div>
           {googleReviewsLoading ? (
@@ -985,10 +1043,13 @@ function VendorProfilePage() {
                         <div style={{ fontSize: '0.85rem', color: 'var(--text-light)' }}>
                           {showGoogleReviews 
                             ? (review.relative_time_description || '')
-                            : new Date(review.CreatedAt).toLocaleDateString('en-US', { 
-                                year: 'numeric', 
-                                month: 'long' 
-                              })
+                            : (() => {
+                                const rawDate = review.CreatedAt || review.createdAt || review.ReviewDate;
+                                if (!rawDate) return '';
+                                const date = new Date(rawDate);
+                                if (isNaN(date.getTime())) return '';
+                                return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+                              })()
                           }
                         </div>
                       </div>

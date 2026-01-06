@@ -25,13 +25,26 @@ BEGIN
 
     SELECT 
         r.ReviewID,
+        r.UserID,
         u.Name AS ReviewerName,
+        u.ProfileImageURL AS ReviewerAvatar,
         r.Rating,
+        r.Title,
         r.Comment,
+        r.Response,
+        r.ResponseDate,
+        r.QualityRating,
+        r.CommunicationRating,
+        r.ValueRating,
+        r.PunctualityRating,
+        r.ProfessionalismRating,
+        r.WouldRecommend,
+        r.IsAnonymous,
         r.CreatedAt
     FROM vendors.Reviews r
     LEFT JOIN users.Users u ON r.UserID = u.UserID
     WHERE r.VendorProfileID = @VendorProfileID
+      AND r.IsApproved = 1
     ORDER BY r.CreatedAt DESC;
 END
 
