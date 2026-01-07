@@ -77,6 +77,7 @@ const analyticsRouter = require('./routes/analytics');
 const adminRouter = require('./routes/admin');
 const publicRouter = require('./routes/public');
 const forumRouter = require('./routes/forum');
+const geoRouter = require('./routes/geo');
 app.use('/api/users', usersRouter);
 app.use('/api/bookings', bookingsRouter);
 app.use('/api/vendors', vendorsRouter);
@@ -90,6 +91,7 @@ app.use('/api/analytics', analyticsRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/public', publicRouter);
 app.use('/api/forum', forumRouter);
+app.use('/api/geo', geoRouter);
 
 // Backward compatibility: Favorites routes now in users.js
 app.use('/api/favorites', (req, res, next) => {

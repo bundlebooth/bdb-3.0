@@ -208,6 +208,9 @@ const LocationSearchModal = ({ isOpen, onClose, onApply, initialLocation, initia
       return;
     }
 
+    // Show loading state
+    setLocation('Getting your location...');
+
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const newCoords = {
@@ -227,12 +230,39 @@ const LocationSearchModal = ({ isOpen, onClose, onApply, initialLocation, initia
           circleRef.current.setCenter(newCoords);
         }
         
-        reverseGeocode(newCoords);
+        // Reverse geocode to get the city name and update location field immediately
+        if (window.google && window.google.maps) {
+          const geocoder = new window.google.maps.Geocoder();
+          geocoder.geocode({ location: newCoords }, (results, status) => {
+            if (status === 'OK' && results[0]) {
+              // Find city-level result
+              const cityResult = results.find(r => 
+                r.types.includes('locality') || r.types.includes('administrative_area_level_1')
+              ) || results[0];
+              
+              // Extract city and region for a cleaner display
+              const addressComponents = cityResult.address_components || [];
+              const city = addressComponents.find(c => c.types.includes('locality'))?.long_name || '';
+              const region = addressComponents.find(c => c.types.includes('administrative_area_level_1'))?.short_name || '';
+              const country = addressComponents.find(c => c.types.includes('country'))?.long_name || '';
+              
+              // Format as "City, Region, Country" or use formatted address
+              const locationString = [city, region, country].filter(Boolean).join(', ') || cityResult.formatted_address;
+              setLocation(locationString);
+            } else {
+              setLocation('Your Location');
+            }
+          });
+        } else {
+          setLocation('Your Location');
+        }
       },
       (error) => {
         console.error('Error getting location:', error);
+        setLocation(''); // Clear the loading state
         alert('Unable to get your location. Please enter it manually.');
-      }
+      },
+      { timeout: 10000, enableHighAccuracy: true }
     );
   };
 

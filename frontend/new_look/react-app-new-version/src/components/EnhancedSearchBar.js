@@ -28,22 +28,50 @@ const EnhancedSearchBar = ({ onSearch, isScrolled }) => {
 
   // Auto-detect user's city using IP geolocation (no permission required)
   const detectCityFromIP = async () => {
-    try {
-      // Use ipapi.co for free IP-based geolocation
-      const response = await fetch('https://ipapi.co/json/');
-      if (response.ok) {
-        const data = await response.json();
-        if (data.city && data.region && data.country_code === 'CA') {
-          const cityString = `${data.city}, ${data.region}`;
-          setLocation(cityString);
-          setUserLocation({
-            latitude: data.latitude,
-            longitude: data.longitude,
-            city: cityString
-          });
-        }
+    // Try multiple services with fallbacks
+    const geoServices = [
+      {
+        name: 'ipwho.is',
+        url: 'https://ipwho.is/',
+        parse: (data) => data.success && data.city ? {
+          city: data.city,
+          region: data.region,
+          lat: data.latitude,
+          lng: data.longitude
+        } : null
+      },
+      {
+        name: 'backend-proxy',
+        url: `${API_BASE_URL}/geo/ip-location`,
+        parse: (data) => data.success && data.city ? {
+          city: data.city,
+          region: data.region,
+          lat: data.lat,
+          lng: data.lng
+        } : null
       }
-    } catch (error) {
+    ];
+
+    for (const service of geoServices) {
+      try {
+        const response = await fetch(service.url);
+        if (response.ok) {
+          const data = await response.json();
+          const parsed = service.parse(data);
+          if (parsed && parsed.lat && parsed.lng) {
+            const cityString = `${parsed.city}, ${parsed.region}`;
+            setLocation(cityString);
+            setUserLocation({
+              latitude: parsed.lat,
+              longitude: parsed.lng,
+              city: cityString
+            });
+            return; // Success
+          }
+        }
+      } catch (error) {
+        continue; // Try next service
+      }
     }
   };
 
@@ -511,11 +539,25 @@ const EnhancedSearchBar = ({ onSearch, isScrolled }) => {
         onApply={({ location: newLocation, radius, coordinates }) => {
           setLocation(newLocation);
           setSearchRadius(radius);
-          if (coordinates) {
-            setUserLocation({
-              latitude: coordinates.lat,
-              longitude: coordinates.lng,
-              city: newLocation
+          const newUserLocation = coordinates ? {
+            latitude: coordinates.lat,
+            longitude: coordinates.lng,
+            city: newLocation
+          } : null;
+          
+          if (newUserLocation) {
+            setUserLocation(newUserLocation);
+          }
+          
+          // Trigger search immediately when location is changed
+          // This updates the map and vendor list to the new location
+          if (onSearch) {
+            onSearch({
+              location: newLocation,
+              date: selectedDate,
+              startTime: startTime,
+              endTime: endTime,
+              userLocation: newUserLocation || userLocation
             });
           }
         }}

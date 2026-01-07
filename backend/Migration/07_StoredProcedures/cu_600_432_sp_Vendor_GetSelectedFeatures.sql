@@ -14,8 +14,22 @@ AS
 BEGIN
     SET NOCOUNT ON;
     
-    SELECT FeatureID FROM vendors.VendorSelectedFeatures 
-    WHERE VendorProfileID = @VendorProfileID;
+    SELECT 
+        vsf.FeatureID,
+        vf.FeatureName,
+        vf.FeatureDescription,
+        vf.FeatureIcon,
+        vf.DisplayOrder AS FeatureOrder,
+        vfc.CategoryID,
+        vfc.CategoryName,
+        vfc.CategoryIcon,
+        vfc.DisplayOrder AS CategoryOrder,
+        vsf.CreatedAt AS SelectedAt
+    FROM vendors.VendorSelectedFeatures vsf
+    INNER JOIN vendors.VendorFeatures vf ON vsf.FeatureID = vf.FeatureID
+    INNER JOIN vendors.VendorFeatureCategories vfc ON vf.CategoryID = vfc.CategoryID
+    WHERE vsf.VendorProfileID = @VendorProfileID
+    ORDER BY vfc.DisplayOrder, vf.DisplayOrder;
 END
 GO
 

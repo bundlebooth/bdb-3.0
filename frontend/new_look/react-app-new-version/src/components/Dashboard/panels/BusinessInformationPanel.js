@@ -156,12 +156,21 @@ function BusinessInformationPanel({ onBack, vendorProfileId }) {
           console.error('   Requested:', vendorProfileId, 'Got:', profile.VendorProfileID);
         }
         
-        // Get category names from categories array or fallback to Categories string
-        let categoriesArray = [];
+        // Get primary and additional categories using IsPrimary flag
+        let primaryCategory = '';
+        let additionalCategories = [];
         if (Array.isArray(categories) && categories.length > 0) {
-          categoriesArray = categories.map(cat => cat.Category || cat.CategoryName || cat);
+          // Find primary category (IsPrimary = true) or fallback to first
+          const primaryCat = categories.find(cat => cat.IsPrimary);
+          primaryCategory = primaryCat?.Category || categories[0]?.Category || categories[0]?.CategoryName || '';
+          // Additional categories are those without IsPrimary flag
+          additionalCategories = categories
+            .filter(cat => !cat.IsPrimary)
+            .map(cat => cat.Category || cat.CategoryName || cat);
         } else if (profile.Categories) {
-          categoriesArray = profile.Categories.split(',').map(c => c.trim());
+          const catArray = profile.Categories.split(',').map(c => c.trim());
+          primaryCategory = catArray[0] || '';
+          additionalCategories = catArray.slice(1);
         }
         
         setFormData({
@@ -173,8 +182,8 @@ function BusinessInformationPanel({ onBack, vendorProfileId }) {
           yearsInBusiness: profile.YearsInBusiness || 0,
           description: profile.BusinessDescription || '',
           tagline: profile.Tagline || '',
-          category: categoriesArray[0] || '',
-          additionalCategories: categoriesArray.slice(1),
+          category: primaryCategory,
+          additionalCategories: additionalCategories,
           priceLevel: profile.PriceLevel || '$$',
           logoUrl: profile.LogoURL || profile.FeaturedImageURL || profile.logoUrl || ''
         });

@@ -576,13 +576,13 @@ body {
 }
 
 .btn-primary {
-    background: var(--primary-color);
+    background: #222222;
     color: white;
     flex: 1;
 }
 
 .btn-primary:hover:not(:disabled) {
-    background: var(--primary-hover);
+    background: #000000;
     transform: translateY(-1px);
     box-shadow: var(--shadow-md);
 }

@@ -147,21 +147,21 @@ const BecomeVendorPage = () => {
     stripeConnected: false
   });
 
-  // Available categories - matching main page
+  // Available categories - matching BusinessInformationPanel IDs
   const availableCategories = [
-    { id: 'Venue', name: 'Venues', icon: '🏛️', description: 'Event spaces and locations' },
-    { id: 'Photography', name: 'Photo/Video', icon: '📸', description: 'Photography and videography' },
-    { id: 'Music', name: 'Music/DJ', icon: '🎵', description: 'Music and DJ services' },
-    { id: 'Catering', name: 'Catering', icon: '🍽️', description: 'Food and beverage services' },
-    { id: 'Entertainment', name: 'Entertainment', icon: '🎭', description: 'Performers and entertainers' },
-    { id: 'Experiences', name: 'Experiences', icon: '⭐', description: 'Unique event experiences' },
-    { id: 'Decorations', name: 'Decorations', icon: '🎨', description: 'Event decorations and styling' },
-    { id: 'Beauty', name: 'Beauty', icon: '💄', description: 'Hair, makeup, and beauty services' },
-    { id: 'Cake', name: 'Cake', icon: '🎂', description: 'Wedding and event cakes' },
-    { id: 'Transportation', name: 'Transportation', icon: '🚗', description: 'Event transportation services' },
-    { id: 'Planning', name: 'Planners', icon: '📋', description: 'Event planning and coordination' },
-    { id: 'Fashion', name: 'Fashion', icon: '👗', description: 'Wedding and event fashion' },
-    { id: 'Stationery', name: 'Stationery', icon: '✉️', description: 'Invitations and stationery' }
+    { id: 'venue', name: 'Venues', icon: '🏛️', description: 'Event spaces and locations' },
+    { id: 'photo', name: 'Photo/Video', icon: '📸', description: 'Photography and videography' },
+    { id: 'music', name: 'Music/DJ', icon: '🎵', description: 'Music and DJ services' },
+    { id: 'catering', name: 'Catering', icon: '🍽️', description: 'Food and beverage services' },
+    { id: 'entertainment', name: 'Entertainment', icon: '🎭', description: 'Performers and entertainers' },
+    { id: 'experiences', name: 'Experiences', icon: '⭐', description: 'Unique event experiences' },
+    { id: 'decor', name: 'Decorations', icon: '🎨', description: 'Event decorations and styling' },
+    { id: 'beauty', name: 'Beauty', icon: '💄', description: 'Hair, makeup, and beauty services' },
+    { id: 'cake', name: 'Cake', icon: '🎂', description: 'Wedding and event cakes' },
+    { id: 'transport', name: 'Transportation', icon: '🚗', description: 'Event transportation services' },
+    { id: 'planner', name: 'Planners', icon: '📋', description: 'Event planning and coordination' },
+    { id: 'fashion', name: 'Fashion', icon: '👗', description: 'Wedding and event fashion' },
+    { id: 'stationery', name: 'Stationery', icon: '✉️', description: 'Invitations and stationery' }
   ];
 
   const canadianProvinces = [
@@ -595,7 +595,7 @@ const BecomeVendorPage = () => {
 
           // Fetch selected features from dedicated endpoint (more reliable than profile API)
           try {
-            const featuresRes = await fetch(`${API_BASE_URL}/vendor-features/vendor/${currentUser.vendorProfileId}`, {
+            const featuresRes = await fetch(`${API_BASE_URL}/vendors/features/vendor/${currentUser.vendorProfileId}`, {
               headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
             });
             if (featuresRes.ok) {
@@ -776,7 +776,7 @@ const BecomeVendorPage = () => {
         // Also save features to dedicated endpoint if any are selected
         if (formData.selectedFeatures && formData.selectedFeatures.length > 0) {
           try {
-            const featuresResponse = await fetch(`${API_BASE_URL}/vendor-features/vendor/${vendorProfileId}`, {
+            const featuresResponse = await fetch(`${API_BASE_URL}/vendors/features/vendor/${vendorProfileId}`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
@@ -973,7 +973,7 @@ const BecomeVendorPage = () => {
       let currentFeatures = formData.selectedFeatures || [];
       if (currentUser.vendorProfileId && (!featuresLoadedFromDB || currentFeatures.length === 0)) {
         try {
-          const featuresRes = await fetch(`${API_BASE_URL}/vendor-features/vendor/${currentUser.vendorProfileId}`, {
+          const featuresRes = await fetch(`${API_BASE_URL}/vendors/features/vendor/${currentUser.vendorProfileId}`, {
             headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
           });
           if (featuresRes.ok) {
@@ -1093,7 +1093,7 @@ const BecomeVendorPage = () => {
       // This is important because the onboarding endpoint may not save features correctly
       if (vendorProfileId && currentFeatures && currentFeatures.length > 0) {
         try {
-          const featuresResponse = await fetch(`${API_BASE_URL}/vendor-features/vendor/${vendorProfileId}`, {
+          const featuresResponse = await fetch(`${API_BASE_URL}/vendors/features/vendor/${vendorProfileId}`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -3625,18 +3625,13 @@ function QuestionnaireStep({ formData, setFormData, currentUser, setFeaturesLoad
       return categories; // Show all if no categories selected
     }
     
-    // Filter to only show categories that match selected ones
+    // Filter using applicableVendorCategories field from API
+    // Each feature category has an applicableVendorCategories field like "venue" or "photo,music"
     return categories.filter(cat => {
-      // Match by category name or ID
-      return selectedCategoryIds.some(selectedId => {
-        const catName = cat.categoryName?.toLowerCase() || '';
-        const selectedName = typeof selectedId === 'string' ? selectedId.toLowerCase() : '';
-        return catName === selectedName || 
-               catName.includes(selectedName) || 
-               selectedName.includes(catName) ||
-               cat.categoryId === selectedId ||
-               cat.categoryID === selectedId;
-      });
+      const applicableCategories = (cat.applicableVendorCategories || '').toLowerCase().split(',').map(c => c.trim());
+      return selectedCategoryIds.some(vendorCat => 
+        applicableCategories.includes(vendorCat.toLowerCase())
+      );
     });
   };
 
@@ -3706,18 +3701,18 @@ function QuestionnaireStep({ formData, setFormData, currentUser, setFeaturesLoad
                             <i 
                               className={`fas fa-${getFeatureIcon(feature.featureIcon)}`} 
                               style={{ 
-                                color: isSelected ? 'var(--primary)' : '#6366f1', 
-                                fontSize: '1.25rem', 
+                                color: '#717171', 
+                                fontSize: '0.875rem', 
                                 flexShrink: 0,
-                                width: '24px',
+                                width: '14px',
                                 textAlign: 'center'
                               }}
                             ></i>
                             <span style={{ 
                               fontSize: '0.9375rem', 
-                              color: '#374151', 
+                              color: '#222', 
                               flex: 1, 
-                              fontWeight: isSelected ? 600 : 500,
+                              fontWeight: isSelected ? 600 : 400,
                               lineHeight: 1.4
                             }}>
                               {feature.featureName}

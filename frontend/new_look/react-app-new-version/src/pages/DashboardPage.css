@@ -684,7 +684,7 @@
 
 /* Buttons in dashboard - match Giggster style */
 .dashboard-page .btn-primary {
-  background: var(--primary, #5e72e4);
+  background: #222222;
   border: none;
   border-radius: 6px;
   padding: 10px 20px;

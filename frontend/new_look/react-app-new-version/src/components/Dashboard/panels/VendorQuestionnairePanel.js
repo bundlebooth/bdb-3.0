@@ -50,7 +50,7 @@ function VendorQuestionnairePanel({ onBack, vendorProfileId }) {
       }
       
       // Fetch all features grouped by category
-      const response = await fetch(`${API_BASE_URL}/vendor-features/all-grouped`, {
+      const response = await fetch(`${API_BASE_URL}/vendors/features/all-grouped`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       
@@ -64,7 +64,7 @@ function VendorQuestionnairePanel({ onBack, vendorProfileId }) {
       
       // Load vendor's existing selections
       if (vendorProfileId) {
-        const selectionsResponse = await fetch(`${API_BASE_URL}/vendor-features/vendor/${vendorProfileId}`, {
+        const selectionsResponse = await fetch(`${API_BASE_URL}/vendors/features/vendor/${vendorProfileId}`, {
           headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
         });
         
@@ -103,7 +103,7 @@ function VendorQuestionnairePanel({ onBack, vendorProfileId }) {
       
       const featureIdsArray = Array.from(selectedFeatureIds);
       
-      const response = await fetch(`${API_BASE_URL}/vendor-features/vendor/${vendorProfileId}`, {
+      const response = await fetch(`${API_BASE_URL}/vendors/features/vendor/${vendorProfileId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -234,10 +234,20 @@ function VendorQuestionnairePanel({ onBack, vendorProfileId }) {
     return icon.replace('fa-', '').replace('fas ', '').replace('far ', '');
   };
   
-  // Show ALL categories - vendors can select any features regardless of their business type
-  // This allows more flexibility and ensures vendors can highlight all relevant features
+  // Filter categories to only show those matching vendor's selected business categories
   const getFilteredCategories = () => {
-    return categories;
+    if (!vendorCategories || vendorCategories.length === 0) {
+      return categories; // Show all if no categories set
+    }
+    
+    // Filter using applicableVendorCategories field from API
+    // Each feature category has an applicableVendorCategories field like "venue" or "photo,music"
+    return categories.filter(cat => {
+      const applicableCategories = (cat.applicableVendorCategories || '').toLowerCase().split(',').map(c => c.trim());
+      return vendorCategories.some(vendorCat => 
+        applicableCategories.includes(vendorCat.toLowerCase())
+      );
+    });
   };
   
   const filteredCategories = getFilteredCategories();
@@ -273,7 +283,7 @@ function VendorQuestionnairePanel({ onBack, vendorProfileId }) {
               return (
                 <div key={category.categoryName} className="questionnaire-category" style={{ marginBottom: '2rem' }}>
                   <div className="questionnaire-category-header" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-                    <div className="questionnaire-category-icon" style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'var(--secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)' }}>
+                    <div className="questionnaire-category-icon" style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#222' }}>
                       <i className={`fas fa-${getCategoryIcon(category.categoryIcon)}`}></i>
                     </div>
                     <h3 className="questionnaire-category-title" style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600 }}>{category.categoryName}</h3>
@@ -296,10 +306,10 @@ function VendorQuestionnairePanel({ onBack, vendorProfileId }) {
                             position: 'relative'
                           }}
                         >
-                          <i className={`fas fa-${getFeatureIcon(feature.featureIcon)} feature-tile-icon`} style={{ color: 'var(--primary)', fontSize: '1rem', flexShrink: 0 }}></i>
-                          <span className="feature-tile-name" style={{ fontSize: '0.9rem', color: '#4a5568', flex: 1 }}>{feature.featureName}</span>
+                          <i className={`fas fa-${getFeatureIcon(feature.featureIcon)} feature-tile-icon`} style={{ color: '#717171', fontSize: '0.875rem', flexShrink: 0, width: '14px' }}></i>
+                          <span className="feature-tile-name" style={{ fontSize: '0.9375rem', color: '#222', flex: 1, lineHeight: 1.4 }}>{feature.featureName}</span>
                           {isSelected && (
-                            <i className="fas fa-check feature-tile-checkmark" style={{ color: 'var(--primary)', fontSize: '0.9rem', marginLeft: 'auto' }}></i>
+                            <i className="fas fa-check feature-tile-checkmark" style={{ color: '#222', fontSize: '0.9rem', marginLeft: 'auto' }}></i>
                           )}
                         </div>
                       );

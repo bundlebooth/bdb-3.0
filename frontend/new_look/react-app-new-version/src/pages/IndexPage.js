@@ -121,39 +121,53 @@ function IndexPage() {
   const [detectedCity, setDetectedCity] = useState('');
   
   // Auto-detect user's city using IP geolocation (no permission required)
-  // Using ip-api.com - free and reliable service
+  // Using IP-based services first (no permission needed), then browser geolocation for accuracy
   const detectCityFromIP = useCallback(async () => {
-    try {
-        // ip-api.com is free for non-commercial use, no API key needed
-      const response = await fetch('http://ip-api.com/json/?fields=status,city,regionName,country,lat,lon');
-      if (response.ok) {
-        const data = await response.json();
-        if (data.status === 'success' && data.city) {
-          const cityString = `${data.city}, ${data.regionName}`;
-          setDetectedCity(data.city);
-          setUserLocation({
-            lat: data.lat,
-            lng: data.lon,
-            city: cityString
-          });
-          // Also set the location filter to auto-filter vendors by city
-          setFilters(prev => ({ ...prev, location: data.city }));
-        }
+    // IP-based geolocation services (no permission needed, works immediately)
+    const geoServices = [
+      {
+        name: 'ipwho.is',
+        url: 'https://ipwho.is/',
+        parse: (data) => data.success && data.city ? {
+          city: data.city,
+          region: data.region,
+          lat: data.latitude,
+          lng: data.longitude
+        } : null
+      },
+      {
+        name: 'ip-api (via backend proxy)',
+        url: `${API_BASE_URL}/geo/ip-location`,
+        parse: (data) => data.success && data.city ? {
+          city: data.city,
+          region: data.region,
+          lat: data.lat,
+          lng: data.lng
+        } : null
       }
-    } catch (error) {
-      // Fallback to ipinfo.io
+    ];
+
+    for (const service of geoServices) {
       try {
-        const fallbackResponse = await fetch('https://ipinfo.io/json?token=demo');
-        if (fallbackResponse.ok) {
-          const fallbackData = await fallbackResponse.json();
-          if (fallbackData.city) {
-            const [lat, lng] = (fallbackData.loc || '0,0').split(',').map(Number);
-            setDetectedCity(fallbackData.city);
-            setUserLocation({ lat, lng, city: `${fallbackData.city}, ${fallbackData.region}` });
-            setFilters(prev => ({ ...prev, location: fallbackData.city }));
+        const response = await fetch(service.url);
+        if (response.ok) {
+          const data = await response.json();
+          const parsed = service.parse(data);
+          if (parsed && parsed.lat && parsed.lng) {
+            const cityString = `${parsed.city}, ${parsed.region}`;
+            setDetectedCity(parsed.city);
+            setUserLocation({
+              lat: parsed.lat,
+              lng: parsed.lng,
+              city: cityString
+            });
+            setFilters(prev => ({ ...prev, location: parsed.city }));
+            return; // Success, exit loop
           }
         }
-      } catch (fallbackError) {
+      } catch (error) {
+        // Try next service
+        continue;
       }
     }
   }, []);
@@ -842,6 +856,17 @@ function IndexPage() {
     
     try {
       const cityName = searchParams.location ? searchParams.location.split(',')[0].trim() : '';
+      
+      // Update userLocation if coordinates are provided (from LocationSearchModal)
+      // This will cause the MapView to center on the new location
+      if (searchParams.userLocation && searchParams.userLocation.latitude && searchParams.userLocation.longitude) {
+        setUserLocation({
+          lat: searchParams.userLocation.latitude,
+          lng: searchParams.userLocation.longitude,
+          city: searchParams.userLocation.city || cityName
+        });
+        setDetectedCity(cityName);
+      }
       
       // Calculate day of week if date is provided
       let dayOfWeek = null;

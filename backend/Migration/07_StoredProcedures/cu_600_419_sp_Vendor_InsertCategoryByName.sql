@@ -10,13 +10,22 @@ GO
 
 CREATE PROCEDURE [vendors].[sp_InsertCategoryByName]
     @VendorProfileID INT,
-    @Category NVARCHAR(50)
+    @Category NVARCHAR(50),
+    @IsPrimary BIT = 0
 AS
 BEGIN
     SET NOCOUNT ON;
     
-    INSERT INTO vendors.VendorCategories (VendorProfileID, Category)
-    VALUES (@VendorProfileID, @Category);
+    -- If this is primary, clear any existing primary flag for this vendor
+    IF @IsPrimary = 1
+    BEGIN
+        UPDATE vendors.VendorCategories 
+        SET IsPrimary = 0 
+        WHERE VendorProfileID = @VendorProfileID AND IsPrimary = 1;
+    END
+    
+    INSERT INTO vendors.VendorCategories (VendorProfileID, Category, IsPrimary)
+    VALUES (@VendorProfileID, @Category, @IsPrimary);
     
     SELECT SCOPE_IDENTITY() AS CategoryID;
 END

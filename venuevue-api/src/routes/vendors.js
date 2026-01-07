@@ -1593,20 +1593,22 @@ router.post('/profile', async (req, res) => {
       vendorProfileId = result.recordset[0].VendorProfileID;
     }
 
-    // Update categories if provided
+    // Update categories if provided - first one is primary
     if (categories && categories.length > 0) {
       // Delete existing categories
       const deleteCategoriesRequest = new sql.Request(pool);
       deleteCategoriesRequest.input('VendorProfileID', sql.Int, vendorProfileId);
       await deleteCategoriesRequest.execute('vendors.sp_DeleteCategories');
 
-      // Insert new categories
-      for (const category of categories) {
+      // Insert new categories - first one is primary
+      for (let i = 0; i < categories.length; i++) {
+        const category = categories[i];
         const categoryRequest = new sql.Request(pool);
         categoryRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-        categoryRequest.input('CategoryName', sql.NVarChar(50), category);
+        categoryRequest.input('Category', sql.NVarChar(50), category);
+        categoryRequest.input('IsPrimary', sql.Bit, i === 0 ? 1 : 0);
         
-        await categoryRequest.execute('vendors.sp_InsertCategory');
+        await categoryRequest.execute('vendors.sp_InsertCategoryByName');
       }
     }
 
@@ -1854,16 +1856,19 @@ router.post('/onboarding', async (req, res) => {
       await updateExtraRequest.execute('vendors.sp_UpdateExtraFields');
     }
 
-    // Update categories
+    // Update categories - first one is primary (from primaryCategory), rest are additional
     if (allCategories && allCategories.length > 0) {
       const deleteCategoriesRequest = new sql.Request(pool);
       deleteCategoriesRequest.input('VendorProfileID', sql.Int, vendorProfileId);
       await deleteCategoriesRequest.execute('vendors.sp_DeleteCategories');
 
-      for (const category of allCategories) {
+      for (let i = 0; i < allCategories.length; i++) {
+        const category = allCategories[i];
         const categoryRequest = new sql.Request(pool);
         categoryRequest.input('VendorProfileID', sql.Int, vendorProfileId);
         categoryRequest.input('Category', sql.NVarChar(50), category);
+        // First category (primaryCategory) is marked as primary
+        categoryRequest.input('IsPrimary', sql.Bit, i === 0 ? 1 : 0);
         
         await categoryRequest.execute('vendors.sp_InsertCategoryByName');
       }
@@ -2688,6 +2693,7 @@ router.post('/setup/step1-business-basics', async (req, res) => {
     const primaryCatRequest = new sql.Request(pool);
     primaryCatRequest.input('VendorProfileID', sql.Int, vendorProfileId);
     primaryCatRequest.input('Category', sql.NVarChar(50), primaryCategory);
+    primaryCatRequest.input('IsPrimary', sql.Bit, 1);
     await primaryCatRequest.execute('vendors.sp_InsertCategoryByName');
     
     if (Array.isArray(additionalCategories) && additionalCategories.length > 0) {
@@ -2696,6 +2702,7 @@ router.post('/setup/step1-business-basics', async (req, res) => {
         const catRequest = new sql.Request(pool);
         catRequest.input('VendorProfileID', sql.Int, vendorProfileId);
         catRequest.input('Category', sql.NVarChar(50), category);
+        catRequest.input('IsPrimary', sql.Bit, 0);
         await catRequest.execute('vendors.sp_InsertCategoryByName');
       }
     }

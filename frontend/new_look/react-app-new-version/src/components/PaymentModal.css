@@ -301,13 +301,13 @@
 }
 
 .payment-actions .btn-primary {
-  background: var(--primary, #5e72e4);
-  border: 1px solid var(--primary, #5e72e4);
+  background: #222222;
+  border: 1px solid #222222;
   color: white;
 }
 
 .payment-actions .btn-primary:hover:not(:disabled) {
-  background: var(--primary-dark, #4c60d3);
+  background: #000000;
 }
 
 .payment-actions .btn:disabled {

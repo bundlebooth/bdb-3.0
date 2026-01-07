@@ -633,13 +633,13 @@
 }
 
 .btn-primary {
-    background: linear-gradient(to right, #e61e4d 0%, #e31c5f 50%, #d70466 100%);
+    background: #222222;
     color: white;
 }
 
 .btn-primary:hover {
-    background: linear-gradient(to right, #d01346 0%, #c9184a 50%, #b8005a 100%);
-    box-shadow: 0 2px 8px rgba(227, 28, 95, 0.3);
+    background: #000000;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .btn-outline {

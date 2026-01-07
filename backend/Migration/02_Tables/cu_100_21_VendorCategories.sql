@@ -19,6 +19,7 @@ BEGIN
 	[VendorCategoryID] [int] IDENTITY(1,1) NOT NULL,
 	[VendorProfileID] [int] NULL,
 	[Category] [nvarchar](50) NOT NULL,
+	[IsPrimary] [bit] NOT NULL DEFAULT 0,
 PRIMARY KEY CLUSTERED 
 (
 	[VendorCategoryID] ASC
@@ -29,5 +30,11 @@ END
 ELSE
 BEGIN
     PRINT 'Table [vendors].[VendorCategories] already exists. Skipping.';
+    -- Add IsPrimary column if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'[vendors].[VendorCategories]') AND name = 'IsPrimary')
+    BEGIN
+        ALTER TABLE [vendors].[VendorCategories] ADD [IsPrimary] [bit] NOT NULL DEFAULT 0;
+        PRINT 'Added IsPrimary column to [vendors].[VendorCategories].';
+    END
 END
 GO

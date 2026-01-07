@@ -60,7 +60,7 @@ BEGIN
     WHERE vp.VendorProfileID = @VendorProfileID;
     
     -- Vendor categories (recordset 2)
-    SELECT Category FROM vendors.VendorCategories WHERE VendorProfileID = @VendorProfileID ORDER BY Category;
+    SELECT Category, IsPrimary FROM vendors.VendorCategories WHERE VendorProfileID = @VendorProfileID ORDER BY IsPrimary DESC, Category;
     
     -- Services and packages (recordset 3) - UPDATED TO QUERY FROM vendors.Services TABLE
     SELECT 

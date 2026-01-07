@@ -521,18 +521,19 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.625rem 1.25rem;
-  background: #5e72e4;
-  border: none;
+  padding: 0.75rem 1.5rem;
   border-radius: 8px;
-  color: white;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  background: #222222;
   font-weight: 500;
   cursor: pointer;
   transition: background 0.2s;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: #4c5fd7;
+  background: #000000;
 }
 
 .btn-primary:disabled {

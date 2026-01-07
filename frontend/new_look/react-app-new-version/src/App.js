@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import IndexPage from './pages/IndexPage';
 import LandingPage from './pages/LandingPage';
 import VendorProfilePage from './pages/VendorProfilePage';
+import HostProfilePage from './pages/HostProfilePage';
 import BookingPage from './pages/BookingPage';
 import BecomeVendorPage from './pages/BecomeVendorPage';
 import BecomeVendorLanding from './pages/BecomeVendorLanding';
@@ -79,6 +80,7 @@ function App() {
           <Route path="/explore" element={<IndexPage />} />
           {/* Support both old format (/vendor/138) and new format (/vendor/business-name-138) */}
           <Route path="/vendor/:vendorSlug" element={<VendorProfilePage />} />
+          <Route path="/host/:hostId" element={<HostProfilePage />} />
           <Route path="/booking/:vendorSlug" element={<BookingPage />} />
           <Route path="/become-a-vendor" element={<BecomeVendorLanding />} />
           <Route path="/become-a-vendor/setup" element={<BecomeVendorPage />} />

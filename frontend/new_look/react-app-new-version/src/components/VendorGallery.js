@@ -4,6 +4,7 @@ function VendorGallery({ images, onBack, onShare, onFavorite, isFavorite }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
+  const [galleryModalOpen, setGalleryModalOpen] = useState(false); // New: Grid gallery modal
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [touchStart, setTouchStart] = useState(null);
   const [touchEnd, setTouchEnd] = useState(null);
@@ -60,10 +61,19 @@ function VendorGallery({ images, onBack, onShare, onFavorite, isFavorite }) {
   const openLightbox = (index) => {
     setLightboxIndex(index);
     setLightboxOpen(true);
+    setGalleryModalOpen(false); // Close gallery modal when opening lightbox
   };
 
   const closeLightbox = useCallback(() => {
     setLightboxOpen(false);
+  }, []);
+
+  const openGalleryModal = () => {
+    setGalleryModalOpen(true);
+  };
+
+  const closeGalleryModal = useCallback(() => {
+    setGalleryModalOpen(false);
   }, []);
 
   const nextLightboxImage = useCallback(() => {
@@ -87,9 +97,9 @@ function VendorGallery({ images, onBack, onShare, onFavorite, isFavorite }) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [lightboxOpen, closeLightbox, nextLightboxImage, prevLightboxImage]);
 
-  // Prevent background scrolling when lightbox is open
+  // Prevent background scrolling when lightbox or gallery modal is open
   useEffect(() => {
-    if (lightboxOpen) {
+    if (lightboxOpen || galleryModalOpen) {
       document.body.classList.add('modal-open');
     } else {
       document.body.classList.remove('modal-open');
@@ -97,7 +107,7 @@ function VendorGallery({ images, onBack, onShare, onFavorite, isFavorite }) {
     return () => {
       document.body.classList.remove('modal-open');
     };
-  }, [lightboxOpen]);
+  }, [lightboxOpen, galleryModalOpen]);
 
   // Create placeholder images if no images available
   const placeholderImages = validImages.length === 0 ? 
@@ -519,7 +529,7 @@ function VendorGallery({ images, onBack, onShare, onFavorite, isFavorite }) {
         {validImages.length > 1 && (
           <button 
             className="show-all-photos-btn"
-            onClick={() => openLightbox(0)}
+            onClick={openGalleryModal}
             style={{
               position: 'absolute',
               bottom: '16px',
@@ -553,7 +563,170 @@ function VendorGallery({ images, onBack, onShare, onFavorite, isFavorite }) {
         )}
       </div>
 
-      {/* Lightbox Modal */}
+      {/* Gallery Modal - Airbnb-style grid view */}
+      {galleryModalOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            background: '#fff',
+            zIndex: 9998,
+            overflowY: 'auto'
+          }}
+        >
+          {/* Header */}
+          <div style={{
+            position: 'sticky',
+            top: 0,
+            background: '#fff',
+            padding: '16px 24px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            borderBottom: '1px solid #ebebeb',
+            zIndex: 10
+          }}>
+            <button
+              onClick={closeGalleryModal}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: 500,
+                color: '#222',
+                padding: '8px 12px',
+                borderRadius: '8px',
+                transition: 'background 0.2s'
+              }}
+              onMouseOver={(e) => e.currentTarget.style.background = '#f7f7f7'}
+              onMouseOut={(e) => e.currentTarget.style.background = 'none'}
+            >
+              <i className="fas fa-arrow-left"></i>
+              Back
+            </button>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              {onShare && (
+                <button
+                  onClick={onShare}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: 500,
+                    color: '#222',
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    textDecoration: 'underline'
+                  }}
+                >
+                  <i className="fas fa-share-alt" style={{ fontSize: '12px' }}></i>
+                  Share
+                </button>
+              )}
+              {onFavorite && (
+                <button
+                  onClick={onFavorite}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: 500,
+                    color: '#222',
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    textDecoration: 'underline'
+                  }}
+                >
+                  <i className={isFavorite ? 'fas fa-heart' : 'far fa-heart'} style={{ fontSize: '12px', color: isFavorite ? '#e31c5f' : 'inherit' }}></i>
+                  Save
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Photo Grid - Airbnb masonry-style layout */}
+          <div style={{
+            maxWidth: '800px',
+            margin: '0 auto',
+            padding: '24px'
+          }}>
+            {/* First large image */}
+            {validImages[0] && (
+              <div
+                onClick={() => openLightbox(0)}
+                style={{
+                  width: '100%',
+                  aspectRatio: '16/10',
+                  borderRadius: '12px',
+                  overflow: 'hidden',
+                  marginBottom: '8px',
+                  cursor: 'pointer'
+                }}
+              >
+                <img
+                  src={getImageUrl(validImages[0])}
+                  alt="Photo 1"
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover'
+                  }}
+                />
+              </div>
+            )}
+
+            {/* Grid of remaining images - 2 columns */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, 1fr)',
+              gap: '8px'
+            }}>
+              {validImages.slice(1).map((img, idx) => (
+                <div
+                  key={idx + 1}
+                  onClick={() => openLightbox(idx + 1)}
+                  style={{
+                    aspectRatio: '1/1',
+                    borderRadius: '8px',
+                    overflow: 'hidden',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <img
+                    src={getImageUrl(img)}
+                    alt={`Photo ${idx + 2}`}
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      transition: 'transform 0.2s'
+                    }}
+                    onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
+                    onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Lightbox Modal - Airbnb style fullscreen viewer */}
       {lightboxOpen && (
         <div
           id="lightbox-modal"
@@ -564,113 +737,172 @@ function VendorGallery({ images, onBack, onShare, onFavorite, isFavorite }) {
             left: 0,
             width: '100%',
             height: '100%',
-            background: 'rgba(0, 0, 0, 0.95)',
+            background: '#000',
             zIndex: 9999,
-            alignItems: 'center',
-            justifyContent: 'center'
+            flexDirection: 'column'
           }}
-          onClick={closeLightbox}
         >
-          <button
-            id="lightbox-close"
-            className="modal-close-btn"
+          {/* Top Bar */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '12px 16px',
+            color: 'white'
+          }}>
+            <button
+              onClick={closeLightbox}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                background: 'none',
+                border: 'none',
+                color: 'white',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: 500,
+                padding: '8px 12px',
+                borderRadius: '8px'
+              }}
+            >
+              <i className="fas fa-times"></i>
+              Close
+            </button>
+            
+            {/* Counter in center */}
+            <div style={{
+              fontSize: '14px',
+              fontWeight: 500
+            }}>
+              {lightboxIndex + 1} / {validImages.length}
+            </div>
+
+            {/* Right actions */}
+            <div style={{ display: 'flex', gap: '8px' }}>
+              {onShare && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onShare(); }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: 'white',
+                    cursor: 'pointer',
+                    padding: '8px',
+                    borderRadius: '50%'
+                  }}
+                >
+                  <i className="fas fa-share-alt"></i>
+                </button>
+              )}
+              {onFavorite && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onFavorite(); }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: isFavorite ? '#e31c5f' : 'white',
+                    cursor: 'pointer',
+                    padding: '8px',
+                    borderRadius: '50%'
+                  }}
+                >
+                  <i className={isFavorite ? 'fas fa-heart' : 'far fa-heart'}></i>
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Main Image Area */}
+          <div 
+            style={{
+              flex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              position: 'relative',
+              padding: '0 60px'
+            }}
             onClick={closeLightbox}
-            style={{
-              position: 'absolute',
-              top: '20px',
-              right: '20px',
-              background: '#f3f4f6',
-              width: '36px',
-              height: '36px'
-            }}
           >
-            ×
-          </button>
+            {/* Previous Button */}
+            {validImages.length > 1 && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  prevLightboxImage();
+                }}
+                style={{
+                  position: 'absolute',
+                  left: '16px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'rgba(255, 255, 255, 0.9)',
+                  border: 'none',
+                  color: '#222',
+                  fontSize: '16px',
+                  cursor: 'pointer',
+                  width: '48px',
+                  height: '48px',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                  transition: 'transform 0.2s, background 0.2s'
+                }}
+                onMouseOver={(e) => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.transform = 'translateY(-50%) scale(1.05)'; }}
+                onMouseOut={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.9)'; e.currentTarget.style.transform = 'translateY(-50%) scale(1)'; }}
+              >
+                <i className="fas fa-chevron-left"></i>
+              </button>
+            )}
 
-          <button
-            id="lightbox-prev"
-            onClick={(e) => {
-              e.stopPropagation();
-              prevLightboxImage();
-            }}
-            style={{
-              position: 'absolute',
-              left: '20px',
-              top: '50%',
-              transform: 'translateY(-50%)',
-              background: 'rgba(255, 255, 255, 0.2)',
-              border: 'none',
-              color: 'white',
-              fontSize: '2rem',
-              cursor: 'pointer',
-              width: '50px',
-              height: '50px',
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              backdropFilter: 'blur(10px)'
-            }}
-          >
-            <i className="fas fa-chevron-left"></i>
-          </button>
+            {/* Image */}
+            <img
+              src={getImageUrl(validImages[lightboxIndex])}
+              alt={`Photo ${lightboxIndex + 1}`}
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                maxWidth: '100%',
+                maxHeight: 'calc(100vh - 120px)',
+                objectFit: 'contain',
+                borderRadius: '4px'
+              }}
+            />
 
-          <button
-            id="lightbox-next"
-            onClick={(e) => {
-              e.stopPropagation();
-              nextLightboxImage();
-            }}
-            style={{
-              position: 'absolute',
-              right: '20px',
-              top: '50%',
-              transform: 'translateY(-50%)',
-              background: 'rgba(255, 255, 255, 0.2)',
-              border: 'none',
-              color: 'white',
-              fontSize: '2rem',
-              cursor: 'pointer',
-              width: '50px',
-              height: '50px',
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              backdropFilter: 'blur(10px)'
-            }}
-          >
-            <i className="fas fa-chevron-right"></i>
-          </button>
-
-          <img
-            id="lightbox-image"
-            src={getImageUrl(validImages[lightboxIndex])}
-            alt="Lightbox"
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              maxWidth: '90%',
-              maxHeight: '90%',
-              objectFit: 'contain'
-            }}
-          />
-
-          <div
-            id="lightbox-counter"
-            style={{
-              position: 'absolute',
-              bottom: '20px',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              color: 'white',
-              fontSize: '1rem',
-              background: 'rgba(0, 0, 0, 0.5)',
-              padding: '0.5rem 1rem',
-              borderRadius: '20px',
-              backdropFilter: 'blur(10px)'
-            }}
-          >
-            {lightboxIndex + 1} / {validImages.length}
+            {/* Next Button */}
+            {validImages.length > 1 && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  nextLightboxImage();
+                }}
+                style={{
+                  position: 'absolute',
+                  right: '16px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'rgba(255, 255, 255, 0.9)',
+                  border: 'none',
+                  color: '#222',
+                  fontSize: '16px',
+                  cursor: 'pointer',
+                  width: '48px',
+                  height: '48px',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                  transition: 'transform 0.2s, background 0.2s'
+                }}
+                onMouseOver={(e) => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.transform = 'translateY(-50%) scale(1.05)'; }}
+                onMouseOut={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.9)'; e.currentTarget.style.transform = 'translateY(-50%) scale(1)'; }}
+              >
+                <i className="fas fa-chevron-right"></i>
+              </button>
+            )}
           </div>
         </div>
       )}

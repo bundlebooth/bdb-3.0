@@ -511,8 +511,8 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false, u
     // Clustering disabled to match the desired pin style
   }, [vendors, onVendorSelect, createMiniVendorCardHTML, createMarkerIcon, userLocation]);
 
-  // Update user location marker - DISABLED per user request
-  // User does not want the blue marker showing their current position
+  // Update map center when userLocation changes
+  // No marker is shown, but map centers on the user's location
   const updateUserLocationMarker = useCallback(async () => {
     // Remove existing user location marker if any
     if (userLocationMarkerRef.current) {
@@ -521,8 +521,17 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false, u
     }
     
     // Do NOT create a marker - user requested no blue location marker
-    // Just return without doing anything
-  }, []);
+    // But DO center the map on user location if available
+    if (mapInstanceRef.current && userLocation && userLocation.lat && userLocation.lng) {
+      mapInstanceRef.current.setCenter({ lat: userLocation.lat, lng: userLocation.lng });
+      mapInstanceRef.current.setZoom(11); // City-level zoom
+      
+      // Store city name if available
+      if (userLocation.city) {
+        setUserCity(userLocation.city);
+      }
+    }
+  }, [userLocation]);
 
   const highlightMarker = useCallback((vendorId, shouldAnimate = false) => {
     const greyIcon = createMarkerIcon('#9CA3AF', false);

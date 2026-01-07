@@ -1085,13 +1085,14 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
 }
 
 .btn-primary {
-    background-color: var(--primary);
-    border: 1px solid var(--primary);
+    background-color: #222222;
+    border: 1px solid #222222;
     color: white;
 }
 
 .btn-primary:hover {
-    background-color: #4a5acf;
+    background-color: #000000;
+    border-color: #000000;
 }
 
 .pagination {

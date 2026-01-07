@@ -124,7 +124,7 @@ function VendorProfilePage() {
   // Load vendor features (questionnaire)
   const loadVendorFeatures = useCallback(async (vendorProfileId) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/vendor-features/vendor/${vendorProfileId}`);
+      const response = await fetch(`${API_BASE_URL}/vendors/features/vendor/${vendorProfileId}`);
       if (response.ok) {
         const data = await response.json();
         setVendorFeatures(data.selectedFeatures || []);
@@ -493,43 +493,184 @@ function VendorProfilePage() {
     );
   };
 
-  // Icon mapping for vendor features
+  // Icon mapping for vendor features - comprehensive mapping
   const getFeatureIcon = (featureName, categoryName) => {
-    const iconMap = {
-      // Venue Features
-      'Indoor Ceremony Space': 'home',
-      'Outdoor Ceremony Space': 'tree',
-      'Wheelchair Accessible': 'wheelchair',
-      'Parking Available': 'parking',
-      'Garden/Outdoor Space': 'leaf',
-      'WiFi Available': 'wifi',
-      'Dance Floor': 'music',
-      'Stage/Platform': 'theater-masks',
-      'On-Site Catering': 'utensils',
-      'Sound System Included': 'volume-up',
-      'Scenic Views': 'eye',
-      'Private Dressing Rooms': 'door-closed',
-      
-      // Photography & Video
-      'Engagement Session': 'heart',
-      
-      // Music & Entertainment
-      'Live Band': 'guitar',
-      
-      // Catering & Bar
-      'Full Bar Service': 'cocktail',
-      'Beer Selection': 'beer',
-      
-      // Event Planning
-      'Contract Review': 'file-contract',
-      
-      // Beauty & Fashion Services
-      'On-Location Services': 'map-marker-alt',
-      'Airbrush Makeup': 'spray-can',
-      'Custom Gown Design': 'tshirt'
+    // Normalize feature name for matching
+    const normalizedName = featureName?.toLowerCase() || '';
+    
+    // Category-based icon defaults
+    const categoryIcons = {
+      'Venue Features': 'building',
+      'Venue': 'building',
+      'Photography': 'camera',
+      'Photography & Video': 'camera',
+      'Videography': 'video',
+      'Music': 'music',
+      'Music & Entertainment': 'music',
+      'Entertainment': 'theater-masks',
+      'Catering': 'utensils',
+      'Catering & Bar': 'utensils',
+      'Bar': 'cocktail',
+      'Event Planning': 'clipboard-list',
+      'Planning': 'clipboard-list',
+      'Beauty': 'spa',
+      'Beauty & Fashion': 'spa',
+      'Fashion': 'tshirt',
+      'Floral': 'seedling',
+      'Flowers': 'seedling',
+      'Decor': 'palette',
+      'Decoration': 'palette',
+      'Transportation': 'car',
+      'Rentals': 'couch',
+      'Lighting': 'lightbulb',
+      'Audio': 'volume-up',
+      'Officiant': 'book',
+      'Cake': 'birthday-cake',
+      'Bakery': 'birthday-cake',
+      'Invitations': 'envelope',
+      'Stationery': 'envelope',
+      'Jewelry': 'gem',
+      'Favors': 'gift',
+      'Other': 'star'
     };
 
-    return iconMap[featureName] || iconMap[categoryName] || 'check';
+    // Keyword-based icon mapping
+    const keywordIcons = [
+      // Venue & Space
+      { keywords: ['indoor', 'inside'], icon: 'home' },
+      { keywords: ['outdoor', 'outside', 'garden', 'patio'], icon: 'tree' },
+      { keywords: ['wheelchair', 'accessible', 'handicap'], icon: 'wheelchair' },
+      { keywords: ['parking', 'valet'], icon: 'parking' },
+      { keywords: ['wifi', 'internet'], icon: 'wifi' },
+      { keywords: ['dance', 'dancing'], icon: 'music' },
+      { keywords: ['stage', 'platform'], icon: 'theater-masks' },
+      { keywords: ['view', 'scenic', 'waterfront', 'ocean', 'lake'], icon: 'mountain' },
+      { keywords: ['dressing', 'changing', 'bridal suite'], icon: 'door-closed' },
+      { keywords: ['kitchen', 'prep'], icon: 'blender' },
+      { keywords: ['air condition', 'ac', 'climate', 'heating'], icon: 'snowflake' },
+      { keywords: ['elevator', 'lift'], icon: 'arrows-alt-v' },
+      { keywords: ['restroom', 'bathroom', 'washroom'], icon: 'restroom' },
+      { keywords: ['pool', 'swimming'], icon: 'swimming-pool' },
+      { keywords: ['fireplace', 'fire pit'], icon: 'fire' },
+      { keywords: ['tent', 'canopy'], icon: 'campground' },
+      
+      // Photography & Video
+      { keywords: ['photo', 'photography', 'photographer'], icon: 'camera' },
+      { keywords: ['video', 'videography', 'film', 'cinemat'], icon: 'video' },
+      { keywords: ['drone', 'aerial'], icon: 'plane' },
+      { keywords: ['album', 'print'], icon: 'book-open' },
+      { keywords: ['edit', 'retouch', 'post-production'], icon: 'magic' },
+      { keywords: ['engagement', 'pre-wedding'], icon: 'heart' },
+      { keywords: ['portrait', 'headshot'], icon: 'user' },
+      { keywords: ['candid', 'documentary'], icon: 'camera-retro' },
+      
+      // Music & Entertainment
+      { keywords: ['dj', 'disc jockey'], icon: 'headphones' },
+      { keywords: ['band', 'live music'], icon: 'guitar' },
+      { keywords: ['singer', 'vocalist'], icon: 'microphone' },
+      { keywords: ['piano', 'pianist'], icon: 'music' },
+      { keywords: ['string', 'quartet', 'violin'], icon: 'music' },
+      { keywords: ['mc', 'emcee', 'host'], icon: 'bullhorn' },
+      { keywords: ['sound', 'audio', 'speaker'], icon: 'volume-up' },
+      { keywords: ['lighting', 'lights'], icon: 'lightbulb' },
+      { keywords: ['photo booth'], icon: 'camera-retro' },
+      { keywords: ['magic', 'magician'], icon: 'hat-wizard' },
+      { keywords: ['dance', 'choreograph'], icon: 'shoe-prints' },
+      
+      // Catering & Food
+      { keywords: ['catering', 'food', 'meal'], icon: 'utensils' },
+      { keywords: ['bar', 'cocktail', 'drink', 'beverage'], icon: 'cocktail' },
+      { keywords: ['wine'], icon: 'wine-glass-alt' },
+      { keywords: ['beer'], icon: 'beer' },
+      { keywords: ['coffee', 'espresso'], icon: 'coffee' },
+      { keywords: ['cake', 'dessert', 'pastry'], icon: 'birthday-cake' },
+      { keywords: ['vegetarian', 'vegan', 'dietary'], icon: 'leaf' },
+      { keywords: ['kosher', 'halal'], icon: 'check-circle' },
+      { keywords: ['tasting', 'sample'], icon: 'utensil-spoon' },
+      { keywords: ['buffet'], icon: 'concierge-bell' },
+      { keywords: ['plated', 'served'], icon: 'concierge-bell' },
+      
+      // Beauty & Fashion
+      { keywords: ['makeup', 'cosmetic'], icon: 'paint-brush' },
+      { keywords: ['hair', 'styling', 'hairstyl'], icon: 'cut' },
+      { keywords: ['nail', 'manicure'], icon: 'hand-sparkles' },
+      { keywords: ['spa', 'massage', 'relax'], icon: 'spa' },
+      { keywords: ['dress', 'gown', 'bridal wear'], icon: 'tshirt' },
+      { keywords: ['suit', 'tuxedo', 'formal wear'], icon: 'user-tie' },
+      { keywords: ['alteration', 'tailor', 'fitting'], icon: 'ruler' },
+      { keywords: ['accessory', 'accessories'], icon: 'gem' },
+      { keywords: ['jewelry', 'ring'], icon: 'ring' },
+      
+      // Floral & Decor
+      { keywords: ['flower', 'floral', 'bouquet'], icon: 'seedling' },
+      { keywords: ['centerpiece', 'arrangement'], icon: 'vase' },
+      { keywords: ['decor', 'decoration', 'design'], icon: 'palette' },
+      { keywords: ['linen', 'tablecloth', 'napkin'], icon: 'scroll' },
+      { keywords: ['chair', 'seating'], icon: 'chair' },
+      { keywords: ['table'], icon: 'border-all' },
+      { keywords: ['arch', 'backdrop'], icon: 'archway' },
+      { keywords: ['balloon'], icon: 'circle' },
+      { keywords: ['candle', 'candel'], icon: 'fire-alt' },
+      
+      // Planning & Coordination
+      { keywords: ['planning', 'planner', 'coordinator'], icon: 'clipboard-list' },
+      { keywords: ['day-of', 'on-site'], icon: 'calendar-day' },
+      { keywords: ['full service', 'full-service'], icon: 'concierge-bell' },
+      { keywords: ['partial', 'month-of'], icon: 'calendar-alt' },
+      { keywords: ['budget', 'financial'], icon: 'dollar-sign' },
+      { keywords: ['vendor', 'referral'], icon: 'users' },
+      { keywords: ['timeline', 'schedule'], icon: 'clock' },
+      { keywords: ['contract', 'legal'], icon: 'file-contract' },
+      { keywords: ['consultation', 'consult'], icon: 'comments' },
+      
+      // Transportation
+      { keywords: ['limo', 'limousine'], icon: 'car-side' },
+      { keywords: ['car', 'vehicle', 'transport'], icon: 'car' },
+      { keywords: ['bus', 'shuttle'], icon: 'bus' },
+      { keywords: ['horse', 'carriage'], icon: 'horse' },
+      { keywords: ['boat', 'yacht'], icon: 'ship' },
+      
+      // Rentals & Equipment
+      { keywords: ['rental', 'rent'], icon: 'box' },
+      { keywords: ['furniture'], icon: 'couch' },
+      { keywords: ['tent', 'marquee'], icon: 'campground' },
+      { keywords: ['generator', 'power'], icon: 'bolt' },
+      { keywords: ['heater', 'heating'], icon: 'temperature-high' },
+      { keywords: ['fan', 'cooling'], icon: 'fan' },
+      
+      // Invitations & Stationery
+      { keywords: ['invitation', 'invite'], icon: 'envelope-open-text' },
+      { keywords: ['save the date'], icon: 'calendar-plus' },
+      { keywords: ['menu', 'program'], icon: 'file-alt' },
+      { keywords: ['signage', 'sign'], icon: 'sign' },
+      { keywords: ['calligraphy'], icon: 'pen-fancy' },
+      
+      // Other Services
+      { keywords: ['officiant', 'ceremony'], icon: 'book' },
+      { keywords: ['favor', 'gift'], icon: 'gift' },
+      { keywords: ['guest', 'accommodation', 'hotel'], icon: 'bed' },
+      { keywords: ['insurance'], icon: 'shield-alt' },
+      { keywords: ['security'], icon: 'user-shield' },
+      { keywords: ['childcare', 'babysit', 'kids'], icon: 'child' },
+      { keywords: ['pet', 'dog', 'animal'], icon: 'paw' },
+      { keywords: ['firework', 'pyro'], icon: 'star' },
+      { keywords: ['lantern', 'release'], icon: 'paper-plane' }
+    ];
+
+    // First check keyword matches
+    for (const mapping of keywordIcons) {
+      if (mapping.keywords.some(kw => normalizedName.includes(kw))) {
+        return mapping.icon;
+      }
+    }
+
+    // Then check category
+    if (categoryName && categoryIcons[categoryName]) {
+      return categoryIcons[categoryName];
+    }
+
+    // Default icon based on first letter or generic
+    return 'check-circle';
   };
 
   // Render vendor features (questionnaire)
@@ -1860,7 +2001,140 @@ function VendorProfilePage() {
 
           {/* Right Column - Sidebar */}
           <div className="vendor-sidebar">
-          {/* Business Hours - First */}
+          {/* Hosted By Card - Giggster style */}
+          <div className="sidebar-card" style={{ marginBottom: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+              {/* Host Avatar */}
+              <div 
+                onClick={() => navigate(`/host/${vendor.userId || vendorId}`)}
+                style={{ 
+                  width: '56px', 
+                  height: '56px', 
+                  borderRadius: '50%', 
+                  overflow: 'hidden',
+                  cursor: 'pointer',
+                  flexShrink: 0,
+                  border: '2px solid #f0f0f0'
+                }}
+              >
+                <img 
+                  src={profile.HostProfileImage || profile.LogoURL || profile.FeaturedImageURL || 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png'}
+                  alt={profile.HostName || profile.ContactName || 'Host'}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  onError={(e) => { e.target.src = 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png'; }}
+                />
+              </div>
+              
+              {/* Host Info */}
+              <div style={{ flex: 1 }}>
+                <div 
+                  onClick={() => navigate(`/host/${vendor.userId || vendorId}`)}
+                  style={{ 
+                    fontSize: '1rem', 
+                    fontWeight: 600, 
+                    color: '#222',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  Hosted by {profile.HostName || profile.ContactName || profile.BusinessName?.split(' ')[0] || 'Host'}
+                  {/* Verified badge if applicable */}
+                  {profile.IsVerified && (
+                    <span style={{ 
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: '16px',
+                      height: '16px',
+                      borderRadius: '50%',
+                      background: '#22c55e',
+                      color: 'white',
+                      fontSize: '10px'
+                    }}>
+                      <i className="fas fa-check"></i>
+                    </span>
+                  )}
+                </div>
+                <div style={{ fontSize: '0.85rem', color: '#717171', marginTop: '2px' }}>
+                  {profile.ResponseRating && (
+                    <span>Response rating: <strong style={{ color: '#222' }}>{profile.ResponseRating}</strong></span>
+                  )}
+                  {!profile.ResponseRating && reviews.length > 0 && (
+                    <span>{reviews.length} review{reviews.length !== 1 ? 's' : ''}</span>
+                  )}
+                  {!profile.ResponseRating && reviews.length === 0 && (
+                    <span>New host</span>
+                  )}
+                </div>
+                {profile.ResponseTime && (
+                  <div style={{ fontSize: '0.85rem', color: '#717171' }}>
+                    Response time: <strong style={{ color: '#222' }}>{profile.ResponseTime}</strong>
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            {/* Message Host Button */}
+            <button 
+              className="btn btn-outline btn-full-width" 
+              onClick={handleMessageVendor}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                padding: '12px 16px',
+                border: '1px solid #222',
+                borderRadius: '8px',
+                background: 'white',
+                color: '#222',
+                fontWeight: 600,
+                fontSize: '0.95rem',
+                cursor: 'pointer',
+                transition: 'background 0.2s'
+              }}
+              onMouseOver={(e) => e.currentTarget.style.background = '#f7f7f7'}
+              onMouseOut={(e) => e.currentTarget.style.background = 'white'}
+            >
+              Message Host
+            </button>
+          </div>
+
+          {/* Request Booking Card */}
+          <div className="sidebar-card" style={{ marginBottom: '1rem' }}>
+            <h3 style={{ marginBottom: '0.5rem' }}>Book this space</h3>
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-light)', marginBottom: '1rem', lineHeight: 1.5 }}>
+              Send a booking request with your event details.
+            </p>
+            <button 
+              className="btn btn-primary btn-full-width" 
+              onClick={handleRequestBooking}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                padding: '14px 16px',
+                background: '#222',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontWeight: 600,
+                fontSize: '1rem',
+                cursor: 'pointer'
+              }}
+            >
+              Reserve
+            </button>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-light)', marginTop: '0.75rem', textAlign: 'center' }}>
+              <i className="fas fa-shield-alt" style={{ color: 'var(--primary)', marginRight: '4px' }}></i>
+              Free cancellation within 24 hours
+            </p>
+          </div>
+
+          {/* Business Hours */}
           {businessHours.length > 0 && (
             <div className="sidebar-card">
               <h3 style={{ marginBottom: '0.75rem' }}>Business Hours</h3>
@@ -1929,32 +2203,6 @@ function VendorProfilePage() {
             </div>
           )}
 
-          {/* Request Booking Card - Second */}
-          <div className="sidebar-card">
-            <h3>Request to Book</h3>
-            <p style={{ fontSize: '0.9rem', color: 'var(--text-light)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
-              Send a booking request to this vendor with your event details and service requirements.
-            </p>
-            <button className="btn btn-primary btn-full-width" onClick={handleRequestBooking}>
-              <i className="fas fa-calendar-check"></i>
-              <span>Request Booking</span>
-            </button>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-light)', marginTop: '0.75rem', textAlign: 'center' }}>
-              <i className="fas fa-shield-alt" style={{ color: 'var(--primary)' }}></i> Free request • No payment required
-            </p>
-          </div>
-
-          {/* Contact - Third */}
-          <div className="sidebar-card">
-            <h3>Message Vendor</h3>
-            <p style={{ marginBottom: '1rem', fontSize: '0.9rem', color: 'var(--text-light)' }}>
-              Have questions? Get in touch!
-            </p>
-            <button className="btn btn-primary btn-full-width" onClick={handleMessageVendor}>
-              <i className="fas fa-comment"></i>
-              <span>Send Message</span>
-            </button>
-          </div>
           </div>
         </div>
       
