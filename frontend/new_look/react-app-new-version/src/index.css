@@ -1241,28 +1241,27 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
 
 /* REMOVED: Vendor Profile Header styles - Now in standalone vendor-profile.html */
 
-/* Vendor Profile Image Gallery Layout */
+/* Vendor Profile Image Gallery Layout - Airbnb Style */
+/* Gallery maintains aspect ratio when window shrinks */
 .image-gallery {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    grid-template-rows: repeat(2, 1fr);
     gap: 8px;
     width: 100%;
-    height: 500px;
-    border-radius: var(--radius);
+    max-width: 1120px;
+    aspect-ratio: 2 / 1;
+    border-radius: 12px;
     overflow: hidden;
-    margin-bottom: 2rem;
+    margin-bottom: 0;
     background-color: transparent;
+    position: relative;
 }
 
 /* Left side: large image */
 .image-gallery > .gallery-item.large-image {
-    grid-column: 1 / 2;
-    grid-row: 1 / 3;
-    width: 100%;
-    height: 100%;
-    min-width: 0;
-    min-height: 0;
+    position: relative;
+    overflow: hidden;
+    border-radius: 12px 0 0 12px;
 }
 
 /* Right side: 2x2 grid for thumbnails */
@@ -1271,10 +1270,6 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
     grid-template-columns: 1fr 1fr;
     grid-template-rows: 1fr 1fr;
     gap: 8px;
-    grid-column: 2 / 3;
-    grid-row: 1 / 3;
-    width: 100%;
-    height: 100%;
 }
 
 .thumbnails-container > .gallery-item {

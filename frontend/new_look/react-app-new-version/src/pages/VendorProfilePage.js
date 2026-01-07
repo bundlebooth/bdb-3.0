@@ -1685,8 +1685,16 @@ function VendorProfilePage() {
         </div>
 
         {/* Image Gallery */}
-        <VendorGallery images={images} />
+        <VendorGallery 
+          images={images} 
+          onBack={() => navigate(-1)}
+          onShare={handleShare}
+          onFavorite={handleToggleFavorite}
+          isFavorite={isFavorite}
+        />
 
+        {/* Mobile Content Sheet - overlaps image with rounded corners */}
+        <div className="mobile-content-sheet">
         {/* Main Layout Grid - Sidebar starts at vendor name level */}
         <div className="vendor-profile-layout">
           {/* Left Column - Vendor Info + Content */}
@@ -1952,6 +1960,8 @@ function VendorProfilePage() {
       
       {/* Recommendations Section */}
       {renderRecommendations()}
+      </div>{/* End mobile-content-sheet */}
+      </div>{/* End profile-container */}
       
       {/* Mobile Sticky Booking Bar - styled like bottom nav */}
       <div className="sticky-booking-bar">
@@ -1994,7 +2004,6 @@ function VendorProfilePage() {
           window.dispatchEvent(new CustomEvent('openMessagingWidget', { detail: {} }));
         }}
       />
-    </div>
     </div>
   );
 }

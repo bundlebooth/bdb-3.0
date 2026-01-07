@@ -141,23 +141,26 @@
 }
 
 /* Vendor Profile Image Gallery Layout - Airbnb Style */
+/* Fixed max-width gallery that stays centered - doesn't stretch */
 .image-gallery {
-    display: flex;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
     gap: 8px;
+    max-width: 1120px;
     width: 100%;
-    height: 428px; /* 450 * 0.95 */
-    border-radius: 0;
-    overflow: visible;
+    margin-left: auto;
+    margin-right: auto;
+    aspect-ratio: 2.02 / 1;
+    border-radius: 12px;
+    overflow: hidden;
     margin-bottom: 0;
     background-color: transparent;
     position: relative;
 }
 
-/* Left side: large image taking 50% */
+/* Left side: large image - fills its grid cell */
 .image-gallery > .gallery-item.large-image {
-    flex: 0 0 50%;
-    height: 100%;
-    border-radius: 16px 0 0 16px !important;
+    border-radius: 12px 0 0 12px;
     position: relative;
     overflow: hidden;
 }
@@ -171,19 +174,15 @@
     object-fit: cover;
 }
 
-/* Right side: 2x2 grid for thumbnails - perfectly square */
+/* Right side: 2x2 grid for thumbnails */
 .image-gallery > .thumbnails-container {
-    flex: 0 0 50%;
     display: grid;
     grid-template-columns: 1fr 1fr;
     grid-template-rows: 1fr 1fr;
     gap: 8px;
-    height: 100%;
 }
 
 .thumbnails-container > .gallery-item {
-    width: 100%;
-    height: 100%;
     position: relative;
     overflow: hidden;
     border-radius: 0;
@@ -811,19 +810,47 @@
 
 /* Mobile Responsive */
 @media (max-width: 768px) {
+    /* Hide header on vendor profile page on mobile - gallery has its own nav */
+    .vendor-profile-page .site-header {
+        display: none !important;
+    }
+    
     /* Prevent horizontal scroll on entire page */
     .profile-container {
-        padding: 1rem;
+        padding: 0;
+        padding-bottom: 80px;
         margin: 0;
         max-width: 100%;
         overflow-x: hidden;
+        background: transparent;
     }
     
-    /* Main layout grid - stack on mobile */
+    /* Mobile gallery container - full width */
+    .mobile-gallery-container {
+        width: 100vw !important;
+        margin-left: calc(-50vw + 50%) !important;
+        border-radius: 0 !important;
+    }
+    
+    /* Bottom sheet content wrapper - overlaps the image */
+    .mobile-content-sheet {
+        position: relative;
+        width: 100vw;
+        margin-left: calc(-50vw + 50%);
+        margin-top: -20px;
+        background: white;
+        border-radius: 24px 24px 0 0;
+        padding: 24px 20px 0 20px;
+        z-index: 10;
+        min-height: calc(100vh - 300px);
+    }
+    
+    /* Content below gallery needs padding */
     .vendor-profile-layout {
         display: flex;
         flex-direction: column;
         gap: 1.5rem;
+        padding: 0;
     }
     
     .vendor-profile-layout > div:first-child {
@@ -837,6 +864,7 @@
     .vendor-content-layout {
         grid-template-columns: 1fr;
         gap: 1.5rem;
+        padding: 0;
     }
 
     .vendor-sidebar {
@@ -846,9 +874,7 @@
     }
 
     .vendor-profile-header {
-        flex-direction: column;
-        gap: 1rem;
-        align-items: flex-start;
+        display: none !important;
     }
 
     .vendor-profile-info h1 {
@@ -867,32 +893,9 @@
         font-size: 0.8rem;
     }
 
-    /* Gallery responsive - single image on mobile */
+    /* Hide desktop gallery on mobile - mobile gallery component handles it */
     .image-gallery {
-        height: auto;
-        aspect-ratio: 16 / 10;
-        display: flex;
-        flex-direction: column;
-        border-radius: 12px;
-        overflow: hidden;
-    }
-
-    .image-gallery > .gallery-item.large-image {
-        flex: 1;
-        width: 100%;
-        height: 100%;
-        border-radius: 12px !important;
-    }
-    
-    .image-gallery > .gallery-item.large-image img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        object-position: center;
-    }
-
-    .image-gallery > .thumbnails-container {
-        display: none;
+        display: none !important;
     }
 
     .show-all-photos-btn {

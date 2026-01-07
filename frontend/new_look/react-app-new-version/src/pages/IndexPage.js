@@ -969,7 +969,7 @@ function IndexPage() {
       <div className={`app-container sidebar-collapsed ${mapActive ? 'map-active' : ''}`} id="app-container" style={{ display: 'flex', flexDirection: 'column', width: '100%', overflow: 'visible' }}>
         <CategoriesNav activeCategory={currentCategory} onCategoryChange={handleCategoryChange} loading={loading} />
         <div className="content-wrapper" style={{ display: 'flex', width: '100%', flex: 1, overflow: 'visible' }}>
-          <main className="main-content" style={{ width: mapActive ? '65%' : '100%', overflowY: 'auto', overflowX: 'visible' }}>
+          <main className="main-content" style={{ width: mapActive ? '65%' : '100%', overflowY: 'auto', overflowX: 'visible', transition: 'width 0.3s ease' }}>
           {currentUser?.vendorProfileId && (
             <>
               <SetupIncompleteBanner 
@@ -1200,11 +1200,13 @@ function IndexPage() {
         </main>
         <aside className="map-sidebar" style={{ 
           display: mapActive ? 'block' : 'none',
-          width: '35%',
+          width: mapActive ? '35%' : '0',
           height: 'calc(100vh - 120px)',
           position: 'sticky',
           top: '120px',
-          borderLeft: '1px solid #e5e7eb'
+          borderLeft: mapActive ? '1px solid #e5e7eb' : 'none',
+          transition: 'width 0.3s ease, border 0.3s ease',
+          overflow: 'hidden'
         }}>
           <div className="map-sidebar-content">
             <MapView 
