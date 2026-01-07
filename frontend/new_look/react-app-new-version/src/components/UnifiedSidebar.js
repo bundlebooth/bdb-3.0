@@ -319,6 +319,10 @@ function UnifiedSidebar({ isOpen, onClose }) {
             <i className="fas fa-comments"></i>
             <span>Forum</span>
           </button>
+          <button className="unified-sidebar-item" onClick={() => handleNavigate('/blog')}>
+            <i className="fas fa-newspaper"></i>
+            <span>Blog</span>
+          </button>
         </div>
         
         {/* Dashboard section */}

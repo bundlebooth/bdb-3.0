@@ -20,6 +20,7 @@ import AnalyticsPanel from '../components/Admin/AnalyticsPanel';
 import SecurityLogsPanel from '../components/Admin/SecurityLogsPanel';
 import SupportToolsPanel from '../components/Admin/SupportToolsPanel';
 import VendorApprovalsPanel from '../components/Admin/VendorApprovalsPanel';
+import BlogManagementPanel from '../components/Admin/BlogManagementPanel';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -50,6 +51,7 @@ const AdminDashboard = () => {
     { id: 'payments', label: 'Payments & Payouts', icon: 'fas fa-credit-card' },
     { id: 'commissions', label: 'Commission Settings', icon: 'fas fa-percentage' },
     { id: 'content', label: 'Content Management', icon: 'fas fa-file-alt' },
+    { id: 'blogs', label: 'Blog Management', icon: 'fas fa-newspaper' },
     { id: 'faqs', label: 'FAQ Management', icon: 'fas fa-question-circle' },
     { id: 'notifications', label: 'Notifications', icon: 'fas fa-bell' },
     { id: 'settings', label: 'Platform Settings', icon: 'fas fa-cog' },
@@ -135,6 +137,8 @@ const AdminDashboard = () => {
         return <CommissionSettingsPanel />;
       case 'content':
         return <ContentManagementPanel />;
+      case 'blogs':
+        return <BlogManagementPanel />;
       case 'faqs':
         return <FAQManagementPanel />;
       case 'notifications':

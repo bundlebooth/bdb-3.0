@@ -2433,4 +2433,320 @@ router.get('/security/flagged-items', async (req, res) => {
   }
 });
 
+// ==================== BLOG MANAGEMENT ====================
+
+// GET /admin/blogs - Get all blog posts
+router.get('/blogs', async (req, res) => {
+  try {
+    const { status, category, search, page = 1, limit = 20 } = req.query;
+    const pool = await getPool();
+    
+    const request = pool.request();
+    request.input('Status', sql.NVarChar(50), status || null);
+    request.input('Category', sql.NVarChar(100), category || null);
+    request.input('Search', sql.NVarChar(100), search || null);
+    request.input('PageNumber', sql.Int, parseInt(page));
+    request.input('PageSize', sql.Int, parseInt(limit));
+    
+    // Try stored procedure first, fallback to direct query
+    try {
+      const result = await request.execute('admin.sp_GetBlogs');
+      res.json({
+        blogs: result.recordsets[0] || [],
+        total: result.recordsets[1]?.[0]?.total || 0,
+        page: parseInt(page),
+        limit: parseInt(limit)
+      });
+    } catch (spError) {
+      // Fallback: direct query if SP doesn't exist
+      let query = `
+        SELECT 
+          BlogID, Title, Slug, Excerpt, Content, FeaturedImageURL,
+          Category, Tags, Author, AuthorImageURL, Status,
+          IsFeatured, ViewCount, PublishedAt, CreatedAt, UpdatedAt
+        FROM content.Blogs
+        WHERE 1=1
+      `;
+      
+      if (status) query += ` AND Status = @Status`;
+      if (category) query += ` AND Category = @Category`;
+      if (search) query += ` AND (Title LIKE '%' + @Search + '%' OR Content LIKE '%' + @Search + '%')`;
+      
+      query += ` ORDER BY CreatedAt DESC OFFSET @Offset ROWS FETCH NEXT @Limit ROWS ONLY`;
+      
+      const offset = (parseInt(page) - 1) * parseInt(limit);
+      request.input('Offset', sql.Int, offset);
+      request.input('Limit', sql.Int, parseInt(limit));
+      
+      const result = await request.query(query);
+      
+      // Get total count
+      const countResult = await pool.request().query('SELECT COUNT(*) as total FROM content.Blogs');
+      
+      res.json({
+        blogs: result.recordset || [],
+        total: countResult.recordset[0]?.total || 0,
+        page: parseInt(page),
+        limit: parseInt(limit)
+      });
+    }
+  } catch (error) {
+    console.error('Error fetching blogs:', error);
+    res.status(500).json({ error: 'Failed to fetch blogs', details: error.message });
+  }
+});
+
+// GET /admin/blogs/:id - Get single blog post
+router.get('/blogs/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pool = await getPool();
+    
+    const request = pool.request();
+    request.input('BlogID', sql.Int, id);
+    
+    const result = await request.query(`
+      SELECT 
+        BlogID, Title, Slug, Excerpt, Content, FeaturedImageURL,
+        Category, Tags, Author, AuthorImageURL, Status,
+        IsFeatured, ViewCount, PublishedAt, CreatedAt, UpdatedAt
+      FROM content.Blogs
+      WHERE BlogID = @BlogID
+    `);
+    
+    if (result.recordset.length === 0) {
+      return res.status(404).json({ error: 'Blog post not found' });
+    }
+    
+    res.json({ blog: result.recordset[0] });
+  } catch (error) {
+    console.error('Error fetching blog:', error);
+    res.status(500).json({ error: 'Failed to fetch blog' });
+  }
+});
+
+// POST /admin/blogs - Create blog post
+router.post('/blogs', async (req, res) => {
+  try {
+    const { 
+      title, slug, excerpt, content, featuredImageUrl, 
+      category, tags, author, authorImageUrl, status, isFeatured 
+    } = req.body;
+    const pool = await getPool();
+    
+    // Generate slug if not provided
+    const blogSlug = slug || title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    
+    const request = pool.request();
+    request.input('Title', sql.NVarChar(255), title);
+    request.input('Slug', sql.NVarChar(255), blogSlug);
+    request.input('Excerpt', sql.NVarChar(500), excerpt || null);
+    request.input('Content', sql.NVarChar(sql.MAX), content);
+    request.input('FeaturedImageURL', sql.NVarChar(500), featuredImageUrl || null);
+    request.input('Category', sql.NVarChar(100), category || 'General');
+    request.input('Tags', sql.NVarChar(500), tags || null);
+    request.input('Author', sql.NVarChar(100), author || 'PlanBeau Team');
+    request.input('AuthorImageURL', sql.NVarChar(500), authorImageUrl || null);
+    request.input('Status', sql.NVarChar(50), status || 'draft');
+    request.input('IsFeatured', sql.Bit, isFeatured || false);
+    request.input('PublishedAt', sql.DateTime2, status === 'published' ? new Date() : null);
+    
+    const result = await request.query(`
+      INSERT INTO content.Blogs (
+        Title, Slug, Excerpt, Content, FeaturedImageURL,
+        Category, Tags, Author, AuthorImageURL, Status,
+        IsFeatured, PublishedAt, CreatedAt, UpdatedAt
+      )
+      OUTPUT INSERTED.BlogID
+      VALUES (
+        @Title, @Slug, @Excerpt, @Content, @FeaturedImageURL,
+        @Category, @Tags, @Author, @AuthorImageURL, @Status,
+        @IsFeatured, @PublishedAt, GETDATE(), GETDATE()
+      )
+    `);
+    
+    res.json({ success: true, blogId: result.recordset[0].BlogID });
+  } catch (error) {
+    console.error('Error creating blog:', error);
+    res.status(500).json({ error: 'Failed to create blog', details: error.message });
+  }
+});
+
+// PUT /admin/blogs/:id - Update blog post
+router.put('/blogs/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { 
+      title, slug, excerpt, content, featuredImageUrl, 
+      category, tags, author, authorImageUrl, status, isFeatured 
+    } = req.body;
+    const pool = await getPool();
+    
+    // Get current blog to check status change
+    const currentBlog = await pool.request()
+      .input('BlogID', sql.Int, id)
+      .query('SELECT Status, PublishedAt FROM content.Blogs WHERE BlogID = @BlogID');
+    
+    const wasPublished = currentBlog.recordset[0]?.Status === 'published';
+    const isNowPublished = status === 'published';
+    
+    const request = pool.request();
+    request.input('BlogID', sql.Int, id);
+    request.input('Title', sql.NVarChar(255), title);
+    request.input('Slug', sql.NVarChar(255), slug);
+    request.input('Excerpt', sql.NVarChar(500), excerpt || null);
+    request.input('Content', sql.NVarChar(sql.MAX), content);
+    request.input('FeaturedImageURL', sql.NVarChar(500), featuredImageUrl || null);
+    request.input('Category', sql.NVarChar(100), category || 'General');
+    request.input('Tags', sql.NVarChar(500), tags || null);
+    request.input('Author', sql.NVarChar(100), author || 'PlanBeau Team');
+    request.input('AuthorImageURL', sql.NVarChar(500), authorImageUrl || null);
+    request.input('Status', sql.NVarChar(50), status || 'draft');
+    request.input('IsFeatured', sql.Bit, isFeatured || false);
+    
+    // Set PublishedAt if publishing for the first time
+    let publishedAtClause = '';
+    if (!wasPublished && isNowPublished) {
+      publishedAtClause = ', PublishedAt = GETDATE()';
+    }
+    
+    await request.query(`
+      UPDATE content.Blogs SET
+        Title = @Title,
+        Slug = @Slug,
+        Excerpt = @Excerpt,
+        Content = @Content,
+        FeaturedImageURL = @FeaturedImageURL,
+        Category = @Category,
+        Tags = @Tags,
+        Author = @Author,
+        AuthorImageURL = @AuthorImageURL,
+        Status = @Status,
+        IsFeatured = @IsFeatured,
+        UpdatedAt = GETDATE()
+        ${publishedAtClause}
+      WHERE BlogID = @BlogID
+    `);
+    
+    res.json({ success: true, message: 'Blog updated' });
+  } catch (error) {
+    console.error('Error updating blog:', error);
+    res.status(500).json({ error: 'Failed to update blog' });
+  }
+});
+
+// DELETE /admin/blogs/:id - Delete blog post
+router.delete('/blogs/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pool = await getPool();
+    
+    await pool.request()
+      .input('BlogID', sql.Int, id)
+      .query('DELETE FROM content.Blogs WHERE BlogID = @BlogID');
+    
+    res.json({ success: true, message: 'Blog deleted' });
+  } catch (error) {
+    console.error('Error deleting blog:', error);
+    res.status(500).json({ error: 'Failed to delete blog' });
+  }
+});
+
+// POST /admin/blogs/:id/publish - Publish blog post
+router.post('/blogs/:id/publish', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pool = await getPool();
+    
+    await pool.request()
+      .input('BlogID', sql.Int, id)
+      .query(`
+        UPDATE content.Blogs SET
+          Status = 'published',
+          PublishedAt = COALESCE(PublishedAt, GETDATE()),
+          UpdatedAt = GETDATE()
+        WHERE BlogID = @BlogID
+      `);
+    
+    res.json({ success: true, message: 'Blog published' });
+  } catch (error) {
+    console.error('Error publishing blog:', error);
+    res.status(500).json({ error: 'Failed to publish blog' });
+  }
+});
+
+// POST /admin/blogs/:id/unpublish - Unpublish blog post
+router.post('/blogs/:id/unpublish', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pool = await getPool();
+    
+    await pool.request()
+      .input('BlogID', sql.Int, id)
+      .query(`
+        UPDATE content.Blogs SET
+          Status = 'draft',
+          UpdatedAt = GETDATE()
+        WHERE BlogID = @BlogID
+      `);
+    
+    res.json({ success: true, message: 'Blog unpublished' });
+  } catch (error) {
+    console.error('Error unpublishing blog:', error);
+    res.status(500).json({ error: 'Failed to unpublish blog' });
+  }
+});
+
+// POST /admin/blogs/:id/feature - Toggle featured status
+router.post('/blogs/:id/feature', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { featured } = req.body;
+    const pool = await getPool();
+    
+    await pool.request()
+      .input('BlogID', sql.Int, id)
+      .input('IsFeatured', sql.Bit, featured)
+      .query(`
+        UPDATE content.Blogs SET
+          IsFeatured = @IsFeatured,
+          UpdatedAt = GETDATE()
+        WHERE BlogID = @BlogID
+      `);
+    
+    res.json({ success: true, message: featured ? 'Blog featured' : 'Blog unfeatured' });
+  } catch (error) {
+    console.error('Error toggling featured:', error);
+    res.status(500).json({ error: 'Failed to toggle featured status' });
+  }
+});
+
+// GET /admin/blogs/categories - Get blog categories
+router.get('/blog-categories', async (req, res) => {
+  try {
+    const pool = await getPool();
+    
+    const result = await pool.request().query(`
+      SELECT DISTINCT Category, COUNT(*) as PostCount
+      FROM content.Blogs
+      GROUP BY Category
+      ORDER BY Category
+    `);
+    
+    // Add default categories if none exist
+    const defaultCategories = [
+      'Wedding Planning', 'Event Tips', 'Vendor Spotlights', 
+      'Industry News', 'Holiday Festivities', 'Business Events'
+    ];
+    
+    const existingCategories = result.recordset.map(r => r.Category);
+    const allCategories = [...new Set([...existingCategories, ...defaultCategories])];
+    
+    res.json({ categories: allCategories });
+  } catch (error) {
+    console.error('Error fetching blog categories:', error);
+    res.json({ categories: ['Wedding Planning', 'Event Tips', 'Vendor Spotlights', 'Industry News', 'Holiday Festivities', 'Business Events'] });
+  }
+});
+
 module.exports = router;

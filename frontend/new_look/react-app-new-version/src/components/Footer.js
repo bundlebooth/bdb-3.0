@@ -42,6 +42,7 @@ function Footer() {
             <li><a href="/explore" onClick={(e) => { e.preventDefault(); handleNavigate('/explore'); }}>Browse Vendors</a></li>
             <li><a href="/become-a-vendor" onClick={(e) => { e.preventDefault(); handleNavigate('/become-a-vendor'); }}>Are You a Vendor?</a></li>
             <li><a href="/help-centre" onClick={(e) => { e.preventDefault(); handleNavigate('/help-centre'); }}>Help Centre</a></li>
+            <li><a href="/blog" onClick={(e) => { e.preventDefault(); handleNavigate('/blog'); }}>Blog</a></li>
             <li><a href="/privacy-policy" onClick={(e) => { e.preventDefault(); handleNavigate('/privacy-policy'); }}>Privacy Policy</a></li>
             <li><a href="/terms-of-service" onClick={(e) => { e.preventDefault(); handleNavigate('/terms-of-service'); }}>Terms of Service</a></li>
           </ul>

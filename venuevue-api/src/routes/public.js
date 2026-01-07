@@ -145,4 +145,153 @@ router.get('/commission-info', async (req, res) => {
   }
 });
 
+// ==================== BLOG ROUTES ====================
+
+// Get published blog posts
+router.get('/blogs', async (req, res) => {
+  try {
+    const { category, page = 1, limit = 12, featured } = req.query;
+    const pool = await poolPromise;
+    
+    let query = `
+      SELECT 
+        BlogID, Title, Slug, Excerpt, FeaturedImageURL,
+        Category, Tags, Author, AuthorImageURL,
+        IsFeatured, ViewCount, PublishedAt
+      FROM content.Blogs
+      WHERE Status = 'published'
+    `;
+    
+    const request = pool.request();
+    
+    if (category) {
+      query += ` AND Category = @Category`;
+      request.input('Category', sql.NVarChar(100), category);
+    }
+    
+    if (featured === 'true') {
+      query += ` AND IsFeatured = 1`;
+    }
+    
+    query += ` ORDER BY IsFeatured DESC, PublishedAt DESC`;
+    query += ` OFFSET @Offset ROWS FETCH NEXT @Limit ROWS ONLY`;
+    
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+    request.input('Offset', sql.Int, offset);
+    request.input('Limit', sql.Int, parseInt(limit));
+    
+    const result = await request.query(query);
+    
+    // Get total count
+    let countQuery = `SELECT COUNT(*) as total FROM content.Blogs WHERE Status = 'published'`;
+    if (category) {
+      countQuery += ` AND Category = '${category}'`;
+    }
+    const countResult = await pool.request().query(countQuery);
+    
+    res.json({
+      blogs: result.recordset || [],
+      total: countResult.recordset[0]?.total || 0,
+      page: parseInt(page),
+      limit: parseInt(limit)
+    });
+  } catch (error) {
+    console.error('Error fetching public blogs:', error);
+    res.json({ blogs: [], total: 0, page: 1, limit: 12 });
+  }
+});
+
+// Get featured blog posts for carousel
+router.get('/blogs/featured', async (req, res) => {
+  try {
+    const pool = await poolPromise;
+    
+    const result = await pool.request().query(`
+      SELECT TOP 5
+        BlogID, Title, Slug, Excerpt, FeaturedImageURL,
+        Category, Author, AuthorImageURL, PublishedAt
+      FROM content.Blogs
+      WHERE Status = 'published' AND IsFeatured = 1
+      ORDER BY PublishedAt DESC
+    `);
+    
+    res.json({ blogs: result.recordset || [] });
+  } catch (error) {
+    console.error('Error fetching featured blogs:', error);
+    res.json({ blogs: [] });
+  }
+});
+
+// Get single blog post by slug
+router.get('/blogs/:slug', async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const pool = await poolPromise;
+    
+    const result = await pool.request()
+      .input('Slug', sql.NVarChar(255), slug)
+      .query(`
+        SELECT 
+          BlogID, Title, Slug, Excerpt, Content, FeaturedImageURL,
+          Category, Tags, Author, AuthorImageURL,
+          IsFeatured, ViewCount, PublishedAt, CreatedAt
+        FROM content.Blogs
+        WHERE Slug = @Slug AND Status = 'published'
+      `);
+    
+    if (result.recordset.length === 0) {
+      return res.status(404).json({ error: 'Blog post not found' });
+    }
+    
+    // Increment view count
+    await pool.request()
+      .input('Slug', sql.NVarChar(255), slug)
+      .query('UPDATE content.Blogs SET ViewCount = ISNULL(ViewCount, 0) + 1 WHERE Slug = @Slug');
+    
+    // Get related posts
+    const blog = result.recordset[0];
+    const relatedResult = await pool.request()
+      .input('BlogID', sql.Int, blog.BlogID)
+      .input('Category', sql.NVarChar(100), blog.Category)
+      .query(`
+        SELECT TOP 3
+          BlogID, Title, Slug, Excerpt, FeaturedImageURL,
+          Category, Author, PublishedAt
+        FROM content.Blogs
+        WHERE Status = 'published' 
+          AND BlogID != @BlogID
+          AND Category = @Category
+        ORDER BY PublishedAt DESC
+      `);
+    
+    res.json({ 
+      blog: blog,
+      relatedPosts: relatedResult.recordset || []
+    });
+  } catch (error) {
+    console.error('Error fetching blog post:', error);
+    res.status(500).json({ error: 'Failed to fetch blog post' });
+  }
+});
+
+// Get blog categories with post counts
+router.get('/blog-categories', async (req, res) => {
+  try {
+    const pool = await poolPromise;
+    
+    const result = await pool.request().query(`
+      SELECT Category, COUNT(*) as PostCount
+      FROM content.Blogs
+      WHERE Status = 'published'
+      GROUP BY Category
+      ORDER BY PostCount DESC
+    `);
+    
+    res.json({ categories: result.recordset || [] });
+  } catch (error) {
+    console.error('Error fetching blog categories:', error);
+    res.json({ categories: [] });
+  }
+});
+
 module.exports = router;

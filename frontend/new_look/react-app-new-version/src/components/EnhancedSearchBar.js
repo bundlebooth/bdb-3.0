@@ -3,6 +3,7 @@ import { API_BASE_URL, GOOGLE_MAPS_API_KEY } from '../config';
 import './EnhancedSearchBar.css';
 import Calendar from './Calendar';
 import './Calendar.css';
+import LocationSearchModal from './LocationSearchModal';
 
 const EnhancedSearchBar = ({ onSearch, isScrolled }) => {
   const [location, setLocation] = useState('');
@@ -16,6 +17,8 @@ const EnhancedSearchBar = ({ onSearch, isScrolled }) => {
   const [loadingLocation, setLoadingLocation] = useState(false);
   const [startTime, setStartTime] = useState('11:00');
   const [endTime, setEndTime] = useState('17:00');
+  const [showLocationModal, setShowLocationModal] = useState(false);
+  const [searchRadius, setSearchRadius] = useState(50);
 
   const locationRef = useRef(null);
   const dateRef = useRef(null);
@@ -419,7 +422,7 @@ const EnhancedSearchBar = ({ onSearch, isScrolled }) => {
         {/* Compact View (collapsed state) */}
         {!isExpanded ? (
           <div className="compact-view" onClick={handleSearchBarClick}>
-            <div className="compact-field compact-location">
+            <div className="compact-field compact-location" onClick={(e) => { e.stopPropagation(); setShowLocationModal(true); }}>
               <span className="compact-value">{formatLocationDisplay(location, true) || 'Location'}</span>
             </div>
             <div className="compact-separator">|</div>
@@ -500,6 +503,25 @@ const EnhancedSearchBar = ({ onSearch, isScrolled }) => {
         )}
       </div>
       </div>
+      
+      {/* Location Search Modal */}
+      <LocationSearchModal
+        isOpen={showLocationModal}
+        onClose={() => setShowLocationModal(false)}
+        onApply={({ location: newLocation, radius, coordinates }) => {
+          setLocation(newLocation);
+          setSearchRadius(radius);
+          if (coordinates) {
+            setUserLocation({
+              latitude: coordinates.lat,
+              longitude: coordinates.lng,
+              city: newLocation
+            });
+          }
+        }}
+        initialLocation={location}
+        initialRadius={searchRadius}
+      />
     </>
   );
 };
