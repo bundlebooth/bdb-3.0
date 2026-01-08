@@ -775,7 +775,7 @@ body.overlay-open {
 
 .app-container.map-active .map-sidebar-content {
     display: block;
-    height: calc(100vh - 120px);
+    height: calc(100vh - 64px);
 }
 
 
@@ -11761,5 +11761,58 @@ html, body {
         font-size: 0.8rem !important;
         line-height: 1.4 !important;
     }
+}
+
+/* ============================================
+   INLINE CATEGORIES NAV - Pill Style Buttons
+   ============================================ */
+.inline-categories-nav {
+    padding: 0.5rem 2rem;
+    background: white;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+
+.inline-categories-scroll {
+    display: flex;
+    justify-content: flex-start;
+    gap: 0.5rem;
+    overflow-x: auto;
+    padding-bottom: 0.25rem;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.inline-categories-scroll::-webkit-scrollbar {
+    display: none;
+}
+
+/* Mobile responsive for inline categories */
+@media (max-width: 768px) {
+    .inline-categories-nav {
+        padding: 0.5rem 1rem;
+        margin: 0;
+        position: sticky;
+        top: 45px;
+        z-index: 90;
+    }
+    
+    .inline-categories-scroll {
+        gap: 0.375rem;
+    }
+    
+    .inline-categories-scroll button {
+        padding: 0.35rem 0.75rem !important;
+        font-size: 0.75rem !important;
+    }
+}
+
+/* Map sidebar - ensure full height with no gaps */
+.map-sidebar {
+    height: calc(100vh - 64px) !important;
+}
+
+.map-sidebar-content {
+    height: 100% !important;
 }
 

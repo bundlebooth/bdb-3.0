@@ -3,8 +3,8 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
 import Header from '../components/Header';
-import CategoriesNav from '../components/CategoriesNav';
 import FilterModal from '../components/FilterModal';
+import CategoriesNav from '../components/CategoriesNav';
 import VendorGrid from '../components/VendorGrid';
 import VendorSection from '../components/VendorSection';
 import VendorSectionSkeleton from '../components/VendorSectionSkeleton';
@@ -991,10 +991,16 @@ function IndexPage() {
         userLocation={userLocation}
         vendorCount={serverTotalCount}
       />
+      {/* Category Navigation - pill style buttons - OUTSIDE main-content to avoid padding */}
+      <CategoriesNav 
+        activeCategory={currentCategory} 
+        onCategoryChange={handleCategoryChange} 
+        loading={loading} 
+      />
       <div className={`app-container sidebar-collapsed ${mapActive ? 'map-active' : ''}`} id="app-container" style={{ display: 'flex', flexDirection: 'column', width: '100%', overflow: 'visible' }}>
-        <CategoriesNav activeCategory={currentCategory} onCategoryChange={handleCategoryChange} loading={loading} />
         <div className="content-wrapper" style={{ display: 'flex', width: '100%', flex: 1, overflow: 'visible' }}>
           <main className="main-content" style={{ width: mapActive ? '65%' : '100%', overflowY: 'auto', overflowX: 'visible', transition: 'width 0.3s ease' }}>
+          
           {currentUser?.vendorProfileId && (
             <>
               <SetupIncompleteBanner 
@@ -1226,12 +1232,13 @@ function IndexPage() {
         <aside className="map-sidebar" style={{ 
           display: mapActive ? 'block' : 'none',
           width: mapActive ? '35%' : '0',
-          height: 'calc(100vh - 120px)',
+          height: 'calc(100vh - 64px)',
           position: 'sticky',
-          top: '120px',
+          top: '64px',
           borderLeft: mapActive ? '1px solid #e5e7eb' : 'none',
           transition: 'width 0.3s ease, border 0.3s ease',
-          overflow: 'hidden'
+          overflow: 'hidden',
+          alignSelf: 'flex-start'
         }}>
           <div className="map-sidebar-content">
             <MapView 
