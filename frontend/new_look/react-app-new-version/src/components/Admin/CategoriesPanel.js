@@ -101,8 +101,8 @@ const CategoriesPanel = () => {
         </div>
       </div>
 
-      {/* Categories List */}
-      <div className="categories-container">
+      {/* Categories Table */}
+      <div className="data-table-container">
         {loading ? (
           <div className="loading-state">
             <div className="spinner"></div>
@@ -115,88 +115,110 @@ const CategoriesPanel = () => {
             <p>Create your first category to get started</p>
           </div>
         ) : (
-          <div className="categories-tree">
-            {categories.map(category => (
-              <div key={category.CategoryID} className="category-item">
-                <div className="category-header">
-                  <div className="category-info">
-                    <button
-                      className="expand-btn"
-                      onClick={() => toggleExpand(category.CategoryID)}
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th style={{ width: '50px' }}>Icon</th>
+                <th>Category Name</th>
+                <th>Vendors</th>
+                <th>Subcategories</th>
+                <th>Visibility</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {categories.map(category => (
+                <tr key={category.CategoryID}>
+                  <td>
+                    <div 
+                      style={{ 
+                        width: '36px', 
+                        height: '36px', 
+                        borderRadius: '8px', 
+                        background: category.Color || '#5e72e4',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'white'
+                      }}
                     >
-                      <i className={`fas fa-chevron-${expandedCategories.has(category.CategoryID) ? 'down' : 'right'}`}></i>
-                    </button>
-                    <div className="category-icon" style={{ background: category.Color || '#5e72e4' }}>
                       <i className={category.Icon || 'fas fa-tag'}></i>
                     </div>
-                    <div className="category-details">
-                      <h4>{category.CategoryName}</h4>
-                      <span className="category-meta">
-                        {category.VendorCount || 0} vendors • {category.SubcategoryCount || 0} subcategories
-                      </span>
-                    </div>
-                  </div>
-                  <div className="category-actions">
+                  </td>
+                  <td>
+                    <strong style={{ color: '#1f2937' }}>{category.CategoryName}</strong>
+                    {category.Description && (
+                      <small style={{ display: 'block', color: '#9ca3af', fontSize: '0.8rem' }}>
+                        {category.Description.substring(0, 50)}{category.Description.length > 50 ? '...' : ''}
+                      </small>
+                    )}
+                  </td>
+                  <td style={{ textAlign: 'center' }}>
+                    <span style={{ 
+                      background: '#dbeafe', 
+                      color: '#2563eb', 
+                      padding: '0.25rem 0.75rem', 
+                      borderRadius: '12px',
+                      fontSize: '0.85rem',
+                      fontWeight: '500'
+                    }}>
+                      {category.VendorCount || 0}
+                    </span>
+                  </td>
+                  <td style={{ textAlign: 'center' }}>
+                    <span style={{ 
+                      background: '#f3f4f6', 
+                      color: '#6b7280', 
+                      padding: '0.25rem 0.75rem', 
+                      borderRadius: '12px',
+                      fontSize: '0.85rem'
+                    }}>
+                      {category.SubcategoryCount || 0}
+                    </span>
+                  </td>
+                  <td>
                     <button
                       className={`visibility-toggle ${category.IsVisible ? 'visible' : 'hidden'}`}
                       onClick={() => handleToggleVisibility(category.CategoryID, category.IsVisible)}
-                      title={category.IsVisible ? 'Hide' : 'Show'}
+                      title={category.IsVisible ? 'Click to hide' : 'Click to show'}
+                      style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem' }}
                     >
                       <i className={`fas fa-eye${category.IsVisible ? '' : '-slash'}`}></i>
+                      <span style={{ marginLeft: '0.35rem' }}>{category.IsVisible ? 'Visible' : 'Hidden'}</span>
                     </button>
-                    <button
-                      className="action-btn edit"
-                      onClick={() => { setSelectedCategory(category); setModalType('edit'); }}
-                      title="Edit"
-                    >
-                      <i className="fas fa-pen"></i>
-                    </button>
-                    <button
-                      className="action-btn services"
-                      onClick={() => { setSelectedCategory(category); setModalType('services'); }}
-                      title="Manage Services"
-                    >
-                      <i className="fas fa-list"></i>
-                    </button>
-                    <button
-                      className="action-btn delete"
-                      onClick={() => handleDeleteCategory(category.CategoryID)}
-                      title="Delete"
-                    >
-                      <i className="fas fa-trash-alt"></i>
-                    </button>
-                  </div>
-                </div>
-
-                {expandedCategories.has(category.CategoryID) && category.Subcategories?.length > 0 && (
-                  <div className="subcategories-list">
-                    {category.Subcategories.map(sub => (
-                      <div key={sub.SubcategoryID} className="subcategory-item">
-                        <div className="subcategory-info">
-                          <span className="subcategory-name">{sub.SubcategoryName}</span>
-                          <span className="subcategory-meta">{sub.VendorCount || 0} vendors</span>
-                        </div>
-                        <div className="subcategory-actions">
-                          <button
-                            className={`visibility-toggle small ${sub.IsVisible ? 'visible' : 'hidden'}`}
-                            onClick={() => handleToggleVisibility(sub.SubcategoryID, sub.IsVisible)}
-                          >
-                            <i className={`fas fa-eye${sub.IsVisible ? '' : '-slash'}`}></i>
-                          </button>
-                          <button className="action-btn small edit">
-                            <i className="fas fa-pen"></i>
-                          </button>
-                          <button className="action-btn small delete">
-                            <i className="fas fa-trash-alt"></i>
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
+                  </td>
+                  <td>
+                    <div className="action-buttons" style={{ display: 'flex', gap: '0.25rem', flexWrap: 'nowrap' }}>
+                      <button
+                        className="action-btn edit"
+                        onClick={() => { setSelectedCategory(category); setModalType('edit'); }}
+                        title="Edit Category"
+                        style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem' }}
+                      >
+                        <i className="fas fa-pen"></i>
+                      </button>
+                      <button
+                        className="action-btn services"
+                        onClick={() => { setSelectedCategory(category); setModalType('services'); }}
+                        title="Manage Services"
+                        style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem', background: '#ede9fe', color: '#7c3aed' }}
+                      >
+                        <i className="fas fa-list"></i>
+                      </button>
+                      <button
+                        className="action-btn delete"
+                        onClick={() => handleDeleteCategory(category.CategoryID)}
+                        title="Delete Category"
+                        style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem' }}
+                      >
+                        <i className="fas fa-trash-alt"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
       </div>
 

@@ -226,17 +226,37 @@ const BlogManagementPanel = () => {
               {blogs.map(blog => (
                 <tr key={blog.BlogID}>
                   <td>
-                    <div className="blog-title-cell">
-                      {blog.FeaturedImageURL && (
+                    <div className="blog-title-cell" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      {blog.FeaturedImageURL ? (
                         <img 
                           src={blog.FeaturedImageURL} 
                           alt="" 
-                          className="blog-thumbnail"
+                          style={{ 
+                            width: '50px', 
+                            height: '50px', 
+                            borderRadius: '6px', 
+                            objectFit: 'cover',
+                            flexShrink: 0
+                          }}
                         />
+                      ) : (
+                        <div style={{ 
+                          width: '50px', 
+                          height: '50px', 
+                          borderRadius: '6px', 
+                          background: '#f3f4f6',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: '#9ca3af',
+                          flexShrink: 0
+                        }}>
+                          <i className="fas fa-image"></i>
+                        </div>
                       )}
-                      <div>
-                        <strong>{blog.Title}</strong>
-                        <small className="blog-slug">/{blog.Slug}</small>
+                      <div style={{ minWidth: 0 }}>
+                        <strong style={{ display: 'block', color: '#1f2937', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '250px' }}>{blog.Title}</strong>
+                        <small style={{ color: '#9ca3af', fontSize: '0.75rem' }}>/{blog.Slug}</small>
                       </div>
                     </div>
                   </td>

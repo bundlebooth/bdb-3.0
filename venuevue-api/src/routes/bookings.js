@@ -1538,6 +1538,238 @@ router.post('/:id/cancel', async (req, res) => {
   }
 });
 
+// GET /bookings/:id/cancel-preview - Get refund preview for client cancellation
+router.get('/:id/cancel-preview', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const bookingId = resolveBookingId(id);
+    
+    if (!bookingId) {
+      return res.status(400).json({ success: false, message: 'Invalid booking ID' });
+    }
+
+    const pool = await poolPromise;
+    const result = await pool.request()
+      .input('BookingID', sql.Int, bookingId)
+      .execute('bookings.sp_GetBookingForCancellation');
+
+    if (result.recordset.length === 0) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    const booking = result.recordset[0];
+    const hoursUntilEvent = booking.HoursUntilEvent || 0;
+    const totalAmount = booking.TotalAmount || 0;
+
+    // Calculate refund based on policy
+    let refundPercent = 0;
+    let policyType = 'default';
+
+    if (booking.PolicyType) {
+      policyType = booking.PolicyType;
+      const fullRefundDays = booking.FullRefundDays || 7;
+      const partialRefundDays = booking.PartialRefundDays || 3;
+      const partialRefundPct = booking.PartialRefundPercent || 50;
+      const noRefundDays = booking.NoRefundDays || 1;
+
+      const daysUntilEvent = hoursUntilEvent / 24;
+
+      if (daysUntilEvent >= fullRefundDays) {
+        refundPercent = 100;
+      } else if (daysUntilEvent >= partialRefundDays) {
+        refundPercent = partialRefundPct;
+      } else if (daysUntilEvent < noRefundDays) {
+        refundPercent = 0;
+      }
+    } else {
+      // Default policy: full refund 7+ days, 50% 3-7 days, no refund <1 day
+      const daysUntilEvent = hoursUntilEvent / 24;
+      if (daysUntilEvent >= 7) refundPercent = 100;
+      else if (daysUntilEvent >= 3) refundPercent = 50;
+      else refundPercent = 0;
+    }
+
+    const refundAmount = (totalAmount * refundPercent) / 100;
+
+    res.json({
+      success: true,
+      bookingId,
+      totalAmount,
+      refundPercent,
+      refundAmount,
+      policyType,
+      hoursUntilEvent,
+      daysUntilEvent: Math.floor(hoursUntilEvent / 24),
+      isPaid: booking.FullAmountPaid || false
+    });
+
+  } catch (err) {
+    console.error('Cancel preview error:', err);
+    res.status(500).json({ success: false, message: 'Failed to get cancellation preview', error: err.message });
+  }
+});
+
+// POST /bookings/:id/client-cancel - Client cancels their own booking
+router.post('/:id/client-cancel', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+    const userId = req.user?.id || req.body.userId;
+    
+    const bookingId = resolveBookingId(id);
+    if (!bookingId) {
+      return res.status(400).json({ success: false, message: 'Invalid booking ID' });
+    }
+
+    const pool = await poolPromise;
+
+    // Get booking details
+    const bookingRes = await pool.request()
+      .input('BookingID', sql.Int, bookingId)
+      .execute('bookings.sp_GetBookingForCancellation');
+
+    if (bookingRes.recordset.length === 0) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    const booking = bookingRes.recordset[0];
+
+    // Verify user owns this booking
+    if (userId && booking.UserID !== userId) {
+      return res.status(403).json({ success: false, message: 'You can only cancel your own bookings' });
+    }
+
+    // Check if already cancelled
+    if (['cancelled', 'cancelled_by_client', 'cancelled_by_vendor', 'cancelled_by_admin', 'refunded'].includes(booking.Status?.toLowerCase())) {
+      return res.status(400).json({ success: false, message: 'Booking is already cancelled' });
+    }
+
+    // Calculate refund
+    const hoursUntilEvent = booking.HoursUntilEvent || 0;
+    const totalAmount = booking.TotalAmount || 0;
+    let refundPercent = 0;
+
+    if (booking.PolicyType) {
+      const fullRefundDays = booking.FullRefundDays || 7;
+      const partialRefundDays = booking.PartialRefundDays || 3;
+      const partialRefundPct = booking.PartialRefundPercent || 50;
+      const noRefundDays = booking.NoRefundDays || 1;
+      const daysUntilEvent = hoursUntilEvent / 24;
+
+      if (daysUntilEvent >= fullRefundDays) refundPercent = 100;
+      else if (daysUntilEvent >= partialRefundDays) refundPercent = partialRefundPct;
+      else if (daysUntilEvent < noRefundDays) refundPercent = 0;
+    } else {
+      const daysUntilEvent = hoursUntilEvent / 24;
+      if (daysUntilEvent >= 7) refundPercent = 100;
+      else if (daysUntilEvent >= 3) refundPercent = 50;
+    }
+
+    // Process Stripe refund if payment was made
+    let refundAmount = 0;
+    let applicationFeeRetained = 0;
+    let stripeRefundId = null;
+    let stripeRefundStatus = 'none';
+
+    if (booking.StripePaymentIntentID && booking.FullAmountPaid && refundPercent > 0) {
+      try {
+        const pi = await stripe.paymentIntents.retrieve(booking.StripePaymentIntentID);
+        const chargeId = pi.latest_charge;
+        
+        if (chargeId) {
+          const charge = await stripe.charges.retrieve(chargeId);
+          const originalAmount = charge.amount;
+          const applicationFee = pi.application_fee_amount || 0;
+          
+          const refundableAmount = originalAmount - applicationFee;
+          const refundAmountCents = Math.round(refundableAmount * (refundPercent / 100));
+          
+          applicationFeeRetained = applicationFee / 100;
+          refundAmount = refundAmountCents / 100;
+
+          if (refundAmountCents > 0) {
+            const refund = await stripe.refunds.create({
+              charge: chargeId,
+              amount: refundAmountCents,
+              reason: 'requested_by_customer',
+              metadata: {
+                booking_id: String(bookingId),
+                cancelled_by: 'client',
+                refund_percent: String(refundPercent)
+              }
+            });
+
+            stripeRefundId = refund.id;
+            stripeRefundStatus = refund.status;
+          }
+        }
+      } catch (stripeErr) {
+        console.error('Stripe refund error:', stripeErr);
+        stripeRefundStatus = 'failed';
+      }
+    } else {
+      refundAmount = (totalAmount * refundPercent) / 100;
+    }
+
+    // Record cancellation in database
+    const cancelResult = await pool.request()
+      .input('BookingID', sql.Int, bookingId)
+      .input('CancelledBy', sql.NVarChar(20), 'client')
+      .input('CancelledByUserID', sql.Int, userId || booking.UserID)
+      .input('CancellationReason', sql.NVarChar(sql.MAX), reason || null)
+      .input('RefundAmount', sql.Decimal(10,2), refundAmount)
+      .input('RefundPercent', sql.Decimal(5,2), refundPercent)
+      .input('ApplicationFeeRetained', sql.Decimal(10,2), applicationFeeRetained)
+      .input('PolicyID', sql.Int, booking.PolicyID || null)
+      .input('HoursBeforeEvent', sql.Int, hoursUntilEvent)
+      .execute('bookings.sp_CancelBookingWithRefund');
+
+    const cancellationId = cancelResult.recordset[0]?.CancellationID;
+
+    // Update with Stripe refund details
+    if (stripeRefundId) {
+      await pool.request()
+        .input('CancellationID', sql.Int, cancellationId)
+        .input('StripeRefundID', sql.NVarChar(100), stripeRefundId)
+        .input('StripeRefundStatus', sql.NVarChar(50), stripeRefundStatus)
+        .input('RefundStatus', sql.NVarChar(50), stripeRefundStatus === 'succeeded' ? 'completed' : 'processing')
+        .execute('bookings.sp_UpdateCancellationRefund');
+    }
+
+    // Update invoice status if exists
+    try {
+      await pool.request()
+        .input('BookingID', sql.Int, bookingId)
+        .input('Status', sql.NVarChar(50), 'cancelled')
+        .query(`
+          UPDATE invoices.Invoices 
+          SET Status = @Status, UpdatedAt = GETUTCDATE() 
+          WHERE BookingID = @BookingID
+        `);
+    } catch (invoiceErr) {
+      console.error('Invoice update error:', invoiceErr);
+    }
+
+    res.json({
+      success: true,
+      message: 'Booking cancelled successfully',
+      cancellationId,
+      bookingId,
+      refund: {
+        amount: refundAmount,
+        percent: refundPercent,
+        applicationFeeRetained,
+        stripeRefundId,
+        status: stripeRefundStatus
+      }
+    });
+
+  } catch (err) {
+    console.error('Client cancel booking error:', err);
+    res.status(500).json({ success: false, message: 'Failed to cancel booking', error: err.message });
+  }
+});
+
 // GET /bookings/:id/cancellation-policy - Get cancellation policy preview for a booking
 router.get('/:id/cancellation-policy', async (req, res) => {
   try {

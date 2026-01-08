@@ -148,8 +148,8 @@ const ReviewsPanel = () => {
         </div>
       </div>
 
-      {/* Reviews List */}
-      <div className="reviews-container">
+      {/* Reviews Table */}
+      <div className="data-table-container">
         {loading ? (
           <div className="loading-state">
             <div className="spinner"></div>
@@ -162,91 +162,138 @@ const ReviewsPanel = () => {
             <p>Try adjusting your filters or search term</p>
           </div>
         ) : (
-          <div className="reviews-list">
-            {reviews.map(review => (
-              <div key={review.ReviewID} className={`review-card ${review.IsFlagged ? 'flagged' : ''}`}>
-                <div className="review-header">
-                  <div className="reviewer-info">
-                    <div className="reviewer-avatar">
-                      {review.ReviewerName?.[0] || 'U'}
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Reviewer</th>
+                <th>Vendor</th>
+                <th>Rating</th>
+                <th>Review</th>
+                <th>Date</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {reviews.map(review => (
+                <tr key={review.ReviewID} style={{ background: review.IsFlagged ? '#fffbeb' : 'transparent' }}>
+                  <td>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <div style={{ 
+                        width: '32px', 
+                        height: '32px', 
+                        borderRadius: '50%', 
+                        background: '#5e72e4', 
+                        color: 'white', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center', 
+                        fontWeight: '600',
+                        fontSize: '0.8rem',
+                        flexShrink: 0
+                      }}>
+                        {review.ReviewerName?.[0] || 'U'}
+                      </div>
+                      <div>
+                        <strong style={{ display: 'block', fontSize: '0.9rem' }}>{review.ReviewerName}</strong>
+                        <small style={{ color: '#9ca3af', fontSize: '0.75rem' }}>{review.ReviewerEmail}</small>
+                      </div>
                     </div>
-                    <div>
-                      <strong>{review.ReviewerName}</strong>
-                      <span className="review-date">
-                        {new Date(review.CreatedAt).toLocaleDateString()}
+                  </td>
+                  <td>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                      <i className="fas fa-store" style={{ color: '#5e72e4', fontSize: '0.8rem' }}></i>
+                      <span style={{ fontSize: '0.9rem' }}>{review.VendorName}</span>
+                    </div>
+                    {review.BookingID && (
+                      <small style={{ display: 'block', color: '#0369a1', fontSize: '0.75rem' }}>Booking #{review.BookingID}</small>
+                    )}
+                  </td>
+                  <td>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                      {renderStars(review.Rating)}
+                      <span style={{ fontWeight: '600', marginLeft: '0.25rem' }}>{review.Rating}/5</span>
+                    </div>
+                  </td>
+                  <td style={{ maxWidth: '250px' }}>
+                    <p style={{ 
+                      margin: 0, 
+                      fontSize: '0.85rem', 
+                      color: '#374151',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical'
+                    }}>
+                      {review.ReviewText}
+                    </p>
+                  </td>
+                  <td style={{ whiteSpace: 'nowrap', fontSize: '0.85rem', color: '#6b7280' }}>
+                    {new Date(review.CreatedAt).toLocaleDateString()}
+                  </td>
+                  <td>
+                    {review.IsFlagged ? (
+                      <span className="status-badge badge-warning">
+                        <i className="fas fa-flag"></i> Flagged
                       </span>
+                    ) : (
+                      <span className="status-badge badge-success">
+                        <i className="fas fa-check"></i> Active
+                      </span>
+                    )}
+                  </td>
+                  <td>
+                    <div className="action-buttons" style={{ display: 'flex', gap: '0.25rem', flexWrap: 'nowrap' }}>
+                      <button
+                        className="action-btn view"
+                        onClick={() => { setSelectedReview(review); setModalType('view'); }}
+                        title="View Details"
+                        style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem' }}
+                      >
+                        <i className="fas fa-eye"></i>
+                      </button>
+                      <button
+                        className="action-btn edit"
+                        onClick={() => { setSelectedReview(review); setModalType('edit'); }}
+                        title="Add Note"
+                        style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem' }}
+                      >
+                        <i className="fas fa-sticky-note"></i>
+                      </button>
+                      {review.IsFlagged ? (
+                        <button
+                          className="action-btn approve"
+                          onClick={() => handleUnflagReview(review.ReviewID)}
+                          title="Unflag"
+                          style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem' }}
+                        >
+                          <i className="fas fa-check"></i>
+                        </button>
+                      ) : (
+                        <button
+                          className="action-btn flag"
+                          onClick={() => { setSelectedReview(review); setModalType('flag'); }}
+                          title="Flag Review"
+                          style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem', background: '#fef3c7', color: '#d97706' }}
+                        >
+                          <i className="fas fa-flag"></i>
+                        </button>
+                      )}
+                      <button
+                        className="action-btn delete"
+                        onClick={() => handleDeleteReview(review.ReviewID)}
+                        title="Delete"
+                        style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem' }}
+                      >
+                        <i className="fas fa-trash-alt"></i>
+                      </button>
                     </div>
-                  </div>
-                  <div className="review-rating">
-                    {renderStars(review.Rating)}
-                    <span className="rating-value">{review.Rating}/5</span>
-                  </div>
-                </div>
-
-                <div className="review-vendor">
-                  <i className="fas fa-store"></i>
-                  <span>{review.VendorName}</span>
-                  {review.BookingID && (
-                    <span className="booking-ref">Booking #{review.BookingID}</span>
-                  )}
-                </div>
-
-                <div className="review-content">
-                  <p>{review.ReviewText}</p>
-                </div>
-
-                {review.IsFlagged && (
-                  <div className="flag-info">
-                    <i className="fas fa-flag"></i>
-                    <span>Flagged: {review.FlagReason}</span>
-                  </div>
-                )}
-
-                {review.AdminNotes && (
-                  <div className="admin-notes">
-                    <i className="fas fa-sticky-note"></i>
-                    <span>Admin Note: {review.AdminNotes}</span>
-                  </div>
-                )}
-
-                <div className="review-actions">
-                  <button
-                    className="action-btn view"
-                    onClick={() => { setSelectedReview(review); setModalType('view'); }}
-                  >
-                    <i className="fas fa-eye"></i> View
-                  </button>
-                  <button
-                    className="action-btn edit"
-                    onClick={() => { setSelectedReview(review); setModalType('edit'); }}
-                  >
-                    <i className="fas fa-pen"></i> Add Note
-                  </button>
-                  {review.IsFlagged ? (
-                    <button
-                      className="action-btn approve"
-                      onClick={() => handleUnflagReview(review.ReviewID)}
-                    >
-                      <i className="fas fa-check"></i> Unflag
-                    </button>
-                  ) : (
-                    <button
-                      className="action-btn flag"
-                      onClick={() => { setSelectedReview(review); setModalType('flag'); }}
-                    >
-                      <i className="fas fa-flag"></i> Flag
-                    </button>
-                  )}
-                  <button
-                    className="action-btn delete"
-                    onClick={() => handleDeleteReview(review.ReviewID)}
-                  >
-                    <i className="fas fa-trash-alt"></i> Delete
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
       </div>
 
@@ -269,36 +316,6 @@ const ReviewsPanel = () => {
         </div>
       )}
 
-      {/* Suspicious Patterns Section */}
-      <div className="section-card">
-        <h3><i className="fas fa-exclamation-triangle"></i> Suspicious Review Patterns</h3>
-        <div className="patterns-list">
-          <div className="pattern-item warning">
-            <div className="pattern-icon"><i className="fas fa-user-friends"></i></div>
-            <div className="pattern-info">
-              <strong>Multiple reviews from same IP</strong>
-              <p>3 reviews for "Elite Catering" from 192.168.1.xxx</p>
-            </div>
-            <button className="btn-secondary">Investigate</button>
-          </div>
-          <div className="pattern-item warning">
-            <div className="pattern-icon"><i className="fas fa-clock"></i></div>
-            <div className="pattern-info">
-              <strong>Rapid review submission</strong>
-              <p>5 reviews submitted within 10 minutes for "Perfect Events"</p>
-            </div>
-            <button className="btn-secondary">Investigate</button>
-          </div>
-          <div className="pattern-item info">
-            <div className="pattern-icon"><i className="fas fa-star"></i></div>
-            <div className="pattern-info">
-              <strong>Unusual rating pattern</strong>
-              <p>"Photo Studio Pro" received 10 five-star reviews in 24 hours</p>
-            </div>
-            <button className="btn-secondary">Investigate</button>
-          </div>
-        </div>
-      </div>
 
       {/* Modals */}
       {selectedReview && modalType === 'view' && (

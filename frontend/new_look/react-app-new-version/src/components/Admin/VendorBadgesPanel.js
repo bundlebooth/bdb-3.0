@@ -191,176 +191,168 @@ const VendorBadgesPanel = () => {
         <p className="panel-description">Assign and manage badges for vendors (New, Top Rated, Choice Awards, Premium, etc.)</p>
       </div>
 
-      <div className="panel-content" style={{ display: 'grid', gridTemplateColumns: selectedVendor ? '1fr 1fr' : '1fr', gap: '1.5rem' }}>
-        {/* Vendor List */}
-        <div className="vendor-list-section">
-          <div className="search-bar" style={{ marginBottom: '1rem' }}>
+      {/* Toolbar */}
+      <div className="panel-toolbar">
+        <div className="toolbar-left">
+          <div className="search-box">
+            <i className="fas fa-search"></i>
             <input
               type="text"
               placeholder="Search vendors..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '0.75rem 1rem',
-                border: '1px solid #e5e7eb',
-                borderRadius: '8px',
-                fontSize: '0.9rem'
-              }}
             />
           </div>
-
-          {loading ? (
-            <div style={{ textAlign: 'center', padding: '2rem' }}>
-              <i className="fas fa-spinner fa-spin" style={{ fontSize: '2rem', color: '#6b7280' }}></i>
-            </div>
-          ) : (
-            <div className="vendor-list" style={{ maxHeight: '500px', overflowY: 'auto' }}>
-              {filteredVendors.map(vendor => (
-                <div
-                  key={vendor.VendorProfileID}
-                  onClick={() => handleSelectVendor(vendor)}
-                  style={{
-                    padding: '1rem',
-                    border: `2px solid ${selectedVendor?.VendorProfileID === vendor.VendorProfileID ? '#5e72e4' : '#e5e7eb'}`,
-                    borderRadius: '8px',
-                    marginBottom: '0.5rem',
-                    cursor: 'pointer',
-                    background: selectedVendor?.VendorProfileID === vendor.VendorProfileID ? '#f0f4ff' : 'white',
-                    transition: 'all 0.2s'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    {vendor.LogoURL ? (
-                      <img 
-                        src={vendor.LogoURL} 
-                        alt={vendor.BusinessName}
-                        style={{ width: '40px', height: '40px', borderRadius: '8px', objectFit: 'cover' }}
-                      />
-                    ) : (
-                      <div style={{ 
-                        width: '40px', 
-                        height: '40px', 
-                        borderRadius: '8px', 
-                        background: '#f3f4f6',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                      }}>
-                        <i className="fas fa-store" style={{ color: '#9ca3af' }}></i>
-                      </div>
-                    )}
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 600, color: '#111827' }}>{vendor.BusinessName}</div>
-                      <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>{vendor.Categories || 'No category'}</div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {filteredVendors.length === 0 && (
-                <div style={{ textAlign: 'center', padding: '2rem', color: '#6b7280' }}>
-                  No vendors found
-                </div>
-              )}
-            </div>
-          )}
         </div>
+        <div className="toolbar-right">
+          <button className="btn-secondary" onClick={fetchVendors}>
+            <i className="fas fa-sync-alt"></i> Refresh
+          </button>
+        </div>
+      </div>
 
-        {/* Badge Management Section */}
-        {selectedVendor && (
-          <div className="badge-management-section">
-            <div style={{ 
-              padding: '1.5rem', 
-              background: '#f9fafb', 
-              borderRadius: '12px',
-              border: '1px solid #e5e7eb'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600 }}>
-                  {selectedVendor.BusinessName}
-                </h3>
-                <button
-                  onClick={() => setShowAssignModal(true)}
-                  style={{
-                    padding: '0.5rem 1rem',
-                    background: '#5e72e4',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    fontSize: '0.85rem',
-                    fontWeight: 500,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem'
-                  }}
+      {/* Vendors Table */}
+      <div className="data-table-container">
+        {loading ? (
+          <div className="loading-state">
+            <div className="spinner"></div>
+            <p>Loading vendors...</p>
+          </div>
+        ) : filteredVendors.length === 0 ? (
+          <div className="empty-state">
+            <i className="fas fa-store"></i>
+            <h3>No vendors found</h3>
+            <p>Try adjusting your search term</p>
+          </div>
+        ) : (
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Vendor</th>
+                <th>Category</th>
+                <th>Current Badges</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredVendors.map(vendor => (
+                <tr 
+                  key={vendor.VendorProfileID}
+                  style={{ background: selectedVendor?.VendorProfileID === vendor.VendorProfileID ? '#f0f4ff' : 'transparent' }}
                 >
-                  <i className="fas fa-plus"></i> Assign Badge
-                </button>
-              </div>
-
-              <h4 style={{ fontSize: '0.9rem', color: '#6b7280', marginBottom: '0.75rem' }}>Current Badges</h4>
-              
-              {vendorBadges.length === 0 ? (
-                <div style={{ 
-                  padding: '2rem', 
-                  textAlign: 'center', 
-                  color: '#9ca3af',
-                  background: 'white',
-                  borderRadius: '8px',
-                  border: '1px dashed #d1d5db'
-                }}>
-                  <i className="fas fa-award" style={{ fontSize: '2rem', marginBottom: '0.5rem' }}></i>
-                  <p style={{ margin: 0 }}>No badges assigned yet</p>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
-                  {vendorBadges.map(badge => {
-                    const style = getBadgeStyle(badge.BadgeType);
-                    return (
-                      <div 
-                        key={badge.BadgeID}
-                        style={{
+                  <td>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      {vendor.LogoURL ? (
+                        <img 
+                          src={vendor.LogoURL} 
+                          alt={vendor.BusinessName}
+                          style={{ width: '40px', height: '40px', borderRadius: '8px', objectFit: 'cover', flexShrink: 0 }}
+                        />
+                      ) : (
+                        <div style={{ 
+                          width: '40px', 
+                          height: '40px', 
+                          borderRadius: '8px', 
+                          background: '#f3f4f6',
                           display: 'flex',
                           alignItems: 'center',
-                          gap: '0.5rem',
-                          padding: '0.5rem 0.75rem',
-                          background: style.bg,
-                          borderRadius: '8px',
-                          position: 'relative'
-                        }}
-                      >
-                        <i className={`fas ${style.icon}`} style={{ color: style.color }}></i>
-                        <span style={{ fontWeight: 500, color: style.color, fontSize: '0.85rem' }}>
-                          {badge.BadgeName || badge.BadgeType}
-                        </span>
-                        {badge.Year && (
-                          <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>({badge.Year})</span>
-                        )}
-                        <button
-                          onClick={() => handleRemoveBadge(badge.BadgeID)}
-                          style={{
-                            background: 'rgba(0,0,0,0.1)',
-                            border: 'none',
-                            borderRadius: '50%',
-                            width: '20px',
-                            height: '20px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            cursor: 'pointer',
-                            marginLeft: '0.25rem'
-                          }}
-                        >
-                          <i className="fas fa-times" style={{ fontSize: '0.6rem', color: '#6b7280' }}></i>
-                        </button>
+                          justifyContent: 'center',
+                          flexShrink: 0
+                        }}>
+                          <i className="fas fa-store" style={{ color: '#9ca3af' }}></i>
+                        </div>
+                      )}
+                      <div>
+                        <strong style={{ display: 'block', color: '#1f2937' }}>{vendor.BusinessName}</strong>
+                        <small style={{ color: '#9ca3af', fontSize: '0.75rem' }}>ID: {vendor.VendorProfileID}</small>
                       </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
+                    </div>
+                  </td>
+                  <td>
+                    <span style={{ 
+                      background: '#f3f4f6', 
+                      color: '#6b7280', 
+                      padding: '0.25rem 0.75rem', 
+                      borderRadius: '12px',
+                      fontSize: '0.85rem'
+                    }}>
+                      {vendor.Categories || 'No category'}
+                    </span>
+                  </td>
+                  <td>
+                    {selectedVendor?.VendorProfileID === vendor.VendorProfileID && vendorBadges.length > 0 ? (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
+                        {vendorBadges.map(badge => {
+                          const style = getBadgeStyle(badge.BadgeType);
+                          return (
+                            <span 
+                              key={badge.BadgeID}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.25rem',
+                                padding: '0.2rem 0.5rem',
+                                background: style.bg,
+                                borderRadius: '12px',
+                                fontSize: '0.75rem',
+                                color: style.color,
+                                fontWeight: 500
+                              }}
+                            >
+                              <i className={`fas ${style.icon}`} style={{ fontSize: '0.65rem' }}></i>
+                              {badge.BadgeName || badge.BadgeType}
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleRemoveBadge(badge.BadgeID); }}
+                                style={{
+                                  background: 'rgba(0,0,0,0.1)',
+                                  border: 'none',
+                                  borderRadius: '50%',
+                                  width: '14px',
+                                  height: '14px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  cursor: 'pointer',
+                                  marginLeft: '0.15rem',
+                                  padding: 0
+                                }}
+                              >
+                                <i className="fas fa-times" style={{ fontSize: '0.5rem', color: '#6b7280' }}></i>
+                              </button>
+                            </span>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <span style={{ color: '#9ca3af', fontSize: '0.85rem', fontStyle: 'italic' }}>
+                        {selectedVendor?.VendorProfileID === vendor.VendorProfileID ? 'No badges' : 'Click to view'}
+                      </span>
+                    )}
+                  </td>
+                  <td>
+                    <div className="action-buttons" style={{ display: 'flex', gap: '0.25rem', flexWrap: 'nowrap' }}>
+                      <button
+                        className="action-btn view"
+                        onClick={() => handleSelectVendor(vendor)}
+                        title="View Badges"
+                        style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem' }}
+                      >
+                        <i className="fas fa-eye"></i>
+                      </button>
+                      <button
+                        className="action-btn edit"
+                        onClick={() => { handleSelectVendor(vendor); setShowAssignModal(true); }}
+                        title="Assign Badge"
+                        style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem', background: '#ede9fe', color: '#7c3aed' }}
+                      >
+                        <i className="fas fa-plus"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
       </div>
 

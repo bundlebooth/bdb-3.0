@@ -409,7 +409,7 @@ const VendorManagementPanel = () => {
                     />
                   </td>
                   <td>
-                    <div className="vendor-cell">
+                    <div className="vendor-cell" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                       {vendor.PrimaryImage ? (
                         <img src={vendor.PrimaryImage} alt={vendor.BusinessName} className="vendor-thumb" />
                       ) : (
@@ -419,18 +419,18 @@ const VendorManagementPanel = () => {
                       )}
                       <div>
                         <strong>{vendor.BusinessName}</strong>
-                        <small>{vendor.DisplayName}</small>
+                        <small style={{ display: 'block', color: '#9ca3af', fontSize: '0.8rem' }}>{vendor.DisplayName}</small>
                       </div>
                     </div>
                   </td>
                   <td>
-                    <div className="owner-cell">
+                    <div className="owner-cell" style={{ display: 'flex', flexDirection: 'column' }}>
                       <span>{vendor.OwnerName}</span>
-                      <small>{vendor.OwnerEmail}</small>
+                      <small style={{ color: '#9ca3af', fontSize: '0.8rem' }}>{vendor.OwnerEmail}</small>
                     </div>
                   </td>
                   <td>{vendor.Categories || 'N/A'}</td>
-                  <td>{vendor.City}, {vendor.State}</td>
+                  <td style={{ whiteSpace: 'nowrap' }}>{vendor.City || 'N/A'}{vendor.State ? `, ${vendor.State}` : ''}</td>
                   <td>{getStatusBadge(vendor.ProfileStatus || 'Pending')}</td>
                   <td>
                     <div className="visibility-cell">
@@ -453,11 +453,12 @@ const VendorManagementPanel = () => {
                     </div>
                   </td>
                   <td>
-                    <div className="action-buttons">
+                    <div className="action-buttons" style={{ display: 'flex', flexDirection: 'row', gap: '0.25rem', flexWrap: 'nowrap' }}>
                       <button
                         className="action-btn view"
                         title="View Details"
                         onClick={() => { setSelectedVendor(vendor); setModalType('view'); }}
+                        style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem' }}
                       >
                         <i className="fas fa-eye"></i>
                       </button>
@@ -465,6 +466,7 @@ const VendorManagementPanel = () => {
                         className="action-btn edit"
                         title="Edit Vendor"
                         onClick={() => { setSelectedVendor(vendor); setModalType('edit'); }}
+                        style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem' }}
                       >
                         <i className="fas fa-pen"></i>
                       </button>
@@ -474,6 +476,7 @@ const VendorManagementPanel = () => {
                             className="action-btn approve"
                             title="Approve"
                             onClick={() => handleApprove(vendor.VendorProfileID)}
+                            style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem' }}
                           >
                             <i className="fas fa-check"></i>
                           </button>
@@ -481,8 +484,9 @@ const VendorManagementPanel = () => {
                             className="action-btn reject"
                             title="Reject"
                             onClick={() => { setSelectedVendor(vendor); setModalType('reject'); }}
+                            style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem' }}
                           >
-                            
+                            <i className="fas fa-times"></i>
                           </button>
                         </>
                       )}
@@ -491,6 +495,7 @@ const VendorManagementPanel = () => {
                           className="action-btn suspend"
                           title="Suspend"
                           onClick={() => handleSuspend(vendor.VendorProfileID)}
+                          style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem' }}
                         >
                           <i className="fas fa-ban"></i>
                         </button>
@@ -499,6 +504,7 @@ const VendorManagementPanel = () => {
                         className="action-btn analytics"
                         title="View Analytics"
                         onClick={() => { setSelectedVendor(vendor); setModalType('analytics'); }}
+                        style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem' }}
                       >
                         <i className="fas fa-chart-line"></i>
                       </button>
@@ -506,6 +512,7 @@ const VendorManagementPanel = () => {
                         className="action-btn password"
                         title="Reset Password"
                         onClick={() => handleResetPassword(vendor.VendorProfileID, vendor.OwnerEmail)}
+                        style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem' }}
                       >
                         <i className="fas fa-key"></i>
                       </button>

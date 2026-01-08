@@ -204,15 +204,15 @@ const BookingManagementPanel = () => {
                     <strong>#{booking.BookingID}</strong>
                   </td>
                   <td>
-                    <div className="client-cell">
-                      <span>{booking.ClientName}</span>
-                      <small>{booking.ClientEmail}</small>
+                    <div className="client-cell" style={{ display: 'flex', flexDirection: 'column' }}>
+                      <span style={{ fontWeight: 500 }}>{booking.ClientName}</span>
+                      <small style={{ color: '#9ca3af', fontSize: '0.75rem' }}>{booking.ClientEmail}</small>
                     </div>
                   </td>
                   <td>
-                    <div className="vendor-cell">
-                      <span>{booking.VendorName}</span>
-                      <small>{booking.VendorEmail}</small>
+                    <div className="vendor-cell" style={{ display: 'flex', flexDirection: 'column' }}>
+                      <span style={{ fontWeight: 500 }}>{booking.VendorName}</span>
+                      <small style={{ color: '#9ca3af', fontSize: '0.75rem' }}>{booking.VendorEmail}</small>
                     </div>
                   </td>
                   <td>{booking.ServiceName || 'N/A'}</td>
@@ -248,7 +248,7 @@ const BookingManagementPanel = () => {
                           title="Cancel Booking"
                           onClick={() => { setSelectedBooking(booking); setModalType('cancel'); }}
                         >
-                          
+                          <i className="fas fa-times"></i>
                         </button>
                       )}
                       {(booking.Status === 'Completed' || booking.Status === 'Cancelled') && (

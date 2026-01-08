@@ -4278,3 +4278,157 @@
     align-items: flex-start;
   }
 }
+
+/* ==================== ADMIN TABLE IMPROVEMENTS ==================== */
+
+/* Ensure action buttons stay in a single row */
+.data-table .action-buttons {
+  display: flex;
+  flex-direction: row;
+  gap: 0.25rem;
+  flex-wrap: nowrap;
+  align-items: center;
+}
+
+/* Compact action buttons for tables */
+.data-table .action-btn {
+  padding: 0.35rem 0.5rem;
+  font-size: 0.8rem;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  min-width: 28px;
+  height: 28px;
+}
+
+.data-table .action-btn.view {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.data-table .action-btn.view:hover {
+  background: #bfdbfe;
+}
+
+.data-table .action-btn.edit {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.data-table .action-btn.edit:hover {
+  background: #fde68a;
+}
+
+.data-table .action-btn.delete {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.data-table .action-btn.delete:hover {
+  background: #fecaca;
+}
+
+.data-table .action-btn.approve {
+  background: #d1fae5;
+  color: #059669;
+}
+
+.data-table .action-btn.approve:hover {
+  background: #a7f3d0;
+}
+
+.data-table .action-btn.reject,
+.data-table .action-btn.suspend {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.data-table .action-btn.reject:hover,
+.data-table .action-btn.suspend:hover {
+  background: #fecaca;
+}
+
+.data-table .action-btn.analytics {
+  background: #ede9fe;
+  color: #7c3aed;
+}
+
+.data-table .action-btn.analytics:hover {
+  background: #ddd6fe;
+}
+
+.data-table .action-btn.password {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.data-table .action-btn.password:hover {
+  background: #e5e7eb;
+}
+
+.data-table .action-btn.activity {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.data-table .action-btn.activity:hover {
+  background: #bae6fd;
+}
+
+.data-table .action-btn.services {
+  background: #ede9fe;
+  color: #7c3aed;
+}
+
+.data-table .action-btn.services:hover {
+  background: #ddd6fe;
+}
+
+.data-table .action-btn.flag {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.data-table .action-btn.flag:hover {
+  background: #fde68a;
+}
+
+/* Ensure table cells don't wrap unnecessarily */
+.data-table td {
+  vertical-align: middle;
+}
+
+/* Compact table padding */
+.data-table.compact th,
+.data-table.compact td {
+  padding: 0.5rem 0.75rem;
+}
+
+/* Panel header styling */
+.panel-header {
+  margin-bottom: 1.5rem;
+}
+
+.panel-header h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 0.5rem 0;
+}
+
+.panel-header h2 i {
+  color: #5e72e4;
+}
+
+.panel-description {
+  color: #6b7280;
+  font-size: 0.9rem;
+  margin: 0;
+}

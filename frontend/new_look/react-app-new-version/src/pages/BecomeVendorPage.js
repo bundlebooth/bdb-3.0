@@ -5464,15 +5464,90 @@ function PoliciesStep({ formData, onInputChange, setFormData, currentUser }) {
   const [newFaq, setNewFaq] = useState({ question: '', answers: [''] });
   const [savingFaq, setSavingFaq] = useState(false);
   const [editingFaq, setEditingFaq] = useState(null); // { index, question, answers }
+  const [cancellationPolicy, setCancellationPolicy] = useState({
+    policyType: 'flexible',
+    fullRefundDays: 7,
+    partialRefundDays: 3,
+    partialRefundPercent: 50,
+    noRefundDays: 1
+  });
+  const [savingPolicy, setSavingPolicy] = useState(false);
 
-  // Load existing FAQs
+  const policyTypes = [
+    { id: 'flexible', name: 'Flexible', description: 'Full refund up to 24 hours before', color: '#10b981' },
+    { id: 'moderate', name: 'Moderate', description: 'Full refund 7 days before, 50% refund 3 days before', color: '#f59e0b' },
+    { id: 'strict', name: 'Strict', description: '50% refund 14 days before, no refund after', color: '#ef4444' },
+    { id: 'custom', name: 'Custom', description: 'Set your own terms', color: '#6366f1' }
+  ];
+
+  // Load existing FAQs and cancellation policy
   useEffect(() => {
     if (currentUser?.vendorProfileId) {
       loadFAQs();
+      loadCancellationPolicy();
     } else {
       setLoading(false);
     }
   }, [currentUser?.vendorProfileId]);
+
+  const loadCancellationPolicy = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/payments/vendor/${currentUser.vendorProfileId}/cancellation-policy`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.policy) {
+          setCancellationPolicy({
+            policyType: data.policy.PolicyType || 'flexible',
+            fullRefundDays: data.policy.FullRefundDays || 7,
+            partialRefundDays: data.policy.PartialRefundDays || 3,
+            partialRefundPercent: data.policy.PartialRefundPercent || 50,
+            noRefundDays: data.policy.NoRefundDays || 1
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error loading cancellation policy:', error);
+    }
+  };
+
+  const handleSaveCancellationPolicy = async () => {
+    if (!currentUser?.vendorProfileId) {
+      showBanner('Please complete your profile first', 'error');
+      return;
+    }
+    setSavingPolicy(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/payments/vendor/${currentUser.vendorProfileId}/cancellation-policy`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(cancellationPolicy)
+      });
+      if (response.ok) {
+        showBanner('Cancellation policy saved!', 'success');
+      } else {
+        throw new Error('Failed to save');
+      }
+    } catch (error) {
+      showBanner('Failed to save cancellation policy', 'error');
+    } finally {
+      setSavingPolicy(false);
+    }
+  };
+
+  const handlePolicyTypeChange = (type) => {
+    const defaults = {
+      flexible: { fullRefundDays: 1, partialRefundDays: 0, partialRefundPercent: 0, noRefundDays: 0 },
+      moderate: { fullRefundDays: 7, partialRefundDays: 3, partialRefundPercent: 50, noRefundDays: 1 },
+      strict: { fullRefundDays: 14, partialRefundDays: 7, partialRefundPercent: 50, noRefundDays: 3 },
+      custom: { fullRefundDays: cancellationPolicy.fullRefundDays, partialRefundDays: cancellationPolicy.partialRefundDays, partialRefundPercent: cancellationPolicy.partialRefundPercent, noRefundDays: cancellationPolicy.noRefundDays }
+    };
+    setCancellationPolicy({ ...cancellationPolicy, policyType: type, ...defaults[type] });
+  };
 
   const loadFAQs = async () => {
     try {
@@ -5726,6 +5801,117 @@ function PoliciesStep({ formData, onInputChange, setFormData, currentUser }) {
   return (
     <div className="policies-step">
       <div style={{ maxWidth: '100%', width: '100%' }}>
+        {/* Cancellation Policy Section */}
+        <div style={{ marginBottom: '2rem', padding: '1.5rem', background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+            <i className="fas fa-calendar-times" style={{ color: 'var(--primary)', fontSize: '1.25rem' }}></i>
+            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>Cancellation Policy</h3>
+          </div>
+          <p style={{ margin: 0, color: '#6b7280', fontSize: '0.9rem', lineHeight: 1.6, marginBottom: '1rem' }}>
+            Set your cancellation and refund terms. This will be displayed on your profile and applied when clients cancel bookings.
+          </p>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem', marginBottom: '1rem' }}>
+            {policyTypes.map(type => (
+              <div
+                key={type.id}
+                onClick={() => handlePolicyTypeChange(type.id)}
+                style={{
+                  padding: '1rem',
+                  border: `2px solid ${cancellationPolicy.policyType === type.id ? type.color : '#e5e7eb'}`,
+                  borderRadius: '10px',
+                  cursor: 'pointer',
+                  background: cancellationPolicy.policyType === type.id ? `${type.color}10` : 'white',
+                  transition: 'all 0.2s'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+                  <strong style={{ fontSize: '0.9rem', color: '#1f2937' }}>{type.name}</strong>
+                  {cancellationPolicy.policyType === type.id && (
+                    <i className="fas fa-check-circle" style={{ color: type.color }}></i>
+                  )}
+                </div>
+                <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280' }}>{type.description}</p>
+              </div>
+            ))}
+          </div>
+
+          {cancellationPolicy.policyType === 'custom' && (
+            <div style={{ background: 'white', borderRadius: '8px', padding: '1rem', marginBottom: '1rem', border: '1px solid #e5e7eb' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.75rem' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 500, marginBottom: '0.35rem', color: '#374151' }}>Full Refund Days</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="90"
+                    value={cancellationPolicy.fullRefundDays}
+                    onChange={(e) => setCancellationPolicy({ ...cancellationPolicy, fullRefundDays: parseInt(e.target.value) || 0 })}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '0.9rem' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 500, marginBottom: '0.35rem', color: '#374151' }}>Partial Refund Days</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="90"
+                    value={cancellationPolicy.partialRefundDays}
+                    onChange={(e) => setCancellationPolicy({ ...cancellationPolicy, partialRefundDays: parseInt(e.target.value) || 0 })}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '0.9rem' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 500, marginBottom: '0.35rem', color: '#374151' }}>Partial Refund %</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={cancellationPolicy.partialRefundPercent}
+                    onChange={(e) => setCancellationPolicy({ ...cancellationPolicy, partialRefundPercent: parseInt(e.target.value) || 0 })}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '0.9rem' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 500, marginBottom: '0.35rem', color: '#374151' }}>No Refund Days</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="90"
+                    value={cancellationPolicy.noRefundDays}
+                    onChange={(e) => setCancellationPolicy({ ...cancellationPolicy, noRefundDays: parseInt(e.target.value) || 0 })}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '0.9rem' }}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {currentUser?.vendorProfileId && (
+            <button
+              onClick={handleSaveCancellationPolicy}
+              disabled={savingPolicy}
+              style={{
+                padding: '0.6rem 1.25rem',
+                background: '#222',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: savingPolicy ? 'not-allowed' : 'pointer',
+                fontWeight: 500,
+                fontSize: '0.85rem',
+                opacity: savingPolicy ? 0.7 : 1,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}
+            >
+              {savingPolicy ? <><i className="fas fa-spinner fa-spin"></i> Saving...</> : <><i className="fas fa-save"></i> Save Policy</>}
+            </button>
+          )}
+        </div>
+
+        {/* FAQs Section */}
         <div style={{ marginBottom: '2rem', padding: '1.5rem', background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
             <i className="fas fa-question-circle" style={{ color: 'var(--primary)', fontSize: '1.25rem' }}></i>

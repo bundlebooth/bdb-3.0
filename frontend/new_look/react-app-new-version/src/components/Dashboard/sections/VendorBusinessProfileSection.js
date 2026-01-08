@@ -11,6 +11,7 @@ import AvailabilityHoursPanel from '../panels/AvailabilityHoursPanel';
 import StripeSetupPanel from '../panels/StripeSetupPanel';
 import PopularFiltersPanel from '../panels/PopularFiltersPanel';
 import GoogleReviewsPanel from '../panels/GoogleReviewsPanel';
+import CancellationPolicyPanel from '../panels/CancellationPolicyPanel';
 
 function VendorBusinessProfileSection() {
   const { currentUser } = useAuth();
@@ -50,7 +51,8 @@ function VendorBusinessProfileSection() {
     { id: 'vendor-availability-panel', icon: 'fa-clock', title: 'Availability & Hours', description: 'Set your business hours and availability' },
     { id: 'vendor-google-reviews-panel', icon: 'fa-google', title: 'Google Reviews Integration', description: 'Display your Google Reviews on your profile', iconClass: 'fab', useGoogleLogo: true },
     { id: 'vendor-stripe-panel', icon: 'fa-stripe', title: 'Stripe Setup', description: 'Connect your Stripe account to receive payments', iconClass: 'fab', useStripeLogo: true },
-    { id: 'vendor-popular-filters-panel', icon: 'fa-tags', title: 'Popular Filters', description: 'Enable special badges that help clients find your business' }
+    { id: 'vendor-popular-filters-panel', icon: 'fa-tags', title: 'Popular Filters', description: 'Enable special badges that help clients find your business' },
+    { id: 'vendor-cancellation-panel', icon: 'fa-calendar-times', title: 'Cancellation Policy', description: 'Set your booking cancellation and refund terms' }
   ];
 
   const renderPanel = () => {
@@ -78,6 +80,8 @@ function VendorBusinessProfileSection() {
         return <StripeSetupPanel key={vendorProfileId} onBack={() => setActivePanel(null)} vendorProfileId={vendorProfileId} />;
       case 'vendor-popular-filters-panel':
         return <PopularFiltersPanel key={vendorProfileId} onBack={() => setActivePanel(null)} vendorProfileId={vendorProfileId} />;
+      case 'vendor-cancellation-panel':
+        return <CancellationPolicyPanel key={vendorProfileId} onBack={() => setActivePanel(null)} vendorProfileId={vendorProfileId} />;
       default:
         return null;
     }

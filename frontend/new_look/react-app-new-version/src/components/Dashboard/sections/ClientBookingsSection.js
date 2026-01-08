@@ -14,6 +14,11 @@ function ClientBookingsSection({ onPayNow, onOpenChat }) {
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [sortBy, setSortBy] = useState('eventDate'); // 'eventDate', 'requestedOn', 'vendor'
   const [openActionMenu, setOpenActionMenu] = useState(null); // Track which booking's action menu is open
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancellingBooking, setCancellingBooking] = useState(null);
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelling, setCancelling] = useState(false);
+  const [refundPreview, setRefundPreview] = useState(null);
 
   const loadBookings = useCallback(async () => {
     if (!currentUser?.id) return;
@@ -158,6 +163,63 @@ function ClientBookingsSection({ onPayNow, onOpenChat }) {
     } catch (error) {
       console.error('Invoice error:', error);
       showBanner('Failed to load invoice', 'error');
+    }
+  };
+
+  // Handle Cancel Booking - show modal with refund preview
+  const handleCancelBooking = async (booking) => {
+    setCancellingBooking(booking);
+    setShowCancelModal(true);
+    setCancelReason('');
+    setRefundPreview(null);
+    
+    // Fetch refund preview
+    try {
+      const response = await fetch(`${API_BASE_URL}/bookings/${booking.BookingID}/cancel-preview`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setRefundPreview(data);
+      }
+    } catch (error) {
+      console.error('Error fetching refund preview:', error);
+    }
+  };
+
+  const confirmCancelBooking = async () => {
+    if (!cancellingBooking) return;
+    
+    setCancelling(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/bookings/${cancellingBooking.BookingID}/client-cancel`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ reason: cancelReason })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.refund?.amount > 0) {
+          showBanner(`Booking cancelled. Refund of $${data.refund.amount.toFixed(2)} will be processed.`, 'success');
+        } else {
+          showBanner('Booking cancelled successfully', 'success');
+        }
+        setShowCancelModal(false);
+        setCancellingBooking(null);
+        loadBookings();
+      } else {
+        const error = await response.json();
+        showBanner(error.message || 'Failed to cancel booking', 'error');
+      }
+    } catch (error) {
+      console.error('Error cancelling booking:', error);
+      showBanner('Failed to cancel booking', 'error');
+    } finally {
+      setCancelling(false);
     }
   };
 
@@ -372,6 +434,18 @@ function ClientBookingsSection({ onPayNow, onOpenChat }) {
                       View Invoice
                     </button>
                   )}
+                  {/* Cancel Booking - show for pending, confirmed, accepted, approved bookings */}
+                  {(s === 'pending' || s === 'confirmed' || s === 'accepted' || s === 'approved') && s !== 'cancelled' && (
+                    <button
+                      onClick={() => { handleCancelBooking(booking); setOpenActionMenu(null); }}
+                      style={{ width: '100%', padding: '10px 14px', border: 'none', background: 'white', textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: '#ef4444', borderTop: '1px solid #f3f4f6' }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = '#fef2f2'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                    >
+                      <i className="fas fa-times-circle" style={{ color: '#ef4444', width: '16px' }}></i>
+                      Cancel Booking
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -390,6 +464,156 @@ function ClientBookingsSection({ onPayNow, onOpenChat }) {
         onClose={handleCloseDetails} 
         booking={selectedBooking} 
       />
+      
+      {/* Cancel Booking Modal */}
+      {showCancelModal && cancellingBooking && (
+        <div 
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000
+          }}
+          onClick={() => setShowCancelModal(false)}
+        >
+          <div 
+            style={{
+              background: 'white',
+              borderRadius: '16px',
+              padding: '1.5rem',
+              maxWidth: '450px',
+              width: '90%',
+              maxHeight: '90vh',
+              overflow: 'auto'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600 }}>Cancel Booking</h3>
+              <button 
+                onClick={() => setShowCancelModal(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', color: '#6b7280' }}
+              >
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+
+            <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', padding: '1rem', marginBottom: '1rem' }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+                <i className="fas fa-exclamation-triangle" style={{ color: '#ef4444', marginTop: '0.15rem' }}></i>
+                <div>
+                  <strong style={{ color: '#991b1b' }}>Are you sure you want to cancel?</strong>
+                  <p style={{ margin: '0.5rem 0 0', color: '#991b1b', fontSize: '0.9rem' }}>
+                    This action cannot be undone. The vendor will be notified of your cancellation.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ marginBottom: '1rem' }}>
+              <div style={{ fontSize: '0.9rem', color: '#374151', marginBottom: '0.5rem' }}>
+                <strong>Booking:</strong> {cancellingBooking.ServiceName || 'Service'} with {cancellingBooking.VendorName}
+              </div>
+              {cancellingBooking.EventDate && (
+                <div style={{ fontSize: '0.9rem', color: '#6b7280' }}>
+                  <strong>Date:</strong> {new Date(cancellingBooking.EventDate).toLocaleDateString()}
+                </div>
+              )}
+            </div>
+
+            {/* Refund Preview */}
+            {refundPreview && (
+              <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '1rem', marginBottom: '1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                  <i className="fas fa-info-circle" style={{ color: '#16a34a' }}></i>
+                  <strong style={{ color: '#166534' }}>Refund Information</strong>
+                </div>
+                <div style={{ fontSize: '0.9rem', color: '#166534' }}>
+                  {refundPreview.refundPercent === 100 ? (
+                    <p style={{ margin: 0 }}>You will receive a <strong>full refund</strong> of ${refundPreview.refundAmount?.toFixed(2) || '0.00'}</p>
+                  ) : refundPreview.refundPercent > 0 ? (
+                    <p style={{ margin: 0 }}>Based on the vendor's cancellation policy, you will receive a <strong>{refundPreview.refundPercent}% refund</strong> (${refundPreview.refundAmount?.toFixed(2) || '0.00'})</p>
+                  ) : (
+                    <p style={{ margin: 0, color: '#dc2626' }}>Based on the vendor's cancellation policy, <strong>no refund</strong> is available at this time.</p>
+                  )}
+                  {refundPreview.policyType && (
+                    <p style={{ margin: '0.5rem 0 0', fontSize: '0.8rem', color: '#6b7280' }}>
+                      Policy: {refundPreview.policyType.charAt(0).toUpperCase() + refundPreview.policyType.slice(1)}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', fontWeight: 500, marginBottom: '0.5rem', fontSize: '0.9rem', color: '#374151' }}>
+                Reason for cancellation (optional)
+              </label>
+              <textarea
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                placeholder="Let the vendor know why you're cancelling..."
+                rows={3}
+                style={{
+                  width: '100%',
+                  padding: '0.75rem',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '8px',
+                  fontSize: '0.9rem',
+                  resize: 'vertical',
+                  boxSizing: 'border-box'
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setShowCancelModal(false)}
+                style={{
+                  padding: '0.75rem 1.25rem',
+                  background: '#f3f4f6',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontWeight: 500,
+                  color: '#374151'
+                }}
+              >
+                Keep Booking
+              </button>
+              <button
+                onClick={confirmCancelBooking}
+                disabled={cancelling}
+                style={{
+                  padding: '0.75rem 1.25rem',
+                  background: '#ef4444',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: cancelling ? 'not-allowed' : 'pointer',
+                  fontWeight: 500,
+                  opacity: cancelling ? 0.7 : 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}
+              >
+                {cancelling ? (
+                  <><i className="fas fa-spinner fa-spin"></i> Cancelling...</>
+                ) : (
+                  <><i className="fas fa-times"></i> Cancel Booking</>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="dashboard-card">
         <div className="booking-tabs">
           <button 

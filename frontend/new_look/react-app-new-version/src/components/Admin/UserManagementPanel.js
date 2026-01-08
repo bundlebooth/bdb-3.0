@@ -296,13 +296,13 @@ const UserManagementPanel = () => {
                     />
                   </td>
                   <td>
-                    <div className="user-cell">
-                      <div className="user-avatar">
+                    <div className="user-cell" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <div className="user-avatar" style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#5e72e4', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '600', fontSize: '0.85rem', flexShrink: 0 }}>
                         {user.Name?.[0] || 'U'}
                       </div>
                       <div>
-                        <strong>{user.Name || 'Unknown'}</strong>
-                        <small>ID: {user.UserID}</small>
+                        <strong style={{ display: 'block', color: '#1f2937' }}>{user.Name || 'Unknown'}</strong>
+                        <small style={{ color: '#9ca3af', fontSize: '0.75rem' }}>ID: {user.UserID}</small>
                       </div>
                     </div>
                   </td>
@@ -312,11 +312,12 @@ const UserManagementPanel = () => {
                   <td>{new Date(user.CreatedAt).toLocaleDateString()}</td>
                   <td>{user.LastLoginAt ? new Date(user.LastLoginAt).toLocaleDateString() : 'Never'}</td>
                   <td>
-                    <div className="action-buttons">
+                    <div className="action-buttons" style={{ display: 'flex', flexDirection: 'row', gap: '0.25rem', flexWrap: 'nowrap' }}>
                       <button
                         className="action-btn view"
                         title="View Details"
                         onClick={() => { setSelectedUser(user); setModalType('view'); }}
+                        style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem' }}
                       >
                         <i className="fas fa-eye"></i>
                       </button>
@@ -324,6 +325,7 @@ const UserManagementPanel = () => {
                         className="action-btn edit"
                         title="Edit User"
                         onClick={() => { setSelectedUser(user); setModalType('edit'); }}
+                        style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem' }}
                       >
                         <i className="fas fa-pen"></i>
                       </button>
@@ -331,6 +333,7 @@ const UserManagementPanel = () => {
                         className="action-btn activity"
                         title="View Activity"
                         onClick={() => { setSelectedUser(user); setModalType('activity'); }}
+                        style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem' }}
                       >
                         <i className="fas fa-history"></i>
                       </button>
@@ -338,6 +341,7 @@ const UserManagementPanel = () => {
                         className="action-btn password"
                         title="Reset Password"
                         onClick={() => handleResetPassword(user.Email)}
+                        style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem' }}
                       >
                         <i className="fas fa-key"></i>
                       </button>
@@ -346,6 +350,7 @@ const UserManagementPanel = () => {
                           className="action-btn suspend"
                           title="Deactivate"
                           onClick={() => handleDeactivate(user.UserID)}
+                          style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem' }}
                         >
                           <i className="fas fa-user-slash"></i>
                         </button>
@@ -354,6 +359,7 @@ const UserManagementPanel = () => {
                           className="action-btn approve"
                           title="Reactivate"
                           onClick={() => handleReactivate(user.UserID)}
+                          style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem' }}
                         >
                           <i className="fas fa-user-check"></i>
                         </button>
