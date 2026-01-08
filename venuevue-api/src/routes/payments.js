@@ -2200,6 +2200,112 @@ router.get('/redirect-complete', (req, res) => {
   res.set('Content-Type', 'text/html').send(html);
 });
 
+// ===== VENDOR CANCELLATION POLICY =====
+
+// GET /payments/vendor/:vendorProfileId/cancellation-policy - Get vendor's cancellation policy
+router.get('/vendor/:vendorProfileId/cancellation-policy', async (req, res) => {
+  try {
+    const { vendorProfileId } = req.params;
+    
+    if (!vendorProfileId) {
+      return res.status(400).json({ success: false, message: 'Vendor Profile ID is required' });
+    }
+
+    const pool = await poolPromise;
+    const result = await pool.request()
+      .input('VendorProfileID', sql.Int, vendorProfileId)
+      .query(`
+        SELECT PolicyID, VendorProfileID, PolicyType, FullRefundDays, PartialRefundDays, 
+               PartialRefundPercent, NoRefundDays, CustomTerms, IsActive, CreatedAt, UpdatedAt
+        FROM vendors.CancellationPolicies 
+        WHERE VendorProfileID = @VendorProfileID AND IsActive = 1
+      `);
+
+    if (result.recordset.length === 0) {
+      return res.json({ 
+        success: true, 
+        policy: null,
+        message: 'No cancellation policy found' 
+      });
+    }
+
+    res.json({
+      success: true,
+      policy: result.recordset[0]
+    });
+
+  } catch (err) {
+    console.error('Get cancellation policy error:', err);
+    res.status(500).json({ success: false, message: 'Failed to get cancellation policy', error: err.message });
+  }
+});
+
+// POST /payments/vendor/:vendorProfileId/cancellation-policy - Save vendor's cancellation policy
+router.post('/vendor/:vendorProfileId/cancellation-policy', async (req, res) => {
+  try {
+    const { vendorProfileId } = req.params;
+    const { policyType, fullRefundDays, partialRefundDays, partialRefundPercent, noRefundDays, customTerms } = req.body;
+    
+    if (!vendorProfileId) {
+      return res.status(400).json({ success: false, message: 'Vendor Profile ID is required' });
+    }
+
+    const pool = await poolPromise;
+
+    // Check if policy exists
+    const existingResult = await pool.request()
+      .input('VendorProfileID', sql.Int, vendorProfileId)
+      .query(`SELECT PolicyID FROM vendors.CancellationPolicies WHERE VendorProfileID = @VendorProfileID`);
+
+    if (existingResult.recordset.length > 0) {
+      // Update existing policy
+      await pool.request()
+        .input('VendorProfileID', sql.Int, vendorProfileId)
+        .input('PolicyType', sql.NVarChar(50), policyType || 'flexible')
+        .input('FullRefundDays', sql.Int, fullRefundDays || 7)
+        .input('PartialRefundDays', sql.Int, partialRefundDays || 3)
+        .input('PartialRefundPercent', sql.Int, partialRefundPercent || 50)
+        .input('NoRefundDays', sql.Int, noRefundDays || 1)
+        .input('CustomTerms', sql.NVarChar(sql.MAX), customTerms || null)
+        .query(`
+          UPDATE vendors.CancellationPolicies 
+          SET PolicyType = @PolicyType, 
+              FullRefundDays = @FullRefundDays, 
+              PartialRefundDays = @PartialRefundDays,
+              PartialRefundPercent = @PartialRefundPercent, 
+              NoRefundDays = @NoRefundDays, 
+              CustomTerms = @CustomTerms,
+              UpdatedAt = GETUTCDATE()
+          WHERE VendorProfileID = @VendorProfileID
+        `);
+
+      res.json({ success: true, message: 'Cancellation policy updated' });
+    } else {
+      // Insert new policy
+      await pool.request()
+        .input('VendorProfileID', sql.Int, vendorProfileId)
+        .input('PolicyType', sql.NVarChar(50), policyType || 'flexible')
+        .input('FullRefundDays', sql.Int, fullRefundDays || 7)
+        .input('PartialRefundDays', sql.Int, partialRefundDays || 3)
+        .input('PartialRefundPercent', sql.Int, partialRefundPercent || 50)
+        .input('NoRefundDays', sql.Int, noRefundDays || 1)
+        .input('CustomTerms', sql.NVarChar(sql.MAX), customTerms || null)
+        .query(`
+          INSERT INTO vendors.CancellationPolicies 
+            (VendorProfileID, PolicyType, FullRefundDays, PartialRefundDays, PartialRefundPercent, NoRefundDays, CustomTerms, IsActive, CreatedAt, UpdatedAt)
+          VALUES 
+            (@VendorProfileID, @PolicyType, @FullRefundDays, @PartialRefundDays, @PartialRefundPercent, @NoRefundDays, @CustomTerms, 1, GETUTCDATE(), GETUTCDATE())
+        `);
+
+      res.json({ success: true, message: 'Cancellation policy created' });
+    }
+
+  } catch (err) {
+    console.error('Save cancellation policy error:', err);
+    res.status(500).json({ success: false, message: 'Failed to save cancellation policy', error: err.message });
+  }
+});
+
 // 0a. PUBLIC CONFIG: expose Stripe publishable key and commission settings for frontend
 router.get('/config', async (req, res) => {
   try {
