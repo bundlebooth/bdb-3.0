@@ -42,7 +42,7 @@ const BookingManagementPanel = () => {
     }
   };
 
-  const handleCancelBooking = async (bookingId, reason) => {
+  const handleCancelBooking = async (bookingId, reason, cancelledBy = 'admin', processRefund = true, refundPercent = null) => {
     try {
       const response = await fetch(`${API_BASE_URL}/admin/bookings/${bookingId}/cancel`, {
         method: 'POST',
@@ -50,11 +50,21 @@ const BookingManagementPanel = () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
-        body: JSON.stringify({ reason })
+        body: JSON.stringify({ 
+          reason,
+          cancelledBy,
+          processRefund,
+          refundPercent
+        })
       });
 
       if (response.ok) {
-        showBanner('Booking cancelled', 'success');
+        const data = await response.json();
+        if (data.refund) {
+          showBanner(`Booking cancelled. Refund of $${data.refund.amount?.toFixed(2) || 0} processed.`, 'success');
+        } else {
+          showBanner('Booking cancelled', 'success');
+        }
         fetchBookings();
         setSelectedBooking(null);
         setModalType(null);
@@ -87,17 +97,23 @@ const BookingManagementPanel = () => {
   };
 
   const getStatusBadge = (status) => {
+    const normalizedStatus = status?.toLowerCase() || '';
     const statusMap = {
-      'Pending': { class: 'badge-warning', icon: 'fa-clock' },
-      'Confirmed': { class: 'badge-info', icon: 'fa-check' },
-      'Completed': { class: 'badge-success', icon: 'fa-check-circle' },
-      'Cancelled': { class: 'badge-danger', icon: 'fa-times-circle' },
-      'Disputed': { class: 'badge-dark', icon: 'fa-exclamation-triangle' }
+      'pending': { class: 'badge-warning', icon: 'fa-clock', label: 'Pending' },
+      'confirmed': { class: 'badge-info', icon: 'fa-check', label: 'Confirmed' },
+      'completed': { class: 'badge-success', icon: 'fa-check-circle', label: 'Completed' },
+      'cancelled': { class: 'badge-danger', icon: 'fa-times-circle', label: 'Cancelled' },
+      'cancelled_by_client': { class: 'badge-danger', icon: 'fa-user-times', label: 'Cancelled by Client' },
+      'cancelled_by_vendor': { class: 'badge-danger', icon: 'fa-store-slash', label: 'Cancelled by Vendor' },
+      'cancelled_by_admin': { class: 'badge-danger', icon: 'fa-user-shield', label: 'Cancelled by Admin' },
+      'refunded': { class: 'badge-secondary', icon: 'fa-undo', label: 'Refunded' },
+      'disputed': { class: 'badge-dark', icon: 'fa-exclamation-triangle', label: 'Disputed' },
+      'payment_failed': { class: 'badge-danger', icon: 'fa-credit-card', label: 'Payment Failed' }
     };
-    const config = statusMap[status] || { class: 'badge-secondary', icon: 'fa-question' };
+    const config = statusMap[normalizedStatus] || { class: 'badge-secondary', icon: 'fa-question', label: status };
     return (
       <span className={`status-badge ${config.class}`}>
-        <i className={`fas ${config.icon}`}></i> {status}
+        <i className={`fas ${config.icon}`}></i> {config.label}
       </span>
     );
   };
@@ -301,7 +317,9 @@ const BookingManagementPanel = () => {
         <CancelBookingModal
           booking={selectedBooking}
           onClose={() => { setSelectedBooking(null); setModalType(null); }}
-          onCancel={(reason) => handleCancelBooking(selectedBooking.BookingID, reason)}
+          onCancel={(reason, cancelledBy, processRefund, refundPercent) => 
+            handleCancelBooking(selectedBooking.BookingID, reason, cancelledBy, processRefund, refundPercent)
+          }
         />
       )}
 
@@ -537,6 +555,20 @@ const BookingEditModal = ({ booking, onClose, onSave }) => {
 // Cancel Booking Modal
 const CancelBookingModal = ({ booking, onClose, onCancel }) => {
   const [reason, setReason] = useState('');
+  const [cancelledBy, setCancelledBy] = useState('admin');
+  const [processRefund, setProcessRefund] = useState(true);
+  const [refundType, setRefundType] = useState('policy'); // 'policy', 'full', 'partial', 'none'
+  const [customRefundPercent, setCustomRefundPercent] = useState(50);
+
+  const handleCancel = () => {
+    let refundPercent = null;
+    if (refundType === 'full') refundPercent = 100;
+    else if (refundType === 'partial') refundPercent = customRefundPercent;
+    else if (refundType === 'none') refundPercent = 0;
+    // 'policy' leaves it null to use vendor's cancellation policy
+    
+    onCancel(reason, cancelledBy, processRefund, refundPercent);
+  };
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -544,7 +576,7 @@ const CancelBookingModal = ({ booking, onClose, onCancel }) => {
         <div className="modal-header">
           <h2>Cancel Booking #{booking.BookingID}</h2>
           <button className="modal-close" onClick={onClose}>
-            
+            <i className="fas fa-times"></i>
           </button>
         </div>
         <div className="modal-body">
@@ -552,21 +584,101 @@ const CancelBookingModal = ({ booking, onClose, onCancel }) => {
             <i className="fas fa-exclamation-triangle"></i>
             <p>This action will cancel the booking and notify both the client and vendor.</p>
           </div>
+          
+          <div className="form-group">
+            <label>Cancelled By</label>
+            <select value={cancelledBy} onChange={e => setCancelledBy(e.target.value)}>
+              <option value="admin">Admin</option>
+              <option value="client">Client Request</option>
+              <option value="vendor">Vendor Request</option>
+            </select>
+          </div>
+
           <div className="form-group">
             <label>Cancellation Reason</label>
             <textarea
               value={reason}
               onChange={e => setReason(e.target.value)}
               placeholder="Please provide a reason for cancellation..."
-              rows={4}
+              rows={3}
             />
           </div>
+
+          <div className="form-group">
+            <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <input
+                type="checkbox"
+                checked={processRefund}
+                onChange={e => setProcessRefund(e.target.checked)}
+              />
+              Process Stripe Refund (excludes platform fee)
+            </label>
+          </div>
+
+          {processRefund && (
+            <div className="form-group" style={{ background: '#f8f9fa', padding: '16px', borderRadius: '8px' }}>
+              <label style={{ marginBottom: '12px', display: 'block' }}>Refund Amount</label>
+              <div className="radio-group" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <input
+                    type="radio"
+                    value="policy"
+                    checked={refundType === 'policy'}
+                    onChange={() => setRefundType('policy')}
+                  />
+                  Use Vendor's Cancellation Policy
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <input
+                    type="radio"
+                    value="full"
+                    checked={refundType === 'full'}
+                    onChange={() => setRefundType('full')}
+                  />
+                  Full Refund (100%)
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <input
+                    type="radio"
+                    value="partial"
+                    checked={refundType === 'partial'}
+                    onChange={() => setRefundType('partial')}
+                  />
+                  Custom Partial Refund
+                  {refundType === 'partial' && (
+                    <input
+                      type="number"
+                      value={customRefundPercent}
+                      onChange={e => setCustomRefundPercent(Math.min(100, Math.max(0, parseInt(e.target.value) || 0)))}
+                      min={0}
+                      max={100}
+                      style={{ width: '60px', marginLeft: '8px' }}
+                    />
+                  )}
+                  {refundType === 'partial' && <span>%</span>}
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <input
+                    type="radio"
+                    value="none"
+                    checked={refundType === 'none'}
+                    onChange={() => setRefundType('none')}
+                  />
+                  No Refund (0%)
+                </label>
+              </div>
+              <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '12px', marginBottom: 0 }}>
+                <i className="fas fa-info-circle" style={{ marginRight: '6px' }}></i>
+                Platform fee is never refunded and goes to PlanBeau.
+              </p>
+            </div>
+          )}
         </div>
         <div className="modal-footer">
           <button className="btn-secondary" onClick={onClose}>Keep Booking</button>
           <button
             className="btn-danger"
-            onClick={() => onCancel(reason)}
+            onClick={handleCancel}
             disabled={!reason.trim()}
           >
             Cancel Booking

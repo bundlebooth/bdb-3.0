@@ -647,13 +647,44 @@ router.put('/bookings/:id', async (req, res) => {
   }
 });
 
-// POST /admin/bookings/:id/cancel - Cancel booking
+// POST /admin/bookings/:id/cancel - Cancel booking with optional Stripe refund
 router.post('/bookings/:id/cancel', async (req, res) => {
   try {
     const { id } = req.params;
-    const { reason } = req.body;
+    const { reason, processRefund = true, refundPercent } = req.body;
     const pool = await getPool();
     
+    // If processRefund is true, redirect to the payments cancel endpoint
+    if (processRefund) {
+      // Forward to the payments cancel-booking endpoint which handles Stripe refunds
+      const fetch = (await import('node-fetch')).default;
+      const apiUrl = `http://localhost:${process.env.PORT || 5000}/payments/cancel-booking/${id}`;
+      
+      try {
+        const refundResponse = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            cancelledBy: 'admin',
+            reason: reason,
+            refundPercent: refundPercent
+          })
+        });
+        
+        if (refundResponse.ok) {
+          const refundData = await refundResponse.json();
+          return res.json({ 
+            success: true, 
+            message: 'Booking cancelled with refund processed',
+            refund: refundData.refund
+          });
+        }
+      } catch (fetchErr) {
+        console.warn('Could not process Stripe refund, falling back to DB-only cancel:', fetchErr.message);
+      }
+    }
+    
+    // Fallback: Just update database status
     const request = pool.request();
     request.input('BookingID', sql.Int, id);
     request.input('Reason', sql.NVarChar(sql.MAX), reason || null);

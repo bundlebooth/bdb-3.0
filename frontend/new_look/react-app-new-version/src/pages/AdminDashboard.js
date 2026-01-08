@@ -22,6 +22,7 @@ import SupportToolsPanel from '../components/Admin/SupportToolsPanel';
 import VendorApprovalsPanel from '../components/Admin/VendorApprovalsPanel';
 import BlogManagementPanel from '../components/Admin/BlogManagementPanel';
 import VendorBadgesPanel from '../components/Admin/VendorBadgesPanel';
+import EmailManagementPanel from '../components/Admin/EmailManagementPanel';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -55,6 +56,7 @@ const AdminDashboard = () => {
     { id: 'content', label: 'Content Management', icon: 'fas fa-file-alt' },
     { id: 'blogs', label: 'Blog Management', icon: 'fas fa-newspaper' },
     { id: 'faqs', label: 'FAQ Management', icon: 'fas fa-question-circle' },
+    { id: 'emails', label: 'Email Management', icon: 'fas fa-envelope' },
     { id: 'notifications', label: 'Notifications', icon: 'fas fa-bell' },
     { id: 'settings', label: 'Platform Settings', icon: 'fas fa-cog' },
     { id: 'analytics', label: 'Analytics & Reports', icon: 'fas fa-chart-line' },
@@ -145,6 +147,8 @@ const AdminDashboard = () => {
         return <BlogManagementPanel />;
       case 'faqs':
         return <FAQManagementPanel />;
+      case 'emails':
+        return <EmailManagementPanel />;
       case 'notifications':
         return <NotificationsPanel />;
       case 'settings':

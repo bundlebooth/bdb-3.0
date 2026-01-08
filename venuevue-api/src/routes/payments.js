@@ -1242,7 +1242,7 @@ router.post('/checkout-session', async (req, res) => {
   }
 });
 
-// 8. PROCESS REFUND
+// 8. PROCESS REFUND (Legacy - simple refund by charge ID)
 router.post('/refund/:chargeId', async (req, res) => {
   try {
     const { chargeId } = req.params;
@@ -1280,6 +1280,346 @@ router.post('/refund/:chargeId', async (req, res) => {
       message: 'Refund processing failed',
       error: error.message
     });
+  }
+});
+
+// 8a. CANCEL BOOKING WITH STRIPE CONNECT REFUND
+// Refunds the payment to client but KEEPS the application fee (platform fee)
+router.post('/cancel-booking/:bookingId', async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    const { 
+      cancelledBy, // 'client', 'vendor', 'admin'
+      cancelledByUserId,
+      reason,
+      refundPercent // Optional: override refund percentage
+    } = req.body;
+
+    if (!isStripeConfigured()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Payment processing is not available'
+      });
+    }
+
+    const pool = await poolPromise;
+
+    // Get booking details including cancellation policy
+    const bookingResult = await pool.request()
+      .input('BookingID', sql.Int, bookingId)
+      .execute('bookings.sp_GetBookingForCancellation');
+
+    if (bookingResult.recordset.length === 0) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    const booking = bookingResult.recordset[0];
+
+    // Check if booking can be cancelled
+    if (['cancelled', 'cancelled_by_client', 'cancelled_by_vendor', 'cancelled_by_admin', 'refunded'].includes(booking.Status?.toLowerCase())) {
+      return res.status(400).json({ success: false, message: 'Booking is already cancelled' });
+    }
+
+    // Check cancellation permissions based on policy
+    if (cancelledBy === 'client' && booking.AllowClientCancellation === false) {
+      return res.status(403).json({ success: false, message: 'Client cancellation is not allowed for this vendor' });
+    }
+    if (cancelledBy === 'vendor' && booking.AllowVendorCancellation === false) {
+      return res.status(403).json({ success: false, message: 'Vendor cancellation is not allowed' });
+    }
+
+    // Calculate refund amount based on cancellation policy
+    const hoursUntilEvent = booking.HoursUntilEvent || 0;
+    const totalAmount = Number(booking.TotalAmount) || 0;
+    let calculatedRefundPercent = 0;
+    let policyApplied = null;
+
+    if (booking.PolicyID) {
+      policyApplied = booking.PolicyID;
+      if (hoursUntilEvent >= (booking.FullRefundHours || 168)) {
+        calculatedRefundPercent = booking.FullRefundPercent || 100;
+      } else if (hoursUntilEvent >= (booking.PartialRefundHours || 48)) {
+        calculatedRefundPercent = booking.PartialRefundPercent || 50;
+      } else if (hoursUntilEvent >= (booking.NoRefundHours || 24)) {
+        calculatedRefundPercent = 0;
+      } else {
+        calculatedRefundPercent = 0;
+      }
+    } else {
+      // Default policy: full refund if > 7 days, 50% if > 48 hours, 0% otherwise
+      if (hoursUntilEvent >= 168) calculatedRefundPercent = 100;
+      else if (hoursUntilEvent >= 48) calculatedRefundPercent = 50;
+      else calculatedRefundPercent = 0;
+    }
+
+    // Allow override of refund percent (for admin)
+    const finalRefundPercent = typeof refundPercent === 'number' ? refundPercent : calculatedRefundPercent;
+    
+    // Calculate refund amount (excluding application fee which platform keeps)
+    // Get the original payment intent to find the application fee
+    let refundAmount = 0;
+    let applicationFeeRetained = 0;
+    let stripeRefundId = null;
+    let stripeRefundStatus = 'none';
+
+    if (booking.StripePaymentIntentID && booking.FullAmountPaid && finalRefundPercent > 0) {
+      try {
+        const pi = await stripe.paymentIntents.retrieve(booking.StripePaymentIntentID);
+        const chargeId = pi.latest_charge;
+        
+        if (chargeId) {
+          const charge = await stripe.charges.retrieve(chargeId);
+          const originalAmount = charge.amount; // in cents
+          const applicationFee = pi.application_fee_amount || 0; // Platform fee in cents
+          
+          // Calculate refund: refund percentage of (total - application fee)
+          // Application fee is NEVER refunded - it goes to the platform
+          const refundableAmount = originalAmount - applicationFee;
+          const refundAmountCents = Math.round(refundableAmount * (finalRefundPercent / 100));
+          
+          applicationFeeRetained = applicationFee / 100;
+          refundAmount = refundAmountCents / 100;
+
+          if (refundAmountCents > 0) {
+            // Create refund - this refunds to customer and reverses transfer to vendor
+            // But does NOT refund the application fee
+            const refund = await stripe.refunds.create({
+              charge: chargeId,
+              amount: refundAmountCents,
+              reason: cancelledBy === 'client' ? 'requested_by_customer' : 'requested_by_customer',
+              metadata: {
+                booking_id: String(bookingId),
+                cancelled_by: cancelledBy,
+                refund_percent: String(finalRefundPercent),
+                hours_before_event: String(hoursUntilEvent)
+              }
+            });
+
+            stripeRefundId = refund.id;
+            stripeRefundStatus = refund.status;
+          }
+        }
+      } catch (stripeErr) {
+        console.error('Stripe refund error:', stripeErr);
+        // Continue with cancellation even if refund fails
+        stripeRefundStatus = 'failed';
+      }
+    }
+
+    // Record cancellation in database
+    const cancelResult = await pool.request()
+      .input('BookingID', sql.Int, bookingId)
+      .input('CancelledBy', sql.NVarChar(20), cancelledBy)
+      .input('CancelledByUserID', sql.Int, cancelledByUserId || null)
+      .input('CancellationReason', sql.NVarChar(sql.MAX), reason || null)
+      .input('RefundAmount', sql.Decimal(10,2), refundAmount)
+      .input('RefundPercent', sql.Decimal(5,2), finalRefundPercent)
+      .input('ApplicationFeeRetained', sql.Decimal(10,2), applicationFeeRetained)
+      .input('PolicyID', sql.Int, policyApplied)
+      .input('HoursBeforeEvent', sql.Int, hoursUntilEvent)
+      .execute('bookings.sp_CancelBookingWithRefund');
+
+    const cancellationId = cancelResult.recordset[0]?.CancellationID;
+
+    // Update with Stripe refund details
+    if (stripeRefundId) {
+      await pool.request()
+        .input('CancellationID', sql.Int, cancellationId)
+        .input('StripeRefundID', sql.NVarChar(100), stripeRefundId)
+        .input('StripeRefundStatus', sql.NVarChar(50), stripeRefundStatus)
+        .input('RefundStatus', sql.NVarChar(50), stripeRefundStatus === 'succeeded' ? 'completed' : 'processing')
+        .execute('bookings.sp_UpdateCancellationRefund');
+    }
+
+    res.json({
+      success: true,
+      message: 'Booking cancelled successfully',
+      cancellationId,
+      bookingId: parseInt(bookingId),
+      cancelledBy,
+      refund: {
+        amount: refundAmount,
+        percent: finalRefundPercent,
+        applicationFeeRetained,
+        stripeRefundId,
+        status: stripeRefundStatus
+      },
+      policy: {
+        applied: !!policyApplied,
+        hoursBeforeEvent: hoursUntilEvent
+      }
+    });
+
+  } catch (error) {
+    console.error('Cancel booking error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to cancel booking',
+      error: error.message
+    });
+  }
+});
+
+// 8b. GET CANCELLATION POLICY FOR A VENDOR
+router.get('/cancellation-policy/:vendorProfileId', async (req, res) => {
+  try {
+    const { vendorProfileId } = req.params;
+    const pool = await poolPromise;
+
+    const result = await pool.request()
+      .input('VendorProfileID', sql.Int, vendorProfileId)
+      .execute('vendors.sp_GetCancellationPolicy');
+
+    if (result.recordset.length === 0) {
+      // Return default policy
+      return res.json({
+        success: true,
+        policy: {
+          fullRefundHours: 168,
+          partialRefundHours: 48,
+          noRefundHours: 24,
+          fullRefundPercent: 100,
+          partialRefundPercent: 50,
+          allowClientCancellation: true,
+          allowVendorCancellation: true,
+          isDefault: true
+        }
+      });
+    }
+
+    const policy = result.recordset[0];
+    res.json({
+      success: true,
+      policy: {
+        policyId: policy.PolicyID,
+        policyName: policy.PolicyName,
+        fullRefundHours: policy.FullRefundHours,
+        partialRefundHours: policy.PartialRefundHours,
+        noRefundHours: policy.NoRefundHours,
+        fullRefundPercent: policy.FullRefundPercent,
+        partialRefundPercent: policy.PartialRefundPercent,
+        policyDescription: policy.PolicyDescription,
+        allowClientCancellation: policy.AllowClientCancellation,
+        allowVendorCancellation: policy.AllowVendorCancellation,
+        vendorCancellationPenalty: policy.VendorCancellationPenalty,
+        isDefault: false
+      }
+    });
+
+  } catch (error) {
+    console.error('Get cancellation policy error:', error);
+    res.status(500).json({ success: false, message: 'Failed to get cancellation policy', error: error.message });
+  }
+});
+
+// 8c. UPDATE CANCELLATION POLICY FOR A VENDOR
+router.post('/cancellation-policy/:vendorProfileId', async (req, res) => {
+  try {
+    const { vendorProfileId } = req.params;
+    const {
+      policyName,
+      fullRefundHours,
+      partialRefundHours,
+      noRefundHours,
+      fullRefundPercent,
+      partialRefundPercent,
+      policyDescription,
+      allowClientCancellation,
+      allowVendorCancellation,
+      vendorCancellationPenalty
+    } = req.body;
+
+    const pool = await poolPromise;
+
+    const result = await pool.request()
+      .input('VendorProfileID', sql.Int, vendorProfileId)
+      .input('PolicyName', sql.NVarChar(100), policyName || 'Standard Policy')
+      .input('FullRefundHours', sql.Int, fullRefundHours || 168)
+      .input('PartialRefundHours', sql.Int, partialRefundHours || 48)
+      .input('NoRefundHours', sql.Int, noRefundHours || 24)
+      .input('FullRefundPercent', sql.Decimal(5,2), fullRefundPercent || 100)
+      .input('PartialRefundPercent', sql.Decimal(5,2), partialRefundPercent || 50)
+      .input('PolicyDescription', sql.NVarChar(sql.MAX), policyDescription || null)
+      .input('AllowClientCancellation', sql.Bit, allowClientCancellation !== false)
+      .input('AllowVendorCancellation', sql.Bit, allowVendorCancellation !== false)
+      .input('VendorCancellationPenalty', sql.Decimal(5,2), vendorCancellationPenalty || 0)
+      .execute('vendors.sp_UpsertCancellationPolicy');
+
+    res.json({
+      success: true,
+      message: 'Cancellation policy updated',
+      policyId: result.recordset[0]?.PolicyID
+    });
+
+  } catch (error) {
+    console.error('Update cancellation policy error:', error);
+    res.status(500).json({ success: false, message: 'Failed to update cancellation policy', error: error.message });
+  }
+});
+
+// 8d. CALCULATE REFUND PREVIEW
+router.post('/calculate-refund', async (req, res) => {
+  try {
+    const { bookingId, cancelledBy } = req.body;
+
+    const pool = await poolPromise;
+
+    const bookingResult = await pool.request()
+      .input('BookingID', sql.Int, bookingId)
+      .execute('bookings.sp_GetBookingForCancellation');
+
+    if (bookingResult.recordset.length === 0) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    const booking = bookingResult.recordset[0];
+    const hoursUntilEvent = booking.HoursUntilEvent || 0;
+    const totalAmount = Number(booking.TotalAmount) || 0;
+
+    // Calculate based on policy
+    let refundPercent = 0;
+    let refundTier = 'no_refund';
+
+    if (booking.PolicyID) {
+      if (hoursUntilEvent >= (booking.FullRefundHours || 168)) {
+        refundPercent = booking.FullRefundPercent || 100;
+        refundTier = 'full';
+      } else if (hoursUntilEvent >= (booking.PartialRefundHours || 48)) {
+        refundPercent = booking.PartialRefundPercent || 50;
+        refundTier = 'partial';
+      }
+    } else {
+      if (hoursUntilEvent >= 168) { refundPercent = 100; refundTier = 'full'; }
+      else if (hoursUntilEvent >= 48) { refundPercent = 50; refundTier = 'partial'; }
+    }
+
+    // Estimate application fee (platform fee)
+    const settings = await getCommissionSettings();
+    const estimatedPlatformFee = totalAmount * (settings.platformFeePercent / 100);
+    const refundableBase = totalAmount - estimatedPlatformFee;
+    const estimatedRefund = refundableBase * (refundPercent / 100);
+
+    res.json({
+      success: true,
+      preview: {
+        bookingId,
+        totalAmount,
+        hoursUntilEvent,
+        refundTier,
+        refundPercent,
+        platformFeeRetained: estimatedPlatformFee,
+        estimatedRefund,
+        policy: booking.PolicyID ? {
+          fullRefundHours: booking.FullRefundHours,
+          partialRefundHours: booking.PartialRefundHours,
+          noRefundHours: booking.NoRefundHours
+        } : null
+      }
+    });
+
+  } catch (error) {
+    console.error('Calculate refund error:', error);
+    res.status(500).json({ success: false, message: 'Failed to calculate refund', error: error.message });
   }
 });
 

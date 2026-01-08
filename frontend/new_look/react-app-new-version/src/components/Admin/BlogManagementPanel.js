@@ -337,6 +337,84 @@ const BlogManagementPanel = () => {
   );
 };
 
+// Simple Rich Text Toolbar Component
+const RichTextToolbar = ({ onFormat, onInsert }) => {
+  const toolbarStyle = {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '4px',
+    padding: '8px 12px',
+    background: '#f8f9fa',
+    borderRadius: '8px 8px 0 0',
+    border: '1px solid #e0e0e0',
+    borderBottom: 'none'
+  };
+
+  const buttonStyle = {
+    padding: '6px 10px',
+    background: 'white',
+    border: '1px solid #d1d5db',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    fontSize: '13px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px'
+  };
+
+  const separatorStyle = {
+    width: '1px',
+    height: '24px',
+    background: '#d1d5db',
+    margin: '0 4px'
+  };
+
+  return (
+    <div style={toolbarStyle}>
+      <button type="button" style={buttonStyle} onClick={() => onFormat('h2')} title="Heading 2">
+        <i className="fas fa-heading"></i> H2
+      </button>
+      <button type="button" style={buttonStyle} onClick={() => onFormat('h3')} title="Heading 3">
+        <i className="fas fa-heading"></i> H3
+      </button>
+      <div style={separatorStyle}></div>
+      <button type="button" style={buttonStyle} onClick={() => onFormat('bold')} title="Bold">
+        <i className="fas fa-bold"></i>
+      </button>
+      <button type="button" style={buttonStyle} onClick={() => onFormat('italic')} title="Italic">
+        <i className="fas fa-italic"></i>
+      </button>
+      <button type="button" style={buttonStyle} onClick={() => onFormat('underline')} title="Underline">
+        <i className="fas fa-underline"></i>
+      </button>
+      <div style={separatorStyle}></div>
+      <button type="button" style={buttonStyle} onClick={() => onFormat('ul')} title="Bullet List">
+        <i className="fas fa-list-ul"></i>
+      </button>
+      <button type="button" style={buttonStyle} onClick={() => onFormat('ol')} title="Numbered List">
+        <i className="fas fa-list-ol"></i>
+      </button>
+      <div style={separatorStyle}></div>
+      <button type="button" style={buttonStyle} onClick={() => onFormat('blockquote')} title="Quote">
+        <i className="fas fa-quote-left"></i>
+      </button>
+      <button type="button" style={buttonStyle} onClick={() => onFormat('link')} title="Link">
+        <i className="fas fa-link"></i>
+      </button>
+      <button type="button" style={buttonStyle} onClick={() => onFormat('image')} title="Image">
+        <i className="fas fa-image"></i>
+      </button>
+      <div style={separatorStyle}></div>
+      <button type="button" style={buttonStyle} onClick={() => onInsert('paragraph')} title="New Paragraph">
+        <i className="fas fa-paragraph"></i> P
+      </button>
+      <button type="button" style={buttonStyle} onClick={() => onInsert('hr')} title="Horizontal Line">
+        <i className="fas fa-minus"></i> HR
+      </button>
+    </div>
+  );
+};
+
 // Blog Editor Modal Component
 const BlogEditorModal = ({ blog, categories, onClose, onSave }) => {
   const [formData, setFormData] = useState({
@@ -354,17 +432,114 @@ const BlogEditorModal = ({ blog, categories, onClose, onSave }) => {
   });
   const [saving, setSaving] = useState(false);
   const [previewMode, setPreviewMode] = useState(false);
+  const [activeTab, setActiveTab] = useState('visual'); // 'visual' or 'html'
+  const contentRef = React.useRef(null);
 
   const handleChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     
-    // Auto-generate slug from title
     if (field === 'title' && !blog) {
       const slug = value.toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/(^-|-$)/g, '');
       setFormData(prev => ({ ...prev, slug }));
     }
+  };
+
+  const handleFormat = (format) => {
+    const textarea = contentRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = formData.content.substring(start, end) || 'Your text here';
+    let newText = '';
+    let cursorOffset = 0;
+
+    switch (format) {
+      case 'h2':
+        newText = `<h2>${selectedText}</h2>`;
+        cursorOffset = 4;
+        break;
+      case 'h3':
+        newText = `<h3>${selectedText}</h3>`;
+        cursorOffset = 4;
+        break;
+      case 'bold':
+        newText = `<strong>${selectedText}</strong>`;
+        cursorOffset = 8;
+        break;
+      case 'italic':
+        newText = `<em>${selectedText}</em>`;
+        cursorOffset = 4;
+        break;
+      case 'underline':
+        newText = `<u>${selectedText}</u>`;
+        cursorOffset = 3;
+        break;
+      case 'ul':
+        newText = `<ul>\n  <li>${selectedText}</li>\n</ul>`;
+        cursorOffset = 10;
+        break;
+      case 'ol':
+        newText = `<ol>\n  <li>${selectedText}</li>\n</ol>`;
+        cursorOffset = 10;
+        break;
+      case 'blockquote':
+        newText = `<blockquote>${selectedText}</blockquote>`;
+        cursorOffset = 12;
+        break;
+      case 'link':
+        const url = prompt('Enter URL:', 'https://');
+        if (url) {
+          newText = `<a href="${url}">${selectedText}</a>`;
+          cursorOffset = 9 + url.length;
+        } else {
+          return;
+        }
+        break;
+      case 'image':
+        const imgUrl = prompt('Enter image URL:', 'https://');
+        if (imgUrl) {
+          newText = `<img src="${imgUrl}" alt="${selectedText}" style="max-width: 100%; border-radius: 8px;" />`;
+          cursorOffset = 0;
+        } else {
+          return;
+        }
+        break;
+      default:
+        return;
+    }
+
+    const newContent = formData.content.substring(0, start) + newText + formData.content.substring(end);
+    handleChange('content', newContent);
+
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start + cursorOffset, start + cursorOffset + selectedText.length);
+    }, 0);
+  };
+
+  const handleInsert = (type) => {
+    const textarea = contentRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    let insertText = '';
+
+    switch (type) {
+      case 'paragraph':
+        insertText = '\n<p>Your paragraph text here...</p>\n';
+        break;
+      case 'hr':
+        insertText = '\n<hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />\n';
+        break;
+      default:
+        return;
+    }
+
+    const newContent = formData.content.substring(0, start) + insertText + formData.content.substring(start);
+    handleChange('content', newContent);
   };
 
   const handleSave = async (publishNow = false) => {
@@ -411,87 +586,110 @@ const BlogEditorModal = ({ blog, categories, onClose, onSave }) => {
     }
   };
 
+  const modalStyle = {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    background: 'rgba(0,0,0,0.5)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000
+  };
+
+  const contentStyle = {
+    background: 'white',
+    borderRadius: '12px',
+    width: '95%',
+    maxWidth: '1100px',
+    maxHeight: '95vh',
+    overflow: 'hidden',
+    display: 'flex',
+    flexDirection: 'column'
+  };
+
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content blog-editor-modal" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>{blog ? 'Edit Blog Post' : 'Create New Blog Post'}</h2>
-          <div className="header-actions">
+    <div style={modalStyle} onClick={onClose}>
+      <div style={contentStyle} onClick={e => e.stopPropagation()}>
+        <div style={{ padding: '16px 24px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h2 style={{ margin: 0, fontSize: '18px' }}>{blog ? 'Edit Blog Post' : 'Create New Blog Post'}</h2>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
             <button 
-              className={`preview-toggle ${previewMode ? 'active' : ''}`}
               onClick={() => setPreviewMode(!previewMode)}
+              style={{
+                padding: '8px 16px',
+                background: previewMode ? '#5e72e4' : '#f3f4f6',
+                color: previewMode ? 'white' : '#374151',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '13px'
+              }}
             >
-              <i className={`fas fa-${previewMode ? 'edit' : 'eye'}`}></i>
+              <i className={`fas fa-${previewMode ? 'edit' : 'eye'}`} style={{ marginRight: '6px' }}></i>
               {previewMode ? 'Edit' : 'Preview'}
             </button>
-            <button className="modal-close" onClick={onClose}>
+            <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px', color: '#6b7280' }}>
               <i className="fas fa-times"></i>
             </button>
           </div>
         </div>
 
-        <div className="modal-body">
+        <div style={{ flex: 1, overflow: 'auto', padding: '24px' }}>
           {previewMode ? (
-            <div className="blog-preview">
-              <div className="preview-header">
-                <span className="preview-category">{formData.category}</span>
-                <h1>{formData.title || 'Untitled'}</h1>
-                <p className="preview-excerpt">{formData.excerpt}</p>
-                <div className="preview-meta">
-                  <span>{formData.author}</span>
+            <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+              <div style={{ marginBottom: '24px' }}>
+                <span style={{ display: 'inline-block', padding: '4px 12px', background: '#f0f4ff', color: '#5e72e4', borderRadius: '20px', fontSize: '12px', marginBottom: '12px' }}>
+                  {formData.category}
+                </span>
+                <h1 style={{ fontSize: '32px', margin: '0 0 12px 0', color: '#1f2937' }}>{formData.title || 'Untitled'}</h1>
+                <p style={{ fontSize: '18px', color: '#6b7280', margin: '0 0 16px 0' }}>{formData.excerpt}</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#9ca3af', fontSize: '14px' }}>
+                  <span><i className="fas fa-user" style={{ marginRight: '6px' }}></i>{formData.author}</span>
                 </div>
               </div>
               {formData.featuredImageUrl && (
-                <img src={formData.featuredImageUrl} alt="" className="preview-image" />
+                <img src={formData.featuredImageUrl} alt="" style={{ width: '100%', borderRadius: '12px', marginBottom: '24px' }} />
               )}
               <div 
-                className="preview-content"
+                style={{ fontSize: '16px', lineHeight: '1.8', color: '#374151' }}
                 dangerouslySetInnerHTML={{ __html: formData.content }}
               />
             </div>
           ) : (
-            <div className="blog-form">
-              <div className="form-row">
-                <div className="form-group flex-2">
-                  <label>Title *</label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              {/* Basic Info Row */}
+              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '16px' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '600', color: '#374151' }}>Title *</label>
                   <input
                     type="text"
                     value={formData.title}
                     onChange={e => handleChange('title', e.target.value)}
                     placeholder="Enter blog title"
+                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px' }}
                   />
                 </div>
-                <div className="form-group flex-1">
-                  <label>Category</label>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '600', color: '#374151' }}>Category</label>
                   <select
                     value={formData.category}
                     onChange={e => handleChange('category', e.target.value)}
+                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px' }}
                   >
                     {categories.map((cat, i) => (
                       <option key={i} value={cat}>{cat}</option>
                     ))}
                   </select>
                 </div>
-              </div>
-
-              <div className="form-row">
-                <div className="form-group flex-2">
-                  <label>URL Slug</label>
-                  <div className="slug-input">
-                    <span>/blog/</span>
-                    <input
-                      type="text"
-                      value={formData.slug}
-                      onChange={e => handleChange('slug', e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
-                      placeholder="url-slug"
-                    />
-                  </div>
-                </div>
-                <div className="form-group flex-1">
-                  <label>Status</label>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '600', color: '#374151' }}>Status</label>
                   <select
                     value={formData.status}
                     onChange={e => handleChange('status', e.target.value)}
+                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px' }}
                   >
                     <option value="draft">Draft</option>
                     <option value="published">Published</option>
@@ -500,104 +698,180 @@ const BlogEditorModal = ({ blog, categories, onClose, onSave }) => {
                 </div>
               </div>
 
-              <div className="form-group">
-                <label>Excerpt (Short Description)</label>
+              {/* URL Slug */}
+              <div>
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '600', color: '#374151' }}>URL Slug</label>
+                <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #d1d5db', borderRadius: '6px', overflow: 'hidden' }}>
+                  <span style={{ padding: '10px 12px', background: '#f3f4f6', color: '#6b7280', fontSize: '14px' }}>/blog/</span>
+                  <input
+                    type="text"
+                    value={formData.slug}
+                    onChange={e => handleChange('slug', e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                    placeholder="url-slug"
+                    style={{ flex: 1, padding: '10px 12px', border: 'none', fontSize: '14px', outline: 'none' }}
+                  />
+                </div>
+              </div>
+
+              {/* Excerpt */}
+              <div>
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '600', color: '#374151' }}>
+                  Excerpt <span style={{ fontWeight: '400', color: '#9ca3af' }}>(Short description shown in previews)</span>
+                </label>
                 <textarea
                   value={formData.excerpt}
                   onChange={e => handleChange('excerpt', e.target.value)}
                   placeholder="Brief summary of the blog post..."
                   rows={2}
                   maxLength={500}
+                  style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px', resize: 'vertical' }}
                 />
-                <small>{formData.excerpt.length}/500 characters</small>
+                <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '4px' }}>{formData.excerpt.length}/500 characters</div>
               </div>
 
-              <div className="form-group">
-                <label>Featured Image URL</label>
+              {/* Featured Image */}
+              <div>
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '600', color: '#374151' }}>Featured Image URL</label>
                 <input
                   type="text"
                   value={formData.featuredImageUrl}
                   onChange={e => handleChange('featuredImageUrl', e.target.value)}
                   placeholder="https://example.com/image.jpg"
+                  style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px' }}
                 />
                 {formData.featuredImageUrl && (
-                  <div className="image-preview">
-                    <img src={formData.featuredImageUrl} alt="Preview" />
+                  <div style={{ marginTop: '8px', padding: '8px', background: '#f9fafb', borderRadius: '8px', display: 'inline-block' }}>
+                    <img src={formData.featuredImageUrl} alt="Preview" style={{ maxHeight: '120px', borderRadius: '6px' }} />
                   </div>
                 )}
               </div>
 
-              <div className="form-group">
-                <label>Content (HTML) *</label>
+              {/* Content Editor */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                  <label style={{ fontSize: '13px', fontWeight: '600', color: '#374151' }}>Content *</label>
+                  <div style={{ display: 'flex', gap: '4px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('visual')}
+                      style={{
+                        padding: '4px 12px',
+                        background: activeTab === 'visual' ? '#5e72e4' : '#f3f4f6',
+                        color: activeTab === 'visual' ? 'white' : '#374151',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        fontSize: '12px'
+                      }}
+                    >
+                      Visual
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('html')}
+                      style={{
+                        padding: '4px 12px',
+                        background: activeTab === 'html' ? '#5e72e4' : '#f3f4f6',
+                        color: activeTab === 'html' ? 'white' : '#374151',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        fontSize: '12px'
+                      }}
+                    >
+                      HTML
+                    </button>
+                  </div>
+                </div>
+                
+                {activeTab === 'visual' && (
+                  <RichTextToolbar onFormat={handleFormat} onInsert={handleInsert} />
+                )}
+                
                 <textarea
+                  ref={contentRef}
                   value={formData.content}
                   onChange={e => handleChange('content', e.target.value)}
-                  placeholder="<h2>Introduction</h2><p>Your content here...</p>"
-                  rows={12}
-                  className="content-editor"
+                  placeholder={activeTab === 'visual' 
+                    ? "Start typing your content... Use the toolbar above to format text."
+                    : "<h2>Introduction</h2>\n<p>Your content here...</p>"}
+                  rows={14}
+                  style={{ 
+                    width: '100%', 
+                    padding: '12px', 
+                    border: '1px solid #d1d5db', 
+                    borderRadius: activeTab === 'visual' ? '0 0 6px 6px' : '6px',
+                    fontSize: '14px',
+                    fontFamily: activeTab === 'html' ? 'monospace' : 'inherit',
+                    resize: 'vertical',
+                    lineHeight: '1.6'
+                  }}
                 />
-                <small>Use HTML tags for formatting: &lt;h2&gt;, &lt;h3&gt;, &lt;p&gt;, &lt;ul&gt;, &lt;li&gt;, &lt;blockquote&gt;, etc.</small>
+                {activeTab === 'visual' && (
+                  <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '8px', padding: '8px 12px', background: '#f9fafb', borderRadius: '6px' }}>
+                    <strong>Quick Tips:</strong> Select text and click a toolbar button to format it. Use H2/H3 for headings, lists for bullet points, and the quote button for testimonials.
+                  </div>
+                )}
               </div>
 
-              <div className="form-row">
-                <div className="form-group flex-1">
-                  <label>Author</label>
+              {/* Author Info */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '600', color: '#374151' }}>Author</label>
                   <input
                     type="text"
                     value={formData.author}
                     onChange={e => handleChange('author', e.target.value)}
                     placeholder="Author name"
+                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px' }}
                   />
                 </div>
-                <div className="form-group flex-1">
-                  <label>Author Image URL</label>
-                  <input
-                    type="text"
-                    value={formData.authorImageUrl}
-                    onChange={e => handleChange('authorImageUrl', e.target.value)}
-                    placeholder="https://example.com/author.jpg"
-                  />
-                </div>
-              </div>
-
-              <div className="form-row">
-                <div className="form-group flex-2">
-                  <label>Tags (comma-separated)</label>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '600', color: '#374151' }}>Tags (comma-separated)</label>
                   <input
                     type="text"
                     value={formData.tags}
                     onChange={e => handleChange('tags', e.target.value)}
                     placeholder="wedding, planning, tips"
+                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px' }}
                   />
                 </div>
-                <div className="form-group flex-1">
-                  <label className="checkbox-label">
-                    <input
-                      type="checkbox"
-                      checked={formData.isFeatured}
-                      onChange={e => handleChange('isFeatured', e.target.checked)}
-                    />
-                    Featured Post
-                  </label>
-                </div>
+              </div>
+
+              {/* Options */}
+              <div style={{ display: 'flex', gap: '24px', alignItems: 'center', padding: '12px 16px', background: '#f9fafb', borderRadius: '8px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={formData.isFeatured}
+                    onChange={e => handleChange('isFeatured', e.target.checked)}
+                    style={{ width: '16px', height: '16px' }}
+                  />
+                  <span style={{ fontSize: '14px' }}><i className="fas fa-star" style={{ color: '#f59e0b', marginRight: '6px' }}></i>Featured Post</span>
+                </label>
               </div>
             </div>
           )}
         </div>
 
-        <div className="modal-footer">
-          <button className="btn-secondary" onClick={onClose}>Cancel</button>
+        <div style={{ padding: '16px 24px', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
           <button 
-            className="btn-secondary" 
+            onClick={onClose}
+            style={{ padding: '10px 20px', background: '#f3f4f6', color: '#374151', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '14px' }}
+          >
+            Cancel
+          </button>
+          <button 
             onClick={() => handleSave(false)} 
             disabled={saving}
+            style={{ padding: '10px 20px', background: 'white', color: '#5e72e4', border: '1px solid #5e72e4', borderRadius: '6px', cursor: 'pointer', fontSize: '14px' }}
           >
             {saving ? 'Saving...' : 'Save as Draft'}
           </button>
           <button 
-            className="btn-primary" 
             onClick={() => handleSave(true)} 
             disabled={saving}
+            style={{ padding: '10px 20px', background: '#5e72e4', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '14px' }}
           >
             {saving ? 'Publishing...' : (blog?.Status === 'published' ? 'Update' : 'Publish')}
           </button>

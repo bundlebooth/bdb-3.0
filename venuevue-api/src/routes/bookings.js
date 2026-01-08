@@ -1371,4 +1371,230 @@ router.post('/:id/expenses', async (req, res) => {
   }
 });
 
+// ==================== BOOKING CANCELLATION ====================
+
+// POST /bookings/:id/cancel - Cancel booking (for client or vendor)
+router.post('/:id/cancel', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { userId, reason, cancelledBy } = req.body; // cancelledBy: 'client' or 'vendor'
+    
+    const bookingId = resolveBookingId(id);
+    if (!bookingId) {
+      return res.status(400).json({ success: false, message: 'Invalid booking ID' });
+    }
+    if (!userId) {
+      return res.status(400).json({ success: false, message: 'User ID is required' });
+    }
+    if (!cancelledBy || !['client', 'vendor'].includes(cancelledBy)) {
+      return res.status(400).json({ success: false, message: 'cancelledBy must be "client" or "vendor"' });
+    }
+
+    const pool = await poolPromise;
+
+    // Verify the user has permission to cancel
+    const bookingRes = await pool.request()
+      .input('BookingID', sql.Int, bookingId)
+      .execute('bookings.sp_GetBookingForCancellation');
+
+    if (bookingRes.recordset.length === 0) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    const booking = bookingRes.recordset[0];
+
+    // Check if already cancelled
+    if (['cancelled', 'cancelled_by_client', 'cancelled_by_vendor', 'cancelled_by_admin', 'refunded'].includes(booking.Status?.toLowerCase())) {
+      return res.status(400).json({ success: false, message: 'Booking is already cancelled' });
+    }
+
+    // Verify user permission
+    if (cancelledBy === 'client' && booking.UserID !== userId) {
+      return res.status(403).json({ success: false, message: 'Only the booking client can cancel as client' });
+    }
+
+    if (cancelledBy === 'vendor') {
+      // Get vendor's user ID
+      const vendorUserRes = await pool.request()
+        .input('VendorProfileID', sql.Int, booking.VendorProfileID)
+        .execute('bookings.sp_GetVendorUserId');
+      
+      if (vendorUserRes.recordset.length === 0 || vendorUserRes.recordset[0].UserID !== userId) {
+        return res.status(403).json({ success: false, message: 'Only the vendor can cancel as vendor' });
+      }
+    }
+
+    // Check cancellation policy permissions
+    if (cancelledBy === 'client' && booking.AllowClientCancellation === false) {
+      return res.status(403).json({ success: false, message: 'Client cancellation is not allowed for this vendor' });
+    }
+    if (cancelledBy === 'vendor' && booking.AllowVendorCancellation === false) {
+      return res.status(403).json({ success: false, message: 'Vendor cancellation is not allowed' });
+    }
+
+    // Calculate refund based on policy
+    const hoursUntilEvent = booking.HoursUntilEvent || 0;
+    let refundPercent = 0;
+
+    if (booking.PolicyID) {
+      if (hoursUntilEvent >= (booking.FullRefundHours || 168)) {
+        refundPercent = booking.FullRefundPercent || 100;
+      } else if (hoursUntilEvent >= (booking.PartialRefundHours || 48)) {
+        refundPercent = booking.PartialRefundPercent || 50;
+      }
+    } else {
+      // Default policy
+      if (hoursUntilEvent >= 168) refundPercent = 100;
+      else if (hoursUntilEvent >= 48) refundPercent = 50;
+    }
+
+    // Process Stripe refund if payment was made
+    let refundAmount = 0;
+    let applicationFeeRetained = 0;
+    let stripeRefundId = null;
+    let stripeRefundStatus = 'none';
+
+    if (booking.StripePaymentIntentID && booking.FullAmountPaid && refundPercent > 0) {
+      try {
+        const pi = await stripe.paymentIntents.retrieve(booking.StripePaymentIntentID);
+        const chargeId = pi.latest_charge;
+        
+        if (chargeId) {
+          const charge = await stripe.charges.retrieve(chargeId);
+          const originalAmount = charge.amount;
+          const applicationFee = pi.application_fee_amount || 0;
+          
+          const refundableAmount = originalAmount - applicationFee;
+          const refundAmountCents = Math.round(refundableAmount * (refundPercent / 100));
+          
+          applicationFeeRetained = applicationFee / 100;
+          refundAmount = refundAmountCents / 100;
+
+          if (refundAmountCents > 0) {
+            const refund = await stripe.refunds.create({
+              charge: chargeId,
+              amount: refundAmountCents,
+              reason: 'requested_by_customer',
+              metadata: {
+                booking_id: String(bookingId),
+                cancelled_by: cancelledBy,
+                refund_percent: String(refundPercent)
+              }
+            });
+
+            stripeRefundId = refund.id;
+            stripeRefundStatus = refund.status;
+          }
+        }
+      } catch (stripeErr) {
+        console.error('Stripe refund error:', stripeErr);
+        stripeRefundStatus = 'failed';
+      }
+    }
+
+    // Record cancellation in database
+    const cancelResult = await pool.request()
+      .input('BookingID', sql.Int, bookingId)
+      .input('CancelledBy', sql.NVarChar(20), cancelledBy)
+      .input('CancelledByUserID', sql.Int, userId)
+      .input('CancellationReason', sql.NVarChar(sql.MAX), reason || null)
+      .input('RefundAmount', sql.Decimal(10,2), refundAmount)
+      .input('RefundPercent', sql.Decimal(5,2), refundPercent)
+      .input('ApplicationFeeRetained', sql.Decimal(10,2), applicationFeeRetained)
+      .input('PolicyID', sql.Int, booking.PolicyID || null)
+      .input('HoursBeforeEvent', sql.Int, hoursUntilEvent)
+      .execute('bookings.sp_CancelBookingWithRefund');
+
+    const cancellationId = cancelResult.recordset[0]?.CancellationID;
+
+    // Update with Stripe refund details
+    if (stripeRefundId) {
+      await pool.request()
+        .input('CancellationID', sql.Int, cancellationId)
+        .input('StripeRefundID', sql.NVarChar(100), stripeRefundId)
+        .input('StripeRefundStatus', sql.NVarChar(50), stripeRefundStatus)
+        .input('RefundStatus', sql.NVarChar(50), stripeRefundStatus === 'succeeded' ? 'completed' : 'processing')
+        .execute('bookings.sp_UpdateCancellationRefund');
+    }
+
+    res.json({
+      success: true,
+      message: 'Booking cancelled successfully',
+      cancellationId,
+      bookingId,
+      cancelledBy,
+      refund: {
+        amount: refundAmount,
+        percent: refundPercent,
+        applicationFeeRetained,
+        stripeRefundId,
+        status: stripeRefundStatus
+      }
+    });
+
+  } catch (err) {
+    console.error('Cancel booking error:', err);
+    res.status(500).json({ success: false, message: 'Failed to cancel booking', error: err.message });
+  }
+});
+
+// GET /bookings/:id/cancellation-policy - Get cancellation policy preview for a booking
+router.get('/:id/cancellation-policy', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const bookingId = resolveBookingId(id);
+    
+    if (!bookingId) {
+      return res.status(400).json({ success: false, message: 'Invalid booking ID' });
+    }
+
+    const pool = await poolPromise;
+    const result = await pool.request()
+      .input('BookingID', sql.Int, bookingId)
+      .execute('bookings.sp_GetBookingForCancellation');
+
+    if (result.recordset.length === 0) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    const booking = result.recordset[0];
+    const hoursUntilEvent = booking.HoursUntilEvent || 0;
+
+    // Calculate what refund would be
+    let refundPercent = 0;
+    let refundTier = 'no_refund';
+
+    if (booking.PolicyID) {
+      if (hoursUntilEvent >= (booking.FullRefundHours || 168)) {
+        refundPercent = booking.FullRefundPercent || 100;
+        refundTier = 'full';
+      } else if (hoursUntilEvent >= (booking.PartialRefundHours || 48)) {
+        refundPercent = booking.PartialRefundPercent || 50;
+        refundTier = 'partial';
+      }
+    } else {
+      if (hoursUntilEvent >= 168) { refundPercent = 100; refundTier = 'full'; }
+      else if (hoursUntilEvent >= 48) { refundPercent = 50; refundTier = 'partial'; }
+    }
+
+    res.json({
+      success: true,
+      policy: {
+        hoursUntilEvent,
+        refundPercent,
+        refundTier,
+        allowClientCancellation: booking.AllowClientCancellation !== false,
+        allowVendorCancellation: booking.AllowVendorCancellation !== false,
+        fullRefundHours: booking.FullRefundHours || 168,
+        partialRefundHours: booking.PartialRefundHours || 48,
+        noRefundHours: booking.NoRefundHours || 24
+      }
+    });
+
+  } catch (err) {
+    console.error('Get cancellation policy error:', err);
+    res.status(500).json({ success: false, message: 'Failed to get cancellation policy', error: err.message });
+  }
+});
+
 module.exports = router;
