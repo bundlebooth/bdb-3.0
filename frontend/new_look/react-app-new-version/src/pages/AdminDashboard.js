@@ -21,6 +21,7 @@ import SecurityLogsPanel from '../components/Admin/SecurityLogsPanel';
 import SupportToolsPanel from '../components/Admin/SupportToolsPanel';
 import VendorApprovalsPanel from '../components/Admin/VendorApprovalsPanel';
 import BlogManagementPanel from '../components/Admin/BlogManagementPanel';
+import VendorBadgesPanel from '../components/Admin/VendorBadgesPanel';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -43,6 +44,7 @@ const AdminDashboard = () => {
     { id: 'overview', label: 'Dashboard Overview', icon: 'fas fa-tachometer-alt' },
     { id: 'approvals', label: 'Vendor Approvals', icon: 'fas fa-user-check', badge: stats.pendingVendors },
     { id: 'vendors', label: 'Vendor Management', icon: 'fas fa-store' },
+    { id: 'badges', label: 'Vendor Badges', icon: 'fas fa-award' },
     { id: 'users', label: 'User Management', icon: 'fas fa-users' },
     { id: 'bookings', label: 'Booking Management', icon: 'fas fa-calendar-check' },
     { id: 'chats', label: 'Chat & Messaging', icon: 'fas fa-comments' },
@@ -121,6 +123,8 @@ const AdminDashboard = () => {
         return <VendorApprovalsPanel />;
       case 'vendors':
         return <VendorManagementPanel />;
+      case 'badges':
+        return <VendorBadgesPanel />;
       case 'users':
         return <UserManagementPanel />;
       case 'bookings':

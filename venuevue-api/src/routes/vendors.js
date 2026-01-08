@@ -4193,42 +4193,8 @@ router.post('/:id/gallery', async (req, res) => {
   }
 });
 
-// Add package
-router.post('/:id/packages', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { packageName, description, price, duration, maxGuests, includes } = req.body;
-
-    const pool = await poolPromise;
-    
-    if (!pool.connected) {
-      throw new Error('Database connection not established');
-    }
-
-    const request = new sql.Request(pool);
-    request.input('VendorProfileID', sql.Int, id);
-    request.input('PackageName', sql.NVarChar(255), packageName);
-    request.input('Description', sql.NVarChar(sql.MAX), description);
-    request.input('Price', sql.Decimal(10, 2), price);
-    request.input('Duration', sql.NVarChar(50), duration);
-    request.input('MaxGuests', sql.Int, maxGuests);
-
-    const result = await request.execute('vendors.sp_AddPackage');
-    
-    res.json({
-      success: true,
-      serviceId: result.recordset[0].ServiceID
-    });
-
-  } catch (err) {
-    console.error('Package error:', err);
-    res.status(500).json({ 
-      success: false,
-      message: 'Failed to add package',
-      error: err.message 
-    });
-  }
-});
+// DEPRECATED: Old package route - replaced by new packages route at bottom of file
+// router.post('/:id/packages', ...) - see VENDOR PACKAGES ROUTES section
 
 // Get vendor services
 router.get('/:id/services', async (req, res) => {
@@ -6401,5 +6367,253 @@ function formatVendorLastActive(minutesAgo, isOnline) {
   }
   return 'Active over a month ago';
 }
+
+// =============================================
+// VENDOR PACKAGES ROUTES
+// =============================================
+
+// GET /api/vendors/:id/packages - Get packages for a vendor
+router.get('/:id/packages', async (req, res) => {
+  try {
+    const vendorProfileId = parseVendorProfileId(req.params.id);
+    if (!vendorProfileId) {
+      return res.status(400).json({ success: false, message: 'Invalid vendor profile ID' });
+    }
+
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
+    
+    // Try stored procedure first, fallback to direct query
+    try {
+      const result = await request.execute('vendors.sp_GetVendorPackages');
+      res.json({ success: true, packages: result.recordset || [] });
+    } catch (spError) {
+      // Fallback: direct query if stored procedure doesn't exist
+      const result = await pool.request()
+        .input('VendorProfileID', sql.Int, vendorProfileId)
+        .query(`
+          SELECT 
+            PackageID, VendorProfileID, PackageName, Description,
+            Price, SalePrice, PriceType, ImageURL, FinePrint,
+            IncludedServices, IsActive, CreatedAt, UpdatedAt
+          FROM vendors.Packages
+          WHERE VendorProfileID = @VendorProfileID AND IsActive = 1
+          ORDER BY CreatedAt DESC
+        `);
+      
+      // Parse IncludedServices JSON for each package
+      const packages = (result.recordset || []).map(pkg => ({
+        ...pkg,
+        IncludedServices: pkg.IncludedServices ? JSON.parse(pkg.IncludedServices) : []
+      }));
+      
+      res.json({ success: true, packages });
+    }
+  } catch (err) {
+    console.error('Get vendor packages error:', err);
+    // Return empty array if table doesn't exist yet
+    res.json({ success: true, packages: [] });
+  }
+});
+
+// POST /api/vendors/:id/packages - Create or update a package
+router.post('/:id/packages', async (req, res) => {
+  try {
+    const vendorProfileId = parseVendorProfileId(req.params.id);
+    if (!vendorProfileId) {
+      return res.status(400).json({ success: false, message: 'Invalid vendor profile ID' });
+    }
+
+    const { packageId, name, description, includedServices, price, salePrice, priceType, imageURL, finePrint, isActive } = req.body;
+    
+    if (!name || !price) {
+      return res.status(400).json({ success: false, message: 'Package name and price are required' });
+    }
+
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
+    request.input('PackageID', sql.Int, packageId || null);
+    request.input('PackageName', sql.NVarChar(200), name);
+    request.input('Description', sql.NVarChar(sql.MAX), description || null);
+    request.input('Price', sql.Decimal(10, 2), price);
+    request.input('SalePrice', sql.Decimal(10, 2), salePrice || null);
+    request.input('PriceType', sql.NVarChar(50), priceType || 'fixed');
+    request.input('ImageURL', sql.NVarChar(500), imageURL || null);
+    request.input('FinePrint', sql.NVarChar(sql.MAX), finePrint || null);
+    request.input('IncludedServices', sql.NVarChar(sql.MAX), JSON.stringify(includedServices || []));
+    request.input('IsActive', sql.Bit, isActive !== false ? 1 : 0);
+    
+    // Try stored procedure first, fallback to direct query
+    try {
+      const result = await request.execute('vendors.sp_UpsertVendorPackage');
+      res.json({ success: true, packageId: result.recordset[0]?.PackageID, message: 'Package saved successfully' });
+    } catch (spError) {
+      // Fallback: direct upsert if stored procedure doesn't exist
+      if (packageId) {
+        // Update existing package
+        await pool.request()
+          .input('PackageID', sql.Int, packageId)
+          .input('VendorProfileID', sql.Int, vendorProfileId)
+          .input('PackageName', sql.NVarChar(200), name)
+          .input('Description', sql.NVarChar(sql.MAX), description || null)
+          .input('Price', sql.Decimal(10, 2), price)
+          .input('SalePrice', sql.Decimal(10, 2), salePrice || null)
+          .input('PriceType', sql.NVarChar(50), priceType || 'fixed')
+          .input('ImageURL', sql.NVarChar(500), imageURL || null)
+          .input('FinePrint', sql.NVarChar(sql.MAX), finePrint || null)
+          .input('IncludedServices', sql.NVarChar(sql.MAX), JSON.stringify(includedServices || []))
+          .input('IsActive', sql.Bit, isActive !== false ? 1 : 0)
+          .query(`
+            UPDATE vendors.Packages SET
+              PackageName = @PackageName,
+              Description = @Description,
+              Price = @Price,
+              SalePrice = @SalePrice,
+              PriceType = @PriceType,
+              ImageURL = @ImageURL,
+              FinePrint = @FinePrint,
+              IncludedServices = @IncludedServices,
+              IsActive = @IsActive,
+              UpdatedAt = GETDATE()
+            WHERE PackageID = @PackageID AND VendorProfileID = @VendorProfileID
+          `);
+        res.json({ success: true, packageId, message: 'Package updated successfully' });
+      } else {
+        // Insert new package
+        const insertResult = await pool.request()
+          .input('VendorProfileID', sql.Int, vendorProfileId)
+          .input('PackageName', sql.NVarChar(200), name)
+          .input('Description', sql.NVarChar(sql.MAX), description || null)
+          .input('Price', sql.Decimal(10, 2), price)
+          .input('SalePrice', sql.Decimal(10, 2), salePrice || null)
+          .input('PriceType', sql.NVarChar(50), priceType || 'fixed')
+          .input('ImageURL', sql.NVarChar(500), imageURL || null)
+          .input('FinePrint', sql.NVarChar(sql.MAX), finePrint || null)
+          .input('IncludedServices', sql.NVarChar(sql.MAX), JSON.stringify(includedServices || []))
+          .input('IsActive', sql.Bit, isActive !== false ? 1 : 0)
+          .query(`
+            INSERT INTO vendors.Packages (VendorProfileID, PackageName, Description, Price, SalePrice, PriceType, ImageURL, FinePrint, IncludedServices, IsActive, CreatedAt, UpdatedAt)
+            OUTPUT INSERTED.PackageID
+            VALUES (@VendorProfileID, @PackageName, @Description, @Price, @SalePrice, @PriceType, @ImageURL, @FinePrint, @IncludedServices, @IsActive, GETDATE(), GETDATE())
+          `);
+        res.json({ success: true, packageId: insertResult.recordset[0]?.PackageID, message: 'Package created successfully' });
+      }
+    }
+  } catch (err) {
+    console.error('Upsert vendor package error:', err);
+    res.status(500).json({ success: false, message: 'Failed to save package', error: err.message });
+  }
+});
+
+// DELETE /api/vendors/:id/packages/:packageId - Delete a package
+router.delete('/:id/packages/:packageId', async (req, res) => {
+  try {
+    const vendorProfileId = parseVendorProfileId(req.params.id);
+    const packageId = parseInt(req.params.packageId);
+    
+    if (!vendorProfileId || isNaN(packageId)) {
+      return res.status(400).json({ success: false, message: 'Invalid vendor profile ID or package ID' });
+    }
+
+    const pool = await poolPromise;
+    
+    // Soft delete by setting IsActive = 0
+    await pool.request()
+      .input('PackageID', sql.Int, packageId)
+      .input('VendorProfileID', sql.Int, vendorProfileId)
+      .query(`
+        UPDATE vendors.Packages SET IsActive = 0, UpdatedAt = GETDATE()
+        WHERE PackageID = @PackageID AND VendorProfileID = @VendorProfileID
+      `);
+    
+    res.json({ success: true, message: 'Package deleted successfully' });
+  } catch (err) {
+    console.error('Delete vendor package error:', err);
+    res.status(500).json({ success: false, message: 'Failed to delete package', error: err.message });
+  }
+});
+
+// =============================================
+// VENDOR BADGES ROUTES
+// =============================================
+
+// GET /api/vendors/:id/badges - Get badges for a vendor
+router.get('/:id/badges', async (req, res) => {
+  try {
+    const vendorProfileId = parseVendorProfileId(req.params.id);
+    if (!vendorProfileId) {
+      return res.status(400).json({ success: false, message: 'Invalid vendor profile ID' });
+    }
+
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
+    
+    const result = await request.execute('vendors.sp_GetVendorBadges');
+    
+    res.json({ success: true, badges: result.recordset || [] });
+  } catch (err) {
+    console.error('Get vendor badges error:', err);
+    res.status(500).json({ success: false, message: 'Failed to get vendor badges', error: err.message });
+  }
+});
+
+// POST /api/vendors/:id/badges - Assign badge to vendor (admin only)
+router.post('/:id/badges', async (req, res) => {
+  try {
+    const vendorProfileId = parseVendorProfileId(req.params.id);
+    if (!vendorProfileId) {
+      return res.status(400).json({ success: false, message: 'Invalid vendor profile ID' });
+    }
+
+    const { badgeType, badgeName, year, imageURL, description } = req.body;
+    
+    if (!badgeType) {
+      return res.status(400).json({ success: false, message: 'Badge type is required' });
+    }
+
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
+    request.input('BadgeType', sql.NVarChar(50), badgeType);
+    request.input('BadgeName', sql.NVarChar(100), badgeName || null);
+    request.input('Year', sql.Int, year || null);
+    request.input('ImageURL', sql.NVarChar(500), imageURL || null);
+    request.input('Description', sql.NVarChar(500), description || null);
+    
+    const result = await request.execute('vendors.sp_AssignVendorBadge');
+    
+    res.json({ success: true, badgeId: result.recordset[0]?.BadgeID, message: 'Badge assigned successfully' });
+  } catch (err) {
+    console.error('Assign vendor badge error:', err);
+    res.status(500).json({ success: false, message: 'Failed to assign badge', error: err.message });
+  }
+});
+
+// DELETE /api/vendors/:id/badges/:badgeId - Remove badge from vendor (admin only)
+router.delete('/:id/badges/:badgeId', async (req, res) => {
+  try {
+    const vendorProfileId = parseVendorProfileId(req.params.id);
+    const badgeId = parseInt(req.params.badgeId);
+    
+    if (!vendorProfileId || isNaN(badgeId)) {
+      return res.status(400).json({ success: false, message: 'Invalid vendor profile ID or badge ID' });
+    }
+
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
+    request.input('BadgeID', sql.Int, badgeId);
+    
+    await request.execute('vendors.sp_RemoveVendorBadge');
+    
+    res.json({ success: true, message: 'Badge removed successfully' });
+  } catch (err) {
+    console.error('Remove vendor badge error:', err);
+    res.status(500).json({ success: false, message: 'Failed to remove badge', error: err.message });
+  }
+});
 
 module.exports = router;

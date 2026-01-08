@@ -13,6 +13,10 @@ GO
 PRINT 'Creating stored procedure [messages].[sp_GetVendorConversations]...';
 GO
 
+SET QUOTED_IDENTIFIER ON;
+SET ANSI_NULLS ON;
+GO
+
 IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[messages].[sp_GetVendorConversations]'))
     DROP PROCEDURE [messages].[sp_GetVendorConversations];
 GO

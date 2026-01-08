@@ -58,6 +58,23 @@ function VendorProfilePage() {
   const [reviewsPerPage] = useState(5);
   const [carouselIndex, setCarouselIndex] = useState(0);
 
+  // Album viewer state
+  const [albumViewerOpen, setAlbumViewerOpen] = useState(false);
+  const [selectedAlbum, setSelectedAlbum] = useState(null);
+  const [albumImages, setAlbumImages] = useState([]);
+  const [albumImagesLoading, setAlbumImagesLoading] = useState(false);
+
+  // Description modal state
+  const [descriptionModalOpen, setDescriptionModalOpen] = useState(false);
+
+  // Vendor badges state
+  const [vendorBadges, setVendorBadges] = useState([]);
+
+  // Vendor packages state
+  const [packages, setPackages] = useState([]);
+  const [selectedPackage, setSelectedPackage] = useState(null);
+  const [packageModalOpen, setPackageModalOpen] = useState(false);
+
   // Get online status for this vendor
   const { statuses: onlineStatuses } = useVendorOnlineStatus(
     vendorId ? [vendorId] : [],
@@ -90,6 +107,8 @@ function VendorProfilePage() {
         loadPortfolioAlbums(vendorDetails.profile.VendorProfileID);
         loadRecommendations(vendorId, vendorDetails);
         loadReviewsWithSurvey(vendorDetails.profile.VendorProfileID);
+        loadVendorBadges(vendorDetails.profile.VendorProfileID);
+        loadVendorPackages(vendorDetails.profile.VendorProfileID);
         
         // Load Google Reviews if Google Place ID exists
         if (vendorDetails.profile.GooglePlaceId) {
@@ -146,6 +165,60 @@ function VendorProfilePage() {
       console.error('Error loading portfolio albums:', error);
     }
   }, []);
+
+  // Load vendor badges
+  const loadVendorBadges = useCallback(async (vendorProfileId) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/badges`);
+      if (response.ok) {
+        const data = await response.json();
+        setVendorBadges(data.badges || []);
+      }
+    } catch (error) {
+      console.error('Error loading vendor badges:', error);
+    }
+  }, []);
+
+  // Load vendor packages
+  const loadVendorPackages = useCallback(async (vendorProfileId) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/packages`);
+      if (response.ok) {
+        const data = await response.json();
+        setPackages(data.packages || []);
+      }
+    } catch (error) {
+      console.error('Error loading vendor packages:', error);
+    }
+  }, []);
+
+  // Load album images when album is clicked
+  const loadAlbumImages = useCallback(async (album) => {
+    try {
+      setAlbumImagesLoading(true);
+      setSelectedAlbum(album);
+      setAlbumViewerOpen(true);
+      
+      const url = `${API_BASE_URL}/vendor/${vendor?.profile?.VendorProfileID}/portfolio/albums/${album.AlbumID}/images/public`;
+      console.log('Loading album images from:', url);
+      
+      const response = await fetch(url);
+      const data = await response.json();
+      console.log('Album images response:', data);
+      
+      if (response.ok && data.success) {
+        setAlbumImages(data.images || []);
+      } else {
+        console.error('Failed to load album images:', data);
+        setAlbumImages([]);
+      }
+    } catch (error) {
+      console.error('Error loading album images:', error);
+      setAlbumImages([]);
+    } finally {
+      setAlbumImagesLoading(false);
+    }
+  }, [vendor?.profile?.VendorProfileID]);
 
   // Load reviews with survey ratings (separate call to get full review data)
   const loadReviewsWithSurvey = useCallback(async (vendorProfileId) => {
@@ -831,34 +904,160 @@ function VendorProfilePage() {
     );
   };
 
-  // Render portfolio albums
+  // Render portfolio albums - Airbnb style cards
   const renderPortfolioAlbums = () => {
     if (!portfolioAlbums || portfolioAlbums.length === 0) return null;
 
     return (
       <div className="content-section">
         <h2>Portfolio</h2>
-        <div className="portfolio-grid">
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', 
+          gap: '1.5rem',
+          marginTop: '1rem'
+        }}>
           {portfolioAlbums.map((album, index) => (
-            <div key={index} className="portfolio-album" onClick={() => {}}>
-              <div style={{ position: 'relative', paddingTop: '66%', background: 'var(--bg-dark)' }}>
+            <div 
+              key={index} 
+              onClick={() => loadAlbumImages(album)}
+              style={{
+                cursor: 'pointer',
+                borderRadius: '12px',
+                overflow: 'hidden'
+              }}
+            >
+              {/* Album Cover Image */}
+              <div style={{ 
+                position: 'relative', 
+                aspectRatio: '4/3',
+                background: '#f3f4f6',
+                borderRadius: '12px',
+                overflow: 'hidden'
+              }}>
                 {album.CoverImageURL ? (
-                  <img src={album.CoverImageURL} alt={album.AlbumName} className="portfolio-album-image" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <img 
+                    src={album.CoverImageURL} 
+                    alt={album.AlbumName} 
+                    style={{ 
+                      width: '100%', 
+                      height: '100%', 
+                      objectFit: 'cover'
+                    }} 
+                  />
                 ) : (
-                  <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <i className="fas fa-folder-open" style={{ fontSize: '3rem', color: 'var(--text-light)', opacity: 0.5 }}></i>
+                  <div style={{ 
+                    width: '100%', 
+                    height: '100%', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                  }}>
+                    <i className="fas fa-images" style={{ fontSize: '3rem', color: 'white', opacity: 0.8 }}></i>
                   </div>
                 )}
-                <div className="portfolio-album-badge">
-                  <i className="fas fa-images"></i> {album.ImageCount || 0}
-                </div>
               </div>
-              <div className="portfolio-album-info">
-                <h4>{album.AlbumName}</h4>
-                {album.AlbumDescription && <p>{album.AlbumDescription}</p>}
+              
+              {/* Album Info - Below image, transparent background */}
+              <div style={{ padding: '0.75rem 0', background: 'transparent' }}>
+                <h4 style={{ 
+                  fontSize: '1rem', 
+                  fontWeight: 600, 
+                  color: '#222', 
+                  margin: '0 0 0.25rem 0',
+                  lineHeight: 1.3
+                }}>
+                  {album.AlbumName}
+                </h4>
+                <p style={{ 
+                  fontSize: '0.875rem', 
+                  color: '#717171', 
+                  margin: 0,
+                  lineHeight: 1.4
+                }}>
+                  {album.ImageCount || 0} {(album.ImageCount || 0) === 1 ? 'photo' : 'photos'}
+                </p>
               </div>
             </div>
           ))}
+        </div>
+      </div>
+    );
+  };
+
+  // Render vendor badges section
+  const renderVendorBadges = () => {
+    if (!vendorBadges || vendorBadges.length === 0) return null;
+
+    const getBadgeStyle = (badgeType) => {
+      const styles = {
+        'new_vendor': { bg: '#e0f2fe', color: '#0369a1', icon: 'fa-sparkles', label: 'New Vendor' },
+        'top_rated': { bg: '#fef3c7', color: '#d97706', icon: 'fa-star', label: 'Top Rated' },
+        'choice_award': { bg: '#fee2e2', color: '#dc2626', icon: 'fa-award', label: 'Choice Award' },
+        'premium': { bg: '#f3e8ff', color: '#7c3aed', icon: 'fa-crown', label: 'Premium' },
+        'verified': { bg: '#d1fae5', color: '#059669', icon: 'fa-check-circle', label: 'Verified' },
+        'featured': { bg: '#fce7f3', color: '#db2777', icon: 'fa-fire', label: 'Featured' }
+      };
+      return styles[badgeType] || { bg: '#f3f4f6', color: '#6b7280', icon: 'fa-certificate', label: badgeType };
+    };
+
+    return (
+      <div className="content-section" style={{ paddingTop: '1.5rem', borderTop: '1px solid #ebebeb' }}>
+        <h2 style={{ fontSize: '1.375rem', fontWeight: 600, marginBottom: '1rem' }}>Badges</h2>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
+          {vendorBadges.map((badge, index) => {
+            const style = getBadgeStyle(badge.BadgeType || badge.badgeType);
+            return (
+              <div 
+                key={index}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  padding: '1rem 1.5rem',
+                  background: style.bg,
+                  borderRadius: '12px',
+                  minWidth: '100px'
+                }}
+              >
+                {badge.ImageURL ? (
+                  <img 
+                    src={badge.ImageURL} 
+                    alt={badge.BadgeName || style.label}
+                    style={{ width: '60px', height: '60px', objectFit: 'contain', marginBottom: '0.5rem' }}
+                  />
+                ) : (
+                  <div style={{
+                    width: '60px',
+                    height: '60px',
+                    borderRadius: '50%',
+                    background: 'white',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginBottom: '0.5rem',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                  }}>
+                    <i className={`fas ${style.icon}`} style={{ fontSize: '1.5rem', color: style.color }}></i>
+                  </div>
+                )}
+                <span style={{ 
+                  fontSize: '0.8rem', 
+                  fontWeight: 600, 
+                  color: style.color,
+                  textAlign: 'center'
+                }}>
+                  {badge.BadgeName || style.label}
+                </span>
+                {badge.Year && (
+                  <span style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                    {badge.Year}
+                  </span>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
     );
@@ -885,16 +1084,117 @@ function VendorProfilePage() {
     );
   };
 
-  // Render enhanced services with better formatting using unified ServiceCard
+  // Render enhanced services with better formatting - only show packages on public page
   const renderEnhancedServices = () => {
-    if (!services || services.length === 0) return null;
+    const hasPackages = packages && packages.length > 0;
+    
+    // Only show packages on public vendor page (not individual services)
+    if (!hasPackages) return null;
 
     return (
       <div className="content-section">
         <h2>What we offer</h2>
+        
+        {/* Packages Section - Horizontal Cards */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {services.map((service, index) => (
-            <ServiceCard key={index} service={service} variant="display" />
+          {packages.map((pkg, index) => (
+            <div 
+              key={pkg.PackageID || index}
+              onClick={() => { setSelectedPackage(pkg); setPackageModalOpen(true); }}
+              style={{
+                padding: '1rem',
+                background: '#fff',
+                border: '1px solid #e5e7eb',
+                borderRadius: '12px',
+                cursor: 'pointer'
+              }}
+            >
+              <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+                {/* Package Image/Icon */}
+                <div style={{
+                  flexShrink: 0,
+                  width: '80px',
+                  height: '80px',
+                  borderRadius: '12px',
+                  overflow: 'hidden',
+                  background: '#f3f4f6',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  {pkg.ImageURL ? (
+                    <img src={pkg.ImageURL} alt={pkg.PackageName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    <i className="fas fa-box" style={{ color: '#9ca3af', fontSize: '2rem' }}></i>
+                  )}
+                </div>
+                
+                {/* Package Details */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <h3 style={{ fontSize: '1.1rem', fontWeight: 600, color: '#222', margin: '0 0 0.35rem 0' }}>
+                        {pkg.PackageName}
+                        {pkg.SalePrice && parseFloat(pkg.SalePrice) < parseFloat(pkg.Price) && (
+                          <span style={{ background: 'transparent', color: '#dc2626', padding: '0', fontSize: '0.8rem', fontWeight: 700, marginLeft: '0.5rem', verticalAlign: 'middle' }}>SALE!</span>
+                        )}
+                      </h3>
+                      
+                      {/* Pricing */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                        {pkg.SalePrice && parseFloat(pkg.SalePrice) < parseFloat(pkg.Price) ? (
+                          <>
+                            <span style={{ fontSize: '1.15rem', fontWeight: 700, color: '#222' }}>
+                              ${parseFloat(pkg.SalePrice).toFixed(0)}
+                            </span>
+                            <span style={{ fontSize: '0.9rem', color: '#9ca3af', textDecoration: 'line-through' }}>
+                              ${parseFloat(pkg.Price).toFixed(0)}
+                            </span>
+                          </>
+                        ) : (
+                          <span style={{ fontSize: '1.15rem', fontWeight: 700, color: '#222' }}>
+                            ${parseFloat(pkg.Price).toFixed(0)}
+                          </span>
+                        )}
+                        <span style={{ fontSize: '0.85rem', color: '#6b7280' }}>
+                          / {pkg.PriceType === 'per_person' ? 'person' : 'package'}
+                        </span>
+                      </div>
+                      
+                      {/* Description */}
+                      {pkg.Description && (
+                        <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem', color: '#6b7280', lineHeight: 1.5 }}>
+                          {pkg.Description.length > 120 ? pkg.Description.substring(0, 120) + '...' : pkg.Description}
+                        </p>
+                      )}
+                      
+                      {/* Included Services */}
+                      {pkg.IncludedServices && pkg.IncludedServices.length > 0 && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                          {pkg.IncludedServices.slice(0, 4).map((svc, idx) => (
+                            <span key={idx} style={{ 
+                              background: '#f3f4f6', 
+                              color: '#374151', 
+                              padding: '4px 10px', 
+                              borderRadius: '6px', 
+                              fontSize: '0.8rem', 
+                              fontWeight: 500 
+                            }}>
+                              {svc.name || svc.ServiceName}
+                            </span>
+                          ))}
+                          {pkg.IncludedServices.length > 4 && (
+                            <span style={{ color: '#6b7280', fontSize: '0.8rem', fontWeight: 500, padding: '4px 0' }}>
+                              +{pkg.IncludedServices.length - 4} more
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           ))}
         </div>
       </div>
@@ -1970,28 +2270,61 @@ function VendorProfilePage() {
 
             {/* Main Content */}
             <div style={{ marginTop: '1.9rem', paddingTop: '1.9rem', borderTop: '1px solid #ebebeb' }}>
-          {/* 1. About This Vendor */}
+          {/* 1. About This Vendor - with Show More for long descriptions */}
           <div className="content-section">
             <h2>About this vendor</h2>
-            <p>{profile.BusinessDescription || 'Welcome to our business! We provide exceptional event services tailored to your needs.'}</p>
+            {(() => {
+              const description = profile.BusinessDescription || 'Welcome to our business! We provide exceptional event services tailored to your needs.';
+              const maxLength = 400;
+              const isLong = description.length > maxLength;
+              
+              return (
+                <>
+                  <p style={{ margin: 0, lineHeight: 1.6 }}>
+                    {isLong ? `${description.substring(0, maxLength)}...` : description}
+                  </p>
+                  {isLong && (
+                    <button
+                      onClick={() => setDescriptionModalOpen(true)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#222',
+                        fontWeight: 600,
+                        fontSize: '1rem',
+                        padding: '0.5rem 0',
+                        cursor: 'pointer',
+                        textDecoration: 'underline',
+                        marginTop: '0.5rem'
+                      }}
+                    >
+                      Show more <i className="fas fa-chevron-right" style={{ fontSize: '0.75rem', marginLeft: '4px' }}></i>
+                    </button>
+                  )}
+                </>
+              );
+            })()}
           </div>
 
-          {/* 2. What This Place Offers (Questionnaire of Services) */}
+          {/* 2. Badges Section */}
+          {renderVendorBadges()}
+
+          {/* 3. What This Place Offers (Questionnaire of Services) */}
           {renderVendorFeatures()}
 
-          {/* 3. What We Offer (Service Pricing) */}
+          {/* 4. What We Offer (Service Pricing) */}
           {renderEnhancedServices()}
 
-          {/* 4. Portfolio (Media Gallery) */}
+          {/* 5. Portfolio (Media Gallery) */}
           {renderPortfolioAlbums()}
 
-          {/* 5. Things to Know */}
+          {/* 6. Things to Know */}
           {renderEnhancedFAQs()}
 
-          {/* 6. Where You'll Find Us (Map + Cities Served) */}
+          {/* 7. Where You'll Find Us (Map + Cities Served) */}
           {renderLocationAndServiceAreas()}
 
-          {/* 7. Reviews */}
+          {/* 8. Reviews */}
           {renderReviewsSection()}
 
           {/* Team Section - optional at bottom */}
@@ -2234,6 +2567,529 @@ function VendorProfilePage() {
         <Footer />
       </div>
       <MessagingWidget />
+
+      {/* Album Viewer Modal - Unified photo viewer like "Show all photos" */}
+      {albumViewerOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            background: '#fff',
+            zIndex: 9998,
+            overflowY: 'auto'
+          }}
+        >
+          {/* Header */}
+          <div style={{
+            position: 'sticky',
+            top: 0,
+            background: '#fff',
+            padding: '16px 24px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            borderBottom: '1px solid #ebebeb',
+            zIndex: 10
+          }}>
+            <button
+              onClick={() => {
+                setAlbumViewerOpen(false);
+                setSelectedAlbum(null);
+                setAlbumImages([]);
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: 500,
+                color: '#222',
+                padding: '8px 12px',
+                borderRadius: '8px',
+                transition: 'background 0.2s'
+              }}
+              onMouseOver={(e) => e.currentTarget.style.background = '#f7f7f7'}
+              onMouseOut={(e) => e.currentTarget.style.background = 'none'}
+            >
+              <i className="fas fa-arrow-left"></i>
+              Back
+            </button>
+            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>
+              {selectedAlbum?.AlbumName || 'Album'}
+            </h3>
+            <div style={{ width: '80px' }}></div>
+          </div>
+
+          {/* Photo Grid */}
+          <div style={{
+            maxWidth: '800px',
+            margin: '0 auto',
+            padding: '24px'
+          }}>
+            {albumImagesLoading ? (
+              <div style={{ textAlign: 'center', padding: '3rem' }}>
+                <i className="fas fa-spinner fa-spin" style={{ fontSize: '2rem', color: '#717171' }}></i>
+                <p style={{ color: '#717171', marginTop: '1rem' }}>Loading photos...</p>
+              </div>
+            ) : albumImages.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '3rem' }}>
+                <i className="fas fa-images" style={{ fontSize: '3rem', color: '#d1d5db' }}></i>
+                <p style={{ color: '#717171', marginTop: '1rem' }}>No photos in this album yet</p>
+              </div>
+            ) : (
+              <>
+                {/* First large image */}
+                {albumImages[0] && (
+                  <div
+                    onClick={() => {
+                      setLightboxImages(albumImages.map(img => ({ url: img.ImageURL || img.URL })));
+                      setLightboxIndex(0);
+                      setLightboxOpen(true);
+                    }}
+                    style={{
+                      width: '100%',
+                      aspectRatio: '16/10',
+                      borderRadius: '12px',
+                      overflow: 'hidden',
+                      marginBottom: '8px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <img
+                      src={albumImages[0].ImageURL || albumImages[0].URL}
+                      alt="Photo 1"
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover'
+                      }}
+                    />
+                  </div>
+                )}
+
+                {/* Grid of remaining images - 2 columns */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(2, 1fr)',
+                  gap: '8px'
+                }}>
+                  {albumImages.slice(1).map((img, idx) => (
+                    <div
+                      key={idx + 1}
+                      onClick={() => {
+                        setLightboxImages(albumImages.map(i => ({ url: i.ImageURL || i.URL })));
+                        setLightboxIndex(idx + 1);
+                        setLightboxOpen(true);
+                      }}
+                      style={{
+                        aspectRatio: '1/1',
+                        borderRadius: '8px',
+                        overflow: 'hidden',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <img
+                        src={img.ImageURL || img.URL}
+                        alt={`Photo ${idx + 2}`}
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                          transition: 'transform 0.2s'
+                        }}
+                        onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
+                        onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Lightbox for album images */}
+      {lightboxOpen && lightboxImages.length > 0 && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            background: '#000',
+            zIndex: 9999,
+            display: 'flex',
+            flexDirection: 'column'
+          }}
+        >
+          {/* Top Bar */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '12px 16px',
+            color: 'white'
+          }}>
+            <button
+              onClick={() => {
+                setLightboxOpen(false);
+                setLightboxImages([]);
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                background: 'none',
+                border: 'none',
+                color: 'white',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: 500,
+                padding: '8px 12px',
+                borderRadius: '8px'
+              }}
+            >
+              <i className="fas fa-times"></i>
+              Close
+            </button>
+            
+            <div style={{ fontSize: '14px', fontWeight: 500 }}>
+              {lightboxIndex + 1} / {lightboxImages.length}
+            </div>
+
+            <div style={{ width: '80px' }}></div>
+          </div>
+
+          {/* Main Image Area */}
+          <div 
+            style={{
+              flex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              position: 'relative',
+              padding: '0 60px'
+            }}
+            onClick={() => {
+              setLightboxOpen(false);
+              setLightboxImages([]);
+            }}
+          >
+            {/* Previous Button */}
+            {lightboxImages.length > 1 && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setLightboxIndex((prev) => (prev - 1 + lightboxImages.length) % lightboxImages.length);
+                }}
+                style={{
+                  position: 'absolute',
+                  left: '16px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'rgba(255, 255, 255, 0.9)',
+                  border: 'none',
+                  color: '#222',
+                  fontSize: '16px',
+                  cursor: 'pointer',
+                  width: '48px',
+                  height: '48px',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
+                }}
+              >
+                <i className="fas fa-chevron-left"></i>
+              </button>
+            )}
+
+            {/* Image */}
+            <img
+              src={lightboxImages[lightboxIndex]?.url}
+              alt={`Photo ${lightboxIndex + 1}`}
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                maxWidth: '100%',
+                maxHeight: 'calc(100vh - 120px)',
+                objectFit: 'contain',
+                borderRadius: '4px'
+              }}
+            />
+
+            {/* Next Button */}
+            {lightboxImages.length > 1 && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setLightboxIndex((prev) => (prev + 1) % lightboxImages.length);
+                }}
+                style={{
+                  position: 'absolute',
+                  right: '16px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'rgba(255, 255, 255, 0.9)',
+                  border: 'none',
+                  color: '#222',
+                  fontSize: '16px',
+                  cursor: 'pointer',
+                  width: '48px',
+                  height: '48px',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
+                }}
+              >
+                <i className="fas fa-chevron-right"></i>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Package Detail Modal */}
+      {packageModalOpen && selectedPackage && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            background: 'rgba(0,0,0,0.5)',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '1rem'
+          }}
+          onClick={() => { setPackageModalOpen(false); setSelectedPackage(null); }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: '#fff',
+              borderRadius: '16px',
+              maxWidth: '600px',
+              width: '100%',
+              maxHeight: '90vh',
+              overflow: 'auto',
+              position: 'relative'
+            }}
+          >
+            {/* Modal Header */}
+            <div style={{ 
+              padding: '1.25rem 1.5rem', 
+              borderBottom: '1px solid #e5e7eb',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              position: 'sticky',
+              top: 0,
+              background: '#fff',
+              zIndex: 1
+            }}>
+              <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600, color: '#222' }}>
+                {selectedPackage.PackageName}
+              </h2>
+              <button
+                onClick={() => { setPackageModalOpen(false); setSelectedPackage(null); }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '1.25rem',
+                  color: '#717171',
+                  padding: '0.5rem'
+                }}
+              >
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+            
+            {/* Package Image */}
+            {selectedPackage.ImageURL && (
+              <div style={{ width: '100%', height: '200px', background: '#f3f4f6' }}>
+                <img 
+                  src={selectedPackage.ImageURL} 
+                  alt={selectedPackage.PackageName} 
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                />
+              </div>
+            )}
+            
+            {/* Modal Content */}
+            <div style={{ padding: '1.5rem' }}>
+              {/* Pricing */}
+              <div style={{ marginBottom: '1.5rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  {selectedPackage.SalePrice && parseFloat(selectedPackage.SalePrice) < parseFloat(selectedPackage.Price) ? (
+                    <>
+                      <span style={{ fontSize: '1.75rem', fontWeight: 700, color: '#222' }}>
+                        ${parseFloat(selectedPackage.SalePrice).toFixed(0)}
+                      </span>
+                      <span style={{ fontSize: '1.1rem', color: '#9ca3af', textDecoration: 'line-through' }}>
+                        ${parseFloat(selectedPackage.Price).toFixed(0)}
+                      </span>
+                      <span style={{ color: '#dc2626', fontSize: '0.9rem', fontWeight: 700 }}>SALE!</span>
+                    </>
+                  ) : (
+                    <span style={{ fontSize: '1.75rem', fontWeight: 700, color: '#222' }}>
+                      ${parseFloat(selectedPackage.Price).toFixed(0)}
+                    </span>
+                  )}
+                  <span style={{ fontSize: '1rem', color: '#6b7280' }}>
+                    / {selectedPackage.PriceType === 'per_person' ? 'person' : 'package'}
+                  </span>
+                </div>
+              </div>
+              
+              {/* Description */}
+              {selectedPackage.Description && (
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <h4 style={{ fontSize: '1rem', fontWeight: 600, color: '#222', margin: '0 0 0.5rem 0' }}>Description</h4>
+                  <p style={{ margin: 0, color: '#4b5563', lineHeight: 1.6 }}>{selectedPackage.Description}</p>
+                </div>
+              )}
+              
+              {/* Included Services */}
+              {selectedPackage.IncludedServices && selectedPackage.IncludedServices.length > 0 && (
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <h4 style={{ fontSize: '1rem', fontWeight: 600, color: '#222', margin: '0 0 0.75rem 0' }}>What's Included</h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    {selectedPackage.IncludedServices.map((svc, idx) => (
+                      <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <i className="fas fa-check" style={{ color: '#22c55e', fontSize: '0.85rem' }}></i>
+                        <span style={{ color: '#374151' }}>{svc.name || svc.ServiceName}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Fine Print */}
+              {selectedPackage.FinePrint && (
+                <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#f9fafb', borderRadius: '8px' }}>
+                  <h4 style={{ fontSize: '0.9rem', fontWeight: 600, color: '#6b7280', margin: '0 0 0.5rem 0' }}>Fine Print</h4>
+                  <p style={{ margin: 0, color: '#6b7280', fontSize: '0.9rem', lineHeight: 1.5 }}>{selectedPackage.FinePrint}</p>
+                </div>
+              )}
+              
+              {/* Book Now Button */}
+              <button
+                onClick={() => {
+                  setPackageModalOpen(false);
+                  setSelectedPackage(null);
+                  navigate(`/booking/${vendorId}`);
+                }}
+                style={{
+                  width: '100%',
+                  padding: '0.875rem 1.5rem',
+                  background: '#222',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '1rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.5rem'
+                }}
+              >
+                <i className="fas fa-calendar-check"></i>
+                Request Booking
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Description Modal */}
+      {descriptionModalOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            background: 'rgba(0, 0, 0, 0.5)',
+            zIndex: 9998,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '1rem'
+          }}
+          onClick={() => setDescriptionModalOpen(false)}
+        >
+          <div
+            style={{
+              background: 'white',
+              borderRadius: '12px',
+              maxWidth: '600px',
+              width: '100%',
+              maxHeight: '80vh',
+              overflow: 'auto',
+              position: 'relative'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div style={{
+              position: 'sticky',
+              top: 0,
+              background: 'white',
+              padding: '1rem 1.5rem',
+              borderBottom: '1px solid #ebebeb',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>About this vendor</h3>
+              <button
+                onClick={() => setDescriptionModalOpen(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '1.25rem',
+                  color: '#717171',
+                  padding: '0.5rem'
+                }}
+              >
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+            
+            {/* Modal Content */}
+            <div style={{ padding: '1.5rem' }}>
+              <p style={{ 
+                margin: 0, 
+                lineHeight: 1.7, 
+                color: '#222',
+                whiteSpace: 'pre-wrap'
+              }}>
+                {vendor?.profile?.BusinessDescription || 'Welcome to our business! We provide exceptional event services tailored to your needs.'}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <MobileBottomNav 
         onOpenDashboard={(section) => {
           if (section) {

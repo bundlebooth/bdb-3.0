@@ -13,6 +13,10 @@ GO
 PRINT 'Creating stored procedure [vendors].[sp_AddAvailability]...';
 GO
 
+SET QUOTED_IDENTIFIER ON;
+SET ANSI_NULLS ON;
+GO
+
 IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_AddAvailability]'))
     DROP PROCEDURE [vendors].[sp_AddAvailability];
 GO

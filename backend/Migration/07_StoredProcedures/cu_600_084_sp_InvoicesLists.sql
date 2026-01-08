@@ -20,6 +20,10 @@ GO
 PRINT 'Creating stored procedure [invoices].[sp_GetUserInvoices]...';
 GO
 
+SET QUOTED_IDENTIFIER ON;
+SET ANSI_NULLS ON;
+GO
+
 IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[invoices].[sp_GetUserInvoices]'))
     DROP PROCEDURE [invoices].[sp_GetUserInvoices];
 GO
@@ -62,6 +66,10 @@ END
 GO
 
 PRINT 'Creating stored procedure [invoices].[sp_GetVendorInvoices]...';
+GO
+
+SET QUOTED_IDENTIFIER ON;
+SET ANSI_NULLS ON;
 GO
 
 IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[invoices].[sp_GetVendorInvoices]'))

@@ -4,6 +4,10 @@
 -- Phase: 600 (Stored Procedures)
 -- Schema: bookings
 -- =============================================
+SET QUOTED_IDENTIFIER ON;
+SET ANSI_NULLS ON;
+GO
+
 IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[bookings].[sp_ApproveRequest]'))
     DROP PROCEDURE [bookings].[sp_ApproveRequest];
 GO

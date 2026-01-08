@@ -4,6 +4,10 @@
 -- Phase: 600 (Stored Procedures)
 -- Schema: payments
 -- =============================================
+SET QUOTED_IDENTIFIER ON;
+SET ANSI_NULLS ON;
+GO
+
 IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[payments].[sp_GetVendorStripeAccount]'))
     DROP PROCEDURE [payments].[sp_GetVendorStripeAccount];
 GO

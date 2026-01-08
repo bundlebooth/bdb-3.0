@@ -30,6 +30,9 @@ function BookingPage() {
   const [selectedServices, setSelectedServices] = useState([]);
   const [services, setServices] = useState([]);
   const [loadingServices, setLoadingServices] = useState(false);
+  const [packages, setPackages] = useState([]);
+  const [selectedPackage, setSelectedPackage] = useState(null);
+  const [loadingPackages, setLoadingPackages] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
@@ -196,12 +199,32 @@ function BookingPage() {
     }
   }, [vendorId]);
 
-  // Load services when entering step 2
-  useEffect(() => {
-    if (currentStep === 2 && services.length === 0) {
-      loadVendorServices();
+  // Load vendor packages
+  const loadVendorPackages = useCallback(async () => {
+    setLoadingPackages(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/vendors/${vendorId}/packages`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to load packages');
+      }
+      
+      const data = await response.json();
+      setPackages(data.packages || []);
+    } catch (error) {
+      console.error('Error loading packages:', error);
+      setPackages([]);
+    } finally {
+      setLoadingPackages(false);
     }
-  }, [currentStep, services.length, loadVendorServices]);
+  }, [vendorId]);
+
+  // Load packages when entering step 2
+  useEffect(() => {
+    if (currentStep === 2 && packages.length === 0) {
+      loadVendorPackages();
+    }
+  }, [currentStep, packages.length, loadVendorPackages]);
 
   // Handle input changes
   const handleInputChange = (e) => {
@@ -430,6 +453,15 @@ function BookingPage() {
     });
   };
 
+  // Select package
+  const selectPackage = (pkg) => {
+    if (selectedPackage?.PackageID === pkg.PackageID) {
+      setSelectedPackage(null); // Deselect if already selected
+    } else {
+      setSelectedPackage(pkg);
+    }
+  };
+
   // Validation
   const validateStep = (step) => {
     if (step === 1) {
@@ -465,8 +497,8 @@ function BookingPage() {
     }
     
     if (step === 2) {
-      if (selectedServices.length === 0) {
-        const proceed = window.confirm('You haven\'t selected any services. Do you want to continue anyway?');
+      if (!selectedPackage) {
+        const proceed = window.confirm('You haven\'t selected a package. Do you want to continue anyway?');
         return proceed;
       }
       return true;
@@ -522,6 +554,9 @@ function BookingPage() {
         eventLocation: bookingData.eventLocation,
         attendeeCount: parseInt(bookingData.attendeeCount),
         services: selectedServices,
+        packageId: selectedPackage?.PackageID || null,
+        packageName: selectedPackage?.PackageName || null,
+        packagePrice: selectedPackage ? (selectedPackage.SalePrice && parseFloat(selectedPackage.SalePrice) < parseFloat(selectedPackage.Price) ? parseFloat(selectedPackage.SalePrice) : parseFloat(selectedPackage.Price)) : null,
         specialRequestText: bookingData.specialRequests,
         timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
       };
@@ -1026,36 +1061,141 @@ function BookingPage() {
             </div>
             )}
 
-            {/* Step 2: Service Selection */}
+            {/* Step 2: Package Selection */}
             {currentStep === 2 && (
               <div className="booking-step" id="step-2" style={{ display: 'block', width: '100%', padding: '20px', backgroundColor: '#ffffff' }}>
                 <div className="step-header" style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
                   <div className="step-number-circle" style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#222', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '600' }}>2</div>
-                  <h2 className="step-title" style={{ fontSize: '1.5rem', fontWeight: '600', margin: '0', color: '#222' }}>Choose Services</h2>
+                  <h2 className="step-title" style={{ fontSize: '1.5rem', fontWeight: '600', margin: '0', color: '#222' }}>Choose a Package</h2>
                 </div>
-                <p className="step-description" style={{ color: '#717171', marginBottom: '1.5rem' }}>Select the services you'd like to book from this vendor</p>
+                <p className="step-description" style={{ color: '#717171', marginBottom: '1.5rem' }}>Select a package you'd like to book from this vendor</p>
                 
-                <div id="services-list" className="services-list">
-                  {loadingServices ? (
+                <div id="packages-list" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  {loadingPackages ? (
                     <SkeletonLoader variant="service-card" count={3} />
-                  ) : services.length === 0 ? (
+                  ) : packages.length === 0 ? (
                     <div className="no-services" style={{ padding: '3rem 2rem', textAlign: 'center' }}>
                       <i className="fas fa-info-circle" style={{ fontSize: '3rem', color: '#d1d5db', marginBottom: '1rem' }}></i>
-                      <p style={{ color: '#6b7280', fontSize: '1rem' }}>This vendor hasn't listed specific services yet. You can still send a booking request with your requirements.</p>
+                      <p style={{ color: '#6b7280', fontSize: '1rem' }}>This vendor hasn't listed any packages yet. You can still send a booking request with your requirements.</p>
                     </div>
                   ) : (
-                    services.map((service) => {
-                      const serviceId = service.PredefinedServiceID || service.VendorSelectedServiceID;
-                      const isSelected = selectedServices.some(s => s.id === serviceId);
+                    packages.map((pkg) => {
+                      const isSelected = selectedPackage?.PackageID === pkg.PackageID;
                       
                       return (
-                        <ServiceCard
-                          key={serviceId}
-                          service={service}
-                          variant="selectable"
-                          isSelected={isSelected}
-                          onSelect={() => toggleServiceSelection(service)}
-                        />
+                        <div 
+                          key={pkg.PackageID}
+                          onClick={() => selectPackage(pkg)}
+                          style={{
+                            padding: '1rem',
+                            background: isSelected ? '#f0f9ff' : '#fff',
+                            border: isSelected ? '2px solid #222' : '1px solid #e5e7eb',
+                            borderRadius: '12px',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s'
+                          }}
+                        >
+                          <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+                            {/* Package Image/Icon */}
+                            <div style={{
+                              flexShrink: 0,
+                              width: '80px',
+                              height: '80px',
+                              borderRadius: '12px',
+                              overflow: 'hidden',
+                              background: '#f3f4f6',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center'
+                            }}>
+                              {pkg.ImageURL ? (
+                                <img src={pkg.ImageURL} alt={pkg.PackageName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                              ) : (
+                                <i className="fas fa-box" style={{ color: '#9ca3af', fontSize: '2rem' }}></i>
+                              )}
+                            </div>
+                            
+                            {/* Package Details */}
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                <div style={{ flex: 1 }}>
+                                  <h3 style={{ fontSize: '1.1rem', fontWeight: 600, color: '#222', margin: '0 0 0.35rem 0' }}>
+                                    {pkg.PackageName}
+                                    {pkg.SalePrice && parseFloat(pkg.SalePrice) < parseFloat(pkg.Price) && (
+                                      <span style={{ background: 'transparent', color: '#dc2626', padding: '0', fontSize: '0.8rem', fontWeight: 700, marginLeft: '0.5rem', verticalAlign: 'middle' }}>SALE!</span>
+                                    )}
+                                  </h3>
+                                  
+                                  {/* Pricing */}
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                                    {pkg.SalePrice && parseFloat(pkg.SalePrice) < parseFloat(pkg.Price) ? (
+                                      <>
+                                        <span style={{ fontSize: '1.15rem', fontWeight: 700, color: '#222' }}>
+                                          ${parseFloat(pkg.SalePrice).toFixed(0)}
+                                        </span>
+                                        <span style={{ fontSize: '0.9rem', color: '#9ca3af', textDecoration: 'line-through' }}>
+                                          ${parseFloat(pkg.Price).toFixed(0)}
+                                        </span>
+                                      </>
+                                    ) : (
+                                      <span style={{ fontSize: '1.15rem', fontWeight: 700, color: '#222' }}>
+                                        ${parseFloat(pkg.Price).toFixed(0)}
+                                      </span>
+                                    )}
+                                    <span style={{ fontSize: '0.85rem', color: '#6b7280' }}>
+                                      / {pkg.PriceType === 'per_person' ? 'person' : 'package'}
+                                    </span>
+                                  </div>
+                                  
+                                  {/* Description */}
+                                  {pkg.Description && (
+                                    <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem', color: '#6b7280', lineHeight: 1.5 }}>
+                                      {pkg.Description.length > 120 ? pkg.Description.substring(0, 120) + '...' : pkg.Description}
+                                    </p>
+                                  )}
+                                  
+                                  {/* Included Services */}
+                                  {pkg.IncludedServices && pkg.IncludedServices.length > 0 && (
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                                      {pkg.IncludedServices.slice(0, 4).map((svc, idx) => (
+                                        <span key={idx} style={{ 
+                                          background: '#f3f4f6', 
+                                          color: '#374151', 
+                                          padding: '4px 10px', 
+                                          borderRadius: '6px', 
+                                          fontSize: '0.8rem', 
+                                          fontWeight: 500 
+                                        }}>
+                                          {svc.name || svc.ServiceName}
+                                        </span>
+                                      ))}
+                                      {pkg.IncludedServices.length > 4 && (
+                                        <span style={{ color: '#6b7280', fontSize: '0.8rem', fontWeight: 500, padding: '4px 0' }}>
+                                          +{pkg.IncludedServices.length - 4} more
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                                
+                                {/* Selection Indicator */}
+                                <div style={{
+                                  width: '24px',
+                                  height: '24px',
+                                  borderRadius: '50%',
+                                  border: isSelected ? 'none' : '2px solid #d1d5db',
+                                  background: isSelected ? '#222' : 'transparent',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  flexShrink: 0
+                                }}>
+                                  {isSelected && <i className="fas fa-check" style={{ color: 'white', fontSize: '0.75rem' }}></i>}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
                       );
                     })
                   )}
@@ -1109,17 +1249,35 @@ function BookingPage() {
                 </div>
 
                 <div className="review-section">
-                  <h3 className="review-subtitle">Selected Services</h3>
-                  <div id="review-services-list" className="review-services">
-                    {selectedServices.length > 0 ? (
-                      selectedServices.map((service, index) => (
-                        <div key={index} className="review-service-item">
-                          <i className="fas fa-check-circle"></i>
-                          <span>{service.name}</span>
+                  <h3 className="review-subtitle">Selected Package</h3>
+                  <div id="review-package" className="review-services">
+                    {selectedPackage ? (
+                      <div style={{ 
+                        padding: '1rem', 
+                        background: '#f9fafb', 
+                        borderRadius: '8px',
+                        border: '1px solid #e5e7eb'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                          <i className="fas fa-check-circle" style={{ color: '#22c55e' }}></i>
+                          <span style={{ fontWeight: 600, color: '#222' }}>{selectedPackage.PackageName}</span>
                         </div>
-                      ))
+                        <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#222', marginBottom: '0.5rem' }}>
+                          ${selectedPackage.SalePrice && parseFloat(selectedPackage.SalePrice) < parseFloat(selectedPackage.Price) 
+                            ? parseFloat(selectedPackage.SalePrice).toFixed(0) 
+                            : parseFloat(selectedPackage.Price).toFixed(0)}
+                          <span style={{ fontSize: '0.85rem', fontWeight: 400, color: '#6b7280', marginLeft: '0.25rem' }}>
+                            / {selectedPackage.PriceType === 'per_person' ? 'person' : 'package'}
+                          </span>
+                        </div>
+                        {selectedPackage.IncludedServices && selectedPackage.IncludedServices.length > 0 && (
+                          <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>
+                            Includes: {selectedPackage.IncludedServices.map(s => s.name || s.ServiceName).join(', ')}
+                          </div>
+                        )}
+                      </div>
                     ) : (
-                      <p style={{ color: 'var(--text-secondary)' }}>No specific services selected</p>
+                      <p style={{ color: 'var(--text-secondary)' }}>No package selected</p>
                     )}
                   </div>
                 </div>
@@ -1151,19 +1309,62 @@ function BookingPage() {
             {/* Navigation Buttons */}
             <div className="form-actions">
               {currentStep > 1 && (
-                <button className="btn btn-secondary" onClick={previousStep}>
+                <button 
+                  onClick={previousStep}
+                  style={{
+                    padding: '0.75rem 1.5rem',
+                    background: '#fff',
+                    color: '#222',
+                    border: '1px solid #222',
+                    borderRadius: '8px',
+                    fontSize: '1rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem'
+                  }}
+                >
                   <i className="fas fa-arrow-left"></i> Back
                 </button>
               )}
               {currentStep < 3 ? (
-                <button className="btn btn-primary" onClick={nextStep}>
+                <button 
+                  onClick={nextStep}
+                  style={{
+                    padding: '0.75rem 2rem',
+                    background: '#222',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '1rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem'
+                  }}
+                >
                   Next <i className="fas fa-arrow-right"></i>
                 </button>
               ) : (
                 <button
-                  className="btn btn-primary"
                   onClick={submitBookingRequest}
                   disabled={submitting}
+                  style={{
+                    padding: '0.75rem 2rem',
+                    background: '#222',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '1rem',
+                    fontWeight: 600,
+                    cursor: submitting ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    opacity: submitting ? 0.7 : 1
+                  }}
                 >
                   {submitting ? (
                     <><i className="fas fa-spinner fa-spin"></i> Sending...</>

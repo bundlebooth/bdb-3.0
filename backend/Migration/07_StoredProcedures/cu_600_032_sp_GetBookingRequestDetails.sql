@@ -13,6 +13,10 @@ GO
 PRINT 'Creating stored procedure [bookings].[sp_GetRequestDetails]...';
 GO
 
+SET QUOTED_IDENTIFIER ON;
+SET ANSI_NULLS ON;
+GO
+
 IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[bookings].[sp_GetRequestDetails]'))
     DROP PROCEDURE [bookings].[sp_GetRequestDetails];
 GO

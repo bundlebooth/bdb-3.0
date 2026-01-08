@@ -25,6 +25,10 @@ GO
 PRINT 'Creating stored procedure [analytics].[sp_GetVendorDashboardAnalytics]...';
 GO
 
+SET QUOTED_IDENTIFIER ON;
+SET ANSI_NULLS ON;
+GO
+
 IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[analytics].[sp_GetVendorDashboardAnalytics]'))
     DROP PROCEDURE [analytics].[sp_GetVendorDashboardAnalytics];
 GO

@@ -13,6 +13,10 @@ GO
 PRINT 'Creating stored procedure [notifications].[sp_GetUserNotifications]...';
 GO
 
+SET QUOTED_IDENTIFIER ON;
+SET ANSI_NULLS ON;
+GO
+
 IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[notifications].[sp_GetUserNotifications]'))
     DROP PROCEDURE [notifications].[sp_GetUserNotifications];
 GO

@@ -13,6 +13,10 @@ GO
 PRINT 'Creating stored procedure [vendors].[sp_SaveFeatureSelections]...';
 GO
 
+SET QUOTED_IDENTIFIER ON;
+SET ANSI_NULLS ON;
+GO
+
 IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_SaveFeatureSelections]'))
     DROP PROCEDURE [vendors].[sp_SaveFeatureSelections];
 GO

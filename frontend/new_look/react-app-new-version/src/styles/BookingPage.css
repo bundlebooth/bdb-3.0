@@ -643,6 +643,7 @@ select.form-input:focus {
     align-items: flex-start;
     gap: 1rem;
     padding: 0.75rem 0;
+    text-align: left !important;
 }
 
 .summary-item i {
@@ -653,20 +654,21 @@ select.form-input:focus {
 }
 
 .summary-item > div {
-    text-align: left;
+    text-align: left !important;
+    flex: 1;
 }
 
 .summary-label {
     font-size: 0.85rem;
     color: var(--text-secondary);
     margin-bottom: 0.25rem;
-    text-align: left;
+    text-align: left !important;
 }
 
 .summary-value {
     font-weight: 600;
     color: var(--text-primary);
-    text-align: left;
+    text-align: left !important;
 }
 
 .info-notice {

@@ -13,6 +13,10 @@ GO
 PRINT 'Creating stored procedure [users].[sp_GetProfileDetails]...';
 GO
 
+SET QUOTED_IDENTIFIER ON;
+SET ANSI_NULLS ON;
+GO
+
 IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[users].[sp_GetProfileDetails]'))
     DROP PROCEDURE [users].[sp_GetProfileDetails];
 GO

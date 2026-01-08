@@ -13,6 +13,10 @@ GO
 PRINT 'Creating stored procedure [invoices].[sp_UpdateAfterPayment]...';
 GO
 
+SET QUOTED_IDENTIFIER ON;
+SET ANSI_NULLS ON;
+GO
+
 IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[invoices].[sp_UpdateAfterPayment]'))
     DROP PROCEDURE [invoices].[sp_UpdateAfterPayment];
 GO

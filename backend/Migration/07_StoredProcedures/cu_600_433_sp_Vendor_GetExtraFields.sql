@@ -4,6 +4,10 @@
 -- Phase: 600 (Stored Procedures)
 -- Schema: vendors
 -- =============================================
+SET QUOTED_IDENTIFIER ON;
+SET ANSI_NULLS ON;
+GO
+
 IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_GetExtraFields]'))
     DROP PROCEDURE [vendors].[sp_GetExtraFields];
 GO

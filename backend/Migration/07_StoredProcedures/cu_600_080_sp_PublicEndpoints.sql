@@ -16,6 +16,10 @@ GO
 -- =============================================
 -- sp_GetAnnouncements
 -- =============================================
+SET QUOTED_IDENTIFIER ON;
+SET ANSI_NULLS ON;
+GO
+
 IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_GetPublicAnnouncements]'))
     DROP PROCEDURE [admin].[sp_GetPublicAnnouncements];
 GO
@@ -42,6 +46,10 @@ GO
 -- =============================================
 -- sp_GetAllAnnouncements
 -- =============================================
+SET QUOTED_IDENTIFIER ON;
+SET ANSI_NULLS ON;
+GO
+
 IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_GetAllPublicAnnouncements]'))
     DROP PROCEDURE [admin].[sp_GetAllPublicAnnouncements];
 GO
@@ -65,6 +73,10 @@ GO
 -- =============================================
 -- sp_GetBanners
 -- =============================================
+SET QUOTED_IDENTIFIER ON;
+SET ANSI_NULLS ON;
+GO
+
 IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_GetPublicBanners]'))
     DROP PROCEDURE [admin].[sp_GetPublicBanners];
 GO
@@ -89,6 +101,10 @@ GO
 -- =============================================
 -- sp_DismissAnnouncement
 -- =============================================
+SET QUOTED_IDENTIFIER ON;
+SET ANSI_NULLS ON;
+GO
+
 IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_DismissPublicAnnouncement]'))
     DROP PROCEDURE [admin].[sp_DismissPublicAnnouncement];
 GO
@@ -108,6 +124,10 @@ GO
 -- =============================================
 -- sp_GetFAQs
 -- =============================================
+SET QUOTED_IDENTIFIER ON;
+SET ANSI_NULLS ON;
+GO
+
 IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_GetPublicFAQs]'))
     DROP PROCEDURE [admin].[sp_GetPublicFAQs];
 GO
@@ -130,6 +150,10 @@ GO
 -- =============================================
 -- sp_SubmitFAQFeedback
 -- =============================================
+SET QUOTED_IDENTIFIER ON;
+SET ANSI_NULLS ON;
+GO
+
 IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_SubmitPublicFAQFeedback]'))
     DROP PROCEDURE [admin].[sp_SubmitPublicFAQFeedback];
 GO
@@ -154,6 +178,10 @@ GO
 -- =============================================
 -- sp_GetCommissionInfo
 -- =============================================
+SET QUOTED_IDENTIFIER ON;
+SET ANSI_NULLS ON;
+GO
+
 IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_GetPublicCommissionInfo]'))
     DROP PROCEDURE [admin].[sp_GetPublicCommissionInfo];
 GO

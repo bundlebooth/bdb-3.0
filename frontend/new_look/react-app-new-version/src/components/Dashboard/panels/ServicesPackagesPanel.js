@@ -6,6 +6,7 @@ import { showBanner } from '../../../utils/helpers';
 
 function ServicesPackagesPanel({ onBack, vendorProfileId }) {
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('packages'); // 'packages' or 'services'
   const [services, setServices] = useState([]);
   const [availableServices, setAvailableServices] = useState([]);
   const [selectedCount, setSelectedCount] = useState(0);
@@ -14,24 +15,217 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
   const [editingService, setEditingService] = useState(null);
   const [editForm, setEditForm] = useState({});
 
+  // Package state
+  const [packages, setPackages] = useState([]);
+  const [showPackageModal, setShowPackageModal] = useState(false);
+  const [editingPackage, setEditingPackage] = useState(null);
+  const [packageForm, setPackageForm] = useState({
+    name: '',
+    description: '',
+    includedServices: [],
+    price: '',
+    salePrice: '',
+    priceType: 'fixed', // 'fixed' or 'per_person'
+    imageURL: '',
+    finePrint: '',
+    isActive: true
+  });
+  const [packageServiceSearch, setPackageServiceSearch] = useState('');
+  const [uploadingImage, setUploadingImage] = useState(false);
+
   // Clear state when vendorProfileId changes
   useEffect(() => {
     setServices([]);
+    setPackages([]);
     setAvailableServices([]);
     setSelectedCount(0);
     setShowServicePicker(false);
     setSearchQuery('');
     setEditingService(null);
     setEditForm({});
+    setShowPackageModal(false);
+    setEditingPackage(null);
   }, [vendorProfileId]);
 
   useEffect(() => {
     if (vendorProfileId) {
       loadServices();
+      loadPackages();
     } else {
       setLoading(false);
     }
   }, [vendorProfileId]);
+
+  // Load packages
+  const loadPackages = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/packages`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setPackages(data.packages || []);
+      }
+    } catch (error) {
+      console.error('Error loading packages:', error);
+    }
+  };
+
+  // Package management functions
+  const handleCreatePackage = () => {
+    // Check if there are services to include in package
+    if (services.length === 0) {
+      showBanner('Please create individual services first before creating a package', 'warning');
+      setActiveTab('services');
+      return;
+    }
+    setEditingPackage(null);
+    setPackageForm({
+      name: '',
+      description: '',
+      includedServices: [],
+      price: '',
+      salePrice: '',
+      priceType: 'fixed',
+      imageURL: '',
+      finePrint: '',
+      isActive: true
+    });
+    setShowPackageModal(true);
+  };
+
+  const handleEditPackage = (pkg) => {
+    setEditingPackage(pkg);
+    setPackageForm({
+      name: pkg.PackageName || pkg.name || '',
+      description: pkg.Description || pkg.description || '',
+      includedServices: pkg.IncludedServices || pkg.includedServices || [],
+      price: pkg.Price || pkg.price || '',
+      salePrice: pkg.SalePrice || pkg.salePrice || '',
+      priceType: pkg.PriceType || pkg.priceType || 'fixed',
+      imageURL: pkg.ImageURL || pkg.imageURL || '',
+      finePrint: pkg.FinePrint || pkg.finePrint || '',
+      isActive: pkg.IsActive !== false
+    });
+    setShowPackageModal(true);
+  };
+
+  const handleSavePackage = async () => {
+    if (!packageForm.name.trim()) {
+      showBanner('Package name is required', 'error');
+      return;
+    }
+    if (!packageForm.price) {
+      showBanner('Package price is required', 'error');
+      return;
+    }
+
+    try {
+      const payload = {
+        packageId: editingPackage?.PackageID || editingPackage?.id || null,
+        name: packageForm.name.trim(),
+        description: packageForm.description,
+        includedServices: packageForm.includedServices,
+        price: parseFloat(packageForm.price),
+        salePrice: packageForm.salePrice ? parseFloat(packageForm.salePrice) : null,
+        priceType: packageForm.priceType,
+        imageURL: packageForm.imageURL,
+        finePrint: packageForm.finePrint,
+        isActive: packageForm.isActive
+      };
+
+      const response = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/packages`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (response.ok) {
+        showBanner(editingPackage ? 'Package updated successfully!' : 'Package created successfully!', 'success');
+        setShowPackageModal(false);
+        setEditingPackage(null);
+        loadPackages();
+      } else {
+        const data = await response.json();
+        showBanner(data.message || 'Failed to save package', 'error');
+      }
+    } catch (error) {
+      console.error('Error saving package:', error);
+      showBanner('Failed to save package', 'error');
+    }
+  };
+
+  const handleDeletePackage = async (packageId) => {
+    if (!window.confirm('Are you sure you want to delete this package?')) return;
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/packages/${packageId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+
+      if (response.ok) {
+        showBanner('Package deleted successfully!', 'success');
+        loadPackages();
+      } else {
+        showBanner('Failed to delete package', 'error');
+      }
+    } catch (error) {
+      console.error('Error deleting package:', error);
+      showBanner('Failed to delete package', 'error');
+    }
+  };
+
+  const handlePackageImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    try {
+      setUploadingImage(true);
+      const formData = new FormData();
+      formData.append('image', file);
+
+      const response = await fetch(`${API_BASE_URL}/vendors/service-image/upload`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+        body: formData
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setPackageForm({ ...packageForm, imageURL: data.imageUrl });
+        showBanner('Image uploaded successfully!', 'success');
+      } else {
+        showBanner('Failed to upload image', 'error');
+      }
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      showBanner('Failed to upload image', 'error');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const toggleServiceInPackage = (service) => {
+    const serviceId = service.id || service.PredefinedServiceID;
+    const isIncluded = packageForm.includedServices.some(s => (s.id || s.PredefinedServiceID) === serviceId);
+    
+    if (isIncluded) {
+      setPackageForm({
+        ...packageForm,
+        includedServices: packageForm.includedServices.filter(s => (s.id || s.PredefinedServiceID) !== serviceId)
+      });
+    } else {
+      setPackageForm({
+        ...packageForm,
+        includedServices: [...packageForm.includedServices, { id: serviceId, name: service.name || service.ServiceName }]
+      });
+    }
+  };
 
   const loadServices = async () => {
     try {
@@ -240,6 +434,13 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
 
 
 
+  // Filter services for package modal - only show vendor's individual services (not predefined)
+  const filteredPackageServices = services
+    .filter(s => 
+      packageServiceSearch === '' ||
+      (s.name || s.ServiceName || '').toLowerCase().includes(packageServiceSearch.toLowerCase())
+    );
+
   return (
     <div>
       <button className="btn btn-outline back-to-menu-btn" style={{ marginBottom: '1rem' }} onClick={onBack}>
@@ -250,20 +451,284 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
           <span style={{ width: '36px', height: '36px', borderRadius: '8px', background: 'var(--secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', fontSize: '1.1rem' }}>
             <i className="fas fa-briefcase"></i>
           </span>
-          Services
+          Packages & Services
         </h2>
         <p style={{ color: 'var(--text-light)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
-          Select and manage the services you offer. Add services to make it easier for clients to find and book you.
+          Create packages to bundle multiple services together with special pricing, or add individual services.
         </p>
-        <hr style={{ border: 'none', borderTop: '1px solid #e5e7eb', margin: '1.5rem 0' }} />
+
+        {/* Tab Navigation */}
+        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '0' }}>
+          <button
+            onClick={() => setActiveTab('packages')}
+            style={{
+              padding: '0.75rem 1.5rem',
+              background: 'none',
+              border: 'none',
+              borderBottom: activeTab === 'packages' ? '2px solid #222' : '2px solid transparent',
+              color: activeTab === 'packages' ? '#222' : '#6b7280',
+              fontWeight: activeTab === 'packages' ? 600 : 400,
+              cursor: 'pointer',
+              fontSize: '0.95rem',
+              marginBottom: '-1px'
+            }}
+          >
+            <i className="fas fa-box" style={{ marginRight: '0.5rem' }}></i>
+            Packages {packages.length > 0 && <span style={{ background: '#222', color: 'white', borderRadius: '10px', padding: '2px 8px', fontSize: '0.75rem', marginLeft: '0.5rem' }}>{packages.length}</span>}
+          </button>
+          <button
+            onClick={() => setActiveTab('services')}
+            style={{
+              padding: '0.75rem 1.5rem',
+              background: 'none',
+              border: 'none',
+              borderBottom: activeTab === 'services' ? '2px solid #222' : '2px solid transparent',
+              color: activeTab === 'services' ? '#222' : '#6b7280',
+              fontWeight: activeTab === 'services' ? 600 : 400,
+              cursor: 'pointer',
+              fontSize: '0.95rem',
+              marginBottom: '-1px'
+            }}
+          >
+            <i className="fas fa-concierge-bell" style={{ marginRight: '0.5rem' }}></i>
+            Individual Services {selectedCount > 0 && <span style={{ background: '#222', color: 'white', borderRadius: '10px', padding: '2px 8px', fontSize: '0.75rem', marginLeft: '0.5rem' }}>{selectedCount}</span>}
+          </button>
+        </div>
         
         {/* Loading State */}
         {loading && (
           <SkeletonLoader variant="service-card" count={3} />
         )}
 
+        {/* Packages Tab Content */}
+        {activeTab === 'packages' && !loading && (
+          <div style={{ marginBottom: '2rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+              <h5 style={{ margin: 0, color: '#222', fontWeight: 600 }}>Your Packages</h5>
+              <button
+                onClick={handleCreatePackage}
+                style={{
+                  padding: '10px 20px',
+                  background: '#222',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '0.9rem',
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  transition: 'all 0.2s'
+                }}
+                onMouseOver={(e) => { e.currentTarget.style.background = '#000'; e.currentTarget.style.transform = 'scale(1.02)'; }}
+                onMouseOut={(e) => { e.currentTarget.style.background = '#222'; e.currentTarget.style.transform = 'scale(1)'; }}
+              >
+                <i className="fas fa-plus"></i> Create Package
+              </button>
+            </div>
+
+            {/* Package List - Professional Card Design */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
+              {packages.map((pkg, index) => (
+                <div 
+                  key={pkg.PackageID || index} 
+                  style={{ 
+                    background: '#fff', 
+                    border: '1px solid #e5e7eb', 
+                    borderRadius: '16px',
+                    overflow: 'hidden',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
+                  }}
+                >
+                  {/* Package Image */}
+                  <div style={{
+                    width: '100%',
+                    height: '160px',
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    position: 'relative'
+                  }}>
+                    {pkg.ImageURL ? (
+                      <img src={pkg.ImageURL} alt={pkg.PackageName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      <i className="fas fa-box-open" style={{ color: 'rgba(255,255,255,0.8)', fontSize: '3rem' }}></i>
+                    )}
+                    {/* Sale Badge */}
+                    {pkg.SalePrice && parseFloat(pkg.SalePrice) < parseFloat(pkg.Price) && (
+                      <div style={{
+                        position: 'absolute',
+                        top: '12px',
+                        right: '12px',
+                        background: '#dc2626',
+                        color: 'white',
+                        padding: '4px 12px',
+                        borderRadius: '20px',
+                        fontSize: '0.75rem',
+                        fontWeight: 700
+                      }}>
+                        SALE!
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Package Content */}
+                  <div style={{ padding: '1.25rem' }}>
+                    {/* Header with title and actions */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
+                      <h3 style={{ fontSize: '1.15rem', fontWeight: 600, color: '#222', margin: 0, lineHeight: 1.3 }}>
+                        {pkg.PackageName}
+                      </h3>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button
+                          type="button"
+                          onClick={() => handleEditPackage(pkg)}
+                          title="Edit package"
+                          style={{
+                            width: '32px',
+                            height: '32px',
+                            borderRadius: '8px',
+                            border: '1px solid #e5e7eb',
+                            background: '#fff',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#6b7280',
+                            transition: 'all 0.2s'
+                          }}
+                          onMouseOver={(e) => { e.currentTarget.style.background = '#f3f4f6'; e.currentTarget.style.color = '#222'; }}
+                          onMouseOut={(e) => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#6b7280'; }}
+                        >
+                          <i className="fas fa-pen" style={{ fontSize: '0.8rem' }}></i>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeletePackage(pkg.PackageID)}
+                          title="Remove package"
+                          style={{
+                            width: '32px',
+                            height: '32px',
+                            borderRadius: '8px',
+                            border: '1px solid #e5e7eb',
+                            background: '#fff',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#6b7280',
+                            transition: 'all 0.2s'
+                          }}
+                          onMouseOver={(e) => { e.currentTarget.style.background = '#fef2f2'; e.currentTarget.style.color = '#dc2626'; }}
+                          onMouseOut={(e) => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#6b7280'; }}
+                        >
+                          <i className="fas fa-trash-alt" style={{ fontSize: '0.8rem' }}></i>
+                        </button>
+                      </div>
+                    </div>
+                    
+                    {/* Pricing */}
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', marginBottom: '1rem' }}>
+                      {pkg.SalePrice && parseFloat(pkg.SalePrice) < parseFloat(pkg.Price) ? (
+                        <>
+                          <span style={{ fontSize: '1.5rem', fontWeight: 700, color: '#222' }}>
+                            ${parseFloat(pkg.SalePrice).toFixed(0)}
+                          </span>
+                          <span style={{ fontSize: '1rem', color: '#9ca3af', textDecoration: 'line-through' }}>
+                            ${parseFloat(pkg.Price).toFixed(0)}
+                          </span>
+                        </>
+                      ) : (
+                        <span style={{ fontSize: '1.5rem', fontWeight: 700, color: '#222' }}>
+                          ${parseFloat(pkg.Price).toFixed(0)}
+                        </span>
+                      )}
+                      <span style={{ fontSize: '0.9rem', color: '#6b7280' }}>
+                        / {pkg.PriceType === 'per_person' ? 'person' : 'package'}
+                      </span>
+                    </div>
+                    
+                    {/* Included Services */}
+                    {pkg.IncludedServices && pkg.IncludedServices.length > 0 && (
+                      <div style={{ 
+                        padding: '0.75rem', 
+                        background: '#f9fafb', 
+                        borderRadius: '8px',
+                        marginBottom: '0.5rem'
+                      }}>
+                        <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.5rem', textTransform: 'uppercase' }}>
+                          Includes {pkg.IncludedServices.length} service{pkg.IncludedServices.length > 1 ? 's' : ''}
+                        </div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
+                          {pkg.IncludedServices.map((svc, idx) => (
+                            <span key={idx} style={{ 
+                              background: '#fff', 
+                              color: '#374151', 
+                              padding: '4px 10px', 
+                              borderRadius: '6px', 
+                              fontSize: '0.8rem',
+                              border: '1px solid #e5e7eb'
+                            }}>
+                              {svc.name || svc.ServiceName}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+              
+              {/* Add Package Card */}
+              <div 
+                onClick={services.length > 0 ? handleCreatePackage : () => { showBanner('Please create individual services first', 'warning'); setActiveTab('services'); }}
+                style={{
+                  minHeight: '280px',
+                  border: '2px dashed #d1d5db',
+                  borderRadius: '16px',
+                  background: '#fafafa',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.borderColor = '#3b82f6';
+                  e.currentTarget.style.background = '#eff6ff';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.borderColor = '#d1d5db';
+                  e.currentTarget.style.background = '#fafafa';
+                }}
+              >
+                <div style={{ textAlign: 'center', color: '#6b7280' }}>
+                  <div style={{ 
+                    width: '56px', 
+                    height: '56px', 
+                    borderRadius: '50%', 
+                    background: '#e5e7eb', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    margin: '0 auto 1rem'
+                  }}>
+                    <i className="fas fa-plus" style={{ fontSize: '1.25rem', color: '#6b7280' }}></i>
+                  </div>
+                  <div style={{ fontWeight: 600, fontSize: '1rem', marginBottom: '0.25rem' }}>Add a package</div>
+                  <div style={{ fontSize: '0.85rem', color: '#9ca3af' }}>
+                    {services.length > 0 ? 'Click to bundle your services' : 'Create services first'}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Services Container */}
-        <div id="vendor-settings-services-container" style={{ display: !loading ? 'block' : 'none' }}>
+        <div id="vendor-settings-services-container" style={{ display: !loading && activeTab === 'services' ? 'block' : 'none' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
             <h5 style={{ margin: 0, color: 'var(--primary)' }}>Available Services</h5>
             <span id="vendor-settings-selected-count" style={{ color: 'var(--text-light)', fontSize: '0.9rem' }}>
@@ -271,7 +736,7 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
             </span>
           </div>
 
-          <div id="vendor-settings-services-grid" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem', width: '100%' }}>
+          <div id="vendor-settings-services-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
             {services.map((service, index) => {
               const getCategoryIcon = () => {
                 const catLower = (service.category || '').toLowerCase();
@@ -291,86 +756,140 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
               
               const getPricingDisplay = () => {
                 if (service.pricingModel === 'time_based' && service.baseRate) {
-                  return `$${parseFloat(service.baseRate).toFixed(0)} base + $${parseFloat(service.overtimeRatePerHour || 0).toFixed(0)}/hr overtime`;
+                  return { price: `$${parseFloat(service.baseRate).toFixed(0)}`, suffix: 'base rate' };
                 } else if (service.pricingModel === 'fixed_price' && service.fixedPrice) {
-                  return `$${parseFloat(service.fixedPrice).toFixed(0)} fixed`;
+                  return { price: `$${parseFloat(service.fixedPrice).toFixed(0)}`, suffix: 'fixed' };
                 } else if (service.pricingModel === 'per_attendee' && service.pricePerPerson) {
-                  return `$${parseFloat(service.pricePerPerson).toFixed(0)}/person`;
+                  return { price: `$${parseFloat(service.pricePerPerson).toFixed(0)}`, suffix: '/ person' };
                 }
-                return 'Not configured';
+                return { price: 'Price', suffix: 'not set' };
               };
               
+              const pricing = getPricingDisplay();
+              
               return (
-                <div key={`service-${service.id}-${index}`} style={{ padding: '1rem', background: '#fff', border: '1px solid var(--border)', borderRadius: '8px' }}>
-                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
-                    {/* Service Icon */}
-                    <div style={{
-                      flexShrink: 0,
-                      width: '60px',
-                      height: '60px',
-                      borderRadius: '8px',
-                      background: 'var(--secondary)',
-                      border: '1px solid var(--border)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}>
-                      <i className={`fas ${getCategoryIcon()}`} style={{ color: 'var(--primary)', fontSize: '1.5rem' }}></i>
+                <div 
+                  key={`service-${service.id}-${index}`} 
+                  style={{ 
+                    background: '#fff', 
+                    border: '1px solid #e5e7eb', 
+                    borderRadius: '16px',
+                    overflow: 'hidden',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
+                  }}
+                >
+                  {/* Service Header with Icon */}
+                  <div style={{
+                    width: '100%',
+                    height: '120px',
+                    background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    position: 'relative'
+                  }}>
+                    <i className={`fas ${getCategoryIcon()}`} style={{ color: 'rgba(255,255,255,0.85)', fontSize: '2.5rem' }}></i>
+                    {/* Category Badge */}
+                    {service.category && (
+                      <div style={{
+                        position: 'absolute',
+                        top: '12px',
+                        left: '12px',
+                        background: 'rgba(255,255,255,0.2)',
+                        color: 'white',
+                        padding: '4px 12px',
+                        borderRadius: '20px',
+                        fontSize: '0.75rem',
+                        fontWeight: 500,
+                        backdropFilter: 'blur(4px)'
+                      }}>
+                        {service.category}
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Service Content */}
+                  <div style={{ padding: '1.25rem' }}>
+                    {/* Header with title and actions */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
+                      <h3 style={{ fontSize: '1.15rem', fontWeight: 600, color: '#222', margin: 0, lineHeight: 1.3 }}>
+                        {service.name}
+                      </h3>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button
+                          type="button"
+                          onClick={() => handleEditService(service)}
+                          title="Edit service"
+                          style={{
+                            width: '32px',
+                            height: '32px',
+                            borderRadius: '8px',
+                            border: '1px solid #e5e7eb',
+                            background: '#fff',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#6b7280',
+                            transition: 'all 0.2s'
+                          }}
+                          onMouseOver={(e) => { e.currentTarget.style.background = '#f3f4f6'; e.currentTarget.style.color = '#222'; }}
+                          onMouseOut={(e) => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#6b7280'; }}
+                        >
+                          <i className="fas fa-pen" style={{ fontSize: '0.8rem' }}></i>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveService(service.id)}
+                          title="Remove service"
+                          style={{
+                            width: '32px',
+                            height: '32px',
+                            borderRadius: '8px',
+                            border: '1px solid #e5e7eb',
+                            background: '#fff',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#6b7280',
+                            transition: 'all 0.2s'
+                          }}
+                          onMouseOver={(e) => { e.currentTarget.style.background = '#fef2f2'; e.currentTarget.style.color = '#dc2626'; }}
+                          onMouseOut={(e) => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#6b7280'; }}
+                        >
+                          <i className="fas fa-trash-alt" style={{ fontSize: '0.8rem' }}></i>
+                        </button>
+                      </div>
                     </div>
                     
-                    {/* Service Details */}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text)', margin: '0 0 0.35rem 0' }}>
-                            {service.name}
-                          </h3>
-                          
-                          {/* Category & Duration Row */}
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.8rem', color: 'var(--text-light)', marginBottom: '0.25rem' }}>
-                            {service.category && (
-                              <span>
-                                <i className="fas fa-tag" style={{ marginRight: '0.25rem' }}></i>
-                                {service.category}
-                              </span>
-                            )}
-                            <span>
-                              <i className="fas fa-clock" style={{ marginRight: '0.25rem' }}></i>
-                              {service.vendorDuration 
-                                ? (service.vendorDuration >= 60 
-                                    ? Math.floor(service.vendorDuration/60) + ' hour' + (service.vendorDuration >= 120 ? 's' : '') 
-                                    : service.vendorDuration + ' min')
-                                : 'Not set'}
-                            </span>
-                          </div>
-                          
-                          {/* Pricing Info Row */}
-                          <div style={{ fontSize: '0.75rem', color: 'var(--text-light)' }}>
-                            <i className="fas fa-dollar-sign" style={{ marginRight: '0.25rem' }}></i>
-                            <span>{getPricingDisplay()}</span>
-                          </div>
-                        </div>
-                        
-                        {/* Action Buttons */}
-                        <div className="action-btn-group">
-                          <button
-                            type="button"
-                            className="action-btn action-btn-edit"
-                            onClick={() => handleEditService(service)}
-                            title="Edit service"
-                          >
-                            <i className="fas fa-pen"></i>
-                          </button>
-                          <button
-                            type="button"
-                            className="action-btn action-btn-delete"
-                            onClick={() => handleRemoveService(service.id)}
-                            title="Remove service"
-                          >
-                            <i className="fas fa-trash-alt"></i>
-                          </button>
-                        </div>
-                      </div>
+                    {/* Pricing */}
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', marginBottom: '1rem' }}>
+                      <span style={{ fontSize: '1.5rem', fontWeight: 700, color: '#222' }}>
+                        {pricing.price}
+                      </span>
+                      <span style={{ fontSize: '0.9rem', color: '#6b7280' }}>
+                        {pricing.suffix}
+                      </span>
+                    </div>
+                    
+                    {/* Duration Info */}
+                    <div style={{ 
+                      padding: '0.75rem', 
+                      background: '#f9fafb', 
+                      borderRadius: '8px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem'
+                    }}>
+                      <i className="fas fa-clock" style={{ color: '#6b7280', fontSize: '0.9rem' }}></i>
+                      <span style={{ fontSize: '0.85rem', color: '#374151' }}>
+                        {service.vendorDuration 
+                          ? (service.vendorDuration >= 60 
+                              ? Math.floor(service.vendorDuration/60) + ' hour' + (service.vendorDuration >= 120 ? 's' : '') 
+                              : service.vendorDuration + ' minutes')
+                          : 'Duration not set'}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -379,35 +898,42 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
             
             {/* Add Service Card */}
             <div 
-              className="add-service-card"
               onClick={() => setShowServicePicker(true)}
               style={{
-                width: '100%',
-                border: '2px dashed var(--border)',
-                borderRadius: '12px',
-                background: '#f8fafc',
+                minHeight: '240px',
+                border: '2px dashed #d1d5db',
+                borderRadius: '16px',
+                background: '#fafafa',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                padding: '16px',
                 cursor: 'pointer',
                 transition: 'all 0.2s'
               }}
               onMouseOver={(e) => {
-                e.currentTarget.style.borderColor = 'var(--primary)';
-                e.currentTarget.style.background = '#f0f4ff';
+                e.currentTarget.style.borderColor = '#3b82f6';
+                e.currentTarget.style.background = '#eff6ff';
               }}
               onMouseOut={(e) => {
-                e.currentTarget.style.borderColor = 'var(--border)';
-                e.currentTarget.style.background = '#f8fafc';
+                e.currentTarget.style.borderColor = '#d1d5db';
+                e.currentTarget.style.background = '#fafafa';
               }}
             >
-              <div style={{ textAlign: 'center', color: '#64748b' }}>
-                <div style={{ fontSize: '28px', lineHeight: 1, marginBottom: '8px' }}>
-                  <i className="fas fa-plus-circle"></i>
+              <div style={{ textAlign: 'center', color: '#6b7280' }}>
+                <div style={{ 
+                  width: '56px', 
+                  height: '56px', 
+                  borderRadius: '50%', 
+                  background: '#e5e7eb', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  margin: '0 auto 1rem'
+                }}>
+                  <i className="fas fa-plus" style={{ fontSize: '1.25rem', color: '#6b7280' }}></i>
                 </div>
-                <div style={{ fontWeight: 600 }}>Add a service</div>
-                <div style={{ fontSize: '0.85rem' }}>Click to choose from the list</div>
+                <div style={{ fontWeight: 600, fontSize: '1rem', marginBottom: '0.25rem' }}>Add a service</div>
+                <div style={{ fontSize: '0.85rem', color: '#9ca3af' }}>Click to choose from the list</div>
               </div>
             </div>
           </div>
@@ -812,6 +1338,352 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
                   onMouseOut={(e) => e.currentTarget.style.background = '#6366f1'}
                 >
                   Save Changes
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Package Modal */}
+        {showPackageModal && (
+          <div 
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'rgba(0, 0, 0, 0.5)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 10000,
+              padding: '20px'
+            }}
+            onClick={() => setShowPackageModal(false)}
+          >
+            <div 
+              style={{
+                background: 'white',
+                borderRadius: '12px',
+                maxWidth: '700px',
+                width: '100%',
+                maxHeight: '90vh',
+                overflow: 'hidden',
+                display: 'flex',
+                flexDirection: 'column'
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Header */}
+              <div style={{ padding: '20px 24px', borderBottom: '1px solid #e5e7eb' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>
+                    {editingPackage ? 'Edit Package' : 'Create Package'}
+                  </h3>
+                  <button
+                    onClick={() => setShowPackageModal(false)}
+                    style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: '#6b7280', padding: 0 }}
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+
+              {/* Modal Body */}
+              <div style={{ padding: '24px', overflowY: 'auto', flex: 1 }}>
+                {/* Package Image */}
+                <div style={{ marginBottom: '24px' }}>
+                  <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                    Package Image
+                  </label>
+                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                    <div style={{
+                      width: '120px',
+                      height: '90px',
+                      borderRadius: '8px',
+                      overflow: 'hidden',
+                      background: '#f3f4f6',
+                      border: '1px solid #e5e7eb'
+                    }}>
+                      {packageForm.imageURL ? (
+                        <img src={packageForm.imageURL} alt="Package" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <i className="fas fa-image" style={{ fontSize: '2rem', color: '#d1d5db' }}></i>
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handlePackageImageUpload}
+                        style={{ display: 'none' }}
+                        id="package-image-upload"
+                      />
+                      <label
+                        htmlFor="package-image-upload"
+                        style={{
+                          display: 'inline-block',
+                          padding: '8px 16px',
+                          background: '#f3f4f6',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          fontSize: '0.85rem',
+                          fontWeight: 500
+                        }}
+                      >
+                        {uploadingImage ? 'Uploading...' : 'Upload Image'}
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Package Name */}
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                    Package Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={packageForm.name}
+                    onChange={(e) => setPackageForm({ ...packageForm, name: e.target.value })}
+                    placeholder="e.g., Friday / Sunday Wedding"
+                    style={{
+                      width: '100%',
+                      padding: '12px 14px',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                      fontSize: '14px'
+                    }}
+                  />
+                </div>
+
+                {/* Description */}
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                    Description
+                  </label>
+                  <textarea
+                    value={packageForm.description}
+                    onChange={(e) => setPackageForm({ ...packageForm, description: e.target.value })}
+                    placeholder="Describe what's included in this package..."
+                    rows={3}
+                    style={{
+                      width: '100%',
+                      padding: '12px 14px',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      resize: 'vertical'
+                    }}
+                  />
+                </div>
+
+                {/* Pricing */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                      Price *
+                    </label>
+                    <input
+                      type="number"
+                      value={packageForm.price}
+                      onChange={(e) => setPackageForm({ ...packageForm, price: e.target.value })}
+                      placeholder="0"
+                      min="0"
+                      step="0.01"
+                      style={{
+                        width: '100%',
+                        padding: '12px 14px',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '8px',
+                        fontSize: '14px'
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                      Sale Price
+                    </label>
+                    <input
+                      type="number"
+                      value={packageForm.salePrice}
+                      onChange={(e) => setPackageForm({ ...packageForm, salePrice: e.target.value })}
+                      placeholder="Optional"
+                      min="0"
+                      step="0.01"
+                      style={{
+                        width: '100%',
+                        padding: '12px 14px',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '8px',
+                        fontSize: '14px'
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                      Price Type
+                    </label>
+                    <select
+                      value={packageForm.priceType}
+                      onChange={(e) => setPackageForm({ ...packageForm, priceType: e.target.value })}
+                      style={{
+                        width: '100%',
+                        padding: '12px 14px',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '8px',
+                        fontSize: '14px'
+                      }}
+                    >
+                      <option value="fixed">Fixed Price</option>
+                      <option value="per_person">Per Person</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Included Services */}
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                    Included Services
+                  </label>
+                  <input
+                    type="text"
+                    value={packageServiceSearch}
+                    onChange={(e) => setPackageServiceSearch(e.target.value)}
+                    placeholder="Search services to add..."
+                    style={{
+                      width: '100%',
+                      padding: '10px 14px',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      marginBottom: '8px'
+                    }}
+                  />
+                  
+                  {/* Selected Services */}
+                  {packageForm.includedServices.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '12px' }}>
+                      {packageForm.includedServices.map((svc, idx) => (
+                        <span 
+                          key={idx}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            background: '#f3f4f6',
+                            color: '#222',
+                            padding: '6px 12px',
+                            borderRadius: '20px',
+                            fontSize: '0.85rem',
+                            fontWeight: 500,
+                            border: '1px solid #e5e7eb'
+                          }}
+                        >
+                          {svc.name}
+                          <button
+                            onClick={() => toggleServiceInPackage(svc)}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center' }}
+                          >
+                            <i className="fas fa-times" style={{ fontSize: '0.7rem', color: '#6b7280' }}></i>
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Available Services List */}
+                  <div style={{ maxHeight: '180px', overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: '12px', background: '#fafafa' }}>
+                    {filteredPackageServices.slice(0, 10).map((service, idx) => {
+                      const serviceId = service.id || service.PredefinedServiceID;
+                      const isSelected = packageForm.includedServices.some(s => (s.id || s.PredefinedServiceID) === serviceId);
+                      return (
+                        <div
+                          key={idx}
+                          onClick={() => toggleServiceInPackage(service)}
+                          style={{
+                            padding: '12px 16px',
+                            borderBottom: '1px solid #e5e7eb',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            background: isSelected ? '#eff6ff' : 'white',
+                            transition: 'background 0.15s'
+                          }}
+                          onMouseOver={(e) => { if (!isSelected) e.currentTarget.style.background = '#f9fafb'; }}
+                          onMouseOut={(e) => { if (!isSelected) e.currentTarget.style.background = 'white'; }}
+                        >
+                          <span style={{ fontSize: '0.9rem', fontWeight: 500, color: '#222' }}>{service.name || service.ServiceName}</span>
+                          {isSelected && <i className="fas fa-check-circle" style={{ color: '#3b82f6', fontSize: '1rem' }}></i>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Fine Print */}
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                    Fine Print / Terms
+                  </label>
+                  <textarea
+                    value={packageForm.finePrint}
+                    onChange={(e) => setPackageForm({ ...packageForm, finePrint: e.target.value })}
+                    placeholder="e.g., Available on Friday or Sunday. Not available on long weekends."
+                    rows={3}
+                    style={{
+                      width: '100%',
+                      padding: '12px 14px',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      resize: 'vertical'
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div style={{ padding: '16px 24px', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+                <button
+                  onClick={() => setShowPackageModal(false)}
+                  style={{
+                    padding: '12px 24px',
+                    border: '1px solid #222',
+                    background: 'transparent',
+                    color: '#222',
+                    borderRadius: '8px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseOver={(e) => { e.currentTarget.style.background = '#f5f5f5'; }}
+                  onMouseOut={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSavePackage}
+                  style={{
+                    padding: '12px 24px',
+                    border: 'none',
+                    background: '#222',
+                    color: 'white',
+                    borderRadius: '8px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseOver={(e) => { e.currentTarget.style.background = '#000'; }}
+                  onMouseOut={(e) => { e.currentTarget.style.background = '#222'; }}
+                >
+                  {editingPackage ? 'Update Package' : 'Create Package'}
                 </button>
               </div>
             </div>

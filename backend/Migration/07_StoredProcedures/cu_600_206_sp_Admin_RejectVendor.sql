@@ -4,6 +4,10 @@
 -- Phase: 600 (Stored Procedures)
 -- Schema: admin
 -- =============================================
+SET QUOTED_IDENTIFIER ON;
+SET ANSI_NULLS ON;
+GO
+
 IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_RejectVendor]'))
     DROP PROCEDURE [admin].[sp_RejectVendor];
 GO

@@ -2749,4 +2749,93 @@ router.get('/blog-categories', async (req, res) => {
   }
 });
 
+// =============================================
+// VENDOR BADGES MANAGEMENT
+// =============================================
+
+// GET /admin/badges - Get all badge types
+router.get('/badges', async (req, res) => {
+  try {
+    const pool = await getPool();
+    const result = await pool.request().execute('admin.sp_GetAllBadgeTypes');
+    res.json({ success: true, badgeTypes: result.recordset || [] });
+  } catch (error) {
+    console.error('Error fetching badge types:', error);
+    // Return default badge types if stored procedure doesn't exist
+    res.json({ 
+      success: true, 
+      badgeTypes: [
+        { BadgeType: 'new_vendor', BadgeName: 'New Vendor', Description: 'Recently joined vendor', Icon: 'fa-sparkles', Color: '#0369a1' },
+        { BadgeType: 'top_rated', BadgeName: 'Top Rated', Description: 'Highly rated by clients', Icon: 'fa-star', Color: '#d97706' },
+        { BadgeType: 'choice_award', BadgeName: 'Choice Award', Description: 'Winner of choice awards', Icon: 'fa-award', Color: '#dc2626' },
+        { BadgeType: 'premium', BadgeName: 'Premium', Description: 'Premium vendor status', Icon: 'fa-crown', Color: '#7c3aed' },
+        { BadgeType: 'verified', BadgeName: 'Verified', Description: 'Identity verified', Icon: 'fa-check-circle', Color: '#059669' },
+        { BadgeType: 'featured', BadgeName: 'Featured', Description: 'Featured vendor', Icon: 'fa-fire', Color: '#db2777' }
+      ]
+    });
+  }
+});
+
+// GET /admin/vendors/:id/badges - Get badges for a specific vendor
+router.get('/vendors/:id/badges', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pool = await getPool();
+    const request = pool.request();
+    request.input('VendorProfileID', sql.Int, parseInt(id));
+    
+    const result = await request.execute('vendors.sp_GetVendorBadges');
+    res.json({ success: true, badges: result.recordset || [] });
+  } catch (error) {
+    console.error('Error fetching vendor badges:', error);
+    res.status(500).json({ success: false, message: 'Failed to get vendor badges' });
+  }
+});
+
+// POST /admin/vendors/:id/badges - Assign badge to vendor
+router.post('/vendors/:id/badges', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { badgeType, badgeName, year, imageURL, description } = req.body;
+    
+    if (!badgeType) {
+      return res.status(400).json({ success: false, message: 'Badge type is required' });
+    }
+
+    const pool = await getPool();
+    const request = pool.request();
+    request.input('VendorProfileID', sql.Int, parseInt(id));
+    request.input('BadgeType', sql.NVarChar(50), badgeType);
+    request.input('BadgeName', sql.NVarChar(100), badgeName || null);
+    request.input('Year', sql.Int, year || null);
+    request.input('ImageURL', sql.NVarChar(500), imageURL || null);
+    request.input('Description', sql.NVarChar(500), description || null);
+    
+    const result = await request.execute('vendors.sp_AssignVendorBadge');
+    
+    res.json({ success: true, badgeId: result.recordset[0]?.BadgeID, message: 'Badge assigned successfully' });
+  } catch (error) {
+    console.error('Error assigning badge:', error);
+    res.status(500).json({ success: false, message: 'Failed to assign badge' });
+  }
+});
+
+// DELETE /admin/vendors/:id/badges/:badgeId - Remove badge from vendor
+router.delete('/vendors/:id/badges/:badgeId', async (req, res) => {
+  try {
+    const { id, badgeId } = req.params;
+    const pool = await getPool();
+    const request = pool.request();
+    request.input('VendorProfileID', sql.Int, parseInt(id));
+    request.input('BadgeID', sql.Int, parseInt(badgeId));
+    
+    await request.execute('vendors.sp_RemoveVendorBadge');
+    
+    res.json({ success: true, message: 'Badge removed successfully' });
+  } catch (error) {
+    console.error('Error removing badge:', error);
+    res.status(500).json({ success: false, message: 'Failed to remove badge' });
+  }
+});
+
 module.exports = router;

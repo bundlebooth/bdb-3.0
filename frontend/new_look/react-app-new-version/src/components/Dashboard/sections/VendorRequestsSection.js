@@ -15,6 +15,7 @@ function VendorRequestsSection() {
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [sortBy, setSortBy] = useState('eventDate'); // 'eventDate', 'requestedOn', 'client'
   const [openActionMenu, setOpenActionMenu] = useState(null);
+  const [processingAction, setProcessingAction] = useState(null); // Track which button is processing: 'approve-{id}' or 'decline-{id}'
 
   // Fetch vendor profile ID first
   useEffect(() => {
@@ -166,6 +167,7 @@ function VendorRequestsSection() {
   };
 
   const handleApproveRequest = async (requestId) => {
+    setProcessingAction(`approve-${requestId}`);
     try {
       const response = await fetch(`${API_BASE_URL}/bookings/requests/${requestId}/approve`, {
         method: 'POST',
@@ -177,18 +179,25 @@ function VendorRequestsSection() {
       });
       
       if (response.ok) {
-        loadBookings();
+        // Update the booking status locally without full reload
+        setAllBookings(prev => prev.map(b => 
+          b.RequestID === requestId ? { ...b, _status: 'approved', Status: 'approved' } : b
+        ));
+        showBanner('Request approved successfully', 'success');
       } else {
         const data = await response.json();
-        alert(data.message || 'Failed to approve request');
+        showBanner(data.message || 'Failed to approve request', 'error');
       }
     } catch (error) {
       console.error('Error approving request:', error);
-      alert('Failed to approve request');
+      showBanner('Failed to approve request', 'error');
+    } finally {
+      setProcessingAction(null);
     }
   };
 
   const handleDeclineRequest = async (requestId) => {
+    setProcessingAction(`decline-${requestId}`);
     try {
       const response = await fetch(`${API_BASE_URL}/bookings/requests/${requestId}/decline`, {
         method: 'POST',
@@ -200,14 +209,20 @@ function VendorRequestsSection() {
       });
       
       if (response.ok) {
-        loadBookings();
+        // Update the booking status locally without full reload
+        setAllBookings(prev => prev.map(b => 
+          b.RequestID === requestId ? { ...b, _status: 'declined', Status: 'declined' } : b
+        ));
+        showBanner('Request declined', 'info');
       } else {
         const data = await response.json();
-        alert(data.message || 'Failed to decline request');
+        showBanner(data.message || 'Failed to decline request', 'error');
       }
     } catch (error) {
       console.error('Error declining request:', error);
-      alert('Failed to decline request');
+      showBanner('Failed to decline request', 'error');
+    } finally {
+      setProcessingAction(null);
     }
   };
 
@@ -368,44 +383,60 @@ function VendorRequestsSection() {
             {s === 'pending' && isRequest && (
               <>
                 <span 
-                  onClick={() => handleApproveRequest(booking.RequestID)}
+                  onClick={() => !processingAction && handleApproveRequest(booking.RequestID)}
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: '6px',
                     padding: '7px 18px',
-                    background: '#10b981',
+                    background: processingAction === `approve-${booking.RequestID}` ? '#059669' : '#10b981',
                     color: 'white',
                     borderRadius: '6px',
                     fontSize: '13px',
                     fontWeight: 500,
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap'
+                    cursor: processingAction ? 'not-allowed' : 'pointer',
+                    whiteSpace: 'nowrap',
+                    opacity: processingAction && processingAction !== `approve-${booking.RequestID}` ? 0.6 : 1,
+                    minWidth: '90px'
                   }}
                 >
-                  <i className="fas fa-check" style={{ fontSize: '10px' }}></i>
-                  Approve
+                  {processingAction === `approve-${booking.RequestID}` ? (
+                    <i className="fas fa-spinner fa-spin" style={{ fontSize: '12px' }}></i>
+                  ) : (
+                    <>
+                      <i className="fas fa-check" style={{ fontSize: '10px' }}></i>
+                      Approve
+                    </>
+                  )}
                 </span>
                 <span 
-                  onClick={() => handleDeclineRequest(booking.RequestID)}
+                  onClick={() => !processingAction && handleDeclineRequest(booking.RequestID)}
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: '6px',
                     padding: '7px 18px',
-                    background: '#ef4444',
+                    background: processingAction === `decline-${booking.RequestID}` ? '#dc2626' : '#ef4444',
                     color: 'white',
                     borderRadius: '6px',
                     fontSize: '13px',
                     fontWeight: 500,
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap'
+                    cursor: processingAction ? 'not-allowed' : 'pointer',
+                    whiteSpace: 'nowrap',
+                    opacity: processingAction && processingAction !== `decline-${booking.RequestID}` ? 0.6 : 1,
+                    minWidth: '85px'
                   }}
                 >
-                  <i className="fas fa-times" style={{ fontSize: '10px' }}></i>
-                  Decline
+                  {processingAction === `decline-${booking.RequestID}` ? (
+                    <i className="fas fa-spinner fa-spin" style={{ fontSize: '12px' }}></i>
+                  ) : (
+                    <>
+                      <i className="fas fa-times" style={{ fontSize: '10px' }}></i>
+                      Decline
+                    </>
+                  )}
                 </span>
               </>
             )}

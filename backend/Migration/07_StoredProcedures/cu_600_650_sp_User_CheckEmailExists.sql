@@ -4,6 +4,10 @@
 -- Phase: 600 (Stored Procedures)
 -- Schema: users
 -- =============================================
+SET QUOTED_IDENTIFIER ON;
+SET ANSI_NULLS ON;
+GO
+
 IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[users].[sp_CheckEmailExists]'))
     DROP PROCEDURE [users].[sp_CheckEmailExists];
 GO

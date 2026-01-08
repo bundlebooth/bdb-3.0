@@ -13,6 +13,10 @@ GO
 PRINT 'Creating stored procedure [admin].[sp_GetContentBanners]...';
 GO
 
+SET QUOTED_IDENTIFIER ON;
+SET ANSI_NULLS ON;
+GO
+
 IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_GetContentBanners]'))
     DROP PROCEDURE [admin].[sp_GetContentBanners];
 GO

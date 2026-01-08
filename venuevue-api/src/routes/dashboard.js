@@ -1276,12 +1276,12 @@ router.get('/:id/portfolio/albums/:albumId/images/public', async (req, res) => {
   try {
     const { id, albumId } = req.params;
     const pool = await poolPromise;
-    const request = new sql.Request(pool);
-    request.input('VendorProfileID', sql.Int, parseInt(id));
-    request.input('AlbumID', sql.Int, parseInt(albumId));
     
     // Verify album is public and belongs to vendor
-    const albumCheck = await request.execute('vendors.sp_Dashboard_CheckAlbumPublic');
+    const checkRequest = new sql.Request(pool);
+    checkRequest.input('VendorProfileID', sql.Int, parseInt(id));
+    checkRequest.input('AlbumID', sql.Int, parseInt(albumId));
+    const albumCheck = await checkRequest.execute('vendors.sp_Dashboard_CheckAlbumPublic');
     
     if (albumCheck.recordset.length === 0) {
       return res.status(404).json({ success: false, message: 'Album not found' });
@@ -1291,8 +1291,10 @@ router.get('/:id/portfolio/albums/:albumId/images/public', async (req, res) => {
       return res.status(403).json({ success: false, message: 'This album is private' });
     }
     
-    // Get images
-    const result = await request.execute('vendors.sp_Dashboard_GetPublicAlbumImages');
+    // Get images with a new request
+    const imagesRequest = new sql.Request(pool);
+    imagesRequest.input('AlbumID', sql.Int, parseInt(albumId));
+    const result = await imagesRequest.execute('vendors.sp_Dashboard_GetPublicAlbumImages');
     
     res.json({ success: true, images: result.recordset });
   } catch (err) {

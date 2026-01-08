@@ -12,3 +12,4 @@ export { default as PlatformSettingsPanel } from './PlatformSettingsPanel';
 export { default as AnalyticsPanel } from './AnalyticsPanel';
 export { default as SecurityLogsPanel } from './SecurityLogsPanel';
 export { default as SupportToolsPanel } from './SupportToolsPanel';
+export { default as VendorBadgesPanel } from './VendorBadgesPanel';

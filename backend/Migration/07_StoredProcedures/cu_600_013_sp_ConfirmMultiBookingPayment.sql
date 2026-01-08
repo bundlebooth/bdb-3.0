@@ -13,6 +13,10 @@ GO
 PRINT 'Creating stored procedure [payments].[sp_ConfirmMultiBookingPayment]...';
 GO
 
+SET QUOTED_IDENTIFIER ON;
+SET ANSI_NULLS ON;
+GO
+
 IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[payments].[sp_ConfirmMultiBookingPayment]'))
     DROP PROCEDURE [payments].[sp_ConfirmMultiBookingPayment];
 GO

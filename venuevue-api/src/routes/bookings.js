@@ -682,7 +682,10 @@ router.post('/requests/send', async (req, res) => {
       services,
       eventName,
       eventType,
-      timeZone
+      timeZone,
+      packageId,
+      packageName,
+      packagePrice
     } = req.body;
 
     // Validation
@@ -700,6 +703,21 @@ router.post('/requests/send', async (req, res) => {
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + 24);
 
+    // Use package price as budget if a package is selected
+    const finalBudget = packagePrice || budget || null;
+    
+    // Include package info in services JSON if package is selected
+    let servicesJson = services ? JSON.stringify(services) : null;
+    if (packageId && packageName) {
+      const packageInfo = [{
+        type: 'package',
+        id: packageId,
+        name: packageName,
+        price: packagePrice
+      }];
+      servicesJson = JSON.stringify(packageInfo);
+    }
+
     request.input('UserID', sql.Int, userId);
     request.input('VendorProfileID', sql.Int, vendorProfileId);
     request.input('EventDate', sql.VarChar(10), eventDate || null);
@@ -707,8 +725,8 @@ router.post('/requests/send', async (req, res) => {
     request.input('EventEndTime', sql.VarChar(8), eventEndTime || null);
     request.input('EventLocation', sql.NVarChar(500), eventLocation || null);
     request.input('AttendeeCount', sql.Int, attendeeCount || null);
-    request.input('Budget', sql.Decimal(10, 2), budget || null);
-    request.input('Services', sql.NVarChar(sql.MAX), services ? JSON.stringify(services) : null);
+    request.input('Budget', sql.Decimal(10, 2), finalBudget);
+    request.input('Services', sql.NVarChar(sql.MAX), servicesJson);
     request.input('EventName', sql.NVarChar(255), eventName || null);
     request.input('EventType', sql.NVarChar(100), eventType || null);
     request.input('TimeZone', sql.NVarChar(100), timeZone || null);
@@ -724,15 +742,29 @@ router.post('/requests/send', async (req, res) => {
 
     const newRequest = result.recordset[0];
 
-    // Create a conversation for this request
-    const conversationRequest = pool.request();
-    conversationRequest.input('UserID', sql.Int, userId);
-    conversationRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-    conversationRequest.input('Subject', sql.NVarChar(255), 'New Booking Request');
+    // Check for existing conversation or create a new one
+    let conversationId;
+    const convLookup = await pool.request()
+      .input('UserID', sql.Int, userId)
+      .input('VendorProfileID', sql.Int, vendorProfileId)
+      .query(`
+        SELECT ConversationID FROM messages.Conversations 
+        WHERE UserID = @UserID AND VendorProfileID = @VendorProfileID
+      `);
 
-    const conversationResult = await conversationRequest.execute('bookings.sp_InsertConversation');
+    if (convLookup.recordset.length > 0) {
+      // Use existing conversation
+      conversationId = convLookup.recordset[0].ConversationID;
+    } else {
+      // Create a new conversation
+      const conversationRequest = pool.request();
+      conversationRequest.input('UserID', sql.Int, userId);
+      conversationRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+      conversationRequest.input('Subject', sql.NVarChar(255), 'New Booking Request');
 
-    const conversationId = conversationResult.recordset[0].ConversationID;
+      const conversationResult = await conversationRequest.execute('bookings.sp_InsertConversation');
+      conversationId = conversationResult.recordset[0].ConversationID;
+    }
 
     // Send initial message if special request text exists
     if (specialRequestText) {

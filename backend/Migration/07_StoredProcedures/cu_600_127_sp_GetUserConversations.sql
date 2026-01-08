@@ -6,6 +6,10 @@
 -- Note: This returns conversations where the user is the CLIENT (initiator).
 --       Vendor conversations are retrieved via sp_GetVendorConversations.
 -- =============================================
+SET QUOTED_IDENTIFIER ON;
+SET ANSI_NULLS ON;
+GO
+
 IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[messages].[sp_GetUserConversations]'))
     DROP PROCEDURE [messages].[sp_GetUserConversations];
 GO
