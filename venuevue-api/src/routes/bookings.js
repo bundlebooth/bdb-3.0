@@ -1634,18 +1634,23 @@ router.post('/:id/client-cancel', async (req, res) => {
 
     const booking = bookingRes.recordset[0];
 
+    // CHECK: Event must not have already passed
+    const hoursUntilEvent = booking.HoursUntilEvent || 0;
+    if (hoursUntilEvent < 0) {
+      return res.status(400).json({ success: false, message: 'Cannot cancel a booking after the event date has passed' });
+    }
+
     // Verify user owns this booking
     if (userId && booking.UserID !== userId) {
       return res.status(403).json({ success: false, message: 'You can only cancel your own bookings' });
     }
 
-    // Check if already cancelled
-    if (['cancelled', 'cancelled_by_client', 'cancelled_by_vendor', 'cancelled_by_admin', 'refunded'].includes(booking.Status?.toLowerCase())) {
-      return res.status(400).json({ success: false, message: 'Booking is already cancelled' });
+    // Check if already cancelled or completed
+    if (['cancelled', 'cancelled_by_client', 'cancelled_by_vendor', 'cancelled_by_admin', 'refunded', 'completed'].includes(booking.Status?.toLowerCase())) {
+      return res.status(400).json({ success: false, message: 'This booking cannot be cancelled' });
     }
 
-    // Calculate refund
-    const hoursUntilEvent = booking.HoursUntilEvent || 0;
+    // Calculate refund based on cancellation policy
     const totalAmount = booking.TotalAmount || 0;
     let refundPercent = 0;
 
@@ -1766,6 +1771,152 @@ router.post('/:id/client-cancel', async (req, res) => {
 
   } catch (err) {
     console.error('Client cancel booking error:', err);
+    res.status(500).json({ success: false, message: 'Failed to cancel booking', error: err.message });
+  }
+});
+
+// POST /bookings/:id/vendor-cancel - Vendor cancels a booking (FULL refund to client)
+router.post('/:id/vendor-cancel', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason, vendorProfileId } = req.body;
+    
+    const bookingId = resolveBookingId(id);
+    if (!bookingId) {
+      return res.status(400).json({ success: false, message: 'Invalid booking ID' });
+    }
+
+    const pool = await poolPromise;
+
+    // Get booking details
+    const bookingRes = await pool.request()
+      .input('BookingID', sql.Int, bookingId)
+      .execute('bookings.sp_GetBookingForCancellation');
+
+    if (bookingRes.recordset.length === 0) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    const booking = bookingRes.recordset[0];
+
+    // CHECK: Event must not have already passed
+    const hoursUntilEvent = booking.HoursUntilEvent || 0;
+    if (hoursUntilEvent < 0) {
+      return res.status(400).json({ success: false, message: 'Cannot cancel a booking after the event date has passed' });
+    }
+
+    // Verify vendor owns this booking
+    if (vendorProfileId && booking.VendorProfileID !== parseInt(vendorProfileId)) {
+      return res.status(403).json({ success: false, message: 'You can only cancel bookings for your own services' });
+    }
+
+    // Check if already cancelled or completed
+    if (['cancelled', 'cancelled_by_client', 'cancelled_by_vendor', 'cancelled_by_admin', 'refunded', 'completed'].includes(booking.Status?.toLowerCase())) {
+      return res.status(400).json({ success: false, message: 'This booking cannot be cancelled' });
+    }
+
+    // VENDOR CANCELLATION = FULL REFUND (100%)
+    const refundPercent = 100;
+    const totalAmount = booking.TotalAmount || 0;
+
+    // Process Stripe refund if payment was made
+    let refundAmount = 0;
+    let applicationFeeRetained = 0;
+    let stripeRefundId = null;
+    let stripeRefundStatus = 'none';
+
+    if (booking.StripePaymentIntentID && booking.FullAmountPaid) {
+      try {
+        const pi = await stripe.paymentIntents.retrieve(booking.StripePaymentIntentID);
+        const chargeId = pi.latest_charge;
+        
+        if (chargeId) {
+          const charge = await stripe.charges.retrieve(chargeId);
+          const originalAmount = charge.amount;
+          const applicationFee = pi.application_fee_amount || 0;
+          
+          // Full refund of customer payment (excluding platform fee which is retained)
+          const refundableAmount = originalAmount - applicationFee;
+          const refundAmountCents = refundableAmount; // 100% refund
+          
+          applicationFeeRetained = applicationFee / 100;
+          refundAmount = refundAmountCents / 100;
+
+          if (refundAmountCents > 0) {
+            const refund = await stripe.refunds.create({
+              charge: chargeId,
+              amount: refundAmountCents,
+              reason: 'requested_by_customer',
+              metadata: {
+                booking_id: String(bookingId),
+                cancelled_by: 'vendor',
+                refund_percent: '100'
+              }
+            });
+
+            stripeRefundId = refund.id;
+            stripeRefundStatus = refund.status;
+          }
+        }
+      } catch (stripeErr) {
+        console.error('Stripe refund error:', stripeErr);
+        stripeRefundStatus = 'failed';
+      }
+    } else {
+      refundAmount = totalAmount; // Full refund amount
+    }
+
+    // Record cancellation in database
+    const cancelResult = await pool.request()
+      .input('BookingID', sql.Int, bookingId)
+      .input('CancelledBy', sql.NVarChar(20), 'vendor')
+      .input('CancelledByUserID', sql.Int, null)
+      .input('CancellationReason', sql.NVarChar(sql.MAX), reason || 'Cancelled by vendor')
+      .input('RefundAmount', sql.Decimal(10,2), refundAmount)
+      .input('RefundPercent', sql.Decimal(5,2), refundPercent)
+      .input('ApplicationFeeRetained', sql.Decimal(10,2), applicationFeeRetained)
+      .input('PolicyID', sql.Int, booking.PolicyID || null)
+      .input('HoursBeforeEvent', sql.Int, hoursUntilEvent)
+      .execute('bookings.sp_CancelBookingWithRefund');
+
+    const cancellationId = cancelResult.recordset[0]?.CancellationID;
+
+    // Update with Stripe refund details
+    if (stripeRefundId) {
+      await pool.request()
+        .input('CancellationID', sql.Int, cancellationId)
+        .input('StripeRefundID', sql.NVarChar(100), stripeRefundId)
+        .input('StripeRefundStatus', sql.NVarChar(50), stripeRefundStatus)
+        .input('RefundStatus', sql.NVarChar(50), stripeRefundStatus === 'succeeded' ? 'completed' : 'processing')
+        .execute('bookings.sp_UpdateCancellationRefund');
+    }
+
+    // Update invoice status
+    try {
+      await pool.request()
+        .input('BookingID', sql.Int, bookingId)
+        .input('Status', sql.NVarChar(50), 'cancelled')
+        .query(`UPDATE invoices.Invoices SET Status = @Status, UpdatedAt = GETUTCDATE() WHERE BookingID = @BookingID`);
+    } catch (invoiceErr) {
+      console.error('Invoice update error:', invoiceErr);
+    }
+
+    res.json({
+      success: true,
+      message: 'Booking cancelled by vendor. Full refund issued to client.',
+      cancellationId,
+      bookingId,
+      refund: {
+        amount: refundAmount,
+        percent: refundPercent,
+        applicationFeeRetained,
+        stripeRefundId,
+        status: stripeRefundStatus
+      }
+    });
+
+  } catch (err) {
+    console.error('Vendor cancel booking error:', err);
     res.status(500).json({ success: false, message: 'Failed to cancel booking', error: err.message });
   }
 });

@@ -71,16 +71,35 @@ function ClientBookingsSection({ onPayNow, onOpenChat }) {
     return sorted;
   };
 
+  // Check if event date has passed
+  const isEventPast = (booking) => {
+    const eventDate = booking.EventDate || booking.eventDate;
+    if (!eventDate) return false;
+    return new Date(eventDate) < new Date();
+  };
+
   const getFilteredBookings = () => {
     const acceptedStatuses = new Set(['accepted', 'approved', 'confirmed', 'paid']);
+    const cancelledStatuses = new Set(['cancelled', 'cancelled_by_client', 'cancelled_by_vendor', 'cancelled_by_admin']);
     
     let filtered;
-    if (activeTab === 'all') filtered = allBookings;
-    else if (activeTab === 'pending') filtered = allBookings.filter(b => b._status === 'pending');
-    else if (activeTab === 'accepted') filtered = allBookings.filter(b => acceptedStatuses.has(b._status));
-    else if (activeTab === 'declined') filtered = allBookings.filter(b => b._status === 'declined');
-    else if (activeTab === 'expired') filtered = allBookings.filter(b => b._status === 'expired');
-    else filtered = allBookings;
+    if (activeTab === 'all') {
+      filtered = allBookings;
+    } else if (activeTab === 'pending') {
+      filtered = allBookings.filter(b => b._status === 'pending' && !isEventPast(b));
+    } else if (activeTab === 'accepted') {
+      filtered = allBookings.filter(b => acceptedStatuses.has(b._status) && !isEventPast(b) && !cancelledStatuses.has(b._status));
+    } else if (activeTab === 'completed') {
+      filtered = allBookings.filter(b => b._status === 'completed' || (acceptedStatuses.has(b._status) && isEventPast(b)));
+    } else if (activeTab === 'cancelled') {
+      filtered = allBookings.filter(b => cancelledStatuses.has(b._status));
+    } else if (activeTab === 'declined') {
+      filtered = allBookings.filter(b => b._status === 'declined');
+    } else if (activeTab === 'expired') {
+      filtered = allBookings.filter(b => b._status === 'expired');
+    } else {
+      filtered = allBookings;
+    }
     
     return sortBookings(filtered);
   };
@@ -92,7 +111,16 @@ function ClientBookingsSection({ onPayNow, onOpenChat }) {
                    booking.PaymentStatus === 'paid' || booking.PaymentStatus === 'completed' ||
                    booking._status === 'paid';
     const isDepositOnly = !isPaid && (booking.DepositPaid === true || booking.DepositPaid === 1);
+    const eventPast = isEventPast(booking);
     
+    // Completed - event has passed
+    if (s === 'completed' || (eventPast && (isPaid || s === 'confirmed' || s === 'accepted' || s === 'approved'))) {
+      return { label: 'Completed', icon: 'fa-check-double', color: '#059669', borderStyle: 'solid' };
+    }
+    // Cancelled statuses
+    if (s === 'cancelled' || s === 'cancelled_by_client' || s === 'cancelled_by_vendor' || s === 'cancelled_by_admin') {
+      return { label: 'Cancelled', icon: 'fa-times-circle', color: '#ef4444', borderStyle: 'solid' };
+    }
     if (isPaid) {
       return { label: 'Paid', icon: 'fa-check-circle', color: '#10b981', borderStyle: 'solid' };
     }
@@ -110,9 +138,6 @@ function ClientBookingsSection({ onPayNow, onOpenChat }) {
     }
     if (s === 'expired') {
       return { label: 'Expired', icon: 'fa-clock', color: '#6b7280', borderStyle: 'dashed' };
-    }
-    if (s === 'cancelled') {
-      return { label: 'Cancelled', icon: 'fa-times-circle', color: '#ef4444', borderStyle: 'dashed' };
     }
     return { label: 'Pending', icon: 'fa-clock', color: '#f59e0b', borderStyle: 'dashed' };
   };
@@ -168,14 +193,21 @@ function ClientBookingsSection({ onPayNow, onOpenChat }) {
 
   // Handle Cancel Booking - show modal with refund preview
   const handleCancelBooking = async (booking) => {
-    setCancellingBooking(booking);
+    // Use BookingID if available, otherwise use RequestID
+    const bookingId = booking.BookingID || booking.RequestID || booking.bookingId || booking.requestId;
+    if (!bookingId) {
+      showBanner('Unable to cancel: Booking ID not found', 'error');
+      return;
+    }
+    
+    setCancellingBooking({ ...booking, _resolvedBookingId: bookingId });
     setShowCancelModal(true);
     setCancelReason('');
     setRefundPreview(null);
     
     // Fetch refund preview
     try {
-      const response = await fetch(`${API_BASE_URL}/bookings/${booking.BookingID}/cancel-preview`, {
+      const response = await fetch(`${API_BASE_URL}/bookings/${bookingId}/cancel-preview`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       if (response.ok) {
@@ -190,9 +222,15 @@ function ClientBookingsSection({ onPayNow, onOpenChat }) {
   const confirmCancelBooking = async () => {
     if (!cancellingBooking) return;
     
+    const bookingId = cancellingBooking._resolvedBookingId || cancellingBooking.BookingID || cancellingBooking.RequestID;
+    if (!bookingId) {
+      showBanner('Unable to cancel: Booking ID not found', 'error');
+      return;
+    }
+    
     setCancelling(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/bookings/${cancellingBooking.BookingID}/client-cancel`, {
+      const response = await fetch(`${API_BASE_URL}/bookings/${bookingId}/client-cancel`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -373,6 +411,32 @@ function ClientBookingsSection({ onPayNow, onOpenChat }) {
                 {isDepositOnly ? 'Pay Balance' : 'Pay Now'}
               </span>
             )}
+            {/* Cancel Booking button - only show if event hasn't passed and not already cancelled/completed */}
+            {(s === 'pending' || s === 'confirmed' || s === 'accepted' || s === 'approved' || s === 'paid') && 
+             !isEventPast(booking) && 
+             !['cancelled', 'cancelled_by_client', 'cancelled_by_vendor', 'completed'].includes(s) && (
+              <span 
+                onClick={() => handleCancelBooking(booking)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  padding: '7px 14px',
+                  background: 'white',
+                  color: '#ef4444',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  border: '1px solid #fecaca'
+                }}
+              >
+                <i className="fas fa-times" style={{ fontSize: '10px' }}></i>
+                Cancel
+              </span>
+            )}
             <span 
               onClick={() => handleShowDetails(booking)} 
               style={{ 
@@ -432,18 +496,6 @@ function ClientBookingsSection({ onPayNow, onOpenChat }) {
                     >
                       <i className="fas fa-file-invoice" style={{ color: '#6b7280', width: '16px' }}></i>
                       View Invoice
-                    </button>
-                  )}
-                  {/* Cancel Booking - show for pending, confirmed, accepted, approved bookings */}
-                  {(s === 'pending' || s === 'confirmed' || s === 'accepted' || s === 'approved') && s !== 'cancelled' && (
-                    <button
-                      onClick={() => { handleCancelBooking(booking); setOpenActionMenu(null); }}
-                      style={{ width: '100%', padding: '10px 14px', border: 'none', background: 'white', textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: '#ef4444', borderTop: '1px solid #f3f4f6' }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = '#fef2f2'}
-                      onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
-                    >
-                      <i className="fas fa-times-circle" style={{ color: '#ef4444', width: '16px' }}></i>
-                      Cancel Booking
                     </button>
                   )}
                 </div>
@@ -635,7 +687,21 @@ function ClientBookingsSection({ onPayNow, onOpenChat }) {
             data-tab="accepted"
             onClick={() => setActiveTab('accepted')}
           >
-            Accepted
+            Upcoming
+          </button>
+          <button 
+            className={`booking-tab ${activeTab === 'completed' ? 'active' : ''}`} 
+            data-tab="completed"
+            onClick={() => setActiveTab('completed')}
+          >
+            Completed
+          </button>
+          <button 
+            className={`booking-tab ${activeTab === 'cancelled' ? 'active' : ''}`} 
+            data-tab="cancelled"
+            onClick={() => setActiveTab('cancelled')}
+          >
+            Cancelled
           </button>
           <button 
             className={`booking-tab ${activeTab === 'declined' ? 'active' : ''}`} 
@@ -643,13 +709,6 @@ function ClientBookingsSection({ onPayNow, onOpenChat }) {
             onClick={() => setActiveTab('declined')}
           >
             Declined
-          </button>
-          <button 
-            className={`booking-tab ${activeTab === 'expired' ? 'active' : ''}`} 
-            data-tab="expired"
-            onClick={() => setActiveTab('expired')}
-          >
-            Expired
           </button>
         </div>
         {loading ? (

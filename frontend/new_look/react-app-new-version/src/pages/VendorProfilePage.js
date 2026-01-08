@@ -75,6 +75,9 @@ function VendorProfilePage() {
   const [selectedPackage, setSelectedPackage] = useState(null);
   const [packageModalOpen, setPackageModalOpen] = useState(false);
 
+  // Cancellation policy state
+  const [cancellationPolicy, setCancellationPolicy] = useState(null);
+
   // Get online status for this vendor
   const { statuses: onlineStatuses } = useVendorOnlineStatus(
     vendorId ? [vendorId] : [],
@@ -109,6 +112,7 @@ function VendorProfilePage() {
         loadReviewsWithSurvey(vendorDetails.profile.VendorProfileID);
         loadVendorBadges(vendorDetails.profile.VendorProfileID);
         loadVendorPackages(vendorDetails.profile.VendorProfileID);
+        loadCancellationPolicy(vendorDetails.profile.VendorProfileID);
         
         // Load Google Reviews if Google Place ID exists
         if (vendorDetails.profile.GooglePlaceId) {
@@ -189,6 +193,19 @@ function VendorProfilePage() {
       }
     } catch (error) {
       console.error('Error loading vendor packages:', error);
+    }
+  }, []);
+
+  // Load cancellation policy
+  const loadCancellationPolicy = useCallback(async (vendorProfileId) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/payments/vendor/${vendorProfileId}/cancellation-policy`);
+      if (response.ok) {
+        const data = await response.json();
+        setCancellationPolicy(data.policy);
+      }
+    } catch (error) {
+      console.error('Error loading cancellation policy:', error);
     }
   }, []);
 
@@ -1232,6 +1249,105 @@ function VendorProfilePage() {
               </div>
             </div>
           ))}
+        </div>
+      </div>
+    );
+  };
+
+  // Render cancellation policy section (Airbnb style)
+  const renderCancellationPolicy = () => {
+    if (!cancellationPolicy) return null;
+
+    const policyDescriptions = {
+      flexible: {
+        title: 'Flexible',
+        color: '#10b981',
+        icon: 'fa-check-circle',
+        description: 'Full refund if cancelled at least 24 hours before the event.'
+      },
+      moderate: {
+        title: 'Moderate', 
+        color: '#f59e0b',
+        icon: 'fa-clock',
+        description: 'Full refund if cancelled 7+ days before. 50% refund if cancelled 3-7 days before.'
+      },
+      strict: {
+        title: 'Strict',
+        color: '#ef4444',
+        icon: 'fa-exclamation-circle',
+        description: '50% refund if cancelled 14+ days before. No refund within 14 days of event.'
+      },
+      custom: {
+        title: 'Custom Policy',
+        color: '#6366f1',
+        icon: 'fa-cog',
+        description: null
+      }
+    };
+
+    const policyType = cancellationPolicy.PolicyType || 'flexible';
+    const policyInfo = policyDescriptions[policyType] || policyDescriptions.flexible;
+
+    // Build custom description if custom policy
+    let description = policyInfo.description;
+    if (policyType === 'custom') {
+      const parts = [];
+      if (cancellationPolicy.FullRefundDays > 0) {
+        parts.push(`Full refund if cancelled ${cancellationPolicy.FullRefundDays}+ days before`);
+      }
+      if (cancellationPolicy.PartialRefundDays > 0 && cancellationPolicy.PartialRefundPercent > 0) {
+        parts.push(`${cancellationPolicy.PartialRefundPercent}% refund if cancelled ${cancellationPolicy.PartialRefundDays}-${cancellationPolicy.FullRefundDays} days before`);
+      }
+      if (cancellationPolicy.NoRefundDays > 0) {
+        parts.push(`No refund within ${cancellationPolicy.NoRefundDays} day(s) of event`);
+      }
+      description = parts.join('. ') + '.';
+      if (cancellationPolicy.CustomTerms) {
+        description += ' ' + cancellationPolicy.CustomTerms;
+      }
+    }
+
+    return (
+      <div className="content-section" style={{ marginTop: '2rem' }}>
+        <h2>Cancellation Policy</h2>
+        <div style={{ 
+          marginTop: '1rem',
+          padding: '1.25rem',
+          background: '#f9fafb',
+          borderRadius: '12px',
+          border: '1px solid #e5e7eb'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
+            <div style={{
+              width: '36px',
+              height: '36px',
+              borderRadius: '50%',
+              background: `${policyInfo.color}15`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <i className={`fas ${policyInfo.icon}`} style={{ color: policyInfo.color, fontSize: '1rem' }}></i>
+            </div>
+            <div>
+              <div style={{ fontWeight: 600, fontSize: '1rem', color: '#111827' }}>{policyInfo.title}</div>
+              <div style={{ 
+                display: 'inline-block',
+                padding: '2px 8px',
+                background: `${policyInfo.color}20`,
+                color: policyInfo.color,
+                borderRadius: '4px',
+                fontSize: '0.7rem',
+                fontWeight: 500,
+                marginTop: '2px'
+              }}>
+                {policyType.charAt(0).toUpperCase() + policyType.slice(1)} Policy
+              </div>
+            </div>
+          </div>
+          <p style={{ margin: 0, color: '#4b5563', fontSize: '0.9rem', lineHeight: 1.6 }}>
+            {description}
+          </p>
         </div>
       </div>
     );
@@ -2356,6 +2472,9 @@ function VendorProfilePage() {
 
           {/* 6. Things to Know */}
           {renderEnhancedFAQs()}
+
+          {/* 7. Cancellation Policy */}
+          {renderCancellationPolicy()}
 
           {/* 7. Where You'll Find Us (Map + Cities Served) */}
           {renderLocationAndServiceAreas()}

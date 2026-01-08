@@ -16,6 +16,10 @@ function VendorRequestsSection() {
   const [sortBy, setSortBy] = useState('eventDate'); // 'eventDate', 'requestedOn', 'client'
   const [openActionMenu, setOpenActionMenu] = useState(null);
   const [processingAction, setProcessingAction] = useState(null); // Track which button is processing: 'approve-{id}' or 'decline-{id}'
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancellingBooking, setCancellingBooking] = useState(null);
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelling, setCancelling] = useState(false);
 
   // Fetch vendor profile ID first
   useEffect(() => {
@@ -112,16 +116,33 @@ function VendorRequestsSection() {
     return sorted;
   };
 
+  // Check if event date has passed
+  const isEventPast = (booking) => {
+    const eventDate = booking.EventDate || booking.eventDate;
+    if (!eventDate) return false;
+    return new Date(eventDate) < new Date();
+  };
+
   const getFilteredBookings = () => {
     const acceptedStatuses = new Set(['accepted', 'approved', 'confirmed', 'paid']);
+    const cancelledStatuses = new Set(['cancelled', 'cancelled_by_client', 'cancelled_by_vendor', 'cancelled_by_admin']);
     
     let filtered;
-    if (activeTab === 'all') filtered = allBookings;
-    else if (activeTab === 'pending') filtered = allBookings.filter(b => b._status === 'pending');
-    else if (activeTab === 'approved') filtered = allBookings.filter(b => acceptedStatuses.has(b._status));
-    else if (activeTab === 'declined') filtered = allBookings.filter(b => b._status === 'declined');
-    else if (activeTab === 'expired') filtered = allBookings.filter(b => b._status === 'expired');
-    else filtered = allBookings;
+    if (activeTab === 'all') {
+      filtered = allBookings;
+    } else if (activeTab === 'pending') {
+      filtered = allBookings.filter(b => b._status === 'pending' && !isEventPast(b));
+    } else if (activeTab === 'approved') {
+      filtered = allBookings.filter(b => acceptedStatuses.has(b._status) && !isEventPast(b) && !cancelledStatuses.has(b._status));
+    } else if (activeTab === 'completed') {
+      filtered = allBookings.filter(b => b._status === 'completed' || (acceptedStatuses.has(b._status) && isEventPast(b)));
+    } else if (activeTab === 'cancelled') {
+      filtered = allBookings.filter(b => cancelledStatuses.has(b._status));
+    } else if (activeTab === 'declined') {
+      filtered = allBookings.filter(b => b._status === 'declined');
+    } else {
+      filtered = allBookings;
+    }
     
     return sortBookings(filtered);
   };
@@ -131,7 +152,16 @@ function VendorRequestsSection() {
     const s = booking._status;
     const isPaid = booking.FullAmountPaid === true || booking.FullAmountPaid === 1;
     const isDepositOnly = !isPaid && (booking.DepositPaid === true || booking.DepositPaid === 1);
+    const eventPast = isEventPast(booking);
     
+    // Completed - event has passed
+    if (s === 'completed' || (eventPast && (isPaid || s === 'confirmed' || s === 'accepted' || s === 'approved'))) {
+      return { label: 'Completed', icon: 'fa-check-double', color: '#059669', borderStyle: 'solid' };
+    }
+    // Cancelled statuses
+    if (s === 'cancelled' || s === 'cancelled_by_client' || s === 'cancelled_by_vendor' || s === 'cancelled_by_admin') {
+      return { label: 'Cancelled', icon: 'fa-times-circle', color: '#ef4444', borderStyle: 'solid' };
+    }
     if (isPaid) {
       return { label: 'Paid', icon: 'fa-check-circle', color: '#10b981', borderStyle: 'solid' };
     }
@@ -149,9 +179,6 @@ function VendorRequestsSection() {
     }
     if (s === 'expired') {
       return { label: 'Expired', icon: 'fa-clock', color: '#6b7280', borderStyle: 'dashed' };
-    }
-    if (s === 'cancelled') {
-      return { label: 'Cancelled', icon: 'fa-times-circle', color: '#ef4444', borderStyle: 'dashed' };
     }
     return { label: 'Pending', icon: 'fa-clock', color: '#f59e0b', borderStyle: 'dashed' };
   };
@@ -223,6 +250,56 @@ function VendorRequestsSection() {
       showBanner('Failed to decline request', 'error');
     } finally {
       setProcessingAction(null);
+    }
+  };
+
+  // Handle Vendor Cancel Booking - full refund to client
+  const handleCancelBooking = (booking) => {
+    const bookingId = booking.BookingID || booking.RequestID;
+    if (!bookingId) {
+      showBanner('Unable to cancel: Booking ID not found', 'error');
+      return;
+    }
+    setCancellingBooking({ ...booking, _resolvedBookingId: bookingId });
+    setShowCancelModal(true);
+    setCancelReason('');
+  };
+
+  const confirmCancelBooking = async () => {
+    if (!cancellingBooking) return;
+    
+    const bookingId = cancellingBooking._resolvedBookingId;
+    if (!bookingId) {
+      showBanner('Unable to cancel: Booking ID not found', 'error');
+      return;
+    }
+    
+    setCancelling(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/bookings/${bookingId}/vendor-cancel`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ reason: cancelReason, vendorProfileId })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        showBanner('Booking cancelled. Full refund issued to client.', 'success');
+        setShowCancelModal(false);
+        setCancellingBooking(null);
+        loadBookings();
+      } else {
+        const error = await response.json();
+        showBanner(error.message || 'Failed to cancel booking', 'error');
+      }
+    } catch (error) {
+      console.error('Error cancelling booking:', error);
+      showBanner('Failed to cancel booking', 'error');
+    } finally {
+      setCancelling(false);
     }
   };
 
@@ -504,6 +581,32 @@ function VendorRequestsSection() {
                 </div>
               )}
             </div>
+            {/* Cancel button - only for active bookings that haven't passed */}
+            {(s === 'confirmed' || s === 'accepted' || s === 'approved' || s === 'paid') && 
+             !isEventPast(booking) && 
+             !['cancelled', 'cancelled_by_client', 'cancelled_by_vendor', 'completed'].includes(s) && (
+              <span 
+                onClick={() => handleCancelBooking(booking)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  padding: '7px 14px',
+                  background: 'white',
+                  color: '#ef4444',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  border: '1px solid #fecaca'
+                }}
+              >
+                <i className="fas fa-times" style={{ fontSize: '10px' }}></i>
+                Cancel
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -519,6 +622,132 @@ function VendorRequestsSection() {
         onClose={handleCloseDetails} 
         booking={selectedBooking} 
       />
+      
+      {/* Cancel Booking Modal - Vendor gets full refund warning */}
+      {showCancelModal && cancellingBooking && (
+        <div 
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000
+          }}
+          onClick={() => setShowCancelModal(false)}
+        >
+          <div 
+            style={{
+              background: 'white',
+              borderRadius: '16px',
+              padding: '1.5rem',
+              maxWidth: '450px',
+              width: '90%',
+              maxHeight: '90vh',
+              overflow: 'auto'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600 }}>Cancel Booking</h3>
+              <button 
+                onClick={() => setShowCancelModal(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', color: '#6b7280' }}
+              >
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+
+            <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', padding: '1rem', marginBottom: '1rem' }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+                <i className="fas fa-exclamation-triangle" style={{ color: '#ef4444', marginTop: '0.15rem' }}></i>
+                <div>
+                  <strong style={{ color: '#991b1b' }}>Are you sure you want to cancel?</strong>
+                  <p style={{ margin: '0.5rem 0 0', color: '#991b1b', fontSize: '0.9rem' }}>
+                    As the vendor, cancelling this booking will issue a <strong>full refund</strong> to the client.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ marginBottom: '1rem' }}>
+              <div style={{ fontSize: '0.9rem', color: '#374151', marginBottom: '0.5rem' }}>
+                <strong>Booking:</strong> {cancellingBooking.ServiceName || 'Service'} for {cancellingBooking.ClientName || 'Client'}
+              </div>
+              {cancellingBooking.EventDate && (
+                <div style={{ fontSize: '0.9rem', color: '#6b7280' }}>
+                  <strong>Date:</strong> {new Date(cancellingBooking.EventDate).toLocaleDateString()}
+                </div>
+              )}
+            </div>
+
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', fontWeight: 500, marginBottom: '0.5rem', fontSize: '0.9rem', color: '#374151' }}>
+                Reason for cancellation
+              </label>
+              <textarea
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                placeholder="Let the client know why you're cancelling..."
+                rows={3}
+                style={{
+                  width: '100%',
+                  padding: '0.75rem',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '8px',
+                  fontSize: '0.9rem',
+                  resize: 'vertical',
+                  boxSizing: 'border-box'
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setShowCancelModal(false)}
+                style={{
+                  padding: '0.75rem 1.25rem',
+                  background: '#f3f4f6',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontWeight: 500,
+                  color: '#374151'
+                }}
+              >
+                Keep Booking
+              </button>
+              <button
+                onClick={confirmCancelBooking}
+                disabled={cancelling}
+                style={{
+                  padding: '0.75rem 1.25rem',
+                  background: '#ef4444',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: cancelling ? 'not-allowed' : 'pointer',
+                  fontWeight: 500,
+                  opacity: cancelling ? 0.7 : 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}
+              >
+                {cancelling ? (
+                  <><i className="fas fa-spinner fa-spin"></i> Cancelling...</>
+                ) : (
+                  <><i className="fas fa-times"></i> Cancel & Refund</>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="dashboard-card">
         <div className="booking-tabs">
           <button 
@@ -540,7 +769,21 @@ function VendorRequestsSection() {
             data-tab="approved"
             onClick={() => setActiveTab('approved')}
           >
-            Accepted
+            Upcoming
+          </button>
+          <button 
+            className={`booking-tab ${activeTab === 'completed' ? 'active' : ''}`} 
+            data-tab="completed"
+            onClick={() => setActiveTab('completed')}
+          >
+            Completed
+          </button>
+          <button 
+            className={`booking-tab ${activeTab === 'cancelled' ? 'active' : ''}`} 
+            data-tab="cancelled"
+            onClick={() => setActiveTab('cancelled')}
+          >
+            Cancelled
           </button>
           <button 
             className={`booking-tab ${activeTab === 'declined' ? 'active' : ''}`} 
@@ -548,13 +791,6 @@ function VendorRequestsSection() {
             onClick={() => setActiveTab('declined')}
           >
             Declined
-          </button>
-          <button 
-            className={`booking-tab ${activeTab === 'expired' ? 'active' : ''}`} 
-            data-tab="expired"
-            onClick={() => setActiveTab('expired')}
-          >
-            Expired
           </button>
         </div>
         {loading ? (
