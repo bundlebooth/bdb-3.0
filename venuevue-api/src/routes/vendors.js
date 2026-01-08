@@ -5742,6 +5742,38 @@ router.post('/:id/images/url', async (req, res) => {
   }
 });
 
+// Reorder vendor images
+router.put('/:id/images/reorder', async (req, res) => {
+  try {
+    const vendorProfileId = parseVendorProfileId(req.params.id);
+    const { images } = req.body;
+    const pool = await poolPromise;
+    
+    if (!images || !Array.isArray(images)) {
+      return res.status(400).json({ success: false, message: 'Images array is required' });
+    }
+    
+    // Update each image's display order
+    for (const img of images) {
+      const request = new sql.Request(pool);
+      request.input('ImageID', sql.Int, img.imageId);
+      request.input('VendorProfileID', sql.Int, vendorProfileId);
+      request.input('DisplayOrder', sql.Int, img.displayOrder);
+      
+      await request.query(`
+        UPDATE vendors.VendorImages 
+        SET DisplayOrder = @DisplayOrder 
+        WHERE ImageID = @ImageID AND VendorProfileID = @VendorProfileID
+      `);
+    }
+    
+    res.json({ success: true, message: 'Images reordered successfully' });
+  } catch (error) {
+    console.error('Error reordering images:', error);
+    res.status(500).json({ success: false, message: 'Failed to reorder images', error: error.message });
+  }
+});
+
 // Upload vendor logo
 router.post('/:id/logo', upload.single('logo'), async (req, res) => {
   try {

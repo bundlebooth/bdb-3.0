@@ -967,4 +967,81 @@
   .mobile-page-selector .mobile-nav-item.active i {
     color: var(--primary, #5e72e4);
   }
+
+  /* Add spacing between page bar and content */
+  .dashboard-page-content {
+    padding-top: 16px !important;
+    padding-bottom: 16px !important;
+  }
+
+  /* Eliminate excess vertical scroll - fit content tightly */
+  .dashboard-page {
+    min-height: auto !important;
+    height: auto !important;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  /* Remove any extra margins/padding causing scroll */
+  .dashboard-card,
+  .dashboard-section {
+    margin-bottom: 12px !important;
+  }
+
+  /* Tighten up Recent Bookings and Messages sections */
+  .recent-bookings-card,
+  .recent-messages-card {
+    margin-bottom: 12px !important;
+    padding-bottom: 8px !important;
+  }
+
+  /* Footer spacing fix - hide footer completely on mobile */
+  .dashboard-page footer,
+  .dashboard-page .footer,
+  footer,
+  .footer {
+    display: none !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Remove any extra bottom padding/margin on all elements */
+  .dashboard-page-content > div:last-child,
+  .dashboard-page > div:last-child {
+    margin-bottom: 0 !important;
+    padding-bottom: 0 !important;
+  }
+
+  /* Remove extra space from overview grid */
+  .overview-grid {
+    margin-bottom: 0 !important;
+    padding-bottom: 0 !important;
+  }
+
+  /* Tighten dashboard cards */
+  .dashboard-page .dashboard-card:last-child {
+    margin-bottom: 0 !important;
+  }
+
+  /* Fix body scroll */
+  body {
+    overflow-x: hidden;
+  }
+
+  /* Invoice - keep table scrollable on mobile */
+  .invoices-mobile-view {
+    display: none !important;
+  }
+  .invoices-desktop-view {
+    display: block !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Ensure table has minimum width for proper scrolling */
+  .invoices-desktop-view table {
+    min-width: 700px;
+  }
 }

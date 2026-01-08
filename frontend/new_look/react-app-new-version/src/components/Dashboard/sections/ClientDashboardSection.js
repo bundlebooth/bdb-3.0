@@ -58,7 +58,10 @@ function ClientDashboardSection({ data, loading, onSectionChange, onPayNow }) {
   }, [currentUser]);
 
   const renderBookingItem = (booking) => {
-    const isPaid = booking.FullAmountPaid === true || booking.FullAmountPaid === 1;
+    // Check multiple fields for paid status
+    const isPaid = booking.FullAmountPaid === true || booking.FullAmountPaid === 1 || 
+                   booking.PaymentStatus === 'paid' || booking.PaymentStatus === 'completed' ||
+                   (booking.Status || '').toLowerCase() === 'paid';
     const isDepositOnly = !isPaid && (booking.DepositPaid === true || booking.DepositPaid === 1);
     
     // Safely parse date - handle invalid dates

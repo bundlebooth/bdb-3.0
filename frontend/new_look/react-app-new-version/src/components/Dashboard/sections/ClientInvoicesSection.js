@@ -209,40 +209,128 @@ function ClientInvoicesSection() {
     return { bg: '#f3f4f6', color: '#374151' };
   };
 
+  // Check if mobile
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+
   return (
     <div id="invoices-section">
       <div className="dashboard-card" style={{ padding: 0, overflow: 'hidden' }}>
         {/* Header */}
-        <div style={{ padding: '20px 24px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <input 
-              type="text" 
-              placeholder="Search invoices..." 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              style={{ 
-                padding: '10px 14px', 
-                border: '1px solid #e5e7eb', 
-                borderRadius: '8px', 
-                fontSize: '14px',
-                width: '280px',
-                outline: 'none'
-              }}
-            />
-            {searchTerm && (
-              <button 
-                onClick={() => setSearchTerm('')}
-                style={{ padding: '8px 16px', background: '#f3f4f6', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', color: '#374151' }}
-              >
-                Clear
-              </button>
-            )}
-          </div>
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+          <input 
+            type="text" 
+            placeholder="Search invoices..." 
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            style={{ 
+              padding: '10px 14px', 
+              border: '1px solid #e5e7eb', 
+              borderRadius: '8px', 
+              fontSize: '14px',
+              flex: 1,
+              minWidth: '150px',
+              maxWidth: '280px',
+              outline: 'none'
+            }}
+          />
           <span style={{ color: '#6b7280', fontSize: '14px' }}>{filteredInvoices.length} invoices</span>
         </div>
 
-        {/* Table */}
-        <div style={{ overflowX: 'auto' }}>
+        {/* Mobile Card View - DISABLED, using scrollable table instead */}
+        <div style={{ display: 'none' }}>
+          {paginatedInvoices.map((b, idx) => {
+            const invNum = b.InvoiceNumber || `INV-${b.InvoiceID || b.BookingID}`;
+            let dateStr = 'N/A';
+            const issueDate = b.IssueDate || b.EventDate || b.CreatedAt || b.created_at;
+            if (issueDate) {
+              dateStr = formatDate(issueDate);
+            } else if (invNum) {
+              const match = invNum.match(/(\d{4})(\d{2})(\d{2})/);
+              if (match) {
+                const [, year, month, day] = match;
+                const extractedDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+                if (!isNaN(extractedDate.getTime())) {
+                  dateStr = formatDate(extractedDate);
+                }
+              }
+            }
+            const name = b.VendorName || 'Vendor';
+            const total = b.TotalAmount != null ? `$${Number(b.TotalAmount).toFixed(2)}` : '$0.00';
+            const statusRaw = (b.InvoiceStatus || b.Status || 'pending').toString().toLowerCase();
+            const statusLabel = statusRaw === 'confirmed' ? 'Accepted' : statusRaw.charAt(0).toUpperCase() + statusRaw.slice(1);
+            const svc = b.ServicesSummary || b.ServiceName || 'Service';
+            const statusStyle = getStatusStyle(statusRaw);
+
+            return (
+              <div key={b.InvoiceID || b.BookingID || `invoice-mobile-${idx}`} style={{ 
+                padding: '16px', 
+                borderBottom: '1px solid #f3f4f6'
+              }}>
+                {/* Invoice Number & Date */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                  <span style={{ fontWeight: 600, color: '#111827', fontSize: '14px' }}>{invNum}</span>
+                  <span style={{ color: '#6b7280', fontSize: '13px' }}>{dateStr}</span>
+                </div>
+                {/* Vendor Name */}
+                <div style={{ fontWeight: 500, color: '#111827', fontSize: '14px', marginBottom: '4px' }}>{name}</div>
+                {/* Service */}
+                <div style={{ color: '#6b7280', fontSize: '13px', marginBottom: '12px' }}>{svc}</div>
+                {/* Status & Amount Row */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                  <span style={{ 
+                    display: 'inline-block', 
+                    padding: '4px 12px', 
+                    borderRadius: '20px', 
+                    fontSize: '12px', 
+                    fontWeight: 500,
+                    background: statusStyle.bg, 
+                    color: statusStyle.color 
+                  }}>
+                    {statusLabel}
+                  </span>
+                  <span style={{ fontWeight: 700, color: '#111827', fontSize: '16px' }}>{total}</span>
+                </div>
+                {/* Actions */}
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button 
+                    onClick={() => handleViewInvoice(b)}
+                    style={{ 
+                      flex: 1,
+                      padding: '10px 16px', 
+                      background: '#5e72e4', 
+                      color: 'white',
+                      border: 'none', 
+                      borderRadius: '8px', 
+                      cursor: 'pointer', 
+                      fontSize: '14px',
+                      fontWeight: 500
+                    }}
+                  >
+                    View
+                  </button>
+                  <button 
+                    onClick={() => handleDownloadInvoice(b)}
+                    style={{ 
+                      padding: '10px 16px', 
+                      background: 'white', 
+                      color: '#374151',
+                      border: '1px solid #e5e7eb', 
+                      borderRadius: '8px', 
+                      cursor: 'pointer', 
+                      fontSize: '14px',
+                      fontWeight: 500
+                    }}
+                  >
+                    <i className="fas fa-download"></i>
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Table View - Always visible with horizontal scroll on mobile */}
+        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>

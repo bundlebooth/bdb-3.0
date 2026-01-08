@@ -904,19 +904,30 @@ function VendorProfilePage() {
     );
   };
 
-  // Render portfolio albums - Airbnb style cards
+  // Render portfolio albums - Airbnb style horizontal scroll on mobile, grid on desktop
   const renderPortfolioAlbums = () => {
     if (!portfolioAlbums || portfolioAlbums.length === 0) return null;
 
     return (
       <div className="content-section">
         <h2>Portfolio</h2>
-        <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', 
-          gap: '1.5rem',
-          marginTop: '1rem'
-        }}>
+        {/* Mobile: Horizontal scroll with side-by-side cards */}
+        <div 
+          className="portfolio-albums-container"
+          style={{ 
+            display: 'flex',
+            gap: '12px',
+            marginTop: '1rem',
+            overflowX: 'auto',
+            scrollSnapType: 'x mandatory',
+            WebkitOverflowScrolling: 'touch',
+            paddingBottom: '8px',
+            marginLeft: '-16px',
+            marginRight: '-16px',
+            paddingLeft: '16px',
+            paddingRight: '16px'
+          }}
+        >
           {portfolioAlbums.map((album, index) => (
             <div 
               key={index} 
@@ -924,13 +935,17 @@ function VendorProfilePage() {
               style={{
                 cursor: 'pointer',
                 borderRadius: '12px',
-                overflow: 'hidden'
+                overflow: 'hidden',
+                flex: '0 0 calc(50% - 6px)',
+                minWidth: '150px',
+                maxWidth: '200px',
+                scrollSnapAlign: 'start'
               }}
             >
               {/* Album Cover Image */}
               <div style={{ 
                 position: 'relative', 
-                aspectRatio: '4/3',
+                aspectRatio: '1/1',
                 background: '#f3f4f6',
                 borderRadius: '12px',
                 overflow: 'hidden'
@@ -954,27 +969,29 @@ function VendorProfilePage() {
                     justifyContent: 'center',
                     background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
                   }}>
-                    <i className="fas fa-images" style={{ fontSize: '3rem', color: 'white', opacity: 0.8 }}></i>
+                    <i className="fas fa-images" style={{ fontSize: '2rem', color: 'white', opacity: 0.8 }}></i>
                   </div>
                 )}
               </div>
               
-              {/* Album Info - Below image, transparent background */}
-              <div style={{ padding: '0.75rem 0', background: 'transparent' }}>
+              {/* Album Info - Below image */}
+              <div style={{ padding: '8px 0 0 0' }}>
                 <h4 style={{ 
-                  fontSize: '1rem', 
+                  fontSize: '0.9rem', 
                   fontWeight: 600, 
                   color: '#222', 
-                  margin: '0 0 0.25rem 0',
-                  lineHeight: 1.3
+                  margin: '0 0 2px 0',
+                  lineHeight: 1.3,
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis'
                 }}>
                   {album.AlbumName}
                 </h4>
                 <p style={{ 
-                  fontSize: '0.875rem', 
+                  fontSize: '0.8rem', 
                   color: '#717171', 
-                  margin: 0,
-                  lineHeight: 1.4
+                  margin: 0
                 }}>
                   {album.ImageCount || 0} {(album.ImageCount || 0) === 1 ? 'photo' : 'photos'}
                 </p>
@@ -982,6 +999,25 @@ function VendorProfilePage() {
             </div>
           ))}
         </div>
+        <style>{`
+          @media (min-width: 768px) {
+            .portfolio-albums-container {
+              display: grid !important;
+              grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)) !important;
+              gap: 1.5rem !important;
+              overflow-x: visible !important;
+              margin-left: 0 !important;
+              margin-right: 0 !important;
+              padding-left: 0 !important;
+              padding-right: 0 !important;
+            }
+            .portfolio-albums-container > div {
+              flex: none !important;
+              min-width: unset !important;
+              max-width: unset !important;
+            }
+          }
+        `}</style>
       </div>
     );
   };
@@ -2334,140 +2370,7 @@ function VendorProfilePage() {
 
           {/* Right Column - Sidebar */}
           <div className="vendor-sidebar">
-          {/* Hosted By Card - Giggster style */}
-          <div className="sidebar-card" style={{ marginBottom: '1rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-              {/* Host Avatar */}
-              <div 
-                onClick={() => navigate(`/host/${vendor.userId || vendorId}`)}
-                style={{ 
-                  width: '56px', 
-                  height: '56px', 
-                  borderRadius: '50%', 
-                  overflow: 'hidden',
-                  cursor: 'pointer',
-                  flexShrink: 0,
-                  border: '2px solid #f0f0f0'
-                }}
-              >
-                <img 
-                  src={profile.HostProfileImage || profile.LogoURL || profile.FeaturedImageURL || 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png'}
-                  alt={profile.HostName || profile.ContactName || 'Host'}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  onError={(e) => { e.target.src = 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png'; }}
-                />
-              </div>
-              
-              {/* Host Info */}
-              <div style={{ flex: 1 }}>
-                <div 
-                  onClick={() => navigate(`/host/${vendor.userId || vendorId}`)}
-                  style={{ 
-                    fontSize: '1rem', 
-                    fontWeight: 600, 
-                    color: '#222',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px'
-                  }}
-                >
-                  Hosted by {profile.HostName || profile.ContactName || profile.BusinessName?.split(' ')[0] || 'Host'}
-                  {/* Verified badge if applicable */}
-                  {profile.IsVerified && (
-                    <span style={{ 
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      width: '16px',
-                      height: '16px',
-                      borderRadius: '50%',
-                      background: '#22c55e',
-                      color: 'white',
-                      fontSize: '10px'
-                    }}>
-                      <i className="fas fa-check"></i>
-                    </span>
-                  )}
-                </div>
-                <div style={{ fontSize: '0.85rem', color: '#717171', marginTop: '2px' }}>
-                  {profile.ResponseRating && (
-                    <span>Response rating: <strong style={{ color: '#222' }}>{profile.ResponseRating}</strong></span>
-                  )}
-                  {!profile.ResponseRating && reviews.length > 0 && (
-                    <span>{reviews.length} review{reviews.length !== 1 ? 's' : ''}</span>
-                  )}
-                  {!profile.ResponseRating && reviews.length === 0 && (
-                    <span>New host</span>
-                  )}
-                </div>
-                {profile.ResponseTime && (
-                  <div style={{ fontSize: '0.85rem', color: '#717171' }}>
-                    Response time: <strong style={{ color: '#222' }}>{profile.ResponseTime}</strong>
-                  </div>
-                )}
-              </div>
-            </div>
-            
-            {/* Message Host Button */}
-            <button 
-              className="btn btn-outline btn-full-width" 
-              onClick={handleMessageVendor}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                padding: '12px 16px',
-                border: '1px solid #222',
-                borderRadius: '8px',
-                background: 'white',
-                color: '#222',
-                fontWeight: 600,
-                fontSize: '0.95rem',
-                cursor: 'pointer',
-                transition: 'background 0.2s'
-              }}
-              onMouseOver={(e) => e.currentTarget.style.background = '#f7f7f7'}
-              onMouseOut={(e) => e.currentTarget.style.background = 'white'}
-            >
-              Message Host
-            </button>
-          </div>
-
-          {/* Request Booking Card */}
-          <div className="sidebar-card" style={{ marginBottom: '1rem' }}>
-            <h3 style={{ marginBottom: '0.5rem' }}>Book this space</h3>
-            <p style={{ fontSize: '0.9rem', color: 'var(--text-light)', marginBottom: '1rem', lineHeight: 1.5 }}>
-              Send a booking request with your event details.
-            </p>
-            <button 
-              className="btn btn-primary btn-full-width" 
-              onClick={handleRequestBooking}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                padding: '14px 16px',
-                background: '#222',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                fontWeight: 600,
-                fontSize: '1rem',
-                cursor: 'pointer'
-              }}
-            >
-              Reserve
-            </button>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-light)', marginTop: '0.75rem', textAlign: 'center' }}>
-              <i className="fas fa-shield-alt" style={{ color: 'var(--primary)', marginRight: '4px' }}></i>
-              Free cancellation within 24 hours
-            </p>
-          </div>
-
-          {/* Business Hours */}
+          {/* 1. Business Hours - First */}
           {businessHours.length > 0 && (
             <div className="sidebar-card">
               <h3 style={{ marginBottom: '0.75rem' }}>Business Hours</h3>
@@ -2535,6 +2438,138 @@ function VendorProfilePage() {
               </div>
             </div>
           )}
+
+          {/* 2. Hosted By Card */}
+          <div className="sidebar-card" style={{ marginTop: '1rem', marginBottom: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+              {/* Host Avatar */}
+              <div 
+                onClick={() => navigate(`/host/${vendor.userId || vendorId}`)}
+                style={{ 
+                  width: '56px', 
+                  height: '56px', 
+                  borderRadius: '50%', 
+                  overflow: 'hidden',
+                  cursor: 'pointer',
+                  flexShrink: 0,
+                  border: '2px solid #f0f0f0'
+                }}
+              >
+                <img 
+                  src={profile.HostProfileImage || profile.LogoURL || profile.FeaturedImageURL || 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png'}
+                  alt={profile.HostName || profile.ContactName || 'Host'}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  onError={(e) => { e.target.src = 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png'; }}
+                />
+              </div>
+              
+              {/* Host Info */}
+              <div style={{ flex: 1 }}>
+                <div 
+                  onClick={() => navigate(`/host/${vendor.userId || vendorId}`)}
+                  style={{ 
+                    fontSize: '1rem', 
+                    fontWeight: 600, 
+                    color: '#222',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  Hosted by {profile.HostName || profile.ContactName || profile.BusinessName?.split(' ')[0] || 'Host'}
+                  {profile.IsVerified && (
+                    <span style={{ 
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: '16px',
+                      height: '16px',
+                      borderRadius: '50%',
+                      background: '#22c55e',
+                      color: 'white',
+                      fontSize: '10px'
+                    }}>
+                      <i className="fas fa-check"></i>
+                    </span>
+                  )}
+                </div>
+                <div style={{ fontSize: '0.85rem', color: '#717171', marginTop: '2px' }}>
+                  {profile.ResponseRating && (
+                    <span>Response rating: <strong style={{ color: '#222' }}>{profile.ResponseRating}</strong></span>
+                  )}
+                  {!profile.ResponseRating && reviews.length > 0 && (
+                    <span>{reviews.length} review{reviews.length !== 1 ? 's' : ''}</span>
+                  )}
+                  {!profile.ResponseRating && reviews.length === 0 && (
+                    <span>New host</span>
+                  )}
+                </div>
+                {profile.ResponseTime && (
+                  <div style={{ fontSize: '0.85rem', color: '#717171' }}>
+                    Response time: <strong style={{ color: '#222' }}>{profile.ResponseTime}</strong>
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            {/* Message Host Button */}
+            <button 
+              className="btn btn-outline btn-full-width" 
+              onClick={handleMessageVendor}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                padding: '12px 16px',
+                border: '1px solid #222',
+                borderRadius: '8px',
+                background: 'white',
+                color: '#222',
+                fontWeight: 600,
+                fontSize: '0.95rem',
+                cursor: 'pointer',
+                transition: 'background 0.2s'
+              }}
+              onMouseOver={(e) => e.currentTarget.style.background = '#f7f7f7'}
+              onMouseOut={(e) => e.currentTarget.style.background = 'white'}
+            >
+              Message Host
+            </button>
+          </div>
+
+          {/* 3. Book This Space Card */}
+          <div className="sidebar-card" style={{ marginBottom: '1rem' }}>
+            <h3 style={{ marginBottom: '0.5rem' }}>Book this space</h3>
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-light)', marginBottom: '1rem', lineHeight: 1.5 }}>
+              Send a booking request with your event details.
+            </p>
+            <button 
+              className="btn btn-primary btn-full-width" 
+              onClick={handleRequestBooking}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                padding: '14px 16px',
+                background: '#222',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontWeight: 600,
+                fontSize: '1rem',
+                cursor: 'pointer'
+              }}
+            >
+              Reserve
+            </button>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-light)', marginTop: '0.75rem', textAlign: 'center' }}>
+              <i className="fas fa-shield-alt" style={{ color: 'var(--primary)', marginRight: '4px' }}></i>
+              Free cancellation within 24 hours
+            </p>
+          </div>
 
           </div>
         </div>
@@ -2859,7 +2894,7 @@ function VendorProfilePage() {
         </div>
       )}
 
-      {/* Package Detail Modal */}
+      {/* Package Detail Modal - Clean Airbnb Style */}
       {packageModalOpen && selectedPackage && (
         <div
           style={{
@@ -2868,7 +2903,7 @@ function VendorProfilePage() {
             left: 0,
             width: '100%',
             height: '100%',
-            background: 'rgba(0,0,0,0.5)',
+            background: 'rgba(0,0,0,0.6)',
             zIndex: 9999,
             display: 'flex',
             alignItems: 'center',
@@ -2881,27 +2916,24 @@ function VendorProfilePage() {
             onClick={(e) => e.stopPropagation()}
             style={{
               background: '#fff',
-              borderRadius: '16px',
-              maxWidth: '600px',
+              borderRadius: '12px',
+              maxWidth: '480px',
               width: '100%',
-              maxHeight: '90vh',
-              overflow: 'auto',
-              position: 'relative'
+              maxHeight: '85vh',
+              overflow: 'hidden',
+              position: 'relative',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
             }}
           >
-            {/* Modal Header */}
+            {/* Modal Header - Minimal */}
             <div style={{ 
-              padding: '1.25rem 1.5rem', 
-              borderBottom: '1px solid #e5e7eb',
+              padding: '16px 20px', 
+              borderBottom: '1px solid #ebebeb',
               display: 'flex',
               justifyContent: 'space-between',
-              alignItems: 'center',
-              position: 'sticky',
-              top: 0,
-              background: '#fff',
-              zIndex: 1
+              alignItems: 'center'
             }}>
-              <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600, color: '#222' }}>
+              <h2 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: '#222' }}>
                 {selectedPackage.PackageName}
               </h2>
               <button
@@ -2910,82 +2942,90 @@ function VendorProfilePage() {
                   background: 'none',
                   border: 'none',
                   cursor: 'pointer',
-                  fontSize: '1.25rem',
+                  fontSize: '1rem',
                   color: '#717171',
-                  padding: '0.5rem'
+                  padding: '4px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
                 }}
               >
-                <i className="fas fa-times"></i>
+                ✕
               </button>
             </div>
             
-            {/* Package Image */}
-            {selectedPackage.ImageURL && (
-              <div style={{ width: '100%', height: '200px', background: '#f3f4f6' }}>
-                <img 
-                  src={selectedPackage.ImageURL} 
-                  alt={selectedPackage.PackageName} 
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                />
-              </div>
-            )}
-            
-            {/* Modal Content */}
-            <div style={{ padding: '1.5rem' }}>
-              {/* Pricing */}
-              <div style={{ marginBottom: '1.5rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                  {selectedPackage.SalePrice && parseFloat(selectedPackage.SalePrice) < parseFloat(selectedPackage.Price) ? (
-                    <>
-                      <span style={{ fontSize: '1.75rem', fontWeight: 700, color: '#222' }}>
-                        ${parseFloat(selectedPackage.SalePrice).toFixed(0)}
-                      </span>
-                      <span style={{ fontSize: '1.1rem', color: '#9ca3af', textDecoration: 'line-through' }}>
+            {/* Scrollable Content */}
+            <div style={{ maxHeight: 'calc(85vh - 140px)', overflowY: 'auto' }}>
+              {/* Package Image */}
+              {selectedPackage.ImageURL && (
+                <div style={{ width: '100%', aspectRatio: '16/9', background: '#f7f7f7' }}>
+                  <img 
+                    src={selectedPackage.ImageURL} 
+                    alt={selectedPackage.PackageName} 
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                  />
+                </div>
+              )}
+              
+              {/* Modal Content */}
+              <div style={{ padding: '20px' }}>
+                {/* Pricing - Prominent */}
+                <div style={{ marginBottom: '20px' }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', flexWrap: 'wrap' }}>
+                    {selectedPackage.SalePrice && parseFloat(selectedPackage.SalePrice) < parseFloat(selectedPackage.Price) ? (
+                      <>
+                        <span style={{ fontSize: '1.5rem', fontWeight: 600, color: '#222' }}>
+                          ${parseFloat(selectedPackage.SalePrice).toFixed(0)}
+                        </span>
+                        <span style={{ fontSize: '1rem', color: '#717171', textDecoration: 'line-through' }}>
+                          ${parseFloat(selectedPackage.Price).toFixed(0)}
+                        </span>
+                        <span style={{ color: '#e31c5f', fontSize: '0.875rem', fontWeight: 600 }}>SALE!</span>
+                      </>
+                    ) : (
+                      <span style={{ fontSize: '1.5rem', fontWeight: 600, color: '#222' }}>
                         ${parseFloat(selectedPackage.Price).toFixed(0)}
                       </span>
-                      <span style={{ color: '#dc2626', fontSize: '0.9rem', fontWeight: 700 }}>SALE!</span>
-                    </>
-                  ) : (
-                    <span style={{ fontSize: '1.75rem', fontWeight: 700, color: '#222' }}>
-                      ${parseFloat(selectedPackage.Price).toFixed(0)}
+                    )}
+                    <span style={{ fontSize: '1rem', color: '#717171' }}>
+                      / {selectedPackage.PriceType === 'per_person' ? 'person' : 'package'}
                     </span>
-                  )}
-                  <span style={{ fontSize: '1rem', color: '#6b7280' }}>
-                    / {selectedPackage.PriceType === 'per_person' ? 'person' : 'package'}
-                  </span>
-                </div>
-              </div>
-              
-              {/* Description */}
-              {selectedPackage.Description && (
-                <div style={{ marginBottom: '1.5rem' }}>
-                  <h4 style={{ fontSize: '1rem', fontWeight: 600, color: '#222', margin: '0 0 0.5rem 0' }}>Description</h4>
-                  <p style={{ margin: 0, color: '#4b5563', lineHeight: 1.6 }}>{selectedPackage.Description}</p>
-                </div>
-              )}
-              
-              {/* Included Services */}
-              {selectedPackage.IncludedServices && selectedPackage.IncludedServices.length > 0 && (
-                <div style={{ marginBottom: '1.5rem' }}>
-                  <h4 style={{ fontSize: '1rem', fontWeight: 600, color: '#222', margin: '0 0 0.75rem 0' }}>What's Included</h4>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    {selectedPackage.IncludedServices.map((svc, idx) => (
-                      <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <i className="fas fa-check" style={{ color: '#22c55e', fontSize: '0.85rem' }}></i>
-                        <span style={{ color: '#374151' }}>{svc.name || svc.ServiceName}</span>
-                      </div>
-                    ))}
                   </div>
                 </div>
-              )}
-              
-              {/* Fine Print */}
-              {selectedPackage.FinePrint && (
-                <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#f9fafb', borderRadius: '8px' }}>
-                  <h4 style={{ fontSize: '0.9rem', fontWeight: 600, color: '#6b7280', margin: '0 0 0.5rem 0' }}>Fine Print</h4>
-                  <p style={{ margin: 0, color: '#6b7280', fontSize: '0.9rem', lineHeight: 1.5 }}>{selectedPackage.FinePrint}</p>
-                </div>
-              )}
+                
+                {/* Description */}
+                {selectedPackage.Description && (
+                  <div style={{ marginBottom: '20px' }}>
+                    <p style={{ margin: 0, color: '#484848', fontSize: '0.95rem', lineHeight: 1.6 }}>{selectedPackage.Description}</p>
+                  </div>
+                )}
+                
+                {/* Included Services */}
+                {selectedPackage.IncludedServices && selectedPackage.IncludedServices.length > 0 && (
+                  <div style={{ marginBottom: '20px' }}>
+                    <h4 style={{ fontSize: '0.95rem', fontWeight: 600, color: '#222', margin: '0 0 12px 0' }}>What's included</h4>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {selectedPackage.IncludedServices.map((svc, idx) => (
+                        <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <span style={{ color: '#00a699', fontSize: '0.9rem' }}>✓</span>
+                          <span style={{ color: '#484848', fontSize: '0.9rem' }}>{svc.name || svc.ServiceName}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Fine Print */}
+                {selectedPackage.FinePrint && (
+                  <div style={{ marginBottom: '20px', padding: '12px', background: '#f7f7f7', borderRadius: '8px' }}>
+                    <p style={{ margin: 0, color: '#717171', fontSize: '0.85rem', lineHeight: 1.5 }}>{selectedPackage.FinePrint}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            {/* Fixed Footer with Button */}
+            <div style={{ padding: '16px 20px', borderTop: '1px solid #ebebeb', background: '#fff' }}>
               
               {/* Book Now Button */}
               <button
@@ -2996,21 +3036,16 @@ function VendorProfilePage() {
                 }}
                 style={{
                   width: '100%',
-                  padding: '0.875rem 1.5rem',
+                  padding: '14px 24px',
                   background: '#222',
                   color: 'white',
                   border: 'none',
                   borderRadius: '8px',
                   fontSize: '1rem',
                   fontWeight: 600,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.5rem'
+                  cursor: 'pointer'
                 }}
               >
-                <i className="fas fa-calendar-check"></i>
                 Request Booking
               </button>
             </div>

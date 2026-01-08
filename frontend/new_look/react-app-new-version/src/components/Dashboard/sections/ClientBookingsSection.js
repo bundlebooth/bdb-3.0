@@ -83,7 +83,9 @@ function ClientBookingsSection({ onPayNow, onOpenChat }) {
   // Get detailed status label for client view
   const getDetailedStatus = (booking) => {
     const s = booking._status;
-    const isPaid = booking.FullAmountPaid === true || booking.FullAmountPaid === 1;
+    const isPaid = booking.FullAmountPaid === true || booking.FullAmountPaid === 1 || 
+                   booking.PaymentStatus === 'paid' || booking.PaymentStatus === 'completed' ||
+                   booking._status === 'paid';
     const isDepositOnly = !isPaid && (booking.DepositPaid === true || booking.DepositPaid === 1);
     
     if (isPaid) {
@@ -203,7 +205,9 @@ function ClientBookingsSection({ onPayNow, onOpenChat }) {
   };
 
   const renderBookingItem = (booking) => {
-    const isPaid = booking.FullAmountPaid === true || booking.FullAmountPaid === 1 || booking._status === 'paid';
+    const isPaid = booking.FullAmountPaid === true || booking.FullAmountPaid === 1 || 
+                   booking.PaymentStatus === 'paid' || booking.PaymentStatus === 'completed' ||
+                   booking._status === 'paid';
     const isDepositOnly = !isPaid && (booking.DepositPaid === true || booking.DepositPaid === 1);
     const s = booking._status || 'pending';
     

@@ -3044,73 +3044,99 @@ function ServicesStep({ formData, setFormData }) {
           };
           
           return (
-            <div key={`service-${service.serviceId}-${index}`} style={{ padding: '1rem', background: '#fff', border: '1px solid var(--border)', borderRadius: '8px' }}>
+            <div key={`service-${service.serviceId}-${index}`} style={{ padding: '1rem', background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px' }}>
               <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
-                {/* Service Icon */}
+                {/* Service Icon - Small Square */}
                 <div style={{
                   flexShrink: 0,
-                  width: '60px',
-                  height: '60px',
-                  borderRadius: '8px',
-                  background: 'var(--secondary)',
-                  border: '1px solid var(--border)',
+                  width: '80px',
+                  height: '80px',
+                  borderRadius: '12px',
+                  background: '#f3f4f6',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center'
                 }}>
-                  <i className={`fas ${getCategoryIcon()}`} style={{ color: 'var(--primary)', fontSize: '1.5rem' }}></i>
+                  <i className={`fas ${getCategoryIcon()}`} style={{ color: '#6b7280', fontSize: '1.75rem' }}></i>
                 </div>
                 
                 {/* Service Details */}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text)', margin: '0 0 0.35rem 0' }}>
+                      <h3 style={{ fontSize: '1.1rem', fontWeight: 600, color: '#222', margin: '0 0 0.35rem 0' }}>
                         {service.serviceName}
                       </h3>
                       
-                      {/* Category & Duration Row */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.8rem', color: 'var(--text-light)', marginBottom: '0.25rem', flexWrap: 'wrap' }}>
-                        {service.category && (
-                          <span>
-                            <i className="fas fa-tag" style={{ marginRight: '0.25rem' }}></i>
-                            {service.category}
-                          </span>
-                        )}
-                        <span>
-                          <i className="fas fa-clock" style={{ marginRight: '0.25rem' }}></i>
+                      {/* Pricing */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                        <span style={{ fontSize: '1.15rem', fontWeight: 700, color: '#222' }}>
+                          {getPricingDisplay()}
+                        </span>
+                      </div>
+                      
+                      {/* Duration & Category */}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                        <span style={{ 
+                          background: '#f3f4f6', 
+                          color: '#374151', 
+                          padding: '4px 10px', 
+                          borderRadius: '6px', 
+                          fontSize: '0.8rem',
+                          fontWeight: 500
+                        }}>
                           {service.baseDuration 
                             ? (service.baseDuration >= 1 
                                 ? Math.floor(service.baseDuration) + ' hour' + (service.baseDuration >= 2 ? 's' : '') 
                                 : (service.baseDuration * 60) + ' min')
-                            : 'Not set'}
+                            : 'Duration TBD'}
                         </span>
-                      </div>
-                      
-                      {/* Pricing Info Row */}
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-light)' }}>
-                        <i className="fas fa-dollar-sign" style={{ marginRight: '0.25rem' }}></i>
-                        <span>{getPricingDisplay()}</span>
+                        {service.category && (
+                          <span style={{ 
+                            background: '#f3f4f6', 
+                            color: '#374151', 
+                            padding: '4px 10px', 
+                            borderRadius: '6px', 
+                            fontSize: '0.8rem',
+                            fontWeight: 500
+                          }}>
+                            {service.category}
+                          </span>
+                        )}
                       </div>
                     </div>
                     
                     {/* Action Buttons */}
-                    <div className="action-btn-group">
+                    <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
                       <button
                         type="button"
-                        className="action-btn action-btn-edit"
                         onClick={() => handleEditService(service)}
-                        title="Edit service"
+                        style={{
+                          padding: '6px 12px',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '6px',
+                          background: '#fff',
+                          cursor: 'pointer',
+                          fontSize: '0.8rem',
+                          color: '#374151'
+                        }}
                       >
-                        <i className="fas fa-pen"></i>
+                        Edit
                       </button>
                       <button
                         type="button"
-                        className="action-btn action-btn-delete"
                         onClick={() => handleRemoveService(service.serviceId)}
-                        title="Remove service"
+                        style={{
+                          padding: '6px 12px',
+                          border: '1px solid #fecaca',
+                          borderRadius: '6px',
+                          background: '#fef2f2',
+                          cursor: 'pointer',
+                          fontSize: '0.8rem',
+                          color: '#dc2626'
+                        }}
                       >
-                        <i className="fas fa-trash-alt"></i>
+                        Delete
                       </button>
                     </div>
                   </div>

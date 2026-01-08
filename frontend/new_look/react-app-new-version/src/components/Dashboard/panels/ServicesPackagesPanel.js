@@ -231,6 +231,20 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
     try {
       setLoading(true);
       
+      // First, fetch vendor's selected categories
+      let vendorCategories = [];
+      try {
+        const categoriesResponse = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/categories`, {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        if (categoriesResponse.ok) {
+          const catData = await categoriesResponse.json();
+          vendorCategories = (catData.categories || []).map(c => c.CategoryName || c.name || c);
+        }
+      } catch (e) {
+        console.error('Error loading vendor categories:', e);
+      }
+      
       // Fetch available predefined services (all categories)
       const servicesResponse = await fetch(`${API_BASE_URL}/vendors/predefined-services`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
@@ -240,12 +254,19 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
         const servicesData = await servicesResponse.json();
         const servicesByCategory = servicesData.servicesByCategory || {};
         
-        // Flatten services from all categories
+        // Flatten services - filter by vendor's categories if they have any selected
         const allServices = [];
         Object.keys(servicesByCategory).forEach(category => {
-          (servicesByCategory[category] || []).forEach(service => {
-            allServices.push({ ...service, category });
-          });
+          // If vendor has categories, only include services from those categories
+          if (vendorCategories.length === 0 || vendorCategories.some(vc => 
+            vc.toLowerCase() === category.toLowerCase() ||
+            category.toLowerCase().includes(vc.toLowerCase()) ||
+            vc.toLowerCase().includes(category.toLowerCase())
+          )) {
+            (servicesByCategory[category] || []).forEach(service => {
+              allServices.push({ ...service, category });
+            });
+          }
         });
         
         setAvailableServices(allServices);
@@ -473,8 +494,8 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
               marginBottom: '-1px'
             }}
           >
-            <i className="fas fa-box" style={{ marginRight: '0.5rem' }}></i>
-            Packages {packages.length > 0 && <span style={{ background: '#222', color: 'white', borderRadius: '10px', padding: '2px 8px', fontSize: '0.75rem', marginLeft: '0.5rem' }}>{packages.length}</span>}
+            <i className="fas fa-box" style={{ marginRight: '0.5rem', color: '#5e72e4' }}></i>
+            Packages {packages.length > 0 && <span style={{ background: '#5e72e4', color: 'white', borderRadius: '50%', width: '20px', height: '20px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', marginLeft: '0.5rem' }}>{packages.length}</span>}
           </button>
           <button
             onClick={() => setActiveTab('services')}
@@ -490,8 +511,8 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
               marginBottom: '-1px'
             }}
           >
-            <i className="fas fa-concierge-bell" style={{ marginRight: '0.5rem' }}></i>
-            Individual Services {selectedCount > 0 && <span style={{ background: '#222', color: 'white', borderRadius: '10px', padding: '2px 8px', fontSize: '0.75rem', marginLeft: '0.5rem' }}>{selectedCount}</span>}
+            <i className="fas fa-concierge-bell" style={{ marginRight: '0.5rem', color: '#5e72e4' }}></i>
+            Individual Services {selectedCount > 0 && <span style={{ background: '#5e72e4', color: 'white', borderRadius: '50%', width: '20px', height: '20px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', marginLeft: '0.5rem' }}>{selectedCount}</span>}
           </button>
         </div>
         
@@ -500,11 +521,11 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
           <SkeletonLoader variant="service-card" count={3} />
         )}
 
-        {/* Packages Tab Content */}
+        {/* Packages Tab Content - Airbnb-style Horizontal Cards */}
         {activeTab === 'packages' && !loading && (
           <div style={{ marginBottom: '2rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-              <h5 style={{ margin: 0, color: '#222', fontWeight: 600 }}>Your Packages</h5>
+              <h5 style={{ margin: 0, color: '#222', fontWeight: 600, fontSize: '1.25rem' }}>Your Packages</h5>
               <button
                 onClick={handleCreatePackage}
                 style={{
@@ -515,228 +536,198 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
                   borderRadius: '8px',
                   cursor: 'pointer',
                   fontSize: '0.9rem',
-                  fontWeight: 600,
+                  fontWeight: 500,
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '0.5rem',
-                  transition: 'all 0.2s'
+                  gap: '0.5rem'
                 }}
-                onMouseOver={(e) => { e.currentTarget.style.background = '#000'; e.currentTarget.style.transform = 'scale(1.02)'; }}
-                onMouseOut={(e) => { e.currentTarget.style.background = '#222'; e.currentTarget.style.transform = 'scale(1)'; }}
               >
                 <i className="fas fa-plus"></i> Create Package
               </button>
             </div>
 
-            {/* Package List - Professional Card Design */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
+            {/* Package List - Clean Horizontal Card Design (matches VendorProfilePage) */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               {packages.map((pkg, index) => (
                 <div 
                   key={pkg.PackageID || index} 
                   style={{ 
+                    padding: '1rem',
                     background: '#fff', 
                     border: '1px solid #e5e7eb', 
-                    borderRadius: '16px',
-                    overflow: 'hidden',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
+                    borderRadius: '12px'
                   }}
                 >
-                  {/* Package Image */}
-                  <div style={{
-                    width: '100%',
-                    height: '160px',
-                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    position: 'relative'
-                  }}>
-                    {pkg.ImageURL ? (
-                      <img src={pkg.ImageURL} alt={pkg.PackageName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    ) : (
-                      <i className="fas fa-box-open" style={{ color: 'rgba(255,255,255,0.8)', fontSize: '3rem' }}></i>
-                    )}
-                    {/* Sale Badge */}
-                    {pkg.SalePrice && parseFloat(pkg.SalePrice) < parseFloat(pkg.Price) && (
-                      <div style={{
-                        position: 'absolute',
-                        top: '12px',
-                        right: '12px',
-                        background: '#dc2626',
-                        color: 'white',
-                        padding: '4px 12px',
-                        borderRadius: '20px',
-                        fontSize: '0.75rem',
-                        fontWeight: 700
-                      }}>
-                        SALE!
-                      </div>
-                    )}
-                  </div>
-                  
-                  {/* Package Content */}
-                  <div style={{ padding: '1.25rem' }}>
-                    {/* Header with title and actions */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
-                      <h3 style={{ fontSize: '1.15rem', fontWeight: 600, color: '#222', margin: 0, lineHeight: 1.3 }}>
-                        {pkg.PackageName}
-                      </h3>
-                      <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <button
-                          type="button"
-                          onClick={() => handleEditPackage(pkg)}
-                          title="Edit package"
-                          style={{
-                            width: '32px',
-                            height: '32px',
-                            borderRadius: '8px',
-                            border: '1px solid #e5e7eb',
-                            background: '#fff',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: '#6b7280',
-                            transition: 'all 0.2s'
-                          }}
-                          onMouseOver={(e) => { e.currentTarget.style.background = '#f3f4f6'; e.currentTarget.style.color = '#222'; }}
-                          onMouseOut={(e) => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#6b7280'; }}
-                        >
-                          <i className="fas fa-pen" style={{ fontSize: '0.8rem' }}></i>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDeletePackage(pkg.PackageID)}
-                          title="Remove package"
-                          style={{
-                            width: '32px',
-                            height: '32px',
-                            borderRadius: '8px',
-                            border: '1px solid #e5e7eb',
-                            background: '#fff',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: '#6b7280',
-                            transition: 'all 0.2s'
-                          }}
-                          onMouseOver={(e) => { e.currentTarget.style.background = '#fef2f2'; e.currentTarget.style.color = '#dc2626'; }}
-                          onMouseOut={(e) => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#6b7280'; }}
-                        >
-                          <i className="fas fa-trash-alt" style={{ fontSize: '0.8rem' }}></i>
-                        </button>
-                      </div>
-                    </div>
-                    
-                    {/* Pricing */}
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', marginBottom: '1rem' }}>
-                      {pkg.SalePrice && parseFloat(pkg.SalePrice) < parseFloat(pkg.Price) ? (
-                        <>
-                          <span style={{ fontSize: '1.5rem', fontWeight: 700, color: '#222' }}>
-                            ${parseFloat(pkg.SalePrice).toFixed(0)}
-                          </span>
-                          <span style={{ fontSize: '1rem', color: '#9ca3af', textDecoration: 'line-through' }}>
-                            ${parseFloat(pkg.Price).toFixed(0)}
-                          </span>
-                        </>
+                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+                    {/* Package Image - Small Square */}
+                    <div style={{
+                      flexShrink: 0,
+                      width: '80px',
+                      height: '80px',
+                      borderRadius: '12px',
+                      overflow: 'hidden',
+                      background: '#f3f4f6',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      {pkg.ImageURL ? (
+                        <img src={pkg.ImageURL} alt={pkg.PackageName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       ) : (
-                        <span style={{ fontSize: '1.5rem', fontWeight: 700, color: '#222' }}>
-                          ${parseFloat(pkg.Price).toFixed(0)}
-                        </span>
+                        <i className="fas fa-box" style={{ color: '#9ca3af', fontSize: '2rem' }}></i>
                       )}
-                      <span style={{ fontSize: '0.9rem', color: '#6b7280' }}>
-                        / {pkg.PriceType === 'per_person' ? 'person' : 'package'}
-                      </span>
                     </div>
                     
-                    {/* Included Services */}
-                    {pkg.IncludedServices && pkg.IncludedServices.length > 0 && (
-                      <div style={{ 
-                        padding: '0.75rem', 
-                        background: '#f9fafb', 
-                        borderRadius: '8px',
-                        marginBottom: '0.5rem'
-                      }}>
-                        <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.5rem', textTransform: 'uppercase' }}>
-                          Includes {pkg.IncludedServices.length} service{pkg.IncludedServices.length > 1 ? 's' : ''}
-                        </div>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
-                          {pkg.IncludedServices.map((svc, idx) => (
-                            <span key={idx} style={{ 
-                              background: '#fff', 
-                              color: '#374151', 
-                              padding: '4px 10px', 
-                              borderRadius: '6px', 
-                              fontSize: '0.8rem',
-                              border: '1px solid #e5e7eb'
-                            }}>
-                              {svc.name || svc.ServiceName}
+                    {/* Package Details */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <h3 style={{ fontSize: '1.1rem', fontWeight: 600, color: '#222', margin: '0 0 0.35rem 0' }}>
+                            {pkg.PackageName}
+                            {pkg.SalePrice && parseFloat(pkg.SalePrice) < parseFloat(pkg.Price) && (
+                              <span style={{ color: '#dc2626', fontSize: '0.8rem', fontWeight: 700, marginLeft: '0.5rem' }}>SALE!</span>
+                            )}
+                          </h3>
+                          
+                          {/* Pricing */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                            {pkg.SalePrice && parseFloat(pkg.SalePrice) < parseFloat(pkg.Price) ? (
+                              <>
+                                <span style={{ fontSize: '1.15rem', fontWeight: 700, color: '#222' }}>
+                                  ${parseFloat(pkg.SalePrice).toFixed(0)}
+                                </span>
+                                <span style={{ fontSize: '0.9rem', color: '#9ca3af', textDecoration: 'line-through' }}>
+                                  ${parseFloat(pkg.Price).toFixed(0)}
+                                </span>
+                              </>
+                            ) : (
+                              <span style={{ fontSize: '1.15rem', fontWeight: 700, color: '#222' }}>
+                                ${parseFloat(pkg.Price).toFixed(0)}
+                              </span>
+                            )}
+                            <span style={{ fontSize: '0.85rem', color: '#6b7280' }}>
+                              / {pkg.PriceType === 'per_person' ? 'person' : 'package'}
                             </span>
-                          ))}
+                          </div>
+                          
+                          {/* Description */}
+                          {pkg.Description && (
+                            <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem', color: '#6b7280', lineHeight: 1.5 }}>
+                              {pkg.Description.length > 80 ? pkg.Description.substring(0, 80) + '...' : pkg.Description}
+                            </p>
+                          )}
+                          
+                          {/* Included Services */}
+                          {pkg.IncludedServices && pkg.IncludedServices.length > 0 && (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                              {pkg.IncludedServices.slice(0, 4).map((svc, idx) => (
+                                <span key={idx} style={{ 
+                                  background: '#f3f4f6', 
+                                  color: '#374151', 
+                                  padding: '4px 10px', 
+                                  borderRadius: '6px', 
+                                  fontSize: '0.8rem',
+                                  fontWeight: 500
+                                }}>
+                                  {svc.name || svc.ServiceName}
+                                </span>
+                              ))}
+                              {pkg.IncludedServices.length > 4 && (
+                                <span style={{ color: '#6b7280', fontSize: '0.8rem', fontWeight: 500, padding: '4px 0' }}>
+                                  +{pkg.IncludedServices.length - 4} more
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Action Buttons */}
+                        <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+                          <button
+                            type="button"
+                            onClick={() => handleEditPackage(pkg)}
+                            style={{
+                              padding: '6px 12px',
+                              border: '1px solid #e5e7eb',
+                              borderRadius: '6px',
+                              background: '#fff',
+                              cursor: 'pointer',
+                              fontSize: '0.8rem',
+                              color: '#374151'
+                            }}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeletePackage(pkg.PackageID)}
+                            style={{
+                              padding: '6px 12px',
+                              border: '1px solid #fecaca',
+                              borderRadius: '6px',
+                              background: '#fef2f2',
+                              cursor: 'pointer',
+                              fontSize: '0.8rem',
+                              color: '#dc2626'
+                            }}
+                          >
+                            Delete
+                          </button>
                         </div>
                       </div>
-                    )}
+                    </div>
                   </div>
                 </div>
               ))}
               
-              {/* Add Package Card */}
+              {/* Add Package Card - Horizontal */}
               <div 
                 onClick={services.length > 0 ? handleCreatePackage : () => { showBanner('Please create individual services first', 'warning'); setActiveTab('services'); }}
                 style={{
-                  minHeight: '280px',
-                  border: '2px dashed #d1d5db',
-                  borderRadius: '16px',
+                  height: '80px',
+                  border: '1px dashed #d1d5db',
+                  borderRadius: '12px',
                   background: '#fafafa',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   cursor: 'pointer',
+                  gap: '12px',
                   transition: 'all 0.2s'
                 }}
                 onMouseOver={(e) => {
-                  e.currentTarget.style.borderColor = '#3b82f6';
-                  e.currentTarget.style.background = '#eff6ff';
+                  e.currentTarget.style.borderColor = '#222';
+                  e.currentTarget.style.background = '#f9fafb';
                 }}
                 onMouseOut={(e) => {
                   e.currentTarget.style.borderColor = '#d1d5db';
                   e.currentTarget.style.background = '#fafafa';
                 }}
               >
-                <div style={{ textAlign: 'center', color: '#6b7280' }}>
-                  <div style={{ 
-                    width: '56px', 
-                    height: '56px', 
-                    borderRadius: '50%', 
-                    background: '#e5e7eb', 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center',
-                    margin: '0 auto 1rem'
-                  }}>
-                    <i className="fas fa-plus" style={{ fontSize: '1.25rem', color: '#6b7280' }}></i>
-                  </div>
-                  <div style={{ fontWeight: 600, fontSize: '1rem', marginBottom: '0.25rem' }}>Add a package</div>
-                  <div style={{ fontSize: '0.85rem', color: '#9ca3af' }}>
-                    {services.length > 0 ? 'Click to bundle your services' : 'Create services first'}
-                  </div>
-                </div>
+                <i className="fas fa-plus" style={{ fontSize: '1rem', color: '#6b7280' }}></i>
+                <span style={{ fontWeight: 500, color: '#6b7280' }}>Add a package</span>
               </div>
+            </div>
+
+            {/* Save Button for Packages */}
+            <div style={{ marginTop: '2rem' }}>
+              <button className="btn btn-primary" onClick={() => showBanner('Packages saved!', 'success')}>
+                Save
+              </button>
             </div>
           </div>
         )}
 
-        {/* Services Container */}
+        {/* Services Container - Airbnb-style Horizontal Cards */}
         <div id="vendor-settings-services-container" style={{ display: !loading && activeTab === 'services' ? 'block' : 'none' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-            <h5 style={{ margin: 0, color: 'var(--primary)' }}>Available Services</h5>
-            <span id="vendor-settings-selected-count" style={{ color: 'var(--text-light)', fontSize: '0.9rem' }}>
+            <h5 style={{ margin: 0, color: '#222', fontWeight: 600, fontSize: '1.25rem' }}>Your Services</h5>
+            <span id="vendor-settings-selected-count" style={{ color: '#6b7280', fontSize: '0.9rem' }}>
               {selectedCount} added
             </span>
           </div>
 
-          <div id="vendor-settings-services-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+          <div id="vendor-settings-services-grid" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
             {services.map((service, index) => {
               const getCategoryIcon = () => {
                 const catLower = (service.category || '').toLowerCase();
@@ -756,11 +747,11 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
               
               const getPricingDisplay = () => {
                 if (service.pricingModel === 'time_based' && service.baseRate) {
-                  return { price: `$${parseFloat(service.baseRate).toFixed(0)}`, suffix: 'base rate' };
+                  return { price: `$${parseFloat(service.baseRate).toLocaleString()}`, suffix: 'base rate' };
                 } else if (service.pricingModel === 'fixed_price' && service.fixedPrice) {
-                  return { price: `$${parseFloat(service.fixedPrice).toFixed(0)}`, suffix: 'fixed' };
+                  return { price: `$${parseFloat(service.fixedPrice).toLocaleString()}`, suffix: 'fixed' };
                 } else if (service.pricingModel === 'per_attendee' && service.pricePerPerson) {
-                  return { price: `$${parseFloat(service.pricePerPerson).toFixed(0)}`, suffix: '/ person' };
+                  return { price: `$${parseFloat(service.pricePerPerson).toLocaleString()}`, suffix: '/ person' };
                 }
                 return { price: 'Price', suffix: 'not set' };
               };
@@ -771,170 +762,142 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
                 <div 
                   key={`service-${service.id}-${index}`} 
                   style={{ 
+                    padding: '1rem',
                     background: '#fff', 
                     border: '1px solid #e5e7eb', 
-                    borderRadius: '16px',
-                    overflow: 'hidden',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
+                    borderRadius: '12px'
                   }}
                 >
-                  {/* Service Header with Icon */}
-                  <div style={{
-                    width: '100%',
-                    height: '120px',
-                    background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    position: 'relative'
-                  }}>
-                    <i className={`fas ${getCategoryIcon()}`} style={{ color: 'rgba(255,255,255,0.85)', fontSize: '2.5rem' }}></i>
-                    {/* Category Badge */}
-                    {service.category && (
-                      <div style={{
-                        position: 'absolute',
-                        top: '12px',
-                        left: '12px',
-                        background: 'rgba(255,255,255,0.2)',
-                        color: 'white',
-                        padding: '4px 12px',
-                        borderRadius: '20px',
-                        fontSize: '0.75rem',
-                        fontWeight: 500,
-                        backdropFilter: 'blur(4px)'
-                      }}>
-                        {service.category}
-                      </div>
-                    )}
-                  </div>
-                  
-                  {/* Service Content */}
-                  <div style={{ padding: '1.25rem' }}>
-                    {/* Header with title and actions */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
-                      <h3 style={{ fontSize: '1.15rem', fontWeight: 600, color: '#222', margin: 0, lineHeight: 1.3 }}>
-                        {service.name}
-                      </h3>
-                      <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <button
-                          type="button"
-                          onClick={() => handleEditService(service)}
-                          title="Edit service"
-                          style={{
-                            width: '32px',
-                            height: '32px',
-                            borderRadius: '8px',
-                            border: '1px solid #e5e7eb',
-                            background: '#fff',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: '#6b7280',
-                            transition: 'all 0.2s'
-                          }}
-                          onMouseOver={(e) => { e.currentTarget.style.background = '#f3f4f6'; e.currentTarget.style.color = '#222'; }}
-                          onMouseOut={(e) => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#6b7280'; }}
-                        >
-                          <i className="fas fa-pen" style={{ fontSize: '0.8rem' }}></i>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveService(service.id)}
-                          title="Remove service"
-                          style={{
-                            width: '32px',
-                            height: '32px',
-                            borderRadius: '8px',
-                            border: '1px solid #e5e7eb',
-                            background: '#fff',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: '#6b7280',
-                            transition: 'all 0.2s'
-                          }}
-                          onMouseOver={(e) => { e.currentTarget.style.background = '#fef2f2'; e.currentTarget.style.color = '#dc2626'; }}
-                          onMouseOut={(e) => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#6b7280'; }}
-                        >
-                          <i className="fas fa-trash-alt" style={{ fontSize: '0.8rem' }}></i>
-                        </button>
-                      </div>
-                    </div>
-                    
-                    {/* Pricing */}
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', marginBottom: '1rem' }}>
-                      <span style={{ fontSize: '1.5rem', fontWeight: 700, color: '#222' }}>
-                        {pricing.price}
-                      </span>
-                      <span style={{ fontSize: '0.9rem', color: '#6b7280' }}>
-                        {pricing.suffix}
-                      </span>
-                    </div>
-                    
-                    {/* Duration Info */}
-                    <div style={{ 
-                      padding: '0.75rem', 
-                      background: '#f9fafb', 
-                      borderRadius: '8px',
+                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+                    {/* Service Icon - Small Square */}
+                    <div style={{
+                      flexShrink: 0,
+                      width: '80px',
+                      height: '80px',
+                      borderRadius: '12px',
+                      background: '#f3f4f6',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '0.5rem'
+                      justifyContent: 'center'
                     }}>
-                      <i className="fas fa-clock" style={{ color: '#6b7280', fontSize: '0.9rem' }}></i>
-                      <span style={{ fontSize: '0.85rem', color: '#374151' }}>
-                        {service.vendorDuration 
-                          ? (service.vendorDuration >= 60 
-                              ? Math.floor(service.vendorDuration/60) + ' hour' + (service.vendorDuration >= 120 ? 's' : '') 
-                              : service.vendorDuration + ' minutes')
-                          : 'Duration not set'}
-                      </span>
+                      <i className={`fas ${getCategoryIcon()}`} style={{ color: '#6b7280', fontSize: '1.75rem' }}></i>
+                    </div>
+                    
+                    {/* Service Details */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <h3 style={{ fontSize: '1.1rem', fontWeight: 600, color: '#222', margin: '0 0 0.35rem 0' }}>
+                            {service.name}
+                          </h3>
+                          
+                          {/* Pricing */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                            <span style={{ fontSize: '1.15rem', fontWeight: 700, color: '#222' }}>
+                              {pricing.price}
+                            </span>
+                            <span style={{ fontSize: '0.85rem', color: '#6b7280' }}>
+                              {pricing.suffix}
+                            </span>
+                          </div>
+                          
+                          {/* Duration & Category */}
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                            <span style={{ 
+                              background: '#f3f4f6', 
+                              color: '#374151', 
+                              padding: '4px 10px', 
+                              borderRadius: '6px', 
+                              fontSize: '0.8rem',
+                              fontWeight: 500
+                            }}>
+                              {service.vendorDuration 
+                                ? (service.vendorDuration >= 60 
+                                    ? Math.floor(service.vendorDuration/60) + ' hour' + (service.vendorDuration >= 120 ? 's' : '') 
+                                    : service.vendorDuration + ' min')
+                                : 'Duration TBD'}
+                            </span>
+                            {service.category && (
+                              <span style={{ 
+                                background: '#f3f4f6', 
+                                color: '#374151', 
+                                padding: '4px 10px', 
+                                borderRadius: '6px', 
+                                fontSize: '0.8rem',
+                                fontWeight: 500
+                              }}>
+                                {service.category}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        
+                        {/* Action Buttons */}
+                        <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+                          <button
+                            type="button"
+                            onClick={() => handleEditService(service)}
+                            style={{
+                              padding: '6px 12px',
+                              border: '1px solid #e5e7eb',
+                              borderRadius: '6px',
+                              background: '#fff',
+                              cursor: 'pointer',
+                              fontSize: '0.8rem',
+                              color: '#374151'
+                            }}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveService(service.id)}
+                            style={{
+                              padding: '6px 12px',
+                              border: '1px solid #fecaca',
+                              borderRadius: '6px',
+                              background: '#fef2f2',
+                              cursor: 'pointer',
+                              fontSize: '0.8rem',
+                              color: '#dc2626'
+                            }}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
               );
             })}
             
-            {/* Add Service Card */}
+            {/* Add Service Card - Horizontal */}
             <div 
               onClick={() => setShowServicePicker(true)}
               style={{
-                minHeight: '240px',
-                border: '2px dashed #d1d5db',
-                borderRadius: '16px',
+                height: '80px',
+                border: '1px dashed #d1d5db',
+                borderRadius: '12px',
                 background: '#fafafa',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 cursor: 'pointer',
+                gap: '12px',
                 transition: 'all 0.2s'
               }}
               onMouseOver={(e) => {
-                e.currentTarget.style.borderColor = '#3b82f6';
-                e.currentTarget.style.background = '#eff6ff';
+                e.currentTarget.style.borderColor = '#222';
+                e.currentTarget.style.background = '#f9fafb';
               }}
               onMouseOut={(e) => {
                 e.currentTarget.style.borderColor = '#d1d5db';
                 e.currentTarget.style.background = '#fafafa';
               }}
             >
-              <div style={{ textAlign: 'center', color: '#6b7280' }}>
-                <div style={{ 
-                  width: '56px', 
-                  height: '56px', 
-                  borderRadius: '50%', 
-                  background: '#e5e7eb', 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center',
-                  margin: '0 auto 1rem'
-                }}>
-                  <i className="fas fa-plus" style={{ fontSize: '1.25rem', color: '#6b7280' }}></i>
-                </div>
-                <div style={{ fontWeight: 600, fontSize: '1rem', marginBottom: '0.25rem' }}>Add a service</div>
-                <div style={{ fontSize: '0.85rem', color: '#9ca3af' }}>Click to choose from the list</div>
-              </div>
+              <i className="fas fa-plus" style={{ fontSize: '1rem', color: '#6b7280' }}></i>
+              <span style={{ fontWeight: 500, color: '#6b7280' }}>Add a service</span>
             </div>
           </div>
 

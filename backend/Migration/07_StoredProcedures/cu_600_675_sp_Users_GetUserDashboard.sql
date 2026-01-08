@@ -52,6 +52,8 @@ BEGIN
         b.Status,
         b.TotalAmount,
         b.AttendeeCount,
+        b.DepositPaid,
+        b.FullAmountPaid,
         b.CreatedAt,
         b.UpdatedAt
     FROM bookings.Bookings b
