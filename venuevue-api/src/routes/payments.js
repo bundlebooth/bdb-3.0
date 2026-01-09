@@ -2214,12 +2214,7 @@ router.get('/vendor/:vendorProfileId/cancellation-policy', async (req, res) => {
     const pool = await poolPromise;
     const result = await pool.request()
       .input('VendorProfileID', sql.Int, vendorProfileId)
-      .query(`
-        SELECT PolicyID, VendorProfileID, PolicyType, FullRefundDays, PartialRefundDays, 
-               PartialRefundPercent, NoRefundDays, CustomTerms, IsActive, CreatedAt, UpdatedAt
-        FROM vendors.CancellationPolicies 
-        WHERE VendorProfileID = @VendorProfileID AND IsActive = 1
-      `);
+      .execute('vendors.sp_GetCancellationPolicy');
 
     if (result.recordset.length === 0) {
       return res.json({ 
@@ -2229,9 +2224,38 @@ router.get('/vendor/:vendorProfileId/cancellation-policy', async (req, res) => {
       });
     }
 
+    // Convert database format to frontend format
+    const dbPolicy = result.recordset[0];
+    
+    // Determine policy type based on hours
+    let policyType = 'custom';
+    if (dbPolicy.FullRefundHours === 24 && dbPolicy.PartialRefundHours === 12) {
+      policyType = 'flexible';
+    } else if (dbPolicy.FullRefundHours === 168 && dbPolicy.PartialRefundHours === 72) {
+      policyType = 'moderate';
+    } else if (dbPolicy.FullRefundHours === 336 && dbPolicy.PartialRefundHours === 168) {
+      policyType = 'strict';
+    }
+
+    const policy = {
+      PolicyID: dbPolicy.PolicyID,
+      VendorProfileID: dbPolicy.VendorProfileID,
+      PolicyType: policyType,
+      PolicyName: dbPolicy.PolicyName,
+      FullRefundDays: Math.round(dbPolicy.FullRefundHours / 24),
+      PartialRefundDays: Math.round(dbPolicy.PartialRefundHours / 24),
+      NoRefundDays: Math.round(dbPolicy.NoRefundHours / 24),
+      FullRefundPercent: dbPolicy.FullRefundPercent || 100,
+      PartialRefundPercent: dbPolicy.PartialRefundPercent,
+      PolicyDescription: dbPolicy.PolicyDescription,
+      IsActive: dbPolicy.IsActive,
+      CreatedAt: dbPolicy.CreatedAt,
+      UpdatedAt: dbPolicy.UpdatedAt
+    };
+
     res.json({
       success: true,
-      policy: result.recordset[0]
+      policy: policy
     });
 
   } catch (err) {
@@ -2244,58 +2268,65 @@ router.get('/vendor/:vendorProfileId/cancellation-policy', async (req, res) => {
 router.post('/vendor/:vendorProfileId/cancellation-policy', async (req, res) => {
   try {
     const { vendorProfileId } = req.params;
-    const { policyType, fullRefundDays, partialRefundDays, partialRefundPercent, noRefundDays, customTerms } = req.body;
+    const { policyType, fullRefundDays, partialRefundDays, partialRefundPercent, noRefundDays } = req.body;
     
     if (!vendorProfileId) {
       return res.status(400).json({ success: false, message: 'Vendor Profile ID is required' });
     }
 
-    const pool = await poolPromise;
-
-    // Check if policy exists
-    const existingResult = await pool.request()
-      .input('VendorProfileID', sql.Int, vendorProfileId)
-      .query(`SELECT PolicyID FROM vendors.CancellationPolicies WHERE VendorProfileID = @VendorProfileID`);
-
-    if (existingResult.recordset.length > 0) {
-      // Update existing policy
-      await pool.request()
-        .input('VendorProfileID', sql.Int, vendorProfileId)
-        .input('PolicyType', sql.NVarChar(50), policyType || 'flexible')
-        .input('FullRefundDays', sql.Int, fullRefundDays || 7)
-        .input('PartialRefundDays', sql.Int, partialRefundDays || 3)
-        .input('PartialRefundPercent', sql.Int, partialRefundPercent || 50)
-        .input('NoRefundDays', sql.Int, noRefundDays || 1)
-        .query(`
-          UPDATE vendors.CancellationPolicies 
-          SET PolicyType = @PolicyType, 
-              FullRefundDays = @FullRefundDays, 
-              PartialRefundDays = @PartialRefundDays,
-              PartialRefundPercent = @PartialRefundPercent, 
-              NoRefundDays = @NoRefundDays, 
-              UpdatedAt = GETUTCDATE()
-          WHERE VendorProfileID = @VendorProfileID
-        `);
-
-      res.json({ success: true, message: 'Cancellation policy updated' });
+    // Convert days to hours for database storage
+    // Map policy types to hour values
+    let fullRefundHours, partialRefundHours, noRefundHours;
+    
+    if (policyType === 'flexible') {
+      fullRefundHours = 24; // 1 day
+      partialRefundHours = 12;
+      noRefundHours = 0;
+    } else if (policyType === 'moderate') {
+      fullRefundHours = 168; // 7 days
+      partialRefundHours = 72; // 3 days
+      noRefundHours = 24; // 1 day
+    } else if (policyType === 'strict') {
+      fullRefundHours = 336; // 14 days
+      partialRefundHours = 168; // 7 days
+      noRefundHours = 72; // 3 days
     } else {
-      // Insert new policy
-      await pool.request()
-        .input('VendorProfileID', sql.Int, vendorProfileId)
-        .input('PolicyType', sql.NVarChar(50), policyType || 'flexible')
-        .input('FullRefundDays', sql.Int, fullRefundDays || 7)
-        .input('PartialRefundDays', sql.Int, partialRefundDays || 3)
-        .input('PartialRefundPercent', sql.Int, partialRefundPercent || 50)
-        .input('NoRefundDays', sql.Int, noRefundDays || 1)
-        .query(`
-          INSERT INTO vendors.CancellationPolicies 
-            (VendorProfileID, PolicyType, FullRefundDays, PartialRefundDays, PartialRefundPercent, NoRefundDays, IsActive, CreatedAt, UpdatedAt)
-          VALUES 
-            (@VendorProfileID, @PolicyType, @FullRefundDays, @PartialRefundDays, @PartialRefundPercent, @NoRefundDays, 1, GETUTCDATE(), GETUTCDATE())
-        `);
-
-      res.json({ success: true, message: 'Cancellation policy created' });
+      // Custom - convert days to hours
+      fullRefundHours = (fullRefundDays || 7) * 24;
+      partialRefundHours = (partialRefundDays || 3) * 24;
+      noRefundHours = (noRefundDays || 1) * 24;
     }
+
+    // Build policy description based on type
+    const policyDescription = policyType === 'flexible' 
+      ? 'Full refund if cancelled up to 24 hours before the event.'
+      : policyType === 'moderate'
+      ? 'Full refund if cancelled 7+ days before. 50% refund if cancelled 3-7 days before. No refund within 3 days.'
+      : policyType === 'strict'
+      ? '50% refund if cancelled 14+ days before. No refund within 14 days of the event.'
+      : `Full refund if cancelled ${fullRefundDays}+ days before. ${partialRefundPercent}% refund ${partialRefundDays}-${fullRefundDays} days before.`;
+
+    const policyName = policyType ? policyType.charAt(0).toUpperCase() + policyType.slice(1) + ' Policy' : 'Standard Policy';
+
+    const pool = await poolPromise;
+    const result = await pool.request()
+      .input('VendorProfileID', sql.Int, vendorProfileId)
+      .input('PolicyName', sql.NVarChar(100), policyName)
+      .input('FullRefundHours', sql.Int, fullRefundHours)
+      .input('PartialRefundHours', sql.Int, partialRefundHours)
+      .input('PartialRefundPercent', sql.Decimal(5,2), partialRefundPercent || 50)
+      .input('NoRefundHours', sql.Int, noRefundHours)
+      .input('AllowClientCancellation', sql.Bit, 1)
+      .input('AllowVendorCancellation', sql.Bit, 1)
+      .input('CancellationFee', sql.Decimal(10,2), 0)
+      .input('PolicyDescription', sql.NVarChar(sql.MAX), policyDescription)
+      .execute('vendors.sp_SaveCancellationPolicy');
+
+    res.json({ 
+      success: true, 
+      message: 'Cancellation policy saved',
+      policyId: result.recordset[0]?.PolicyID
+    });
 
   } catch (err) {
     console.error('Save cancellation policy error:', err);
