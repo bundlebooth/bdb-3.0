@@ -12,17 +12,16 @@ BEGIN
         FullRefundHours,
         PartialRefundHours,
         NoRefundHours,
-        FullRefundPercent,
+        100 AS FullRefundPercent,
         PartialRefundPercent,
         PolicyDescription,
         AllowClientCancellation,
         AllowVendorCancellation,
-        VendorCancellationPenalty,
-        IsActive,
+        CancellationFee AS VendorCancellationPenalty,
+        1 AS IsActive,
         CreatedAt,
         UpdatedAt
-    FROM vendors.CancellationPolicies
-    WHERE VendorProfileID = @VendorProfileID
-      AND IsActive = 1;
+    FROM vendors.VendorCancellationPolicies
+    WHERE VendorProfileID = @VendorProfileID;
 END
 GO

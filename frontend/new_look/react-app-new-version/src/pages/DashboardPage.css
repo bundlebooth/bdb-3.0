@@ -140,10 +140,12 @@
 .dashboard-nav-tab.active::after {
   content: '';
   position: absolute;
-  bottom: -1px;
-  left: 0;
-  right: 0;
-  height: 2px;
+  bottom: 0px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
   background: var(--primary, #5e72e4);
 }
 

@@ -275,6 +275,7 @@ router.get('/vendor/:vendorId/dashboard', authenticate, async (req, res) => {
     try {
         const { vendorId } = req.params;
         const { daysBack = 180 } = req.query;
+        console.log(`[Analytics Dashboard] vendorId=${vendorId}, daysBack=${daysBack}`);
 
         const pool = await poolPromise;
 
@@ -305,8 +306,82 @@ router.get('/vendor/:vendorId/dashboard', authenticate, async (req, res) => {
         const statusBreakdown = result.recordsets[2]?.[0] || { PendingCount: 0, ConfirmedCount: 0, CompletedCount: 0, CancelledCount: 0 };
         const additionalMetrics = result.recordsets[3]?.[0] || { FavoriteCount: 0, ReviewCount: 0, AvgRating: 5.0, AvgResponseTime: 0 };
 
+        // For 7d/30d views, generate daily data points in JavaScript
+        let dailyData = [];
+        const days = parseInt(daysBack);
+        if (days <= 30) {
+            try {
+                // Query actual views and bookings per day
+                const dailyResult = await pool.request()
+                    .input('VendorProfileID', sql.Int, vendorId)
+                    .input('DaysBack', sql.Int, days)
+                    .query(`
+                        SELECT 
+                            CAST(ViewedAt AS DATE) AS ViewDate, 
+                            COUNT(*) AS ViewCount
+                        FROM vendors.VendorProfileViews
+                        WHERE VendorProfileID = @VendorProfileID
+                        AND ViewedAt >= DATEADD(DAY, -@DaysBack, GETDATE())
+                        GROUP BY CAST(ViewedAt AS DATE)
+                    `);
+                
+                const bookingsResult = await pool.request()
+                    .input('VendorProfileID', sql.Int, vendorId)
+                    .input('DaysBack', sql.Int, days)
+                    .query(`
+                        SELECT 
+                            CAST(CreatedAt AS DATE) AS BookingDate, 
+                            COUNT(*) AS BookingCount, 
+                            SUM(ISNULL(TotalAmount, 0)) AS Revenue
+                        FROM bookings.Bookings
+                        WHERE VendorProfileID = @VendorProfileID
+                        AND CreatedAt >= DATEADD(DAY, -@DaysBack, GETDATE())
+                        GROUP BY CAST(CreatedAt AS DATE)
+                    `);
+                
+                // Create a map of views and bookings by date
+                const viewsMap = {};
+                const bookingsMap = {};
+                
+                dailyResult.recordset.forEach(r => {
+                    const dateStr = new Date(r.ViewDate).toISOString().split('T')[0];
+                    viewsMap[dateStr] = r.ViewCount;
+                });
+                
+                bookingsResult.recordset.forEach(r => {
+                    const dateStr = new Date(r.BookingDate).toISOString().split('T')[0];
+                    bookingsMap[dateStr] = { count: r.BookingCount, revenue: r.Revenue };
+                });
+                
+                // Generate array of dates for the period
+                const today = new Date();
+                for (let i = days - 1; i >= 0; i--) {
+                    const date = new Date(today);
+                    date.setDate(date.getDate() - i);
+                    const dateStr = date.toISOString().split('T')[0];
+                    const dayLabel = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                    
+                    dailyData.push({
+                        dateValue: date,
+                        dayLabel: dayLabel,
+                        dateKey: dateStr,
+                        views: viewsMap[dateStr] || 0,
+                        bookings: bookingsMap[dateStr]?.count || 0,
+                        revenue: bookingsMap[dateStr]?.revenue || 0
+                    });
+                }
+                
+                console.log(`Daily data generated for ${days} days:`, dailyData.length, 'records');
+            } catch (dailyErr) {
+                console.error('Error fetching daily data:', dailyErr.message);
+                // Continue without daily data - will fall back to monthly
+            }
+        }
+
+        console.log(`[Analytics Dashboard] Returning response: dailyData.length=${dailyData.length}, monthlyData.length=${monthlyData.length}`);
         res.json({
             success: true,
+            dailyData: dailyData,
             monthlyData: monthlyData.map(m => ({
                 monthLabel: m.MonthLabel,
                 monthKey: m.MonthKey,

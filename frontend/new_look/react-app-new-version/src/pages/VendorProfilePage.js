@@ -1400,7 +1400,7 @@ function VendorProfilePage() {
 
     return (
       <div className="content-section">
-        <h2>Things to know</h2>
+        <h2>Frequently asked questions</h2>
         <div style={{ marginTop: '1.5rem' }}>
           {faqs.map((faq, index) => {
             const answerType = (faq.AnswerType || '').trim().toLowerCase();
@@ -1435,9 +1435,9 @@ function VendorProfilePage() {
                 }}
               >
                 <div style={{ 
-                  fontWeight: 600, 
+                  fontWeight: 500, 
                   color: '#111827', 
-                  fontSize: '1rem', 
+                  fontSize: '0.95rem', 
                   marginBottom: '0.75rem'
                 }}>
                   {faq.Question}
@@ -1448,9 +1448,17 @@ function VendorProfilePage() {
                   ) : answerItems.length === 1 ? (
                     <span>{answerItems[0]}</span>
                   ) : (
-                    <div style={{ display: 'grid', gap: '0.25rem' }}>
+                    <div style={{ 
+                      display: 'grid', 
+                      gridTemplateColumns: 'repeat(3, 1fr)', 
+                      gap: '0.5rem 2rem',
+                      marginTop: '0.5rem'
+                    }}>
                       {answerItems.map((item, idx) => (
-                        <div key={idx}>{item}</div>
+                        <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <i className="fas fa-check" style={{ color: '#5e72e4', fontSize: '0.85rem', flexShrink: 0 }}></i>
+                          <span>{item}</span>
+                        </div>
                       ))}
                     </div>
                   )}

@@ -780,7 +780,7 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
                       alignItems: 'center',
                       justifyContent: 'center'
                     }}>
-                      <i className={`fas ${getCategoryIcon()}`} style={{ color: '#6b7280', fontSize: '1.75rem' }}></i>
+                      <i className={`fas ${getCategoryIcon()}`} style={{ color: '#5e72e4', fontSize: '1.75rem' }}></i>
                     </div>
                     
                     {/* Service Details */}
