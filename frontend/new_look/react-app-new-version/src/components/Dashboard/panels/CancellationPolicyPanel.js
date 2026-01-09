@@ -121,30 +121,37 @@ const CancellationPolicyPanel = ({ onBack, vendorProfileId }) => {
 
   if (loading) {
     return (
-      <div className="panel-container">
-        <div className="panel-header">
-          <button className="back-button" onClick={onBack}>
-            <i className="fas fa-arrow-left"></i> Back
-          </button>
-          <h2>Cancellation Policy</h2>
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem' }}>
-          <div className="spinner"></div>
+      <div>
+        <button className="btn btn-outline back-to-menu-btn" style={{ marginBottom: '1rem' }} onClick={onBack}>
+          <i className="fas fa-arrow-left"></i> Back to Business Profile Menu
+        </button>
+        <div className="dashboard-card">
+          <div style={{ textAlign: 'center', padding: '3rem' }}>
+            <div className="spinner" style={{ margin: '0 auto' }}></div>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="panel-container">
-      <div className="panel-header">
-        <button className="back-button" onClick={onBack}>
-          <i className="fas fa-arrow-left"></i> Back
-        </button>
-        <h2>Cancellation Policy</h2>
-      </div>
+    <div>
+      <button className="btn btn-outline back-to-menu-btn" style={{ marginBottom: '1rem' }} onClick={onBack}>
+        <i className="fas fa-arrow-left"></i> Back to Business Profile Menu
+      </button>
+      <div className="dashboard-card">
+        <h2 className="dashboard-card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <span style={{ width: '36px', height: '36px', borderRadius: '8px', background: 'var(--secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', fontSize: '1.1rem' }}>
+            <i className="fas fa-file-contract"></i>
+          </span>
+          Cancellation Policy
+        </h2>
+        <p style={{ color: 'var(--text-light)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
+          Set your cancellation policy to protect your business while giving clients confidence when booking.
+        </p>
+        <hr style={{ border: 'none', borderTop: '1px solid #e5e7eb', margin: '1.5rem 0' }} />
 
-      <div className="panel-content">
+        <div className="panel-content">
         {/* Info Box */}
         <div style={{
           background: '#eff6ff',
@@ -378,50 +385,15 @@ const CancellationPolicyPanel = ({ onBack, vendorProfileId }) => {
         </div>
 
         {/* Save Button */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
-          <button
-            onClick={onBack}
-            style={{
-              padding: '0.75rem 1.5rem',
-              background: '#f3f4f6',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontWeight: 500,
-              color: '#374151'
-            }}
-          >
-            Cancel
-          </button>
+        <div style={{ marginTop: '1.5rem' }}>
           <button
             onClick={handleSave}
             disabled={saving}
-            style={{
-              padding: '0.75rem 1.5rem',
-              background: '#222222',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: saving ? 'not-allowed' : 'pointer',
-              fontWeight: 500,
-              opacity: saving ? 0.7 : 1,
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem'
-            }}
+            className="btn btn-primary"
           >
-            {saving ? (
-              <>
-                <i className="fas fa-spinner fa-spin"></i>
-                Saving...
-              </>
-            ) : (
-              <>
-                <i className="fas fa-save"></i>
-                Save Policy
-              </>
-            )}
+            {saving ? 'Saving...' : 'Save'}
           </button>
+        </div>
         </div>
       </div>
     </div>

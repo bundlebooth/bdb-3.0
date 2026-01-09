@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
-import { PageLayout, ContentWrapper } from '../components/PageWrapper';
+import { PageLayout } from '../components/PageWrapper';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import ProfileModal from '../components/ProfileModal';
@@ -288,9 +288,8 @@ function ForumPage() {
         />
       )}
 
-      {/* Main Layout with Left Sidebar */}
-      <ContentWrapper variant="standard" className="forum-layout-wrapper">
-      <div className="forum-layout" style={{ display: 'flex', minHeight: 'calc(100vh - 80px)' }}>
+      {/* Main Layout with Left Sidebar - uses page-wrapper constraints */}
+      <div className="forum-layout-wrapper page-wrapper" style={{ display: 'flex', minHeight: 'calc(100vh - 80px)' }}>
         {/* Left Sidebar - Categories (Reddit-style) */}
         <div className={`forum-sidebar ${mobileSidebarOpen ? 'mobile-open' : ''}`} style={{
           width: '270px',
@@ -698,7 +697,6 @@ function ForumPage() {
           </div>
         </div>
       </div>
-      </ContentWrapper>
 
       {/* Create Post Modal */}
       {showCreatePost && (

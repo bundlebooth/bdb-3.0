@@ -42,6 +42,7 @@ function BookingPage() {
   const [showCalendar, setShowCalendar] = useState(false);
   const [availableTimeSlots, setAvailableTimeSlots] = useState([]);
   const [vendorAvailability, setVendorAvailability] = useState(null);
+  const [cancellationPolicy, setCancellationPolicy] = useState(null);
   const locationInputRef = useRef(null);
   const autocompleteRef = useRef(null);
 
@@ -73,6 +74,7 @@ function BookingPage() {
 
     loadVendorData();
     loadVendorAvailability();
+    loadCancellationPolicy();
   }, [vendorId, navigate]);
 
   // Load Google Maps API for location autocomplete
@@ -139,6 +141,19 @@ function BookingPage() {
       }
     } catch (error) {
       console.error('❌ Error loading vendor availability:', error);
+    }
+  }, [vendorId]);
+
+  // Load cancellation policy
+  const loadCancellationPolicy = useCallback(async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/payments/vendor/${vendorId}/cancellation-policy`);
+      if (response.ok) {
+        const data = await response.json();
+        setCancellationPolicy(data.policy);
+      }
+    } catch (error) {
+      console.error('Error loading cancellation policy:', error);
     }
   }, [vendorId]);
 
@@ -1296,6 +1311,46 @@ function BookingPage() {
                     onChange={handleInputChange}
                   ></textarea>
                 </div>
+
+                {/* Cancellation Policy */}
+                {cancellationPolicy && (
+                  <div className="review-section" style={{ marginTop: '1.5rem' }}>
+                    <h3 className="review-subtitle" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <i className="fas fa-file-contract" style={{ color: '#6366f1' }}></i>
+                      Cancellation Policy
+                    </h3>
+                    <div style={{ 
+                      padding: '1rem', 
+                      background: '#f9fafb', 
+                      borderRadius: '8px',
+                      border: '1px solid #e5e7eb',
+                      marginTop: '0.75rem'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                        <span style={{ 
+                          padding: '2px 8px', 
+                          background: cancellationPolicy.PolicyType === 'flexible' ? '#dcfce7' : 
+                                     cancellationPolicy.PolicyType === 'moderate' ? '#fef3c7' : 
+                                     cancellationPolicy.PolicyType === 'strict' ? '#fee2e2' : '#e0e7ff',
+                          color: cancellationPolicy.PolicyType === 'flexible' ? '#166534' : 
+                                 cancellationPolicy.PolicyType === 'moderate' ? '#92400e' : 
+                                 cancellationPolicy.PolicyType === 'strict' ? '#991b1b' : '#3730a3',
+                          borderRadius: '4px',
+                          fontSize: '0.75rem',
+                          fontWeight: 600
+                        }}>
+                          {(cancellationPolicy.PolicyType || 'flexible').charAt(0).toUpperCase() + (cancellationPolicy.PolicyType || 'flexible').slice(1)}
+                        </span>
+                      </div>
+                      <p style={{ margin: 0, fontSize: '0.9rem', color: '#374151', lineHeight: 1.5 }}>
+                        {cancellationPolicy.PolicyType === 'flexible' && 'Full refund if cancelled up to 24 hours before the event. Cancellations within 24 hours are non-refundable.'}
+                        {cancellationPolicy.PolicyType === 'moderate' && 'Full refund if cancelled 7+ days before. 50% refund if cancelled 3-7 days before. No refund within 3 days.'}
+                        {cancellationPolicy.PolicyType === 'strict' && '50% refund if cancelled 14+ days before. No refund within 14 days of the event.'}
+                        {cancellationPolicy.PolicyType === 'custom' && `Full refund if cancelled ${cancellationPolicy.FullRefundDays}+ days before. ${cancellationPolicy.PartialRefundPercent}% refund ${cancellationPolicy.PartialRefundDays}-${cancellationPolicy.FullRefundDays} days before. No refund within ${cancellationPolicy.NoRefundDays} day(s).`}
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 <div className="info-box">
                   <i className="fas fa-info-circle"></i>

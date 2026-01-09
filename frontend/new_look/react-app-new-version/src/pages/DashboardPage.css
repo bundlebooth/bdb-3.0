@@ -7,7 +7,43 @@
   background-color: #ffffff;
 }
 
-/* Header - Match explore page header style */
+/* Dashboard Navigation Bar - Below Standard Header */
+.dashboard-nav-bar {
+  background: white;
+  border-bottom: 1px solid var(--border, #e2e8f0);
+  position: sticky;
+  top: 66px;
+  z-index: 99;
+}
+
+.dashboard-nav-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 2rem;
+  height: 48px;
+}
+
+/* Desktop/Mobile visibility helpers */
+.desktop-only {
+  display: flex;
+}
+
+.mobile-only {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .desktop-only {
+    display: none !important;
+  }
+  
+  .mobile-only {
+    display: flex !important;
+  }
+}
+
+/* Legacy Header - kept for backwards compatibility */
 .dashboard-page-header {
   position: sticky;
   top: 0;

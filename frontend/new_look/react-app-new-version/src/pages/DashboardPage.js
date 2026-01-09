@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
 import { PageLayout } from '../components/PageWrapper';
+import Header from '../components/Header';
 import { useNotifications } from '../hooks/useNotifications';
 import { showBanner } from '../utils/banners';
 
@@ -536,16 +537,20 @@ function DashboardPage() {
 
   return (
     <PageLayout variant="dashboard" pageClassName="dashboard-page">
-      {/* Top Header - Airbnb style */}
-      <header className="dashboard-page-header">
-        <div className="dashboard-header-content page-wrapper">
-          {/* Logo */}
-          <div className="dashboard-logo" onClick={() => navigate('/')}>
-            <img src="/images/logo.png" alt="PlanBeau" />
-          </div>
-
-          {/* Desktop Navigation Tabs */}
-          <nav className="dashboard-top-nav desktop-only">
+      {/* Standard Header - Same as rest of app */}
+      <Header 
+        onSearch={() => {}}
+        onProfileClick={() => setMobileMenuOpen(true)}
+        onWishlistClick={() => {}}
+        onChatClick={() => {}}
+        onNotificationsClick={() => {}}
+      />
+      
+      {/* Dashboard Navigation Bar - Below Header */}
+      <nav className="dashboard-nav-bar">
+        <div className="dashboard-nav-content page-wrapper">
+          {/* Desktop Navigation Tabs - visible on desktop */}
+          <div className="dashboard-top-nav desktop-only">
             {topNavTabs.map(tab => {
               // Determine badge count for this tab
               let badgeCount = 0;
@@ -570,10 +575,10 @@ function DashboardPage() {
                 </button>
               );
             })}
-          </nav>
+          </div>
           
-          {/* Mobile Navigation Dropdown - hidden in header on mobile, shown on tablet/desktop */}
-          <div className="mobile-nav-dropdown">
+          {/* Mobile Navigation Dropdown - visible on mobile only */}
+          <div className="mobile-nav-dropdown mobile-only">
             <button 
               className="mobile-nav-trigger"
               onClick={() => setMobileNavOpen(!mobileNavOpen)}
@@ -600,68 +605,11 @@ function DashboardPage() {
               </>
             )}
           </div>
-
-          {/* Right side actions */}
-          <div className="dashboard-header-actions">
-            {/* User menu button - hamburger + avatar */}
-            <button 
-              className="user-menu-btn"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            >
-              <i className="fas fa-bars"></i>
-              {(() => {
-                const profilePic = showVendorView && vendorLogoUrl 
-                  ? vendorLogoUrl 
-                  : (currentUser?.profilePicture || currentUser?.ProfilePicture);
-                return profilePic ? (
-                  <img 
-                    src={profilePic} 
-                    alt="Profile"
-                    className="user-avatar"
-                    style={{ objectFit: 'cover' }}
-                  />
-                ) : (
-                  <div className="user-avatar">
-                    {currentUser?.name?.charAt(0)?.toUpperCase() || 'U'}
-                  </div>
-                );
-              })()}
-            </button>
-          </div>
         </div>
-      </header>
+      </nav>
       
       {/* Unified Sidebar Component */}
       <UnifiedSidebar isOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
-
-      {/* Mobile Page Selector - shown below header on mobile only */}
-      <div className="mobile-page-selector">
-        <button 
-          className="mobile-nav-trigger"
-          onClick={() => setMobileNavOpen(!mobileNavOpen)}
-        >
-          <span>{getCurrentSectionLabel()}</span>
-          <i className={`fas fa-chevron-${mobileNavOpen ? 'up' : 'down'}`}></i>
-        </button>
-        
-        {mobileNavOpen && (
-          <>
-            <div className="mobile-nav-overlay" onClick={() => setMobileNavOpen(false)} />
-            <div className="mobile-nav-menu">
-              {topNavTabs.map(tab => (
-                <button
-                  key={tab.id}
-                  className={`mobile-nav-item ${activeSection === tab.id ? 'active' : ''}`}
-                  onClick={() => { handleSectionChange(tab.id); setMobileNavOpen(false); }}
-                >
-                  <i className={`fas ${tab.icon}`}></i>
-                  <span>{tab.label}</span>
-                </button>
-              ))}
-            </div>
-          </>
-        )}
-      </div>
 
       {/* Main Content */}
       <main className="dashboard-page-content">

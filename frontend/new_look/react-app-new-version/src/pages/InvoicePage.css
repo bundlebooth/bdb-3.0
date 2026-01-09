@@ -1,7 +1,6 @@
 .invoice-page {
-  min-height: 100vh;
-  background: #f5f7fa;
-  padding: 24px;
+  padding-top: 24px;
+  padding-bottom: 24px;
 }
 
 .invoice-loading,
@@ -31,29 +30,30 @@
   align-items: center;
   gap: 8px;
   padding: 10px 20px;
-  background: #5e72e4;
-  color: white;
-  border: none;
+  background: white;
+  color: #374151;
+  border: 1px solid #e0e0e0;
   border-radius: 8px;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.2s;
 }
 
 .btn-back:hover {
-  background: #4c5fd7;
+  background: #f9fafb;
+  border-color: #d1d5db;
 }
 
 .invoice-actions {
-  max-width: 800px;
+  max-width: 700px;
   margin: 0 auto 24px;
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
-.action-buttons {
+.invoice-actions .action-buttons-right {
   display: flex;
   gap: 12px;
 }
@@ -77,12 +77,11 @@
 .btn-print:hover,
 .btn-download:hover {
   background: #f9fafb;
-  border-color: #5e72e4;
-  color: #5e72e4;
+  border-color: #d1d5db;
 }
 
 .invoice-container {
-  max-width: 800px;
+  max-width: 700px;
   margin: 0 auto;
   background: white;
   border-radius: 12px;

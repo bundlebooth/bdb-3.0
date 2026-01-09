@@ -2266,7 +2266,6 @@ router.post('/vendor/:vendorProfileId/cancellation-policy', async (req, res) => 
         .input('PartialRefundDays', sql.Int, partialRefundDays || 3)
         .input('PartialRefundPercent', sql.Int, partialRefundPercent || 50)
         .input('NoRefundDays', sql.Int, noRefundDays || 1)
-        .input('CustomTerms', sql.NVarChar(sql.MAX), customTerms || null)
         .query(`
           UPDATE vendors.CancellationPolicies 
           SET PolicyType = @PolicyType, 
@@ -2274,7 +2273,6 @@ router.post('/vendor/:vendorProfileId/cancellation-policy', async (req, res) => 
               PartialRefundDays = @PartialRefundDays,
               PartialRefundPercent = @PartialRefundPercent, 
               NoRefundDays = @NoRefundDays, 
-              CustomTerms = @CustomTerms,
               UpdatedAt = GETUTCDATE()
           WHERE VendorProfileID = @VendorProfileID
         `);
@@ -2289,12 +2287,11 @@ router.post('/vendor/:vendorProfileId/cancellation-policy', async (req, res) => 
         .input('PartialRefundDays', sql.Int, partialRefundDays || 3)
         .input('PartialRefundPercent', sql.Int, partialRefundPercent || 50)
         .input('NoRefundDays', sql.Int, noRefundDays || 1)
-        .input('CustomTerms', sql.NVarChar(sql.MAX), customTerms || null)
         .query(`
           INSERT INTO vendors.CancellationPolicies 
-            (VendorProfileID, PolicyType, FullRefundDays, PartialRefundDays, PartialRefundPercent, NoRefundDays, CustomTerms, IsActive, CreatedAt, UpdatedAt)
+            (VendorProfileID, PolicyType, FullRefundDays, PartialRefundDays, PartialRefundPercent, NoRefundDays, IsActive, CreatedAt, UpdatedAt)
           VALUES 
-            (@VendorProfileID, @PolicyType, @FullRefundDays, @PartialRefundDays, @PartialRefundPercent, @NoRefundDays, @CustomTerms, 1, GETUTCDATE(), GETUTCDATE())
+            (@VendorProfileID, @PolicyType, @FullRefundDays, @PartialRefundDays, @PartialRefundPercent, @NoRefundDays, 1, GETUTCDATE(), GETUTCDATE())
         `);
 
       res.json({ success: true, message: 'Cancellation policy created' });
