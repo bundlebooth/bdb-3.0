@@ -3,6 +3,38 @@
    Airbnb-style grouped vendor listings
    ============================================= */
 
+/* =============================================
+   AIRBNB-STYLE ROW - 8 Cards Per Row (Desktop)
+   ============================================= */
+.airbnb-row-container {
+  width: 100% !important;
+  overflow: visible !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.airbnb-card-row {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)) !important;
+  gap: 16px !important;
+  width: 100% !important;
+}
+
+.airbnb-card-cell {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
+.airbnb-card-cell .vendor-card,
+.airbnb-card-cell > div {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+}
+
+/* Responsive breakpoints no longer needed - using auto-fill with minmax */
+
 .vendor-discovery-sections {
   width: 100%;
   margin-bottom: 2rem;
@@ -18,6 +50,9 @@
   border-radius: 0;
   box-shadow: none;
   border: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
 }
 
 .vendor-section-header {
@@ -26,6 +61,7 @@
   align-items: center;
   margin-bottom: 0.75rem;
   padding: 0;
+  width: 100%;
 }
 
 .vendor-section-title-wrapper {
@@ -135,14 +171,28 @@
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
   -ms-overflow-style: none;
-  padding: 0 0 0.25rem 0;
+  padding: 0;
   margin: 0;
   width: 100%;
   max-width: 100%;
+  display: flex;
+  justify-content: flex-start;
 }
 
 .vendor-section-scroll-container::-webkit-scrollbar {
   display: none;
+}
+
+/* Airbnb-style grid row - 8 cards per row */
+.vendor-section-grid-row {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 16px;
+  width: 100%;
+}
+
+.vendor-section-card-item {
+  min-width: 0;
 }
 
 .vendor-section-grid {
@@ -159,19 +209,31 @@
   min-width: 0;
 }
 
-/* Desktop: Fixed-width cards */
-@media (min-width: 1201px) {
-  .vendor-section-grid {
-    grid-template-columns: repeat(auto-fill, 220px);
-    justify-content: start;
+/* Large Desktop: 8 cards per row */
+@media (min-width: 1400px) {
+  .vendor-section-grid-row {
+    grid-template-columns: repeat(8, 1fr);
   }
 }
 
-/* Tablet: Fixed-width cards */
-@media (min-width: 769px) and (max-width: 1200px) {
-  .vendor-section-grid {
-    grid-template-columns: repeat(auto-fill, 220px);
-    justify-content: start;
+/* Desktop: 6 cards per row */
+@media (min-width: 1100px) and (max-width: 1399px) {
+  .vendor-section-grid-row {
+    grid-template-columns: repeat(6, 1fr);
+  }
+}
+
+/* Tablet landscape: 5 cards per row */
+@media (min-width: 900px) and (max-width: 1099px) {
+  .vendor-section-grid-row {
+    grid-template-columns: repeat(5, 1fr);
+  }
+}
+
+/* Tablet: 4 cards per row */
+@media (min-width: 769px) and (max-width: 899px) {
+  .vendor-section-grid-row {
+    grid-template-columns: repeat(4, 1fr);
   }
 }
 
@@ -227,9 +289,11 @@
     display: none;
   }
   
-  /* Flex carousel - padding matches main-content (1rem) for alignment */
+  /* Flex carousel on mobile - padding matches main-content (1rem) for alignment */
+  .vendor-section-grid-row,
   .vendor-section-carousel {
     display: flex !important;
+    grid-template-columns: none !important;
     flex-wrap: nowrap !important;
     gap: 12px !important;
     transform: none !important;
@@ -240,7 +304,9 @@
   
   /* Card width: 2 full cards + peek visible */
   /* (100vw - 2rem padding - 12px gap) / 2.15 = 2 cards + peek */
-  .vendor-section-carousel > div {
+  .vendor-section-grid-row > div,
+  .vendor-section-carousel > div,
+  .vendor-section-card-item {
     flex: 0 0 calc((100vw - 2rem - 12px) / 2.15) !important;
     width: calc((100vw - 2rem - 12px) / 2.15) !important;
     min-width: calc((100vw - 2rem - 12px) / 2.15) !important;

@@ -9,6 +9,30 @@
     --border: #e2e8f0;
     --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
     --radius: 12px;
+    /* Airbnb-style centered container - content max width is 1280px */
+    --page-max-width: 1280px;
+    --page-padding-x: 24px;
+}
+
+/* Tablet and up: Increase padding */
+@media (min-width: 744px) {
+    :root {
+        --page-padding-x: 40px;
+    }
+}
+
+/* Desktop: Increase padding */
+@media (min-width: 1128px) {
+    :root {
+        --page-padding-x: 80px;
+    }
+}
+
+/* Large screens: Dynamic padding to center content within max-width */
+@media (min-width: 1440px) {
+    :root {
+        --page-padding-x: calc((100vw - 1280px) / 2);
+    }
 }
 
 /* Make asterisks red in labels */
@@ -78,8 +102,8 @@ body.overlay-open {
     grid-column: 1 / -1;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding: 1rem 2rem;
+    justify-content: center;
+    padding: 1rem var(--page-padding-x);
     background-color: white;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
     border-bottom: 1px solid var(--border);
@@ -89,6 +113,22 @@ body.overlay-open {
     height: 66px;
     min-height: 66px;
     max-height: 66px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Header inner wrapper for centering */
+.header-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+}
+
+.header-left,
+.search-container,
+.user-nav {
+    flex-shrink: 0;
 }
 
 /* Logo stays fixed size */
@@ -192,7 +232,7 @@ body.overlay-open {
     background-color: white;
     border-bottom: 1px solid var(--border);
     border-top: none;
-    padding: 0.75rem 2rem;
+    padding: 0.75rem var(--page-padding-x);
     display: flex;
     align-items: center;
     position: sticky;
@@ -202,6 +242,8 @@ body.overlay-open {
     height: 90px;
     min-height: 90px;
     max-height: 90px;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .categories-list-wrapper {
@@ -507,8 +549,19 @@ body.overlay-open {
 
 /* Main Content */
 .main-content {
-    padding: 2rem;
+    padding: 2rem var(--page-padding-x);
     background-color: white;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Airbnb-style centered page wrapper - wraps entire page content */
+.page-wrapper {
+    max-width: var(--page-max-width);
+    margin-left: auto;
+    margin-right: auto;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .profile-content {
@@ -637,6 +690,52 @@ body.overlay-open {
     opacity: 0.3;
     cursor: not-allowed;
 }
+
+/* =============================================
+   AIRBNB-STYLE VENDOR SECTION - Carousel Layout
+   Fixed-width cards with navigation arrows
+   ============================================= */
+
+/* Desktop: Hide overflow and CENTER cards like Airbnb */
+@media (min-width: 769px) {
+    .vendor-section-scroll-container {
+        overflow: hidden !important;
+        width: 100% !important;
+    }
+    
+    .vendor-section-carousel {
+        display: flex !important;
+        gap: 16px !important;
+        justify-content: center !important;
+        flex-wrap: nowrap !important;
+        width: 100% !important;
+    }
+    
+    .vendor-section-carousel > div {
+        flex: 0 0 220px !important;
+        width: 220px !important;
+        min-width: 220px !important;
+        max-width: 220px !important;
+    }
+}
+
+/* Each card cell */
+.airbnb-card-cell {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    flex: unset !important;
+}
+
+/* Force vendor cards to fill their cell */
+.airbnb-card-cell .vendor-card,
+.airbnb-card-cell > div {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+}
+
+/* Responsive breakpoints no longer needed - using auto-fill with minmax */
 
 /* Fixed-width vendor grid - cards don't resize */
 .vendor-grid {
@@ -8080,6 +8179,11 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
 
 /* Mobile responsive breakpoints */
 @media (max-width: 768px) {
+    /* Responsive page padding for mobile */
+    :root {
+        --page-padding-x: 1rem;
+    }
+    
     /* Allow horizontal scroll for carousels - removed overflow-x: hidden */
     body {
         max-width: 100vw !important;
@@ -8119,7 +8223,7 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
 
     /* Header adjustments */
     .header {
-        padding: 0.75rem 1rem;
+        padding: 0.75rem var(--page-padding-x);
         gap: 0.75rem;
         flex-wrap: nowrap;
         width: 100%;
@@ -8177,7 +8281,7 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
 
     /* Category navigation */
     .categories-nav {
-        padding: 0.5rem 0.75rem;
+        padding: 0.5rem var(--page-padding-x);
         top: 60px;
         width: 100%;
         max-width: 100vw;
@@ -8197,7 +8301,7 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
 
     /* Main content */
     .main-content {
-        padding: 1rem;
+        padding: 1rem var(--page-padding-x);
         width: 100%;
         max-width: 100vw;
         overflow-x: visible;
@@ -8397,7 +8501,7 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
     }
 
     .main-content {
-        padding: 0.75rem;
+        padding: 0.75rem var(--page-padding-x);
     }
 
     .vendor-image {
@@ -8429,6 +8533,11 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
 
 /* Tablet adjustments */
 @media (min-width: 769px) and (max-width: 1024px) {
+    /* Responsive page padding for tablet */
+    :root {
+        --page-padding-x: 40px;
+    }
+    
     .app-container {
         grid-template-columns: 240px 1fr;
     }
@@ -8438,11 +8547,11 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
     }
 
     .header {
-        padding: 1rem 1.5rem;
+        padding: 1rem var(--page-padding-x);
     }
 
     .main-content {
-        padding: 1.5rem;
+        padding: 1.5rem var(--page-padding-x);
     }
 }
 
@@ -11767,9 +11876,13 @@ html, body {
    INLINE CATEGORIES NAV - Pill Style Buttons
    ============================================ */
 .inline-categories-nav {
-    padding: 0.5rem 2rem;
+    padding: 0.5rem var(--page-padding-x);
     background: white;
     border-bottom: 1px solid #e5e7eb;
+    width: 100%;
+    box-sizing: border-box;
+    display: flex;
+    justify-content: center;
 }
 
 
@@ -11790,7 +11903,7 @@ html, body {
 /* Mobile responsive for inline categories */
 @media (max-width: 768px) {
     .inline-categories-nav {
-        padding: 0.5rem 1rem;
+        padding: 0.5rem var(--page-padding-x);
         margin: 0;
         position: sticky;
         top: 45px;
@@ -11816,3 +11929,21 @@ html, body {
     height: 100% !important;
 }
 
+/* =============================================
+   FINAL OVERRIDE: LEFT-ALIGN VENDOR CARDS
+   This MUST be at the end to override all other rules
+   ============================================= */
+@media (min-width: 769px) {
+    .vendor-section-carousel {
+        display: flex !important;
+        gap: 16px !important;
+        justify-content: flex-start !important;
+        flex-wrap: nowrap !important;
+        width: 100% !important;
+    }
+    
+    .vendor-section-carousel > div {
+        flex: 0 0 220px !important;
+        width: 220px !important;
+    }
+}

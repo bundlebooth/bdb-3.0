@@ -145,6 +145,146 @@
   border-color: #222;
 }
 
+/* =============================================
+   BROWSE PAGE - AIRBNB STYLE SECTIONS
+   ============================================= */
+
+/* Sections View - Horizontal scrollable rows */
+.browse-sections-view {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+/* Full Grid View with Map */
+.browse-full-view {
+  width: 100%;
+}
+
+.browse-content-wrapper {
+  display: flex;
+  width: 100%;
+  gap: 0;
+}
+
+.browse-vendors-panel {
+  padding-right: 1.5rem;
+  overflow-y: auto;
+}
+
+.browse-map-panel {
+  background: #f5f5f5;
+}
+
+/* No Results State */
+.browse-no-results {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: #6b7280;
+}
+
+.browse-no-results h3 {
+  margin: 0 0 0.5rem 0;
+  color: #374151;
+}
+
+.browse-no-results p {
+  margin: 0;
+}
+
+/* Show All Button */
+.browse-show-all-wrapper {
+  display: flex;
+  justify-content: center;
+  margin: 2.5rem 0 1rem;
+}
+
+.browse-show-all-btn {
+  background: #222222;
+  color: white;
+  border: none;
+  padding: 0.875rem 2rem;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.browse-show-all-btn:hover {
+  background: #000000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  transform: translateY(-1px);
+}
+
+.browse-show-all-btn:active {
+  transform: translateY(0);
+}
+
+.browse-show-all-btn i {
+  font-size: 0.875rem;
+}
+
+/* Map Toggle in Controls */
+.browse-map-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: #222;
+}
+
+.browse-map-toggle label {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+  cursor: pointer;
+}
+
+.browse-map-toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.browse-map-toggle .toggle-slider {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #E5E7EB;
+  border-radius: 24px;
+  transition: background-color 0.3s;
+}
+
+.browse-map-toggle input:checked + .toggle-slider {
+  background-color: #3b82f6;
+}
+
+.browse-map-toggle .toggle-slider::before {
+  content: '';
+  position: absolute;
+  height: 20px;
+  width: 20px;
+  left: 2px;
+  bottom: 2px;
+  background-color: white;
+  border-radius: 50%;
+  transition: left 0.3s;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.browse-map-toggle input:checked + .toggle-slider::before {
+  left: 22px;
+}
+
 /* Load More */
 .browse-load-more {
   display: flex;
@@ -214,6 +354,25 @@
 }
 
 /* Responsive */
+@media (max-width: 1024px) {
+  .browse-content-wrapper {
+    flex-direction: column;
+  }
+  
+  .browse-vendors-panel {
+    width: 100% !important;
+    padding-right: 0;
+  }
+  
+  .browse-map-panel {
+    width: 100% !important;
+    height: 400px !important;
+    position: relative !important;
+    top: auto !important;
+    margin-top: 2rem;
+  }
+}
+
 @media (max-width: 768px) {
   .browse-main {
     padding: 1rem 1rem 2rem;
@@ -251,6 +410,20 @@
   .browse-breadcrumb {
     font-size: 0.8125rem;
   }
+  
+  .browse-sections-view {
+    gap: 1.5rem;
+  }
+  
+  .browse-show-all-btn {
+    width: 100%;
+    justify-content: center;
+    padding: 0.75rem 1.5rem;
+  }
+  
+  .browse-map-panel {
+    height: 300px !important;
+  }
 }
 
 @media (max-width: 480px) {
@@ -275,5 +448,14 @@
   .browse-load-more-btn {
     padding: 0.75rem 2rem;
     font-size: 0.9375rem;
+  }
+  
+  .browse-show-all-btn {
+    font-size: 0.875rem;
+    padding: 0.625rem 1.25rem;
+  }
+  
+  .browse-sections-view {
+    gap: 1rem;
   }
 }

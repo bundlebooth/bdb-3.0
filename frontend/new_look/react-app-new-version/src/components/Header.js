@@ -252,6 +252,7 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
   return (
     <>
     <header className="header">
+      <div className="header-inner page-wrapper" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
       <div className="header-left" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
         <div className="logo" style={{ cursor: 'pointer', marginRight: '8px' }} onClick={() => window.location.href = '/'}>
           <img src="/images/logo.png" alt="PlanBeau" className="header-logo-img" />
@@ -443,6 +444,7 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
             </div>
           )}
         </div>
+      </div>
       </div>
 
       {/* Dashboard Modal - kept for backwards compatibility with openDashboard events */}

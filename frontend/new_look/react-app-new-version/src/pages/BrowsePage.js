@@ -5,9 +5,12 @@ import { API_BASE_URL } from '../config';
 import Header from '../components/Header';
 import CategoriesNav from '../components/CategoriesNav';
 import VendorGrid from '../components/VendorGrid';
+import VendorSection from '../components/VendorSection';
+import VendorSectionSkeleton from '../components/VendorSectionSkeleton';
 import FilterModal from '../components/FilterModal';
 import ProfileModal from '../components/ProfileModal';
 import DashboardModal from '../components/DashboardModal';
+import MapView from '../components/MapView';
 import Footer from '../components/Footer';
 import MessagingWidget from '../components/MessagingWidget';
 import { showBanner } from '../utils/helpers';
@@ -62,6 +65,7 @@ function BrowsePage() {
 
   // State
   const [vendors, setVendors] = useState([]);
+  const [categorySections, setCategorySections] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [favorites, setFavorites] = useState([]);
@@ -72,6 +76,9 @@ function BrowsePage() {
   const [dashboardModalOpen, setDashboardModalOpen] = useState(false);
   const [dashboardSection, setDashboardSection] = useState('dashboard');
   const [sortBy, setSortBy] = useState('recommended');
+  const [mapActive, setMapActive] = useState(false);
+  const [showFullGrid, setShowFullGrid] = useState(false);
+  const [selectedVendorId, setSelectedVendorId] = useState(null);
   const [filters, setFilters] = useState({
     location: cityFilter || '',
     priceLevel: '',
@@ -251,10 +258,12 @@ function BrowsePage() {
       const data = await response.json();
       let newVendors = [];
       let total = 0;
+      let sections = [];
 
       // Handle different response formats
       if (Array.isArray(data.sections)) {
-        // Response from search-by-categories
+        // Response from search-by-categories - preserve sections for category display
+        sections = data.sections.filter(s => s?.vendors?.length > 0);
         newVendors = data.sections.flatMap(s => s?.vendors || []);
         // Deduplicate
         const seen = new Set();
@@ -268,7 +277,27 @@ function BrowsePage() {
       } else {
         newVendors = data.vendors || data.data || [];
         total = data.totalCount || newVendors.length;
+        
+        // Group vendors by category for section display
+        const categoryGroups = {};
+        newVendors.forEach(vendor => {
+          const cat = vendor.category || vendor.type || 'other';
+          if (!categoryGroups[cat]) {
+            categoryGroups[cat] = [];
+          }
+          categoryGroups[cat].push(vendor);
+        });
+        
+        // Convert to sections array
+        sections = Object.entries(categoryGroups).map(([category, vendors]) => ({
+          id: category,
+          title: categoryLabels[category] || category.charAt(0).toUpperCase() + category.slice(1),
+          category: category,
+          vendors: vendors
+        }));
       }
+      
+      setCategorySections(sections);
 
       if (append) {
         setVendors(prev => {
@@ -366,6 +395,31 @@ function BrowsePage() {
     setFilters(newFilters);
     loadVendors();
   }, [loadVendors]);
+
+  // Handle map toggle
+  const handleToggleMap = useCallback(() => {
+    setMapActive(!mapActive);
+  }, [mapActive]);
+
+  // Handle vendor select from map
+  const handleVendorSelectFromMap = useCallback((vendorId) => {
+    setSelectedVendorId(vendorId);
+    const card = document.querySelector(`[data-vendor-id="${vendorId}"]`);
+    if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, []);
+
+  // Handle highlight vendor (for map interaction)
+  const handleHighlightVendor = useCallback((vendorId, highlight) => {
+    if (window.highlightMapMarker) {
+      window.highlightMapMarker(vendorId, highlight);
+    }
+  }, []);
+
+  // Toggle between section view and full grid view
+  const handleShowFullGrid = useCallback(() => {
+    setShowFullGrid(true);
+    setMapActive(true);
+  }, []);
 
   const hasMore = vendors.length < totalCount;
 
@@ -483,33 +537,119 @@ function BrowsePage() {
             </div>
           </div>
 
-          {/* Vendor Grid */}
-          <VendorGrid 
-            vendors={vendors}
-            loading={loading}
-            loadingMore={loadingMore}
-            favorites={favorites}
-            onToggleFavorite={handleToggleFavorite}
-            onViewVendor={handleViewVendor}
-            onHighlightVendor={() => {}}
-          />
+          {/* Vendor Display - Section View or Full Grid */}
+          {showFullGrid ? (
+            // Full grid view with map (like Airbnb's second image)
+            <div className="browse-full-view">
+              <div className="browse-content-wrapper" style={{ display: 'flex', width: '100%' }}>
+                <div className="browse-vendors-panel" style={{ width: mapActive ? '55%' : '100%', transition: 'width 0.3s ease' }}>
+                  <VendorGrid 
+                    vendors={vendors}
+                    loading={loading}
+                    loadingMore={loadingMore}
+                    favorites={favorites}
+                    onToggleFavorite={handleToggleFavorite}
+                    onViewVendor={handleViewVendor}
+                    onHighlightVendor={handleHighlightVendor}
+                  />
 
-          {/* Load More Button */}
-          {hasMore && !loading && vendors.length > 0 && (
-            <div className="browse-load-more">
-              {loadingMore ? (
-                <div className="browse-loading-spinner">
-                  <div className="spinner"></div>
+                  {/* Load More Button */}
+                  {hasMore && !loading && vendors.length > 0 && (
+                    <div className="browse-load-more">
+                      {loadingMore ? (
+                        <div className="browse-loading-spinner">
+                          <div className="spinner"></div>
+                        </div>
+                      ) : (
+                        <button 
+                          className="browse-load-more-btn"
+                          onClick={() => loadVendors(true)}
+                          disabled={loadingMore}
+                        >
+                          <span>Load More</span>
+                          <i className="fas fa-chevron-down"></i>
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
+                
+                {/* Map Panel */}
+                {mapActive && (
+                  <div className="browse-map-panel" style={{ 
+                    width: '45%', 
+                    height: 'calc(100vh - 180px)', 
+                    position: 'sticky', 
+                    top: '180px',
+                    borderLeft: '1px solid #e5e7eb'
+                  }}>
+                    <MapView 
+                      vendors={vendors}
+                      onVendorSelect={handleVendorSelectFromMap}
+                      selectedVendorId={selectedVendorId}
+                      loading={loading}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            // Section view (like Airbnb's first image - horizontal rows)
+            <div className="browse-sections-view">
+              {loading ? (
+                // Show skeleton loaders while loading
+                <>
+                  <VendorSectionSkeleton />
+                  <VendorSectionSkeleton />
+                  <VendorSectionSkeleton />
+                </>
+              ) : categorySections.length > 0 ? (
+                // Show category sections with horizontal scroll
+                categorySections.map((section) => (
+                  <VendorSection
+                    key={section.id}
+                    title={section.title}
+                    description={section.description}
+                    vendors={section.vendors.slice(0, 8)}
+                    favorites={favorites}
+                    onToggleFavorite={handleToggleFavorite}
+                    onViewVendor={handleViewVendor}
+                    onHighlightVendor={handleHighlightVendor}
+                    sectionType={section.category || section.id}
+                    cityFilter={cityFilter ? decodeURIComponent(cityFilter) : null}
+                    categoryFilter={section.category}
+                  />
+                ))
+              ) : vendors.length > 0 ? (
+                // Fallback: show single section with all vendors
+                <VendorSection
+                  title={pageInfo.title}
+                  vendors={vendors.slice(0, 8)}
+                  favorites={favorites}
+                  onToggleFavorite={handleToggleFavorite}
+                  onViewVendor={handleViewVendor}
+                  onHighlightVendor={handleHighlightVendor}
+                  cityFilter={cityFilter ? decodeURIComponent(cityFilter) : null}
+                />
               ) : (
-                <button 
-                  className="browse-load-more-btn"
-                  onClick={() => loadVendors(true)}
-                  disabled={loadingMore}
-                >
-                  <span>Load More</span>
-                  <i className="fas fa-chevron-down"></i>
-                </button>
+                <div className="browse-no-results">
+                  <i className="fas fa-search" style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.3 }}></i>
+                  <h3>No vendors found</h3>
+                  <p>Try adjusting your filters or search criteria</p>
+                </div>
+              )}
+              
+              {/* Show All Button - to switch to full grid view */}
+              {!loading && vendors.length > 8 && (
+                <div className="browse-show-all-wrapper">
+                  <button 
+                    className="browse-show-all-btn"
+                    onClick={handleShowFullGrid}
+                  >
+                    <span>Show all {totalCount} vendors</span>
+                    <i className="fas fa-th-large"></i>
+                  </button>
+                </div>
               )}
             </div>
           )}

@@ -49,6 +49,7 @@ function CategoriesNav({ activeCategory, onCategoryChange, loading = false }) {
 
   return (
     <div className="inline-categories-nav">
+      <div className="page-wrapper" style={{ width: '100%' }}>
       <div className="inline-categories-scroll" ref={scrollRef}>
         {loading ? (
           // Skeleton loading state
@@ -95,6 +96,7 @@ function CategoriesNav({ activeCategory, onCategoryChange, loading = false }) {
             </button>
           ))
         )}
+      </div>
       </div>
     </div>
   );

@@ -61,21 +61,21 @@ function VendorSection({
   const vendorsLength = vendors?.length || 0;
 
   const calculateVisibleCount = useCallback(() => {
-    if (!scrollContainerRef.current) return 4;
+    if (!scrollContainerRef.current) return 8;
     const containerWidth = scrollContainerRef.current.offsetWidth;
     
-    // On mobile (768px or less), show 4 cards for 2x2 grid
+    // On mobile (768px or less), show all vendors (mobile uses horizontal scroll)
     if (window.innerWidth <= 768) {
-      return 4;
+      return vendors?.length || 8;
     }
     
-    const cardWidth = 240; // Match main grid minmax(240px, 1fr)
+    // Desktop: Calculate how many 220px cards fit without being cut off
+    const cardWidth = 220;
     const gap = 16;
-    // Less conservative margin to fit more cards
-    const availableWidth = containerWidth - 20; // Reduced safety margin
-    const count = Math.floor(availableWidth / (cardWidth + gap));
-    return Math.max(1, Math.min(count, 8)); // Increased cap to 8 cards max
-  }, []);
+    // Calculate how many complete cards fit
+    const count = Math.floor((containerWidth + gap) / (cardWidth + gap));
+    return Math.max(1, Math.min(count, 8)); // Cap at 8 cards max like Airbnb
+  }, [vendors?.length]);
 
   // Update visible count on mount and resize only - run once
   useEffect(() => {
@@ -109,14 +109,14 @@ function VendorSection({
       return;
     }
     
-    // Desktop: use index-based scrolling
-    const scrollAmount = 1; // Always scroll one card at a time
-    const maxIndex = Math.max(0, vendors.length - visibleCount);
+    // Desktop: scroll by visibleCount cards at a time (like Airbnb - shows next "page" of cards)
+    const scrollAmount = visibleCount;
+    const maxIdx = Math.max(0, vendors.length - visibleCount);
     
     if (direction === 'left') {
       setCurrentIndex(prev => Math.max(0, prev - scrollAmount));
     } else {
-      setCurrentIndex(prev => Math.min(maxIndex, prev + scrollAmount));
+      setCurrentIndex(prev => Math.min(maxIdx, prev + scrollAmount));
     }
   };
 
@@ -155,8 +155,8 @@ function VendorSection({
 
   return (
     <>
-      <div className="vendor-section">
-        <div className="vendor-section-header">
+      <div className="vendor-section" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', width: '100%' }}>
+        <div className="vendor-section-header" style={{ width: '100%', maxWidth: '100%' }}>
           <div className="vendor-section-title-wrapper">
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
               <h2 className="vendor-section-title" style={{ margin: 0 }}>
@@ -214,11 +214,12 @@ function VendorSection({
             >
               Show all ({vendors.length})
             </button>
+{/* Nav buttons for carousel navigation */}
             <div className="vendor-section-nav">
               <button 
                 className="vendor-section-nav-btn vendor-section-nav-btn-left"
                 onClick={() => scroll('left')}
-                disabled={isMobile ? !mobileScrollState.canScrollLeft : !computedCanScrollLeft}
+                disabled={isMobile ? !mobileScrollState.canScrollLeft : currentIndex === 0}
                 aria-label="Scroll left"
               >
                 <i className="fas fa-chevron-left"></i>
@@ -226,7 +227,7 @@ function VendorSection({
               <button 
                 className="vendor-section-nav-btn vendor-section-nav-btn-right"
                 onClick={() => scroll('right')}
-                disabled={isMobile ? !mobileScrollState.canScrollRight : !computedCanScrollRight}
+                disabled={isMobile ? !mobileScrollState.canScrollRight : currentIndex >= maxIndex}
                 aria-label="Scroll right"
               >
                 <i className="fas fa-chevron-right"></i>
@@ -235,26 +236,31 @@ function VendorSection({
           </div>
         </div>
       
+        {/* Carousel with fixed-width cards - LEFT-ALIGNED like Airbnb */}
         <div 
-          className="vendor-section-scroll-container" 
-          ref={scrollContainerRef} 
-          style={isMobile ? {} : { marginRight: '-40px', paddingRight: '40px' }}
+          className="vendor-section-scroll-container"
+          ref={scrollContainerRef}
+          style={isMobile ? {} : { 
+            overflow: 'hidden',
+            width: '100%'
+          }}
         >
           <div 
             className="vendor-section-carousel"
             style={isMobile ? {} : {
               display: 'flex',
               gap: '16px',
-              transform: `translateX(-${currentIndex * 236}px)`,
-              transition: 'transform 0.3s ease-in-out'
+              justifyContent: 'flex-start',
+              width: '100%'
             }}
           >
-            {vendors.map((vendor) => {
+            {/* Desktop: Only show visibleCount cards. Mobile: Show all for horizontal scroll */}
+            {(isMobile ? vendors : vendors.slice(currentIndex, currentIndex + visibleCount)).map((vendor) => {
               const vendorId = vendor.vendorProfileId || vendor.VendorProfileID || vendor.id;
               return (
                 <div 
                   key={vendorId}
-                  style={isMobile ? {} : {
+                  style={isMobile ? {} : { 
                     flex: '0 0 220px',
                     width: '220px'
                   }}
