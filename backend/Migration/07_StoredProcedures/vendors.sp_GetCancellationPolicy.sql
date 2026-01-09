@@ -1,4 +1,5 @@
 -- Get cancellation policy for a vendor
+-- Updated to query VendorCancellationPolicies table (same table used by sp_SaveCancellationPolicy)
 CREATE OR ALTER PROCEDURE vendors.sp_GetCancellationPolicy
     @VendorProfileID INT
 AS

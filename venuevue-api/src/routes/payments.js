@@ -2245,10 +2245,10 @@ router.get('/vendor/:vendorProfileId/cancellation-policy', async (req, res) => {
       FullRefundDays: Math.round(dbPolicy.FullRefundHours / 24),
       PartialRefundDays: Math.round(dbPolicy.PartialRefundHours / 24),
       NoRefundDays: Math.round(dbPolicy.NoRefundHours / 24),
-      FullRefundPercent: dbPolicy.FullRefundPercent || 100,
+      FullRefundPercent: 100,
       PartialRefundPercent: dbPolicy.PartialRefundPercent,
       PolicyDescription: dbPolicy.PolicyDescription,
-      IsActive: dbPolicy.IsActive,
+      IsActive: true,
       CreatedAt: dbPolicy.CreatedAt,
       UpdatedAt: dbPolicy.UpdatedAt
     };
@@ -2269,6 +2269,7 @@ router.post('/vendor/:vendorProfileId/cancellation-policy', async (req, res) => 
   try {
     const { vendorProfileId } = req.params;
     const { policyType, fullRefundDays, partialRefundDays, partialRefundPercent, noRefundDays } = req.body;
+    console.log('[Cancellation Policy] Saving for vendor:', vendorProfileId, 'Policy:', req.body);
     
     if (!vendorProfileId) {
       return res.status(400).json({ success: false, message: 'Vendor Profile ID is required' });
