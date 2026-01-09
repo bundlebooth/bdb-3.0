@@ -2858,6 +2858,12 @@ function ServicesStep({ formData, setFormData }) {
   const [editingServiceId, setEditingServiceId] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingService, setEditingService] = useState(null);
+  
+  // Tabs and Packages state
+  const [activeTab, setActiveTab] = useState('services');
+  const [packages, setPackages] = useState(formData.packages || []);
+  const [showPackageModal, setShowPackageModal] = useState(false);
+  const [editingPackage, setEditingPackage] = useState(null);
 
   useEffect(() => {
     loadServices();
@@ -2984,6 +2990,52 @@ function ServicesStep({ formData, setFormData }) {
     }));
   };
 
+  // Package handlers
+  const handleAddPackage = () => {
+    setEditingPackage({ name: '', description: '', price: '', priceType: 'flat', includedServices: [] });
+    setShowPackageModal(true);
+  };
+
+  const handleEditPackage = (pkg, index) => {
+    setEditingPackage({ ...pkg, _index: index });
+    setShowPackageModal(true);
+  };
+
+  const handleSavePackage = () => {
+    if (!editingPackage?.name || !editingPackage?.price) return;
+    
+    const packageData = { ...editingPackage, id: editingPackage.id || Date.now(), price: parseFloat(editingPackage.price) };
+    delete packageData._index;
+    
+    let updatedPackages;
+    if (editingPackage._index !== undefined) {
+      updatedPackages = [...packages];
+      updatedPackages[editingPackage._index] = packageData;
+    } else {
+      updatedPackages = [...packages, packageData];
+    }
+    
+    setPackages(updatedPackages);
+    setFormData(prev => ({ ...prev, packages: updatedPackages }));
+    setShowPackageModal(false);
+    setEditingPackage(null);
+  };
+
+  const handleDeletePackage = (index) => {
+    const updatedPackages = packages.filter((_, i) => i !== index);
+    setPackages(updatedPackages);
+    setFormData(prev => ({ ...prev, packages: updatedPackages }));
+  };
+
+  const toggleServiceInPackage = (serviceId) => {
+    setEditingPackage(prev => ({
+      ...prev,
+      includedServices: prev.includedServices.includes(serviceId)
+        ? prev.includedServices.filter(id => id !== serviceId)
+        : [...prev.includedServices, serviceId]
+    }));
+  };
+
   const filteredServices = availableServices.filter(service => 
     service.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
     !formData.selectedServices.some(s => s.serviceId === service.id)
@@ -2995,23 +3047,22 @@ function ServicesStep({ formData, setFormData }) {
 
   return (
     <div className="services-step">
-      <div style={{ marginBottom: '2rem', padding: '1.5rem', background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
-          <i className="fas fa-info-circle" style={{ color: 'var(--primary)', fontSize: '1.25rem' }}></i>
-          <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>Select Your Services</h3>
-        </div>
-        <p style={{ margin: 0, color: '#6b7280', fontSize: '0.9rem', lineHeight: 1.6 }}>
-          Select the services you offer and set your pricing. You can add more services later.
-        </p>
+      {/* Tabs */}
+      <div style={{ display: 'flex', gap: '0', marginBottom: '1.5rem', borderBottom: '2px solid #e5e7eb' }}>
+        <button type="button" onClick={() => setActiveTab('services')} style={{ padding: '0.75rem 1.5rem', background: 'transparent', border: 'none', borderBottom: activeTab === 'services' ? '2px solid var(--primary)' : '2px solid transparent', marginBottom: '-2px', color: activeTab === 'services' ? 'var(--primary)' : '#6b7280', fontWeight: activeTab === 'services' ? 600 : 500, cursor: 'pointer', fontSize: '0.95rem' }}>
+          <i className="fas fa-concierge-bell" style={{ marginRight: '8px' }}></i>Services ({formData.selectedServices.length})
+        </button>
+        <button type="button" onClick={() => setActiveTab('packages')} style={{ padding: '0.75rem 1.5rem', background: 'transparent', border: 'none', borderBottom: activeTab === 'packages' ? '2px solid var(--primary)' : '2px solid transparent', marginBottom: '-2px', color: activeTab === 'packages' ? 'var(--primary)' : '#6b7280', fontWeight: activeTab === 'packages' ? 600 : 500, cursor: 'pointer', fontSize: '0.95rem' }}>
+          <i className="fas fa-box" style={{ marginRight: '8px' }}></i>Packages ({packages.length})
+        </button>
       </div>
 
-      {/* Available Services Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-        <h5 style={{ margin: 0, color: 'var(--primary)' }}>Available Services</h5>
-        <span style={{ color: 'var(--text-light)', fontSize: '0.9rem' }}>
-          {formData.selectedServices.length} added
-        </span>
-      </div>
+      {/* Services Tab */}
+      {activeTab === 'services' && (
+        <>
+          <div style={{ marginBottom: '1rem', padding: '1rem', background: '#f8f9fa', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+            <p style={{ margin: 0, color: '#6b7280', fontSize: '0.9rem' }}><i className="fas fa-info-circle" style={{ marginRight: '8px', color: 'var(--primary)' }}></i>Select services you offer and set pricing.</p>
+          </div>
 
       {/* Selected Services List - Same style as ServicesPackagesPanel */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem', width: '100%' }}>
@@ -3222,6 +3273,99 @@ function ServicesStep({ formData, setFormData }) {
                   </div>
                 ))
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+        </>
+      )}
+
+      {/* Packages Tab */}
+      {activeTab === 'packages' && (
+        <div>
+          <div style={{ marginBottom: '1rem', padding: '1rem', background: '#f8f9fa', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+            <p style={{ margin: 0, color: '#6b7280', fontSize: '0.9rem' }}><i className="fas fa-info-circle" style={{ marginRight: '8px', color: 'var(--primary)' }}></i>Create packages to bundle services together at a special price.</p>
+          </div>
+          
+          <button type="button" onClick={handleAddPackage} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 20px', background: 'var(--primary)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 500, marginBottom: '1.5rem' }}>
+            <i className="fas fa-plus"></i> Add Package
+          </button>
+
+          {packages.length === 0 ? (
+            <div style={{ padding: '2rem', background: '#f9fafb', borderRadius: '8px', border: '2px dashed #e5e7eb', textAlign: 'center', color: '#6b7280' }}>
+              <i className="fas fa-box" style={{ fontSize: '2rem', marginBottom: '0.75rem', display: 'block' }}></i>
+              No packages yet. Create a package to bundle your services.
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {packages.map((pkg, index) => (
+                <div key={pkg.id || index} style={{ padding: '1rem', background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div>
+                      <h4 style={{ margin: '0 0 0.5rem 0', fontWeight: 600 }}>{pkg.name}</h4>
+                      <p style={{ margin: '0 0 0.5rem 0', color: '#6b7280', fontSize: '0.9rem' }}>{pkg.description || 'No description'}</p>
+                      <span style={{ fontWeight: 600, color: 'var(--primary)' }}>${pkg.price} {pkg.priceType === 'per_person' ? '/ person' : ''}</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button type="button" onClick={() => handleEditPackage(pkg, index)} style={{ padding: '6px 12px', border: '1px solid #e5e7eb', borderRadius: '6px', background: '#fff', cursor: 'pointer', fontSize: '0.8rem' }}>Edit</button>
+                      <button type="button" onClick={() => handleDeletePackage(index)} style={{ padding: '6px 12px', border: '1px solid #fecaca', borderRadius: '6px', background: '#fef2f2', cursor: 'pointer', fontSize: '0.8rem', color: '#dc2626' }}>Delete</button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Package Modal */}
+      {showPackageModal && (
+        <div className="service-modal-overlay" onClick={() => setShowPackageModal(false)}>
+          <div className="service-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="service-modal-header">
+              <h3>{editingPackage?._index !== undefined ? 'Edit Package' : 'Add Package'}</h3>
+              <button type="button" className="modal-close-btn" onClick={() => setShowPackageModal(false)}>×</button>
+            </div>
+            <div className="service-modal-content">
+              <div className="form-group">
+                <label>Package Name *</label>
+                <input type="text" value={editingPackage?.name || ''} onChange={(e) => setEditingPackage(prev => ({ ...prev, name: e.target.value }))} className="form-input" placeholder="e.g., Wedding Photography Package" />
+              </div>
+              <div className="form-group">
+                <label>Description</label>
+                <textarea value={editingPackage?.description || ''} onChange={(e) => setEditingPackage(prev => ({ ...prev, description: e.target.value }))} className="form-textarea" rows="3" placeholder="Describe what's included..." />
+              </div>
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Price *</label>
+                  <input type="number" value={editingPackage?.price || ''} onChange={(e) => setEditingPackage(prev => ({ ...prev, price: e.target.value }))} className="form-input" placeholder="500" min="0" />
+                </div>
+                <div className="form-group">
+                  <label>Price Type</label>
+                  <select value={editingPackage?.priceType || 'flat'} onChange={(e) => setEditingPackage(prev => ({ ...prev, priceType: e.target.value }))} className="form-input">
+                    <option value="flat">Flat Rate</option>
+                    <option value="per_person">Per Person</option>
+                  </select>
+                </div>
+              </div>
+              {formData.selectedServices.length > 0 && (
+                <div className="form-group">
+                  <label>Include Services</label>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '150px', overflowY: 'auto' }}>
+                    {formData.selectedServices.map(svc => (
+                      <label key={svc.serviceId} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                        <input type="checkbox" checked={editingPackage?.includedServices?.includes(svc.serviceId) || false} onChange={() => toggleServiceInPackage(svc.serviceId)} />
+                        <span>{svc.serviceName}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div className="modal-actions">
+                <button type="button" className="btn-secondary" onClick={() => setShowPackageModal(false)}>Cancel</button>
+                <button type="button" className="btn-primary" onClick={handleSavePackage}>Save Package</button>
+              </div>
             </div>
           </div>
         </div>

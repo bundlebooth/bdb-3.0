@@ -79,24 +79,46 @@ function VendorAnalyticsSection() {
       if (response.ok) {
         const data = await response.json();
         
-        // Transform monthly data for charts
-        const monthlyViews = (data.monthlyData || []).map(m => ({
-          month: m.monthLabel,
-          monthKey: m.monthKey,
-          views: m.views || 0
-        }));
+        // For 7d and 30d, use daily data; for 90d and 1y, use monthly data
+        const useDailyData = dateRange === '7d' || dateRange === '30d';
         
-        const monthlyBookings = (data.monthlyData || []).map(m => ({
-          month: m.monthLabel,
-          monthKey: m.monthKey,
-          bookings: m.bookings || 0
-        }));
+        let monthlyViews, monthlyBookings, monthlyRevenue;
         
-        const monthlyRevenue = (data.monthlyData || []).map(m => ({
-          month: m.monthLabel,
-          monthKey: m.monthKey,
-          revenue: m.revenue || 0
-        }));
+        if (useDailyData && data.dailyData && data.dailyData.length > 0) {
+          // Use daily data for short ranges
+          monthlyViews = data.dailyData.map(d => ({
+            month: d.dayLabel || d.dateLabel,
+            monthKey: d.dateKey,
+            views: d.views || 0
+          }));
+          monthlyBookings = data.dailyData.map(d => ({
+            month: d.dayLabel || d.dateLabel,
+            monthKey: d.dateKey,
+            bookings: d.bookings || 0
+          }));
+          monthlyRevenue = data.dailyData.map(d => ({
+            month: d.dayLabel || d.dateLabel,
+            monthKey: d.dateKey,
+            revenue: d.revenue || 0
+          }));
+        } else {
+          // Fall back to monthly data for longer ranges or if daily not available
+          monthlyViews = (data.monthlyData || []).map(m => ({
+            month: m.monthLabel,
+            monthKey: m.monthKey,
+            views: m.views || 0
+          }));
+          monthlyBookings = (data.monthlyData || []).map(m => ({
+            month: m.monthLabel,
+            monthKey: m.monthKey,
+            bookings: m.bookings || 0
+          }));
+          monthlyRevenue = (data.monthlyData || []).map(m => ({
+            month: m.monthLabel,
+            monthKey: m.monthKey,
+            revenue: m.revenue || 0
+          }));
+        }
         
         // Calculate period-over-period changes from monthly data
         const calcPeriodChange = (monthlyArr, valueKey) => {
@@ -161,20 +183,37 @@ function VendorAnalyticsSection() {
       startDate.setDate(startDate.getDate() - daysBack);
       startDate.setHours(0, 0, 0, 0);
       
-      // Initialize monthly arrays with year awareness
+      // For 7d and 30d, use daily data points; for 90d and 1y, use monthly
+      const useDailyData = dateRange === '7d' || dateRange === '30d';
+      
       const monthlyViews = [];
       const monthlyRevenue = [];
       const monthlyBookings = [];
-      const numPeriods = dateRange === '1y' ? 12 : 6;
       const now = new Date();
       
-      for (let i = numPeriods - 1; i >= 0; i--) {
-        const periodDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        const monthKey = `${periodDate.getFullYear()}-${String(periodDate.getMonth() + 1).padStart(2, '0')}`;
-        const monthLabel = months[periodDate.getMonth()];
-        monthlyViews.push({ month: monthLabel, monthKey, views: 0 });
-        monthlyRevenue.push({ month: monthLabel, monthKey, revenue: 0 });
-        monthlyBookings.push({ month: monthLabel, monthKey, bookings: 0 });
+      if (useDailyData) {
+        // Generate daily data points
+        for (let i = daysBack - 1; i >= 0; i--) {
+          const dayDate = new Date(now);
+          dayDate.setDate(dayDate.getDate() - i);
+          const dateKey = dayDate.toISOString().split('T')[0];
+          // Show abbreviated day labels (e.g., "Jan 5", "Jan 6")
+          const dayLabel = `${months[dayDate.getMonth()]} ${dayDate.getDate()}`;
+          monthlyViews.push({ month: dayLabel, monthKey: dateKey, views: 0 });
+          monthlyRevenue.push({ month: dayLabel, monthKey: dateKey, revenue: 0 });
+          monthlyBookings.push({ month: dayLabel, monthKey: dateKey, bookings: 0 });
+        }
+      } else {
+        // Use monthly data for longer ranges
+        const numPeriods = dateRange === '1y' ? 12 : 6;
+        for (let i = numPeriods - 1; i >= 0; i--) {
+          const periodDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
+          const monthKey = `${periodDate.getFullYear()}-${String(periodDate.getMonth() + 1).padStart(2, '0')}`;
+          const monthLabel = months[periodDate.getMonth()];
+          monthlyViews.push({ month: monthLabel, monthKey, views: 0 });
+          monthlyRevenue.push({ month: monthLabel, monthKey, revenue: 0 });
+          monthlyBookings.push({ month: monthLabel, monthKey, bookings: 0 });
+        }
       }
       
       // Fetch bookings
@@ -210,15 +249,18 @@ function VendorAnalyticsSection() {
         cancelled: allBookings.filter(b => getStatus(b) === 'cancelled' || getStatus(b) === 'declined').length
       };
       
-      // Aggregate bookings by month with year awareness
+      // Aggregate bookings by day or month depending on date range
       allBookings.forEach(booking => {
         const dateStr = booking.EventDate || booking.CreatedAt || booking.createdAt;
         if (dateStr) {
           const date = new Date(dateStr);
           if (!isNaN(date.getTime())) {
-            const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-            const bookingEntry = monthlyBookings.find(m => m.monthKey === monthKey);
-            const revenueEntry = monthlyRevenue.find(m => m.monthKey === monthKey);
+            // Use daily key for 7d/30d, monthly key for 90d/1y
+            const key = useDailyData 
+              ? date.toISOString().split('T')[0]
+              : `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+            const bookingEntry = monthlyBookings.find(m => m.monthKey === key);
+            const revenueEntry = monthlyRevenue.find(m => m.monthKey === key);
             if (bookingEntry) {
               bookingEntry.bookings += 1;
             }
@@ -367,6 +409,9 @@ function VendorAnalyticsSection() {
     }]
   };
 
+  // Determine if we should show fewer tick labels (for 30-day view)
+  const maxTicksLimit = dateRange === '30d' ? 10 : dateRange === '7d' ? 7 : 6;
+
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
@@ -385,7 +430,13 @@ function VendorAnalyticsSection() {
     scales: {
       x: {
         grid: { display: false },
-        ticks: { color: '#6b7280', font: { size: 11 } }
+        ticks: { 
+          color: '#6b7280', 
+          font: { size: 11 },
+          maxTicksLimit: maxTicksLimit,
+          maxRotation: 45,
+          minRotation: 0
+        }
       },
       y: {
         grid: { color: '#f3f4f6' },

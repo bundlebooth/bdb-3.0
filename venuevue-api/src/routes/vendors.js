@@ -2037,6 +2037,22 @@ router.post('/onboarding', async (req, res) => {
       }
     }
 
+    // Save cancellation policy
+    if (cancellationPolicy) {
+      try {
+        const policyRequest = new sql.Request(pool);
+        policyRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+        // Store as JSON string if it's an object
+        const policyString = typeof cancellationPolicy === 'object' 
+          ? JSON.stringify(cancellationPolicy) 
+          : cancellationPolicy;
+        policyRequest.input('CancellationPolicy', sql.NVarChar(sql.MAX), policyString);
+        await policyRequest.execute('vendors.sp_UpdateCancellationPolicy');
+      } catch (policyError) {
+        console.warn('⚠️ Could not save cancellation policy:', policyError.message);
+      }
+    }
+
     // Update user to be a vendor
     const updateUserRequest = new sql.Request(pool);
     updateUserRequest.input('UserID', sql.Int, parseInt(userId));

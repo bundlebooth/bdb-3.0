@@ -1138,19 +1138,74 @@ function VendorProfilePage() {
     );
   };
 
-  // Render enhanced services with better formatting - only show packages on public page
+  // Render enhanced services with better formatting - show both services and packages
   const renderEnhancedServices = () => {
     const hasPackages = packages && packages.length > 0;
+    const services = vendor?.services || [];
+    const hasServices = services && services.length > 0;
     
-    // Only show packages on public vendor page (not individual services)
-    if (!hasPackages) return null;
+    // Show nothing if no services and no packages
+    if (!hasPackages && !hasServices) return null;
 
     return (
       <div className="content-section">
         <h2>What we offer</h2>
         
+        {/* Services Section */}
+        {hasServices && (
+          <div style={{ marginBottom: hasPackages ? '2rem' : 0 }}>
+            {hasPackages && <h3 style={{ fontSize: '1rem', fontWeight: 600, color: '#222', marginBottom: '1rem' }}>Services</h3>}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
+              {services.map((service, index) => (
+                <div 
+                  key={service.ServiceID || index}
+                  style={{
+                    padding: '1rem',
+                    background: '#fff',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '12px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'flex-start'
+                  }}
+                >
+                  <div style={{ flex: 1 }}>
+                    <h4 style={{ fontSize: '1rem', fontWeight: 600, color: '#222', margin: '0 0 0.25rem 0' }}>
+                      {service.ServiceName || service.serviceName}
+                    </h4>
+                    {service.ServiceDescription && (
+                      <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.85rem', color: '#6b7280', lineHeight: 1.4 }}>
+                        {service.ServiceDescription.length > 80 ? service.ServiceDescription.substring(0, 80) + '...' : service.ServiceDescription}
+                      </p>
+                    )}
+                    {service.DurationMinutes && (
+                      <span style={{ fontSize: '0.8rem', color: '#9ca3af' }}>
+                        <i className="far fa-clock" style={{ marginRight: '4px' }}></i>
+                        {service.DurationMinutes} min
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: '1rem' }}>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#222' }}>
+                      ${parseFloat(service.Price || service.BasePrice || 0).toFixed(0)}
+                    </div>
+                    {service.PriceType && service.PriceType !== 'flat' && (
+                      <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                        / {service.PriceType === 'per_person' ? 'person' : service.PriceType === 'per_hour' ? 'hour' : service.PriceType}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        
         {/* Packages Section - Horizontal Cards */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        {hasPackages && (
+          <>
+            {hasServices && <h3 style={{ fontSize: '1rem', fontWeight: 600, color: '#222', marginBottom: '1rem' }}>Packages</h3>}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           {packages.map((pkg, index) => (
             <div 
               key={pkg.PackageID || index}
@@ -1250,7 +1305,9 @@ function VendorProfilePage() {
               </div>
             </div>
           ))}
-        </div>
+            </div>
+          </>
+        )}
       </div>
     );
   };
@@ -1310,45 +1367,16 @@ function VendorProfilePage() {
 
     return (
       <div className="content-section" style={{ marginTop: '2rem' }}>
-        <h2>Cancellation Policy</h2>
-        <div style={{ 
-          marginTop: '1rem',
-          padding: '1.25rem',
-          background: '#f9fafb',
-          borderRadius: '12px',
-          border: '1px solid #e5e7eb'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
-            <div style={{
-              width: '36px',
-              height: '36px',
-              borderRadius: '50%',
-              background: `${policyInfo.color}15`,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}>
-              <i className={`fas ${policyInfo.icon}`} style={{ color: policyInfo.color, fontSize: '1rem' }}></i>
-            </div>
-            <div>
-              <div style={{ fontWeight: 600, fontSize: '1rem', color: '#111827' }}>{policyInfo.title}</div>
-              <div style={{ 
-                display: 'inline-block',
-                padding: '2px 8px',
-                background: `${policyInfo.color}20`,
-                color: policyInfo.color,
-                borderRadius: '4px',
-                fontSize: '0.7rem',
-                fontWeight: 500,
-                marginTop: '2px'
-              }}>
-                {policyType.charAt(0).toUpperCase() + policyType.slice(1)} Policy
-              </div>
-            </div>
+        <h2>Cancellation policy</h2>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem', marginTop: '1rem' }}>
+          <div style={{ flexShrink: 0 }}>
+            <i className="far fa-calendar-alt" style={{ fontSize: '1.5rem', color: '#222' }}></i>
           </div>
-          <p style={{ margin: 0, color: '#4b5563', fontSize: '0.9rem', lineHeight: 1.6 }}>
-            {description}
-          </p>
+          <div>
+            <p style={{ margin: 0, color: '#717171', fontSize: '0.95rem', lineHeight: 1.5 }}>
+              {description}
+            </p>
+          </div>
         </div>
       </div>
     );
