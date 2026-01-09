@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
+import { PageLayout, ContentWrapper } from '../components/PageWrapper';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import ProfileModal from '../components/ProfileModal';
@@ -382,7 +383,7 @@ function ForumPostPage() {
   const topLevelComments = comments.filter(c => !c.ParentCommentID);
 
   return (
-    <div style={{ backgroundColor: '#f8f9fa', minHeight: '100vh' }}>
+    <PageLayout variant="fullWidth" pageClassName="forum-post-page" style={{ backgroundColor: '#f8f9fa' }}>
       <Header 
         onSearch={() => {}} 
         onProfileClick={() => currentUser ? setDashboardModalOpen(true) : setProfileModalOpen(true)} 
@@ -407,7 +408,7 @@ function ForumPostPage() {
       <ProfileModal isOpen={profileModalOpen} onClose={() => setProfileModalOpen(false)} />
       <DashboardModal isOpen={dashboardModalOpen} onClose={() => setDashboardModalOpen(false)} initialSection={dashboardSection} />
       
-      <div style={{ maxWidth: '800px', margin: '0 auto', padding: '2rem 1rem' }}>
+      <ContentWrapper variant="narrow" style={{ padding: '2rem 0' }}>
         {/* Back button */}
         <button
           onClick={() => navigate('/forum')}
@@ -927,11 +928,11 @@ function ForumPostPage() {
             topLevelComments.map(comment => renderComment(comment))
           )}
         </div>
-      </div>
+      </ContentWrapper>
 
       <Footer />
       {currentUser && <MessagingWidget />}
-    </div>
+    </PageLayout>
   );
 }
 

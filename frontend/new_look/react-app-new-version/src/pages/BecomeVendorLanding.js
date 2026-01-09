@@ -6,6 +6,7 @@ import {
   Edit3, UserCheck, MessageCircle, Calendar, CreditCard, DollarSign, Shield, Award, MapPin, Clock, Image, Share2,
   TrendingUp
 } from 'lucide-react';
+import { PageLayout } from '../components/PageWrapper';
 import Footer from '../components/Footer';
 import MessagingWidget from '../components/MessagingWidget';
 import './BecomeVendorLanding.css';
@@ -149,7 +150,7 @@ const BecomeVendorLanding = () => {
   ];
 
   return (
-    <div className="become-vendor-landing">
+    <PageLayout variant="fullWidth" pageClassName="become-vendor-landing">
       {/* Header */}
       <header className={`vendor-landing-header ${isScrolled ? 'scrolled' : ''}`}>
         <div className="vendor-landing-header-content">
@@ -609,7 +610,7 @@ const BecomeVendorLanding = () => {
 
       <Footer />
       <MessagingWidget />
-    </div>
+    </PageLayout>
   );
 };
 

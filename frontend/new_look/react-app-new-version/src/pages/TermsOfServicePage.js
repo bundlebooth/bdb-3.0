@@ -1,11 +1,12 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { PageLayout } from '../components/PageWrapper';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 
 function TermsOfServicePage() {
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: '#f8fafc' }}>
+    <PageLayout variant="fullWidth" pageClassName="terms-of-service-page" style={{ display: 'flex', flexDirection: 'column', backgroundColor: '#f8fafc' }}>
       <Header />
       
       <main style={{ flex: 1, maxWidth: '800px', margin: '0 auto', padding: '2rem 1.5rem' }}>
@@ -164,7 +165,7 @@ function TermsOfServicePage() {
       </main>
 
       <Footer />
-    </div>
+    </PageLayout>
   );
 }
 

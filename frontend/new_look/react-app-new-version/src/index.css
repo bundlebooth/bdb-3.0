@@ -9,8 +9,8 @@
     --border: #e2e8f0;
     --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
     --radius: 12px;
-    /* Airbnb-style centered container - content max width is 1280px */
-    --page-max-width: 1280px;
+    /* Airbnb-style centered container - wider layout like Airbnb */
+    --page-max-width: 1760px;
     --page-padding-x: 24px;
 }
 
@@ -11876,13 +11876,15 @@ html, body {
    INLINE CATEGORIES NAV - Pill Style Buttons
    ============================================ */
 .inline-categories-nav {
-    padding: 0.5rem var(--page-padding-x);
+    padding: 0.5rem 0;
     background: white;
     border-bottom: 1px solid #e5e7eb;
     width: 100%;
     box-sizing: border-box;
-    display: flex;
-    justify-content: center;
+}
+
+.inline-categories-nav .page-wrapper {
+    width: 100%;
 }
 
 

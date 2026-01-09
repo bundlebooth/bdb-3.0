@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL, ENV_CONFIG } from '../config';
+import { PageLayout } from '../components/PageWrapper';
 import { showBanner } from '../utils/helpers';
 import './AdminDashboard.css';
 
@@ -176,7 +177,7 @@ const AdminDashboard = () => {
   }
 
   return (
-    <div className={`admin-dashboard ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
+    <PageLayout variant="admin" pageClassName={`admin-dashboard ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
       {/* Sidebar */}
       <aside className="admin-sidebar">
         <div className="sidebar-header">
@@ -250,7 +251,7 @@ const AdminDashboard = () => {
           {renderContent()}
         </div>
       </main>
-    </div>
+    </PageLayout>
   );
 };
 

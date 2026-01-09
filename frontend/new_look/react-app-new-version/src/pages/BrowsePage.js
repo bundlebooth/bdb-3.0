@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
+import { PageLayout } from '../components/PageWrapper';
 import Header from '../components/Header';
 import CategoriesNav from '../components/CategoriesNav';
 import VendorGrid from '../components/VendorGrid';
@@ -424,7 +425,7 @@ function BrowsePage() {
   const hasMore = vendors.length < totalCount;
 
   return (
-    <div className="browse-page">
+    <PageLayout variant="fullWidth" pageClassName="browse-page">
       <Header 
         onProfileClick={() => {
           if (currentUser) {
@@ -658,7 +659,7 @@ function BrowsePage() {
 
       <Footer />
       <MessagingWidget />
-    </div>
+    </PageLayout>
   );
 }
 

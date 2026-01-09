@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
+import { PageLayout } from '../components/PageWrapper';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import VendorCard from '../components/VendorCard';
@@ -136,7 +137,7 @@ function HostProfilePage() {
   }
 
   return (
-    <>
+    <PageLayout variant="fullWidth" pageClassName="host-profile-page-layout">
       <Header 
         onSearch={() => {}} 
         onProfileClick={() => {
@@ -347,7 +348,7 @@ function HostProfilePage() {
       </div>
       
       <Footer />
-    </>
+    </PageLayout>
   );
 }
 

@@ -4,7 +4,21 @@
   background: #fff;
 }
 
-/* Header */
+/* Blog Category Navigation - Below Standard Header */
+.blog-category-nav {
+  background: #f8f9fa;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 0.75rem 0;
+}
+
+.blog-category-nav-inner {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+/* Legacy Header - kept for backwards compatibility */
 .blog-header {
   background: #fff;
   border-bottom: 1px solid #eee;

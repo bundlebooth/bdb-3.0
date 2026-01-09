@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
+import { PageLayout, ContentWrapper } from './PageWrapper';
+import Header from './Header';
 import Footer from './Footer';
 import UnifiedSidebar from './UnifiedSidebar';
 import './BlogPage.css';
@@ -117,57 +119,47 @@ const BlogPage = () => {
   }
 
   return (
-    <div className="blog-page">
-      {/* Header */}
-      <header className="blog-header">
-        <div className="blog-header-content">
-          <div className="blog-logo" onClick={() => navigate('/')}>
-            <img src="/images/logo.png" alt="PlanBeau" />
+    <PageLayout variant="fullWidth" pageClassName="blog-page">
+      {/* Standard Header */}
+      <Header 
+        onSearch={() => {}} 
+        onProfileClick={() => setSidebarOpen(true)}
+        onWishlistClick={() => {}}
+        onChatClick={() => {}}
+        onNotificationsClick={() => {}}
+      />
+      
+      {/* Blog Category Navigation - Below Header */}
+      <div className="blog-category-nav">
+        <ContentWrapper variant="standard">
+          <div className="blog-category-nav-inner">
             <span className="blog-badge">Blog</span>
-          </div>
-          <nav className="blog-nav">
-            {categories.slice(0, 6).map((cat, index) => (
+            <nav className="blog-nav">
               <button
-                key={index}
-                className={`nav-link ${selectedCategory === (cat.Category || cat) ? 'active' : ''}`}
+                className={`nav-link ${!selectedCategory ? 'active' : ''}`}
                 onClick={() => {
-                  setSelectedCategory(cat.Category || cat);
+                  setSelectedCategory('');
                   setPage(1);
                 }}
               >
-                {cat.Category || cat}
+                All Posts
               </button>
-            ))}
-          </nav>
-          <div className="blog-header-actions">
-            {currentUser ? (
-              <button 
-                className="user-avatar-btn" 
-                onClick={() => setSidebarOpen(true)}
-                title="Open menu"
-              >
-                {currentUser.profilePicture || currentUser.ProfilePicture ? (
-                  <img 
-                    src={currentUser.profilePicture || currentUser.ProfilePicture} 
-                    alt={currentUser.name} 
-                  />
-                ) : (
-                  <div className="avatar-placeholder">
-                    {currentUser.name?.charAt(0)?.toUpperCase() || 'U'}
-                  </div>
-                )}
-              </button>
-            ) : (
-              <button 
-                className="login-btn" 
-                onClick={() => navigate('/')}
-              >
-                Sign In
-              </button>
-            )}
+              {categories.slice(0, 6).map((cat, index) => (
+                <button
+                  key={index}
+                  className={`nav-link ${selectedCategory === (cat.Category || cat) ? 'active' : ''}`}
+                  onClick={() => {
+                    setSelectedCategory(cat.Category || cat);
+                    setPage(1);
+                  }}
+                >
+                  {cat.Category || cat}
+                </button>
+              ))}
+            </nav>
           </div>
-        </div>
-      </header>
+        </ContentWrapper>
+      </div>
 
       {/* Hero Section */}
       <section className="blog-hero">
@@ -341,7 +333,7 @@ const BlogPage = () => {
         isOpen={sidebarOpen} 
         onClose={() => setSidebarOpen(false)} 
       />
-    </div>
+    </PageLayout>
   );
 };
 
@@ -402,46 +394,27 @@ const SingleBlogPost = ({ slug, navigate }) => {
   }
 
   return (
-    <div className="blog-page single-post">
-      {/* Header */}
-      <header className="blog-header">
-        <div className="blog-header-content">
-          <div className="blog-logo" onClick={() => navigate('/')}>
-            <img src="/images/logo.png" alt="PlanBeau" />
-            <span className="blog-badge">Blog</span>
-          </div>
-          <div className="blog-header-actions">
+    <PageLayout variant="fullWidth" pageClassName="blog-page single-post">
+      {/* Standard Header */}
+      <Header 
+        onSearch={() => {}} 
+        onProfileClick={() => setSidebarOpen(true)}
+        onWishlistClick={() => {}}
+        onChatClick={() => {}}
+        onNotificationsClick={() => {}}
+      />
+      
+      {/* Back to Blog Navigation */}
+      <div className="blog-category-nav">
+        <ContentWrapper variant="standard">
+          <div className="blog-category-nav-inner">
             <button className="back-btn" onClick={() => navigate('/blog')}>
               <i className="fas fa-arrow-left"></i> Back to Blog
             </button>
-            {currentUser ? (
-              <button 
-                className="user-avatar-btn" 
-                onClick={() => setSidebarOpen(true)}
-                title="Open menu"
-              >
-                {currentUser.profilePicture || currentUser.ProfilePicture ? (
-                  <img 
-                    src={currentUser.profilePicture || currentUser.ProfilePicture} 
-                    alt={currentUser.name} 
-                  />
-                ) : (
-                  <div className="avatar-placeholder">
-                    {currentUser.name?.charAt(0)?.toUpperCase() || 'U'}
-                  </div>
-                )}
-              </button>
-            ) : (
-              <button 
-                className="login-btn" 
-                onClick={() => navigate('/')}
-              >
-                Sign In
-              </button>
-            )}
+            <span className="blog-badge">Blog</span>
           </div>
-        </div>
-      </header>
+        </ContentWrapper>
+      </div>
 
       {/* Article */}
       <article className="blog-article">
@@ -553,7 +526,7 @@ const SingleBlogPost = ({ slug, navigate }) => {
         isOpen={sidebarOpen} 
         onClose={() => setSidebarOpen(false)} 
       />
-    </div>
+    </PageLayout>
   );
 };
 

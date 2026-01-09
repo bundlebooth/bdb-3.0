@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { PageLayout } from '../components/PageWrapper';
 
 function HelpCentrePage() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -245,7 +246,7 @@ function HelpCentrePage() {
 
   // Main collections view - Dark header, white content like Giggster
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#fff' }}>
+    <PageLayout variant="fullWidth" pageClassName="help-centre-page">
       {/* Dark Header */}
       <div style={{ 
         backgroundColor: '#1a1a1a',
@@ -372,7 +373,7 @@ function HelpCentrePage() {
           </Link>
         </div>
       </div>
-    </div>
+    </PageLayout>
   );
 }
 

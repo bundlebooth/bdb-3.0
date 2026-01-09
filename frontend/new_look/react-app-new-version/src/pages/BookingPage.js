@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL, GOOGLE_MAPS_API_KEY } from '../config';
+import { PageLayout } from '../components/PageWrapper';
 import Header from '../components/Header';
 import ServiceCard from '../components/ServiceCard';
 import SkeletonLoader from '../components/SkeletonLoader';
@@ -668,7 +669,7 @@ function BookingPage() {
   const profilePic = profile.LogoURL || profile.FeaturedImageURL || profile.ProfilePictureURL || profile.ProfilePicture || '';
 
   return (
-    <div style={{ backgroundColor: '#ffffff', minHeight: '100vh', width: '100%' }}>
+    <PageLayout variant="fullWidth" pageClassName="booking-page-layout">
       {/* Header */}
       <Header 
         onSearch={() => {}} 
@@ -1531,7 +1532,7 @@ function BookingPage() {
       
       {/* Messaging Widget */}
       <MessagingWidget />
-    </div>
+    </PageLayout>
   );
 }
 

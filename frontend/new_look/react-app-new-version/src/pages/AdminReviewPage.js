@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
+import { PageLayout } from '../components/PageWrapper';
 import { showBanner } from '../utils/helpers';
 import './AdminReviewPage.css';
 
@@ -139,7 +140,8 @@ const AdminReviewPage = () => {
   }
 
   return (
-    <div className="admin-review-page">
+    <PageLayout variant="admin" pageClassName="admin-review-page-layout">
+      <div className="admin-review-page">
       <header className="admin-header">
         <div className="header-content">
           <div className="logo" onClick={() => navigate('/')} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
@@ -290,7 +292,8 @@ const AdminReviewPage = () => {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </PageLayout>
   );
 };
 

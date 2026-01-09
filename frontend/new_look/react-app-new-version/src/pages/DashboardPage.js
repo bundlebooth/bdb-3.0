@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
+import { PageLayout } from '../components/PageWrapper';
 import { useNotifications } from '../hooks/useNotifications';
 import { showBanner } from '../utils/banners';
 
@@ -534,10 +535,10 @@ function DashboardPage() {
   }
 
   return (
-    <div className="dashboard-page">
+    <PageLayout variant="dashboard" pageClassName="dashboard-page">
       {/* Top Header - Airbnb style */}
       <header className="dashboard-page-header">
-        <div className="dashboard-header-content">
+        <div className="dashboard-header-content page-wrapper">
           {/* Logo */}
           <div className="dashboard-logo" onClick={() => navigate('/')}>
             <img src="/images/logo.png" alt="PlanBeau" />
@@ -666,7 +667,7 @@ function DashboardPage() {
       <main className="dashboard-page-content">
         {renderContent()}
       </main>
-    </div>
+    </PageLayout>
   );
 }
 

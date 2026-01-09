@@ -77,26 +77,47 @@ function VendorSection({
     return Math.max(1, Math.min(count, 8)); // Cap at 8 cards max like Airbnb
   }, [vendors?.length]);
 
-  // Update visible count on mount and resize only - run once
+  // Update visible count on mount and resize
   useEffect(() => {
-    const count = calculateVisibleCount();
-    setVisibleCount(count);
+    // Small delay to ensure container is rendered
+    const timer = setTimeout(() => {
+      const count = calculateVisibleCount();
+      setVisibleCount(count);
+    }, 50);
     
     const handleResize = () => {
       const newCount = calculateVisibleCount();
       setVisibleCount(newCount);
+      // Reset currentIndex if it would cause empty space
+      setCurrentIndex(prev => {
+        const maxIdx = Math.max(0, (vendors?.length || 0) - newCount);
+        return Math.min(prev, maxIdx);
+      });
     };
     
     window.addEventListener('resize', handleResize);
     return () => {
+      clearTimeout(timer);
       window.removeEventListener('resize', handleResize);
     };
-  }, []); // Empty dependency - only run on mount
+  }, [calculateVisibleCount, vendors?.length]); // Re-run when vendors change
   
   // Compute scroll button states directly (no useEffect needed)
+  // maxIndex ensures we stop when the last card is fully visible (no empty space)
   const maxIndex = Math.max(0, vendorsLength - visibleCount);
-  const computedCanScrollLeft = currentIndex > 0;
-  const computedCanScrollRight = currentIndex < maxIndex;
+  
+  // Clamp currentIndex to maxIndex to prevent empty space when vendors/visibleCount changes
+  useEffect(() => {
+    if (currentIndex > maxIndex) {
+      setCurrentIndex(maxIndex);
+    }
+  }, [currentIndex, maxIndex]);
+  
+  // Use clamped value for display
+  const displayIndex = Math.min(currentIndex, maxIndex);
+  
+  const computedCanScrollLeft = displayIndex > 0;
+  const computedCanScrollRight = displayIndex < maxIndex;
 
   const scroll = (direction) => {
     // On mobile, scroll by one card width
@@ -109,14 +130,13 @@ function VendorSection({
       return;
     }
     
-    // Desktop: scroll by visibleCount cards at a time (like Airbnb - shows next "page" of cards)
-    const scrollAmount = visibleCount;
+    // Desktop: scroll by ONE card at a time with smooth animation
     const maxIdx = Math.max(0, vendors.length - visibleCount);
     
     if (direction === 'left') {
-      setCurrentIndex(prev => Math.max(0, prev - scrollAmount));
+      setCurrentIndex(prev => Math.max(0, prev - 1));
     } else {
-      setCurrentIndex(prev => Math.min(maxIdx, prev + scrollAmount));
+      setCurrentIndex(prev => Math.min(maxIdx, prev + 1));
     }
   };
 
@@ -251,11 +271,13 @@ function VendorSection({
               display: 'flex',
               gap: '16px',
               justifyContent: 'flex-start',
-              width: '100%'
+              transform: `translateX(-${displayIndex * (220 + 16)}px)`,
+              transition: 'transform 0.4s cubic-bezier(0.25, 0.1, 0.25, 1)',
+              width: 'max-content'
             }}
           >
-            {/* Desktop: Only show visibleCount cards. Mobile: Show all for horizontal scroll */}
-            {(isMobile ? vendors : vendors.slice(currentIndex, currentIndex + visibleCount)).map((vendor) => {
+            {/* Desktop: Show all cards with transform animation. Mobile: Show all for horizontal scroll */}
+            {vendors.map((vendor) => {
               const vendorId = vendor.vendorProfileId || vendor.VendorProfileID || vendor.id;
               return (
                 <div 

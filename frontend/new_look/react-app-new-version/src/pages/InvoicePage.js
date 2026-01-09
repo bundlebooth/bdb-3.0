@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
+import { PageLayout } from '../components/PageWrapper';
 import { decodeInvoiceId, decodeBookingId, isPublicId } from '../utils/hashIds';
 import './InvoicePage.css';
 
@@ -138,7 +139,8 @@ function InvoicePage() {
   const booking = invoice.booking || {};
 
   return (
-    <div className="invoice-page">
+    <PageLayout variant="narrow" pageClassName="invoice-page-layout">
+      <div className="invoice-page">
       <div className="invoice-actions no-print">
         <button onClick={() => navigate(-1)} className="btn-back">
           <i className="fas fa-arrow-left"></i> Back
@@ -334,7 +336,8 @@ function InvoicePage() {
           )}
         </div>
       </div>
-    </div>
+      </div>
+    </PageLayout>
   );
 }
 

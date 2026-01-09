@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
+import { PageLayout, ContentWrapper } from '../components/PageWrapper';
 import Header from '../components/Header';
 import VendorGallery from '../components/VendorGallery';
 import VendorCard from '../components/VendorCard';
@@ -2166,7 +2167,7 @@ function VendorProfilePage() {
   const categories = vendor.categories || [];
 
   return (
-    <div style={{ backgroundColor: '#ffffff', minHeight: '100vh', width: '100%' }}>
+    <PageLayout variant="fullWidth" pageClassName="vendor-profile-page">
       <Header 
         onSearch={() => {}} 
         onProfileClick={() => {
@@ -3262,7 +3263,7 @@ function VendorProfilePage() {
           window.dispatchEvent(new CustomEvent('openMessagingWidget', { detail: {} }));
         }}
       />
-    </div>
+    </PageLayout>
   );
 }
 

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
+import { PageLayout, ContentWrapper } from '../components/PageWrapper';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import ProfileModal from '../components/ProfileModal';
@@ -216,7 +217,7 @@ function ForumPage() {
   };
 
   return (
-    <div className="forum-page" style={{ backgroundColor: '#ffffff', minHeight: '100vh' }}>
+    <PageLayout variant="fullWidth" pageClassName="forum-page" style={{ backgroundColor: '#ffffff' }}>
       <Header 
         onSearch={() => {}} 
         onProfileClick={() => currentUser ? setDashboardModalOpen(true) : setProfileModalOpen(true)} 
@@ -288,6 +289,7 @@ function ForumPage() {
       )}
 
       {/* Main Layout with Left Sidebar */}
+      <ContentWrapper variant="standard" className="forum-layout-wrapper">
       <div className="forum-layout" style={{ display: 'flex', minHeight: 'calc(100vh - 80px)' }}>
         {/* Left Sidebar - Categories (Reddit-style) */}
         <div className={`forum-sidebar ${mobileSidebarOpen ? 'mobile-open' : ''}`} style={{
@@ -696,7 +698,7 @@ function ForumPage() {
           </div>
         </div>
       </div>
-
+      </ContentWrapper>
 
       {/* Create Post Modal */}
       {showCreatePost && (
@@ -882,7 +884,7 @@ function ForumPage() {
           window.dispatchEvent(new CustomEvent('openMessagingWidget', { detail: {} }));
         }}
       />
-    </div>
+    </PageLayout>
   );
 }
 

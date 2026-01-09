@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
+import { PageLayout } from '../components/PageWrapper';
 import Header from '../components/Header';
 import FilterModal from '../components/FilterModal';
 import CategoriesNav from '../components/CategoriesNav';
@@ -945,7 +946,7 @@ function IndexPage() {
   const showLoadMore = hasMore && !loading && filteredVendors.length > 0;
   
   return (
-    <div>
+    <PageLayout variant="fullWidth" pageClassName="index-page">
       {/* Announcement Banners, Popups, and Toasts */}
       <AnnouncementDisplay />
       
@@ -1127,7 +1128,7 @@ function IndexPage() {
             ) : (
               // Show actual discovery sections when loaded
               discoverySections.length > 0 && discoverySections.map((section, index) => (
-                <React.Fragment key={`${section.id}-${mapActive}`}>
+                <React.Fragment key={section.id}>
                   <VendorSection
                     title={section.title}
                     description={section.description}
@@ -1350,7 +1351,7 @@ function IndexPage() {
           window.dispatchEvent(new CustomEvent('openMessagingWidget', { detail: {} }));
         }}
       />
-    </div>
+    </PageLayout>
   );
 }
 

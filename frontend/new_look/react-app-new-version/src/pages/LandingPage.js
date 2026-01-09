@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL, GOOGLE_MAPS_API_KEY } from '../config';
+import { PageLayout } from '../components/PageWrapper';
 import VendorSection from '../components/VendorSection';
 import VendorCard from '../components/VendorCard';
 import Footer from '../components/Footer';
@@ -267,7 +268,7 @@ function LandingPage() {
   ];
 
   return (
-    <div className="landing-page">
+    <PageLayout variant="fullWidth" pageClassName="landing-page">
       {/* Header */}
       <header className={`landing-header ${isScrolled ? 'scrolled' : ''}`}>
         <div className="landing-header-content">
@@ -762,7 +763,7 @@ function LandingPage() {
         }}
         onOpenProfile={() => setProfileModalOpen(true)}
       />
-    </div>
+    </PageLayout>
   );
 }
 

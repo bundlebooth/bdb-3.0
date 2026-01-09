@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
+import { PageLayout } from '../components/PageWrapper';
 import { buildInvoiceUrl } from '../utils/urlHelpers';
 import './PaymentSuccessPage.css';
 
@@ -132,7 +133,8 @@ function PaymentSuccessPage() {
   }
 
   return (
-    <div className="payment-success-page">
+    <PageLayout variant="narrow" pageClassName="payment-success-page-layout">
+      <div className="payment-success-page">
       <div className="payment-card success">
         <div className="icon-circle success">
           <i className="fas fa-check"></i>
@@ -215,7 +217,8 @@ function PaymentSuccessPage() {
           </p>
         </div>
       </div>
-    </div>
+      </div>
+    </PageLayout>
   );
 }
 
