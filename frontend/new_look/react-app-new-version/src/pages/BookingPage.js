@@ -57,7 +57,7 @@ function BookingPage() {
     specialRequests: ''
   });
 
-  // Initialize page
+  // Initialize page and pre-fill data from URL params (from ProfileVendorWidget)
   useEffect(() => {
     if (!vendorId) {
       alert('No vendor selected. Redirecting to home page.');
@@ -72,10 +72,31 @@ function BookingPage() {
       dateInput.setAttribute('min', today);
     }
 
+    // Pre-fill booking data from URL params (coming from ProfileVendorWidget)
+    const searchParams = new URLSearchParams(location.search);
+    const prefilledDate = searchParams.get('date');
+    const prefilledStartTime = searchParams.get('startTime');
+    const prefilledEndTime = searchParams.get('endTime');
+    const prefilledPackageId = searchParams.get('packageId');
+
+    if (prefilledDate || prefilledStartTime || prefilledEndTime) {
+      setBookingData(prev => ({
+        ...prev,
+        eventDate: prefilledDate || prev.eventDate,
+        eventTime: prefilledStartTime || prev.eventTime,
+        eventEndTime: prefilledEndTime || prev.eventEndTime
+      }));
+    }
+
+    // Store prefilled package ID to select after packages load
+    if (prefilledPackageId) {
+      sessionStorage.setItem('prefilledPackageId', prefilledPackageId);
+    }
+
     loadVendorData();
     loadVendorAvailability();
     loadCancellationPolicy();
-  }, [vendorId, navigate]);
+  }, [vendorId, navigate, location.search]);
 
   // Load Google Maps API for location autocomplete
   useEffect(() => {
@@ -241,6 +262,20 @@ function BookingPage() {
       loadVendorPackages();
     }
   }, [currentStep, packages.length, loadVendorPackages]);
+
+  // Auto-select prefilled package after packages load
+  useEffect(() => {
+    if (packages.length > 0) {
+      const prefilledPackageId = sessionStorage.getItem('prefilledPackageId');
+      if (prefilledPackageId) {
+        const pkg = packages.find(p => p.PackageID === parseInt(prefilledPackageId));
+        if (pkg) {
+          setSelectedPackage(pkg);
+        }
+        sessionStorage.removeItem('prefilledPackageId');
+      }
+    }
+  }, [packages]);
 
   // Handle input changes
   const handleInputChange = (e) => {

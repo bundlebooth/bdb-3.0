@@ -1026,7 +1026,7 @@
     }
 }
 
-/* Mobile Sticky Booking Bar */
+/* Mobile Sticky Booking Bar - Giggster Style */
 .sticky-booking-bar {
     display: none;
 }
@@ -1039,20 +1039,83 @@
         left: 0;
         right: 0;
         background: white;
-        padding: 8px 0;
-        padding-bottom: max(8px, env(safe-area-inset-bottom));
-        box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.1);
+        padding: 12px 16px;
+        padding-bottom: max(12px, env(safe-area-inset-bottom));
+        box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
         z-index: 999999;
-        align-items: stretch;
-        justify-content: space-around;
-        gap: 0;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
         border-top: 1px solid #ebebeb;
     }
     
-    .sticky-booking-bar .price-info {
-        display: none;
+    /* Giggster-style layout */
+    .sticky-booking-bar.giggster-style {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
     }
     
+    .sticky-booking-bar .sticky-bar-price {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+    }
+    
+    .sticky-booking-bar .price-amount {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #222;
+    }
+    
+    .sticky-booking-bar .price-type {
+        font-size: 0.75rem;
+        color: #717171;
+    }
+    
+    .sticky-booking-bar .sticky-bar-buttons {
+        display: flex;
+        gap: 8px;
+    }
+    
+    .sticky-booking-bar .message-btn-giggster {
+        padding: 12px 20px;
+        background: white;
+        color: #222;
+        border: 1px solid #222;
+        border-radius: 8px;
+        font-size: 0.9375rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s;
+        -webkit-tap-highlight-color: transparent;
+    }
+    
+    .sticky-booking-bar .message-btn-giggster:hover,
+    .sticky-booking-bar .message-btn-giggster:active {
+        background: #f7f7f7;
+    }
+    
+    .sticky-booking-bar .reserve-btn-giggster {
+        padding: 12px 24px;
+        background: #222222;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 0.9375rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s;
+        -webkit-tap-highlight-color: transparent;
+    }
+    
+    .sticky-booking-bar .reserve-btn-giggster:hover,
+    .sticky-booking-bar .reserve-btn-giggster:active {
+        background: #000000;
+    }
+    
+    /* Legacy styles for old button format */
     .sticky-booking-bar .message-btn,
     .sticky-booking-bar .book-btn {
         flex: 0 1 auto;
@@ -1087,27 +1150,6 @@
     .sticky-booking-bar .book-btn span {
         pointer-events: none;
         font-weight: 500;
-    }
-    
-    .sticky-booking-bar .message-btn {
-        color: #6b7280;
-    }
-    
-    .sticky-booking-bar .book-btn {
-        color: #6b7280;
-        background: transparent;
-    }
-    
-    .sticky-booking-bar .message-btn:hover,
-    .sticky-booking-bar .message-btn:active {
-        background: rgba(94, 114, 228, 0.15);
-        color: #5e72e4;
-    }
-    
-    .sticky-booking-bar .book-btn:hover,
-    .sticky-booking-bar .book-btn:active {
-        background: rgba(94, 114, 228, 0.2);
-        color: #5e72e4;
     }
     
     /* Add padding to bottom of page to account for sticky bar */

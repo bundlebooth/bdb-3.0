@@ -18,6 +18,7 @@ import MessagingWidget from '../components/MessagingWidget';
 import { useVendorOnlineStatus } from '../hooks/useOnlineStatus';
 import { showBanner } from '../utils/helpers';
 import { extractVendorIdFromSlug, parseQueryParams, trackPageView, buildBookingUrl } from '../utils/urlHelpers';
+import ProfileVendorWidget from '../components/ProfileVendorWidget';
 import './VendorProfilePage.css';
 
 function VendorProfilePage() {
@@ -483,16 +484,24 @@ function VendorProfilePage() {
     });
   };
 
-  const handleRequestBooking = () => {
+  const handleRequestBooking = (bookingData = null) => {
     // Allow navigation to booking page without login - login will be required at submission
+    // If bookingData is provided (from ProfileVendorWidget), include it in URL params
+    const params = { source: 'profile' };
+    
+    if (bookingData && typeof bookingData === 'object') {
+      if (bookingData.selectedDate) params.date = bookingData.selectedDate;
+      if (bookingData.selectedStartTime) params.startTime = bookingData.selectedStartTime;
+      if (bookingData.selectedEndTime) params.endTime = bookingData.selectedEndTime;
+      if (bookingData.selectedPackage?.PackageID) params.packageId = bookingData.selectedPackage.PackageID;
+    }
+    
     const bookingUrl = buildBookingUrl(
       { 
         VendorProfileID: vendorId, 
         BusinessName: vendor?.BusinessName || vendor?.Name || 'vendor'
       },
-      {
-        source: 'profile'
-      }
+      params
     );
     navigate(bookingUrl);
   };
@@ -1667,9 +1676,12 @@ function VendorProfilePage() {
                       width: '40px', 
                       height: '40px', 
                       borderRadius: '50%', 
-                      background: showGoogleReviews 
-                        ? (review.profile_photo_url ? `url(${review.profile_photo_url})` : 'var(--primary)')
-                        : (review.ReviewerAvatar ? `url(${review.ReviewerAvatar})` : 'var(--primary)'), 
+                      backgroundImage: showGoogleReviews 
+                        ? (review.profile_photo_url ? `url(${review.profile_photo_url})` : 'none')
+                        : (review.ReviewerAvatar ? `url(${review.ReviewerAvatar})` : 'none'),
+                      backgroundColor: showGoogleReviews 
+                        ? (review.profile_photo_url ? 'transparent' : 'var(--primary)')
+                        : (review.ReviewerAvatar ? 'transparent' : 'var(--primary)'), 
                       backgroundSize: 'cover',
                       backgroundPosition: 'center',
                       display: 'flex',
@@ -2526,74 +2538,19 @@ function VendorProfilePage() {
 
           {/* Right Column - Sidebar */}
           <div className="vendor-sidebar">
-          {/* 1. Business Hours - First */}
-          {businessHours.length > 0 && (
-            <div className="sidebar-card">
-              <h3 style={{ marginBottom: '0.75rem' }}>Business Hours</h3>
-              {/* Timezone Display */}
-              {profile.TimeZone && (() => {
-                // Helper to get timezone info
-                const getTimezoneInfo = (tz) => {
-                  const tzMap = {
-                    'America/Toronto': { abbr: 'EST', offset: '-5:00' },
-                    'America/New_York': { abbr: 'EST', offset: '-5:00' },
-                    'America/Chicago': { abbr: 'CST', offset: '-6:00' },
-                    'America/Denver': { abbr: 'MST', offset: '-7:00' },
-                    'America/Los_Angeles': { abbr: 'PST', offset: '-8:00' },
-                    'America/Vancouver': { abbr: 'PST', offset: '-8:00' },
-                    'Europe/London': { abbr: 'GMT', offset: '+0:00' },
-                    'Europe/Paris': { abbr: 'CET', offset: '+1:00' },
-                    'Asia/Tokyo': { abbr: 'JST', offset: '+9:00' },
-                    'Australia/Sydney': { abbr: 'AEST', offset: '+10:00' },
-                  };
-                  return tzMap[tz] || { abbr: '', offset: '' };
-                };
-                const tzInfo = getTimezoneInfo(profile.TimeZone);
-                const abbr = profile.TimeZoneAbbr || tzInfo.abbr;
-                const offset = profile.GMTOffset || tzInfo.offset;
-                
-                return (
-                  <div style={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: '0.5rem', 
-                    marginBottom: '1rem',
-                    padding: '0.5rem 0',
-                    borderBottom: '1px solid #f0f0f0'
-                  }}>
-                    <i className="fas fa-globe" style={{ fontSize: '0.8rem', color: '#5e72e4' }}></i>
-                    <span style={{ fontSize: '0.8rem', color: '#717171' }}>
-                      {profile.TimeZone}{abbr ? ` (${abbr})` : ''}{offset ? ` GMT ${offset}` : ''}
-                    </span>
-                  </div>
-                );
-              })()}
-              <div style={{ fontSize: '0.9rem' }}>
-                {businessHours.map((hour, index) => {
-                  const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-                  
-                  // Format time to 12-hour format (e.g., 5:00 PM)
-                  const formatTime = (timeStr) => {
-                    if (!timeStr) return '';
-                    const [hours, minutes] = timeStr.split(':');
-                    const hour = parseInt(hours, 10);
-                    const ampm = hour >= 12 ? 'PM' : 'AM';
-                    const hour12 = hour % 12 || 12;
-                    return `${hour12}:${minutes} ${ampm}`;
-                  };
-                  
-                  return (
-                    <div key={index} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0', borderBottom: index < businessHours.length - 1 ? '1px solid #f0f0f0' : 'none' }}>
-                      <span style={{ fontWeight: 500, color: '#222', flex: '0 0 100px' }}>{dayNames[hour.DayOfWeek]}</span>
-                      <span style={{ color: '#717171', textAlign: 'center', flex: 1 }}>
-                        {hour.IsAvailable ? `${formatTime(hour.OpenTime)} - ${formatTime(hour.CloseTime)}` : 'Closed'}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+          {/* 1. Booking Widget with Calendar */}
+          <ProfileVendorWidget
+            vendorId={vendorId}
+            vendorName={profile?.BusinessName}
+            packages={packages}
+            services={vendor?.services || []}
+            businessHours={businessHours}
+            basePrice={profile?.HourlyRate || profile?.BasePrice || null}
+            priceType={profile?.PricingType || 'per_hour'}
+            minBookingHours={profile?.MinBookingHours || 1}
+            onReserve={handleRequestBooking}
+            onMessage={handleMessageVendor}
+          />
 
           {/* 2. Hosted By Card */}
           <div className="sidebar-card" style={{ marginTop: '1rem', marginBottom: '1rem' }}>
@@ -2695,38 +2652,6 @@ function VendorProfilePage() {
             </button>
           </div>
 
-          {/* 3. Book This Space Card */}
-          <div className="sidebar-card" style={{ marginBottom: '1rem' }}>
-            <h3 style={{ marginBottom: '0.5rem' }}>Book this space</h3>
-            <p style={{ fontSize: '0.9rem', color: 'var(--text-light)', marginBottom: '1rem', lineHeight: 1.5 }}>
-              Send a booking request with your event details.
-            </p>
-            <button 
-              className="btn btn-primary btn-full-width" 
-              onClick={handleRequestBooking}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                padding: '14px 16px',
-                background: '#222',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                fontWeight: 600,
-                fontSize: '1rem',
-                cursor: 'pointer'
-              }}
-            >
-              Reserve
-            </button>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-light)', marginTop: '0.75rem', textAlign: 'center' }}>
-              <i className="fas fa-shield-alt" style={{ color: 'var(--primary)', marginRight: '4px' }}></i>
-              Free cancellation within 24 hours
-            </p>
-          </div>
-
           </div>
         </div>
       
@@ -2735,22 +2660,32 @@ function VendorProfilePage() {
       </div>{/* End mobile-content-sheet */}
       </div>{/* End profile-container */}
       
-      {/* Mobile Sticky Booking Bar - styled like bottom nav */}
-      <div className="sticky-booking-bar">
-        <button 
-          className="message-btn" 
-          onClick={handleMessageVendor}
-        >
-          <i className="fas fa-comment"></i>
-          <span>Message</span>
-        </button>
-        <button 
-          className="book-btn" 
-          onClick={handleRequestBooking}
-        >
-          <i className="fas fa-calendar-check"></i>
-          <span>Request Booking</span>
-        </button>
+      {/* Mobile Sticky Booking Bar - Giggster style with price + Message + Reserve */}
+      <div className="sticky-booking-bar giggster-style">
+        <div className="sticky-bar-price">
+          <span className="price-amount">
+            {profile?.HourlyRate || profile?.BasePrice 
+              ? `from $${(profile?.HourlyRate || profile?.BasePrice).toFixed(0)}` 
+              : 'Contact for pricing'}
+          </span>
+          {(profile?.HourlyRate || profile?.BasePrice) && (
+            <span className="price-type">/hr</span>
+          )}
+        </div>
+        <div className="sticky-bar-buttons">
+          <button 
+            className="message-btn-giggster" 
+            onClick={handleMessageVendor}
+          >
+            Message
+          </button>
+          <button 
+            className="reserve-btn-giggster" 
+            onClick={handleRequestBooking}
+          >
+            Reserve
+          </button>
+        </div>
       </div>
       
       {/* Footer - Full Width */}

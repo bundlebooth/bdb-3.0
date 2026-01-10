@@ -89,7 +89,48 @@ router.get('/vendor/:vendorId', async (req, res) => {
     
     const result = await request.execute('bookings.sp_GetVendorBookings');
     
-    res.json({ success: true, bookings: result.recordset || [] });
+    // Convert date objects to ISO strings for proper JSON serialization
+    const bookings = (result.recordset || []).map(booking => {
+      // Format time fields as HH:MM strings
+      let eventTimeStr = null;
+      let eventEndTimeStr = null;
+      
+      if (booking.EventTime) {
+        if (booking.EventTime instanceof Date) {
+          // SQL Server time comes as Date object - extract hours and minutes
+          const hours = booking.EventTime.getUTCHours().toString().padStart(2, '0');
+          const mins = booking.EventTime.getUTCMinutes().toString().padStart(2, '0');
+          eventTimeStr = `${hours}:${mins}`;
+        } else if (typeof booking.EventTime === 'string') {
+          eventTimeStr = booking.EventTime.substring(0, 5);
+        }
+      }
+      
+      if (booking.EventEndTime) {
+        if (booking.EventEndTime instanceof Date) {
+          // SQL Server time comes as Date object - extract hours and minutes
+          const hours = booking.EventEndTime.getUTCHours().toString().padStart(2, '0');
+          const mins = booking.EventEndTime.getUTCMinutes().toString().padStart(2, '0');
+          eventEndTimeStr = `${hours}:${mins}`;
+        } else if (typeof booking.EventEndTime === 'string') {
+          eventEndTimeStr = booking.EventEndTime.substring(0, 5);
+        }
+      }
+      
+      return {
+        ...booking,
+        EventDate: booking.EventDate ? new Date(booking.EventDate).toISOString() : null,
+        EndDate: booking.EndDate ? new Date(booking.EndDate).toISOString() : null,
+        BookingDate: booking.BookingDate ? new Date(booking.BookingDate).toISOString() : null,
+        CreatedAt: booking.CreatedAt ? new Date(booking.CreatedAt).toISOString() : null,
+        UpdatedAt: booking.UpdatedAt ? new Date(booking.UpdatedAt).toISOString() : null,
+        CancellationDate: booking.CancellationDate ? new Date(booking.CancellationDate).toISOString() : null,
+        EventTime: eventTimeStr,
+        EventEndTime: eventEndTimeStr
+      };
+    });
+    
+    res.json({ success: true, bookings });
   } catch (err) {
     console.error('Database error:', err);
     res.status(500).json({ success: false, message: 'Failed to get vendor bookings', error: err.message });

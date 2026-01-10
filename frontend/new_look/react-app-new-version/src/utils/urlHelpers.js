@@ -80,6 +80,11 @@ export const buildBookingUrl = (vendor, options = {}) => {
     }
   }
   if (options.source) params.append('source', options.source);
+  // Pre-filled booking data from ProfileVendorWidget
+  if (options.date) params.append('date', options.date);
+  if (options.startTime) params.append('startTime', options.startTime);
+  if (options.endTime) params.append('endTime', options.endTime);
+  if (options.packageId) params.append('packageId', options.packageId);
   params.append('impression_id', generateImpressionId());
   const queryString = params.toString();
   return queryString ? baseUrl + '?' + queryString : baseUrl;

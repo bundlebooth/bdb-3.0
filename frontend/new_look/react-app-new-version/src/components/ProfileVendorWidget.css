@@ -1,0 +1,426 @@
+/* Giggster-style Booking Widget - Exact Match */
+.giggster-booking-widget {
+  background: white;
+  border: 1px solid #dddddd;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: rgba(0, 0, 0, 0.12) 0px 6px 16px;
+  position: relative;
+}
+
+/* Header with Price */
+.gbw-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 20px;
+}
+
+.gbw-price-section {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+}
+
+.gbw-price {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #222;
+}
+
+.gbw-price-suffix {
+  font-size: 1rem;
+  font-weight: 400;
+  color: #222;
+}
+
+.gbw-min-hours {
+  font-size: 0.875rem;
+  color: #717171;
+}
+
+/* Date Selector Row */
+.gbw-date-selector {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border: 1px solid #222;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-bottom: 16px;
+  transition: all 0.2s;
+}
+
+.gbw-date-selector:hover {
+  border-color: #000;
+}
+
+.gbw-date-selector.active {
+  border-width: 2px;
+  padding: 13px 15px;
+}
+
+.gbw-date-text {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: #222;
+}
+
+.gbw-time-text {
+  font-size: 0.9375rem;
+  color: #717171;
+  margin-left: 16px;
+}
+
+.gbw-pick-text {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: #222;
+}
+
+.gbw-chevron {
+  color: #222;
+  font-size: 0.75rem;
+  margin-left: auto;
+}
+
+/* Picker Container - Dropdown below date selector, extends left */
+.gbw-picker-container {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 8px;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  width: 520px;
+}
+
+/* Main content - side by side */
+.gbw-picker-main {
+  display: flex;
+  flex-direction: row;
+}
+
+/* Left Side - Calendar */
+.gbw-calendar-section {
+  flex: 1;
+  padding: 24px;
+  border-right: 1px solid #ebebeb;
+}
+
+.gbw-calendar-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.gbw-nav-arrow {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #222;
+  transition: background 0.2s;
+}
+
+.gbw-nav-arrow:hover {
+  background: #f7f7f7;
+}
+
+.gbw-month-year {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #222;
+}
+
+.gbw-calendar-days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  flex: 1;
+}
+
+.gbw-weekday {
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #717171;
+  padding: 8px 0;
+  text-transform: uppercase;
+}
+
+.gbw-day-btn {
+  aspect-ratio: 1;
+  border: none;
+  background: transparent;
+  border-radius: 50%;
+  font-size: 0.875rem;
+  color: #222;
+  cursor: pointer;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+  font-weight: 400;
+}
+
+.gbw-day-btn:hover:not(:disabled) {
+  background: #f7f7f7;
+}
+
+.gbw-day-btn.selected {
+  background: #222 !important;
+  color: white !important;
+  font-weight: 500;
+}
+
+.gbw-day-btn.today:not(.selected) {
+  border: 1px solid #222;
+}
+
+.gbw-day-btn.past,
+.gbw-day-btn.unavailable,
+.gbw-day-btn.fully_booked {
+  color: #d1d1d1;
+  cursor: not-allowed;
+}
+
+.gbw-day-btn.partially_booked {
+  color: #222;
+}
+
+.gbw-partial-dot {
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  background: #717171;
+  border-radius: 50%;
+}
+
+.gbw-day-btn:disabled {
+  cursor: default;
+}
+
+/* Timeline at bottom - full width */
+.gbw-timeline-section {
+  padding: 16px 24px 24px;
+  border-top: 1px solid #ebebeb;
+}
+
+.gbw-timeline-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.6875rem;
+  color: #717171;
+  margin-bottom: 8px;
+  text-align: center;
+}
+
+.gbw-timeline-labels span {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.3;
+}
+
+.gbw-timeline-track {
+  height: 12px;
+  background: #f0f0f0;
+  border-radius: 6px;
+  position: relative;
+  overflow: hidden;
+}
+
+.gbw-timeline-booked {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  background: repeating-linear-gradient(
+    45deg,
+    #d0d0d0,
+    #d0d0d0 2px,
+    #e8e8e8 2px,
+    #e8e8e8 4px
+  );
+}
+
+.gbw-timeline-selected {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  background: #3b82f6;
+  border-radius: 6px;
+}
+
+/* Right Side - Time Selection */
+.gbw-time-section {
+  width: 220px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.gbw-selected-date-title {
+  font-size: 1.375rem;
+  font-weight: 600;
+  color: #222;
+  margin: 0 0 20px 0;
+}
+
+.gbw-select-date-placeholder {
+  font-size: 1.125rem;
+  color: #717171;
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.gbw-time-picker-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.gbw-time-picker-row label {
+  font-size: 0.875rem;
+  color: #717171;
+  min-width: 50px;
+}
+
+.gbw-time-picker-row .gbw-time-select {
+  flex: 1;
+  padding: 10px 32px 10px 12px;
+  border: 1px solid #dddddd;
+  border-radius: 8px;
+}
+
+.gbw-time-select {
+  padding: 10px 32px 10px 12px;
+  border: 1px solid #dddddd;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  color: #222;
+  background: white;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23717171' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+}
+
+.gbw-time-select:focus {
+  outline: none;
+  border-color: #222;
+}
+
+/* Action Buttons */
+.gbw-action-buttons {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.gbw-save-date-btn {
+  padding: 10px 20px;
+  background: #222;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+  line-height: 1.2;
+}
+
+.gbw-save-date-btn:hover {
+  background: #000;
+}
+
+.gbw-delete-date-btn {
+  padding: 10px 0;
+  background: transparent;
+  color: #717171;
+  border: none;
+  font-size: 0.8125rem;
+  cursor: pointer;
+  text-decoration: underline;
+  line-height: 1.2;
+}
+
+.gbw-delete-date-btn:hover {
+  color: #222;
+}
+
+/* Reserve Button */
+.gbw-reserve-btn {
+  width: 100%;
+  padding: 14px 24px;
+  background: #222222;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+  margin-bottom: 12px;
+}
+
+.gbw-reserve-btn:hover {
+  background: #000000;
+}
+
+/* Cancellation Note */
+.gbw-cancel-note {
+  text-align: center;
+  font-size: 0.8125rem;
+  color: #717171;
+  margin: 0 0 16px 0;
+}
+
+/* Price Breakdown */
+.gbw-breakdown {
+  border-top: 1px solid #ebebeb;
+  padding-top: 16px;
+}
+
+.gbw-breakdown-line {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.9375rem;
+  color: #222;
+  margin-bottom: 8px;
+}
+
+.gbw-breakdown-total {
+  display: flex;
+  justify-content: space-between;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #222;
+  padding-top: 12px;
+  border-top: 1px solid #ebebeb;
+  margin-top: 8px;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .giggster-booking-widget {
+    display: none;
+  }
+}

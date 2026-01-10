@@ -41,13 +41,21 @@ SELECT
     b.EventName,
     b.EventType,
     b.TimeZone,
+    b.BookingDate,
+    b.CreatedAt,
+    b.UpdatedAt,
+    b.StripePaymentIntentID,
+    b.publicId AS bookingPublicId,
+    vp.publicId AS vendorPublicId,
+    u.publicId AS userPublicId,
     (SELECT COUNT(*) FROM messages.Messages m JOIN messages.Conversations c ON m.ConversationID = c.ConversationID 
       WHERE c.BookingID = b.BookingID AND m.IsRead = 0 AND m.SenderID = b.UserID) AS UnreadMessages,
     (SELECT TOP 1 r.Rating FROM vendors.Reviews r WHERE r.BookingID = b.BookingID) AS ReviewRating
 FROM bookings.Bookings b
-JOIN users.Users u ON b.UserID = u.UserID
-JOIN vendors.Services s ON b.ServiceID = s.ServiceID
-JOIN vendors.ServiceCategories sc ON s.CategoryID = sc.CategoryID;
+LEFT JOIN users.Users u ON b.UserID = u.UserID
+LEFT JOIN vendors.Services s ON b.ServiceID = s.ServiceID
+LEFT JOIN vendors.ServiceCategories sc ON s.CategoryID = sc.CategoryID
+LEFT JOIN vendors.VendorProfiles vp ON b.VendorProfileID = vp.VendorProfileID;
 GO
 
 PRINT 'View [bookings].[vw_VendorBookings] created successfully.';

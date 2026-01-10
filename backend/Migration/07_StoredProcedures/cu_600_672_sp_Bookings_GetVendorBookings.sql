@@ -31,9 +31,14 @@ BEGIN
     SELECT 
         b.*,
         u.Name AS ClientName,
-        u.Email AS ClientEmail
+        u.Email AS ClientEmail,
+        br.EventTime,
+        br.EventEndTime
     FROM bookings.Bookings b
     LEFT JOIN users.Users u ON b.UserID = u.UserID
+    LEFT JOIN bookings.BookingRequests br ON b.UserID = br.UserID 
+        AND b.VendorProfileID = br.VendorProfileID 
+        AND CAST(b.EventDate AS DATE) = CAST(br.EventDate AS DATE)
     WHERE b.VendorProfileID = @VendorProfileID
     ORDER BY b.EventDate DESC;
 END;
