@@ -2548,6 +2548,7 @@ function VendorProfilePage() {
             basePrice={profile?.HourlyRate || profile?.BasePrice || null}
             priceType={profile?.PricingType || 'per_hour'}
             minBookingHours={profile?.MinBookingHours || 1}
+            timezone={profile?.TimeZone || profile?.Timezone}
             onReserve={handleRequestBooking}
             onMessage={handleMessageVendor}
           />

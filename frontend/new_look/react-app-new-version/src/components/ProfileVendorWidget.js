@@ -12,6 +12,7 @@ const ProfileVendorWidget = ({
   basePrice = null,
   priceType = 'per_hour',
   minBookingHours = 1,
+  timezone = null,
   onReserve,
   onMessage
 }) => {
@@ -26,11 +27,12 @@ const ProfileVendorWidget = ({
   const [availabilityExceptions, setAvailabilityExceptions] = useState([]);
   const [loading, setLoading] = useState(false);
   const pickerRef = useRef(null);
+  const widgetRef = useRef(null);
 
-  // Click outside handler to close picker
+  // Click outside handler to close picker - only close if clicking outside the entire widget
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (pickerRef.current && !pickerRef.current.contains(event.target)) {
+      if (widgetRef.current && !widgetRef.current.contains(event.target)) {
         setShowDatePicker(false);
       }
     };
@@ -304,6 +306,7 @@ const ProfileVendorWidget = ({
 
   // Handle reserve button click
   const handleReserve = () => {
+    console.log('Reserve button clicked!');
     const bookingData = {
       vendorId,
       selectedDate: selectedDate ? formatDateString(selectedDate) : null,
@@ -312,8 +315,11 @@ const ProfileVendorWidget = ({
       selectedPackage,
       totalPrice: calculateTotal()
     };
+    console.log('Booking data:', bookingData);
+    console.log('onReserve prop:', onReserve);
 
     if (onReserve) {
+      console.log('Calling onReserve callback...');
       onReserve(bookingData);
     } else {
       // Navigate to booking page with pre-filled data
@@ -323,6 +329,7 @@ const ProfileVendorWidget = ({
       if (selectedEndTime) params.set('endTime', selectedEndTime);
       if (selectedPackage) params.set('packageId', selectedPackage.PackageID);
       
+      console.log('Navigating to:', `/booking/${vendorId}?${params.toString()}`);
       navigate(`/booking/${vendorId}?${params.toString()}`);
     }
   };
@@ -353,7 +360,7 @@ const ProfileVendorWidget = ({
   const allTimeOptions = generateTimeOptions();
 
   return (
-    <div className="giggster-booking-widget">
+    <div className={`giggster-booking-widget ${showDatePicker ? 'picker-open' : ''}`} ref={widgetRef}>
       {/* Price Header */}
       <div className="gbw-header">
         <div className="gbw-price-section">
@@ -363,12 +370,9 @@ const ProfileVendorWidget = ({
               <span className="gbw-price-suffix">/hr</span>
             </>
           ) : (
-            <span className="gbw-price">Contact for pricing</span>
+            <span className="gbw-price">Request a Quote</span>
           )}
         </div>
-        {minBookingHours > 0 && (
-          <span className="gbw-min-hours">{minBookingHours} hr. minimum</span>
-        )}
       </div>
 
       {/* Date Selection Row */}
@@ -395,7 +399,7 @@ const ProfileVendorWidget = ({
 
       {/* Date Picker Dropdown */}
       {showDatePicker && (
-        <div className="gbw-picker-container" ref={pickerRef}>
+        <div className="gbw-picker-container" ref={pickerRef} onClick={(e) => e.stopPropagation()}>
             {/* Main Content - Side by Side */}
             <div className="gbw-picker-main">
               {/* Left Side - Calendar */}
@@ -500,11 +504,32 @@ const ProfileVendorWidget = ({
                       const openMins = openTime.hour * 60 + openTime.minute;
                       const closeMins = closeTime.hour * 60 + closeTime.minute;
                       
+                      // Get bookings for this date to check for overlaps
+                      const dateStr = formatDateString(selectedDate);
+                      const dayBookings = vendorBookings.filter(b => {
+                        if (!b.EventDate) return false;
+                        const status = (b.Status || '').toLowerCase();
+                        const isActive = status === 'confirmed' || status === 'pending' || status === 'paid' || status === 'approved';
+                        return formatDateString(new Date(b.EventDate)) === dateStr && isActive;
+                      });
+                      
                       return allTimeOptions
                         .filter(time => {
                           const [h, m] = time.split(':').map(Number);
                           const mins = h * 60 + m;
-                          return mins >= openMins && mins < closeMins;
+                          // Must be within business hours
+                          if (mins < openMins || mins >= closeMins) return false;
+                          // Check if this time falls within any booked slot
+                          for (const booking of dayBookings) {
+                            const bookingStart = parseTimeString(booking.EventTime);
+                            const bookingEnd = parseTimeString(booking.EventEndTime);
+                            if (bookingStart && bookingEnd) {
+                              const bStartMins = bookingStart.hour * 60 + (bookingStart.minute || 0);
+                              const bEndMins = bookingEnd.hour * 60 + (bookingEnd.minute || 0);
+                              if (mins >= bStartMins && mins < bEndMins) return false;
+                            }
+                          }
+                          return true;
                         })
                         .map(time => (
                           <option key={time} value={time}>{formatTime12Hour(time)}</option>
@@ -532,11 +557,33 @@ const ProfileVendorWidget = ({
                         ? parseInt(selectedStartTime.split(':')[0]) * 60 + parseInt(selectedStartTime.split(':')[1])
                         : 0;
                       
+                      // Get bookings for this date to find the next booking after start time
+                      const dateStr = formatDateString(selectedDate);
+                      const dayBookings = vendorBookings.filter(b => {
+                        if (!b.EventDate) return false;
+                        const status = (b.Status || '').toLowerCase();
+                        const isActive = status === 'confirmed' || status === 'pending' || status === 'paid' || status === 'approved';
+                        return formatDateString(new Date(b.EventDate)) === dateStr && isActive;
+                      });
+                      
+                      // Find the earliest booking that starts after our selected start time
+                      let maxEndMins = closeMins;
+                      for (const booking of dayBookings) {
+                        const bookingStart = parseTimeString(booking.EventTime);
+                        if (bookingStart) {
+                          const bStartMins = bookingStart.hour * 60 + (bookingStart.minute || 0);
+                          // If this booking starts after our start time, we can't go past it
+                          if (bStartMins > startMins && bStartMins < maxEndMins) {
+                            maxEndMins = bStartMins;
+                          }
+                        }
+                      }
+                      
                       return allTimeOptions
                         .filter(time => {
                           const [h, m] = time.split(':').map(Number);
                           const mins = h * 60 + m;
-                          return mins > startMins && mins <= closeMins;
+                          return mins > startMins && mins <= maxEndMins;
                         })
                         .map(time => (
                           <option key={time} value={time}>{formatTime12Hour(time)}</option>
@@ -544,6 +591,14 @@ const ProfileVendorWidget = ({
                     })()}
                   </select>
                 </div>
+
+                {/* Timezone under End Time */}
+                {timezone && (
+                  <div className="gbw-timezone-inline">
+                    <i className="fas fa-globe"></i>
+                    <span>{timezone}</span>
+                  </div>
+                )}
 
                 <div className="gbw-action-buttons">
                   <button 
@@ -576,7 +631,7 @@ const ProfileVendorWidget = ({
               </div>
             </div>
 
-            {/* Timeline at Bottom - Full Width */}
+            {/* Timeline at Bottom - Full Width with Business Hours */}
             <div className="gbw-timeline-section">
               <div className="gbw-timeline-labels">
                 <span>12:00<br/>AM</span>
@@ -590,6 +645,50 @@ const ProfileVendorWidget = ({
                 <span>12:00<br/>AM</span>
               </div>
               <div className="gbw-timeline-track">
+                {/* Show unavailable hours (outside business hours) and available hours */}
+                {selectedDate && (() => {
+                  const dayOfWeek = selectedDate.getDay();
+                  const dayHours = businessHours.find(bh => bh.DayOfWeek === dayOfWeek);
+                  
+                  if (dayHours && (dayHours.IsAvailable === true || dayHours.IsAvailable === 1)) {
+                    const openTime = parseTimeString(dayHours.OpenTime);
+                    const closeTime = parseTimeString(dayHours.CloseTime);
+                    
+                    if (openTime && closeTime) {
+                      const openMins = openTime.hour * 60 + (openTime.minute || 0);
+                      const closeMins = closeTime.hour * 60 + (closeTime.minute || 0);
+                      const openPct = (openMins / (24 * 60)) * 100;
+                      const closePct = (closeMins / (24 * 60)) * 100;
+                      const availableWidthPct = closePct - openPct;
+                      
+                      return (
+                        <>
+                          {/* Unavailable: before business hours */}
+                          {openPct > 0 && (
+                            <div 
+                              className="gbw-timeline-unavailable"
+                              style={{ left: '0%', width: `${openPct}%` }}
+                            />
+                          )}
+                          {/* Available: business hours */}
+                          <div 
+                            className="gbw-timeline-available"
+                            style={{ left: `${openPct}%`, width: `${availableWidthPct}%` }}
+                          />
+                          {/* Unavailable: after business hours */}
+                          {closePct < 100 && (
+                            <div 
+                              className="gbw-timeline-unavailable"
+                              style={{ left: `${closePct}%`, width: `${100 - closePct}%` }}
+                            />
+                          )}
+                        </>
+                      );
+                    }
+                  }
+                  return null;
+                })()}
+                {/* Booked slots overlay */}
                 {selectedDate && vendorBookings
                   .filter(b => {
                     if (!b.EventDate) return false;
@@ -599,23 +698,19 @@ const ProfileVendorWidget = ({
                     return formatDateString(new Date(b.EventDate)) === formatDateString(selectedDate) && isActiveStatus;
                   })
                   .map((booking, idx) => {
-                    // Use EventTime and EventEndTime if available (from BookingRequests)
                     let startHour, startMin, endHour, endMin;
                     
                     if (booking.EventTime) {
-                      // EventTime is in HH:MM format
                       const timeParts = booking.EventTime.split(':');
                       startHour = parseInt(timeParts[0]);
                       startMin = parseInt(timeParts[1] || 0);
                     } else {
-                      // Fall back to EventDate time component
                       const eventDate = new Date(booking.EventDate);
                       startHour = eventDate.getHours();
                       startMin = eventDate.getMinutes();
                     }
                     
                     if (booking.EventEndTime) {
-                      // EventEndTime is in HH:MM format
                       const endParts = booking.EventEndTime.split(':');
                       endHour = parseInt(endParts[0]);
                       endMin = parseInt(endParts[1] || 0);
@@ -624,12 +719,10 @@ const ProfileVendorWidget = ({
                       endHour = endDate.getHours();
                       endMin = endDate.getMinutes();
                     } else {
-                      // Default to start + 2 hours
                       endHour = startHour + 2;
                       endMin = startMin;
                     }
                     
-                    // If no time info at all (midnight to midnight), show as full day booked
                     if (startHour === 0 && startMin === 0 && endHour === 0 && endMin === 0 && !booking.EventTime) {
                       return (
                         <div 
@@ -650,6 +743,7 @@ const ProfileVendorWidget = ({
                       />
                     );
                   })}
+                {/* Selected time range */}
                 {selectedStartTime && selectedEndTime && (
                   <div 
                     className="gbw-timeline-selected"
@@ -660,6 +754,25 @@ const ProfileVendorWidget = ({
                   />
                 )}
               </div>
+              {/* Timeline Legend */}
+              <div className="gbw-timeline-legend">
+                <div className="gbw-legend-item">
+                  <div className="gbw-legend-dot available"></div>
+                  <span>Available</span>
+                </div>
+                <div className="gbw-legend-item">
+                  <div className="gbw-legend-dot unavailable"></div>
+                  <span>Closed</span>
+                </div>
+                <div className="gbw-legend-item">
+                  <div className="gbw-legend-dot booked"></div>
+                  <span>Booked</span>
+                </div>
+                <div className="gbw-legend-item">
+                  <div className="gbw-legend-dot selected"></div>
+                  <span>Selected</span>
+                </div>
+              </div>
             </div>
           </div>
       )}
@@ -667,7 +780,10 @@ const ProfileVendorWidget = ({
       {/* Reserve Button */}
       <button 
         className="gbw-reserve-btn"
-        onClick={handleReserve}
+        onClick={(e) => {
+          e.stopPropagation();
+          handleReserve();
+        }}
       >
         Reserve
       </button>

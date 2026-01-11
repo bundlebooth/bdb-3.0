@@ -8,6 +8,12 @@
   position: relative;
 }
 
+/* When picker is open, widget expands to the left */
+.giggster-booking-widget.picker-open {
+  width: 620px;
+  margin-left: -316px; /* 620 - 304 = 316px to extend left */
+}
+
 /* Header with Price */
 .gbw-header {
   display: flex;
@@ -37,6 +43,21 @@
 .gbw-min-hours {
   font-size: 0.875rem;
   color: #717171;
+}
+
+.gbw-timezone-section {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 0.8125rem;
+  color: #717171;
+  padding: 8px 0;
+  margin-bottom: 8px;
+}
+
+.gbw-timezone-section i {
+  font-size: 0.75rem;
 }
 
 /* Date Selector Row */
@@ -85,17 +106,12 @@
   margin-left: auto;
 }
 
-/* Picker Container - Dropdown below date selector, extends left */
+/* Picker Container - Inline within expanded widget */
 .gbw-picker-container {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  margin-top: 8px;
+  margin: 16px -24px 16px -24px;
+  border-top: 1px solid #ebebeb;
+  border-bottom: 1px solid #ebebeb;
   background: white;
-  border-radius: 16px;
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.15);
-  z-index: 1000;
-  width: 520px;
 }
 
 /* Main content - side by side */
@@ -107,7 +123,7 @@
 /* Left Side - Calendar */
 .gbw-calendar-section {
   flex: 1;
-  padding: 24px;
+  padding: 20px;
   border-right: 1px solid #ebebeb;
 }
 
@@ -216,8 +232,9 @@
 
 /* Timeline at bottom - full width */
 .gbw-timeline-section {
-  padding: 16px 24px 24px;
+  padding: 16px 24px 32px;
   border-top: 1px solid #ebebeb;
+  margin-bottom: 16px;
 }
 
 .gbw-timeline-labels {
@@ -238,46 +255,112 @@
 
 .gbw-timeline-track {
   height: 12px;
-  background: #f0f0f0;
+  background: #e5e5e5;
   border-radius: 6px;
   position: relative;
   overflow: hidden;
 }
 
-.gbw-timeline-booked {
+/* Available hours - business hours (white) */
+.gbw-timeline-available {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  background: #ffffff;
+  border-radius: 0;
+}
+
+/* Unavailable hours - outside business hours (light gray striped) */
+.gbw-timeline-unavailable {
   position: absolute;
   top: 0;
   height: 100%;
   background: repeating-linear-gradient(
     45deg,
-    #d0d0d0,
+    #e0e0e0,
+    #e0e0e0 2px,
     #d0d0d0 2px,
-    #e8e8e8 2px,
-    #e8e8e8 4px
+    #d0d0d0 4px
   );
 }
 
+/* Booked sessions - orange/coral color to stand out */
+.gbw-timeline-booked {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  background: #f59e0b;
+  z-index: 1;
+}
+
+/* Selected time range - blue */
 .gbw-timeline-selected {
   position: absolute;
   top: 0;
   height: 100%;
   background: #3b82f6;
   border-radius: 6px;
+  z-index: 2;
+}
+
+/* Timeline Legend */
+.gbw-timeline-legend {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 12px;
+  font-size: 0.6875rem;
+  color: #717171;
+}
+
+.gbw-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.gbw-legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.gbw-legend-dot.available {
+  background: #ffffff;
+  border: 1px solid #d0d0d0;
+}
+
+.gbw-legend-dot.unavailable {
+  background: repeating-linear-gradient(
+    45deg,
+    #e0e0e0,
+    #e0e0e0 1px,
+    #d0d0d0 1px,
+    #d0d0d0 2px
+  );
+}
+
+.gbw-legend-dot.booked {
+  background: #f59e0b;
+}
+
+.gbw-legend-dot.selected {
+  background: #3b82f6;
 }
 
 /* Right Side - Time Selection */
 .gbw-time-section {
-  width: 220px;
-  padding: 20px;
+  flex: 1;
+  padding: 24px;
   display: flex;
   flex-direction: column;
 }
 
 .gbw-selected-date-title {
-  font-size: 1.375rem;
+  font-size: 1.25rem;
   font-weight: 600;
   color: #222;
-  margin: 0 0 20px 0;
+  margin: 0 0 24px 0;
 }
 
 .gbw-select-date-placeholder {
@@ -291,7 +374,20 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
+}
+
+.gbw-timezone-inline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: #717171;
+  margin-bottom: 8px;
+}
+
+.gbw-timezone-inline i {
+  font-size: 0.7rem;
 }
 
 .gbw-time-picker-row label {
@@ -330,17 +426,17 @@
 .gbw-action-buttons {
   display: flex;
   align-items: center;
-  gap: 16px;
-  margin-top: 20px;
+  gap: 20px;
+  margin-top: 32px;
 }
 
 .gbw-save-date-btn {
-  padding: 10px 20px;
+  padding: 12px 24px;
   background: #222;
   color: white;
   border: none;
   border-radius: 8px;
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   font-weight: 600;
   cursor: pointer;
   transition: background 0.2s;
@@ -379,6 +475,8 @@
   cursor: pointer;
   transition: background 0.2s;
   margin-bottom: 12px;
+  position: relative;
+  z-index: 10;
 }
 
 .gbw-reserve-btn:hover {
