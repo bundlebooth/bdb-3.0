@@ -19,8 +19,8 @@ const ProfileVendorWidget = ({
   const navigate = useNavigate();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(null);
-  const [selectedStartTime, setSelectedStartTime] = useState('13:00');
-  const [selectedEndTime, setSelectedEndTime] = useState('21:30');
+  const [selectedStartTime, setSelectedStartTime] = useState(null);
+  const [selectedEndTime, setSelectedEndTime] = useState(null);
   const [selectedPackage, setSelectedPackage] = useState(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [vendorBookings, setVendorBookings] = useState([]);
@@ -276,9 +276,6 @@ const ProfileVendorWidget = ({
     if (status === 'fully_booked' || status === 'unavailable') return;
     
     setSelectedDate(date);
-    // Keep default times when selecting a date
-    if (!selectedStartTime) setSelectedStartTime('13:00');
-    if (!selectedEndTime) setSelectedEndTime('21:30');
   };
 
   // Calculate total price
@@ -467,28 +464,10 @@ const ProfileVendorWidget = ({
                   <label>Start time</label>
                   <select 
                     value={selectedStartTime || ''}
-                    onChange={(e) => {
-                      setSelectedStartTime(e.target.value);
-                      // Auto-set end time based on business hours
-                      if (e.target.value) {
-                        const dayOfWeek = selectedDate.getDay();
-                        const dayHours = businessHours.find(bh => bh.DayOfWeek === dayOfWeek);
-                        const closeTime = dayHours ? parseTimeString(dayHours.CloseTime) : null;
-                        const startParts = e.target.value.split(':');
-                        const startMins = parseInt(startParts[0]) * 60 + parseInt(startParts[1]);
-                        // Default to 5 hours later or close time, whichever is earlier
-                        let endMins = startMins + 300;
-                        if (closeTime) {
-                          const closeMins = closeTime.hour * 60 + closeTime.minute;
-                          endMins = Math.min(endMins, closeMins);
-                        }
-                        const endHour = Math.floor(endMins / 60);
-                        const endMin = endMins % 60;
-                        setSelectedEndTime(`${endHour.toString().padStart(2, '0')}:${endMin.toString().padStart(2, '0')}`);
-                      }
-                    }}
+                    onChange={(e) => setSelectedStartTime(e.target.value)}
                     className="gbw-time-select"
                   >
+                    <option value="">Select time</option>
                     {(() => {
                       // Filter times based on business hours for selected day
                       const dayOfWeek = selectedDate.getDay();
@@ -545,6 +524,7 @@ const ProfileVendorWidget = ({
                     onChange={(e) => setSelectedEndTime(e.target.value)}
                     className="gbw-time-select"
                   >
+                    <option value="">Select time</option>
                     {(() => {
                       // Filter times based on business hours and start time
                       const dayOfWeek = selectedDate.getDay();
@@ -615,8 +595,8 @@ const ProfileVendorWidget = ({
                     onClick={(e) => {
                       e.stopPropagation();
                       setSelectedDate(null);
-                      setSelectedStartTime('13:00');
-                      setSelectedEndTime('21:30');
+                      setSelectedStartTime(null);
+                      setSelectedEndTime(null);
                     }}
                   >
                     Delete date
@@ -650,41 +630,44 @@ const ProfileVendorWidget = ({
                   const dayOfWeek = selectedDate.getDay();
                   const dayHours = businessHours.find(bh => bh.DayOfWeek === dayOfWeek);
                   
-                  if (dayHours && (dayHours.IsAvailable === true || dayHours.IsAvailable === 1)) {
-                    const openTime = parseTimeString(dayHours.OpenTime);
-                    const closeTime = parseTimeString(dayHours.CloseTime);
+                  // If day is closed, show entire timeline as unavailable
+                  if (!dayHours || !(dayHours.IsAvailable === true || dayHours.IsAvailable === 1)) {
+                    return <div className="gbw-timeline-unavailable" style={{ left: '0%', width: '100%' }} />;
+                  }
+                  
+                  const openTime = parseTimeString(dayHours.OpenTime);
+                  const closeTime = parseTimeString(dayHours.CloseTime);
+                  
+                  if (openTime && closeTime) {
+                    const openMins = openTime.hour * 60 + (openTime.minute || 0);
+                    const closeMins = closeTime.hour * 60 + (closeTime.minute || 0);
+                    const openPct = (openMins / (24 * 60)) * 100;
+                    const closePct = (closeMins / (24 * 60)) * 100;
+                    const availableWidthPct = closePct - openPct;
                     
-                    if (openTime && closeTime) {
-                      const openMins = openTime.hour * 60 + (openTime.minute || 0);
-                      const closeMins = closeTime.hour * 60 + (closeTime.minute || 0);
-                      const openPct = (openMins / (24 * 60)) * 100;
-                      const closePct = (closeMins / (24 * 60)) * 100;
-                      const availableWidthPct = closePct - openPct;
-                      
-                      return (
-                        <>
-                          {/* Unavailable: before business hours */}
-                          {openPct > 0 && (
-                            <div 
-                              className="gbw-timeline-unavailable"
-                              style={{ left: '0%', width: `${openPct}%` }}
-                            />
-                          )}
-                          {/* Available: business hours */}
+                    return (
+                      <>
+                        {/* Unavailable: before business hours */}
+                        {openPct > 0 && (
                           <div 
-                            className="gbw-timeline-available"
-                            style={{ left: `${openPct}%`, width: `${availableWidthPct}%` }}
+                            className="gbw-timeline-unavailable"
+                            style={{ left: '0%', width: `${openPct}%` }}
                           />
-                          {/* Unavailable: after business hours */}
-                          {closePct < 100 && (
-                            <div 
-                              className="gbw-timeline-unavailable"
-                              style={{ left: `${closePct}%`, width: `${100 - closePct}%` }}
-                            />
-                          )}
-                        </>
-                      );
-                    }
+                        )}
+                        {/* Available: business hours */}
+                        <div 
+                          className="gbw-timeline-available"
+                          style={{ left: `${openPct}%`, width: `${availableWidthPct}%` }}
+                        />
+                        {/* Unavailable: after business hours */}
+                        {closePct < 100 && (
+                          <div 
+                            className="gbw-timeline-unavailable"
+                            style={{ left: `${closePct}%`, width: `${100 - closePct}%` }}
+                          />
+                        )}
+                      </>
+                    );
                   }
                   return null;
                 })()}

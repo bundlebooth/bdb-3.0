@@ -80,13 +80,41 @@ function AvailabilityHoursPanel({ onBack, vendorProfileId }) {
   };
 
   const handleHourChange = (day, field, value) => {
-    setHours(prev => ({
-      ...prev,
-      [day]: {
-        ...prev[day],
-        [field]: value
+    setHours(prev => {
+      const currentDayHours = prev[day];
+      const newOpenTime = field === 'open' ? value : currentDayHours?.open || '09:00';
+      const newCloseTime = field === 'close' ? value : currentDayHours?.close || '17:00';
+      
+      // Validate: close time must be after open time (no overnight hours)
+      if (newCloseTime <= newOpenTime) {
+        // If setting open time and it would be >= close time, auto-adjust close time
+        if (field === 'open') {
+          const [hours, mins] = value.split(':').map(Number);
+          const adjustedHours = hours + 1 > 23 ? 23 : hours + 1;
+          const adjustedClose = `${String(adjustedHours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+          return {
+            ...prev,
+            [day]: {
+              ...currentDayHours,
+              open: value,
+              close: adjustedClose
+            }
+          };
+        }
+        // If setting close time and it would be <= open time, don't allow it
+        if (field === 'close') {
+          return prev; // Don't update, keep current value
+        }
       }
-    }));
+      
+      return {
+        ...prev,
+        [day]: {
+          ...currentDayHours,
+          [field]: value
+        }
+      };
+    });
   };
 
   const handleToggleClosed = (day) => {

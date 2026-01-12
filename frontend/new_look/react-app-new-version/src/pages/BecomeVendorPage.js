@@ -3994,16 +3994,47 @@ function BusinessHoursStep({ formData, setFormData }) {
   ];
 
   const handleHourChange = (day, field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      businessHours: {
-        ...prev.businessHours,
-        [day]: {
-          ...prev.businessHours[day],
-          [field]: value
+    setFormData(prev => {
+      const currentDayHours = prev.businessHours[day];
+      const newOpenTime = field === 'openTime' ? value : currentDayHours?.openTime || '09:00';
+      const newCloseTime = field === 'closeTime' ? value : currentDayHours?.closeTime || '17:00';
+      
+      // Validate: close time must be after open time (no overnight hours)
+      if (newCloseTime <= newOpenTime) {
+        // If setting open time and it would be >= close time, auto-adjust close time
+        if (field === 'openTime') {
+          const [hours, mins] = value.split(':').map(Number);
+          const adjustedHours = hours + 1 > 23 ? 23 : hours + 1;
+          const adjustedClose = `${String(adjustedHours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+          return {
+            ...prev,
+            businessHours: {
+              ...prev.businessHours,
+              [day]: {
+                ...currentDayHours,
+                openTime: value,
+                closeTime: adjustedClose
+              }
+            }
+          };
+        }
+        // If setting close time and it would be <= open time, don't allow it
+        if (field === 'closeTime') {
+          return prev; // Don't update, keep current value
         }
       }
-    }));
+      
+      return {
+        ...prev,
+        businessHours: {
+          ...prev.businessHours,
+          [day]: {
+            ...currentDayHours,
+            [field]: value
+          }
+        }
+      };
+    });
   };
 
   const handleToggleClosed = (day) => {
