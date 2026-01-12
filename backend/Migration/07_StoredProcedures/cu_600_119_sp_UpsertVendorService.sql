@@ -49,7 +49,8 @@ CREATE PROCEDURE [vendors].[sp_UpsertService]
     @FixedPrice DECIMAL(10,2) = NULL,
     @PricePerPerson DECIMAL(10,2) = NULL,
     @MinimumAttendees INT = NULL,
-    @MaximumAttendees INT = NULL
+    @MaximumAttendees INT = NULL,
+    @ImageURL NVARCHAR(500) = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -137,13 +138,13 @@ BEGIN
                 Price, DurationMinutes, MaxAttendees, IsActive, RequiresDeposit, DepositPercentage, CancellationPolicy, LinkedPredefinedServiceID,
                 PricingModel, BaseDurationMinutes, BaseRate, OvertimeRatePerHour, MinimumBookingFee,
                 FixedPricingType, FixedPrice, PricePerPerson, MinimumAttendees, MaximumAttendees,
-                CreatedAt
+                ImageURL, CreatedAt
             ) VALUES (
                 @VendorProfileID, @CategoryID, @Name, @Description,
                 @Price, @DurationMinutes, @MaxAttendees, @IsActive, @RequiresDeposit, @DepositPercentage, @CancellationPolicy, @LinkedPredefinedServiceID,
                 @NormPricingModel, @NormBaseDurationMinutes, @NormBaseRate, @NormOvertimeRatePerHour, @NormMinimumBookingFee,
                 @NormFixedPricingType, @NormFixedPrice, @NormPricePerPerson, @NormMinimumAttendees, @NormMaximumAttendees,
-                GETDATE()
+                @ImageURL, GETDATE()
             );
             
             SELECT SCOPE_IDENTITY() AS ServiceID;
@@ -173,6 +174,7 @@ BEGIN
                 PricePerPerson = @NormPricePerPerson,
                 MinimumAttendees = @NormMinimumAttendees,
                 MaximumAttendees = @NormMaximumAttendees,
+                ImageURL = @ImageURL,
                 UpdatedAt = GETDATE()
             WHERE ServiceID = @ServiceID;
             

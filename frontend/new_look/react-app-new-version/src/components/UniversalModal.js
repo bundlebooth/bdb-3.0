@@ -30,7 +30,8 @@ const UniversalModal = ({
   size = 'medium',
   showFooter = true,
   variant = 'default',
-  icon
+  icon,
+  footerCentered = false
 }) => {
   if (!isOpen) return null;
 
@@ -67,7 +68,7 @@ const UniversalModal = ({
 
         {/* Modal Footer */}
         {showFooter && (
-          <div className="um-footer">
+          <div className={`um-footer ${footerCentered ? 'um-footer-centered' : ''}`}>
             {footer ? (
               footer
             ) : (

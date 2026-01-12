@@ -1420,6 +1420,7 @@ function BookingPage() {
           onClose={() => setDurationWarning(null)}
           title="Duration Doesn't Fit"
           size="small"
+          footerCentered={true}
           primaryAction={{
             label: 'Go to Step 1',
             onClick: () => {

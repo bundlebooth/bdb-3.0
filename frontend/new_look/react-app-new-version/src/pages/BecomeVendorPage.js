@@ -844,6 +844,57 @@ const BecomeVendorPage = () => {
             console.error('[Save] Error saving filters:', filtersError);
           }
         }
+
+        // Save services with imageURL to step3-services endpoint
+        if (formData.selectedServices && formData.selectedServices.length > 0) {
+          try {
+            const serviceCategories = Array.from(new Set(formData.selectedServices.map(s => s.category).filter(Boolean)))
+              .map((name, i) => ({ name, description: null, displayOrder: i }));
+            
+            const servicesPayload = {
+              vendorProfileId: vendorProfileId,
+              serviceCategories,
+              selectedPredefinedServices: formData.selectedServices.map(s => ({
+                predefinedServiceId: s.serviceId,
+                name: s.serviceName,
+                description: s.description || '',
+                durationMinutes: parseInt(s.baseDuration) * 60 || 60,
+                imageURL: s.imageURL || null,
+                pricingModel: s.pricingModel || 'hourly',
+                baseDurationMinutes: parseInt(s.baseDuration) * 60 || 60,
+                baseRate: s.baseRate ? parseFloat(s.baseRate) : null,
+                overtimeRatePerHour: s.overtimeRate ? parseFloat(s.overtimeRate) : null,
+                price: s.baseRate || 0
+              })),
+              services: formData.selectedServices.map(s => ({
+                name: s.serviceName,
+                description: s.description || '',
+                imageURL: s.imageURL || null,
+                pricingModel: s.pricingModel || 'hourly',
+                baseDurationMinutes: parseInt(s.baseDuration) * 60 || 60,
+                baseRate: s.baseRate ? parseFloat(s.baseRate) : null,
+                overtimeRatePerHour: s.overtimeRate ? parseFloat(s.overtimeRate) : null,
+                durationMinutes: parseInt(s.baseDuration) * 60 || 60,
+                linkedPredefinedServiceId: s.serviceId,
+                categoryName: s.category || null
+              }))
+            };
+            
+            const servicesResponse = await fetch(`${API_BASE_URL}/vendors/setup/step3-services`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+              },
+              body: JSON.stringify(servicesPayload)
+            });
+            if (!servicesResponse.ok) {
+              console.error('[Save] Failed to save services:', await servicesResponse.text());
+            }
+          } catch (servicesError) {
+            console.error('[Save] Error saving services:', servicesError);
+          }
+        }
       }
 
       showBanner('Progress saved successfully! You can continue editing or move to the next step.', 'success');
@@ -2896,6 +2947,8 @@ function ServicesStep({ formData, setFormData }) {
   const [packages, setPackages] = useState(formData.packages || []);
   const [showPackageModal, setShowPackageModal] = useState(false);
   const [editingPackage, setEditingPackage] = useState(null);
+  const [packageServiceSearch, setPackageServiceSearch] = useState('');
+  const [uploadingPackageImage, setUploadingPackageImage] = useState(false);
 
   useEffect(() => {
     loadServices();
@@ -3024,13 +3077,59 @@ function ServicesStep({ formData, setFormData }) {
 
   // Package handlers
   const handleAddPackage = () => {
-    setEditingPackage({ name: '', description: '', price: '', priceType: 'flat', includedServices: [] });
+    setEditingPackage({ 
+      name: '', 
+      description: '', 
+      price: '', 
+      salePrice: '',
+      priceType: 'flat', 
+      includedServices: [],
+      imageURL: '',
+      finePrint: '',
+      duration: ''
+    });
+    setPackageServiceSearch('');
     setShowPackageModal(true);
   };
 
   const handleEditPackage = (pkg, index) => {
-    setEditingPackage({ ...pkg, _index: index });
+    setEditingPackage({ 
+      ...pkg, 
+      _index: index,
+      salePrice: pkg.salePrice || '',
+      imageURL: pkg.imageURL || '',
+      finePrint: pkg.finePrint || '',
+      duration: pkg.duration || ''
+    });
+    setPackageServiceSearch('');
     setShowPackageModal(true);
+  };
+
+  // Package image upload handler
+  const handlePackageImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    try {
+      setUploadingPackageImage(true);
+      const formDataUpload = new FormData();
+      formDataUpload.append('image', file);
+
+      const response = await fetch(`${API_BASE_URL}/vendors/service-image/upload`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+        body: formDataUpload
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setEditingPackage(prev => ({ ...prev, imageURL: data.imageUrl }));
+      }
+    } catch (error) {
+      console.error('Error uploading package image:', error);
+    } finally {
+      setUploadingPackageImage(false);
+    }
   };
 
   const handleSavePackage = () => {
@@ -3287,53 +3386,377 @@ function ServicesStep({ formData, setFormData }) {
         </div>
       )}
 
-      {/* Package Modal */}
+      {/* Package Modal - Matching ServicesPackagesPanel Style */}
       {showPackageModal && (
-        <div className="service-modal-overlay" onClick={() => setShowPackageModal(false)}>
-          <div className="service-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="service-modal-header">
-              <h3>{editingPackage?._index !== undefined ? 'Edit Package' : 'Add Package'}</h3>
-              <button type="button" className="modal-close-btn" onClick={() => setShowPackageModal(false)}>×</button>
+        <div 
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10000,
+            padding: '20px'
+          }}
+          onClick={() => setShowPackageModal(false)}
+        >
+          <div 
+            style={{
+              background: 'white',
+              borderRadius: '12px',
+              maxWidth: '700px',
+              width: '100%',
+              maxHeight: '90vh',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid #e5e7eb' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>
+                  {editingPackage?._index !== undefined ? 'Edit Package' : 'Create Package'}
+                </h3>
+                <button
+                  onClick={() => setShowPackageModal(false)}
+                  style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: '#6b7280', padding: 0 }}
+                >
+                  ×
+                </button>
+              </div>
             </div>
-            <div className="service-modal-content">
-              <div className="form-group">
-                <label>Package Name *</label>
-                <input type="text" value={editingPackage?.name || ''} onChange={(e) => setEditingPackage(prev => ({ ...prev, name: e.target.value }))} className="form-input" placeholder="e.g., Wedding Photography Package" />
-              </div>
-              <div className="form-group">
-                <label>Description</label>
-                <textarea value={editingPackage?.description || ''} onChange={(e) => setEditingPackage(prev => ({ ...prev, description: e.target.value }))} className="form-textarea" rows="3" placeholder="Describe what's included..." />
-              </div>
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Price *</label>
-                  <input type="number" value={editingPackage?.price || ''} onChange={(e) => setEditingPackage(prev => ({ ...prev, price: e.target.value }))} className="form-input" placeholder="500" min="0" />
+
+            {/* Modal Body */}
+            <div style={{ padding: '24px', overflowY: 'auto', flex: 1 }}>
+              {/* Package Image */}
+              <div style={{ marginBottom: '24px' }}>
+                <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                  Package Image
+                </label>
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                  <div style={{
+                    width: '120px',
+                    height: '90px',
+                    borderRadius: '8px',
+                    overflow: 'hidden',
+                    background: '#f3f4f6',
+                    border: '1px solid #e5e7eb'
+                  }}>
+                    {editingPackage?.imageURL ? (
+                      <img src={editingPackage.imageURL} alt="Package" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <i className="fas fa-image" style={{ fontSize: '2rem', color: '#d1d5db' }}></i>
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handlePackageImageUpload}
+                      style={{ display: 'none' }}
+                      id="become-vendor-package-image-upload"
+                    />
+                    <label
+                      htmlFor="become-vendor-package-image-upload"
+                      style={{
+                        display: 'inline-block',
+                        padding: '8px 16px',
+                        background: '#f3f4f6',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        fontSize: '0.85rem',
+                        fontWeight: 500
+                      }}
+                    >
+                      {uploadingPackageImage ? 'Uploading...' : 'Upload Image'}
+                    </label>
+                  </div>
                 </div>
-                <div className="form-group">
-                  <label>Price Type</label>
-                  <select value={editingPackage?.priceType || 'flat'} onChange={(e) => setEditingPackage(prev => ({ ...prev, priceType: e.target.value }))} className="form-input">
-                    <option value="flat">Flat Rate</option>
+              </div>
+
+              {/* Package Name */}
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                  Package Name *
+                </label>
+                <input
+                  type="text"
+                  value={editingPackage?.name || ''}
+                  onChange={(e) => setEditingPackage(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="e.g., Friday / Sunday Wedding"
+                  style={{
+                    width: '100%',
+                    padding: '12px 14px',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    fontSize: '14px'
+                  }}
+                />
+              </div>
+
+              {/* Description */}
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                  Description
+                </label>
+                <textarea
+                  value={editingPackage?.description || ''}
+                  onChange={(e) => setEditingPackage(prev => ({ ...prev, description: e.target.value }))}
+                  placeholder="Describe what's included in this package..."
+                  rows={3}
+                  style={{
+                    width: '100%',
+                    padding: '12px 14px',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    resize: 'vertical'
+                  }}
+                />
+              </div>
+
+              {/* Pricing Row - Price, Sale Price, Duration, Price Type */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                <div>
+                  <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                    Price *
+                  </label>
+                  <input
+                    type="number"
+                    value={editingPackage?.price || ''}
+                    onChange={(e) => setEditingPackage(prev => ({ ...prev, price: e.target.value }))}
+                    placeholder="0"
+                    min="0"
+                    step="0.01"
+                    style={{
+                      width: '100%',
+                      padding: '12px 14px',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                      fontSize: '14px'
+                    }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                    Sale Price
+                  </label>
+                  <input
+                    type="number"
+                    value={editingPackage?.salePrice || ''}
+                    onChange={(e) => setEditingPackage(prev => ({ ...prev, salePrice: e.target.value }))}
+                    placeholder="Optional"
+                    min="0"
+                    step="0.01"
+                    style={{
+                      width: '100%',
+                      padding: '12px 14px',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                      fontSize: '14px'
+                    }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                    Duration (hrs)
+                  </label>
+                  <input
+                    type="number"
+                    value={editingPackage?.duration || ''}
+                    onChange={(e) => setEditingPackage(prev => ({ ...prev, duration: e.target.value }))}
+                    placeholder="e.g., 4"
+                    min="0"
+                    step="0.5"
+                    style={{
+                      width: '100%',
+                      padding: '12px 14px',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                      fontSize: '14px'
+                    }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                    Price Type
+                  </label>
+                  <select
+                    value={editingPackage?.priceType || 'flat'}
+                    onChange={(e) => setEditingPackage(prev => ({ ...prev, priceType: e.target.value }))}
+                    style={{
+                      width: '100%',
+                      padding: '12px 14px',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                      fontSize: '14px'
+                    }}
+                  >
+                    <option value="flat">Fixed Price</option>
                     <option value="per_person">Per Person</option>
                   </select>
                 </div>
               </div>
-              {formData.selectedServices.length > 0 && (
-                <div className="form-group">
-                  <label>Include Services</label>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '150px', overflowY: 'auto' }}>
-                    {formData.selectedServices.map(svc => (
-                      <label key={svc.serviceId} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-                        <input type="checkbox" checked={editingPackage?.includedServices?.includes(svc.serviceId) || false} onChange={() => toggleServiceInPackage(svc.serviceId)} />
-                        <span>{svc.serviceName}</span>
-                      </label>
-                    ))}
+
+              {/* Included Services */}
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                  Included Services
+                </label>
+                <input
+                  type="text"
+                  value={packageServiceSearch}
+                  onChange={(e) => setPackageServiceSearch(e.target.value)}
+                  placeholder="Search services to add..."
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    marginBottom: '8px'
+                  }}
+                />
+                
+                {/* Selected Services Tags */}
+                {editingPackage?.includedServices?.length > 0 && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '12px' }}>
+                    {editingPackage.includedServices.map((serviceId, idx) => {
+                      const svc = formData.selectedServices.find(s => s.serviceId === serviceId);
+                      if (!svc) return null;
+                      return (
+                        <span 
+                          key={idx}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            background: '#f3f4f6',
+                            color: '#222',
+                            padding: '6px 12px',
+                            borderRadius: '20px',
+                            fontSize: '0.85rem',
+                            fontWeight: 500,
+                            border: '1px solid #e5e7eb'
+                          }}
+                        >
+                          {svc.serviceName}
+                          <button
+                            onClick={() => toggleServiceInPackage(serviceId)}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center' }}
+                          >
+                            <i className="fas fa-times" style={{ fontSize: '0.7rem', color: '#6b7280' }}></i>
+                          </button>
+                        </span>
+                      );
+                    })}
                   </div>
-                </div>
-              )}
-              <div className="modal-actions">
-                <button type="button" className="btn-secondary" onClick={() => setShowPackageModal(false)}>Cancel</button>
-                <button type="button" className="btn-primary" onClick={handleSavePackage}>Save Package</button>
+                )}
+
+                {/* Available Services List */}
+                {formData.selectedServices.length > 0 && (
+                  <div style={{ maxHeight: '180px', overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: '12px', background: '#fafafa' }}>
+                    {formData.selectedServices
+                      .filter(svc => 
+                        packageServiceSearch === '' ||
+                        svc.serviceName.toLowerCase().includes(packageServiceSearch.toLowerCase())
+                      )
+                      .map((svc, idx) => {
+                        const isSelected = editingPackage?.includedServices?.includes(svc.serviceId);
+                        return (
+                          <div
+                            key={idx}
+                            onClick={() => toggleServiceInPackage(svc.serviceId)}
+                            style={{
+                              padding: '12px 16px',
+                              borderBottom: '1px solid #e5e7eb',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              background: isSelected ? '#eff6ff' : 'white',
+                              transition: 'background 0.15s'
+                            }}
+                            onMouseOver={(e) => { if (!isSelected) e.currentTarget.style.background = '#f9fafb'; }}
+                            onMouseOut={(e) => { if (!isSelected) e.currentTarget.style.background = 'white'; }}
+                          >
+                            <span style={{ fontSize: '0.9rem', fontWeight: 500, color: '#222' }}>{svc.serviceName}</span>
+                            {isSelected && <i className="fas fa-check-circle" style={{ color: '#3b82f6', fontSize: '1rem' }}></i>}
+                          </div>
+                        );
+                      })}
+                  </div>
+                )}
               </div>
+
+              {/* Fine Print */}
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                  Fine Print / Terms
+                </label>
+                <textarea
+                  value={editingPackage?.finePrint || ''}
+                  onChange={(e) => setEditingPackage(prev => ({ ...prev, finePrint: e.target.value }))}
+                  placeholder="e.g., Available on Friday or Sunday. Not available on long weekends."
+                  rows={3}
+                  style={{
+                    width: '100%',
+                    padding: '12px 14px',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    resize: 'vertical'
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{ padding: '16px 24px', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+              <button
+                onClick={() => setShowPackageModal(false)}
+                style={{
+                  padding: '12px 24px',
+                  border: '1px solid #222',
+                  background: 'transparent',
+                  color: '#222',
+                  borderRadius: '8px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  transition: 'all 0.2s'
+                }}
+                onMouseOver={(e) => { e.currentTarget.style.background = '#f5f5f5'; }}
+                onMouseOut={(e) => { e.currentTarget.style.background = 'transparent'; }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSavePackage}
+                style={{
+                  padding: '12px 24px',
+                  border: 'none',
+                  background: '#222',
+                  color: 'white',
+                  borderRadius: '8px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  transition: 'all 0.2s'
+                }}
+                onMouseOver={(e) => { e.currentTarget.style.background = '#000'; }}
+                onMouseOut={(e) => { e.currentTarget.style.background = '#222'; }}
+              >
+                {editingPackage?._index !== undefined ? 'Update Package' : 'Save Package'}
+              </button>
             </div>
           </div>
         </div>

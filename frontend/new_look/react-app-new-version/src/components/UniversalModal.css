@@ -110,6 +110,10 @@
   gap: 12px;
 }
 
+.um-footer-centered {
+  justify-content: center;
+}
+
 /* Buttons */
 .um-btn {
   padding: 10px 20px;
