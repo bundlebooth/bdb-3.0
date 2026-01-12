@@ -11,7 +11,6 @@ import VendorSection from '../components/VendorSection';
 import VendorSectionSkeleton from '../components/VendorSectionSkeleton';
 import MapView from '../components/MapView';
 import ProfileModal from '../components/ProfileModal';
-import DashboardModal from '../components/DashboardModal';
 import SetupIncompleteBanner from '../components/SetupIncompleteBanner';
 import MessagingWidget from '../components/MessagingWidget';
 import AnnouncementDisplay from '../components/AnnouncementDisplay';
@@ -42,8 +41,6 @@ function IndexPage() {
   const [userLocation, setUserLocation] = useState(null);
   const [selectedVendorId, setSelectedVendorId] = useState(null);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
-  const [dashboardModalOpen, setDashboardModalOpen] = useState(false);
-  const [dashboardSection, setDashboardSection] = useState('dashboard');
   const [loadingMore, setLoadingMore] = useState(false);
   const [sortBy, setSortBy] = useState('recommended');
   const [mobileMapOpen, setMobileMapOpen] = useState(false); // Mobile fullscreen map
@@ -605,15 +602,13 @@ function IndexPage() {
   useEffect(() => {
     const handleOpenDashboard = (event) => {
       setProfileModalOpen(false);
-      if (event.detail && event.detail.section) {
-        setDashboardSection(event.detail.section);
-      }
-      setDashboardModalOpen(true);
+      const section = event.detail?.section || 'dashboard';
+      navigate(`/dashboard?section=${section}`);
     };
     
     window.addEventListener('openDashboard', handleOpenDashboard);
     return () => window.removeEventListener('openDashboard', handleOpenDashboard);
-  }, []);
+  }, [navigate]);
 
   useEffect(() => {
     // Skip on initial mount - initializePage handles the first load
@@ -954,15 +949,14 @@ function IndexPage() {
         onSearch={handleEnhancedSearch} 
         onProfileClick={() => {
           if (currentUser) {
-            setDashboardModalOpen(true);
+            navigate('/dashboard');
           } else {
             setProfileModalOpen(true);
           }
         }} 
         onWishlistClick={() => {
           if (currentUser) {
-            setDashboardSection('favorites');
-            setDashboardModalOpen(true);
+            navigate('/dashboard?section=favorites');
           } else {
             setProfileModalOpen(true);
           }
@@ -970,8 +964,7 @@ function IndexPage() {
         onChatClick={() => {
           if (currentUser) {
             const section = currentUser.isVendor ? 'vendor-messages' : 'messages';
-            setDashboardSection(section);
-            setDashboardModalOpen(true);
+            navigate(`/dashboard?section=${section}`);
           } else {
             setProfileModalOpen(true);
           }
@@ -979,11 +972,6 @@ function IndexPage() {
         onNotificationsClick={() => {}} 
       />
       <ProfileModal isOpen={profileModalOpen} onClose={() => setProfileModalOpen(false)} />
-      <DashboardModal 
-        isOpen={dashboardModalOpen} 
-        onClose={() => setDashboardModalOpen(false)}
-        initialSection={dashboardSection}
-      />
       <FilterModal 
         isOpen={filterModalOpen} 
         onClose={() => setFilterModalOpen(false)}
@@ -1005,10 +993,7 @@ function IndexPage() {
           {currentUser?.vendorProfileId && (
             <>
               <SetupIncompleteBanner 
-                onContinueSetup={() => {
-                  setDashboardSection('vendor-settings');
-                  setDashboardModalOpen(true);
-                }}
+                onContinueSetup={() => navigate('/dashboard?section=vendor-settings')}
               />
             </>
           )}
@@ -1256,7 +1241,7 @@ function IndexPage() {
       </div>
       
       {/* Mobile Map Button - Floating - Only show when no modals are open */}
-      {!dashboardModalOpen && !profileModalOpen && !filterModalOpen && (
+      {!profileModalOpen && !filterModalOpen && (
         <button 
           className="mobile-map-button"
           onClick={() => setMobileMapOpen(true)}
@@ -1270,11 +1255,10 @@ function IndexPage() {
       <div className={`mobile-map-overlay ${mobileMapOpen ? 'active' : ''}`}>
         <Header 
           onSearch={() => {}} 
-          onProfileClick={() => currentUser ? setDashboardModalOpen(true) : setProfileModalOpen(true)} 
+          onProfileClick={() => currentUser ? navigate('/dashboard') : setProfileModalOpen(true)} 
           onWishlistClick={() => {
             if (currentUser) {
-              setDashboardSection('favorites');
-              setDashboardModalOpen(true);
+              navigate('/dashboard?section=favorites');
             } else {
               setProfileModalOpen(true);
             }
@@ -1282,8 +1266,7 @@ function IndexPage() {
           onChatClick={() => {
             if (currentUser) {
               const section = currentUser.isVendor ? 'vendor-messages' : 'messages';
-              setDashboardSection(section);
-              setDashboardModalOpen(true);
+              navigate(`/dashboard?section=${section}`);
             } else {
               setProfileModalOpen(true);
             }
@@ -1334,16 +1317,14 @@ function IndexPage() {
       <MessagingWidget />
       <MobileBottomNav 
         onOpenDashboard={(section) => {
-          if (section) {
-            const sectionMap = {
-              'messages': currentUser?.isVendor ? 'vendor-messages' : 'messages',
-              'dashboard': 'dashboard'
-            };
-            setDashboardSection(sectionMap[section] || section);
-          }
-          setDashboardModalOpen(true);
+          const sectionMap = {
+            'messages': currentUser?.isVendor ? 'vendor-messages' : 'messages',
+            'dashboard': 'dashboard'
+          };
+          const targetSection = section ? (sectionMap[section] || section) : 'dashboard';
+          navigate(`/dashboard?section=${targetSection}`);
         }}
-        onCloseDashboard={() => setDashboardModalOpen(false)}
+        onCloseDashboard={() => {}}
         onOpenProfile={() => setProfileModalOpen(true)}
         onOpenMap={() => setMobileMapOpen(true)}
         onOpenMessages={() => {

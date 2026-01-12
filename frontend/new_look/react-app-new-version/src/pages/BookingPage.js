@@ -7,7 +7,6 @@ import Header from '../components/Header';
 import ServiceCard from '../components/ServiceCard';
 import SkeletonLoader from '../components/SkeletonLoader';
 import ProfileModal from '../components/ProfileModal';
-import DashboardModal from '../components/DashboardModal';
 import SetupIncompleteBanner from '../components/SetupIncompleteBanner';
 import MessagingWidget from '../components/MessagingWidget';
 import Breadcrumb from '../components/Breadcrumb';
@@ -38,8 +37,6 @@ function BookingPage() {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
-  const [dashboardModalOpen, setDashboardModalOpen] = useState(false);
-  const [dashboardSection, setDashboardSection] = useState('dashboard');
   const [showCalendar, setShowCalendar] = useState(false);
   const [availableTimeSlots, setAvailableTimeSlots] = useState([]);
   const [vendorAvailability, setVendorAvailability] = useState(null);
@@ -726,15 +723,14 @@ function BookingPage() {
         onSearch={() => {}} 
         onProfileClick={() => {
           if (currentUser) {
-            setDashboardModalOpen(true);
+            navigate('/dashboard');
           } else {
             setProfileModalOpen(true);
           }
         }} 
         onWishlistClick={() => {
           if (currentUser) {
-            setDashboardSection('favorites');
-            setDashboardModalOpen(true);
+            navigate('/dashboard?section=favorites');
           } else {
             setProfileModalOpen(true);
           }
@@ -742,8 +738,7 @@ function BookingPage() {
         onChatClick={() => {
           if (currentUser) {
             const section = currentUser.isVendor ? 'vendor-messages' : 'messages';
-            setDashboardSection(section);
-            setDashboardModalOpen(true);
+            navigate(`/dashboard?section=${section}`);
           } else {
             setProfileModalOpen(true);
           }
@@ -1184,40 +1179,6 @@ function BookingPage() {
                   ></textarea>
                 </div>
 
-                {/* Cancellation Policy */}
-                {cancellationPolicy && (() => {
-                  const policyType = cancellationPolicy.PolicyType || 'flexible';
-                  const policyDescriptions = {
-                    flexible: 'Full refund if cancelled at least 24 hours before the event.',
-                    moderate: 'Full refund if cancelled 7+ days before. 50% refund if cancelled 3-7 days before. No refund within 3 days.',
-                    strict: '50% refund if cancelled 14+ days before. No refund within 14 days of the event.',
-                    custom: `Full refund if cancelled ${cancellationPolicy.FullRefundDays}+ days before. ${cancellationPolicy.PartialRefundPercent}% refund ${cancellationPolicy.PartialRefundDays}-${cancellationPolicy.FullRefundDays} days before. No refund within ${cancellationPolicy.NoRefundDays} day(s).`
-                  };
-                  
-                  return (
-                    <div className="review-section" style={{ marginTop: '1.5rem' }}>
-                      <h3 className="review-subtitle">Cancellation policy</h3>
-                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem', marginTop: '0.75rem' }}>
-                        <div style={{ flexShrink: 0 }}>
-                          <i className="far fa-calendar-alt" style={{ fontSize: '1.5rem', color: '#222' }}></i>
-                        </div>
-                        <div>
-                          <p style={{ margin: 0, color: '#717171', fontSize: '0.9rem', lineHeight: 1.5 }}>
-                            {policyDescriptions[policyType] || policyDescriptions.flexible}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })()}
-
-                <div className="info-box">
-                  <i className="fas fa-info-circle"></i>
-                  <div>
-                    <strong>What happens next?</strong>
-                    <p>The vendor will review your request and respond within 24 hours. You'll receive a notification when they respond.</p>
-                  </div>
-                </div>
               </div>
             )}
 
@@ -1240,7 +1201,7 @@ function BookingPage() {
                     gap: '0.5rem'
                   }}
                 >
-                  <i className="fas fa-arrow-left"></i> Back
+                  Back
                 </button>
               )}
               {currentStep < 3 ? (
@@ -1260,7 +1221,7 @@ function BookingPage() {
                     gap: '0.5rem'
                   }}
                 >
-                  Next <i className="fas fa-arrow-right"></i>
+                  Next
                 </button>
               ) : (
                 <button
@@ -1282,10 +1243,13 @@ function BookingPage() {
                   }}
                 >
                   {submitting ? (
-                    <><i className="fas fa-spinner fa-spin"></i> Sending...</>
-                  ) : (
-                    <><i className="fas fa-paper-plane"></i> Send Request</>
-                  )}
+                    <>
+                      <svg className="animate-spin" style={{ width: '18px', height: '18px', marginRight: '0.5rem' }} viewBox="0 0 24 24" fill="none">
+                        <circle cx="12" cy="12" r="10" stroke="#3b82f6" strokeWidth="3" strokeLinecap="round" strokeDasharray="31.4 31.4" />
+                      </svg>
+                      Sending...
+                    </>
+                  ) : 'Send Request'}
                 </button>
               )}
             </div>
@@ -1391,6 +1355,29 @@ function BookingPage() {
               <i className="fas fa-shield-alt"></i>
               <p>This is a free request. You won't be charged until you confirm with the vendor.</p>
             </div>
+
+            {/* Cancellation Policy */}
+            {cancellationPolicy && (() => {
+              const policyType = cancellationPolicy.PolicyType || 'flexible';
+              const policyDescriptions = {
+                flexible: 'Full refund if cancelled at least 24 hours before the event.',
+                moderate: 'Full refund if cancelled 7+ days before. 50% refund if cancelled 3-7 days before.',
+                strict: '50% refund if cancelled 14+ days before. No refund within 14 days.',
+                custom: `Full refund if cancelled ${cancellationPolicy.FullRefundDays}+ days before. ${cancellationPolicy.PartialRefundPercent}% refund ${cancellationPolicy.PartialRefundDays}-${cancellationPolicy.FullRefundDays} days before.`
+              };
+              
+              return (
+                <div style={{ marginTop: '1rem', padding: '0.75rem', background: '#f9fafb', borderRadius: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                    <i className="far fa-calendar-alt" style={{ color: '#6b7280' }}></i>
+                    <span style={{ fontWeight: 600, fontSize: '0.85rem', color: '#374151' }}>Cancellation Policy</span>
+                  </div>
+                  <p style={{ margin: 0, color: '#6b7280', fontSize: '0.8rem', lineHeight: 1.4 }}>
+                    {policyDescriptions[policyType] || policyDescriptions.flexible}
+                  </p>
+                </div>
+              );
+            })()}
           </div>
         </div>
       </div>
@@ -1411,18 +1398,48 @@ function BookingPage() {
             }}>
               <i className="fas fa-check" style={{ fontSize: '28px', color: 'white' }}></i>
             </div>
-            <h2>Request Sent Successfully!</h2>
-            <p>Your booking request has been sent to the vendor. They will review your request and respond within 24 hours.</p>
-            <div className="success-actions">
+            <h2 style={{ marginBottom: '0.5rem' }}>Request Sent Successfully!</h2>
+            <p style={{ color: '#6b7280', marginBottom: '1.5rem' }}>Your booking request has been sent to the vendor.</p>
+            
+            <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '1rem', marginBottom: '2rem', textAlign: 'left' }}>
+              <div style={{ fontWeight: 600, color: '#374151', marginBottom: '0.5rem', fontSize: '0.95rem' }}>
+                What happens next?
+              </div>
+              <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem', lineHeight: 1.6 }}>
+                The vendor will review your request and respond within 24 hours. You'll receive a notification when they respond.
+              </p>
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', width: '100%' }}>
               <button
-                className="btn btn-primary"
-                onClick={() => navigate('/')}
+                onClick={() => navigate('/dashboard?section=bookings')}
+                style={{
+                  width: '100%',
+                  padding: '0.875rem 1.5rem',
+                  background: '#222',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '1rem',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
               >
-                View My Requests
+                View My Bookings
               </button>
               <button
-                className="btn btn-secondary"
                 onClick={() => navigate(`/vendor/${vendorId}`)}
+                style={{
+                  width: '100%',
+                  padding: '0.875rem 1.5rem',
+                  background: '#fff',
+                  color: '#222',
+                  border: '1px solid #222',
+                  borderRadius: '8px',
+                  fontSize: '1rem',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
               >
                 Back to Vendor
               </button>
@@ -1435,13 +1452,6 @@ function BookingPage() {
       <ProfileModal 
         isOpen={profileModalOpen} 
         onClose={() => setProfileModalOpen(false)} 
-      />
-      
-      {/* Dashboard Modal */}
-      <DashboardModal 
-        isOpen={dashboardModalOpen} 
-        onClose={() => setDashboardModalOpen(false)}
-        initialSection={dashboardSection}
       />
       
       {/* Messaging Widget */}

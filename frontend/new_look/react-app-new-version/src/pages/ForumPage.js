@@ -6,7 +6,6 @@ import { PageLayout } from '../components/PageWrapper';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import ProfileModal from '../components/ProfileModal';
-import DashboardModal from '../components/DashboardModal';
 import MessagingWidget from '../components/MessagingWidget';
 import MobileBottomNav from '../components/MobileBottomNav';
 import EmojiPicker from 'emoji-picker-react';
@@ -35,7 +34,6 @@ function ForumPage() {
   const [creating, setCreating] = useState(false);
   
   const [profileModalOpen, setProfileModalOpen] = useState(false);
-  const [dashboardModalOpen, setDashboardModalOpen] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const emojiPickerRef = useRef(null);
@@ -62,7 +60,6 @@ function ForumPage() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-  const [dashboardSection, setDashboardSection] = useState('dashboard');
 
   // Load categories
   useEffect(() => {
@@ -220,19 +217,17 @@ function ForumPage() {
     <PageLayout variant="fullWidth" pageClassName="forum-page" style={{ backgroundColor: '#ffffff' }}>
       <Header 
         onSearch={() => {}} 
-        onProfileClick={() => currentUser ? setDashboardModalOpen(true) : setProfileModalOpen(true)} 
+        onProfileClick={() => currentUser ? navigate('/dashboard') : setProfileModalOpen(true)} 
         onWishlistClick={() => {
           if (currentUser) {
-            setDashboardSection('favorites');
-            setDashboardModalOpen(true);
+            navigate('/dashboard?section=favorites');
           } else {
             setProfileModalOpen(true);
           }
         }} 
         onChatClick={() => {
           if (currentUser) {
-            setDashboardSection(currentUser.isVendor ? 'vendor-messages' : 'messages');
-            setDashboardModalOpen(true);
+            navigate(`/dashboard?section=${currentUser.isVendor ? 'vendor-messages' : 'messages'}`);
           } else {
             setProfileModalOpen(true);
           }
@@ -240,7 +235,6 @@ function ForumPage() {
         onNotificationsClick={() => {}} 
       />
       <ProfileModal isOpen={profileModalOpen} onClose={() => setProfileModalOpen(false)} />
-      <DashboardModal isOpen={dashboardModalOpen} onClose={() => setDashboardModalOpen(false)} initialSection={dashboardSection} />
 
       {/* Mobile Menu Bar - Below Header */}
       <div className="mobile-menu-bar" style={{
@@ -870,11 +864,12 @@ function ForumPage() {
               'messages': currentUser?.isVendor ? 'vendor-messages' : 'messages',
               'dashboard': 'dashboard'
             };
-            setDashboardSection(sectionMap[section] || section);
+            navigate(`/dashboard?section=${sectionMap[section] || section}`);
+          } else {
+            navigate('/dashboard');
           }
-          setDashboardModalOpen(true);
         }}
-        onCloseDashboard={() => setDashboardModalOpen(false)}
+        onCloseDashboard={() => {}}
         onOpenProfile={() => setProfileModalOpen(true)}
         onOpenMap={handleOpenMap}
         onOpenMessages={() => {

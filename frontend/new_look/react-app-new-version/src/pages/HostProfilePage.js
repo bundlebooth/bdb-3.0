@@ -7,7 +7,6 @@ import Header from '../components/Header';
 import Footer from '../components/Footer';
 import VendorCard from '../components/VendorCard';
 import ProfileModal from '../components/ProfileModal';
-import DashboardModal from '../components/DashboardModal';
 import { showBanner } from '../utils/helpers';
 import './HostProfilePage.css';
 
@@ -21,7 +20,6 @@ function HostProfilePage() {
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
-  const [dashboardModalOpen, setDashboardModalOpen] = useState(false);
   const [currentReviewPage, setCurrentReviewPage] = useState(1);
   const reviewsPerPage = 5;
 
@@ -142,14 +140,13 @@ function HostProfilePage() {
         onSearch={() => {}} 
         onProfileClick={() => {
           if (currentUser) {
-            setDashboardModalOpen(true);
+            navigate('/dashboard');
           } else {
             setProfileModalOpen(true);
           }
         }}
       />
       <ProfileModal isOpen={profileModalOpen} onClose={() => setProfileModalOpen(false)} />
-      <DashboardModal isOpen={dashboardModalOpen} onClose={() => setDashboardModalOpen(false)} />
       
       <div className="host-profile-page">
         <div className="host-profile-container">

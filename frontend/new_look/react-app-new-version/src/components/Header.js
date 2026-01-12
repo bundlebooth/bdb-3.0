@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef, memo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
-import DashboardModal from './DashboardModal';
 import NotificationDropdown from './NotificationDropdown';
 import EnhancedSearchBar from './EnhancedSearchBar';
 import WhatsNewSidebar from './WhatsNewSidebar';
@@ -22,7 +21,6 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
   const [favoritesBadge, setFavoritesBadge] = useState(0);
   const [messagesBadge, setMessagesBadge] = useState(0);
   const [notificationsBadge, setNotificationsBadge] = useState(0);
-  const [dashboardOpen, setDashboardOpen] = useState(false);
   const [notificationDropdownOpen, setNotificationDropdownOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false); // No longer used - kept for compatibility
   const [profileIncomplete, setProfileIncomplete] = useState(false);
@@ -447,11 +445,6 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
       </div>
       </div>
 
-      {/* Dashboard Modal - kept for backwards compatibility with openDashboard events */}
-      <DashboardModal 
-        isOpen={dashboardOpen} 
-        onClose={() => setDashboardOpen(false)} 
-      />
       
       {/* Notification Dropdown */}
       <NotificationDropdown 

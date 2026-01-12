@@ -9,7 +9,6 @@ import VendorCard from '../components/VendorCard';
 import ServiceCard from '../components/ServiceCard';
 import SkeletonLoader from '../components/SkeletonLoader';
 import ProfileModal from '../components/ProfileModal';
-import DashboardModal from '../components/DashboardModal';
 import Footer from '../components/Footer';
 import MobileBottomNav from '../components/MobileBottomNav';
 import Breadcrumb from '../components/Breadcrumb';
@@ -35,8 +34,6 @@ function VendorProfilePage() {
   const [isFavorite, setIsFavorite] = useState(false);
   const [favorites, setFavorites] = useState([]);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
-  const [dashboardModalOpen, setDashboardModalOpen] = useState(false);
-  const [dashboardSection, setDashboardSection] = useState('dashboard');
 
 
   // Handle opening map - navigate to explore page with map open
@@ -2220,15 +2217,14 @@ function VendorProfilePage() {
         onSearch={() => {}} 
         onProfileClick={() => {
           if (currentUser) {
-            setDashboardModalOpen(true);
+            navigate('/dashboard');
           } else {
             setProfileModalOpen(true);
           }
         }} 
         onWishlistClick={() => {
           if (currentUser) {
-            setDashboardSection('favorites');
-            setDashboardModalOpen(true);
+            navigate('/dashboard?section=favorites');
           } else {
             setProfileModalOpen(true);
           }
@@ -2236,8 +2232,7 @@ function VendorProfilePage() {
         onChatClick={() => {
           if (currentUser) {
             const section = currentUser.isVendor ? 'vendor-messages' : 'messages';
-            setDashboardSection(section);
-            setDashboardModalOpen(true);
+            navigate(`/dashboard?section=${section}`);
           } else {
             setProfileModalOpen(true);
           }
@@ -2245,11 +2240,6 @@ function VendorProfilePage() {
         onNotificationsClick={() => {}} 
       />
       <ProfileModal isOpen={profileModalOpen} onClose={() => setProfileModalOpen(false)} />
-      <DashboardModal 
-        isOpen={dashboardModalOpen} 
-        onClose={() => setDashboardModalOpen(false)}
-        initialSection={dashboardSection}
-      />
       <div className="profile-container">
         {/* Back Button - Close tab and go back to main page */}
         <button className="back-button" onClick={() => {
@@ -3224,11 +3214,13 @@ function VendorProfilePage() {
               'messages': currentUser?.isVendor ? 'vendor-messages' : 'messages',
               'dashboard': 'dashboard'
             };
-            setDashboardSection(sectionMap[section] || section);
+            const targetSection = sectionMap[section] || section;
+            navigate(`/dashboard?section=${targetSection}`);
+          } else {
+            navigate('/dashboard');
           }
-          setDashboardModalOpen(true);
         }}
-        onCloseDashboard={() => setDashboardModalOpen(false)}
+        onCloseDashboard={() => {}}
         onOpenProfile={() => setProfileModalOpen(true)}
         onOpenMap={handleOpenMap}
         onOpenMessages={() => {

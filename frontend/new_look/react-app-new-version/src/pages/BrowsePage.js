@@ -10,7 +10,6 @@ import VendorSection from '../components/VendorSection';
 import VendorSectionSkeleton from '../components/VendorSectionSkeleton';
 import FilterModal from '../components/FilterModal';
 import ProfileModal from '../components/ProfileModal';
-import DashboardModal from '../components/DashboardModal';
 import MapView from '../components/MapView';
 import Footer from '../components/Footer';
 import MessagingWidget from '../components/MessagingWidget';
@@ -74,8 +73,6 @@ function BrowsePage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [filterModalOpen, setFilterModalOpen] = useState(false);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
-  const [dashboardModalOpen, setDashboardModalOpen] = useState(false);
-  const [dashboardSection, setDashboardSection] = useState('dashboard');
   const [sortBy, setSortBy] = useState('recommended');
   const [mapActive, setMapActive] = useState(false);
   const [showFullGrid, setShowFullGrid] = useState(false);
@@ -429,15 +426,14 @@ function BrowsePage() {
       <Header 
         onProfileClick={() => {
           if (currentUser) {
-            setDashboardModalOpen(true);
+            navigate('/dashboard');
           } else {
             setProfileModalOpen(true);
           }
         }}
         onWishlistClick={() => {
           if (currentUser) {
-            setDashboardSection('favorites');
-            setDashboardModalOpen(true);
+            navigate('/dashboard?section=favorites');
           } else {
             setProfileModalOpen(true);
           }
@@ -445,8 +441,7 @@ function BrowsePage() {
         onChatClick={() => {
           if (currentUser) {
             const section = currentUser.isVendor ? 'vendor-messages' : 'messages';
-            setDashboardSection(section);
-            setDashboardModalOpen(true);
+            navigate(`/dashboard?section=${section}`);
           } else {
             setProfileModalOpen(true);
           }
@@ -454,11 +449,6 @@ function BrowsePage() {
       />
 
       <ProfileModal isOpen={profileModalOpen} onClose={() => setProfileModalOpen(false)} />
-      <DashboardModal 
-        isOpen={dashboardModalOpen} 
-        onClose={() => setDashboardModalOpen(false)}
-        initialSection={dashboardSection}
-      />
       <FilterModal 
         isOpen={filterModalOpen} 
         onClose={() => setFilterModalOpen(false)}

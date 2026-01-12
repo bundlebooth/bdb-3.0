@@ -6,7 +6,6 @@ import { PageLayout, ContentWrapper } from '../components/PageWrapper';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import ProfileModal from '../components/ProfileModal';
-import DashboardModal from '../components/DashboardModal';
 import MessagingWidget from '../components/MessagingWidget';
 
 function ForumPostPage() {
@@ -99,8 +98,6 @@ function ForumPostPage() {
   };
   
   const [profileModalOpen, setProfileModalOpen] = useState(false);
-  const [dashboardModalOpen, setDashboardModalOpen] = useState(false);
-  const [dashboardSection, setDashboardSection] = useState('dashboard');
 
   // Load post and comments
   const loadPost = useCallback(async () => {
@@ -386,19 +383,17 @@ function ForumPostPage() {
     <PageLayout variant="fullWidth" pageClassName="forum-post-page" style={{ backgroundColor: '#f8f9fa' }}>
       <Header 
         onSearch={() => {}} 
-        onProfileClick={() => currentUser ? setDashboardModalOpen(true) : setProfileModalOpen(true)} 
+        onProfileClick={() => currentUser ? navigate('/dashboard') : setProfileModalOpen(true)} 
         onWishlistClick={() => {
           if (currentUser) {
-            setDashboardSection('favorites');
-            setDashboardModalOpen(true);
+            navigate('/dashboard?section=favorites');
           } else {
             setProfileModalOpen(true);
           }
         }} 
         onChatClick={() => {
           if (currentUser) {
-            setDashboardSection(currentUser.isVendor ? 'vendor-messages' : 'messages');
-            setDashboardModalOpen(true);
+            navigate(`/dashboard?section=${currentUser.isVendor ? 'vendor-messages' : 'messages'}`);
           } else {
             setProfileModalOpen(true);
           }
@@ -406,7 +401,6 @@ function ForumPostPage() {
         onNotificationsClick={() => {}} 
       />
       <ProfileModal isOpen={profileModalOpen} onClose={() => setProfileModalOpen(false)} />
-      <DashboardModal isOpen={dashboardModalOpen} onClose={() => setDashboardModalOpen(false)} initialSection={dashboardSection} />
       
       <ContentWrapper variant="narrow" style={{ padding: '2rem 0' }}>
         {/* Back button */}
