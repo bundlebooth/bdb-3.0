@@ -12,6 +12,7 @@ import SetupIncompleteBanner from '../components/SetupIncompleteBanner';
 import MessagingWidget from '../components/MessagingWidget';
 import Breadcrumb from '../components/Breadcrumb';
 import BookingCalendar from '../components/BookingCalendar';
+import SharedDateTimePicker from '../components/SharedDateTimePicker';
 import { extractVendorIdFromSlug, parseQueryParams, trackPageView } from '../utils/urlHelpers';
 import '../styles/BookingPage.css';
 import '../components/Calendar.css';
@@ -855,194 +856,30 @@ function BookingPage() {
                   </select>
                 </div>
 
-                {/* Event Date with Calendar Popup */}
-                <div className="form-group" style={{ marginBottom: '1.5rem', position: 'relative' }}>
-                  <label htmlFor="event-date" className="form-label" style={{ display: 'block', fontWeight: '600', marginBottom: '0.5rem', color: '#222' }}>
-                    Event Date <span className="required-asterisk" style={{ color: '#ef4444' }}>*</span>
+                {/* Event Date & Time - Shared Calendar Component */}
+                <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+                  <label className="form-label" style={{ display: 'block', fontWeight: '600', marginBottom: '0.5rem', color: '#222' }}>
+                    Event Date & Time <span className="required-asterisk" style={{ color: '#ef4444' }}>*</span>
                   </label>
-                  <div 
-                    onClick={() => setShowCalendar(true)}
-                    style={{ 
-                      width: '100%', 
-                      padding: '0.75rem 1rem', 
-                      border: '1px solid #ddd', 
-                      borderRadius: '8px', 
-                      fontSize: '1rem',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.5rem',
-                      backgroundColor: 'white',
-                      cursor: 'pointer',
-                      minHeight: '48px'
+                  <SharedDateTimePicker
+                    vendorId={vendorId}
+                    businessHours={vendorData?.businessHours || vendorAvailability?.businessHours || []}
+                    timezone={vendorData?.profile?.Timezone || null}
+                    selectedDate={bookingData.eventDate}
+                    selectedStartTime={bookingData.eventTime}
+                    selectedEndTime={bookingData.eventEndTime}
+                    onDateChange={(date) => {
+                      setBookingData(prev => ({ ...prev, eventDate: date, eventTime: '', eventEndTime: '' }));
                     }}
-                  >
-                    <i className="fas fa-calendar" style={{ color: '#717171' }}></i>
-                    <span style={{ color: bookingData.eventDate ? '#222' : '#999' }}>
-                      {bookingData.eventDate ? formatDate(bookingData.eventDate) : 'Select date'}
-                    </span>
-                  </div>
-                  
-                  {showCalendar && (
-                    <div style={{ position: 'absolute', top: '100%', left: 0, zIndex: 1000, marginTop: '0.5rem' }}>
-                      <BookingCalendar
-                        selectedDate={bookingData.eventDate}
-                        onDateSelect={(date) => {
-                          handleCalendarDateSelect(date);
-                          setShowCalendar(false);
-                        }}
-                        onClose={() => setShowCalendar(false)}
-                        vendorAvailability={vendorAvailability}
-                      />
-                    </div>
-                  )}
-                </div>
-
-                {/* Timezone Note */}
-                {bookingData.eventDate && vendorData && (() => {
-                  const tzInfo = getVendorTimezoneInfo();
-                  return (
-                    <div style={{ 
-                      marginBottom: '1rem', 
-                      padding: '0.75rem 1rem', 
-                      backgroundColor: '#f0f9ff', 
-                      border: '1px solid #bfdbfe',
-                      borderRadius: '8px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.5rem',
-                      fontSize: '0.9rem',
-                      color: '#1e40af'
-                    }}>
-                      <i className="fas fa-info-circle"></i>
-                      <span>
-                        All times are shown in the vendor's timezone: <strong>{tzInfo.timezone} ({tzInfo.abbr})</strong>
-                      </span>
-                    </div>
-                  );
-                })()}
-
-                {/* Start Time and End Time in Grid */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
-                  {/* Start Time */}
-                  <div className="form-group">
-                    <label htmlFor="event-time" className="form-label" style={{ display: 'block', fontWeight: '600', marginBottom: '0.5rem', color: '#222' }}>
-                      Start Time <span className="required-asterisk" style={{ color: '#ef4444' }}>*</span>
-                    </label>
-                    <select
-                      id="event-time"
-                      className="form-input"
-                      style={{ 
-                        width: '100%', 
-                        padding: '0.75rem 1rem', 
-                        border: '1px solid #ddd', 
-                        borderRadius: '8px', 
-                        fontSize: '1rem',
-                        display: 'block',
-                        backgroundColor: bookingData.eventDate ? 'white' : '#f5f5f5',
-                        cursor: bookingData.eventDate ? 'pointer' : 'not-allowed'
-                      }}
-                      value={bookingData.eventTime}
-                      onChange={handleInputChange}
-                      disabled={!bookingData.eventDate}
-                      required
-                    >
-                      {bookingData.eventDate ? (
-                        <>
-                          <option value="">Select a time</option>
-                          {availableTimeSlots.length > 0 ? (
-                            availableTimeSlots.map((time) => {
-                              const [hour, min] = time.split(':').map(Number);
-                              const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-                              const period = hour < 12 ? 'AM' : 'PM';
-                              return (
-                                <option key={time} value={time}>
-                                  {displayHour}:{min.toString().padStart(2, '0')} {period}
-                                </option>
-                              );
-                            })
-                          ) : (
-                            // Fallback: Show default business hours (9 AM - 5 PM) if no slots generated
-                            Array.from({ length: 17 }, (_, i) => {
-                              const totalMinutes = 540 + (i * 30); // Start at 9:00 AM (540 minutes)
-                              const hour = Math.floor(totalMinutes / 60);
-                              const min = totalMinutes % 60;
-                              if (hour >= 17) return null; // Stop at 5 PM
-                              const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-                              const period = hour < 12 ? 'AM' : 'PM';
-                              const timeStr = `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`;
-                              return (
-                                <option key={timeStr} value={timeStr}>
-                                  {displayHour}:{min.toString().padStart(2, '0')} {period}
-                                </option>
-                              );
-                            }).filter(Boolean)
-                          )}
-                        </>
-                      ) : (
-                        <option value="">Select a date first</option>
-                      )}
-                    </select>
-                  </div>
-
-                  {/* End Time */}
-                  <div className="form-group">
-                    <label htmlFor="event-end-time" className="form-label" style={{ display: 'block', fontWeight: '600', marginBottom: '0.5rem', color: '#222' }}>
-                      End Time <span className="required-asterisk" style={{ color: '#ef4444' }}>*</span>
-                    </label>
-                    <select
-                      id="event-end-time"
-                      className="form-input"
-                      style={{ 
-                        width: '100%', 
-                        padding: '0.75rem 1rem', 
-                        border: '1px solid #ddd', 
-                        borderRadius: '8px', 
-                        fontSize: '1rem',
-                        display: 'block',
-                        backgroundColor: bookingData.eventDate ? 'white' : '#f5f5f5',
-                        cursor: bookingData.eventDate ? 'pointer' : 'not-allowed'
-                      }}
-                      value={bookingData.eventEndTime}
-                      onChange={handleInputChange}
-                      disabled={!bookingData.eventDate}
-                      required
-                    >
-                      {bookingData.eventDate ? (
-                        <>
-                          <option value="">Select a time</option>
-                          {(availableTimeSlots.length > 0 ? availableTimeSlots : 
-                            Array.from({ length: 17 }, (_, i) => {
-                              const totalMinutes = 540 + (i * 30);
-                              const hour = Math.floor(totalMinutes / 60);
-                              const min = totalMinutes % 60;
-                              if (hour >= 17) return null;
-                              return `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`;
-                            }).filter(Boolean)
-                          )
-                            .filter((time) => {
-                              if (!bookingData.eventTime) return true;
-                              const [startHour, startMin] = bookingData.eventTime.split(':').map(Number);
-                              const [timeHour, timeMin] = time.split(':').map(Number);
-                              const startMinutes = startHour * 60 + startMin;
-                              const timeMinutes = timeHour * 60 + timeMin;
-                              return timeMinutes > startMinutes;
-                            })
-                            .map((time) => {
-                              const [hour, min] = time.split(':').map(Number);
-                              const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-                              const period = hour < 12 ? 'AM' : 'PM';
-                              return (
-                                <option key={time} value={time}>
-                                  {displayHour}:{min.toString().padStart(2, '0')} {period}
-                                </option>
-                              );
-                            })}
-                        </>
-                      ) : (
-                        <option value="">Select a date first</option>
-                      )}
-                    </select>
-                  </div>
+                    onStartTimeChange={(time) => {
+                      setBookingData(prev => ({ ...prev, eventTime: time || '', eventEndTime: '' }));
+                    }}
+                    onEndTimeChange={(time) => {
+                      setBookingData(prev => ({ ...prev, eventEndTime: time || '' }));
+                    }}
+                    showSaveDeleteButtons={false}
+                    inline={true}
+                  />
                 </div>
 
                 {/* Number of Guests */}
