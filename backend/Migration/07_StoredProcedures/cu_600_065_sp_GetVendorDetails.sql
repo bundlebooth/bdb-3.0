@@ -73,6 +73,8 @@ BEGIN
         ps.ServiceName,
         ps.ServiceName AS Name,
         COALESCE(s.Description, ps.ServiceDescription) AS Description,
+        ps.ServiceDescription AS ServiceDescription,
+        s.Description AS VendorDescription,
         -- Derive a single Price compatible with display
         CASE 
             WHEN s.PricingModel = 'time_based' THEN s.BaseRate

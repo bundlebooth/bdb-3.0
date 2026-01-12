@@ -4,8 +4,9 @@ import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL, GOOGLE_MAPS_API_KEY } from '../config';
 import { PageLayout } from '../components/PageWrapper';
 import Header from '../components/Header';
-import ServiceCard from '../components/ServiceCard';
 import SkeletonLoader from '../components/SkeletonLoader';
+import { ServiceCard, PackageCard, PackageServiceTabs, PackageServiceEmpty, PackageServiceList } from '../components/PackageServiceCard';
+import UniversalModal, { ConfirmationModal } from '../components/UniversalModal';
 import ProfileModal from '../components/ProfileModal';
 import SetupIncompleteBanner from '../components/SetupIncompleteBanner';
 import MessagingWidget from '../components/MessagingWidget';
@@ -34,6 +35,7 @@ function BookingPage() {
   const [packages, setPackages] = useState([]);
   const [selectedPackage, setSelectedPackage] = useState(null);
   const [loadingPackages, setLoadingPackages] = useState(false);
+  const [step2Tab, setStep2Tab] = useState('packages'); // 'packages' or 'services'
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
@@ -254,12 +256,13 @@ function BookingPage() {
     }
   }, [vendorId]);
 
-  // Load packages when entering step 2
+  // Load packages and services when entering step 2
   useEffect(() => {
-    if (currentStep === 2 && packages.length === 0) {
-      loadVendorPackages();
+    if (currentStep === 2) {
+      if (packages.length === 0) loadVendorPackages();
+      if (services.length === 0) loadVendorServices();
     }
-  }, [currentStep, packages.length, loadVendorPackages]);
+  }, [currentStep, packages.length, services.length, loadVendorPackages, loadVendorServices]);
 
   // Auto-select prefilled package after packages load
   useEffect(() => {
@@ -502,12 +505,25 @@ function BookingPage() {
     });
   };
 
-  // Select package
+  // Select package with duration validation
   const selectPackage = (pkg) => {
     if (selectedPackage?.PackageID === pkg.PackageID) {
       setSelectedPackage(null); // Deselect if already selected
     } else {
-      setSelectedPackage(pkg);
+      // Check if package duration fits in time slot
+      const pkgDuration = pkg.DurationMinutes || pkg.Duration || pkg.duration || null;
+      const durationCheck = checkDurationFits(pkgDuration);
+      
+      if (!durationCheck.fits) {
+        setDurationWarning({
+          type: 'package',
+          name: pkg.PackageName || pkg.name,
+          itemDuration: durationCheck.itemDuration,
+          slotDuration: durationCheck.slotDuration
+        });
+      } else {
+        setSelectedPackage(pkg);
+      }
     }
   };
 
@@ -708,6 +724,39 @@ function BookingPage() {
       return `${mins} min`;
     }
   };
+
+  // Calculate selected time slot duration in minutes
+  const getSelectedTimeSlotDuration = () => {
+    if (!bookingData.eventTime || !bookingData.eventEndTime) return null;
+    
+    const parseTime = (timeStr) => {
+      const [hours, minutes] = timeStr.split(':').map(Number);
+      return hours * 60 + minutes;
+    };
+    
+    const startMinutes = parseTime(bookingData.eventTime);
+    const endMinutes = parseTime(bookingData.eventEndTime);
+    
+    // Handle overnight bookings
+    if (endMinutes < startMinutes) {
+      return (24 * 60 - startMinutes) + endMinutes;
+    }
+    return endMinutes - startMinutes;
+  };
+
+  // Check if a service/package duration fits in the selected time slot
+  const checkDurationFits = (itemDuration) => {
+    const slotDuration = getSelectedTimeSlotDuration();
+    if (!slotDuration || !itemDuration) return { fits: true, slotDuration: null, itemDuration: null };
+    return { 
+      fits: itemDuration <= slotDuration, 
+      slotDuration, 
+      itemDuration 
+    };
+  };
+
+  // State for duration warning modal
+  const [durationWarning, setDurationWarning] = useState(null);
 
   const profile = vendorData?.profile || {};
   const businessName = profile.BusinessName || profile.Name || 'Vendor';
@@ -944,145 +993,103 @@ function BookingPage() {
             </div>
             )}
 
-            {/* Step 2: Package Selection */}
+            {/* Step 2: Package/Service Selection */}
             {currentStep === 2 && (
               <div className="booking-step" id="step-2" style={{ display: 'block', width: '100%', padding: '20px', backgroundColor: '#ffffff' }}>
                 <div className="step-header" style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
                   <div className="step-number-circle" style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#222', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '600' }}>2</div>
-                  <h2 className="step-title" style={{ fontSize: '1.5rem', fontWeight: '600', margin: '0', color: '#222' }}>Choose a Package</h2>
+                  <h2 className="step-title" style={{ fontSize: '1.5rem', fontWeight: '600', margin: '0', color: '#222' }}>Choose a Package or Service</h2>
                 </div>
-                <p className="step-description" style={{ color: '#717171', marginBottom: '1.5rem' }}>Select a package you'd like to book from this vendor</p>
+                <p className="step-description" style={{ color: '#717171', marginBottom: '1.5rem' }}>Select a package or individual service you'd like to book</p>
                 
-                <div id="packages-list" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {/* Tab Toggle */}
+                <PackageServiceTabs 
+                  activeTab={step2Tab}
+                  onTabChange={setStep2Tab}
+                  packagesCount={packages.length}
+                  servicesCount={services.length}
+                />
+                
+                {/* Packages Tab */}
+                {step2Tab === 'packages' && (
+                <PackageServiceList>
                   {loadingPackages ? (
                     <SkeletonLoader variant="service-card" count={3} />
                   ) : packages.length === 0 ? (
-                    <div className="no-services" style={{ padding: '3rem 2rem', textAlign: 'center' }}>
-                      <i className="fas fa-info-circle" style={{ fontSize: '3rem', color: '#d1d5db', marginBottom: '1rem' }}></i>
-                      <p style={{ color: '#6b7280', fontSize: '1rem' }}>This vendor hasn't listed any packages yet. You can still send a booking request with your requirements.</p>
-                    </div>
+                    <PackageServiceEmpty type="packages" message="No packages available. Check the Services tab or send a custom request." />
                   ) : (
-                    packages.map((pkg) => {
-                      const isSelected = selectedPackage?.PackageID === pkg.PackageID;
+                    packages.map((pkg) => (
+                      <PackageCard
+                        key={pkg.PackageID}
+                        pkg={pkg}
+                        isSelected={selectedPackage?.PackageID === pkg.PackageID}
+                        onClick={() => selectPackage(pkg)}
+                        selectable={true}
+                      />
+                    ))
+                  )}
+                </PackageServiceList>
+                )}
+                
+                {/* Services Tab */}
+                {step2Tab === 'services' && (
+                <PackageServiceList>
+                  {loadingServices ? (
+                    <SkeletonLoader variant="service-card" count={3} />
+                  ) : services.length === 0 ? (
+                    <PackageServiceEmpty type="services" message="No individual services available. Check the Packages tab or send a custom request." />
+                  ) : (
+                    services.map((service, index) => {
+                      // Use multiple fields to create a unique identifier
+                      const serviceId = service.VendorServiceID || service.ServiceID || service.id || `service-${index}`;
+                      const serviceName = service.ServiceName || service.name || '';
+                      const serviceDuration = service.DurationMinutes || service.VendorDurationMinutes || service.baseDuration || service.vendorDuration || null;
+                      
+                      // Check selection by both ID and name to ensure uniqueness
+                      const isSelected = selectedServices.some(s => {
+                        const sId = s.VendorServiceID || s.ServiceID || s.id;
+                        const sName = s.ServiceName || s.name || '';
+                        return sId === serviceId || (sName && sName === serviceName);
+                      });
+                      
+                      // Check if duration fits in time slot
+                      const durationCheck = checkDurationFits(serviceDuration);
                       
                       return (
-                        <div 
-                          key={pkg.PackageID}
-                          onClick={() => selectPackage(pkg)}
-                          style={{
-                            padding: '1rem',
-                            background: isSelected ? '#f0f9ff' : '#fff',
-                            border: isSelected ? '2px solid #222' : '1px solid #e5e7eb',
-                            borderRadius: '12px',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s'
+                        <ServiceCard
+                          key={`${serviceId}-${serviceName}-${index}`}
+                          service={service}
+                          isSelected={isSelected}
+                          onClick={() => {
+                            if (isSelected) {
+                              // Allow deselection
+                              setSelectedServices(selectedServices.filter(s => {
+                                const sId = s.VendorServiceID || s.ServiceID || s.id;
+                                const sName = s.ServiceName || s.name || '';
+                                return sId !== serviceId && sName !== serviceName;
+                              }));
+                            } else {
+                              // Check duration before selecting
+                              if (!durationCheck.fits) {
+                                setDurationWarning({
+                                  type: 'service',
+                                  name: serviceName,
+                                  itemDuration: durationCheck.itemDuration,
+                                  slotDuration: durationCheck.slotDuration
+                                });
+                              } else {
+                                setSelectedServices([...selectedServices, service]);
+                              }
+                            }
                           }}
-                        >
-                          <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
-                            {/* Package Image/Icon */}
-                            <div style={{
-                              flexShrink: 0,
-                              width: '80px',
-                              height: '80px',
-                              borderRadius: '12px',
-                              overflow: 'hidden',
-                              background: '#f3f4f6',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center'
-                            }}>
-                              {pkg.ImageURL ? (
-                                <img src={pkg.ImageURL} alt={pkg.PackageName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                              ) : (
-                                <i className="fas fa-box" style={{ color: '#9ca3af', fontSize: '2rem' }}></i>
-                              )}
-                            </div>
-                            
-                            {/* Package Details */}
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                <div style={{ flex: 1 }}>
-                                  <h3 style={{ fontSize: '1.1rem', fontWeight: 600, color: '#222', margin: '0 0 0.35rem 0' }}>
-                                    {pkg.PackageName}
-                                    {pkg.SalePrice && parseFloat(pkg.SalePrice) < parseFloat(pkg.Price) && (
-                                      <span style={{ background: 'transparent', color: '#dc2626', padding: '0', fontSize: '0.8rem', fontWeight: 700, marginLeft: '0.5rem', verticalAlign: 'middle' }}>SALE!</span>
-                                    )}
-                                  </h3>
-                                  
-                                  {/* Pricing */}
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                                    {pkg.SalePrice && parseFloat(pkg.SalePrice) < parseFloat(pkg.Price) ? (
-                                      <>
-                                        <span style={{ fontSize: '1.15rem', fontWeight: 700, color: '#222' }}>
-                                          ${parseFloat(pkg.SalePrice).toFixed(0)}
-                                        </span>
-                                        <span style={{ fontSize: '0.9rem', color: '#9ca3af', textDecoration: 'line-through' }}>
-                                          ${parseFloat(pkg.Price).toFixed(0)}
-                                        </span>
-                                      </>
-                                    ) : (
-                                      <span style={{ fontSize: '1.15rem', fontWeight: 700, color: '#222' }}>
-                                        ${parseFloat(pkg.Price).toFixed(0)}
-                                      </span>
-                                    )}
-                                    <span style={{ fontSize: '0.85rem', color: '#6b7280' }}>
-                                      / {pkg.PriceType === 'per_person' ? 'person' : 'package'}
-                                    </span>
-                                  </div>
-                                  
-                                  {/* Description */}
-                                  {pkg.Description && (
-                                    <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem', color: '#6b7280', lineHeight: 1.5 }}>
-                                      {pkg.Description.length > 120 ? pkg.Description.substring(0, 120) + '...' : pkg.Description}
-                                    </p>
-                                  )}
-                                  
-                                  {/* Included Services */}
-                                  {pkg.IncludedServices && pkg.IncludedServices.length > 0 && (
-                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                                      {pkg.IncludedServices.slice(0, 4).map((svc, idx) => (
-                                        <span key={idx} style={{ 
-                                          background: '#f3f4f6', 
-                                          color: '#374151', 
-                                          padding: '4px 10px', 
-                                          borderRadius: '6px', 
-                                          fontSize: '0.8rem', 
-                                          fontWeight: 500 
-                                        }}>
-                                          {svc.name || svc.ServiceName}
-                                        </span>
-                                      ))}
-                                      {pkg.IncludedServices.length > 4 && (
-                                        <span style={{ color: '#6b7280', fontSize: '0.8rem', fontWeight: 500, padding: '4px 0' }}>
-                                          +{pkg.IncludedServices.length - 4} more
-                                        </span>
-                                      )}
-                                    </div>
-                                  )}
-                                </div>
-                                
-                                {/* Selection Indicator */}
-                                <div style={{
-                                  width: '24px',
-                                  height: '24px',
-                                  borderRadius: '50%',
-                                  border: isSelected ? 'none' : '2px solid #d1d5db',
-                                  background: isSelected ? '#222' : 'transparent',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  flexShrink: 0
-                                }}>
-                                  {isSelected && <i className="fas fa-check" style={{ color: 'white', fontSize: '0.75rem' }}></i>}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
+                          selectable={true}
+                        />
                       );
                     })
                   )}
-                </div>
+                </PackageServiceList>
+                )}
+                
                 
                 {/* Upcoming Steps Preview */}
                 <div className="upcoming-steps">
@@ -1336,13 +1343,37 @@ function BookingPage() {
                 </div>
               )}
 
+              {selectedPackage && (
+                <div className="summary-item" id="summary-package">
+                  <i className="fas fa-box"></i>
+                  <div style={{ flex: 1 }}>
+                    <div className="summary-label">Package</div>
+                    <div className="summary-value">1 package selected</div>
+                    <div style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: '#6b7280' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0' }}>
+                        <span>{selectedPackage.PackageName || selectedPackage.name}</span>
+                        <span style={{ fontWeight: 500 }}>${parseFloat(selectedPackage.Price || selectedPackage.price || 0).toFixed(0)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {selectedServices.length > 0 && (
                 <div className="summary-item" id="summary-services">
                   <i className="fas fa-list"></i>
-                  <div>
+                  <div style={{ flex: 1 }}>
                     <div className="summary-label">Services</div>
                     <div className="summary-value">
                       {selectedServices.length} service{selectedServices.length > 1 ? 's' : ''} selected
+                    </div>
+                    <div style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: '#6b7280' }}>
+                      {selectedServices.map((s, idx) => (
+                        <div key={s.VendorServiceID || s.ServiceID || s.id || idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0' }}>
+                          <span>{s.ServiceName || s.name}</span>
+                          <span style={{ fontWeight: 500 }}>${parseFloat(s.VendorPrice || s.Price || s.BasePrice || s.baseRate || s.fixedPrice || 0).toFixed(0)}</span>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>
@@ -1381,6 +1412,49 @@ function BookingPage() {
           </div>
         </div>
       </div>
+
+      {/* Duration Warning Modal */}
+      {durationWarning && (
+        <UniversalModal
+          isOpen={!!durationWarning}
+          onClose={() => setDurationWarning(null)}
+          title="Duration Doesn't Fit"
+          size="small"
+          primaryAction={{
+            label: 'Go to Step 1',
+            onClick: () => {
+              setDurationWarning(null);
+              setCurrentStep(1);
+            }
+          }}
+          secondaryAction={{
+            label: 'Choose Another',
+            onClick: () => setDurationWarning(null)
+          }}
+        >
+          <div style={{ textAlign: 'center', padding: '1rem 0' }}>
+            <div style={{
+              width: '64px',
+              height: '64px',
+              borderRadius: '50%',
+              background: '#fef3c7',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 1.5rem'
+            }}>
+              <i className="fas fa-exclamation-triangle" style={{ fontSize: '28px', color: '#f59e0b' }}></i>
+            </div>
+            <p style={{ color: '#6b7280', marginBottom: '1rem', lineHeight: 1.6 }}>
+              The <strong>{durationWarning.name}</strong> {durationWarning.type} requires <strong>{formatDuration(durationWarning.itemDuration)}</strong>, 
+              but your selected time slot is only <strong>{formatDuration(durationWarning.slotDuration)}</strong>.
+            </p>
+            <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>
+              Please go back to Step 1 to select a longer time slot, or choose a different {durationWarning.type}.
+            </p>
+          </div>
+        </UniversalModal>
+      )}
 
       {/* Success Modal */}
       {showSuccessModal && (

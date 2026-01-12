@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { API_BASE_URL } from '../../../config';
-import ServiceCard from '../../ServiceCard';
 import SkeletonLoader from '../../SkeletonLoader';
+import { ServiceCard, PackageCard, PackageServiceTabs, PackageServiceEmpty, PackageServiceList } from '../../PackageServiceCard';
 import { showBanner } from '../../../utils/helpers';
 
 function ServicesPackagesPanel({ onBack, vendorProfileId }) {
@@ -358,8 +358,40 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
       minimumAttendees: service.minimumAttendees || '',
       maximumAttendees: service.maximumAttendees || '',
       minimumBookingFee: service.minimumBookingFee || '',
-      vendorDescription: service.vendorDescription || ''
+      vendorDescription: service.vendorDescription || '',
+      imageURL: service.imageURL || ''
     });
+  };
+
+  // Handle service image upload
+  const handleServiceImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    try {
+      setUploadingImage(true);
+      const formData = new FormData();
+      formData.append('image', file);
+
+      const response = await fetch(`${API_BASE_URL}/vendors/service-image/upload`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+        body: formData
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setEditForm({ ...editForm, imageURL: data.imageUrl });
+        showBanner('Image uploaded successfully!', 'success');
+      } else {
+        showBanner('Failed to upload image', 'error');
+      }
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      showBanner('Failed to upload image', 'error');
+    } finally {
+      setUploadingImage(false);
+    }
   };
 
   const handleSaveEdit = () => {
@@ -479,42 +511,12 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
         </p>
 
         {/* Tab Navigation */}
-        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '0' }}>
-          <button
-            onClick={() => setActiveTab('packages')}
-            style={{
-              padding: '0.75rem 1.5rem',
-              background: 'none',
-              border: 'none',
-              borderBottom: activeTab === 'packages' ? '2px solid #222' : '2px solid transparent',
-              color: activeTab === 'packages' ? '#222' : '#6b7280',
-              fontWeight: activeTab === 'packages' ? 600 : 400,
-              cursor: 'pointer',
-              fontSize: '0.95rem',
-              marginBottom: '-1px'
-            }}
-          >
-            <i className="fas fa-box" style={{ marginRight: '0.5rem', color: '#5e72e4' }}></i>
-            Packages {packages.length > 0 && <span style={{ background: '#5e72e4', color: 'white', borderRadius: '50%', width: '20px', height: '20px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', marginLeft: '0.5rem' }}>{packages.length}</span>}
-          </button>
-          <button
-            onClick={() => setActiveTab('services')}
-            style={{
-              padding: '0.75rem 1.5rem',
-              background: 'none',
-              border: 'none',
-              borderBottom: activeTab === 'services' ? '2px solid #222' : '2px solid transparent',
-              color: activeTab === 'services' ? '#222' : '#6b7280',
-              fontWeight: activeTab === 'services' ? 600 : 400,
-              cursor: 'pointer',
-              fontSize: '0.95rem',
-              marginBottom: '-1px'
-            }}
-          >
-            <i className="fas fa-concierge-bell" style={{ marginRight: '0.5rem', color: '#5e72e4' }}></i>
-            Individual Services {selectedCount > 0 && <span style={{ background: '#5e72e4', color: 'white', borderRadius: '50%', width: '20px', height: '20px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', marginLeft: '0.5rem' }}>{selectedCount}</span>}
-          </button>
-        </div>
+        <PackageServiceTabs 
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          packagesCount={packages.length}
+          servicesCount={selectedCount}
+        />
         
         {/* Loading State */}
         {loading && (
@@ -727,150 +729,16 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
             </span>
           </div>
 
-          <div id="vendor-settings-services-grid" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
-            {services.map((service, index) => {
-              const getCategoryIcon = () => {
-                const catLower = (service.category || '').toLowerCase();
-                const nameLower = (service.name || '').toLowerCase();
-                
-                if (catLower.includes('photo') || nameLower.includes('photo')) return 'fa-camera';
-                if (catLower.includes('video') || nameLower.includes('video')) return 'fa-video';
-                if (catLower.includes('music') || catLower.includes('dj') || nameLower.includes('music') || nameLower.includes('dj')) return 'fa-music';
-                if (catLower.includes('cater') || nameLower.includes('food') || nameLower.includes('cater')) return 'fa-utensils';
-                if (catLower.includes('venue') || nameLower.includes('venue') || nameLower.includes('space')) return 'fa-building';
-                if (catLower.includes('decor') || catLower.includes('floral') || nameLower.includes('decor') || nameLower.includes('flower')) return 'fa-leaf';
-                if (catLower.includes('entertainment') || nameLower.includes('perform')) return 'fa-masks-theater';
-                if (catLower.includes('transport') || nameLower.includes('transport')) return 'fa-car';
-                if (catLower.includes('beauty') || catLower.includes('wellness') || nameLower.includes('makeup') || nameLower.includes('spa')) return 'fa-spa';
-                return 'fa-concierge-bell';
-              };
-              
-              const getPricingDisplay = () => {
-                if (service.pricingModel === 'time_based' && service.baseRate) {
-                  return { price: `$${parseFloat(service.baseRate).toLocaleString()}`, suffix: 'base rate' };
-                } else if (service.pricingModel === 'fixed_price' && service.fixedPrice) {
-                  return { price: `$${parseFloat(service.fixedPrice).toLocaleString()}`, suffix: 'fixed' };
-                } else if (service.pricingModel === 'per_attendee' && service.pricePerPerson) {
-                  return { price: `$${parseFloat(service.pricePerPerson).toLocaleString()}`, suffix: '/ person' };
-                }
-                return { price: 'Price', suffix: 'not set' };
-              };
-              
-              const pricing = getPricingDisplay();
-              
-              return (
-                <div 
-                  key={`service-${service.id}-${index}`} 
-                  style={{ 
-                    padding: '1rem',
-                    background: '#fff', 
-                    border: '1px solid #e5e7eb', 
-                    borderRadius: '12px'
-                  }}
-                >
-                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
-                    {/* Service Icon - Small Square */}
-                    <div style={{
-                      flexShrink: 0,
-                      width: '80px',
-                      height: '80px',
-                      borderRadius: '12px',
-                      background: '#f3f4f6',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}>
-                      <i className={`fas ${getCategoryIcon()}`} style={{ color: '#5e72e4', fontSize: '1.75rem' }}></i>
-                    </div>
-                    
-                    {/* Service Details */}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <h3 style={{ fontSize: '1.1rem', fontWeight: 600, color: '#222', margin: '0 0 0.35rem 0' }}>
-                            {service.name}
-                          </h3>
-                          
-                          {/* Pricing */}
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                            <span style={{ fontSize: '1.15rem', fontWeight: 700, color: '#222' }}>
-                              {pricing.price}
-                            </span>
-                            <span style={{ fontSize: '0.85rem', color: '#6b7280' }}>
-                              {pricing.suffix}
-                            </span>
-                          </div>
-                          
-                          {/* Duration & Category */}
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                            <span style={{ 
-                              background: '#f3f4f6', 
-                              color: '#374151', 
-                              padding: '4px 10px', 
-                              borderRadius: '6px', 
-                              fontSize: '0.8rem',
-                              fontWeight: 500
-                            }}>
-                              {service.vendorDuration 
-                                ? (service.vendorDuration >= 60 
-                                    ? Math.floor(service.vendorDuration/60) + ' hour' + (service.vendorDuration >= 120 ? 's' : '') 
-                                    : service.vendorDuration + ' min')
-                                : 'Duration TBD'}
-                            </span>
-                            {service.category && (
-                              <span style={{ 
-                                background: '#f3f4f6', 
-                                color: '#374151', 
-                                padding: '4px 10px', 
-                                borderRadius: '6px', 
-                                fontSize: '0.8rem',
-                                fontWeight: 500
-                              }}>
-                                {service.category}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        
-                        {/* Action Buttons */}
-                        <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
-                          <button
-                            type="button"
-                            onClick={() => handleEditService(service)}
-                            style={{
-                              padding: '6px 12px',
-                              border: '1px solid #e5e7eb',
-                              borderRadius: '6px',
-                              background: '#fff',
-                              cursor: 'pointer',
-                              fontSize: '0.8rem',
-                              color: '#374151'
-                            }}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveService(service.id)}
-                            style={{
-                              padding: '6px 12px',
-                              border: '1px solid #fecaca',
-                              borderRadius: '6px',
-                              background: '#fef2f2',
-                              cursor: 'pointer',
-                              fontSize: '0.8rem',
-                              color: '#dc2626'
-                            }}
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+          <PackageServiceList>
+            {services.map((service, index) => (
+              <ServiceCard
+                key={`service-${service.id}-${index}`}
+                service={service}
+                showActions={true}
+                onEdit={() => handleEditService(service)}
+                onDelete={() => handleRemoveService(service.id)}
+              />
+            ))}
             
             {/* Add Service Card - Horizontal */}
             <div 
@@ -899,7 +767,7 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
               <i className="fas fa-plus" style={{ fontSize: '1rem', color: '#6b7280' }}></i>
               <span style={{ fontWeight: 500, color: '#6b7280' }}>Add a service</span>
             </div>
-          </div>
+          </PackageServiceList>
 
           <div style={{ marginTop: '2rem' }}>
             <button className="btn btn-primary" id="vendor-settings-save-services" onClick={handleSaveServices}>
@@ -1049,6 +917,91 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
 
               {/* Modal Body */}
               <div style={{ padding: '24px', overflowY: 'auto' }}>
+                {/* Service Image Upload */}
+                <div style={{ marginBottom: '24px' }}>
+                  <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    Service Image
+                  </label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                    <div style={{
+                      width: '100px',
+                      height: '100px',
+                      borderRadius: '12px',
+                      background: '#f3f4f6',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      overflow: 'hidden',
+                      border: '1px solid #e5e7eb'
+                    }}>
+                      {editForm.imageURL ? (
+                        <img src={editForm.imageURL} alt="Service" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        <i className="fas fa-image" style={{ color: '#9ca3af', fontSize: '2rem' }}></i>
+                      )}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleServiceImageUpload}
+                        style={{ display: 'none' }}
+                        id="service-image-upload"
+                      />
+                      <label
+                        htmlFor="service-image-upload"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          padding: '10px 16px',
+                          background: '#fff',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '8px',
+                          cursor: 'pointer',
+                          fontSize: '14px',
+                          fontWeight: 500,
+                          color: '#374151'
+                        }}
+                      >
+                        {uploadingImage ? (
+                          <>
+                            <i className="fas fa-spinner fa-spin"></i>
+                            Uploading...
+                          </>
+                        ) : (
+                          <>
+                            <i className="fas fa-upload"></i>
+                            {editForm.imageURL ? 'Change Image' : 'Upload Image'}
+                          </>
+                        )}
+                      </label>
+                      {editForm.imageURL && (
+                        <button
+                          type="button"
+                          onClick={() => setEditForm({ ...editForm, imageURL: '' })}
+                          style={{
+                            marginLeft: '8px',
+                            padding: '10px 16px',
+                            background: '#fef2f2',
+                            border: '1px solid #fecaca',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            fontSize: '14px',
+                            fontWeight: 500,
+                            color: '#dc2626'
+                          }}
+                        >
+                          Remove
+                        </button>
+                      )}
+                      <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#9ca3af' }}>
+                        Recommended: 400x400px, JPG or PNG
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Pricing Model */}
                 <div style={{ marginBottom: '24px' }}>
                   <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>

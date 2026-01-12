@@ -6,8 +6,8 @@ import { PageLayout, ContentWrapper } from '../components/PageWrapper';
 import Header from '../components/Header';
 import VendorGallery from '../components/VendorGallery';
 import VendorCard from '../components/VendorCard';
-import ServiceCard from '../components/ServiceCard';
 import SkeletonLoader from '../components/SkeletonLoader';
+import { ServiceCard, PackageCard, PackageServiceTabs, PackageServiceEmpty, PackageServiceList } from '../components/PackageServiceCard';
 import ProfileModal from '../components/ProfileModal';
 import Footer from '../components/Footer';
 import MobileBottomNav from '../components/MobileBottomNav';
@@ -73,6 +73,7 @@ function VendorProfilePage() {
   const [packages, setPackages] = useState([]);
   const [selectedPackage, setSelectedPackage] = useState(null);
   const [packageModalOpen, setPackageModalOpen] = useState(false);
+  const [offeringsTab, setOfferingsTab] = useState('packages'); // 'packages' or 'services'
 
   // Cancellation policy state
   const [cancellationPolicy, setCancellationPolicy] = useState(null);
@@ -1144,7 +1145,7 @@ function VendorProfilePage() {
     );
   };
 
-  // Render enhanced services with better formatting - show both services and packages
+  // Render enhanced services with better formatting - show both services and packages with toggle
   const renderEnhancedServices = () => {
     const hasPackages = packages && packages.length > 0;
     const services = vendor?.services || [];
@@ -1157,162 +1158,41 @@ function VendorProfilePage() {
       <div className="content-section">
         <h2>What we offer</h2>
         
-        {/* Services Section */}
-        {hasServices && (
-          <div style={{ marginBottom: hasPackages ? '2rem' : 0 }}>
-            {hasPackages && <h3 style={{ fontSize: '1rem', fontWeight: 600, color: '#222', marginBottom: '1rem' }}>Services</h3>}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
-              {services.map((service, index) => (
-                <div 
-                  key={service.ServiceID || index}
-                  style={{
-                    padding: '1rem',
-                    background: '#fff',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '12px',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'flex-start'
-                  }}
-                >
-                  <div style={{ flex: 1 }}>
-                    <h4 style={{ fontSize: '1rem', fontWeight: 600, color: '#222', margin: '0 0 0.25rem 0' }}>
-                      {service.ServiceName || service.serviceName}
-                    </h4>
-                    {service.ServiceDescription && (
-                      <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.85rem', color: '#6b7280', lineHeight: 1.4 }}>
-                        {service.ServiceDescription.length > 80 ? service.ServiceDescription.substring(0, 80) + '...' : service.ServiceDescription}
-                      </p>
-                    )}
-                    {service.DurationMinutes && (
-                      <span style={{ fontSize: '0.8rem', color: '#9ca3af' }}>
-                        <i className="far fa-clock" style={{ marginRight: '4px' }}></i>
-                        {service.DurationMinutes} min
-                      </span>
-                    )}
-                  </div>
-                  <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: '1rem' }}>
-                    <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#222' }}>
-                      ${parseFloat(service.Price || service.BasePrice || 0).toFixed(0)}
-                    </div>
-                    {service.PriceType && service.PriceType !== 'flat' && (
-                      <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
-                        / {service.PriceType === 'per_person' ? 'person' : service.PriceType === 'per_hour' ? 'hour' : service.PriceType}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+        {/* Tab Toggle - only show if both exist */}
+        {hasPackages && hasServices && (
+          <PackageServiceTabs 
+            activeTab={offeringsTab}
+            onTabChange={setOfferingsTab}
+            packagesCount={packages.length}
+            servicesCount={services.length}
+          />
         )}
         
-        {/* Packages Section - Horizontal Cards */}
-        {hasPackages && (
-          <>
-            {hasServices && <h3 style={{ fontSize: '1rem', fontWeight: 600, color: '#222', marginBottom: '1rem' }}>Packages</h3>}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {packages.map((pkg, index) => (
-            <div 
-              key={pkg.PackageID || index}
-              onClick={() => { setSelectedPackage(pkg); setPackageModalOpen(true); }}
-              style={{
-                padding: '1rem',
-                background: '#fff',
-                border: '1px solid #e5e7eb',
-                borderRadius: '12px',
-                cursor: 'pointer'
-              }}
-            >
-              <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
-                {/* Package Image/Icon */}
-                <div style={{
-                  flexShrink: 0,
-                  width: '80px',
-                  height: '80px',
-                  borderRadius: '12px',
-                  overflow: 'hidden',
-                  background: '#f3f4f6',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
-                  {pkg.ImageURL ? (
-                    <img src={pkg.ImageURL} alt={pkg.PackageName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  ) : (
-                    <i className="fas fa-box" style={{ color: '#9ca3af', fontSize: '2rem' }}></i>
-                  )}
-                </div>
-                
-                {/* Package Details */}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <h3 style={{ fontSize: '1.1rem', fontWeight: 600, color: '#222', margin: '0 0 0.35rem 0' }}>
-                        {pkg.PackageName}
-                        {pkg.SalePrice && parseFloat(pkg.SalePrice) < parseFloat(pkg.Price) && (
-                          <span style={{ background: 'transparent', color: '#dc2626', padding: '0', fontSize: '0.8rem', fontWeight: 700, marginLeft: '0.5rem', verticalAlign: 'middle' }}>SALE!</span>
-                        )}
-                      </h3>
-                      
-                      {/* Pricing */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                        {pkg.SalePrice && parseFloat(pkg.SalePrice) < parseFloat(pkg.Price) ? (
-                          <>
-                            <span style={{ fontSize: '1.15rem', fontWeight: 700, color: '#222' }}>
-                              ${parseFloat(pkg.SalePrice).toFixed(0)}
-                            </span>
-                            <span style={{ fontSize: '0.9rem', color: '#9ca3af', textDecoration: 'line-through' }}>
-                              ${parseFloat(pkg.Price).toFixed(0)}
-                            </span>
-                          </>
-                        ) : (
-                          <span style={{ fontSize: '1.15rem', fontWeight: 700, color: '#222' }}>
-                            ${parseFloat(pkg.Price).toFixed(0)}
-                          </span>
-                        )}
-                        <span style={{ fontSize: '0.85rem', color: '#6b7280' }}>
-                          / {pkg.PriceType === 'per_person' ? 'person' : 'package'}
-                        </span>
-                      </div>
-                      
-                      {/* Description */}
-                      {pkg.Description && (
-                        <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem', color: '#6b7280', lineHeight: 1.5 }}>
-                          {pkg.Description.length > 120 ? pkg.Description.substring(0, 120) + '...' : pkg.Description}
-                        </p>
-                      )}
-                      
-                      {/* Included Services */}
-                      {pkg.IncludedServices && pkg.IncludedServices.length > 0 && (
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                          {pkg.IncludedServices.slice(0, 4).map((svc, idx) => (
-                            <span key={idx} style={{ 
-                              background: '#f3f4f6', 
-                              color: '#374151', 
-                              padding: '4px 10px', 
-                              borderRadius: '6px', 
-                              fontSize: '0.8rem', 
-                              fontWeight: 500 
-                            }}>
-                              {svc.name || svc.ServiceName}
-                            </span>
-                          ))}
-                          {pkg.IncludedServices.length > 4 && (
-                            <span style={{ color: '#6b7280', fontSize: '0.8rem', fontWeight: 500, padding: '4px 0' }}>
-                              +{pkg.IncludedServices.length - 4} more
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
-            </div>
-          </>
+        {/* Packages Tab */}
+        {(offeringsTab === 'packages' || !hasServices) && hasPackages && (
+          <PackageServiceList>
+            {packages.map((pkg) => (
+              <PackageCard
+                key={pkg.PackageID}
+                pkg={pkg}
+                onClick={() => { setSelectedPackage(pkg); setPackageModalOpen(true); }}
+                selectable={false}
+              />
+            ))}
+          </PackageServiceList>
+        )}
+        
+        {/* Services Tab */}
+        {(offeringsTab === 'services' || !hasPackages) && hasServices && (
+          <PackageServiceList>
+            {services.map((service) => (
+              <ServiceCard
+                key={service.ServiceID || service.VendorServiceID}
+                service={service}
+                selectable={false}
+              />
+            ))}
+          </PackageServiceList>
         )}
       </div>
     );
