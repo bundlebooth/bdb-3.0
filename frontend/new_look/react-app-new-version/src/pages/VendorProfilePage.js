@@ -1254,14 +1254,111 @@ function VendorProfilePage() {
     return (
       <div className="content-section" style={{ marginTop: '2rem' }}>
         <h2>Cancellation policy</h2>
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem', marginTop: '1rem' }}>
-          <div style={{ flexShrink: 0 }}>
-            <i className="far fa-calendar-alt" style={{ fontSize: '1.5rem', color: '#222' }}></i>
+        <div style={{ 
+          background: 'linear-gradient(135deg, #f8f9fa 0%, #fff 100%)',
+          border: '1px solid #e9ecef',
+          borderRadius: '16px',
+          padding: '24px',
+          marginTop: '1rem'
+        }}>
+          {/* Policy Type Badge */}
+          <div style={{ 
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '8px',
+            background: policyType === 'flexible' ? '#d4edda' : policyType === 'moderate' ? '#fff3cd' : policyType === 'strict' ? '#f8d7da' : '#e2e3e5',
+            color: policyType === 'flexible' ? '#155724' : policyType === 'moderate' ? '#856404' : policyType === 'strict' ? '#721c24' : '#383d41',
+            padding: '6px 14px',
+            borderRadius: '20px',
+            fontSize: '0.85rem',
+            fontWeight: 600,
+            marginBottom: '16px',
+            textTransform: 'capitalize'
+          }}>
+            <i className={`fas ${policyType === 'flexible' ? 'fa-check-circle' : policyType === 'moderate' ? 'fa-clock' : policyType === 'strict' ? 'fa-exclamation-circle' : 'fa-cog'}`}></i>
+            {policyInfo.title}
           </div>
-          <div>
-            <p style={{ margin: 0, color: '#717171', fontSize: '0.95rem', lineHeight: 1.5 }}>
-              {description}
-            </p>
+
+          {/* Policy Details */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {policyType === 'custom' ? (
+              <>
+                {cancellationPolicy.FullRefundDays > 0 && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ 
+                      width: '36px', 
+                      height: '36px', 
+                      borderRadius: '50%', 
+                      background: '#d4edda', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center',
+                      flexShrink: 0
+                    }}>
+                      <i className="fas fa-check" style={{ color: '#28a745', fontSize: '0.9rem' }}></i>
+                    </div>
+                    <span style={{ color: '#484848', fontSize: '0.95rem' }}>
+                      <strong>Full refund</strong> if cancelled {cancellationPolicy.FullRefundDays}+ days before the event
+                    </span>
+                  </div>
+                )}
+                {cancellationPolicy.PartialRefundDays > 0 && cancellationPolicy.PartialRefundPercent > 0 && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ 
+                      width: '36px', 
+                      height: '36px', 
+                      borderRadius: '50%', 
+                      background: '#fff3cd', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center',
+                      flexShrink: 0
+                    }}>
+                      <i className="fas fa-percentage" style={{ color: '#856404', fontSize: '0.9rem' }}></i>
+                    </div>
+                    <span style={{ color: '#484848', fontSize: '0.95rem' }}>
+                      <strong>{cancellationPolicy.PartialRefundPercent}% refund</strong> if cancelled {cancellationPolicy.PartialRefundDays}-{cancellationPolicy.FullRefundDays - 1} days before
+                    </span>
+                  </div>
+                )}
+                {cancellationPolicy.NoRefundDays > 0 && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ 
+                      width: '36px', 
+                      height: '36px', 
+                      borderRadius: '50%', 
+                      background: '#f8d7da', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center',
+                      flexShrink: 0
+                    }}>
+                      <i className="fas fa-times" style={{ color: '#dc3545', fontSize: '0.9rem' }}></i>
+                    </div>
+                    <span style={{ color: '#484848', fontSize: '0.95rem' }}>
+                      <strong>No refund</strong> within {cancellationPolicy.NoRefundDays} day{cancellationPolicy.NoRefundDays > 1 ? 's' : ''} of the event
+                    </span>
+                  </div>
+                )}
+                {cancellationPolicy.CustomTerms && (
+                  <div style={{ 
+                    marginTop: '8px', 
+                    padding: '12px 16px', 
+                    background: '#f8f9fa', 
+                    borderRadius: '8px',
+                    borderLeft: '3px solid #6c757d'
+                  }}>
+                    <p style={{ margin: 0, color: '#6c757d', fontSize: '0.9rem', fontStyle: 'italic' }}>
+                      {cancellationPolicy.CustomTerms}
+                    </p>
+                  </div>
+                )}
+              </>
+            ) : (
+              <p style={{ margin: 0, color: '#484848', fontSize: '0.95rem', lineHeight: 1.6 }}>
+                {description}
+              </p>
+            )}
           </div>
         </div>
       </div>

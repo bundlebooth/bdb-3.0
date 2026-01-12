@@ -49,7 +49,11 @@ BEGIN
              WHERE bs.BookingID = b.BookingID ORDER BY bs.BookingServiceID),
             'Service'
         ) AS ServiceName,
-        'booking' AS RecordType
+        'booking' AS RecordType,
+        NULL AS StartTime,
+        NULL AS EndTime,
+        NULL AS ServicesJson,
+        b.TotalAmount AS Budget
     FROM bookings.Bookings b
     LEFT JOIN users.Users u ON b.UserID = u.UserID
     WHERE b.VendorProfileID = @VendorProfileID
@@ -71,6 +75,7 @@ BEGIN
         COALESCE(
             br.Budget,
             TRY_CAST(JSON_VALUE(br.Services, '$[0].price') AS DECIMAL(10,2)),
+            TRY_CAST(JSON_VALUE(br.Services, '$[0].calculatedPrice') AS DECIMAL(10,2)),
             0
         ) AS TotalAmount,
         NULL AS DepositAmount,
@@ -86,10 +91,15 @@ BEGIN
         NULL AS UpdatedAt,
         (SELECT TOP 1 c.ConversationID FROM messages.Conversations c WHERE c.UserID = br.UserID AND c.VendorProfileID = br.VendorProfileID) AS ConversationID,
         COALESCE(
-            (SELECT TOP 1 JSON_VALUE(br.Services, '$[0].name')),
+            JSON_VALUE(br.Services, '$[0].name'),
+            JSON_VALUE(br.Services, '$[0].ServiceName'),
             'Service'
         ) AS ServiceName,
-        'request' AS RecordType
+        'request' AS RecordType,
+        br.EventTime AS StartTime,
+        br.EventEndTime AS EndTime,
+        br.Services AS ServicesJson,
+        br.Budget
     FROM bookings.BookingRequests br
     LEFT JOIN users.Users u ON br.UserID = u.UserID
     WHERE br.VendorProfileID = @VendorProfileID

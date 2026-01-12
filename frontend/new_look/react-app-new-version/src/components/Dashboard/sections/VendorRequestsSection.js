@@ -387,9 +387,30 @@ function VendorRequestsSection() {
       month = eventDate.toLocaleDateString('en-US', { month: 'short' });
       day = eventDate.getDate();
       weekday = eventDate.toLocaleDateString('en-US', { weekday: 'short' });
-      const startTime = eventDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-      const endTime = new Date(eventDate.getTime() + 90 * 60000).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-      timeStr = `${startTime} - ${endTime}`;
+      
+      // Use StartTime and EndTime from the booking if available
+      if (booking.StartTime || booking.EndTime) {
+        const formatTime = (timeVal) => {
+          if (!timeVal) return '';
+          // Handle time string format (HH:MM:SS.nnnnnnn or HH:MM:SS or HH:MM)
+          const timeStr = typeof timeVal === 'string' ? timeVal : timeVal.toString();
+          const parts = timeStr.split(':');
+          const hours = parseInt(parts[0], 10) || 0;
+          const minutes = parseInt(parts[1], 10) || 0;
+          const hour12 = hours % 12 || 12;
+          const ampm = hours >= 12 ? 'PM' : 'AM';
+          return `${hour12}:${String(minutes).padStart(2, '0')} ${ampm}`;
+        };
+        const startTimeFormatted = formatTime(booking.StartTime);
+        const endTimeFormatted = formatTime(booking.EndTime);
+        timeStr = startTimeFormatted && endTimeFormatted 
+          ? `${startTimeFormatted} - ${endTimeFormatted}` 
+          : startTimeFormatted || endTimeFormatted;
+      } else {
+        // Fallback to event date time
+        const startTime = eventDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+        timeStr = startTime;
+      }
     }
 
     // Get detailed status
@@ -415,7 +436,22 @@ function VendorRequestsSection() {
             </span>
           </div>
           <div className="booking-service-row">
-            <span className="booking-service">{booking.ServiceName || 'Booking'}</span>
+            <span className="booking-service">
+              {(() => {
+                // Parse ServicesJson to show all services
+                if (booking.ServicesJson) {
+                  try {
+                    const services = typeof booking.ServicesJson === 'string' 
+                      ? JSON.parse(booking.ServicesJson) 
+                      : booking.ServicesJson;
+                    if (Array.isArray(services) && services.length > 0) {
+                      return services.map(s => s.name || s.ServiceName || s.serviceName).filter(Boolean).join(', ') || booking.ServiceName || 'Booking';
+                    }
+                  } catch (e) { /* fallback to ServiceName */ }
+                }
+                return booking.ServiceName || 'Booking';
+              })()}
+            </span>
           </div>
           {booking.Location && (
             <div className="booking-location-row">
@@ -437,12 +473,12 @@ function VendorRequestsSection() {
               <span className="booking-time">{timeStr}</span>
             </div>
           )}
-          {booking.TotalAmount != null && booking.TotalAmount !== '' && (
+          {(booking.TotalAmount != null && booking.TotalAmount !== '' && Number(booking.TotalAmount) > 0) || (booking.Budget != null && booking.Budget !== '' && Number(booking.Budget) > 0) ? (
             <div className="booking-price-row">
               <i className="fas fa-dollar-sign" style={{ color: '#6b7280', fontSize: '12px' }}></i>
-              <span className="booking-price">${Number(booking.TotalAmount).toLocaleString()}</span>
+              <span className="booking-price">${Number(booking.TotalAmount || booking.Budget || 0).toLocaleString()}</span>
             </div>
-          )}
+          ) : null}
         </div>
         <div className="booking-actions" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px', paddingRight: '10px' }}>
           <div className="status-col" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>

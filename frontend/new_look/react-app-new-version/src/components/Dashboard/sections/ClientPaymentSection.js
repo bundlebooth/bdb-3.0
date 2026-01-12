@@ -2,30 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { API_BASE_URL } from '../../../config';
-
-// Canadian province tax rates
-const PROVINCE_TAX_RATES = {
-  'Alberta': { rate: 5, type: 'GST', label: 'GST 5%' },
-  'British Columbia': { rate: 12, type: 'GST+PST', label: 'GST+PST 12%' },
-  'Manitoba': { rate: 12, type: 'GST+PST', label: 'GST+PST 12%' },
-  'New Brunswick': { rate: 15, type: 'HST', label: 'HST 15%' },
-  'Newfoundland and Labrador': { rate: 15, type: 'HST', label: 'HST 15%' },
-  'Northwest Territories': { rate: 5, type: 'GST', label: 'GST 5%' },
-  'Nova Scotia': { rate: 15, type: 'HST', label: 'HST 15%' },
-  'Nunavut': { rate: 5, type: 'GST', label: 'GST 5%' },
-  'Ontario': { rate: 13, type: 'HST', label: 'HST 13%' },
-  'Prince Edward Island': { rate: 15, type: 'HST', label: 'HST 15%' },
-  'Quebec': { rate: 14.975, type: 'GST+QST', label: 'GST+QST 14.975%' },
-  'Saskatchewan': { rate: 11, type: 'GST+PST', label: 'GST+PST 11%' },
-  'Yukon': { rate: 5, type: 'GST', label: 'GST 5%' }
-};
-
-const getTaxInfoForProvince = (province) => {
-  const normalizedProvince = Object.keys(PROVINCE_TAX_RATES).find(
-    key => key.toLowerCase() === (province || '').toLowerCase()
-  );
-  return PROVINCE_TAX_RATES[normalizedProvince] || PROVINCE_TAX_RATES['Ontario'];
-};
+import { getProvinceFromLocation, getTaxInfoForProvince } from '../../../utils/taxCalculations';
 
 // Checkout Form Component
 function CheckoutForm({ onSuccess, onCancel, clientProvince, total }) {
@@ -126,7 +103,7 @@ function CheckoutForm({ onSuccess, onCancel, clientProvince, total }) {
         marginTop: '1rem'
       }}>
         <i className="fas fa-info-circle"></i>
-        <span>Tax calculated based on your location: <strong>{taxInfo.label}</strong></span>
+        <span>Tax calculated based on event location: <strong>{taxInfo.label}</strong></span>
       </div>
 
       <div style={{ 
@@ -209,22 +186,10 @@ function ClientPaymentSection({ booking, onBack, onPaymentSuccess }) {
       setClientSecret('');
 
       try {
-        // Get client's province from their profile first
-        let province = 'Ontario';
-        
-        try {
-          const userRes = await fetch(`${API_BASE_URL}/users/me`, {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-          });
-          if (userRes.ok) {
-            const userData = await userRes.json();
-            if (userData.province || userData.state) {
-              province = userData.province || userData.state;
-            }
-          }
-        } catch (e) {
-          console.warn('Could not fetch user profile for province:', e);
-        }
+        // Get province from EVENT LOCATION (tax is based on where event takes place)
+        const eventLocation = booking.EventLocation || booking.Location || '';
+        const province = getProvinceFromLocation(eventLocation);
+        console.log('[Payment] Event location:', eventLocation, '-> Province:', province);
 
         setClientProvince(province);
 
@@ -336,57 +301,148 @@ function ClientPaymentSection({ booking, onBack, onPaymentSuccess }) {
         <hr style={{ border: 'none', borderTop: '1px solid #e5e7eb', margin: '1.5rem 0' }} />
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: '2rem' }}>
-          {/* Left - Booking Summary */}
-          <div>
-            <h3 style={{ fontSize: '0.95rem', fontWeight: 600, marginBottom: '1rem', color: 'var(--text)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <i className="fas fa-receipt" style={{ color: 'var(--primary)' }}></i>
-              Booking Summary
-            </h3>
-
-            {/* Booking Info Card */}
-            <div style={{
-              background: 'var(--secondary)',
-              borderRadius: '12px',
-              padding: '1rem',
-              marginBottom: '1.5rem'
-            }}>
-              <div style={{ fontWeight: 600, color: 'var(--text)', marginBottom: '0.25rem' }}>
-                {booking?.VendorName || 'Vendor'}
+          {/* Left - Booking Summary (matching BookingPage style) */}
+          <div style={{ 
+            background: 'white', 
+            border: '1px solid var(--border)', 
+            borderRadius: '16px',
+            padding: '1.5rem',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+          }}>
+            {/* Vendor Header */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.25rem', paddingBottom: '1.25rem', borderBottom: '1px solid var(--border)' }}>
+              <div style={{ 
+                width: '56px', 
+                height: '56px', 
+                borderRadius: '50%', 
+                background: 'var(--secondary)', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                border: '2px solid var(--border)',
+                overflow: 'hidden',
+                flexShrink: 0
+              }}>
+                {booking?.VendorLogo ? (
+                  <img src={booking.VendorLogo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <i className="fas fa-store" style={{ color: 'var(--text-light)', fontSize: '1.25rem' }}></i>
+                )}
               </div>
-              <div style={{ fontSize: '0.9rem', color: 'var(--text-light)' }}>
-                {booking?.ServiceName || 'Booking'}
-              </div>
-              {booking?.EventDate && (
-                <div style={{ 
-                  fontSize: '0.85rem', 
-                  color: 'var(--text-light)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  marginTop: '0.75rem',
-                  paddingTop: '0.75rem',
-                  borderTop: '1px solid var(--border)'
-                }}>
-                  <i className="fas fa-calendar" style={{ color: 'var(--primary)' }}></i>
-                  {new Date(booking.EventDate).toLocaleDateString('en-CA', {
-                    weekday: 'short',
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric'
-                  })}
+              <div>
+                <div style={{ fontWeight: 600, fontSize: '1.1rem', color: 'var(--text)', marginBottom: '0.25rem' }}>
+                  {booking?.VendorName || 'Vendor'}
                 </div>
-              )}
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-light)' }}>
+                  {booking?.ServiceCategory || booking?.ServiceName || 'Service'}
+                </div>
+              </div>
             </div>
 
-            {/* Price Breakdown */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
-                <span style={{ color: 'var(--text-light)' }}>Subtotal</span>
-                <span style={{ color: 'var(--text)' }}>{formatCurrency(subtotal)}</span>
+            {/* Event Date/Time Row */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
+              <div style={{ fontSize: '0.95rem', color: 'var(--text)' }}>
+                {booking?.EventDate ? new Date(booking.EventDate).toLocaleDateString('en-CA', {
+                  weekday: 'short',
+                  month: 'short',
+                  day: 'numeric',
+                  year: 'numeric'
+                }) : 'Date TBD'}
               </div>
+              <div style={{ textAlign: 'right' }}>
+                {(() => {
+                  const formatTime = (t) => {
+                    if (!t) return '';
+                    const parts = t.toString().split(':');
+                    const h = parseInt(parts[0], 10) || 0;
+                    const m = parseInt(parts[1], 10) || 0;
+                    return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
+                  };
+                  const start = formatTime(booking?.StartTime || booking?.EventTime);
+                  const end = formatTime(booking?.EndTime || booking?.EventEndTime);
+                  if (start && end) {
+                    return (
+                      <div style={{ fontSize: '0.95rem', color: 'var(--text)' }}>
+                        {start} <span style={{ color: 'var(--text-light)' }}>→</span> {end}
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
+                {booking?.TotalHours && (
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-light)' }}>Total hours: {booking.TotalHours}</div>
+                )}
+              </div>
+            </div>
+
+            {/* Guest Count */}
+            {booking?.AttendeeCount && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', color: 'var(--text-light)', marginBottom: '1.25rem' }}>
+                <i className="fas fa-users" style={{ fontSize: '0.85rem' }}></i>
+                <span>{booking.AttendeeCount} guests</span>
+              </div>
+            )}
+
+            {/* Event Location */}
+            {(booking?.EventLocation || booking?.Location) && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', color: 'var(--text-light)', marginBottom: '1.25rem' }}>
+                <i className="fas fa-map-marker-alt" style={{ fontSize: '0.85rem' }}></i>
+                <span>{booking.EventLocation || booking.Location}</span>
+              </div>
+            )}
+
+            <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '1rem 0' }} />
+
+            {/* Services List */}
+            <div style={{ marginBottom: '1rem' }}>
+              {(() => {
+                let services = [];
+                if (booking?.ServicesJson) {
+                  try {
+                    services = typeof booking.ServicesJson === 'string' 
+                      ? JSON.parse(booking.ServicesJson) 
+                      : booking.ServicesJson;
+                  } catch (e) { /* ignore */ }
+                }
+                
+                if (services.length > 0) {
+                  return services.map((service, idx) => (
+                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '0.5rem 0' }}>
+                      <div>
+                        <span style={{ fontWeight: 500, color: 'var(--text)' }}>{service.name || service.ServiceName || 'Service'}</span>
+                        {service.hours && (
+                          <span style={{ color: 'var(--text-light)', fontSize: '0.85rem', marginLeft: '0.5rem' }}>
+                            ({formatCurrency(service.price || 0)} × {service.hours} hrs)
+                          </span>
+                        )}
+                      </div>
+                      <span style={{ fontWeight: 600, color: 'var(--text)' }}>{formatCurrency(service.calculatedPrice || service.price || 0)}</span>
+                    </div>
+                  ));
+                }
+                
+                return (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0' }}>
+                    <span style={{ fontWeight: 500, color: 'var(--text)' }}>{booking?.ServiceName || 'Service'}</span>
+                    <span style={{ fontWeight: 600, color: 'var(--text)' }}>{formatCurrency(subtotal)}</span>
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Subtotal */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.75rem 0', borderTop: '1px solid var(--border)' }}>
+              <span style={{ fontWeight: 600, color: 'var(--text)' }}>Subtotal</span>
+              <span style={{ fontWeight: 600, color: 'var(--text)' }}>{formatCurrency(subtotal)}</span>
+            </div>
+
+            <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '0.5rem 0' }} />
+
+            {/* Fees Breakdown */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
               {platformFee > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
-                  <span style={{ color: 'var(--text-light)' }}>Platform Fee</span>
+                  <span style={{ color: 'var(--text-light)' }}>Platform Service Fee</span>
                   <span style={{ color: 'var(--text)' }}>{formatCurrency(platformFee)}</span>
                 </div>
               )}
@@ -396,21 +452,22 @@ function ClientPaymentSection({ booking, onBack, onPaymentSuccess }) {
               </div>
               {processingFee > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
-                  <span style={{ color: 'var(--text-light)' }}>Processing Fee</span>
+                  <span style={{ color: 'var(--text-light)' }}>Payment Processing Fee</span>
                   <span style={{ color: 'var(--text)' }}>{formatCurrency(processingFee)}</span>
                 </div>
               )}
-              
-              <div style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between',
-                paddingTop: '0.75rem',
-                marginTop: '0.5rem',
-                borderTop: '2px solid var(--border)'
-              }}>
-                <span style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text)' }}>Total</span>
-                <span style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--primary)' }}>{formatCurrency(total)}</span>
-              </div>
+            </div>
+
+            {/* Total */}
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between',
+              paddingTop: '1rem',
+              marginTop: '1rem',
+              borderTop: '2px solid var(--border)'
+            }}>
+              <span style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text)' }}>Total</span>
+              <span style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--primary)' }}>{formatCurrency(total)}</span>
             </div>
           </div>
 

@@ -744,20 +744,30 @@ router.post('/requests/send', async (req, res) => {
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + 24);
 
-    // Use package price as budget if a package is selected
-    const finalBudget = packagePrice || budget || null;
+    // Use budget (calculated subtotal from frontend) or package price as fallback
+    const finalBudget = budget || packagePrice || null;
     
-    // Include package info in services JSON if package is selected
-    let servicesJson = services ? JSON.stringify(services) : null;
+    // Build services JSON - include both services and package if selected
+    let allItems = [];
+    if (services && Array.isArray(services) && services.length > 0) {
+      allItems = services.map(s => ({
+        type: 'service',
+        id: s.VendorServiceID || s.ServiceID || s.id,
+        name: s.ServiceName || s.name,
+        price: s.calculatedPrice || s.VendorPrice || s.Price || s.price || 0,
+        hours: s.hours || null,
+        pricingModel: s.PricingModel || s.pricingModel || null
+      }));
+    }
     if (packageId && packageName) {
-      const packageInfo = [{
+      allItems.push({
         type: 'package',
         id: packageId,
         name: packageName,
         price: packagePrice
-      }];
-      servicesJson = JSON.stringify(packageInfo);
+      });
     }
+    const servicesJson = allItems.length > 0 ? JSON.stringify(allItems) : null;
 
     request.input('UserID', sql.Int, userId);
     request.input('VendorProfileID', sql.Int, vendorProfileId);

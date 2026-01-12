@@ -2,12 +2,19 @@ const express = require('express');
 const router = express.Router();
 const { poolPromise, sql } = require('../config/db');
 const { decodeBookingId, decodeInvoiceId, isPublicId } = require('../utils/hashIds');
+const { 
+  getProvinceFromLocation, 
+  getTaxInfoForProvince 
+} = require('../utils/taxCalculations');
 
 // Helpers
 function toCurrency(n) {
   try { return Math.round(Number(n || 0) * 100) / 100; } catch { return 0; }
 }
 function nowIso() { return new Date().toISOString(); }
+
+// Alias for backward compatibility
+const extractProvinceFromLocation = getProvinceFromLocation;
 
 // Helper to resolve booking ID (handles both public ID and numeric ID)
 function resolveBookingId(idParam) {
@@ -173,11 +180,18 @@ async function upsertInvoiceForBooking(pool, bookingId, opts = {}) {
     // Use services subtotal if available, otherwise fall back to booking total
     const subtotal = servicesSubtotal > 0 ? toCurrency(servicesSubtotal + expensesTotal) : bookingBaseAmount;
 
+    // Get province from event location for tax calculation
+    const eventLocation = snap.booking.EventLocation || snap.booking.Location || '';
+    const eventProvince = extractProvinceFromLocation(eventLocation);
+    const taxInfo = getTaxInfoForProvince(eventProvince);
+    const taxPercent = taxInfo.rate;
+    console.log(`[Invoice] Using province-based tax for ${eventProvince}: ${taxPercent}% (${taxInfo.label})`);
+
     // Fees - MUST match checkout session calculation exactly
     // Platform fee is calculated on subtotal
     const platformFee = toCurrency(subtotal * (commissionSettings.platformFeePercent / 100));
-    // Tax is calculated on (subtotal + platform fee)
-    const taxAmount = toCurrency((subtotal + platformFee) * (commissionSettings.taxPercent / 100));
+    // Tax is calculated on (subtotal + platform fee) using EVENT LOCATION province rate
+    const taxAmount = toCurrency((subtotal + platformFee) * (taxPercent / 100));
     // Processing fee is calculated on subtotal
     const stripeFee = toCurrency((subtotal * (commissionSettings.stripeFeePercent / 100)) + commissionSettings.stripeFeeFixed);
 

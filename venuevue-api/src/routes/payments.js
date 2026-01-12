@@ -3,6 +3,11 @@ const router = express.Router();
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { poolPromise, sql } = require('../config/db');
 const invoicesRouter = require('./invoices');
+const { 
+  PROVINCE_TAX_RATES, 
+  getProvinceFromLocation, 
+  getTaxInfoForProvince 
+} = require('../utils/taxCalculations');
 
 // Helper function to check if Stripe is properly configured
 function isStripeConfigured() {
@@ -13,37 +18,8 @@ function isStripeConfigured() {
          !process.env.STRIPE_PUBLISHABLE_KEY.includes('placeholder');
 }
 
-// Canadian province tax rates (2024)
-const PROVINCE_TAX_RATES = {
-  'Alberta': { rate: 5, type: 'GST', label: 'GST 5%' },
-  'British Columbia': { rate: 12, type: 'GST+PST', label: 'GST 5% + PST 7%' },
-  'Manitoba': { rate: 12, type: 'GST+PST', label: 'GST 5% + PST 7%' },
-  'New Brunswick': { rate: 15, type: 'HST', label: 'HST 15%' },
-  'Newfoundland and Labrador': { rate: 15, type: 'HST', label: 'HST 15%' },
-  'Northwest Territories': { rate: 5, type: 'GST', label: 'GST 5%' },
-  'Nova Scotia': { rate: 15, type: 'HST', label: 'HST 15%' },
-  'Nunavut': { rate: 5, type: 'GST', label: 'GST 5%' },
-  'Ontario': { rate: 13, type: 'HST', label: 'HST 13%' },
-  'Prince Edward Island': { rate: 15, type: 'HST', label: 'HST 15%' },
-  'Quebec': { rate: 14.975, type: 'GST+QST', label: 'GST 5% + QST 9.975%' },
-  'Saskatchewan': { rate: 11, type: 'GST+PST', label: 'GST 5% + PST 6%' },
-  'Yukon': { rate: 5, type: 'GST', label: 'GST 5%' }
-};
-
-// Get tax rate for a province (returns percentage as number, e.g., 13 for 13%)
-function getTaxRateForProvince(province) {
-  if (!province) return 13; // Default to Ontario HST
-  const normalized = province.trim();
-  const taxInfo = PROVINCE_TAX_RATES[normalized];
-  return taxInfo ? taxInfo.rate : 13;
-}
-
-// Get full tax info for a province
-function getTaxInfoForProvince(province) {
-  if (!province) return { rate: 13, type: 'HST', label: 'HST 13%' };
-  const normalized = province.trim();
-  return PROVINCE_TAX_RATES[normalized] || { rate: 13, type: 'HST', label: 'HST 13%' };
-}
+// Alias for backward compatibility
+const extractProvinceFromLocation = getProvinceFromLocation;
 
 // Fetch commission settings from database (with env fallbacks)
 async function getCommissionSettings() {
@@ -917,14 +893,31 @@ router.post('/payment-intent', async (req, res) => {
     const stripeFeePercent = commissionSettings.stripeFeePercent / 100;
     const stripeFeeFixed = commissionSettings.stripeFeeFixed;
 
-    // Determine tax rate based on client's province (location-based taxation)
+    // Determine tax rate based on EVENT LOCATION province (location-based taxation)
     let taxPercent = commissionSettings.taxPercent; // Default from settings
     let taxInfo = { rate: taxPercent, type: 'HST', label: `HST ${taxPercent}%` };
+    let resolvedProvince = clientProvince;
     
-    if (clientProvince) {
-      taxInfo = getTaxInfoForProvince(clientProvince);
+    // If clientProvince not provided, try to get it from the booking's event location
+    if (!resolvedProvince && bookingId) {
+      try {
+        const bookingRes = await pool.request()
+          .input('BookingID', sql.Int, bookingId)
+          .query('SELECT EventLocation FROM bookings.Bookings WHERE BookingID = @BookingID');
+        if (bookingRes.recordset.length > 0) {
+          const eventLocation = bookingRes.recordset[0].EventLocation || '';
+          resolvedProvince = extractProvinceFromLocation(eventLocation);
+          console.log(`[PaymentIntent] Extracted province from booking event location: ${resolvedProvince}`);
+        }
+      } catch (e) {
+        console.warn('[PaymentIntent] Could not fetch booking event location:', e.message);
+      }
+    }
+    
+    if (resolvedProvince) {
+      taxInfo = getTaxInfoForProvince(resolvedProvince);
       taxPercent = taxInfo.rate;
-      console.log(`[PaymentIntent] Using province-based tax for ${clientProvince}: ${taxPercent}%`);
+      console.log(`[PaymentIntent] Using province-based tax for ${resolvedProvince}: ${taxPercent}% (${taxInfo.label})`);
     }
 
     // Calculate totals with province-specific tax

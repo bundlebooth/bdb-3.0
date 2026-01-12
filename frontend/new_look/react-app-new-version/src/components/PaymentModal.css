@@ -92,6 +92,98 @@
   padding: 1.5rem;
 }
 
+/* Vendor Header */
+.payment-vendor-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.25rem;
+  background: white;
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: var(--radius, 12px);
+  margin-bottom: 1rem;
+  box-shadow: var(--shadow, 0 4px 6px -1px rgba(0, 0, 0, 0.1));
+}
+
+.payment-vendor-header .vendor-logo {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  border: 2px solid var(--border, #e2e8f0);
+}
+
+.payment-vendor-header .vendor-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.payment-vendor-header .vendor-logo-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--secondary, #f7fafc);
+  color: var(--text-light, #718096);
+  font-size: 1.25rem;
+}
+
+.payment-vendor-header .vendor-info {
+  flex: 1;
+}
+
+.payment-vendor-header .vendor-name {
+  margin: 0 0 0.25rem 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text, #2d3748);
+}
+
+.payment-vendor-header .vendor-category {
+  font-size: 0.85rem;
+  color: var(--text-light, #718096);
+}
+
+/* Event Details */
+.payment-event-details {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  background: white;
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: var(--radius, 12px);
+  margin-bottom: 1rem;
+  box-shadow: var(--shadow, 0 4px 6px -1px rgba(0, 0, 0, 0.1));
+}
+
+.payment-event-details .event-datetime {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.payment-event-details .event-date,
+.payment-event-details .event-time,
+.payment-event-details .event-guests {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: var(--text, #2d3748);
+}
+
+.payment-event-details .event-date i,
+.payment-event-details .event-time i,
+.payment-event-details .event-guests i {
+  color: var(--text-light, #718096);
+  width: 16px;
+  text-align: center;
+}
+
 /* Summary Card */
 .payment-summary {
   background: white;
@@ -102,43 +194,55 @@
   box-shadow: var(--shadow, 0 4px 6px -1px rgba(0, 0, 0, 0.1));
 }
 
-.payment-summary h3 {
-  margin: 0 0 1rem 0;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--text, #2d3748);
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+/* Services List */
+.payment-services-list {
+  margin-bottom: 1rem;
 }
 
-.payment-summary h3 i {
-  color: var(--primary, #5e72e4);
-}
-
-.payment-summary .summary-item {
+.payment-services-list .service-line-item {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 0.5rem;
-  font-size: 0.9rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border, #e2e8f0);
 }
 
-.payment-summary .summary-item .label {
-  color: var(--text-light, #718096);
+.payment-services-list .service-line-item:last-child {
+  border-bottom: none;
 }
 
-.payment-summary .summary-item .value {
+.payment-services-list .service-name {
+  font-size: 0.95rem;
   color: var(--text, #2d3748);
   font-weight: 500;
-  text-align: right;
-  max-width: 60%;
+}
+
+.payment-services-list .service-detail {
+  font-weight: 400;
+  color: var(--text-light, #718096);
+  font-size: 0.85rem;
+}
+
+.payment-services-list .service-price {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text, #2d3748);
+}
+
+.payment-subtotal-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text, #2d3748);
 }
 
 .payment-summary hr {
   border: none;
   border-top: 1px solid var(--border, #e2e8f0);
-  margin: 1rem 0;
+  margin: 0.5rem 0;
 }
 
 /* Price Breakdown */
@@ -162,6 +266,11 @@
   font-size: 1.1rem;
   font-weight: 700;
   color: var(--text, #2d3748);
+}
+
+.price-breakdown .breakdown-row.total .total-amount {
+  color: var(--primary, #5e72e4);
+  font-size: 1.25rem;
 }
 
 /* Payment Form Card */

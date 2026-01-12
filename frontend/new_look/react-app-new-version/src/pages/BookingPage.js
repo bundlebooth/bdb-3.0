@@ -14,6 +14,7 @@ import Breadcrumb from '../components/Breadcrumb';
 import BookingCalendar from '../components/BookingCalendar';
 import SharedDateTimePicker from '../components/SharedDateTimePicker';
 import { extractVendorIdFromSlug, parseQueryParams, trackPageView } from '../utils/urlHelpers';
+import { getProvinceFromLocation, getTaxInfoForProvince, PROVINCE_TAX_RATES } from '../utils/taxCalculations';
 import '../styles/BookingPage.css';
 import '../components/Calendar.css';
 
@@ -43,6 +44,9 @@ function BookingPage() {
   const [availableTimeSlots, setAvailableTimeSlots] = useState([]);
   const [vendorAvailability, setVendorAvailability] = useState(null);
   const [cancellationPolicy, setCancellationPolicy] = useState(null);
+  const [commissionSettings, setCommissionSettings] = useState({ platformFeePercent: 5 });
+  const [provinceTaxRates, setProvinceTaxRates] = useState({});
+  const [activeTooltip, setActiveTooltip] = useState(null);
   const locationInputRef = useRef(null);
   const autocompleteRef = useRef(null);
 
@@ -96,7 +100,41 @@ function BookingPage() {
     loadVendorData();
     loadVendorAvailability();
     loadCancellationPolicy();
+    loadCommissionSettings();
+    loadProvinceTaxRates();
   }, [vendorId, navigate, location.search]);
+
+  // Load commission settings from API
+  const loadCommissionSettings = useCallback(async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/public/commission-info`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.commissionInfo) {
+          setCommissionSettings({
+            platformFeePercent: parseFloat(data.commissionInfo.renterProcessingFee) || 5
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error loading commission settings:', error);
+    }
+  }, []);
+
+  // Load province tax rates
+  const loadProvinceTaxRates = useCallback(async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/payments/tax-rates`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.provinces) {
+          setProvinceTaxRates(data.provinces);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading province tax rates:', error);
+    }
+  }, []);
 
   // Load Google Maps API for location autocomplete
   useEffect(() => {
@@ -608,6 +646,46 @@ function BookingPage() {
     setSubmitting(true);
 
     try {
+      // Calculate total hours for hourly services
+      let totalHours = 0;
+      if (bookingData.eventTime && bookingData.eventEndTime) {
+        const start = new Date(`2000-01-01T${bookingData.eventTime}`);
+        const end = new Date(`2000-01-01T${bookingData.eventEndTime}`);
+        const diffMs = end - start;
+        totalHours = diffMs > 0 ? diffMs / (1000 * 60 * 60) : 0;
+      }
+
+      // Calculate services subtotal (with hourly multiplier if applicable)
+      const servicesSubtotal = selectedServices.reduce((sum, s) => {
+        const price = parseFloat(s.VendorPrice || s.Price || s.BasePrice || s.baseRate || s.fixedPrice || s.price || 0);
+        const pricingModel = s.PricingModel || s.pricingModel || '';
+        const isHourly = pricingModel === 'time_based' || pricingModel === 'hourly';
+        return sum + (isHourly && totalHours > 0 ? price * totalHours : price);
+      }, 0);
+
+      // Calculate package price
+      const packagePriceCalc = selectedPackage 
+        ? (selectedPackage.SalePrice && parseFloat(selectedPackage.SalePrice) < parseFloat(selectedPackage.Price) 
+            ? parseFloat(selectedPackage.SalePrice) 
+            : parseFloat(selectedPackage.Price || selectedPackage.price || 0))
+        : 0;
+
+      // Subtotal before fees
+      const subtotal = servicesSubtotal + packagePriceCalc;
+
+      // Add services with calculated prices to the request
+      const servicesWithPrices = selectedServices.map(s => {
+        const price = parseFloat(s.VendorPrice || s.Price || s.BasePrice || s.baseRate || s.fixedPrice || s.price || 0);
+        const pricingModel = s.PricingModel || s.pricingModel || '';
+        const isHourly = pricingModel === 'time_based' || pricingModel === 'hourly';
+        const calculatedPrice = isHourly && totalHours > 0 ? price * totalHours : price;
+        return {
+          ...s,
+          calculatedPrice,
+          hours: isHourly ? totalHours : null
+        };
+      });
+
       const requestData = {
         userId: currentUser.id,
         vendorProfileId: parseInt(vendorId),
@@ -618,10 +696,11 @@ function BookingPage() {
         eventEndTime: bookingData.eventEndTime ? bookingData.eventEndTime + ':00' : null,
         eventLocation: bookingData.eventLocation,
         attendeeCount: parseInt(bookingData.attendeeCount),
-        services: selectedServices,
+        services: servicesWithPrices,
         packageId: selectedPackage?.PackageID || null,
         packageName: selectedPackage?.PackageName || null,
-        packagePrice: selectedPackage ? (selectedPackage.SalePrice && parseFloat(selectedPackage.SalePrice) < parseFloat(selectedPackage.Price) ? parseFloat(selectedPackage.SalePrice) : parseFloat(selectedPackage.Price)) : null,
+        packagePrice: packagePriceCalc || null,
+        budget: subtotal, // Send the calculated subtotal as budget
         specialRequestText: bookingData.specialRequests,
         timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
       };
@@ -1306,81 +1385,271 @@ function BookingPage() {
 
             <div className="summary-divider"></div>
 
-            <div className="booking-summary-details">
-              <h4 className="summary-title">Booking Summary</h4>
-              
-              {bookingData.eventDate && (
-                <div className="summary-item" id="summary-date">
-                  <i className="fas fa-calendar"></i>
-                  <div>
-                    <div className="summary-label">Date</div>
-                    <div className="summary-value">{formatDate(bookingData.eventDate)}</div>
-                  </div>
-                </div>
-              )}
-
-              {(bookingData.eventTime || bookingData.eventEndTime) && (
-                <div className="summary-item" id="summary-time">
-                  <i className="fas fa-clock"></i>
-                  <div>
-                    <div className="summary-label">Time</div>
-                    <div className="summary-value">
-                      {bookingData.eventTime ? formatTime(bookingData.eventTime) : ''}
-                      {bookingData.eventTime && bookingData.eventEndTime && ' - '}
-                      {bookingData.eventEndTime ? formatTime(bookingData.eventEndTime) : ''}
+            {/* Giggster-style Date/Time Display */}
+            {(bookingData.eventDate || bookingData.eventTime) && (
+              <div style={{ padding: '16px 0' }}>
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: '8px'
+                }}>
+                  {bookingData.eventDate && (
+                    <span style={{ fontSize: '0.95rem', color: '#222', fontWeight: 500 }}>
+                      {formatDate(bookingData.eventDate)}
+                    </span>
+                  )}
+                  {bookingData.eventTime && bookingData.eventEndTime && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '0.95rem', color: '#222' }}>{formatTime(bookingData.eventTime)}</span>
+                      <span style={{ color: '#9ca3af' }}>→</span>
+                      <span style={{ fontSize: '0.95rem', color: '#222' }}>{formatTime(bookingData.eventEndTime)}</span>
                     </div>
-                  </div>
+                  )}
                 </div>
-              )}
-
-              {bookingData.attendeeCount && (
-                <div className="summary-item" id="summary-guests">
-                  <i className="fas fa-users"></i>
-                  <div>
-                    <div className="summary-label">Guests</div>
-                    <div className="summary-value">{bookingData.attendeeCount} guests</div>
-                  </div>
-                </div>
-              )}
-
-              {selectedPackage && (
-                <div className="summary-item" id="summary-package">
-                  <i className="fas fa-box"></i>
-                  <div style={{ flex: 1 }}>
-                    <div className="summary-label">Package</div>
-                    <div className="summary-value">1 package selected</div>
-                    <div style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: '#6b7280' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0' }}>
-                        <span>{selectedPackage.PackageName || selectedPackage.name}</span>
-                        <span style={{ fontWeight: 500 }}>${parseFloat(selectedPackage.Price || selectedPackage.price || 0).toFixed(0)}</span>
-                      </div>
+                {bookingData.eventTime && bookingData.eventEndTime && (() => {
+                  const start = new Date(`2000-01-01T${bookingData.eventTime}`);
+                  const end = new Date(`2000-01-01T${bookingData.eventEndTime}`);
+                  const diffMs = end - start;
+                  const totalHours = diffMs > 0 ? diffMs / (1000 * 60 * 60) : 0;
+                  return totalHours > 0 ? (
+                    <div style={{ textAlign: 'right', marginTop: '4px' }}>
+                      <span style={{ fontSize: '0.85rem', color: '#6b7280' }}>
+                        Total hours: {totalHours % 1 === 0 ? totalHours : totalHours.toFixed(1)}
+                      </span>
                     </div>
+                  ) : null;
+                })()}
+                {bookingData.attendeeCount && (
+                  <div style={{ marginTop: '8px', fontSize: '0.9rem', color: '#6b7280' }}>
+                    <i className="fas fa-users" style={{ marginRight: '6px', fontSize: '0.8rem' }}></i>
+                    {bookingData.attendeeCount} guests
                   </div>
-                </div>
-              )}
+                )}
+              </div>
+            )}
 
-              {selectedServices.length > 0 && (
-                <div className="summary-item" id="summary-services">
-                  <i className="fas fa-list"></i>
-                  <div style={{ flex: 1 }}>
-                    <div className="summary-label">Services</div>
-                    <div className="summary-value">
-                      {selectedServices.length} service{selectedServices.length > 1 ? 's' : ''} selected
-                    </div>
-                    <div style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: '#6b7280' }}>
-                      {selectedServices.map((s, idx) => (
-                        <div key={s.VendorServiceID || s.ServiceID || s.id || idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0' }}>
-                          <span>{s.ServiceName || s.name}</span>
-                          <span style={{ fontWeight: 500 }}>${parseFloat(s.VendorPrice || s.Price || s.BasePrice || s.baseRate || s.fixedPrice || 0).toFixed(0)}</span>
+            {/* Giggster-style Price Breakdown - Only show when items selected */}
+            {(selectedServices.length > 0 || selectedPackage) && (
+              <>
+                <div className="summary-divider"></div>
+                <div style={{ padding: '16px 0', position: 'relative' }}>
+                  {(() => {
+                    // Calculate total hours
+                    let totalHours = 0;
+                    if (bookingData.eventTime && bookingData.eventEndTime) {
+                      const start = new Date(`2000-01-01T${bookingData.eventTime}`);
+                      const end = new Date(`2000-01-01T${bookingData.eventEndTime}`);
+                      const diffMs = end - start;
+                      totalHours = diffMs > 0 ? diffMs / (1000 * 60 * 60) : 0;
+                    }
+
+                    // Calculate services subtotal (with hourly multiplier if applicable)
+                    const servicesSubtotal = selectedServices.reduce((sum, s) => {
+                      const price = parseFloat(s.VendorPrice || s.Price || s.BasePrice || s.baseRate || s.fixedPrice || s.price || 0);
+                      const pricingModel = s.PricingModel || s.pricingModel || '';
+                      const isHourly = pricingModel === 'time_based' || pricingModel === 'hourly';
+                      return sum + (isHourly && totalHours > 0 ? price * totalHours : price);
+                    }, 0);
+
+                    // Calculate package price
+                    const packagePrice = selectedPackage 
+                      ? (selectedPackage.SalePrice && parseFloat(selectedPackage.SalePrice) < parseFloat(selectedPackage.Price) 
+                          ? parseFloat(selectedPackage.SalePrice) 
+                          : parseFloat(selectedPackage.Price || selectedPackage.price || 0))
+                      : 0;
+
+                    // Subtotal before fees
+                    const subtotal = servicesSubtotal + packagePrice;
+
+                    // Platform Service Fee (from admin console settings)
+                    const platformFeePercent = (commissionSettings.platformFeePercent || 5) / 100;
+                    const platformFee = subtotal * platformFeePercent;
+
+                    // Get province and tax info from event location using shared utility
+                    const eventProvince = getProvinceFromLocation(bookingData.eventLocation);
+                    const taxInfo = getTaxInfoForProvince(eventProvince);
+                    const taxPercent = taxInfo.rate / 100;
+                    const taxableAmount = subtotal + platformFee;
+                    const tax = taxableAmount * taxPercent;
+
+                    // Payment Processing Fee (Stripe: 2.9% + $0.30) - calculated on subtotal only
+                    const stripePercent = 0.029;
+                    const stripeFixed = 0.30;
+                    const stripeFee = (subtotal * stripePercent) + stripeFixed;
+
+                    // Total
+                    const total = subtotal + platformFee + tax + stripeFee;
+
+                    // Tooltip component
+                    const TooltipIcon = ({ id, children }) => (
+                      <div style={{ position: 'relative', display: 'inline-flex' }}>
+                        <div 
+                          onClick={() => setActiveTooltip(activeTooltip === id ? null : id)}
+                          onMouseEnter={() => setActiveTooltip(id)}
+                          onMouseLeave={() => setActiveTooltip(null)}
+                          style={{ 
+                            width: '16px', 
+                            height: '16px', 
+                            borderRadius: '50%', 
+                            border: '1px solid #d1d5db',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            background: activeTooltip === id ? '#f3f4f6' : 'transparent'
+                          }}
+                        >
+                          <span style={{ fontSize: '0.7rem', color: '#6b7280' }}>?</span>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
+                        {activeTooltip === id && (
+                          <div style={{
+                            position: 'absolute',
+                            bottom: '100%',
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            marginBottom: '8px',
+                            padding: '12px 14px',
+                            background: '#fff',
+                            border: '1px solid #e5e7eb',
+                            borderRadius: '8px',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                            width: '220px',
+                            zIndex: 1000,
+                            fontSize: '0.85rem',
+                            color: '#374151',
+                            lineHeight: 1.5
+                          }}>
+                            {children}
+                            <div style={{
+                              position: 'absolute',
+                              bottom: '-6px',
+                              left: '50%',
+                              transform: 'translateX(-50%) rotate(45deg)',
+                              width: '10px',
+                              height: '10px',
+                              background: '#fff',
+                              borderRight: '1px solid #e5e7eb',
+                              borderBottom: '1px solid #e5e7eb'
+                            }}></div>
+                          </div>
+                        )}
+                      </div>
+                    );
 
-            <div className="summary-divider"></div>
+                    return (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        {/* Package line item */}
+                        {selectedPackage && (
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <div>
+                              <span style={{ color: '#222', fontSize: '0.95rem' }}>
+                                {selectedPackage.PackageName || selectedPackage.name}
+                              </span>
+                              {selectedPackage.PriceType === 'per_person' && bookingData.attendeeCount && (
+                                <span style={{ color: '#6b7280', fontSize: '0.85rem', marginLeft: '4px' }}>
+                                  × {bookingData.attendeeCount}
+                                </span>
+                              )}
+                            </div>
+                            <span style={{ color: '#222', fontSize: '0.95rem', fontWeight: 500 }}>
+                              ${packagePrice.toFixed(2)}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Services line items */}
+                        {selectedServices.map((s, idx) => {
+                          const servicePrice = parseFloat(s.VendorPrice || s.Price || s.BasePrice || s.baseRate || s.fixedPrice || s.price || 0);
+                          const pricingModel = s.PricingModel || s.pricingModel || '';
+                          const isHourly = pricingModel === 'time_based' || pricingModel === 'hourly';
+                          const calculatedPrice = isHourly && totalHours > 0 ? servicePrice * totalHours : servicePrice;
+                          
+                          return (
+                            <div key={s.VendorServiceID || s.ServiceID || s.id || idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                              <div>
+                                <span style={{ color: '#222', fontSize: '0.95rem' }}>
+                                  {s.ServiceName || s.name}
+                                </span>
+                                {isHourly && totalHours > 0 && (
+                                  <span style={{ color: '#6b7280', fontSize: '0.85rem', marginLeft: '4px' }}>
+                                    (${servicePrice.toFixed(2)} × {totalHours % 1 === 0 ? totalHours : totalHours.toFixed(1)} hrs)
+                                  </span>
+                                )}
+                              </div>
+                              <span style={{ color: '#222', fontSize: '0.95rem', fontWeight: 500 }}>
+                                ${calculatedPrice.toFixed(2)}
+                              </span>
+                            </div>
+                          );
+                        })}
+
+                        {/* Subtotal */}
+                        <div style={{ borderTop: '1px solid #e5e7eb', margin: '4px 0', paddingTop: '10px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ color: '#222', fontSize: '0.95rem' }}>Subtotal</span>
+                            <span style={{ color: '#222', fontSize: '0.95rem', fontWeight: 500 }}>
+                              ${subtotal.toFixed(2)}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Platform Service Fee */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ color: '#6b7280', fontSize: '0.9rem' }}>Platform Service Fee</span>
+                            <TooltipIcon id="platform-fee">
+                              This helps us cover transaction fees and provide support for your booking.
+                            </TooltipIcon>
+                          </div>
+                          <span style={{ color: '#6b7280', fontSize: '0.9rem' }}>
+                            ${platformFee.toFixed(2)}
+                          </span>
+                        </div>
+
+                        {/* Tax (Province-based) */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ color: '#6b7280', fontSize: '0.9rem' }}>Tax ({taxInfo.label})</span>
+                            <TooltipIcon id="tax-info">
+                              Tax is calculated based on the location of your event. {eventProvince ? `Event in ${eventProvince}.` : 'Enter your event location in Step 1 for accurate tax calculation.'}
+                            </TooltipIcon>
+                          </div>
+                          <span style={{ color: '#6b7280', fontSize: '0.9rem' }}>
+                            ${tax.toFixed(2)}
+                          </span>
+                        </div>
+
+                        {/* Payment Processing Fee */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ color: '#6b7280', fontSize: '0.9rem' }}>Payment Processing Fee</span>
+                            <TooltipIcon id="processing-fee">
+                              This helps us cover transaction fees and provide support for your booking.
+                            </TooltipIcon>
+                          </div>
+                          <span style={{ color: '#6b7280', fontSize: '0.9rem' }}>
+                            ${stripeFee.toFixed(2)}
+                          </span>
+                        </div>
+
+                        {/* Total */}
+                        <div style={{ borderTop: '1px solid #e5e7eb', margin: '4px 0', paddingTop: '10px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ color: '#222', fontSize: '1rem', fontWeight: 600 }}>Total</span>
+                            <span style={{ color: '#222', fontSize: '1.15rem', fontWeight: 700 }}>
+                              ${total.toFixed(2)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+                <div className="summary-divider"></div>
+              </>
+            )}
 
             <div className="info-notice">
               <i className="fas fa-shield-alt"></i>

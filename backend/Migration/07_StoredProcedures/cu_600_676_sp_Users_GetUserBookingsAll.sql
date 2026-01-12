@@ -125,7 +125,10 @@ BEGIN
           WHERE b.UserID = br.UserID 
             AND b.VendorProfileID = br.VendorProfileID 
             AND b.EventDate = br.EventDate
-            AND b.Status = 'confirmed'
+            AND b.Status IN ('confirmed', 'paid')
+            -- Only exclude if the booking was created AFTER this request was approved
+            -- This prevents older bookings from hiding newly approved requests
+            AND b.CreatedAt > br.RespondedAt
       )
 
     ORDER BY EventDate DESC;

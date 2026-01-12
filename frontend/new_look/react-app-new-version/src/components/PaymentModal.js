@@ -8,30 +8,8 @@ import {
 } from '@stripe/react-stripe-js';
 import { API_BASE_URL } from '../config';
 import { showBanner } from '../utils/helpers';
+import { getProvinceFromLocation, getTaxInfoForProvince, PROVINCE_TAX_RATES } from '../utils/taxCalculations';
 import './PaymentModal.css';
-
-// Canadian province tax rates (2024)
-const PROVINCE_TAX_RATES = {
-  'Alberta': { rate: 5, type: 'GST', label: 'GST 5%' },
-  'British Columbia': { rate: 12, type: 'GST+PST', label: 'GST 5% + PST 7%' },
-  'Manitoba': { rate: 12, type: 'GST+PST', label: 'GST 5% + PST 7%' },
-  'New Brunswick': { rate: 15, type: 'HST', label: 'HST 15%' },
-  'Newfoundland and Labrador': { rate: 15, type: 'HST', label: 'HST 15%' },
-  'Northwest Territories': { rate: 5, type: 'GST', label: 'GST 5%' },
-  'Nova Scotia': { rate: 15, type: 'HST', label: 'HST 15%' },
-  'Nunavut': { rate: 5, type: 'GST', label: 'GST 5%' },
-  'Ontario': { rate: 13, type: 'HST', label: 'HST 13%' },
-  'Prince Edward Island': { rate: 15, type: 'HST', label: 'HST 15%' },
-  'Quebec': { rate: 14.975, type: 'GST+QST', label: 'GST 5% + QST 9.975%' },
-  'Saskatchewan': { rate: 11, type: 'GST+PST', label: 'GST 5% + PST 6%' },
-  'Yukon': { rate: 5, type: 'GST', label: 'GST 5%' }
-};
-
-// Get tax info for a province
-export function getTaxInfoForProvince(province) {
-  const normalized = province?.trim();
-  return PROVINCE_TAX_RATES[normalized] || { rate: 13, type: 'HST', label: 'HST 13%' }; // Default to Ontario HST
-}
 
 // Checkout Form Component (inside Elements provider)
 function CheckoutForm({ booking, onSuccess, onCancel, clientProvince }) {
@@ -110,7 +88,7 @@ function CheckoutForm({ booking, onSuccess, onCancel, clientProvince }) {
 
       <div className="payment-tax-notice">
         <i className="fas fa-info-circle"></i>
-        <span>Tax calculated for {clientProvince || 'your location'}: {taxInfo.label}</span>
+        <span>Tax calculated based on your location: {taxInfo.label}</span>
       </div>
 
       <div className="payment-actions">
@@ -174,24 +152,9 @@ function PaymentModal({ isOpen, onClose, booking, onPaymentSuccess }) {
       setClientSecret('');
 
       try {
-        // Get client's province from their profile or booking first
-        let province = booking.ClientProvince || booking.Province || 'Ontario';
-        
-        // Try to get from user profile (non-blocking)
-        try {
-          const userRes = await fetch(`${API_BASE_URL}/users/me`, {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-          });
-          if (userRes.ok) {
-            const userData = await userRes.json();
-            if (userData.province || userData.state) {
-              province = userData.province || userData.state;
-            }
-          }
-        } catch (e) {
-          console.warn('Could not fetch user profile for province:', e);
-        }
-
+        // Get province from the EVENT LOCATION using shared utility
+        const eventLocation = booking.EventLocation || booking.Location || '';
+        const province = getProvinceFromLocation(eventLocation);
         setClientProvince(province);
 
         // Create payment intent with province for tax calculation
@@ -286,42 +249,114 @@ function PaymentModal({ isOpen, onClose, booking, onPaymentSuccess }) {
 
         <div className="payment-modal-body">
           <div className="payment-modal-inner">
-          {/* Booking Summary */}
-          <div className="payment-summary">
-            <h3><i className="fas fa-receipt"></i> Booking Summary</h3>
-            <div className="summary-item">
-              <span className="label">Service:</span>
-              <span className="value">{booking?.ServiceName || 'Booking'}</span>
+          {/* Vendor Header */}
+          <div className="payment-vendor-header">
+            <div className="vendor-logo">
+              {booking?.VendorLogo ? (
+                <img src={booking.VendorLogo} alt={booking?.VendorName || 'Vendor'} />
+              ) : (
+                <div className="vendor-logo-placeholder">
+                  <i className="fas fa-store"></i>
+                </div>
+              )}
             </div>
-            <div className="summary-item">
-              <span className="label">Vendor:</span>
-              <span className="value">{booking?.VendorName || 'Vendor'}</span>
+            <div className="vendor-info">
+              <h3 className="vendor-name">{booking?.VendorName || 'Vendor'}</h3>
+              <span className="vendor-category">{booking?.ServiceName || 'Service'}</span>
             </div>
-            {booking?.EventDate && (
-              <div className="summary-item">
-                <span className="label">Event Date:</span>
-                <span className="value">
-                  {new Date(booking.EventDate).toLocaleDateString('en-CA', {
-                    weekday: 'long',
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  })}
+          </div>
+
+          {/* Event Details */}
+          <div className="payment-event-details">
+            <div className="event-datetime">
+              <div className="event-date">
+                <i className="fas fa-calendar-alt"></i>
+                <span>
+                  {booking?.EventDate ? new Date(booking.EventDate).toLocaleDateString('en-CA', {
+                    weekday: 'short',
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric'
+                  }) : 'Date TBD'}
                 </span>
               </div>
+              {(booking?.StartTime || booking?.EventTime) && (
+                <div className="event-time">
+                  <i className="fas fa-clock"></i>
+                  <span>
+                    {(() => {
+                      const formatTime = (t) => {
+                        if (!t) return '';
+                        const parts = t.toString().split(':');
+                        const h = parseInt(parts[0], 10) || 0;
+                        const m = parseInt(parts[1], 10) || 0;
+                        return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
+                      };
+                      const start = formatTime(booking?.StartTime || booking?.EventTime);
+                      const end = formatTime(booking?.EndTime || booking?.EventEndTime);
+                      return start && end ? `${start} → ${end}` : start || end || '';
+                    })()}
+                  </span>
+                </div>
+              )}
+            </div>
+            {booking?.AttendeeCount && (
+              <div className="event-guests">
+                <i className="fas fa-users"></i>
+                <span>{booking.AttendeeCount} guests</span>
+              </div>
             )}
-            
+          </div>
+
+          {/* Booking Summary */}
+          <div className="payment-summary">
+            {/* Services/Package List */}
+            <div className="payment-services-list">
+              {(() => {
+                // Try to parse services from booking
+                let services = [];
+                if (booking?.ServicesJson) {
+                  try {
+                    services = typeof booking.ServicesJson === 'string' 
+                      ? JSON.parse(booking.ServicesJson) 
+                      : booking.ServicesJson;
+                  } catch (e) { /* ignore */ }
+                }
+                
+                if (services.length > 0) {
+                  return services.map((service, idx) => (
+                    <div key={idx} className="service-line-item">
+                      <span className="service-name">
+                        {service.name || service.ServiceName || 'Service'}
+                        {service.hours && <span className="service-detail"> ({formatCurrency(service.price || 0)} × {service.hours} hrs)</span>}
+                      </span>
+                      <span className="service-price">{formatCurrency(service.calculatedPrice || service.price || 0)}</span>
+                    </div>
+                  ));
+                }
+                
+                // Fallback to single service display
+                return (
+                  <div className="service-line-item">
+                    <span className="service-name">{booking?.ServiceName || 'Service'}</span>
+                    <span className="service-price">{formatCurrency(subtotal)}</span>
+                  </div>
+                );
+              })()}
+            </div>
+
+            <div className="payment-subtotal-row">
+              <span>Subtotal</span>
+              <span>{formatCurrency(subtotal)}</span>
+            </div>
+
             <hr />
 
             {/* Price Breakdown */}
             <div className="price-breakdown">
-              <div className="breakdown-row">
-                <span>Subtotal</span>
-                <span>{formatCurrency(subtotal)}</span>
-              </div>
               {platformFee > 0 && (
                 <div className="breakdown-row">
-                  <span>Platform Fee</span>
+                  <span>Platform Service Fee</span>
                   <span>{formatCurrency(platformFee)}</span>
                 </div>
               )}
@@ -331,13 +366,13 @@ function PaymentModal({ isOpen, onClose, booking, onPaymentSuccess }) {
               </div>
               {processingFee > 0 && (
                 <div className="breakdown-row">
-                  <span>Processing Fee</span>
+                  <span>Payment Processing Fee</span>
                   <span>{formatCurrency(processingFee)}</span>
                 </div>
               )}
               <div className="breakdown-row total">
                 <span>Total</span>
-                <span>{formatCurrency(total)}</span>
+                <span className="total-amount">{formatCurrency(total)}</span>
               </div>
             </div>
           </div>
