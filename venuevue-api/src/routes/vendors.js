@@ -3570,6 +3570,7 @@ router.post('/setup/step3-services', async (req, res) => {
           serviceRequest.input('PricePerPerson', sql.Decimal(10, 2), pricePerPerson);
           serviceRequest.input('MinimumAttendees', sql.Int, selectedService.minimumAttendees || null);
           serviceRequest.input('MaximumAttendees', sql.Int, selectedService.maximumAttendees || null);
+          serviceRequest.input('ImageURL', sql.NVarChar(500), imageUrlValue);
 
           await serviceRequest.execute('vendors.sp_UpsertService');
           

@@ -138,14 +138,7 @@ export const ServiceCard = ({
                 <span className="psc-price-suffix">{getPriceSuffix()}</span>
               </div>
               
-              {/* Description */}
-              {description && (
-                <p className="psc-card-description">
-                  {description.length > 120 ? description.substring(0, 120) + '...' : description}
-                </p>
-              )}
-              
-              {/* Tags */}
+              {/* Tags - Duration and Category */}
               <div className="psc-card-tags">
                 {formatDuration(duration) && (
                   <span className="psc-tag">
@@ -270,14 +263,7 @@ export const PackageCard = ({
                 </span>
               </div>
               
-              {/* Description */}
-              {description && (
-                <p className="psc-card-description">
-                  {description.length > 120 ? description.substring(0, 120) + '...' : description}
-                </p>
-              )}
-              
-              {/* Duration and Included Services Tags */}
+              {/* Tags - Duration and Included Services */}
               <div className="psc-card-tags">
                 {formatDuration(duration) && (
                   <span className="psc-tag">
@@ -285,13 +271,11 @@ export const PackageCard = ({
                     {formatDuration(duration)}
                   </span>
                 )}
-                {includedServices.slice(0, 3).map((svc, idx) => (
-                  <span key={idx} className="psc-tag">
-                    {svc.name || svc.ServiceName || svc.serviceName}
+                {includedServices.length > 0 && (
+                  <span className="psc-tag">
+                    <i className="fas fa-layer-group"></i>
+                    {includedServices.length} service{includedServices.length > 1 ? 's' : ''}
                   </span>
-                ))}
-                {includedServices.length > 3 && (
-                  <span className="psc-tag-more">+{includedServices.length - 3} more</span>
                 )}
               </div>
             </div>

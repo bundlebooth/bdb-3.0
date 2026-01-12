@@ -548,138 +548,16 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
               </button>
             </div>
 
-            {/* Package List - Clean Horizontal Card Design (matches VendorProfilePage) */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {/* Package List - Using Universal PackageCard Component */}
+            <PackageServiceList>
               {packages.map((pkg, index) => (
-                <div 
-                  key={pkg.PackageID || index} 
-                  style={{ 
-                    padding: '1rem',
-                    background: '#fff', 
-                    border: '1px solid #e5e7eb', 
-                    borderRadius: '12px'
-                  }}
-                >
-                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
-                    {/* Package Image - Small Square */}
-                    <div style={{
-                      flexShrink: 0,
-                      width: '80px',
-                      height: '80px',
-                      borderRadius: '12px',
-                      overflow: 'hidden',
-                      background: '#f3f4f6',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}>
-                      {pkg.ImageURL ? (
-                        <img src={pkg.ImageURL} alt={pkg.PackageName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      ) : (
-                        <i className="fas fa-box" style={{ color: '#9ca3af', fontSize: '2rem' }}></i>
-                      )}
-                    </div>
-                    
-                    {/* Package Details */}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <h3 style={{ fontSize: '1.1rem', fontWeight: 600, color: '#222', margin: '0 0 0.35rem 0' }}>
-                            {pkg.PackageName}
-                            {pkg.SalePrice && parseFloat(pkg.SalePrice) < parseFloat(pkg.Price) && (
-                              <span style={{ color: '#dc2626', fontSize: '0.8rem', fontWeight: 700, marginLeft: '0.5rem' }}>SALE!</span>
-                            )}
-                          </h3>
-                          
-                          {/* Pricing */}
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                            {pkg.SalePrice && parseFloat(pkg.SalePrice) < parseFloat(pkg.Price) ? (
-                              <>
-                                <span style={{ fontSize: '1.15rem', fontWeight: 700, color: '#222' }}>
-                                  ${parseFloat(pkg.SalePrice).toFixed(0)}
-                                </span>
-                                <span style={{ fontSize: '0.9rem', color: '#9ca3af', textDecoration: 'line-through' }}>
-                                  ${parseFloat(pkg.Price).toFixed(0)}
-                                </span>
-                              </>
-                            ) : (
-                              <span style={{ fontSize: '1.15rem', fontWeight: 700, color: '#222' }}>
-                                ${parseFloat(pkg.Price).toFixed(0)}
-                              </span>
-                            )}
-                            <span style={{ fontSize: '0.85rem', color: '#6b7280' }}>
-                              / {pkg.PriceType === 'per_person' ? 'person' : 'package'}
-                            </span>
-                          </div>
-                          
-                          {/* Description */}
-                          {pkg.Description && (
-                            <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem', color: '#6b7280', lineHeight: 1.5 }}>
-                              {pkg.Description.length > 80 ? pkg.Description.substring(0, 80) + '...' : pkg.Description}
-                            </p>
-                          )}
-                          
-                          {/* Included Services */}
-                          {pkg.IncludedServices && pkg.IncludedServices.length > 0 && (
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                              {pkg.IncludedServices.slice(0, 4).map((svc, idx) => (
-                                <span key={idx} style={{ 
-                                  background: '#f3f4f6', 
-                                  color: '#374151', 
-                                  padding: '4px 10px', 
-                                  borderRadius: '6px', 
-                                  fontSize: '0.8rem',
-                                  fontWeight: 500
-                                }}>
-                                  {svc.name || svc.ServiceName}
-                                </span>
-                              ))}
-                              {pkg.IncludedServices.length > 4 && (
-                                <span style={{ color: '#6b7280', fontSize: '0.8rem', fontWeight: 500, padding: '4px 0' }}>
-                                  +{pkg.IncludedServices.length - 4} more
-                                </span>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                        
-                        {/* Action Buttons */}
-                        <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
-                          <button
-                            type="button"
-                            onClick={() => handleEditPackage(pkg)}
-                            style={{
-                              padding: '6px 12px',
-                              border: '1px solid #e5e7eb',
-                              borderRadius: '6px',
-                              background: '#fff',
-                              cursor: 'pointer',
-                              fontSize: '0.8rem',
-                              color: '#374151'
-                            }}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDeletePackage(pkg.PackageID)}
-                            style={{
-                              padding: '6px 12px',
-                              border: '1px solid #fecaca',
-                              borderRadius: '6px',
-                              background: '#fef2f2',
-                              cursor: 'pointer',
-                              fontSize: '0.8rem',
-                              color: '#dc2626'
-                            }}
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                <PackageCard
+                  key={pkg.PackageID || index}
+                  pkg={pkg}
+                  showActions={true}
+                  onEdit={() => handleEditPackage(pkg)}
+                  onDelete={() => handleDeletePackage(pkg.PackageID)}
+                />
               ))}
               
               {/* Add Package Card - Horizontal */}
@@ -709,7 +587,7 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
                 <i className="fas fa-plus" style={{ fontSize: '1rem', color: '#6b7280' }}></i>
                 <span style={{ fontWeight: 500, color: '#6b7280' }}>Add a package</span>
               </div>
-            </div>
+            </PackageServiceList>
 
             {/* Save Button for Packages */}
             <div style={{ marginTop: '2rem' }}>

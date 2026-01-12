@@ -635,6 +635,8 @@ const BecomeVendorPage = () => {
                 priceType: pkg.PriceType || pkg.priceType || 'flat',
                 includedServices: pkg.IncludedServices || pkg.includedServices || [],
                 imageURL: pkg.ImageURL || pkg.imageURL || '',
+                duration: pkg.Duration || pkg.DurationMinutes || pkg.duration || '',
+                finePrint: pkg.FinePrint || pkg.finePrint || '',
                 isActive: pkg.IsActive !== undefined ? pkg.IsActive : true
               }));
             }
@@ -1432,7 +1434,6 @@ const BecomeVendorPage = () => {
               background: 'linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)', 
               borderRadius: '16px', 
               padding: '2.5rem',
-              border: '2px solid #10b981',
               textAlign: 'center'
             }}>
               <div style={{ 
@@ -1722,7 +1723,6 @@ function AccountStep({ currentUser, setFormData, formData, onAccountCreated, isE
               background: 'linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)', 
               borderRadius: '16px', 
               padding: '2.5rem',
-              border: '2px solid #10b981',
               textAlign: 'center'
             }}>
               <div style={{ 
@@ -3299,89 +3299,50 @@ function ServicesStep({ formData, setFormData }) {
             </button>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            {packages.map((pkg, index) => (
-              <div key={pkg.id || index} style={{ padding: '1rem', background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px' }}>
-                <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
-                  {/* Package Image */}
-                  <div style={{ flexShrink: 0, width: '80px', height: '80px', borderRadius: '12px', overflow: 'hidden', background: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    {pkg.imageURL ? (
-                      <img src={pkg.imageURL} alt={pkg.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    ) : (
-                      <i className="fas fa-box" style={{ color: '#9ca3af', fontSize: '2rem' }}></i>
-                    )}
-                  </div>
-                  
-                  {/* Package Details */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <h3 style={{ fontSize: '1.1rem', fontWeight: 600, color: '#222', margin: '0 0 0.35rem 0' }}>
-                          {pkg.name}
-                          {pkg.salePrice && parseFloat(pkg.salePrice) < parseFloat(pkg.price) && (
-                            <span style={{ color: '#dc2626', fontSize: '0.8rem', fontWeight: 700, marginLeft: '0.5rem' }}>SALE!</span>
-                          )}
-                        </h3>
-                        
-                        {/* Pricing */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                          {pkg.salePrice && parseFloat(pkg.salePrice) < parseFloat(pkg.price) ? (
-                            <>
-                              <span style={{ fontSize: '1.15rem', fontWeight: 700, color: '#222' }}>${parseFloat(pkg.salePrice).toFixed(0)}</span>
-                              <span style={{ fontSize: '0.9rem', color: '#9ca3af', textDecoration: 'line-through' }}>${parseFloat(pkg.price).toFixed(0)}</span>
-                            </>
-                          ) : (
-                            <span style={{ fontSize: '1.15rem', fontWeight: 700, color: '#222' }}>${parseFloat(pkg.price || 0).toFixed(0)}</span>
-                          )}
-                          <span style={{ fontSize: '0.85rem', color: '#6b7280' }}>/ {pkg.priceType === 'per_person' ? 'person' : 'package'}</span>
-                        </div>
-                        
-                        {/* Description */}
-                        {pkg.description && (
-                          <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem', color: '#6b7280', lineHeight: 1.5 }}>
-                            {pkg.description.length > 80 ? pkg.description.substring(0, 80) + '...' : pkg.description}
-                          </p>
-                        )}
-                        
-                        {/* Included Services */}
-                        {pkg.includedServices && pkg.includedServices.length > 0 && (
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                            {pkg.includedServices.slice(0, 4).map((svcId, idx) => {
-                              const svc = formData.selectedServices.find(s => s.serviceId === svcId);
-                              return svc ? (
-                                <span key={idx} style={{ background: '#f3f4f6', color: '#374151', padding: '4px 10px', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 500 }}>
-                                  {svc.serviceName}
-                                </span>
-                              ) : null;
-                            })}
-                            {pkg.includedServices.length > 4 && (
-                              <span style={{ color: '#6b7280', fontSize: '0.8rem', fontWeight: 500, padding: '4px 0' }}>+{pkg.includedServices.length - 4} more</span>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                      
-                      {/* Action Buttons */}
-                      <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
-                        <button type="button" onClick={() => handleEditPackage(pkg, index)} style={{ padding: '6px 12px', border: '1px solid #e5e7eb', borderRadius: '6px', background: '#fff', cursor: 'pointer', fontSize: '0.8rem', color: '#374151' }}>Edit</button>
-                        <button type="button" onClick={() => handleDeletePackage(index)} style={{ padding: '6px 12px', border: '1px solid #fecaca', borderRadius: '6px', background: '#fef2f2', cursor: 'pointer', fontSize: '0.8rem', color: '#dc2626' }}>Delete</button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
+          <PackageServiceList>
+            {packages.map((pkg, index) => {
+              // Map includedServices - handle both ID arrays and object arrays
+              const rawIncluded = pkg.includedServices || pkg.IncludedServices || [];
+              const mappedIncludedServices = rawIncluded.map(item => {
+                // If item is already an object with name, use it directly
+                if (typeof item === 'object' && item !== null) {
+                  return { name: item.name || item.ServiceName || item.serviceName, serviceName: item.name || item.ServiceName || item.serviceName };
+                }
+                // If item is an ID, look it up in selectedServices
+                const svc = formData.selectedServices.find(s => s.serviceId === item);
+                return svc ? { name: svc.serviceName, serviceName: svc.serviceName } : null;
+              }).filter(Boolean);
+              
+              return (
+                <PackageCard
+                  key={pkg.id || index}
+                  pkg={{
+                    ...pkg,
+                    PackageName: pkg.name,
+                    Price: pkg.price,
+                    SalePrice: pkg.salePrice,
+                    PriceType: pkg.priceType,
+                    ImageURL: pkg.imageURL,
+                    DurationMinutes: pkg.duration ? parseFloat(pkg.duration) * 60 : null,
+                    IncludedServices: mappedIncludedServices
+                  }}
+                  showActions={true}
+                  onEdit={() => handleEditPackage(pkg, index)}
+                  onDelete={() => handleDeletePackage(index)}
+                />
+              );
+            })}
+          </PackageServiceList>
             
-            {/* Add Package Card */}
-            <div 
-              onClick={handleAddPackage}
-              style={{ height: '80px', border: '1px dashed #d1d5db', borderRadius: '12px', background: '#fafafa', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', gap: '12px', transition: 'all 0.2s' }}
-              onMouseOver={(e) => { e.currentTarget.style.borderColor = '#222'; e.currentTarget.style.background = '#f9fafb'; }}
-              onMouseOut={(e) => { e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.background = '#fafafa'; }}
-            >
-              <i className="fas fa-plus" style={{ fontSize: '1rem', color: '#6b7280' }}></i>
-              <span style={{ fontWeight: 500, color: '#6b7280' }}>Add a package</span>
-            </div>
+          {/* Add Package Card */}
+          <div 
+            onClick={handleAddPackage}
+            style={{ height: '80px', border: '1px dashed #d1d5db', borderRadius: '12px', background: '#fafafa', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', gap: '12px', transition: 'all 0.2s', marginTop: '1rem' }}
+            onMouseOver={(e) => { e.currentTarget.style.borderColor = '#222'; e.currentTarget.style.background = '#f9fafb'; }}
+            onMouseOut={(e) => { e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.background = '#fafafa'; }}
+          >
+            <i className="fas fa-plus" style={{ fontSize: '1rem', color: '#6b7280' }}></i>
+            <span style={{ fontWeight: 500, color: '#6b7280' }}>Add a package</span>
           </div>
         </div>
       )}
