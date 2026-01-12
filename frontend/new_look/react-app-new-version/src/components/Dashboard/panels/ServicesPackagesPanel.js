@@ -26,6 +26,7 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
     price: '',
     salePrice: '',
     priceType: 'fixed', // 'fixed' or 'per_person'
+    durationMinutes: '',
     imageURL: '',
     finePrint: '',
     isActive: true
@@ -88,6 +89,7 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
       price: '',
       salePrice: '',
       priceType: 'fixed',
+      durationMinutes: '',
       imageURL: '',
       finePrint: '',
       isActive: true
@@ -104,6 +106,7 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
       price: pkg.Price || pkg.price || '',
       salePrice: pkg.SalePrice || pkg.salePrice || '',
       priceType: pkg.PriceType || pkg.priceType || 'fixed',
+      durationMinutes: pkg.DurationMinutes || pkg.durationMinutes || '',
       imageURL: pkg.ImageURL || pkg.imageURL || '',
       finePrint: pkg.FinePrint || pkg.finePrint || '',
       isActive: pkg.IsActive !== false
@@ -130,6 +133,7 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
         price: parseFloat(packageForm.price),
         salePrice: packageForm.salePrice ? parseFloat(packageForm.salePrice) : null,
         priceType: packageForm.priceType,
+        durationMinutes: packageForm.durationMinutes ? parseInt(packageForm.durationMinutes) : null,
         imageURL: packageForm.imageURL,
         finePrint: packageForm.finePrint,
         isActive: packageForm.isActive
@@ -1336,6 +1340,31 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
                       <option value="per_person">Per Person</option>
                     </select>
                   </div>
+                </div>
+
+                {/* Duration */}
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                    Duration (minutes)
+                  </label>
+                  <input
+                    type="number"
+                    value={packageForm.durationMinutes}
+                    onChange={(e) => setPackageForm({ ...packageForm, durationMinutes: e.target.value })}
+                    placeholder="e.g., 120 for 2 hours"
+                    min="0"
+                    step="15"
+                    style={{
+                      width: '100%',
+                      padding: '12px 14px',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                      fontSize: '14px'
+                    }}
+                  />
+                  <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#9ca3af' }}>
+                    How long does this package typically take? (e.g., 60 = 1 hour, 120 = 2 hours)
+                  </p>
                 </div>
 
                 {/* Included Services */}

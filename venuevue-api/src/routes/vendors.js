@@ -6435,6 +6435,39 @@ function formatVendorLastActive(minutesAgo, isOnline) {
 }
 
 // =============================================
+// VENDOR CATEGORIES ROUTES
+// =============================================
+
+// GET /api/vendors/:id/categories - Get categories for a vendor
+router.get('/:id/categories', async (req, res) => {
+  try {
+    const vendorProfileId = parseVendorProfileId(req.params.id);
+    if (!vendorProfileId) {
+      return res.status(400).json({ success: false, message: 'Invalid vendor profile ID' });
+    }
+
+    const pool = await poolPromise;
+    const result = await pool.request()
+      .input('VendorProfileID', sql.Int, vendorProfileId)
+      .query(`
+        SELECT vc.CategoryName, vc.IsPrimary
+        FROM vendors.VendorCategories vc
+        WHERE vc.VendorProfileID = @VendorProfileID
+        ORDER BY vc.IsPrimary DESC, vc.CategoryName
+      `);
+    
+    res.json({ 
+      success: true, 
+      categories: result.recordset || [] 
+    });
+  } catch (err) {
+    console.error('Get vendor categories error:', err);
+    // Return empty array if table doesn't exist or other error
+    res.json({ success: true, categories: [] });
+  }
+});
+
+// =============================================
 // VENDOR PACKAGES ROUTES
 // =============================================
 
@@ -6461,7 +6494,7 @@ router.get('/:id/packages', async (req, res) => {
         .query(`
           SELECT 
             PackageID, VendorProfileID, PackageName, Description,
-            Price, SalePrice, PriceType, ImageURL, FinePrint,
+            Price, SalePrice, PriceType, DurationMinutes, ImageURL, FinePrint,
             IncludedServices, IsActive, CreatedAt, UpdatedAt
           FROM vendors.Packages
           WHERE VendorProfileID = @VendorProfileID AND IsActive = 1
@@ -6491,7 +6524,7 @@ router.post('/:id/packages', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid vendor profile ID' });
     }
 
-    const { packageId, name, description, includedServices, price, salePrice, priceType, imageURL, finePrint, isActive } = req.body;
+    const { packageId, name, description, includedServices, price, salePrice, priceType, durationMinutes, imageURL, finePrint, isActive } = req.body;
     
     if (!name || !price) {
       return res.status(400).json({ success: false, message: 'Package name and price are required' });
@@ -6506,6 +6539,7 @@ router.post('/:id/packages', async (req, res) => {
     request.input('Price', sql.Decimal(10, 2), price);
     request.input('SalePrice', sql.Decimal(10, 2), salePrice || null);
     request.input('PriceType', sql.NVarChar(50), priceType || 'fixed');
+    request.input('DurationMinutes', sql.Int, durationMinutes || null);
     request.input('ImageURL', sql.NVarChar(500), imageURL || null);
     request.input('FinePrint', sql.NVarChar(sql.MAX), finePrint || null);
     request.input('IncludedServices', sql.NVarChar(sql.MAX), JSON.stringify(includedServices || []));
@@ -6527,6 +6561,7 @@ router.post('/:id/packages', async (req, res) => {
           .input('Price', sql.Decimal(10, 2), price)
           .input('SalePrice', sql.Decimal(10, 2), salePrice || null)
           .input('PriceType', sql.NVarChar(50), priceType || 'fixed')
+          .input('DurationMinutes', sql.Int, durationMinutes || null)
           .input('ImageURL', sql.NVarChar(500), imageURL || null)
           .input('FinePrint', sql.NVarChar(sql.MAX), finePrint || null)
           .input('IncludedServices', sql.NVarChar(sql.MAX), JSON.stringify(includedServices || []))
@@ -6538,6 +6573,7 @@ router.post('/:id/packages', async (req, res) => {
               Price = @Price,
               SalePrice = @SalePrice,
               PriceType = @PriceType,
+              DurationMinutes = @DurationMinutes,
               ImageURL = @ImageURL,
               FinePrint = @FinePrint,
               IncludedServices = @IncludedServices,
@@ -6555,14 +6591,15 @@ router.post('/:id/packages', async (req, res) => {
           .input('Price', sql.Decimal(10, 2), price)
           .input('SalePrice', sql.Decimal(10, 2), salePrice || null)
           .input('PriceType', sql.NVarChar(50), priceType || 'fixed')
+          .input('DurationMinutes', sql.Int, durationMinutes || null)
           .input('ImageURL', sql.NVarChar(500), imageURL || null)
           .input('FinePrint', sql.NVarChar(sql.MAX), finePrint || null)
           .input('IncludedServices', sql.NVarChar(sql.MAX), JSON.stringify(includedServices || []))
           .input('IsActive', sql.Bit, isActive !== false ? 1 : 0)
           .query(`
-            INSERT INTO vendors.Packages (VendorProfileID, PackageName, Description, Price, SalePrice, PriceType, ImageURL, FinePrint, IncludedServices, IsActive, CreatedAt, UpdatedAt)
+            INSERT INTO vendors.Packages (VendorProfileID, PackageName, Description, Price, SalePrice, PriceType, DurationMinutes, ImageURL, FinePrint, IncludedServices, IsActive, CreatedAt, UpdatedAt)
             OUTPUT INSERTED.PackageID
-            VALUES (@VendorProfileID, @PackageName, @Description, @Price, @SalePrice, @PriceType, @ImageURL, @FinePrint, @IncludedServices, @IsActive, GETDATE(), GETDATE())
+            VALUES (@VendorProfileID, @PackageName, @Description, @Price, @SalePrice, @PriceType, @DurationMinutes, @ImageURL, @FinePrint, @IncludedServices, @IsActive, GETDATE(), GETDATE())
           `);
         res.json({ success: true, packageId: insertResult.recordset[0]?.PackageID, message: 'Package created successfully' });
       }

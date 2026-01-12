@@ -506,6 +506,7 @@ const BecomeVendorPage = () => {
               serviceName: s.ServiceName,
               category: s.CategoryName,
               description: s.ServiceDescription || s.VendorDescription || '',
+              imageURL: s.ImageURL || s.imageURL || '',
               pricingModel: s.PricingModel === 'time_based' ? 'hourly' : 
                            s.PricingModel === 'fixed_price' ? 'fixed' : 
                            s.PricingModel === 'per_attendee' ? 'per_person' : 'hourly',

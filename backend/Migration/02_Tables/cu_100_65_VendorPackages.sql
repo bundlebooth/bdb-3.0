@@ -13,6 +13,7 @@ BEGIN
         [Price] DECIMAL(10, 2) NOT NULL,
         [SalePrice] DECIMAL(10, 2) NULL,
         [PriceType] NVARCHAR(50) NOT NULL DEFAULT 'fixed', -- 'fixed' or 'per_person'
+        [DurationMinutes] INT NULL, -- Duration of the package in minutes
         [ImageURL] NVARCHAR(500) NULL,
         [FinePrint] NVARCHAR(MAX) NULL,
         [IncludedServices] NVARCHAR(MAX) NULL, -- JSON array of service IDs and names
@@ -82,6 +83,13 @@ BEGIN
     BEGIN
         ALTER TABLE [vendors].[Packages] ADD [IncludedServices] NVARCHAR(MAX) NULL;
         PRINT 'Added IncludedServices column';
+    END
+    
+    -- Add DurationMinutes column if it doesn't exist
+    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[vendors].[Packages]') AND name = 'DurationMinutes')
+    BEGIN
+        ALTER TABLE [vendors].[Packages] ADD [DurationMinutes] INT NULL;
+        PRINT 'Added DurationMinutes column';
     END
 END
 GO

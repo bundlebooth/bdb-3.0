@@ -1390,22 +1390,105 @@ function BookingPage() {
             {/* Cancellation Policy */}
             {cancellationPolicy && (() => {
               const policyType = cancellationPolicy.PolicyType || 'flexible';
-              const policyDescriptions = {
-                flexible: 'Full refund if cancelled at least 24 hours before the event.',
-                moderate: 'Full refund if cancelled 7+ days before. 50% refund if cancelled 3-7 days before.',
-                strict: '50% refund if cancelled 14+ days before. No refund within 14 days.',
-                custom: `Full refund if cancelled ${cancellationPolicy.FullRefundDays}+ days before. ${cancellationPolicy.PartialRefundPercent}% refund ${cancellationPolicy.PartialRefundDays}-${cancellationPolicy.FullRefundDays} days before.`
+              const policyInfo = {
+                flexible: { title: 'Flexible', color: '#28a745', bg: '#d4edda', icon: 'fa-check-circle' },
+                moderate: { title: 'Moderate', color: '#856404', bg: '#fff3cd', icon: 'fa-clock' },
+                strict: { title: 'Strict', color: '#dc3545', bg: '#f8d7da', icon: 'fa-exclamation-circle' },
+                custom: { title: 'Custom', color: '#6c757d', bg: '#e2e3e5', icon: 'fa-cog' }
               };
+              const info = policyInfo[policyType] || policyInfo.flexible;
               
               return (
-                <div style={{ marginTop: '1rem', padding: '0.75rem', background: '#f9fafb', borderRadius: '8px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                    <i className="far fa-calendar-alt" style={{ color: '#6b7280' }}></i>
-                    <span style={{ fontWeight: 600, fontSize: '0.85rem', color: '#374151' }}>Cancellation Policy</span>
+                <div style={{ 
+                  marginTop: '1rem', 
+                  padding: '16px', 
+                  background: 'linear-gradient(135deg, #f8f9fa 0%, #fff 100%)',
+                  border: '1px solid #e9ecef',
+                  borderRadius: '12px'
+                }}>
+                  {/* Header with badge */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                    <span style={{ fontWeight: 600, fontSize: '0.9rem', color: '#222' }}>Cancellation Policy</span>
+                    <span style={{ 
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      background: info.bg,
+                      color: info.color,
+                      padding: '4px 10px',
+                      borderRadius: '12px',
+                      fontSize: '0.75rem',
+                      fontWeight: 600
+                    }}>
+                      <i className={`fas ${info.icon}`} style={{ fontSize: '0.7rem' }}></i>
+                      {info.title}
+                    </span>
                   </div>
-                  <p style={{ margin: 0, color: '#6b7280', fontSize: '0.8rem', lineHeight: 1.4 }}>
-                    {policyDescriptions[policyType] || policyDescriptions.flexible}
-                  </p>
+                  
+                  {/* Policy details */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {policyType === 'custom' ? (
+                      <>
+                        {cancellationPolicy.FullRefundDays > 0 && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <i className="fas fa-check" style={{ color: '#28a745', fontSize: '0.75rem', width: '16px' }}></i>
+                            <span style={{ color: '#484848', fontSize: '0.8rem' }}>
+                              Full refund {cancellationPolicy.FullRefundDays}+ days before
+                            </span>
+                          </div>
+                        )}
+                        {cancellationPolicy.PartialRefundDays > 0 && cancellationPolicy.PartialRefundPercent > 0 && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <i className="fas fa-percentage" style={{ color: '#856404', fontSize: '0.75rem', width: '16px' }}></i>
+                            <span style={{ color: '#484848', fontSize: '0.8rem' }}>
+                              {cancellationPolicy.PartialRefundPercent}% refund {cancellationPolicy.PartialRefundDays}-{cancellationPolicy.FullRefundDays - 1} days before
+                            </span>
+                          </div>
+                        )}
+                        {cancellationPolicy.NoRefundDays > 0 && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <i className="fas fa-times" style={{ color: '#dc3545', fontSize: '0.75rem', width: '16px' }}></i>
+                            <span style={{ color: '#484848', fontSize: '0.8rem' }}>
+                              No refund within {cancellationPolicy.NoRefundDays} days
+                            </span>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        {policyType === 'flexible' && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <i className="fas fa-check" style={{ color: '#28a745', fontSize: '0.75rem', width: '16px' }}></i>
+                            <span style={{ color: '#484848', fontSize: '0.8rem' }}>Full refund if cancelled 24+ hours before</span>
+                          </div>
+                        )}
+                        {policyType === 'moderate' && (
+                          <>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <i className="fas fa-check" style={{ color: '#28a745', fontSize: '0.75rem', width: '16px' }}></i>
+                              <span style={{ color: '#484848', fontSize: '0.8rem' }}>Full refund 7+ days before</span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <i className="fas fa-percentage" style={{ color: '#856404', fontSize: '0.75rem', width: '16px' }}></i>
+                              <span style={{ color: '#484848', fontSize: '0.8rem' }}>50% refund 3-7 days before</span>
+                            </div>
+                          </>
+                        )}
+                        {policyType === 'strict' && (
+                          <>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <i className="fas fa-percentage" style={{ color: '#856404', fontSize: '0.75rem', width: '16px' }}></i>
+                              <span style={{ color: '#484848', fontSize: '0.8rem' }}>50% refund 14+ days before</span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <i className="fas fa-times" style={{ color: '#dc3545', fontSize: '0.75rem', width: '16px' }}></i>
+                              <span style={{ color: '#484848', fontSize: '0.8rem' }}>No refund within 14 days</span>
+                            </div>
+                          </>
+                        )}
+                      </>
+                    )}
+                  </div>
                 </div>
               );
             })()}
