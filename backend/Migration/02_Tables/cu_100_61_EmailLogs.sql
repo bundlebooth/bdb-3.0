@@ -18,13 +18,17 @@ BEGIN
     CREATE TABLE [admin].[EmailLogs](
         [LogID] [int] IDENTITY(1,1) NOT NULL,
         [TemplateID] [int] NULL,
+        [TemplateKey] [nvarchar](50) NULL,
         [RecipientEmail] [nvarchar](255) NOT NULL,
         [RecipientName] [nvarchar](255) NULL,
         [Subject] [nvarchar](255) NOT NULL,
         [Status] [nvarchar](20) NULL DEFAULT 'pending',
         [SentAt] [datetime] NULL,
         [ErrorMessage] [nvarchar](max) NULL,
+        [UserID] [int] NULL,
+        [BookingID] [int] NULL,
         [Metadata] [nvarchar](max) NULL,
+        [HtmlBody] [nvarchar](max) NULL,
         [CreatedAt] [datetime] NULL DEFAULT GETDATE(),
     PRIMARY KEY CLUSTERED 
     (

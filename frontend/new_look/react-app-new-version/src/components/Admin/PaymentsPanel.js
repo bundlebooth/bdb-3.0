@@ -29,10 +29,30 @@ const PaymentsPanel = () => {
   useEffect(() => {
     fetchStats();
     fetchTransactions();
-    fetchPayouts();
+    fetchPayoutsData();
     fetchVendorBalances();
     checkStripeConnection();
   }, [filter, pagination.page]);
+
+  const fetchPayoutsData = async () => {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/admin/payments/payouts?filter=${filter}&page=${pagination.page}&limit=${pagination.limit}&search=${searchTerm}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setPayouts(data.payouts || []);
+      }
+    } catch (error) {
+      console.error('Error fetching payouts:', error);
+    }
+  };
 
   const fetchTransactions = async () => {
     try {

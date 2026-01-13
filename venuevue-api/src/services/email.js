@@ -148,7 +148,7 @@ async function canSendEmail(userId, emailCategory) {
 }
 
 // Log email to database
-async function logEmail(templateKey, recipientEmail, recipientName, subject, status, errorMessage = null, userId = null, bookingId = null, metadata = null) {
+async function logEmail(templateKey, recipientEmail, recipientName, subject, status, errorMessage = null, userId = null, bookingId = null, metadata = null, htmlBody = null) {
   try {
     const pool = await poolPromise;
     if (!pool) {
@@ -164,6 +164,7 @@ async function logEmail(templateKey, recipientEmail, recipientName, subject, sta
       .input('UserID', sql.Int, userId)
       .input('BookingID', sql.Int, bookingId)
       .input('Metadata', sql.NVarChar(sql.MAX), metadata ? JSON.stringify(metadata) : null)
+      .input('HtmlBody', sql.NVarChar(sql.MAX), htmlBody)
       .execute('admin.sp_LogEmail');
   } catch (error) {
     console.error('Error logging email:', error);
@@ -227,16 +228,16 @@ async function sendTemplatedEmail(templateKey, recipientEmail, recipientName, va
     }
 
     if (emailSent) {
-      // Log success
-      await logEmail(templateKey, recipientEmail, recipientName, subject, 'sent', null, userId, bookingId, metadata);
+      console.log(`✅ [EMAIL SENT] Template: ${templateKey} | To: ${recipientEmail} | Subject: ${subject}`);
+      await logEmail(templateKey, recipientEmail, recipientName, subject, 'sent', null, userId, bookingId, metadata, html);
     } else {
-      // Log failure
-      await logEmail(templateKey, recipientEmail, recipientName, subject, 'failed', lastError?.message || 'Email sending failed', userId, bookingId, metadata);
+      console.log(`❌ [EMAIL FAILED] Template: ${templateKey} | To: ${recipientEmail} | Error: ${lastError?.message}`);
+      await logEmail(templateKey, recipientEmail, recipientName, subject, 'failed', lastError?.message || 'Email sending failed', userId, bookingId, metadata, html);
       throw lastError || new Error('Email sending failed');
     }
   } catch (error) {
     console.error('Error sending templated email:', error);
-    await logEmail(templateKey, recipientEmail, recipientName, 'Error', 'failed', error.message, userId, bookingId, metadata);
+    await logEmail(templateKey, recipientEmail, recipientName, 'Error', 'failed', error.message, userId, bookingId, metadata, null);
     throw error;
   }
 }
