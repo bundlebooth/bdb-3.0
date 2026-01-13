@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { poolPromise, sql } = require('../config/db');
 const { authenticateToken, requireAdmin } = require('../middlewares/auth');
+const { sendEmail } = require('../services/email');
 
 // Helper to get pool
 const getPool = async () => await poolPromise;
@@ -1789,31 +1790,57 @@ router.post('/emails/send-test', async (req, res) => {
       return res.status(400).json({ error: 'Recipient email and subject are required' });
     }
     
-    // Use the email service to send test email
-    const nodemailer = require('nodemailer');
+    const htmlBody = body || '<p>This is a test email from PlanBeau admin panel.</p>';
+    const textBody = htmlBody.replace(/<[^>]*>/g, ''); // Strip HTML for text version
     
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST || 'smtp.gmail.com',
-      port: process.env.SMTP_PORT || 587,
-      secure: false,
-      auth: {
-        user: process.env.SMTP_USER || process.env.EMAIL_USER,
-        pass: process.env.SMTP_PASS || process.env.EMAIL_PASS
-      }
-    });
-    
-    const mailOptions = {
-      from: process.env.EMAIL_FROM || process.env.SMTP_USER || 'noreply@planbeau.com',
+    // Use the email service which handles SMTP and fallback properly
+    await sendEmail({
       to: to,
       subject: subject,
-      html: body || '<p>This is a test email from PlanBeau admin panel.</p>'
-    };
+      html: htmlBody,
+      text: textBody
+    });
     
-    await transporter.sendMail(mailOptions);
+    // Log successful send to EmailLogs table (used by sp_GetEmailLogs)
+    try {
+      const pool = await getPool();
+      await pool.request()
+        .input('TemplateKey', sql.NVarChar(50), templateKey || 'test_email')
+        .input('RecipientEmail', sql.NVarChar(255), to)
+        .input('RecipientName', sql.NVarChar(100), null)
+        .input('Subject', sql.NVarChar(255), subject)
+        .input('Status', sql.NVarChar(20), 'sent')
+        .input('ErrorMessage', sql.NVarChar(sql.MAX), null)
+        .input('UserID', sql.Int, null)
+        .input('BookingID', sql.Int, null)
+        .input('Metadata', sql.NVarChar(sql.MAX), JSON.stringify({ htmlBody: htmlBody }))
+        .execute('sp_LogEmail');
+    } catch (logError) {
+      console.log('Could not log email to database:', logError.message);
+    }
     
     res.json({ success: true, message: `Test email sent to ${to}` });
   } catch (error) {
     console.error('Error sending test email:', error);
+    
+    // Log failed send
+    try {
+      const pool = await getPool();
+      await pool.request()
+        .input('TemplateKey', sql.NVarChar(50), req.body.templateKey || 'test_email')
+        .input('RecipientEmail', sql.NVarChar(255), req.body.to)
+        .input('RecipientName', sql.NVarChar(100), null)
+        .input('Subject', sql.NVarChar(255), req.body.subject)
+        .input('Status', sql.NVarChar(20), 'failed')
+        .input('ErrorMessage', sql.NVarChar(sql.MAX), error.message)
+        .input('UserID', sql.Int, null)
+        .input('BookingID', sql.Int, null)
+        .input('Metadata', sql.NVarChar(sql.MAX), JSON.stringify({ htmlBody: req.body.body }))
+        .execute('sp_LogEmail');
+    } catch (logError) {
+      console.log('Could not log failed email:', logError.message);
+    }
+    
     res.status(500).json({ error: 'Failed to send test email', details: error.message });
   }
 });
