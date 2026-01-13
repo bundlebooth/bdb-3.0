@@ -184,9 +184,12 @@ async function sendTemplatedEmail(templateKey, recipientEmail, recipientName, va
     }
 
     // Auto-inject platform variables
+    const frontendUrl = process.env.FRONTEND_URL || `https://${process.env.PLATFORM_URL || 'venuevue.com'}`;
     const platformVars = {
       platformName: process.env.PLATFORM_NAME || 'VenueVue',
       platformUrl: process.env.PLATFORM_URL || 'venuevue.com',
+      frontendUrl: frontendUrl,
+      logoUrl: `${frontendUrl}/images/logo.png`,
       currentYear: new Date().getFullYear().toString(),
       recipientEmail,
       ...variables
