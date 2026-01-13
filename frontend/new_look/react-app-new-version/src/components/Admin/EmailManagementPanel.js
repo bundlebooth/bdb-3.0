@@ -488,7 +488,7 @@ const EmailManagementPanel = () => {
                     const subj = log.subject || log.Subject;
                     const tplKey = log.templateKey || log.TemplateKey || log.template_key;
                     const logStatus = log.status || log.Status || 'unknown';
-                    const bodyHtml = log.body || log.Body || log.htmlContent || log.HtmlContent;
+                    const bodyHtml = log.htmlBody || log.HtmlBody || log.body || log.Body || log.htmlContent || log.HtmlContent;
                     
                     // Format date properly
                     let formattedDate = '-';
