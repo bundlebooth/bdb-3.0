@@ -8,11 +8,14 @@ const ReviewsPanel = () => {
   const [filter, setFilter] = useState('all'); // all, flagged, pending, suspicious
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedReview, setSelectedReview] = useState(null);
-  const [modalType, setModalType] = useState(null); // 'view', 'edit', 'flag'
+  const [modalType, setModalType] = useState(null); // 'view', 'edit', 'flag', 'google'
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0 });
+  const [stats, setStats] = useState({ total: 0, flagged: 0, avgRating: 0 });
+  const [activeTab, setActiveTab] = useState('platform'); // 'platform' or 'google'
 
   useEffect(() => {
     fetchReviews();
+    fetchStats();
   }, [filter, pagination.page]);
 
   const fetchReviews = async () => {
@@ -31,12 +34,32 @@ const ReviewsPanel = () => {
         const data = await response.json();
         setReviews(data.reviews || []);
         setPagination(prev => ({ ...prev, total: data.total || 0 }));
+      } else {
+        console.error('Failed to fetch reviews:', response.status);
+        // Try to show some mock data for testing if API fails
+        setReviews([]);
       }
     } catch (error) {
       console.error('Error fetching reviews:', error);
       showBanner('Failed to load reviews', 'error');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchStats = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/reviews/stats`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setStats(data);
+      }
+    } catch (error) {
+      console.error('Error fetching review stats:', error);
     }
   };
 
@@ -115,6 +138,94 @@ const ReviewsPanel = () => {
 
   return (
     <div className="admin-panel reviews-panel">
+      {/* Stats Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '24px' }}>
+        <div style={{ background: 'white', borderRadius: '12px', padding: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: '#dbeafe', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <i className="fas fa-star" style={{ color: '#2563eb', fontSize: '20px' }}></i>
+            </div>
+            <div>
+              <div style={{ fontSize: '24px', fontWeight: '700', color: '#1f2937' }}>{pagination.total || stats.total || 0}</div>
+              <div style={{ fontSize: '13px', color: '#6b7280' }}>Total Reviews</div>
+            </div>
+          </div>
+        </div>
+        <div style={{ background: 'white', borderRadius: '12px', padding: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <i className="fas fa-flag" style={{ color: '#d97706', fontSize: '20px' }}></i>
+            </div>
+            <div>
+              <div style={{ fontSize: '24px', fontWeight: '700', color: '#1f2937' }}>{stats.flagged || 0}</div>
+              <div style={{ fontSize: '13px', color: '#6b7280' }}>Flagged</div>
+            </div>
+          </div>
+        </div>
+        <div style={{ background: 'white', borderRadius: '12px', padding: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: '#d1fae5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <i className="fas fa-chart-line" style={{ color: '#059669', fontSize: '20px' }}></i>
+            </div>
+            <div>
+              <div style={{ fontSize: '24px', fontWeight: '700', color: '#1f2937' }}>{stats.avgRating?.toFixed(1) || '0.0'}</div>
+              <div style={{ fontSize: '13px', color: '#6b7280' }}>Avg Rating</div>
+            </div>
+          </div>
+        </div>
+        <div style={{ background: 'white', borderRadius: '12px', padding: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: '#ede9fe', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <i className="fab fa-google" style={{ color: '#7c3aed', fontSize: '20px' }}></i>
+            </div>
+            <div>
+              <div style={{ fontSize: '24px', fontWeight: '700', color: '#1f2937' }}>{stats.googleReviews || 0}</div>
+              <div style={{ fontSize: '13px', color: '#6b7280' }}>Google Reviews</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Tabs for Platform vs Google Reviews */}
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
+        <button
+          onClick={() => setActiveTab('platform')}
+          style={{
+            padding: '10px 20px',
+            background: activeTab === 'platform' ? '#5e72e4' : '#f3f4f6',
+            color: activeTab === 'platform' ? 'white' : '#374151',
+            border: 'none',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            fontSize: '14px',
+            fontWeight: '500',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}
+        >
+          <i className="fas fa-star"></i> Platform Reviews
+        </button>
+        <button
+          onClick={() => setActiveTab('google')}
+          style={{
+            padding: '10px 20px',
+            background: activeTab === 'google' ? '#5e72e4' : '#f3f4f6',
+            color: activeTab === 'google' ? 'white' : '#374151',
+            border: 'none',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            fontSize: '14px',
+            fontWeight: '500',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}
+        >
+          <i className="fab fa-google"></i> Google Reviews
+        </button>
+      </div>
+
       {/* Toolbar */}
       <div className="panel-toolbar">
         <div className="toolbar-left">
@@ -126,7 +237,7 @@ const ReviewsPanel = () => {
                 onClick={() => setFilter(status)}
               >
                 {status.charAt(0).toUpperCase() + status.slice(1)}
-                {status === 'flagged' && <span className="badge">3</span>}
+                {status === 'flagged' && stats.flagged > 0 && <span className="badge">{stats.flagged}</span>}
               </button>
             ))}
           </div>
@@ -149,19 +260,21 @@ const ReviewsPanel = () => {
       </div>
 
       {/* Reviews Table */}
-      <div className="data-table-container">
-        {loading ? (
-          <div className="loading-state">
-            <div className="spinner"></div>
-            <p>Loading reviews...</p>
-          </div>
-        ) : reviews.length === 0 ? (
-          <div className="empty-state">
-            <i className="fas fa-star"></i>
-            <h3>No reviews found</h3>
-            <p>Try adjusting your filters or search term</p>
-          </div>
-        ) : (
+      {activeTab === 'platform' ? (
+        <div className="data-table-container">
+          {loading ? (
+            <div className="loading-state">
+              <div className="spinner"></div>
+              <p>Loading reviews...</p>
+            </div>
+          ) : reviews.length === 0 ? (
+            <div className="empty-state">
+              <i className="fas fa-star" style={{ fontSize: '48px', color: '#d1d5db', marginBottom: '16px' }}></i>
+              <h3>No reviews found</h3>
+              <p style={{ color: '#6b7280', marginBottom: '16px' }}>Reviews from clients will appear here once they submit feedback</p>
+              <p style={{ fontSize: '13px', color: '#9ca3af' }}>Try adjusting your filters or search term</p>
+            </div>
+          ) : (
           <table className="data-table">
             <thead>
               <tr>
@@ -294,8 +407,11 @@ const ReviewsPanel = () => {
               ))}
             </tbody>
           </table>
-        )}
-      </div>
+          )}
+        </div>
+      ) : (
+        <GoogleReviewsSection />
+      )}
 
       {/* Pagination */}
       {pagination.total > pagination.limit && (
@@ -519,6 +635,343 @@ const FlagReviewModal = ({ review, onClose, onFlag }) => {
           </button>
         </div>
       </div>
+    </div>
+  );
+};
+
+// Google Reviews Section Component
+const GoogleReviewsSection = () => {
+  const [vendors, setVendors] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedVendor, setSelectedVendor] = useState(null);
+  const [googleReviews, setGoogleReviews] = useState([]);
+  const [linkModalOpen, setLinkModalOpen] = useState(false);
+  const [placeId, setPlaceId] = useState('');
+
+  useEffect(() => {
+    fetchVendorsWithGoogle();
+  }, []);
+
+  const fetchVendorsWithGoogle = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`${API_BASE_URL}/admin/vendors?page=1&limit=100`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setVendors(data.vendors || []);
+      }
+    } catch (error) {
+      console.error('Error fetching vendors:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLinkGooglePlace = async (vendorId) => {
+    if (!placeId.trim()) {
+      showBanner('Please enter a Google Place ID', 'error');
+      return;
+    }
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/vendors/${vendorId}/google-place`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ googlePlaceId: placeId })
+      });
+
+      if (response.ok) {
+        showBanner('Google Place linked successfully', 'success');
+        setLinkModalOpen(false);
+        setPlaceId('');
+        fetchVendorsWithGoogle();
+      } else {
+        showBanner('Failed to link Google Place', 'error');
+      }
+    } catch (error) {
+      showBanner('Failed to link Google Place', 'error');
+    }
+  };
+
+  const fetchGoogleReviews = async (vendorId, googlePlaceId) => {
+    if (!googlePlaceId) {
+      showBanner('This vendor does not have a linked Google Place', 'error');
+      return;
+    }
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/vendors/${vendorId}/google-reviews`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setGoogleReviews(data.reviews || []);
+      }
+    } catch (error) {
+      console.error('Error fetching Google reviews:', error);
+      setGoogleReviews([]);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div style={{ textAlign: 'center', padding: '40px' }}>
+        <div className="spinner"></div>
+        <p>Loading vendors...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ background: 'white', borderRadius: '12px', padding: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
+      <div style={{ marginBottom: '20px' }}>
+        <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '600' }}>
+          <i className="fab fa-google" style={{ color: '#4285f4', marginRight: '8px' }}></i>
+          Google Reviews Integration
+        </h3>
+        <p style={{ margin: 0, color: '#6b7280', fontSize: '14px' }}>
+          Link vendor profiles to their Google Business listings to display Google reviews
+        </p>
+      </div>
+
+      <div style={{ 
+        background: '#f0f9ff', 
+        border: '1px solid #bae6fd', 
+        borderRadius: '8px', 
+        padding: '16px',
+        marginBottom: '20px'
+      }}>
+        <h4 style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#0369a1', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <i className="fas fa-info-circle"></i> How to Link Google Reviews
+        </h4>
+        <ol style={{ margin: 0, paddingLeft: '20px', fontSize: '13px', color: '#0c4a6e' }}>
+          <li>Find the vendor's Google Business listing</li>
+          <li>Copy the Place ID from the URL or use Google's Place ID Finder</li>
+          <li>Click "Link Google" next to the vendor and paste the Place ID</li>
+          <li>Google reviews will automatically sync to the vendor's profile</li>
+        </ol>
+      </div>
+
+      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <thead>
+          <tr style={{ background: '#f9fafb' }}>
+            <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '13px', fontWeight: '600', color: '#374151', borderBottom: '1px solid #e5e7eb' }}>Vendor</th>
+            <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '13px', fontWeight: '600', color: '#374151', borderBottom: '1px solid #e5e7eb' }}>Category</th>
+            <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '13px', fontWeight: '600', color: '#374151', borderBottom: '1px solid #e5e7eb' }}>Google Status</th>
+            <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '13px', fontWeight: '600', color: '#374151', borderBottom: '1px solid #e5e7eb' }}>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {vendors.slice(0, 20).map(vendor => (
+            <tr key={vendor.VendorProfileID} style={{ borderBottom: '1px solid #f3f4f6' }}>
+              <td style={{ padding: '12px 16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ 
+                    width: '40px', 
+                    height: '40px', 
+                    borderRadius: '8px', 
+                    background: '#5e72e4', 
+                    color: 'white',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontWeight: '600',
+                    fontSize: '14px'
+                  }}>
+                    {vendor.BusinessName?.[0] || 'V'}
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: '600', color: '#1f2937', fontSize: '14px' }}>{vendor.BusinessName}</div>
+                    <div style={{ fontSize: '12px', color: '#6b7280' }}>{vendor.Email}</div>
+                  </div>
+                </div>
+              </td>
+              <td style={{ padding: '12px 16px', fontSize: '14px', color: '#6b7280' }}>
+                {vendor.Category || 'N/A'}
+              </td>
+              <td style={{ padding: '12px 16px' }}>
+                {vendor.GooglePlaceId ? (
+                  <span style={{ 
+                    display: 'inline-flex', 
+                    alignItems: 'center', 
+                    gap: '6px',
+                    padding: '4px 10px',
+                    background: '#d1fae5',
+                    color: '#059669',
+                    borderRadius: '6px',
+                    fontSize: '12px',
+                    fontWeight: '500'
+                  }}>
+                    <i className="fas fa-check-circle"></i> Linked
+                  </span>
+                ) : (
+                  <span style={{ 
+                    display: 'inline-flex', 
+                    alignItems: 'center', 
+                    gap: '6px',
+                    padding: '4px 10px',
+                    background: '#f3f4f6',
+                    color: '#6b7280',
+                    borderRadius: '6px',
+                    fontSize: '12px'
+                  }}>
+                    <i className="fas fa-unlink"></i> Not Linked
+                  </span>
+                )}
+              </td>
+              <td style={{ padding: '12px 16px' }}>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  {vendor.GooglePlaceId ? (
+                    <button
+                      onClick={() => {
+                        setSelectedVendor(vendor);
+                        fetchGoogleReviews(vendor.VendorProfileID, vendor.GooglePlaceId);
+                      }}
+                      style={{
+                        padding: '6px 12px',
+                        background: '#dbeafe',
+                        color: '#2563eb',
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        fontSize: '12px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}
+                    >
+                      <i className="fas fa-eye"></i> View Reviews
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setSelectedVendor(vendor);
+                        setLinkModalOpen(true);
+                      }}
+                      style={{
+                        padding: '6px 12px',
+                        background: '#5e72e4',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        fontSize: '12px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}
+                    >
+                      <i className="fab fa-google"></i> Link Google
+                    </button>
+                  )}
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      {/* Link Google Place Modal */}
+      {linkModalOpen && selectedVendor && (
+        <div 
+          style={{ 
+            position: 'fixed', 
+            top: 0, 
+            left: 0, 
+            right: 0, 
+            bottom: 0, 
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000
+          }}
+          onClick={() => setLinkModalOpen(false)}
+        >
+          <div 
+            style={{ 
+              background: 'white', 
+              borderRadius: '12px', 
+              padding: '24px',
+              width: '450px',
+              maxWidth: '90%'
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <h3 style={{ margin: '0 0 16px 0', fontSize: '18px' }}>
+              Link Google Business
+            </h3>
+            <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '16px' }}>
+              Enter the Google Place ID for <strong>{selectedVendor.BusinessName}</strong>
+            </p>
+            
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', marginBottom: '6px' }}>
+                Google Place ID
+              </label>
+              <input
+                type="text"
+                value={placeId}
+                onChange={(e) => setPlaceId(e.target.value)}
+                placeholder="e.g., ChIJN1t_tDeuEmsRUsoyG83frY4"
+                style={{ 
+                  width: '100%', 
+                  padding: '10px 12px', 
+                  border: '1px solid #d1d5db', 
+                  borderRadius: '8px',
+                  fontSize: '14px'
+                }}
+              />
+              <p style={{ fontSize: '12px', color: '#9ca3af', marginTop: '6px' }}>
+                Find Place IDs at: <a href="https://developers.google.com/maps/documentation/places/web-service/place-id" target="_blank" rel="noopener noreferrer" style={{ color: '#5e72e4' }}>Google Place ID Finder</a>
+              </p>
+            </div>
+            
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => {
+                  setLinkModalOpen(false);
+                  setPlaceId('');
+                }}
+                style={{ 
+                  padding: '10px 20px',
+                  background: '#f3f4f6',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '14px'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleLinkGooglePlace(selectedVendor.VendorProfileID)}
+                style={{ 
+                  padding: '10px 20px',
+                  background: '#5e72e4',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500'
+                }}
+              >
+                Link Google Place
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

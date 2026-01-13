@@ -10,7 +10,10 @@ const EmailManagementPanel = () => {
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [modalType, setModalType] = useState(null);
   const [emailLogs, setEmailLogs] = useState([]);
-  const [activeTab, setActiveTab] = useState('templates'); // templates, logs
+  const [activeTab, setActiveTab] = useState('templates'); // templates, logs, settings, test
+  const [headerFooter, setHeaderFooter] = useState({ header: '', footer: '' });
+  const [testEmail, setTestEmail] = useState({ to: '', template: '', subject: '', body: '' });
+  const [sendingTest, setSendingTest] = useState(false);
   const categories = ['booking', 'payment', 'vendor', 'user', 'review', 'system'];
 
   useEffect(() => {
@@ -18,8 +21,106 @@ const EmailManagementPanel = () => {
       fetchTemplates();
     } else if (activeTab === 'logs') {
       fetchEmailLogs();
+    } else if (activeTab === 'settings') {
+      fetchHeaderFooter();
     }
   }, [activeTab, filter]);
+
+  const fetchHeaderFooter = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/emails/header-footer`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setHeaderFooter({
+          header: data.header || getDefaultHeader(),
+          footer: data.footer || getDefaultFooter()
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching header/footer:', error);
+      setHeaderFooter({
+        header: getDefaultHeader(),
+        footer: getDefaultFooter()
+      });
+    }
+  };
+
+  const getDefaultHeader = () => {
+    return `<div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; border-radius: 12px 12px 0 0;">
+  <img src="{{logo_url}}" alt="PlanBeau" style="height: 40px; margin-bottom: 10px;" />
+  <h1 style="color: white; margin: 0; font-size: 24px;">PlanBeau</h1>
+</div>`;
+  };
+
+  const getDefaultFooter = () => {
+    return `<div style="background: #f9fafb; padding: 20px; text-align: center; border-radius: 0 0 12px 12px; border: 1px solid #e5e7eb; border-top: none;">
+  <p style="margin: 0 0 10px 0; color: #6b7280; font-size: 14px;">© 2024 PlanBeau. All rights reserved.</p>
+  <p style="margin: 0; color: #9ca3af; font-size: 12px;">
+    <a href="{{unsubscribe_url}}" style="color: #5e72e4;">Unsubscribe</a> | 
+    <a href="{{privacy_url}}" style="color: #5e72e4;">Privacy Policy</a>
+  </p>
+</div>`;
+  };
+
+  const saveHeaderFooter = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/emails/header-footer`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(headerFooter)
+      });
+      if (response.ok) {
+        showBanner('Header and footer saved successfully', 'success');
+      } else {
+        showBanner('Failed to save header/footer', 'error');
+      }
+    } catch (error) {
+      showBanner('Failed to save header/footer', 'error');
+    }
+  };
+
+  const sendTestEmail = async () => {
+    if (!testEmail.to || !testEmail.subject) {
+      showBanner('Please enter recipient email and subject', 'error');
+      return;
+    }
+    
+    setSendingTest(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/emails/send-test`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          to: testEmail.to,
+          subject: testEmail.subject,
+          body: testEmail.body || '<p>This is a test email from PlanBeau admin panel.</p>',
+          templateKey: testEmail.template
+        })
+      });
+      
+      if (response.ok) {
+        showBanner(`Test email sent to ${testEmail.to}`, 'success');
+        setTestEmail({ to: '', template: '', subject: '', body: '' });
+      } else {
+        const error = await response.json();
+        showBanner(error.message || 'Failed to send test email', 'error');
+      }
+    } catch (error) {
+      showBanner('Failed to send test email', 'error');
+    } finally {
+      setSendingTest(false);
+    }
+  };
 
   const fetchTemplates = async () => {
     try {
@@ -117,42 +218,85 @@ const EmailManagementPanel = () => {
 
   return (
     <div className="admin-panel email-management">
+      {/* Stats Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '24px' }}>
+        <div style={{ background: 'white', borderRadius: '12px', padding: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: '#dbeafe', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <i className="fas fa-file-alt" style={{ color: '#2563eb', fontSize: '20px' }}></i>
+            </div>
+            <div>
+              <div style={{ fontSize: '24px', fontWeight: '700', color: '#1f2937' }}>{templates.length}</div>
+              <div style={{ fontSize: '13px', color: '#6b7280' }}>Templates</div>
+            </div>
+          </div>
+        </div>
+        <div style={{ background: 'white', borderRadius: '12px', padding: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: '#d1fae5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <i className="fas fa-check-circle" style={{ color: '#10b981', fontSize: '20px' }}></i>
+            </div>
+            <div>
+              <div style={{ fontSize: '24px', fontWeight: '700', color: '#1f2937' }}>{templates.filter(t => t.IsActive !== false).length}</div>
+              <div style={{ fontSize: '13px', color: '#6b7280' }}>Active</div>
+            </div>
+          </div>
+        </div>
+        <div style={{ background: 'white', borderRadius: '12px', padding: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <i className="fas fa-paper-plane" style={{ color: '#f59e0b', fontSize: '20px' }}></i>
+            </div>
+            <div>
+              <div style={{ fontSize: '24px', fontWeight: '700', color: '#1f2937' }}>{emailLogs.length}</div>
+              <div style={{ fontSize: '13px', color: '#6b7280' }}>Emails Sent</div>
+            </div>
+          </div>
+        </div>
+        <div style={{ background: 'white', borderRadius: '12px', padding: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: '#ede9fe', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <i className="fas fa-percentage" style={{ color: '#7c3aed', fontSize: '20px' }}></i>
+            </div>
+            <div>
+              <div style={{ fontSize: '24px', fontWeight: '700', color: '#1f2937' }}>
+                {emailLogs.length > 0 ? Math.round((emailLogs.filter(l => l.status === 'sent').length / emailLogs.length) * 100) : 100}%
+              </div>
+              <div style={{ fontSize: '13px', color: '#6b7280' }}>Delivery Rate</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Tabs */}
-      <div className="panel-tabs" style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
-        <button
-          className={`tab ${activeTab === 'templates' ? 'active' : ''}`}
-          onClick={() => setActiveTab('templates')}
-          style={{
-            padding: '10px 20px',
-            background: activeTab === 'templates' ? '#5e72e4' : '#f3f4f6',
-            color: activeTab === 'templates' ? 'white' : '#374151',
-            border: 'none',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            fontSize: '14px',
-            fontWeight: '500'
-          }}
-        >
-          <i className="fas fa-file-alt" style={{ marginRight: '8px' }}></i>
-          Email Templates
-        </button>
-        <button
-          className={`tab ${activeTab === 'logs' ? 'active' : ''}`}
-          onClick={() => setActiveTab('logs')}
-          style={{
-            padding: '10px 20px',
-            background: activeTab === 'logs' ? '#5e72e4' : '#f3f4f6',
-            color: activeTab === 'logs' ? 'white' : '#374151',
-            border: 'none',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            fontSize: '14px',
-            fontWeight: '500'
-          }}
-        >
-          <i className="fas fa-history" style={{ marginRight: '8px' }}></i>
-          Email Logs
-        </button>
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', borderBottom: '1px solid #e5e7eb', paddingBottom: '8px' }}>
+        {[
+          { key: 'templates', label: 'Email Templates', icon: 'fa-file-alt' },
+          { key: 'logs', label: 'Email Logs', icon: 'fa-history' },
+          { key: 'settings', label: 'Header & Footer', icon: 'fa-cog' },
+          { key: 'test', label: 'Send Test Email', icon: 'fa-paper-plane' }
+        ].map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            style={{
+              padding: '10px 20px',
+              background: activeTab === tab.key ? '#5e72e4' : 'transparent',
+              color: activeTab === tab.key ? 'white' : '#374151',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: '500',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+          >
+            <i className={`fas ${tab.icon}`}></i>
+            {tab.label}
+          </button>
+        ))}
       </div>
 
       {activeTab === 'templates' && (
@@ -333,30 +477,80 @@ const EmailManagementPanel = () => {
                     <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '13px', fontWeight: '600', color: '#374151' }}>Template</th>
                     <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '13px', fontWeight: '600', color: '#374151' }}>Status</th>
                     <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '13px', fontWeight: '600', color: '#374151' }}>Sent At</th>
+                    <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '13px', fontWeight: '600', color: '#374151' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {emailLogs.map((log, idx) => (
-                    <tr key={log.id || idx} style={{ borderTop: '1px solid #e5e7eb' }}>
-                      <td style={{ padding: '12px 16px', fontSize: '14px' }}>{log.recipientEmail}</td>
-                      <td style={{ padding: '12px 16px', fontSize: '14px' }}>{log.subject}</td>
-                      <td style={{ padding: '12px 16px', fontSize: '14px' }}><code style={{ background: '#f3f4f6', padding: '2px 6px', borderRadius: '4px', fontSize: '12px' }}>{log.templateKey}</code></td>
-                      <td style={{ padding: '12px 16px' }}>
-                        <span style={{
-                          padding: '4px 8px',
-                          borderRadius: '4px',
-                          fontSize: '12px',
-                          background: log.status === 'sent' ? '#d1fae5' : '#fee2e2',
-                          color: log.status === 'sent' ? '#059669' : '#dc2626'
-                        }}>
-                          {log.status}
-                        </span>
-                      </td>
-                      <td style={{ padding: '12px 16px', fontSize: '14px', color: '#6b7280' }}>
-                        {log.sentAt ? new Date(log.sentAt).toLocaleString() : '-'}
-                      </td>
-                    </tr>
-                  ))}
+                  {emailLogs.map((log, idx) => {
+                    // Handle various date field names from backend
+                    const sentDate = log.sentAt || log.SentAt || log.createdAt || log.CreatedAt || log.sent_at;
+                    const recipient = log.recipientEmail || log.RecipientEmail || log.recipient || log.Recipient || log.email || log.Email;
+                    const subj = log.subject || log.Subject;
+                    const tplKey = log.templateKey || log.TemplateKey || log.template_key;
+                    const logStatus = log.status || log.Status || 'unknown';
+                    const bodyHtml = log.body || log.Body || log.htmlContent || log.HtmlContent;
+                    
+                    // Format date properly
+                    let formattedDate = '-';
+                    if (sentDate) {
+                      const dateObj = new Date(sentDate);
+                      if (!isNaN(dateObj.getTime())) {
+                        formattedDate = dateObj.toLocaleString('en-US', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        });
+                      }
+                    }
+                    
+                    return (
+                      <tr key={log.id || log.LogID || idx} style={{ borderTop: '1px solid #e5e7eb' }}>
+                        <td style={{ padding: '12px 16px', fontSize: '14px' }}>{recipient}</td>
+                        <td style={{ padding: '12px 16px', fontSize: '14px' }}>{subj}</td>
+                        <td style={{ padding: '12px 16px', fontSize: '14px' }}><code style={{ background: '#f3f4f6', padding: '2px 6px', borderRadius: '4px', fontSize: '12px' }}>{tplKey}</code></td>
+                        <td style={{ padding: '12px 16px' }}>
+                          <span style={{
+                            padding: '4px 8px',
+                            borderRadius: '4px',
+                            fontSize: '12px',
+                            background: logStatus === 'sent' ? '#d1fae5' : '#fee2e2',
+                            color: logStatus === 'sent' ? '#059669' : '#dc2626'
+                          }}>
+                            {logStatus}
+                          </span>
+                        </td>
+                        <td style={{ padding: '12px 16px', fontSize: '14px', color: '#6b7280' }}>
+                          {formattedDate}
+                        </td>
+                        <td style={{ padding: '12px 16px' }}>
+                          <button
+                            onClick={() => {
+                              setSelectedTemplate({ 
+                                subject: subj, 
+                                body: bodyHtml,
+                                recipient: recipient,
+                                sentAt: formattedDate
+                              });
+                              setModalType('preview');
+                            }}
+                            style={{
+                              padding: '4px 8px',
+                              background: '#dbeafe',
+                              color: '#2563eb',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              fontSize: '12px'
+                            }}
+                          >
+                            <i className="fas fa-eye"></i> Preview
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -364,14 +558,307 @@ const EmailManagementPanel = () => {
         </div>
       )}
 
+      {/* Header & Footer Settings Tab */}
+      {activeTab === 'settings' && (
+        <div style={{ background: 'white', borderRadius: '12px', padding: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
+          <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: '600' }}>
+            <i className="fas fa-code" style={{ color: '#5e72e4', marginRight: '8px' }}></i>
+            Email Header & Footer Templates
+          </h3>
+          <p style={{ color: '#6b7280', marginBottom: '24px', fontSize: '14px' }}>
+            Configure the default header and footer that will be applied to all email templates.
+          </p>
+          
+          <div style={{ marginBottom: '24px' }}>
+            <label style={{ display: 'block', fontWeight: '600', marginBottom: '8px', fontSize: '14px' }}>
+              Email Header HTML
+            </label>
+            <textarea
+              value={headerFooter.header}
+              onChange={(e) => setHeaderFooter(prev => ({ ...prev, header: e.target.value }))}
+              style={{
+                width: '100%',
+                height: '200px',
+                padding: '12px',
+                border: '1px solid #d1d5db',
+                borderRadius: '8px',
+                fontFamily: 'monospace',
+                fontSize: '13px',
+                resize: 'vertical'
+              }}
+              placeholder="Enter header HTML..."
+            />
+          </div>
+          
+          <div style={{ marginBottom: '24px' }}>
+            <label style={{ display: 'block', fontWeight: '600', marginBottom: '8px', fontSize: '14px' }}>
+              Email Footer HTML
+            </label>
+            <textarea
+              value={headerFooter.footer}
+              onChange={(e) => setHeaderFooter(prev => ({ ...prev, footer: e.target.value }))}
+              style={{
+                width: '100%',
+                height: '200px',
+                padding: '12px',
+                border: '1px solid #d1d5db',
+                borderRadius: '8px',
+                fontFamily: 'monospace',
+                fontSize: '13px',
+                resize: 'vertical'
+              }}
+              placeholder="Enter footer HTML..."
+            />
+          </div>
+          
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <button
+              onClick={saveHeaderFooter}
+              style={{
+                padding: '12px 24px',
+                background: '#5e72e4',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '500'
+              }}
+            >
+              <i className="fas fa-save" style={{ marginRight: '8px' }}></i>
+              Save Header & Footer
+            </button>
+            <button
+              onClick={() => setHeaderFooter({ header: getDefaultHeader(), footer: getDefaultFooter() })}
+              style={{
+                padding: '12px 24px',
+                background: '#f3f4f6',
+                color: '#374151',
+                border: '1px solid #d1d5db',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '14px'
+              }}
+            >
+              Reset to Default
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Send Test Email Tab */}
+      {activeTab === 'test' && (
+        <div style={{ background: 'white', borderRadius: '12px', padding: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
+          <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: '600' }}>
+            <i className="fas fa-paper-plane" style={{ color: '#5e72e4', marginRight: '8px' }}></i>
+            Send Test Email
+          </h3>
+          <p style={{ color: '#6b7280', marginBottom: '24px', fontSize: '14px' }}>
+            Test your email configuration by sending a test email.
+          </p>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+            <div>
+              <label style={{ display: 'block', fontWeight: '500', marginBottom: '8px', fontSize: '14px' }}>
+                Recipient Email *
+              </label>
+              <input
+                type="email"
+                value={testEmail.to}
+                onChange={(e) => setTestEmail(prev => ({ ...prev, to: e.target.value }))}
+                placeholder="test@example.com"
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '8px',
+                  fontSize: '14px'
+                }}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontWeight: '500', marginBottom: '8px', fontSize: '14px' }}>
+                Use Template (Optional)
+              </label>
+              <select
+                value={testEmail.template}
+                onChange={(e) => setTestEmail(prev => ({ ...prev, template: e.target.value }))}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '8px',
+                  fontSize: '14px'
+                }}
+              >
+                <option value="">-- Custom Email --</option>
+                {templates.map(t => (
+                  <option key={t.TemplateID || t.id} value={t.TemplateKey || t.templateKey}>
+                    {t.TemplateName || t.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ display: 'block', fontWeight: '500', marginBottom: '8px', fontSize: '14px' }}>
+              Subject *
+            </label>
+            <input
+              type="text"
+              value={testEmail.subject}
+              onChange={(e) => setTestEmail(prev => ({ ...prev, subject: e.target.value }))}
+              placeholder="Test Email Subject"
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                border: '1px solid #d1d5db',
+                borderRadius: '8px',
+                fontSize: '14px'
+              }}
+            />
+          </div>
+          
+          <div style={{ marginBottom: '24px' }}>
+            <label style={{ display: 'block', fontWeight: '500', marginBottom: '8px', fontSize: '14px' }}>
+              Email Body (HTML)
+            </label>
+            <textarea
+              value={testEmail.body}
+              onChange={(e) => setTestEmail(prev => ({ ...prev, body: e.target.value }))}
+              placeholder="<p>Your test email content here...</p>"
+              style={{
+                width: '100%',
+                height: '200px',
+                padding: '12px',
+                border: '1px solid #d1d5db',
+                borderRadius: '8px',
+                fontFamily: 'monospace',
+                fontSize: '13px',
+                resize: 'vertical'
+              }}
+            />
+          </div>
+          
+          <button
+            onClick={sendTestEmail}
+            disabled={sendingTest || !testEmail.to || !testEmail.subject}
+            style={{
+              padding: '12px 24px',
+              background: sendingTest ? '#9ca3af' : '#5e72e4',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: sendingTest ? 'not-allowed' : 'pointer',
+              fontSize: '14px',
+              fontWeight: '500',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+          >
+            <i className={`fas ${sendingTest ? 'fa-spinner fa-spin' : 'fa-paper-plane'}`}></i>
+            {sendingTest ? 'Sending...' : 'Send Test Email'}
+          </button>
+        </div>
+      )}
+
       {/* Email Editor Modal */}
-      {modalType && (
+      {modalType === 'edit' && (
         <EmailEditorModal
           template={selectedTemplate}
           categories={categories}
           onClose={() => { setSelectedTemplate(null); setModalType(null); }}
           onSave={() => { fetchTemplates(); setSelectedTemplate(null); setModalType(null); }}
         />
+      )}
+
+      {/* Email Preview Modal */}
+      {modalType === 'preview' && selectedTemplate && (
+        <div 
+          style={{ 
+            position: 'fixed', 
+            top: 0, 
+            left: 0, 
+            right: 0, 
+            bottom: 0, 
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000
+          }}
+          onClick={() => { setSelectedTemplate(null); setModalType(null); }}
+        >
+          <div 
+            style={{ 
+              background: 'white', 
+              borderRadius: '12px', 
+              width: '700px',
+              maxWidth: '90%',
+              maxHeight: '90vh',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column'
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ 
+              padding: '20px', 
+              borderBottom: '1px solid #e5e7eb',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>Email Preview</h3>
+                <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#6b7280' }}>
+                  To: {selectedTemplate.recipient} • Sent: {selectedTemplate.sentAt}
+                </p>
+              </div>
+              <button
+                onClick={() => { setSelectedTemplate(null); setModalType(null); }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '20px',
+                  cursor: 'pointer',
+                  color: '#6b7280'
+                }}
+              >
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+            <div style={{ padding: '20px', background: '#f9fafb' }}>
+              <div style={{ 
+                background: '#5e72e4', 
+                color: 'white', 
+                padding: '12px 16px',
+                borderRadius: '8px 8px 0 0',
+                fontSize: '14px',
+                fontWeight: '500'
+              }}>
+                Subject: {selectedTemplate.subject}
+              </div>
+              <div style={{ 
+                background: 'white', 
+                border: '1px solid #e5e7eb',
+                borderTop: 'none',
+                borderRadius: '0 0 8px 8px',
+                padding: '20px',
+                maxHeight: '400px',
+                overflow: 'auto'
+              }}>
+                {selectedTemplate.body ? (
+                  <div dangerouslySetInnerHTML={{ __html: selectedTemplate.body }} />
+                ) : (
+                  <p style={{ color: '#9ca3af', fontStyle: 'italic' }}>Email body not available for preview</p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

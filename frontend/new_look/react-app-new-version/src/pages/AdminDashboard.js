@@ -24,6 +24,7 @@ import VendorApprovalsPanel from '../components/Admin/VendorApprovalsPanel';
 import BlogManagementPanel from '../components/Admin/BlogManagementPanel';
 import VendorBadgesPanel from '../components/Admin/VendorBadgesPanel';
 import EmailManagementPanel from '../components/Admin/EmailManagementPanel';
+import LocationMapPanel from '../components/Admin/LocationMapPanel';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -62,7 +63,8 @@ const AdminDashboard = () => {
     { id: 'settings', label: 'Platform Settings', icon: 'fas fa-cog' },
     { id: 'analytics', label: 'Analytics & Reports', icon: 'fas fa-chart-line' },
     { id: 'security', label: 'Security & Logs', icon: 'fas fa-shield-alt' },
-    { id: 'support', label: 'Support Tools', icon: 'fas fa-headset' }
+    { id: 'support', label: 'Support Tools', icon: 'fas fa-headset' },
+    { id: 'locations', label: 'Location Map', icon: 'fas fa-map-marked-alt' }
   ];
 
   useEffect(() => {
@@ -160,6 +162,8 @@ const AdminDashboard = () => {
         return <SecurityLogsPanel />;
       case 'support':
         return <SupportToolsPanel />;
+      case 'locations':
+        return <LocationMapPanel />;
       default:
         return <OverviewPanel stats={stats} loading={loading} onNavigate={handleSectionChange} />;
     }

@@ -8,6 +8,7 @@ const CategoriesPanel = () => {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [modalType, setModalType] = useState(null); // 'add', 'edit', 'services', 'addons'
   const [expandedCategories, setExpandedCategories] = useState(new Set());
+  const [actionLoading, setActionLoading] = useState(null); // Track which action is loading
 
   useEffect(() => {
     fetchCategories();
@@ -35,6 +36,7 @@ const CategoriesPanel = () => {
   };
 
   const handleToggleVisibility = async (categoryId, currentVisibility) => {
+    setActionLoading(`visibility-${categoryId}`);
     try {
       const response = await fetch(`${API_BASE_URL}/admin/categories/${categoryId}/visibility`, {
         method: 'POST',
@@ -46,17 +48,33 @@ const CategoriesPanel = () => {
       });
 
       if (response.ok) {
-        showBanner(`Category ${currentVisibility ? 'hidden' : 'visible'}`, 'success');
-        fetchCategories();
+        showBanner(`Category ${currentVisibility ? 'hidden' : 'now visible'}`, 'success');
+        // Update local state immediately for better UX
+        setCategories(prev => prev.map(cat => 
+          cat.CategoryID === categoryId ? { ...cat, IsVisible: !currentVisibility } : cat
+        ));
+      } else {
+        const error = await response.json();
+        showBanner(error.error || 'Failed to update visibility', 'error');
       }
     } catch (error) {
+      console.error('Error updating visibility:', error);
       showBanner('Failed to update visibility', 'error');
+    } finally {
+      setActionLoading(null);
     }
   };
 
-  const handleDeleteCategory = async (categoryId) => {
-    if (!window.confirm('Are you sure you want to delete this category? This action cannot be undone.')) return;
+  const handleDeleteCategory = async (categoryId, categoryName) => {
+    const category = categories.find(c => c.CategoryID === categoryId);
+    if (category?.VendorCount > 0) {
+      showBanner(`Cannot delete "${categoryName}" - it has ${category.VendorCount} vendors assigned. Please reassign vendors first.`, 'error');
+      return;
+    }
+    
+    if (!window.confirm(`Are you sure you want to delete "${categoryName}"? This action cannot be undone.`)) return;
 
+    setActionLoading(`delete-${categoryId}`);
     try {
       const response = await fetch(`${API_BASE_URL}/admin/categories/${categoryId}`, {
         method: 'DELETE',
@@ -66,11 +84,18 @@ const CategoriesPanel = () => {
       });
 
       if (response.ok) {
-        showBanner('Category deleted', 'success');
-        fetchCategories();
+        showBanner('Category deleted successfully', 'success');
+        // Remove from local state immediately
+        setCategories(prev => prev.filter(cat => cat.CategoryID !== categoryId));
+      } else {
+        const error = await response.json();
+        showBanner(error.error || 'Failed to delete category', 'error');
       }
     } catch (error) {
+      console.error('Error deleting category:', error);
       showBanner('Failed to delete category', 'error');
+    } finally {
+      setActionLoading(null);
     }
   };
 
@@ -181,9 +206,10 @@ const CategoriesPanel = () => {
                       className={`visibility-toggle ${category.IsVisible ? 'visible' : 'hidden'}`}
                       onClick={() => handleToggleVisibility(category.CategoryID, category.IsVisible)}
                       title={category.IsVisible ? 'Click to hide' : 'Click to show'}
-                      style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem' }}
+                      disabled={actionLoading === `visibility-${category.CategoryID}`}
+                      style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', opacity: actionLoading === `visibility-${category.CategoryID}` ? 0.5 : 1 }}
                     >
-                      <i className={`fas fa-eye${category.IsVisible ? '' : '-slash'}`}></i>
+                      <i className={`fas ${actionLoading === `visibility-${category.CategoryID}` ? 'fa-spinner fa-spin' : (category.IsVisible ? 'fa-eye' : 'fa-eye-slash')}`}></i>
                       <span style={{ marginLeft: '0.35rem' }}>{category.IsVisible ? 'Visible' : 'Hidden'}</span>
                     </button>
                   </td>
@@ -207,11 +233,12 @@ const CategoriesPanel = () => {
                       </button>
                       <button
                         className="action-btn delete"
-                        onClick={() => handleDeleteCategory(category.CategoryID)}
+                        onClick={() => handleDeleteCategory(category.CategoryID, category.CategoryName)}
                         title="Delete Category"
-                        style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem' }}
+                        disabled={actionLoading === `delete-${category.CategoryID}`}
+                        style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem', opacity: actionLoading === `delete-${category.CategoryID}` ? 0.5 : 1 }}
                       >
-                        <i className="fas fa-trash-alt"></i>
+                        <i className={`fas ${actionLoading === `delete-${category.CategoryID}` ? 'fa-spinner fa-spin' : 'fa-trash-alt'}`}></i>
                       </button>
                     </div>
                   </td>
@@ -287,11 +314,30 @@ const CategoryModal = ({ category, onClose, onSave }) => {
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
+    if (!formData.CategoryName.trim()) {
+      showBanner('Category name is required', 'error');
+      return;
+    }
+    
     try {
       setSaving(true);
       const url = category
         ? `${API_BASE_URL}/admin/categories/${category.CategoryID}`
         : `${API_BASE_URL}/admin/categories`;
+      
+      // Map frontend field names to backend expected names
+      const payload = {
+        name: formData.CategoryName,
+        CategoryName: formData.CategoryName,
+        description: formData.Description,
+        Description: formData.Description,
+        iconClass: formData.Icon,
+        Icon: formData.Icon,
+        Color: formData.Color,
+        isActive: formData.IsVisible,
+        IsActive: formData.IsVisible,
+        IsVisible: formData.IsVisible
+      };
       
       const response = await fetch(url, {
         method: category ? 'PUT' : 'POST',
@@ -299,14 +345,18 @@ const CategoryModal = ({ category, onClose, onSave }) => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(payload)
       });
 
       if (response.ok) {
         showBanner(`Category ${category ? 'updated' : 'created'} successfully`, 'success');
         onSave();
+      } else {
+        const error = await response.json();
+        showBanner(error.error || `Failed to ${category ? 'update' : 'create'} category`, 'error');
       }
     } catch (error) {
+      console.error('Error saving category:', error);
       showBanner(`Failed to ${category ? 'update' : 'create'} category`, 'error');
     } finally {
       setSaving(false);

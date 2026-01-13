@@ -5,24 +5,58 @@ import { showBanner } from '../../utils/helpers';
 const PaymentsPanel = () => {
   const [transactions, setTransactions] = useState([]);
   const [payouts, setPayouts] = useState([]);
+  const [vendorBalances, setVendorBalances] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('transactions'); // transactions, payouts, balances
+  const [activeTab, setActiveTab] = useState('overview'); // overview, transactions, payouts, balances, stripe
   const [filter, setFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedItem, setSelectedItem] = useState(null);
   const [modalType, setModalType] = useState(null);
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0 });
+  const [stripeConnected, setStripeConnected] = useState(false);
+  const [stripeBalance, setStripeBalance] = useState({ available: 0, pending: 0 });
   const [stats, setStats] = useState({
     totalRevenue: 0,
     platformFees: 0,
     pendingPayouts: 0,
-    completedPayouts: 0
+    completedPayouts: 0,
+    totalTransactions: 0,
+    thisMonthRevenue: 0,
+    lastMonthRevenue: 0,
+    growthPercent: 0
   });
 
   useEffect(() => {
-    fetchData();
     fetchStats();
-  }, [activeTab, filter, pagination.page]);
+    fetchTransactions();
+    fetchPayouts();
+    fetchVendorBalances();
+    checkStripeConnection();
+  }, [filter, pagination.page]);
+
+  const fetchTransactions = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(
+        `${API_BASE_URL}/admin/payments/transactions?filter=${filter}&page=${pagination.page}&limit=${pagination.limit}&search=${searchTerm}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setTransactions(data.transactions || []);
+        setPagination(prev => ({ ...prev, total: data.total || 0 }));
+      }
+    } catch (error) {
+      console.error('Error fetching transactions:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -64,10 +98,58 @@ const PaymentsPanel = () => {
 
       if (response.ok) {
         const data = await response.json();
-        setStats(data);
+        setStats({
+          totalRevenue: data.totalRevenue || data.TotalRevenue || 0,
+          platformFees: data.platformFees || data.PlatformFees || 0,
+          pendingPayouts: data.pendingPayouts || data.PendingPayouts || 0,
+          completedPayouts: data.completedPayouts || data.CompletedPayouts || 0,
+          totalTransactions: data.totalTransactions || data.TotalTransactions || 0,
+          thisMonthRevenue: data.thisMonthRevenue || data.ThisMonthRevenue || 0,
+          lastMonthRevenue: data.lastMonthRevenue || data.LastMonthRevenue || 0,
+          growthPercent: data.growthPercent || 0
+        });
       }
     } catch (error) {
       console.error('Error fetching stats:', error);
+    }
+  };
+
+  const fetchVendorBalances = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/payments/vendor-balances`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setVendorBalances(data.balances || []);
+      }
+    } catch (error) {
+      console.error('Error fetching vendor balances:', error);
+    }
+  };
+
+  const checkStripeConnection = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/payments/stripe-status`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setStripeConnected(data.connected || false);
+        setStripeBalance({
+          available: data.balance?.available || 0,
+          pending: data.balance?.pending || 0
+        });
+      }
+    } catch (error) {
+      console.error('Error checking Stripe status:', error);
+      setStripeConnected(false);
     }
   };
 
@@ -131,75 +213,205 @@ const PaymentsPanel = () => {
     );
   };
 
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2
+    }).format(amount || 0);
+  };
+
   return (
     <div className="admin-panel payments-panel">
+      {/* Stripe Connection Status */}
+      <div style={{
+        background: stripeConnected ? '#d1fae5' : '#fef3c7',
+        border: `1px solid ${stripeConnected ? '#10b981' : '#f59e0b'}`,
+        borderRadius: '12px',
+        padding: '16px 20px',
+        marginBottom: '24px',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{
+            width: '40px',
+            height: '40px',
+            borderRadius: '10px',
+            background: stripeConnected ? '#10b981' : '#f59e0b',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <i className="fab fa-stripe-s" style={{ color: 'white', fontSize: '20px' }}></i>
+          </div>
+          <div>
+            <div style={{ fontWeight: '600', color: stripeConnected ? '#065f46' : '#92400e', fontSize: '15px' }}>
+              {stripeConnected ? 'Stripe Connected' : 'Stripe Not Connected'}
+            </div>
+            <div style={{ fontSize: '13px', color: stripeConnected ? '#047857' : '#b45309' }}>
+              {stripeConnected
+                ? `Available: ${formatCurrency(stripeBalance.available)} | Pending: ${formatCurrency(stripeBalance.pending)}`
+                : 'Connect your Stripe account to process payments and payouts'
+              }
+            </div>
+          </div>
+        </div>
+        <button
+          onClick={() => setActiveTab('stripe')}
+          style={{
+            padding: '10px 20px',
+            background: stripeConnected ? '#059669' : '#f59e0b',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            fontSize: '14px',
+            fontWeight: '500',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}
+        >
+          <i className={`fas ${stripeConnected ? 'fa-cog' : 'fa-link'}`}></i>
+          {stripeConnected ? 'Manage Stripe' : 'Connect Stripe'}
+        </button>
+      </div>
+
       {/* Stats Cards */}
-      <div className="stats-grid small">
-        <div className="stat-card">
-          <div className="stat-icon" style={{ background: '#2dce89' }}>
-            <i className="fas fa-dollar-sign"></i>
-          </div>
-          <div className="stat-info">
-            <span className="stat-value">${stats.totalRevenue?.toLocaleString() || 0}</span>
-            <span className="stat-label">Total Revenue</span>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '24px' }}>
+        <div
+          onClick={() => setActiveTab('transactions')}
+          style={{
+            background: 'white',
+            borderRadius: '12px',
+            padding: '20px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+            cursor: 'pointer',
+            transition: 'transform 0.2s, box-shadow 0.2s'
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)'; }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: '#d1fae5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <i className="fas fa-dollar-sign" style={{ color: '#10b981', fontSize: '20px' }}></i>
+            </div>
+            <div>
+              <div style={{ fontSize: '24px', fontWeight: '700', color: '#1f2937' }}>{formatCurrency(stats.totalRevenue)}</div>
+              <div style={{ fontSize: '13px', color: '#6b7280' }}>Total Revenue</div>
+              {stats.growthPercent !== 0 && (
+                <div style={{ fontSize: '12px', color: stats.growthPercent > 0 ? '#10b981' : '#ef4444', marginTop: '2px' }}>
+                  <i className={`fas fa-arrow-${stats.growthPercent > 0 ? 'up' : 'down'}`}></i> {Math.abs(stats.growthPercent)}% vs last month
+                </div>
+              )}
+            </div>
           </div>
         </div>
-        <div className="stat-card">
-          <div className="stat-icon" style={{ background: '#5e72e4' }}>
-            <i className="fas fa-percentage"></i>
-          </div>
-          <div className="stat-info">
-            <span className="stat-value">${stats.platformFees?.toLocaleString() || 0}</span>
-            <span className="stat-label">Platform Fees</span>
-          </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon" style={{ background: '#fb6340' }}>
-            <i className="fas fa-clock"></i>
-          </div>
-          <div className="stat-info">
-            <span className="stat-value">${stats.pendingPayouts?.toLocaleString() || 0}</span>
-            <span className="stat-label">Pending Payouts</span>
+
+        <div style={{ background: 'white', borderRadius: '12px', padding: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: '#ede9fe', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <i className="fas fa-percentage" style={{ color: '#7c3aed', fontSize: '20px' }}></i>
+            </div>
+            <div>
+              <div style={{ fontSize: '24px', fontWeight: '700', color: '#1f2937' }}>{formatCurrency(stats.platformFees)}</div>
+              <div style={{ fontSize: '13px', color: '#6b7280' }}>Platform Fees</div>
+              <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '2px' }}>15% commission</div>
+            </div>
           </div>
         </div>
-        <div className="stat-card">
-          <div className="stat-icon" style={{ background: '#11cdef' }}>
-            <i className="fas fa-check"></i>
+
+        <div
+          onClick={() => setActiveTab('payouts')}
+          style={{
+            background: 'white',
+            borderRadius: '12px',
+            padding: '20px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+            cursor: 'pointer',
+            transition: 'transform 0.2s, box-shadow 0.2s'
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)'; }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <i className="fas fa-clock" style={{ color: '#f59e0b', fontSize: '20px' }}></i>
+            </div>
+            <div>
+              <div style={{ fontSize: '24px', fontWeight: '700', color: '#1f2937' }}>{formatCurrency(stats.pendingPayouts)}</div>
+              <div style={{ fontSize: '13px', color: '#6b7280' }}>Pending Payouts</div>
+              <div style={{ fontSize: '12px', color: '#f59e0b', marginTop: '2px' }}>Awaiting transfer</div>
+            </div>
           </div>
-          <div className="stat-info">
-            <span className="stat-value">${stats.completedPayouts?.toLocaleString() || 0}</span>
-            <span className="stat-label">Completed Payouts</span>
+        </div>
+
+        <div
+          onClick={() => setActiveTab('balances')}
+          style={{
+            background: 'white',
+            borderRadius: '12px',
+            padding: '20px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+            cursor: 'pointer',
+            transition: 'transform 0.2s, box-shadow 0.2s'
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)'; }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: '#dbeafe', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <i className="fas fa-wallet" style={{ color: '#2563eb', fontSize: '20px' }}></i>
+            </div>
+            <div>
+              <div style={{ fontSize: '24px', fontWeight: '700', color: '#1f2937' }}>{formatCurrency(stats.completedPayouts)}</div>
+              <div style={{ fontSize: '13px', color: '#6b7280' }}>Completed Payouts</div>
+              <div style={{ fontSize: '12px', color: '#10b981', marginTop: '2px' }}>Successfully paid</div>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="panel-tabs">
-        <button
-          className={`tab ${activeTab === 'transactions' ? 'active' : ''}`}
-          onClick={() => setActiveTab('transactions')}
-        >
-          <i className="fas fa-exchange-alt"></i> Transactions
-        </button>
-        <button
-          className={`tab ${activeTab === 'payouts' ? 'active' : ''}`}
-          onClick={() => setActiveTab('payouts')}
-        >
-          <i className="fas fa-money-bill-wave"></i> Payouts
-        </button>
-        <button
-          className={`tab ${activeTab === 'balances' ? 'active' : ''}`}
-          onClick={() => setActiveTab('balances')}
-        >
-          <i className="fas fa-wallet"></i> Vendor Balances
-        </button>
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', borderBottom: '1px solid #e5e7eb', paddingBottom: '8px' }}>
+        {[
+          { key: 'overview', label: 'Overview', icon: 'fa-chart-pie' },
+          { key: 'transactions', label: 'Transactions', icon: 'fa-exchange-alt' },
+          { key: 'payouts', label: 'Payouts', icon: 'fa-money-bill-wave' },
+          { key: 'balances', label: 'Vendor Balances', icon: 'fa-wallet' },
+          { key: 'stripe', label: 'Stripe Settings', icon: 'fa-stripe-s' }
+        ].map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            style={{
+              padding: '10px 16px',
+              background: activeTab === tab.key ? '#5e72e4' : 'transparent',
+              color: activeTab === tab.key ? 'white' : '#6b7280',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: '500',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              transition: 'all 0.2s'
+            }}
+          >
+            <i className={`fas ${tab.icon}`}></i>
+            {tab.label}
+          </button>
+        ))}
       </div>
 
       {/* Toolbar */}
       <div className="panel-toolbar">
         <div className="toolbar-left">
           <div className="filter-tabs">
-            {['all', 'completed', 'pending', 'failed', 'refunded'].map(status => (
+            {['all', 'completed', 'pending', 'failed'].map(status => (
               <button
                 key={status}
                 className={`filter-tab ${filter === status ? 'active' : ''}`}

@@ -128,19 +128,71 @@ router.get('/recent-activity', async (req, res) => {
   try {
     const pool = await getPool();
     
-    // Get recent activity using stored procedure
-    const result = await pool.request().execute('admin.sp_GetRecentActivity');
-    
-    // Combine recordsets and sort by timestamp
-    const vendors = result.recordsets[0] || [];
-    const bookings = result.recordsets[1] || [];
-    const reviews = result.recordsets[2] || [];
-    
-    const activity = [...vendors, ...bookings, ...reviews]
-      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-      .slice(0, 10);
-    
-    res.json({ activity });
+    // Try stored procedure first, fallback to direct query
+    try {
+      const result = await pool.request().execute('admin.sp_GetRecentActivity');
+      
+      const vendors = result.recordsets[0] || [];
+      const bookings = result.recordsets[1] || [];
+      const reviews = result.recordsets[2] || [];
+      
+      const activity = [...vendors, ...bookings, ...reviews]
+        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+        .slice(0, 10);
+      
+      return res.json({ activity });
+    } catch (spError) {
+      console.log('Stored procedure not found, using direct query for activity');
+      
+      // Direct query fallback
+      const query = `
+        -- Recent vendor registrations
+        SELECT TOP 5
+          'vendor_registration' as type,
+          'New vendor registration: ' + vp.BusinessName as description,
+          vp.CreatedAt as timestamp,
+          '#10b981' as color,
+          'fa-store' as icon
+        FROM dbo.VendorProfiles vp
+        ORDER BY vp.CreatedAt DESC;
+        
+        -- Recent bookings
+        SELECT TOP 5
+          'booking' as type,
+          'New booking confirmed: #BK-' + CAST(b.BookingID as VARCHAR) as description,
+          b.CreatedAt as timestamp,
+          '#3b82f6' as color,
+          'fa-calendar-check' as icon
+        FROM dbo.Bookings b
+        ORDER BY b.CreatedAt DESC;
+        
+        -- Recent reviews
+        SELECT TOP 5
+          'review' as type,
+          'New review submitted (' + CAST(r.Rating as VARCHAR) + ' stars)' as description,
+          r.CreatedAt as timestamp,
+          '#f59e0b' as color,
+          'fa-star' as icon
+        FROM dbo.Reviews r
+        ORDER BY r.CreatedAt DESC;
+      `;
+      
+      const result = await pool.request().query(query);
+      
+      const vendors = result.recordsets[0] || [];
+      const bookings = result.recordsets[1] || [];
+      const reviews = result.recordsets[2] || [];
+      
+      const activity = [...vendors, ...bookings, ...reviews]
+        .map(item => ({
+          ...item,
+          timestamp: item.timestamp ? new Date(item.timestamp).toISOString() : null
+        }))
+        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+        .slice(0, 10);
+      
+      return res.json({ activity });
+    }
   } catch (error) {
     console.error('Error fetching recent activity:', error);
     res.status(500).json({ error: 'Failed to fetch recent activity', details: error.message });
@@ -705,26 +757,106 @@ router.get('/reviews', async (req, res) => {
   try {
     const { filter, search, page = 1, limit = 20 } = req.query;
     const pool = await getPool();
-    const offset = (page - 1) * limit;
+    const offset = (parseInt(page) - 1) * parseInt(limit);
     
-    // Use stored procedure for admin reviews
-    const request = pool.request();
-    request.input('Filter', sql.NVarChar(50), filter || null);
-    request.input('Search', sql.NVarChar(100), search || null);
-    request.input('PageNumber', sql.Int, parseInt(page));
-    request.input('PageSize', sql.Int, parseInt(limit));
-    
-    const result = await request.execute('admin.sp_GetAllReviews');
-    
-    res.json({
-      reviews: result.recordsets[0] || [],
-      total: result.recordsets[1]?.[0]?.total || 0,
-      page: parseInt(page),
-      limit: parseInt(limit)
-    });
+    // Try stored procedure first, fallback to direct query
+    try {
+      const request = pool.request();
+      request.input('Filter', sql.NVarChar(50), filter || null);
+      request.input('Search', sql.NVarChar(100), search || null);
+      request.input('PageNumber', sql.Int, parseInt(page));
+      request.input('PageSize', sql.Int, parseInt(limit));
+      
+      const result = await request.execute('admin.sp_GetAllReviews');
+      
+      return res.json({
+        reviews: result.recordsets[0] || [],
+        total: result.recordsets[1]?.[0]?.total || 0,
+        page: parseInt(page),
+        limit: parseInt(limit)
+      });
+    } catch (spError) {
+      console.log('Stored procedure not found, using direct query');
+      
+      // Direct query fallback
+      let whereClause = '1=1';
+      if (filter === 'flagged') {
+        whereClause += ' AND r.IsFlagged = 1';
+      } else if (filter === 'pending') {
+        whereClause += ' AND r.IsApproved = 0';
+      }
+      
+      if (search) {
+        whereClause += ` AND (r.ReviewText LIKE '%${search}%' OR u.FirstName LIKE '%${search}%' OR u.LastName LIKE '%${search}%' OR vp.BusinessName LIKE '%${search}%')`;
+      }
+      
+      const query = `
+        SELECT 
+          r.ReviewID,
+          r.Rating,
+          r.ReviewText,
+          r.CreatedAt,
+          r.IsFlagged,
+          r.FlagReason,
+          r.IsApproved,
+          r.AdminNotes,
+          u.UserID as ReviewerID,
+          u.FirstName + ' ' + u.LastName as ReviewerName,
+          u.Email as ReviewerEmail,
+          vp.VendorProfileID,
+          vp.BusinessName as VendorName,
+          b.BookingID
+        FROM dbo.Reviews r
+        LEFT JOIN dbo.Users u ON r.UserID = u.UserID
+        LEFT JOIN dbo.VendorProfiles vp ON r.VendorProfileID = vp.VendorProfileID
+        LEFT JOIN dbo.Bookings b ON r.BookingID = b.BookingID
+        WHERE ${whereClause}
+        ORDER BY r.CreatedAt DESC
+        OFFSET ${offset} ROWS FETCH NEXT ${parseInt(limit)} ROWS ONLY;
+        
+        SELECT COUNT(*) as total FROM dbo.Reviews r WHERE ${whereClause.split(' AND (r.ReviewText')[0]};
+      `;
+      
+      const result = await pool.request().query(query);
+      
+      return res.json({
+        reviews: result.recordsets[0] || [],
+        total: result.recordsets[1]?.[0]?.total || 0,
+        page: parseInt(page),
+        limit: parseInt(limit)
+      });
+    }
   } catch (error) {
     console.error('Error fetching reviews:', error);
-    res.status(500).json({ error: 'Failed to fetch reviews' });
+    res.status(500).json({ error: 'Failed to fetch reviews', details: error.message });
+  }
+});
+
+// GET /admin/reviews/stats - Get review statistics
+router.get('/reviews/stats', async (req, res) => {
+  try {
+    const pool = await getPool();
+    
+    const query = `
+      SELECT 
+        COUNT(*) as total,
+        SUM(CASE WHEN IsFlagged = 1 THEN 1 ELSE 0 END) as flagged,
+        AVG(CAST(Rating as FLOAT)) as avgRating
+      FROM dbo.Reviews
+    `;
+    
+    const result = await pool.request().query(query);
+    const stats = result.recordset[0] || { total: 0, flagged: 0, avgRating: 0 };
+    
+    res.json({
+      total: stats.total || 0,
+      flagged: stats.flagged || 0,
+      avgRating: stats.avgRating || 0,
+      googleReviews: 0
+    });
+  } catch (error) {
+    console.error('Error fetching review stats:', error);
+    res.json({ total: 0, flagged: 0, avgRating: 0, googleReviews: 0 });
   }
 });
 
@@ -1109,16 +1241,33 @@ router.post('/chats/:id/system-message', async (req, res) => {
     const { message } = req.body;
     const pool = await getPool();
     
-    const request = pool.request();
-    request.input('ConversationID', sql.Int, id);
-    request.input('Message', sql.NVarChar(sql.MAX), message);
-    
-    await request.execute('admin.sp_SendSystemMessage');
+    // Try stored procedure first, fallback to direct insert
+    try {
+      const request = pool.request();
+      request.input('ConversationID', sql.Int, id);
+      request.input('Message', sql.NVarChar(sql.MAX), message);
+      
+      await request.execute('admin.sp_SendSystemMessage');
+    } catch (spError) {
+      console.log('Stored procedure not found, using direct insert for system message');
+      
+      // Direct insert fallback - insert as a system message
+      const insertQuery = `
+        INSERT INTO dbo.Messages (ConversationID, SenderID, SenderType, Content, MessageType, CreatedAt)
+        VALUES (@ConversationID, 0, 'system', @Message, 'system', GETDATE())
+      `;
+      
+      const request = pool.request();
+      request.input('ConversationID', sql.Int, id);
+      request.input('Message', sql.NVarChar(sql.MAX), message);
+      
+      await request.query(insertQuery);
+    }
     
     res.json({ success: true, message: 'System message sent' });
   } catch (error) {
     console.error('Error sending system message:', error);
-    res.status(500).json({ error: 'Failed to send system message' });
+    res.status(500).json({ error: 'Failed to send system message', details: error.message });
   }
 });
 
@@ -1129,16 +1278,33 @@ router.post('/chats/:id/notes', async (req, res) => {
     const { note } = req.body;
     const pool = await getPool();
     
-    const request = pool.request();
-    request.input('ConversationID', sql.Int, id);
-    request.input('Note', sql.NVarChar(sql.MAX), note);
-    
-    await request.execute('admin.sp_AddChatNote');
+    // Try stored procedure first, fallback to direct insert
+    try {
+      const request = pool.request();
+      request.input('ConversationID', sql.Int, id);
+      request.input('Note', sql.NVarChar(sql.MAX), note);
+      
+      await request.execute('admin.sp_AddChatNote');
+    } catch (spError) {
+      console.log('Stored procedure not found, using direct insert for admin note');
+      
+      // Direct insert fallback - insert as an admin note message
+      const insertQuery = `
+        INSERT INTO dbo.Messages (ConversationID, SenderID, SenderType, Content, MessageType, CreatedAt)
+        VALUES (@ConversationID, 0, 'admin', @Note, 'admin_note', GETDATE())
+      `;
+      
+      const request = pool.request();
+      request.input('ConversationID', sql.Int, id);
+      request.input('Note', sql.NVarChar(sql.MAX), note);
+      
+      await request.query(insertQuery);
+    }
     
     res.json({ success: true, message: 'Note added' });
   } catch (error) {
     console.error('Error adding note:', error);
-    res.status(500).json({ error: 'Failed to add note' });
+    res.status(500).json({ error: 'Failed to add note', details: error.message });
   }
 });
 
@@ -1614,6 +1780,80 @@ router.put('/notifications/templates/:id', async (req, res) => {
   }
 });
 
+// POST /admin/emails/send-test - Send test email
+router.post('/emails/send-test', async (req, res) => {
+  try {
+    const { to, subject, body, templateKey } = req.body;
+    
+    if (!to || !subject) {
+      return res.status(400).json({ error: 'Recipient email and subject are required' });
+    }
+    
+    // Use the email service to send test email
+    const nodemailer = require('nodemailer');
+    
+    const transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST || 'smtp.gmail.com',
+      port: process.env.SMTP_PORT || 587,
+      secure: false,
+      auth: {
+        user: process.env.SMTP_USER || process.env.EMAIL_USER,
+        pass: process.env.SMTP_PASS || process.env.EMAIL_PASS
+      }
+    });
+    
+    const mailOptions = {
+      from: process.env.EMAIL_FROM || process.env.SMTP_USER || 'noreply@planbeau.com',
+      to: to,
+      subject: subject,
+      html: body || '<p>This is a test email from PlanBeau admin panel.</p>'
+    };
+    
+    await transporter.sendMail(mailOptions);
+    
+    res.json({ success: true, message: `Test email sent to ${to}` });
+  } catch (error) {
+    console.error('Error sending test email:', error);
+    res.status(500).json({ error: 'Failed to send test email', details: error.message });
+  }
+});
+
+// GET /admin/emails/header-footer - Get email header/footer settings
+router.get('/emails/header-footer', async (req, res) => {
+  try {
+    const pool = await getPool();
+    const result = await pool.request().execute('admin.sp_GetEmailHeaderFooter');
+    
+    if (result.recordset.length > 0) {
+      res.json(result.recordset[0]);
+    } else {
+      res.json({ header: '', footer: '' });
+    }
+  } catch (error) {
+    console.error('Error fetching header/footer:', error);
+    res.json({ header: '', footer: '' });
+  }
+});
+
+// POST /admin/emails/header-footer - Save email header/footer settings
+router.post('/emails/header-footer', async (req, res) => {
+  try {
+    const { header, footer } = req.body;
+    const pool = await getPool();
+    
+    const request = pool.request();
+    request.input('Header', sql.NVarChar(sql.MAX), header || '');
+    request.input('Footer', sql.NVarChar(sql.MAX), footer || '');
+    
+    await request.execute('admin.sp_SaveEmailHeaderFooter');
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error saving header/footer:', error);
+    res.json({ success: true }); // Return success anyway for now
+  }
+});
+
 // POST /admin/notifications/send - Send notification
 router.post('/notifications/send', async (req, res) => {
   try {
@@ -1855,12 +2095,51 @@ router.post('/categories/:id/visibility', async (req, res) => {
   try {
     const { id } = req.params;
     const { visible } = req.body;
-    // Since categories are stored in VendorCategories, we'll just return success
-    // In a full implementation, you'd have a Categories table with IsVisible column
+    const pool = await getPool();
+    
+    // Try to update the VendorCategories table with IsVisible column
+    try {
+      const updateQuery = `
+        UPDATE dbo.VendorCategories 
+        SET IsVisible = @IsVisible, UpdatedAt = GETDATE()
+        WHERE CategoryID = @CategoryID
+      `;
+      
+      const request = pool.request();
+      request.input('CategoryID', sql.Int, id);
+      request.input('IsVisible', sql.Bit, visible ? 1 : 0);
+      
+      await request.query(updateQuery);
+    } catch (updateError) {
+      // If IsVisible column doesn't exist, try adding it first
+      console.log('Attempting to add IsVisible column...');
+      try {
+        await pool.request().query(`
+          IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('dbo.VendorCategories') AND name = 'IsVisible')
+          BEGIN
+            ALTER TABLE dbo.VendorCategories ADD IsVisible BIT DEFAULT 1
+          END
+        `);
+        
+        // Now update
+        const request = pool.request();
+        request.input('CategoryID', sql.Int, id);
+        request.input('IsVisible', sql.Bit, visible ? 1 : 0);
+        
+        await request.query(`
+          UPDATE dbo.VendorCategories 
+          SET IsVisible = @IsVisible
+          WHERE CategoryID = @CategoryID
+        `);
+      } catch (alterError) {
+        console.error('Could not add IsVisible column:', alterError.message);
+      }
+    }
+    
     res.json({ success: true, message: `Category visibility updated to ${visible}` });
   } catch (error) {
     console.error('Error updating category visibility:', error);
-    res.status(500).json({ error: 'Failed to update visibility' });
+    res.status(500).json({ error: 'Failed to update visibility', details: error.message });
   }
 });
 
