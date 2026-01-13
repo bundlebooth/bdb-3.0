@@ -8,6 +8,7 @@ const {
   getProvinceFromLocation, 
   getTaxInfoForProvince 
 } = require('../utils/taxCalculations');
+const { notifyVendorOfPayment } = require('../services/emailService');
 
 // Helper function to check if Stripe is properly configured
 function isStripeConfigured() {
@@ -1947,6 +1948,10 @@ const webhook = async (req, res) => {
                 .input('VendorProfileID', sql.Int, vendorProfileId)
                 .input('StripePaymentIntentID', sql.NVarChar(100), paymentIntent.id)
                 .execute('payments.sp_ConfirmBookingRequest');
+
+              // Send payment received email to vendor (using centralized notification service)
+              const paidAmount = paymentIntent.amount_received || paymentIntent.amount || 0;
+              notifyVendorOfPayment(bookingId, paidAmount, paymentIntent.currency || 'cad');
             }
           }
         } catch (piErr) {

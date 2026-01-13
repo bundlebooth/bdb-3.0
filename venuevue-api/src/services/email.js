@@ -83,7 +83,7 @@ async function getEmailTemplate(templateKey) {
     const pool = await poolPromise;
     const result = await pool.request()
       .input('TemplateKey', sql.NVarChar(50), templateKey)
-      .execute('sp_GetEmailTemplate');
+      .execute('admin.sp_GetEmailTemplate');
     
     if (result.recordset.length === 0) {
       throw new Error(`Email template not found: ${templateKey}`);
@@ -164,7 +164,7 @@ async function logEmail(templateKey, recipientEmail, recipientName, subject, sta
       .input('UserID', sql.Int, userId)
       .input('BookingID', sql.Int, bookingId)
       .input('Metadata', sql.NVarChar(sql.MAX), metadata ? JSON.stringify(metadata) : null)
-      .execute('sp_LogEmail');
+      .execute('admin.sp_LogEmail');
   } catch (error) {
     console.error('Error logging email:', error);
   }

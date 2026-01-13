@@ -33,7 +33,9 @@ BEGIN
         ErrorMessage as errorMessage,
         SentAt as sentAt,
         UserID as userId,
-        BookingID as bookingId
+        BookingID as bookingId,
+        Metadata as metadata,
+        JSON_VALUE(Metadata, '$.htmlBody') as htmlBody
     FROM EmailLogs
     WHERE (@TemplateKey IS NULL OR TemplateKey = @TemplateKey)
         AND (@Status IS NULL OR Status = @Status)

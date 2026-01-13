@@ -4,6 +4,11 @@ const { poolPromise, sql } = require('../config/db');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const invoicesRouter = require('./invoices');
 const { decodeBookingId, decodeVendorId, isPublicId } = require('../utils/hashIds');
+const { 
+  notifyVendorOfNewRequest, 
+  notifyClientOfApproval, 
+  notifyClientOfRejection 
+} = require('../services/emailService');
 
 // Helper to resolve booking ID (handles both public ID and numeric ID)
 function resolveBookingId(idParam) {
@@ -844,6 +849,15 @@ router.post('/requests/send', async (req, res) => {
       notificationRequest.input('RelatedType', sql.NVarChar(50), 'request');
 
       await notificationRequest.execute('bookings.sp_InsertNotification');
+
+      // Send email notification to vendor (using centralized notification service)
+      const serviceName = allItems.length > 0 ? allItems.map(s => s.name).join(', ') : 'Service';
+      notifyVendorOfNewRequest(newRequest.RequestID, userId, vendorProfileId, {
+        eventDate,
+        location: eventLocation,
+        budget: finalBudget,
+        serviceName
+      });
     }
 
     res.json({
@@ -945,6 +959,9 @@ router.post('/requests/:requestId/approve', async (req, res) => {
         .execute('bookings.sp_InsertMessage');
     }
 
+    // Send email notification to client (using centralized notification service)
+    notifyClientOfApproval(requestId);
+
     res.json({
       success: true,
       message: 'Request approved successfully',
@@ -1007,6 +1024,9 @@ router.post('/requests/:requestId/decline', async (req, res) => {
     notificationRequest.input('RelatedType', sql.NVarChar(50), 'request');
 
     await notificationRequest.execute('bookings.sp_InsertNotification');
+
+    // Send email notification to client (using centralized notification service)
+    notifyClientOfRejection(requestId);
 
     res.json({
       success: true,

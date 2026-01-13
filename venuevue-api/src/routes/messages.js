@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { poolPromise, sql } = require('../config/db');
+const { notifyOfNewMessage } = require('../services/emailService');
 
 // Handle Socket.IO events
 const handleSocketIO = (io) => {
@@ -323,19 +324,28 @@ router.post('/', async (req, res) => {
       if (conversationResult.recordset.length > 0) {
         const conversation = conversationResult.recordset[0];
         let recipientId;
+        let isVendorSending = false;
+        
         if (senderId === conversation.UserID) {
+          // Client is sending to vendor
           const vendorReq = pool.request();
           vendorReq.input('VendorProfileID', sql.Int, conversation.VendorProfileID);
           const vendorRes = await vendorReq.execute('messages.sp_GetVendorUserID');
           recipientId = vendorRes.recordset[0].UserID;
+          isVendorSending = false;
         } else {
+          // Vendor is sending to client
           recipientId = conversation.UserID;
+          isVendorSending = true;
         }
         
         // Emit to recipient
         io.to(`user_${recipientId}`).emit('new-message', result.recordset[0]);
         // Emit to sender
         io.to(`user_${senderId}`).emit('new-message', result.recordset[0]);
+
+        // Send email notification (using centralized notification service)
+        notifyOfNewMessage(conversationId, senderId, content);
       }
     }
 
