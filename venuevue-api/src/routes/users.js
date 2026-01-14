@@ -593,14 +593,18 @@ router.get('/:id/dashboard', async (req, res) => {
   }
 });
 
-// Get all bookings for a user
+// Get all bookings for a user (unified view with consistent status)
 router.get('/:id/bookings/all', async (req, res) => {
   try {
     const { id } = req.params;
+    const { status } = req.query; // Optional filter: 'pending', 'upcoming', 'completed', 'cancelled', 'declined'
     const pool = await poolPromise;
     const request = pool.request();
     request.input('UserID', sql.Int, parseInt(id));
-    const result = await request.execute('users.sp_GetUserBookingsAll');
+    request.input('StatusFilter', sql.NVarChar(50), status || null);
+    
+    // Use unified stored procedure for consistent status handling
+    const result = await request.execute('users.sp_GetUnifiedBookings');
     
     // Fix date serialization - convert Date objects to ISO strings
     const bookings = result.recordset.map(booking => ({
@@ -608,7 +612,9 @@ router.get('/:id/bookings/all', async (req, res) => {
       EventDate: booking.EventDate instanceof Date ? booking.EventDate.toISOString() : booking.EventDate,
       EndDate: booking.EndDate instanceof Date ? booking.EndDate.toISOString() : booking.EndDate,
       CreatedAt: booking.CreatedAt instanceof Date ? booking.CreatedAt.toISOString() : booking.CreatedAt,
-      UpdatedAt: booking.UpdatedAt instanceof Date ? booking.UpdatedAt.toISOString() : booking.UpdatedAt
+      UpdatedAt: booking.UpdatedAt instanceof Date ? booking.UpdatedAt.toISOString() : booking.UpdatedAt,
+      ExpiresAt: booking.ExpiresAt instanceof Date ? booking.ExpiresAt.toISOString() : booking.ExpiresAt,
+      CancellationDate: booking.CancellationDate instanceof Date ? booking.CancellationDate.toISOString() : booking.CancellationDate
     }));
     
     res.json(bookings);
