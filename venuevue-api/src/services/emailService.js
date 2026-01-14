@@ -11,7 +11,14 @@ const {
   sendBookingRejectedToClient,
   sendMessageFromVendor,
   sendMessageFromClient,
-  sendPaymentReceivedToVendor
+  sendPaymentReceivedToVendor,
+  sendPaymentConfirmationToClient,
+  sendBookingCancelledToClient,
+  sendBookingCancelledToVendor,
+  sendVendorApplicationToAdmin,
+  sendVendorWelcome,
+  sendBookingConfirmedToClient,
+  sendBookingConfirmedToVendor
 } = require('./email');
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
@@ -225,10 +232,218 @@ async function notifyVendorOfPayment(bookingId, amountCents, currency = 'CAD') {
   }
 }
 
+/**
+ * Send email notification when a booking is cancelled
+ * @param {number} bookingId - The booking ID
+ * @param {string} cancelledBy - Who cancelled: 'client' or 'vendor'
+ * @param {string} reason - Cancellation reason
+ * @param {number} refundAmount - Refund amount (if any)
+ */
+async function notifyOfBookingCancellation(bookingId, cancelledBy, reason = null, refundAmount = 0) {
+  try {
+    const pool = await poolPromise;
+    
+    // Get booking details via stored procedure
+    const result = await pool.request()
+      .input('BookingID', sql.Int, bookingId)
+      .execute('email.sp_GetBookingForCancellation');
+    
+    if (result.recordset.length === 0) return;
+    const data = result.recordset[0];
+    
+    const eventDate = data.EventDate 
+      ? new Date(data.EventDate).toLocaleDateString('en-US', { 
+          weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
+        })
+      : 'your event';
+    
+    const refundAmountFormatted = refundAmount > 0 ? `$${Number(refundAmount).toFixed(2)}` : '$0.00';
+    
+    if (cancelledBy === 'vendor') {
+      // Notify client that vendor cancelled
+      await sendBookingCancelledToClient(
+        data.ClientEmail,
+        data.ClientName,
+        data.VendorName,
+        data.ServiceName || 'Service',
+        eventDate,
+        reason,
+        refundAmountFormatted,
+        `${FRONTEND_URL}/search`,
+        data.ClientUserID,
+        bookingId
+      );
+    } else if (cancelledBy === 'client') {
+      // Notify vendor that client cancelled
+      await sendBookingCancelledToVendor(
+        data.VendorEmail,
+        data.VendorName,
+        data.ClientName,
+        data.ServiceName || 'Service',
+        eventDate,
+        reason,
+        `${FRONTEND_URL}/dashboard`,
+        data.VendorUserID,
+        bookingId
+      );
+    }
+  } catch (error) {
+    console.error('[NotificationService] Failed to notify of booking cancellation:', error.message);
+  }
+}
+
+/**
+ * Send email notification when payment is completed (to client)
+ * @param {number} bookingId - The booking ID
+ * @param {number} amountCents - The amount in cents
+ * @param {string} currency - The currency code
+ */
+async function notifyClientOfPayment(bookingId, amountCents, currency = 'CAD') {
+  try {
+    const pool = await poolPromise;
+    
+    // Get booking details via stored procedure
+    const result = await pool.request()
+      .input('BookingID', sql.Int, bookingId)
+      .execute('email.sp_GetBookingForPayment');
+    
+    if (result.recordset.length === 0) return;
+    const data = result.recordset[0];
+    
+    const amount = amountCents ? `$${(amountCents / 100).toFixed(2)} ${currency.toUpperCase()}` : `$${data.TotalAmount}`;
+    const eventDate = data.EventDate 
+      ? new Date(data.EventDate).toLocaleDateString('en-US', { 
+          weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
+        })
+      : 'Upcoming event';
+    
+    await sendPaymentConfirmationToClient(
+      data.ClientEmail,
+      data.ClientName,
+      data.VendorName,
+      amount,
+      data.ServiceName || 'Service',
+      eventDate,
+      `${FRONTEND_URL}/dashboard`,
+      data.ClientUserID,
+      bookingId
+    );
+  } catch (error) {
+    console.error('[NotificationService] Failed to notify client of payment:', error.message);
+  }
+}
+
+/**
+ * Send email notification to admin when a vendor application is submitted
+ * @param {number} userId - The applicant's user ID
+ * @param {number} vendorProfileId - The new vendor profile ID
+ * @param {object} businessDetails - Business details (name, email, phone, category)
+ */
+async function notifyAdminOfVendorApplication(userId, vendorProfileId, businessDetails = {}) {
+  try {
+    const pool = await poolPromise;
+    
+    // Get applicant details
+    const result = await pool.request()
+      .input('UserID', sql.Int, userId)
+      .execute('email.sp_GetUserForVendorApplication');
+    
+    let applicantName = 'New Applicant';
+    let applicantEmail = '';
+    
+    if (result.recordset.length > 0) {
+      applicantName = result.recordset[0].Name || 'New Applicant';
+      applicantEmail = result.recordset[0].Email || '';
+    }
+    
+    // Get admin email from environment or use default
+    const adminEmail = process.env.ADMIN_EMAIL || process.env.EMAIL_ADMIN || 'admin@planbeau.com';
+    
+    await sendVendorApplicationToAdmin(
+      adminEmail,
+      applicantName,
+      businessDetails.businessName || 'New Business',
+      businessDetails.businessEmail || applicantEmail,
+      businessDetails.businessPhone || 'Not provided',
+      businessDetails.category || 'Not specified',
+      `${FRONTEND_URL}/admin/vendors`
+    );
+    
+    // Also send welcome email to the new vendor
+    if (applicantEmail) {
+      await sendVendorWelcome(
+        applicantEmail,
+        applicantName,
+        businessDetails.businessName || 'Your Business',
+        `${FRONTEND_URL}/become-a-vendor`,
+        userId
+      );
+    }
+  } catch (error) {
+    console.error('[NotificationService] Failed to notify admin of vendor application:', error.message);
+  }
+}
+
+/**
+ * Send email notifications when booking is confirmed (after payment)
+ * @param {number} bookingId - The booking ID
+ */
+async function notifyOfBookingConfirmation(bookingId) {
+  try {
+    const pool = await poolPromise;
+    
+    // Get booking details
+    const result = await pool.request()
+      .input('BookingID', sql.Int, bookingId)
+      .execute('email.sp_GetBookingForPayment');
+    
+    if (result.recordset.length === 0) return;
+    const data = result.recordset[0];
+    
+    const eventDate = data.EventDate 
+      ? new Date(data.EventDate).toLocaleDateString('en-US', { 
+          weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
+        })
+      : 'Upcoming event';
+    
+    // Notify client
+    await sendBookingConfirmedToClient(
+      data.ClientEmail,
+      data.ClientName,
+      data.VendorName,
+      data.ServiceName || 'Service',
+      eventDate,
+      data.EventLocation || 'TBD',
+      `${FRONTEND_URL}/dashboard`,
+      data.ClientUserID,
+      bookingId
+    );
+    
+    // Notify vendor
+    await sendBookingConfirmedToVendor(
+      data.VendorEmail,
+      data.VendorName,
+      data.ClientName,
+      data.ServiceName || 'Service',
+      eventDate,
+      data.EventLocation || 'TBD',
+      `${FRONTEND_URL}/dashboard`,
+      data.VendorUserID,
+      bookingId
+    );
+  } catch (error) {
+    console.error('[NotificationService] Failed to notify of booking confirmation:', error.message);
+  }
+}
+
 module.exports = {
   notifyVendorOfNewRequest,
   notifyClientOfApproval,
   notifyClientOfRejection,
   notifyOfNewMessage,
-  notifyVendorOfPayment
+  notifyVendorOfPayment,
+  notifyClientOfPayment,
+  notifyOfBookingCancellation,
+  notifyAdminOfVendorApplication,
+  notifyOfBookingConfirmation
 };

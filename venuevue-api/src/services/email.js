@@ -404,6 +404,55 @@ async function sendPaymentReceivedToVendor(vendorEmail, vendorName, clientName, 
   }, vendorUserId, bookingId, null, 'payments');
 }
 
+// Send payment confirmation to client
+async function sendPaymentConfirmationToClient(clientEmail, clientName, vendorName, amount, serviceName, eventDate, dashboardUrl, userId = null, bookingId = null) {
+  return sendTemplatedEmail('payment_confirmation_client', clientEmail, clientName, {
+    clientName, vendorName, amount, serviceName, eventDate, dashboardUrl
+  }, userId, bookingId, null, 'payments');
+}
+
+// Send booking cancellation notification to client (when vendor cancels)
+async function sendBookingCancelledToClient(clientEmail, clientName, vendorName, serviceName, eventDate, reason, refundAmount, searchUrl, userId = null, bookingId = null) {
+  return sendTemplatedEmail('booking_cancelled_client', clientEmail, clientName, {
+    clientName, vendorName, serviceName, eventDate, reason: reason || 'No reason provided', refundAmount: refundAmount || '$0.00', searchUrl
+  }, userId, bookingId, null, 'bookingUpdates');
+}
+
+// Send booking cancellation notification to vendor (when client cancels)
+async function sendBookingCancelledToVendor(vendorEmail, vendorName, clientName, serviceName, eventDate, reason, dashboardUrl, vendorUserId = null, bookingId = null) {
+  return sendTemplatedEmail('booking_cancelled_vendor', vendorEmail, vendorName, {
+    vendorName, clientName, serviceName, eventDate, reason: reason || 'No reason provided', dashboardUrl
+  }, vendorUserId, bookingId, null, 'bookingUpdates');
+}
+
+// Send vendor application notification to admin
+async function sendVendorApplicationToAdmin(adminEmail, applicantName, businessName, businessEmail, businessPhone, category, dashboardUrl) {
+  return sendTemplatedEmail('vendor_application_admin', adminEmail, 'Admin', {
+    applicantName, businessName, businessEmail, businessPhone, category, dashboardUrl
+  }, null, null, null, 'admin');
+}
+
+// Send welcome email to new vendor after application
+async function sendVendorWelcome(vendorEmail, vendorName, businessName, dashboardUrl, userId = null) {
+  return sendTemplatedEmail('vendor_welcome', vendorEmail, vendorName, {
+    vendorName, businessName, dashboardUrl
+  }, userId, null, null, 'welcome');
+}
+
+// Send booking confirmed notification to client (after payment)
+async function sendBookingConfirmedToClient(clientEmail, clientName, vendorName, serviceName, eventDate, eventLocation, dashboardUrl, userId = null, bookingId = null) {
+  return sendTemplatedEmail('booking_confirmed_client', clientEmail, clientName, {
+    clientName, vendorName, serviceName, eventDate, eventLocation: eventLocation || 'TBD', dashboardUrl
+  }, userId, bookingId, null, 'bookingUpdates');
+}
+
+// Send booking confirmed notification to vendor (after payment)
+async function sendBookingConfirmedToVendor(vendorEmail, vendorName, clientName, serviceName, eventDate, eventLocation, dashboardUrl, vendorUserId = null, bookingId = null) {
+  return sendTemplatedEmail('booking_confirmed_vendor', vendorEmail, vendorName, {
+    vendorName, clientName, serviceName, eventDate, eventLocation: eventLocation || 'TBD', dashboardUrl
+  }, vendorUserId, bookingId, null, 'bookingUpdates');
+}
+
 module.exports = {
   sendEmail,
   sendTemplatedEmail,
@@ -413,5 +462,12 @@ module.exports = {
   sendBookingRejectedToClient,
   sendMessageFromVendor,
   sendMessageFromClient,
-  sendPaymentReceivedToVendor
+  sendPaymentReceivedToVendor,
+  sendPaymentConfirmationToClient,
+  sendBookingCancelledToClient,
+  sendBookingCancelledToVendor,
+  sendVendorApplicationToAdmin,
+  sendVendorWelcome,
+  sendBookingConfirmedToClient,
+  sendBookingConfirmedToVendor
 };

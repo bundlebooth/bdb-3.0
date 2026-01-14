@@ -7,7 +7,8 @@ const { decodeBookingId, decodeVendorId, isPublicId } = require('../utils/hashId
 const { 
   notifyVendorOfNewRequest, 
   notifyClientOfApproval, 
-  notifyClientOfRejection 
+  notifyClientOfRejection,
+  notifyOfBookingCancellation
 } = require('../services/emailService');
 
 // Helper to resolve booking ID (handles both public ID and numeric ID)
@@ -1586,6 +1587,14 @@ router.post('/:id/cancel', async (req, res) => {
         .input('StripeRefundStatus', sql.NVarChar(50), stripeRefundStatus)
         .input('RefundStatus', sql.NVarChar(50), stripeRefundStatus === 'succeeded' ? 'completed' : 'processing')
         .execute('bookings.sp_UpdateCancellationRefund');
+    }
+
+    // Send email notification about the cancellation
+    try {
+      notifyOfBookingCancellation(bookingId, cancelledBy, reason, refundAmount);
+    } catch (emailErr) {
+      console.error('Failed to send cancellation notification:', emailErr.message);
+      // Don't fail the cancellation if email fails
     }
 
     res.json({

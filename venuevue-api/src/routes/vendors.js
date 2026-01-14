@@ -6,6 +6,7 @@ const cloudinaryService = require('../services/cloudinaryService');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY || '');
 const axios = require('axios');
 const { decodeVendorId, decodeServiceId, decodeImageId, isPublicId } = require('../utils/hashIds');
+const { notifyAdminOfVendorApplication } = require('../services/emailService');
 
 // Helper to resolve vendor ID (handles both public ID and numeric ID)
 function resolveVendorIdParam(idParam) {
@@ -1477,6 +1478,22 @@ router.post('/register', upload.array('images', 5), async (req, res) => {
         }
       }
       
+      // Send email notification to admin about new vendor application
+      try {
+        notifyAdminOfVendorApplication(
+          result.recordset[0].UserID,
+          vendorProfileId,
+          {
+            businessName: businessName,
+            businessEmail: null, // Will be fetched from user record
+            businessPhone: businessPhone || phone,
+            category: Array.isArray(categoriesData) ? categoriesData.join(', ') : category
+          }
+        );
+      } catch (emailErr) {
+        console.error('Failed to send vendor application notification:', emailErr.message);
+        // Don't fail the registration if email fails
+      }
       
       res.status(201).json({
         success: true,

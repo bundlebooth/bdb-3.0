@@ -8,7 +8,11 @@ const {
   getProvinceFromLocation, 
   getTaxInfoForProvince 
 } = require('../utils/taxCalculations');
-const { notifyVendorOfPayment } = require('../services/emailService');
+const { 
+  notifyVendorOfPayment, 
+  notifyClientOfPayment, 
+  notifyOfBookingConfirmation 
+} = require('../services/emailService');
 
 // Helper function to check if Stripe is properly configured
 function isStripeConfigured() {
@@ -1952,6 +1956,12 @@ const webhook = async (req, res) => {
               // Send payment received email to vendor (using centralized notification service)
               const paidAmount = paymentIntent.amount_received || paymentIntent.amount || 0;
               notifyVendorOfPayment(bookingId, paidAmount, paymentIntent.currency || 'cad');
+              
+              // Send payment confirmation email to client
+              notifyClientOfPayment(bookingId, paidAmount, paymentIntent.currency || 'cad');
+              
+              // Send booking confirmation emails to both parties
+              notifyOfBookingConfirmation(bookingId);
             }
           }
         } catch (piErr) {
@@ -1986,6 +1996,12 @@ const webhook = async (req, res) => {
                   .input('VendorProfileID', sql.Int, vendorProfileId)
                   .input('StripePaymentIntentID', sql.NVarChar(100), paymentIntentId)
                   .execute('payments.sp_ConfirmBookingRequest');
+                
+                // Send payment and booking confirmation emails
+                const paidAmount = pi.amount_received || pi.amount || session.amount_total || 0;
+                notifyVendorOfPayment(bookingId, paidAmount, pi.currency || 'cad');
+                notifyClientOfPayment(bookingId, paidAmount, pi.currency || 'cad');
+                notifyOfBookingConfirmation(bookingId);
               }
             }
           }
@@ -2056,6 +2072,12 @@ const webhook = async (req, res) => {
                 .input('VendorProfileID', sql.Int, vendorProfileId)
                 .input('StripePaymentIntentID', sql.NVarChar(100), charge.payment_intent || null)
                 .execute('payments.sp_ConfirmBookingRequest');
+              
+              // Send payment and booking confirmation emails
+              const paidAmount = charge.amount || 0;
+              notifyVendorOfPayment(bookingIdFromCharge, paidAmount, charge.currency || 'cad');
+              notifyClientOfPayment(bookingIdFromCharge, paidAmount, charge.currency || 'cad');
+              notifyOfBookingConfirmation(bookingIdFromCharge);
             }
           }
         } catch (chErr) {
