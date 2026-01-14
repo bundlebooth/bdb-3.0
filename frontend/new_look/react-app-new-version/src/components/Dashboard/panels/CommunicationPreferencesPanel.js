@@ -2,11 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { API_BASE_URL } from '../../../config';
 import { showBanner } from '../../../utils/helpers';
+import pushService from '../../../services/pushNotificationService';
 
 function CommunicationPreferencesPanel({ onBack }) {
   const { currentUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [pushSupported, setPushSupported] = useState(false);
+  const [pushPermission, setPushPermission] = useState('default');
+  const [pushSubscribed, setPushSubscribed] = useState(false);
   const [preferences, setPreferences] = useState({
     email: {
       bookingConfirmations: true,
@@ -14,19 +18,31 @@ function CommunicationPreferencesPanel({ onBack }) {
       bookingUpdates: true,
       messages: true,
       payments: true,
-      promotions: true,
-      newsletter: true
+      promotions: false,
+      newsletter: false
     },
     push: {
-      enabled: true,
+      bookingUpdates: true,
       messages: true,
-      bookingUpdates: true
+      promotions: false
     }
   });
 
   useEffect(() => {
     loadPreferences();
+    checkPushStatus();
   }, [currentUser]);
+
+  const checkPushStatus = async () => {
+    const supported = pushService.isPushSupported();
+    setPushSupported(supported);
+    
+    if (supported) {
+      setPushPermission(pushService.getPermissionStatus());
+      const subscribed = await pushService.isSubscribed();
+      setPushSubscribed(subscribed);
+    }
+  };
 
   const loadPreferences = async () => {
     if (!currentUser?.id) {
@@ -53,6 +69,43 @@ function CommunicationPreferencesPanel({ onBack }) {
       console.error('Error loading preferences:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleEnablePush = async () => {
+    if (!currentUser?.id) return;
+    
+    const token = localStorage.getItem('token');
+    const result = await pushService.subscribeToPush(currentUser.id, token);
+    
+    if (result.success) {
+      setPushSubscribed(true);
+      setPushPermission('granted');
+      showBanner('Push notifications enabled!', 'success');
+    } else if (result.permission === 'denied') {
+      setPushPermission('denied');
+      showBanner('Push notifications blocked. Please enable in browser settings.', 'error');
+    } else {
+      showBanner(result.error || 'Failed to enable push notifications', 'error');
+    }
+  };
+
+  const handleDisablePush = async () => {
+    if (!currentUser?.id) return;
+    
+    const token = localStorage.getItem('token');
+    await pushService.unsubscribeFromPush(currentUser.id, token);
+    setPushSubscribed(false);
+    showBanner('Push notifications disabled', 'success');
+  };
+
+  const handleTestPush = async () => {
+    const success = await pushService.showLocalNotification('Test Notification', {
+      body: 'This is a test push notification from PlanBeau!',
+      tag: 'test'
+    });
+    if (!success) {
+      showBanner('Could not show test notification', 'error');
     }
   };
 
@@ -226,27 +279,82 @@ function CommunicationPreferencesPanel({ onBack }) {
           {/* Push Notifications */}
           <h3 style={{ fontSize: '1rem', fontWeight: 600, margin: '2rem 0 0.5rem', color: 'var(--text)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <i className="fas fa-bell" style={{ color: 'var(--primary)' }}></i>
-            Push Notifications
+            Browser Push Notifications
           </h3>
           
-          <ToggleSwitch
-            checked={preferences.push.enabled}
-            onChange={() => handleToggle('push', 'enabled')}
-            label="Enable Push Notifications"
-            description="Allow push notifications in your browser"
-          />
-          <ToggleSwitch
-            checked={preferences.push.messages}
-            onChange={() => handleToggle('push', 'messages')}
-            label="New Messages"
-            description="Get notified when you receive new messages"
-          />
-          <ToggleSwitch
-            checked={preferences.push.bookingUpdates}
-            onChange={() => handleToggle('push', 'bookingUpdates')}
-            label="Booking Updates"
-            description="Get notified about booking status changes"
-          />
+          {!pushSupported ? (
+            <div style={{ padding: '1rem', background: '#fef3cd', borderRadius: '8px', color: '#856404', marginBottom: '1rem' }}>
+              <i className="fas fa-exclamation-triangle" style={{ marginRight: '0.5rem' }}></i>
+              Push notifications are not supported in this browser.
+            </div>
+          ) : pushPermission === 'denied' ? (
+            <div style={{ padding: '1rem', background: '#f8d7da', borderRadius: '8px', color: '#721c24', marginBottom: '1rem' }}>
+              <i className="fas fa-ban" style={{ marginRight: '0.5rem' }}></i>
+              Push notifications are blocked. Please enable them in your browser settings.
+            </div>
+          ) : !pushSubscribed ? (
+            <div style={{ padding: '1rem', background: '#e7f3ff', borderRadius: '8px', marginBottom: '1rem' }}>
+              <p style={{ color: '#0c5460', marginBottom: '1rem' }}>
+                <i className="fas fa-info-circle" style={{ marginRight: '0.5rem' }}></i>
+                Enable push notifications to receive instant updates about messages and bookings.
+              </p>
+              <button 
+                type="button" 
+                onClick={handleEnablePush}
+                className="btn btn-primary"
+                style={{ marginRight: '0.5rem' }}
+              >
+                <i className="fas fa-bell" style={{ marginRight: '0.5rem' }}></i>
+                Enable Push Notifications
+              </button>
+            </div>
+          ) : (
+            <>
+              <div style={{ padding: '1rem', background: '#d4edda', borderRadius: '8px', color: '#155724', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>
+                  <i className="fas fa-check-circle" style={{ marginRight: '0.5rem' }}></i>
+                  Push notifications are enabled
+                </span>
+                <div>
+                  <button 
+                    type="button" 
+                    onClick={handleTestPush}
+                    className="btn btn-outline"
+                    style={{ marginRight: '0.5rem', padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}
+                  >
+                    Test
+                  </button>
+                  <button 
+                    type="button" 
+                    onClick={handleDisablePush}
+                    className="btn btn-outline"
+                    style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', color: '#dc3545', borderColor: '#dc3545' }}
+                  >
+                    Disable
+                  </button>
+                </div>
+              </div>
+              
+              <ToggleSwitch
+                checked={preferences.push.messages}
+                onChange={() => handleToggle('push', 'messages')}
+                label="New Messages"
+                description="Get notified when you receive new messages"
+              />
+              <ToggleSwitch
+                checked={preferences.push.bookingUpdates}
+                onChange={() => handleToggle('push', 'bookingUpdates')}
+                label="Booking Updates"
+                description="Get notified about booking status changes"
+              />
+              <ToggleSwitch
+                checked={preferences.push.promotions}
+                onChange={() => handleToggle('push', 'promotions')}
+                label="Promotions"
+                description="Get notified about special offers"
+              />
+            </>
+          )}
 
           <div style={{ marginTop: '2rem' }}>
             <button type="submit" className="btn btn-primary" disabled={saving}>

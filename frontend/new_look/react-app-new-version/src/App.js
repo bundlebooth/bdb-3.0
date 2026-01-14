@@ -18,6 +18,8 @@ import ForumPostPage from './pages/ForumPostPage';
 import BrowsePage from './pages/BrowsePage';
 import DashboardPage from './pages/DashboardPage';
 import BlogPage from './components/BlogPage';
+import UnsubscribePage from './pages/UnsubscribePage';
+import EmailPreferencesPage from './pages/EmailPreferencesPage';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { useHeartbeat } from './hooks/useOnlineStatus';
 import './styles/MapControls.css';
@@ -108,6 +110,8 @@ function App() {
           {/* Browse page routes for category/city/discovery filtering */}
           <Route path="/browse/:filter" element={<BrowsePage />} />
           <Route path="/browse/:filter/:subfilter" element={<BrowsePage />} />
+          <Route path="/unsubscribe/:token" element={<UnsubscribePage />} />
+          <Route path="/email-preferences/:token" element={<EmailPreferencesPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>
