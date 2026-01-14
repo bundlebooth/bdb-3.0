@@ -8,17 +8,20 @@ function CommunicationPreferencesPanel({ onBack }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [preferences, setPreferences] = useState({
-    emailBookingConfirmations: true,
-    emailBookingReminders: true,
-    emailMessages: true,
-    emailPromotions: false,
-    emailNewsletter: false,
-    smsBookingConfirmations: false,
-    smsBookingReminders: false,
-    smsMessages: false,
-    pushNotifications: true,
-    pushMessages: true,
-    pushBookingUpdates: true
+    email: {
+      bookingConfirmations: true,
+      bookingReminders: true,
+      bookingUpdates: true,
+      messages: true,
+      payments: true,
+      promotions: true,
+      newsletter: true
+    },
+    push: {
+      enabled: true,
+      messages: true,
+      bookingUpdates: true
+    }
   });
 
   useEffect(() => {
@@ -33,7 +36,7 @@ function CommunicationPreferencesPanel({ onBack }) {
     
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/users/${currentUser.id}/preferences`, {
+      const response = await fetch(`${API_BASE_URL}/users/${currentUser.id}/notification-preferences`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       
@@ -41,8 +44,8 @@ function CommunicationPreferencesPanel({ onBack }) {
         const data = await response.json();
         if (data.preferences) {
           setPreferences(prev => ({
-            ...prev,
-            ...data.preferences
+            email: { ...prev.email, ...data.preferences.email },
+            push: { ...prev.push, ...data.preferences.push }
           }));
         }
       }
@@ -53,10 +56,13 @@ function CommunicationPreferencesPanel({ onBack }) {
     }
   };
 
-  const handleToggle = (key) => {
+  const handleToggle = (category, key) => {
     setPreferences(prev => ({
       ...prev,
-      [key]: !prev[key]
+      [category]: {
+        ...prev[category],
+        [key]: !prev[category][key]
+      }
     }));
   };
 
@@ -66,13 +72,13 @@ function CommunicationPreferencesPanel({ onBack }) {
     try {
       setSaving(true);
       
-      const response = await fetch(`${API_BASE_URL}/users/${currentUser.id}/preferences`, {
+      const response = await fetch(`${API_BASE_URL}/users/${currentUser.id}/notification-preferences`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
-        body: JSON.stringify({ preferences })
+        body: JSON.stringify(preferences)
       });
       
       if (response.ok) {
@@ -163,7 +169,7 @@ function CommunicationPreferencesPanel({ onBack }) {
           Communication Preferences
         </h2>
         <p style={{ color: 'var(--text-light)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
-          Customise the emails, SMS, and push notifications you receive.
+          Customise the email and push notifications you receive.
         </p>
         <hr style={{ border: 'none', borderTop: '1px solid #e5e7eb', margin: '1.5rem 0' }} />
         
@@ -175,59 +181,46 @@ function CommunicationPreferencesPanel({ onBack }) {
           </h3>
           
           <ToggleSwitch
-            checked={preferences.emailBookingConfirmations}
-            onChange={() => handleToggle('emailBookingConfirmations')}
+            checked={preferences.email.bookingConfirmations}
+            onChange={() => handleToggle('email', 'bookingConfirmations')}
             label="Booking Confirmations"
             description="Receive email confirmations when bookings are made or updated"
           />
           <ToggleSwitch
-            checked={preferences.emailBookingReminders}
-            onChange={() => handleToggle('emailBookingReminders')}
+            checked={preferences.email.bookingReminders}
+            onChange={() => handleToggle('email', 'bookingReminders')}
             label="Booking Reminders"
             description="Get reminded about upcoming bookings"
           />
           <ToggleSwitch
-            checked={preferences.emailMessages}
-            onChange={() => handleToggle('emailMessages')}
+            checked={preferences.email.bookingUpdates}
+            onChange={() => handleToggle('email', 'bookingUpdates')}
+            label="Booking Updates"
+            description="Get notified when bookings are accepted, rejected, or cancelled"
+          />
+          <ToggleSwitch
+            checked={preferences.email.messages}
+            onChange={() => handleToggle('email', 'messages')}
             label="New Messages"
             description="Receive email notifications for new messages"
           />
           <ToggleSwitch
-            checked={preferences.emailPromotions}
-            onChange={() => handleToggle('emailPromotions')}
+            checked={preferences.email.payments}
+            onChange={() => handleToggle('email', 'payments')}
+            label="Payment Notifications"
+            description="Receive payment confirmations and invoices"
+          />
+          <ToggleSwitch
+            checked={preferences.email.promotions}
+            onChange={() => handleToggle('email', 'promotions')}
             label="Promotions & Offers"
             description="Receive special offers and promotional content"
           />
           <ToggleSwitch
-            checked={preferences.emailNewsletter}
-            onChange={() => handleToggle('emailNewsletter')}
+            checked={preferences.email.newsletter}
+            onChange={() => handleToggle('email', 'newsletter')}
             label="Newsletter"
             description="Receive our monthly newsletter with tips and updates"
-          />
-
-          {/* SMS Notifications */}
-          <h3 style={{ fontSize: '1rem', fontWeight: 600, margin: '2rem 0 0.5rem', color: 'var(--text)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <i className="fas fa-mobile-alt" style={{ color: 'var(--primary)' }}></i>
-            SMS Notifications
-          </h3>
-          
-          <ToggleSwitch
-            checked={preferences.smsBookingConfirmations}
-            onChange={() => handleToggle('smsBookingConfirmations')}
-            label="Booking Confirmations"
-            description="Receive SMS confirmations for bookings"
-          />
-          <ToggleSwitch
-            checked={preferences.smsBookingReminders}
-            onChange={() => handleToggle('smsBookingReminders')}
-            label="Booking Reminders"
-            description="Get SMS reminders before your bookings"
-          />
-          <ToggleSwitch
-            checked={preferences.smsMessages}
-            onChange={() => handleToggle('smsMessages')}
-            label="New Messages"
-            description="Receive SMS alerts for new messages"
           />
 
           {/* Push Notifications */}
@@ -237,20 +230,20 @@ function CommunicationPreferencesPanel({ onBack }) {
           </h3>
           
           <ToggleSwitch
-            checked={preferences.pushNotifications}
-            onChange={() => handleToggle('pushNotifications')}
+            checked={preferences.push.enabled}
+            onChange={() => handleToggle('push', 'enabled')}
             label="Enable Push Notifications"
             description="Allow push notifications in your browser"
           />
           <ToggleSwitch
-            checked={preferences.pushMessages}
-            onChange={() => handleToggle('pushMessages')}
+            checked={preferences.push.messages}
+            onChange={() => handleToggle('push', 'messages')}
             label="New Messages"
             description="Get notified when you receive new messages"
           />
           <ToggleSwitch
-            checked={preferences.pushBookingUpdates}
-            onChange={() => handleToggle('pushBookingUpdates')}
+            checked={preferences.push.bookingUpdates}
+            onChange={() => handleToggle('push', 'bookingUpdates')}
             label="Booking Updates"
             description="Get notified about booking status changes"
           />

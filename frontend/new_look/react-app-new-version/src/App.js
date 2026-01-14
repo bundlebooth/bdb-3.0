@@ -26,6 +26,14 @@ import './styles/MapControls.css';
 window.initMap = function() {
 };
 
+// Disable right-click context menu on images (like Airbnb, Uber)
+document.addEventListener('contextmenu', function(e) {
+  if (e.target.tagName === 'IMG') {
+    e.preventDefault();
+    return false;
+  }
+});
+
 // Home route wrapper - shows landing page for unauthenticated users, main page for authenticated
 function HomeRoute() {
   const { currentUser, loading } = useAuth();

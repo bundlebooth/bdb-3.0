@@ -813,11 +813,35 @@ router.get('/:id/notification-preferences', async (req, res) => {
     }
 
     const prefs = result.recordset[0].NotificationPreferences;
-    const preferences = prefs ? JSON.parse(prefs) : {
-      email: { bookingUpdates: true, messages: true, payments: true, marketing: false },
-      sms: { bookingReminders: true, messageAlerts: false },
-      push: { bookingUpdates: true, messages: true, payments: false }
+    const defaultPrefs = {
+      email: {
+        bookingConfirmations: true,
+        bookingReminders: true,
+        bookingUpdates: true,
+        messages: true,
+        payments: true,
+        promotions: false,
+        newsletter: false
+      },
+      push: {
+        enabled: true,
+        messages: true,
+        bookingUpdates: true
+      }
     };
+    
+    let preferences = defaultPrefs;
+    if (prefs) {
+      try {
+        const parsed = JSON.parse(prefs);
+        preferences = {
+          email: { ...defaultPrefs.email, ...parsed.email },
+          push: { ...defaultPrefs.push, ...parsed.push }
+        };
+      } catch (e) {
+        console.error('Error parsing preferences:', e);
+      }
+    }
 
     res.json({
       success: true,
@@ -838,7 +862,7 @@ router.get('/:id/notification-preferences', async (req, res) => {
 router.put('/:id/notification-preferences', async (req, res) => {
   try {
     const { id } = req.params;
-    const { email, sms, push } = req.body;
+    const { email, push } = req.body;
 
     if (isNaN(id)) {
       return res.status(400).json({
@@ -847,11 +871,22 @@ router.put('/:id/notification-preferences', async (req, res) => {
       });
     }
 
-    // Build preferences object
+    // Build preferences object with all email categories
     const preferences = {
-      email: email || { bookingUpdates: true, messages: true, payments: true, marketing: false },
-      sms: sms || { bookingReminders: true, messageAlerts: false },
-      push: push || { bookingUpdates: true, messages: true, payments: false }
+      email: {
+        bookingConfirmations: email?.bookingConfirmations ?? true,
+        bookingReminders: email?.bookingReminders ?? true,
+        bookingUpdates: email?.bookingUpdates ?? true,
+        messages: email?.messages ?? true,
+        payments: email?.payments ?? true,
+        promotions: email?.promotions ?? false,
+        newsletter: email?.newsletter ?? false
+      },
+      push: {
+        enabled: push?.enabled ?? true,
+        messages: push?.messages ?? true,
+        bookingUpdates: push?.bookingUpdates ?? true
+      }
     };
 
     const pool = await poolPromise;
@@ -1232,5 +1267,150 @@ function formatLastActive(minutesAgo, isOnline) {
   }
   return 'Active over a month ago';
 }
+
+// Generate unsubscribe token for a user
+function generateUnsubscribeToken(userId, email) {
+  const secret = process.env.JWT_SECRET || 'your-secret-key';
+  const payload = { userId, email, purpose: 'unsubscribe' };
+  return jwt.sign(payload, secret, { expiresIn: '30d' });
+}
+
+// Unsubscribe from emails via token (no auth required)
+router.get('/unsubscribe/:token', async (req, res) => {
+  try {
+    const { token } = req.params;
+    const { category } = req.query; // Optional: specific category to unsubscribe from
+    
+    // Verify token
+    const secret = process.env.JWT_SECRET || 'your-secret-key';
+    let decoded;
+    try {
+      decoded = jwt.verify(token, secret);
+    } catch (err) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid or expired unsubscribe link'
+      });
+    }
+    
+    if (decoded.purpose !== 'unsubscribe') {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid unsubscribe token'
+      });
+    }
+    
+    const { userId } = decoded;
+    
+    // Get current preferences
+    const pool = await poolPromise;
+    const getRequest = pool.request();
+    getRequest.input('UserID', sql.Int, userId);
+    const result = await getRequest.execute('users.sp_GetNotificationPrefs');
+    
+    if (result.recordset.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+    
+    // Parse existing preferences or use defaults
+    const prefs = result.recordset[0].NotificationPreferences;
+    let preferences = {
+      email: {
+        bookingConfirmations: true,
+        bookingReminders: true,
+        bookingUpdates: true,
+        messages: true,
+        payments: true,
+        promotions: false,
+        newsletter: false
+      },
+      push: { enabled: true, messages: true, bookingUpdates: true }
+    };
+    
+    if (prefs) {
+      try {
+        const parsed = JSON.parse(prefs);
+        preferences = {
+          email: { ...preferences.email, ...parsed.email },
+          push: { ...preferences.push, ...parsed.push }
+        };
+      } catch (e) {}
+    }
+    
+    // Update preferences based on category or unsubscribe from all marketing
+    if (category && preferences.email.hasOwnProperty(category)) {
+      preferences.email[category] = false;
+    } else {
+      // Default: unsubscribe from promotions and newsletter
+      preferences.email.promotions = false;
+      preferences.email.newsletter = false;
+    }
+    
+    // Save updated preferences
+    const updateRequest = pool.request();
+    updateRequest.input('UserID', sql.Int, userId);
+    updateRequest.input('Preferences', sql.NVarChar(sql.MAX), JSON.stringify(preferences));
+    await updateRequest.execute('users.sp_UpdateNotificationPrefs');
+    
+    // Return HTML page for browser display
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    res.send(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Unsubscribed - PlanBeau</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style>
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; margin: 0; padding: 40px 20px; }
+          .container { max-width: 500px; margin: 0 auto; background: white; border-radius: 12px; padding: 40px; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+          h1 { color: #333; margin-bottom: 16px; }
+          p { color: #666; line-height: 1.6; }
+          .icon { font-size: 48px; margin-bottom: 20px; }
+          .btn { display: inline-block; background: #5e72e4; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; margin-top: 20px; }
+          .btn:hover { background: #4c5fd7; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="icon">✅</div>
+          <h1>Successfully Unsubscribed</h1>
+          <p>You have been unsubscribed from ${category || 'marketing'} emails.</p>
+          <p>You can manage your email preferences anytime from your account settings.</p>
+          <a href="${frontendUrl}/dashboard/settings" class="btn">Manage Preferences</a>
+        </div>
+      </body>
+      </html>
+    `);
+    
+  } catch (err) {
+    console.error('Unsubscribe error:', err);
+    res.status(500).send(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Error - PlanBeau</title>
+        <style>
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; margin: 0; padding: 40px 20px; }
+          .container { max-width: 500px; margin: 0 auto; background: white; border-radius: 12px; padding: 40px; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+          h1 { color: #e74c3c; }
+          p { color: #666; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <h1>Something went wrong</h1>
+          <p>We couldn't process your unsubscribe request. Please try again or contact support.</p>
+        </div>
+      </body>
+      </html>
+    `);
+  }
+});
+
+// Export unsubscribe token generator for use in email service
+router.generateUnsubscribeToken = generateUnsubscribeToken;
 
 module.exports = router;

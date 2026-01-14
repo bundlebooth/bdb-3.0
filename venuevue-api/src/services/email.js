@@ -1,8 +1,27 @@
 const nodemailer = require('nodemailer');
 const { poolPromise, sql } = require('../config/db');
+const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
 let transporter = null;
+
+// Generate unsubscribe token for a user
+function generateUnsubscribeToken(userId, email) {
+  const secret = process.env.JWT_SECRET || 'your-secret-key';
+  const payload = { userId, email, purpose: 'unsubscribe' };
+  return jwt.sign(payload, secret, { expiresIn: '30d' });
+}
+
+// Generate unsubscribe URL
+function getUnsubscribeUrl(userId, email, category = null) {
+  const token = generateUnsubscribeToken(userId, email);
+  const apiUrl = process.env.API_BASE_URL || 'http://localhost:5000';
+  let url = `${apiUrl}/users/unsubscribe/${token}`;
+  if (category) {
+    url += `?category=${category}`;
+  }
+  return url;
+}
 
 // Email sender configuration based on email type/category
 // Maps template keys and categories to specific sender addresses
@@ -218,6 +237,12 @@ async function canSendEmail(userId, emailCategory) {
   // Always allow 2FA emails (security critical)
   if (emailCategory === '2fa') return true;
   
+  // Always allow admin emails
+  if (emailCategory === 'admin') return true;
+  
+  // Always allow vendor-related emails (approval, rejection, welcome)
+  if (emailCategory === 'vendor' || emailCategory === 'welcome') return true;
+  
   if (!userId) return true; // If no userId, send (e.g., to vendors not logged in)
   
   const prefs = await getUserPreferences(userId);
@@ -225,13 +250,20 @@ async function canSendEmail(userId, emailCategory) {
   
   // Map email categories to preference keys
   const categoryMap = {
+    'bookingConfirmations': prefs.email.bookingConfirmations !== false,
+    'bookingReminders': prefs.email.bookingReminders !== false,
     'bookingUpdates': prefs.email.bookingUpdates !== false,
     'messages': prefs.email.messages !== false,
     'payments': prefs.email.payments !== false,
-    'marketing': prefs.email.marketing === true
+    'promotions': prefs.email.promotions === true,
+    'newsletter': prefs.email.newsletter === true,
+    'marketing': prefs.email.promotions === true // Alias for promotions
   };
   
-  return categoryMap[emailCategory] !== false;
+  // If category not in map, default to allow
+  if (!(emailCategory in categoryMap)) return true;
+  
+  return categoryMap[emailCategory];
 }
 
 // Log email to database
@@ -274,13 +306,22 @@ async function sendTemplatedEmail(templateKey, recipientEmail, recipientName, va
 
     // Auto-inject platform variables
     const frontendUrl = process.env.FRONTEND_URL || `https://${process.env.PLATFORM_URL || 'venuevue.com'}`;
+    
+    // Generate unsubscribe URL if we have userId
+    let unsubscribeUrl = `${frontendUrl}/dashboard/settings`;
+    if (userId && recipientEmail) {
+      unsubscribeUrl = getUnsubscribeUrl(userId, recipientEmail, emailCategory);
+    }
+    
     const platformVars = {
-      platformName: process.env.PLATFORM_NAME || 'VenueVue',
-      platformUrl: process.env.PLATFORM_URL || 'venuevue.com',
+      platformName: process.env.PLATFORM_NAME || 'PlanBeau',
+      platformUrl: process.env.PLATFORM_URL || 'planbeau.com',
       frontendUrl: frontendUrl,
       logoUrl: `${frontendUrl}/images/logo.png`,
       currentYear: new Date().getFullYear().toString(),
       recipientEmail,
+      unsubscribeUrl,
+      preferencesUrl: `${frontendUrl}/dashboard/settings`,
       ...variables
     };
 
