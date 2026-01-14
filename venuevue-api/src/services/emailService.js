@@ -22,6 +22,7 @@ const {
   sendVendorApproved,
   sendVendorRejected
 } = require('./email');
+const { generateInvoicePDF, formatInvoiceData } = require('./invoiceService');
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
 
@@ -198,8 +199,9 @@ async function notifyOfNewMessage(conversationId, senderId, content) {
  * @param {number} bookingId - The booking ID
  * @param {number} amountCents - The amount in cents
  * @param {string} currency - The currency code
+ * @param {string} transactionId - Optional Stripe transaction ID
  */
-async function notifyVendorOfPayment(bookingId, amountCents, currency = 'CAD') {
+async function notifyVendorOfPayment(bookingId, amountCents, currency = 'CAD', transactionId = null) {
   try {
     const pool = await poolPromise;
     
@@ -211,12 +213,43 @@ async function notifyVendorOfPayment(bookingId, amountCents, currency = 'CAD') {
     if (result.recordset.length === 0) return;
     const data = result.recordset[0];
     
-    const amount = amountCents ? `$${(amountCents / 100).toFixed(2)} ${currency.toUpperCase()}` : `$${data.TotalAmount}`;
+    const totalAmount = amountCents ? amountCents / 100 : parseFloat(data.TotalAmount) || 0;
+    const amount = `$${totalAmount.toFixed(2)} ${currency.toUpperCase()}`;
     const eventDate = data.EventDate 
       ? new Date(data.EventDate).toLocaleDateString('en-US', { 
           weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
         })
       : 'Upcoming event';
+    
+    // Generate invoice PDF
+    let invoiceAttachment = null;
+    try {
+      const invoiceData = formatInvoiceData({
+        bookingId,
+        vendorName: data.VendorName,
+        vendorEmail: data.VendorEmail,
+        vendorPhone: data.VendorPhone || '',
+        clientName: data.ClientName,
+        clientEmail: data.ClientEmail,
+        clientPhone: data.ClientPhone || '',
+        serviceName: data.ServiceName,
+        eventDate,
+        eventLocation: data.EventLocation || '',
+        amount: totalAmount,
+        taxRate: 0.13,
+        transactionId: transactionId || `TXN-${bookingId}-${Date.now()}`
+      });
+      
+      const pdfBuffer = await generateInvoicePDF(invoiceData);
+      invoiceAttachment = {
+        name: `Invoice-${invoiceData.invoiceNumber}.pdf`,
+        content: pdfBuffer.toString('base64')
+      };
+      console.log(`[NotificationService] Generated invoice PDF: ${invoiceAttachment.name}`);
+    } catch (pdfError) {
+      console.error('[NotificationService] Failed to generate invoice PDF:', pdfError.message);
+      // Continue without attachment
+    }
     
     await sendPaymentReceivedToVendor(
       data.VendorEmail,
@@ -227,7 +260,8 @@ async function notifyVendorOfPayment(bookingId, amountCents, currency = 'CAD') {
       eventDate,
       `${FRONTEND_URL}/dashboard`,
       data.VendorUserID,
-      bookingId
+      bookingId,
+      invoiceAttachment
     );
   } catch (error) {
     console.error('[NotificationService] Failed to notify vendor of payment:', error.message);
@@ -299,8 +333,9 @@ async function notifyOfBookingCancellation(bookingId, cancelledBy, reason = null
  * @param {number} bookingId - The booking ID
  * @param {number} amountCents - The amount in cents
  * @param {string} currency - The currency code
+ * @param {string} transactionId - Optional Stripe transaction ID
  */
-async function notifyClientOfPayment(bookingId, amountCents, currency = 'CAD') {
+async function notifyClientOfPayment(bookingId, amountCents, currency = 'CAD', transactionId = null) {
   try {
     const pool = await poolPromise;
     
@@ -312,12 +347,43 @@ async function notifyClientOfPayment(bookingId, amountCents, currency = 'CAD') {
     if (result.recordset.length === 0) return;
     const data = result.recordset[0];
     
-    const amount = amountCents ? `$${(amountCents / 100).toFixed(2)} ${currency.toUpperCase()}` : `$${data.TotalAmount}`;
+    const totalAmount = amountCents ? amountCents / 100 : parseFloat(data.TotalAmount) || 0;
+    const amount = `$${totalAmount.toFixed(2)} ${currency.toUpperCase()}`;
     const eventDate = data.EventDate 
       ? new Date(data.EventDate).toLocaleDateString('en-US', { 
           weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
         })
       : 'Upcoming event';
+    
+    // Generate invoice PDF for client
+    let invoiceAttachment = null;
+    try {
+      const invoiceData = formatInvoiceData({
+        bookingId,
+        vendorName: data.VendorName,
+        vendorEmail: data.VendorEmail,
+        vendorPhone: data.VendorPhone || '',
+        clientName: data.ClientName,
+        clientEmail: data.ClientEmail,
+        clientPhone: data.ClientPhone || '',
+        serviceName: data.ServiceName || 'Service',
+        eventDate,
+        eventLocation: data.EventLocation || '',
+        amount: totalAmount,
+        taxRate: 0.13,
+        transactionId: transactionId || `TXN-${bookingId}-${Date.now()}`
+      });
+      
+      const pdfBuffer = await generateInvoicePDF(invoiceData);
+      invoiceAttachment = {
+        name: `Invoice-${invoiceData.invoiceNumber}.pdf`,
+        content: pdfBuffer.toString('base64')
+      };
+      console.log(`[NotificationService] Generated invoice PDF for client: ${invoiceAttachment.name}`);
+    } catch (pdfError) {
+      console.error('[NotificationService] Failed to generate invoice PDF for client:', pdfError.message);
+      // Continue without attachment
+    }
     
     await sendPaymentConfirmationToClient(
       data.ClientEmail,
@@ -328,7 +394,8 @@ async function notifyClientOfPayment(bookingId, amountCents, currency = 'CAD') {
       eventDate,
       `${FRONTEND_URL}/dashboard`,
       data.ClientUserID,
-      bookingId
+      bookingId,
+      invoiceAttachment
     );
   } catch (error) {
     console.error('[NotificationService] Failed to notify client of payment:', error.message);

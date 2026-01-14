@@ -58,7 +58,8 @@ function getSenderEmail(templateKey, emailCategory) {
 // Send email via Brevo REST API (fallback if SMTP fails)
 // Now accepts senderEmail parameter and automatically BCCs to sender
 // additionalBcc parameter allows adding extra BCC recipients (e.g., admin email)
-async function sendViaBrevoAPI(to, subject, htmlContent, textContent, senderEmail = null, additionalBcc = null) {
+// attachments parameter allows adding file attachments [{name: 'file.pdf', content: base64String}]
+async function sendViaBrevoAPI(to, subject, htmlContent, textContent, senderEmail = null, additionalBcc = null, attachments = null) {
   // Try multiple env var names for Brevo API key
   const apiKey = process.env.BREVO_API_KEY || process.env.SMTP_PASS;
   if (!apiKey) {
@@ -97,7 +98,15 @@ async function sendViaBrevoAPI(to, subject, htmlContent, textContent, senderEmai
     emailPayload.textContent = textContent;
   }
 
-  console.log(`📧 [BREVO API] Sending email from: ${fromEmail} to: ${to} with BCC: ${bccList.map(b => b.email).join(', ')}`);
+  // Add attachments if provided
+  if (attachments && attachments.length > 0) {
+    emailPayload.attachment = attachments.map(att => ({
+      name: att.name,
+      content: att.content // Base64 encoded content
+    }));
+  }
+
+  console.log(`📧 [BREVO API] Sending email from: ${fromEmail} to: ${to} with BCC: ${bccList.map(b => b.email).join(', ')}${attachments ? ` with ${attachments.length} attachment(s)` : ''}`);
 
   const response = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',
@@ -251,7 +260,8 @@ async function logEmail(templateKey, recipientEmail, recipientName, subject, sta
 
 // Send email using template
 // adminBcc parameter allows adding admin email as BCC recipient
-async function sendTemplatedEmail(templateKey, recipientEmail, recipientName, variables, userId = null, bookingId = null, metadata = null, emailCategory = null, adminBcc = null) {
+// attachments parameter allows adding file attachments [{name: 'file.pdf', content: base64String}]
+async function sendTemplatedEmail(templateKey, recipientEmail, recipientName, variables, userId = null, bookingId = null, metadata = null, emailCategory = null, adminBcc = null, attachments = null) {
   try {
     // Check user preferences before sending
     if (emailCategory && userId) {
@@ -291,7 +301,7 @@ async function sendTemplatedEmail(templateKey, recipientEmail, recipientName, va
 
     // Try Brevo REST API first (proper BCC support)
     try {
-      await sendViaBrevoAPI(recipientEmail, subject, html, text, senderEmail, adminBcc);
+      await sendViaBrevoAPI(recipientEmail, subject, html, text, senderEmail, adminBcc, attachments);
       emailSent = true;
     } catch (apiError) {
       console.error('Brevo API failed, trying SMTP fallback:', apiError.message);
@@ -313,15 +323,23 @@ async function sendTemplatedEmail(templateKey, recipientEmail, recipientName, va
               }
             });
           }
-          console.log(`📧 [SMTP] Sending email from: ${senderEmail} to: ${recipientEmail} with BCC: ${bccList.join(', ')}`);
-          await t.sendMail({ 
+          console.log(`📧 [SMTP] Sending email from: ${senderEmail} to: ${recipientEmail} with BCC: ${bccList.join(', ')}${attachments ? ` with ${attachments.length} attachment(s)` : ''}`);
+          const mailOptions = { 
             from: senderEmail, 
             to: recipientEmail, 
             bcc: bccList.join(', '),
             subject, 
             text, 
             html 
-          });
+          };
+          // Add attachments for SMTP
+          if (attachments && attachments.length > 0) {
+            mailOptions.attachments = attachments.map(att => ({
+              filename: att.name,
+              content: Buffer.from(att.content, 'base64')
+            }));
+          }
+          await t.sendMail(mailOptions);
           emailSent = true;
         } catch (smtpError) {
           console.error('SMTP also failed:', smtpError.message);
@@ -389,64 +407,74 @@ async function sendEmail({ to, subject, text, html, from, templateKey = null, em
 // =============================================
 
 async function sendTwoFactorCode(email, code, userName = 'User', userId = null) {
-  return sendTemplatedEmail('auth_2fa', email, userName, { code, userName }, userId, null, null, '2fa');
+  const adminEmail = process.env.ADMIN_EMAIL || 'admin@planbeau.com';
+  return sendTemplatedEmail('auth_2fa', email, userName, { code, userName }, userId, null, null, '2fa', adminEmail);
 }
 
 async function sendBookingRequestToVendor(vendorEmail, vendorName, clientName, serviceName, eventDate, location, budget, dashboardUrl, vendorUserId = null, bookingId = null) {
+  const adminEmail = process.env.ADMIN_EMAIL || 'admin@planbeau.com';
   return sendTemplatedEmail('booking_request_vendor', vendorEmail, vendorName, {
     vendorName, clientName, serviceName, eventDate, location, budget, dashboardUrl
-  }, vendorUserId, bookingId, null, 'bookingUpdates');
+  }, vendorUserId, bookingId, null, 'bookingUpdates', adminEmail);
 }
 
 async function sendBookingAcceptedToClient(clientEmail, clientName, vendorName, serviceName, dashboardUrl, userId = null, bookingId = null) {
+  const adminEmail = process.env.ADMIN_EMAIL || 'admin@planbeau.com';
   return sendTemplatedEmail('booking_accepted_client', clientEmail, clientName, {
     clientName, vendorName, serviceName, dashboardUrl
-  }, userId, bookingId, null, 'bookingUpdates');
+  }, userId, bookingId, null, 'bookingUpdates', adminEmail);
 }
 
 async function sendBookingRejectedToClient(clientEmail, clientName, vendorName, serviceName, eventDate, searchUrl, userId = null, bookingId = null) {
+  const adminEmail = process.env.ADMIN_EMAIL || 'admin@planbeau.com';
   return sendTemplatedEmail('booking_rejected_client', clientEmail, clientName, {
     clientName, vendorName, serviceName, eventDate, searchUrl
-  }, userId, bookingId, null, 'bookingUpdates');
+  }, userId, bookingId, null, 'bookingUpdates', adminEmail);
 }
 
 async function sendMessageFromVendor(clientEmail, clientName, vendorName, messageContent, dashboardUrl, userId = null) {
+  const adminEmail = process.env.ADMIN_EMAIL || 'admin@planbeau.com';
   return sendTemplatedEmail('message_vendor_to_client', clientEmail, clientName, {
     clientName, vendorName, messageContent, dashboardUrl
-  }, userId, null, null, 'messages');
+  }, userId, null, null, 'messages', adminEmail);
 }
 
 async function sendMessageFromClient(vendorEmail, vendorName, clientName, messageContent, dashboardUrl, vendorUserId = null) {
+  const adminEmail = process.env.ADMIN_EMAIL || 'admin@planbeau.com';
   return sendTemplatedEmail('message_client_to_vendor', vendorEmail, vendorName, {
     vendorName, clientName, messageContent, dashboardUrl
-  }, vendorUserId, null, null, 'messages');
+  }, vendorUserId, null, null, 'messages', adminEmail);
 }
 
-async function sendPaymentReceivedToVendor(vendorEmail, vendorName, clientName, amount, serviceName, eventDate, dashboardUrl, vendorUserId = null, bookingId = null) {
+async function sendPaymentReceivedToVendor(vendorEmail, vendorName, clientName, amount, serviceName, eventDate, dashboardUrl, vendorUserId = null, bookingId = null, invoiceAttachment = null) {
+  const adminEmail = process.env.ADMIN_EMAIL || 'admin@planbeau.com';
   return sendTemplatedEmail('payment_received_vendor', vendorEmail, vendorName, {
     vendorName, clientName, amount, serviceName, eventDate, dashboardUrl
-  }, vendorUserId, bookingId, null, 'payments');
+  }, vendorUserId, bookingId, null, 'payments', adminEmail, invoiceAttachment ? [invoiceAttachment] : null);
 }
 
-// Send payment confirmation to client
-async function sendPaymentConfirmationToClient(clientEmail, clientName, vendorName, amount, serviceName, eventDate, dashboardUrl, userId = null, bookingId = null) {
+// Send payment confirmation to client with optional invoice attachment
+async function sendPaymentConfirmationToClient(clientEmail, clientName, vendorName, amount, serviceName, eventDate, dashboardUrl, userId = null, bookingId = null, invoiceAttachment = null) {
+  const adminEmail = process.env.ADMIN_EMAIL || 'admin@planbeau.com';
   return sendTemplatedEmail('payment_confirmation_client', clientEmail, clientName, {
     clientName, vendorName, amount, serviceName, eventDate, dashboardUrl
-  }, userId, bookingId, null, 'payments');
+  }, userId, bookingId, null, 'payments', adminEmail, invoiceAttachment ? [invoiceAttachment] : null);
 }
 
 // Send booking cancellation notification to client (when vendor cancels)
 async function sendBookingCancelledToClient(clientEmail, clientName, vendorName, serviceName, eventDate, reason, refundAmount, searchUrl, userId = null, bookingId = null) {
+  const adminEmail = process.env.ADMIN_EMAIL || 'admin@planbeau.com';
   return sendTemplatedEmail('booking_cancelled_client', clientEmail, clientName, {
     clientName, vendorName, serviceName, eventDate, reason: reason || 'No reason provided', refundAmount: refundAmount || '$0.00', searchUrl
-  }, userId, bookingId, null, 'bookingUpdates');
+  }, userId, bookingId, null, 'bookingUpdates', adminEmail);
 }
 
 // Send booking cancellation notification to vendor (when client cancels)
 async function sendBookingCancelledToVendor(vendorEmail, vendorName, clientName, serviceName, eventDate, reason, dashboardUrl, vendorUserId = null, bookingId = null) {
+  const adminEmail = process.env.ADMIN_EMAIL || 'admin@planbeau.com';
   return sendTemplatedEmail('booking_cancelled_vendor', vendorEmail, vendorName, {
     vendorName, clientName, serviceName, eventDate, reason: reason || 'No reason provided', dashboardUrl
-  }, vendorUserId, bookingId, null, 'bookingUpdates');
+  }, vendorUserId, bookingId, null, 'bookingUpdates', adminEmail);
 }
 
 // Send vendor application notification to admin
@@ -469,30 +497,34 @@ async function sendVendorWelcome(vendorEmail, vendorName, businessName, dashboar
 
 // Send booking confirmed notification to client (after payment)
 async function sendBookingConfirmedToClient(clientEmail, clientName, vendorName, serviceName, eventDate, eventLocation, dashboardUrl, userId = null, bookingId = null) {
+  const adminEmail = process.env.ADMIN_EMAIL || 'admin@planbeau.com';
   return sendTemplatedEmail('booking_confirmed_client', clientEmail, clientName, {
     clientName, vendorName, serviceName, eventDate, eventLocation: eventLocation || 'TBD', dashboardUrl
-  }, userId, bookingId, null, 'bookingUpdates');
+  }, userId, bookingId, null, 'bookingUpdates', adminEmail);
 }
 
 // Send booking confirmed notification to vendor (after payment)
 async function sendBookingConfirmedToVendor(vendorEmail, vendorName, clientName, serviceName, eventDate, eventLocation, dashboardUrl, vendorUserId = null, bookingId = null) {
+  const adminEmail = process.env.ADMIN_EMAIL || 'admin@planbeau.com';
   return sendTemplatedEmail('booking_confirmed_vendor', vendorEmail, vendorName, {
     vendorName, clientName, serviceName, eventDate, eventLocation: eventLocation || 'TBD', dashboardUrl
-  }, vendorUserId, bookingId, null, 'bookingUpdates');
+  }, vendorUserId, bookingId, null, 'bookingUpdates', adminEmail);
 }
 
 // Send vendor profile approved notification
 async function sendVendorApproved(vendorEmail, vendorName, businessName, dashboardUrl, userId = null) {
+  const adminEmail = process.env.ADMIN_EMAIL || 'admin@planbeau.com';
   return sendTemplatedEmail('vendor_approved', vendorEmail, vendorName, {
     vendorName, businessName, dashboardUrl
-  }, userId, null, null, 'vendor');
+  }, userId, null, null, 'vendor', adminEmail);
 }
 
 // Send vendor profile rejected notification
 async function sendVendorRejected(vendorEmail, vendorName, businessName, rejectionReason, dashboardUrl, userId = null) {
+  const adminEmail = process.env.ADMIN_EMAIL || 'admin@planbeau.com';
   return sendTemplatedEmail('vendor_rejected', vendorEmail, vendorName, {
     vendorName, businessName, rejectionReason, dashboardUrl
-  }, userId, null, null, 'vendor');
+  }, userId, null, null, 'vendor', adminEmail);
 }
 
 module.exports = {
