@@ -283,76 +283,49 @@ function CommunicationPreferencesPanel({ onBack }) {
           </h3>
           
           {!pushSupported ? (
-            <div style={{ padding: '1rem', background: '#fef3cd', borderRadius: '8px', color: '#856404', marginBottom: '1rem' }}>
-              <i className="fas fa-exclamation-triangle" style={{ marginRight: '0.5rem' }}></i>
-              Push notifications are not supported in this browser.
-            </div>
+            <ToggleSwitch
+              checked={false}
+              onChange={() => {}}
+              label="Push Notifications"
+              description="Push notifications are not supported in this browser"
+            />
           ) : pushPermission === 'denied' ? (
-            <div style={{ padding: '1rem', background: '#f8d7da', borderRadius: '8px', color: '#721c24', marginBottom: '1rem' }}>
-              <i className="fas fa-ban" style={{ marginRight: '0.5rem' }}></i>
-              Push notifications are blocked. Please enable them in your browser settings.
-            </div>
-          ) : !pushSubscribed ? (
-            <div style={{ padding: '1rem', background: '#e7f3ff', borderRadius: '8px', marginBottom: '1rem' }}>
-              <p style={{ color: '#0c5460', marginBottom: '1rem' }}>
-                <i className="fas fa-info-circle" style={{ marginRight: '0.5rem' }}></i>
-                Enable push notifications to receive instant updates about messages and bookings.
-              </p>
-              <button 
-                type="button" 
-                onClick={handleEnablePush}
-                className="btn btn-primary"
-                style={{ marginRight: '0.5rem' }}
-              >
-                <i className="fas fa-bell" style={{ marginRight: '0.5rem' }}></i>
-                Enable Push Notifications
-              </button>
-            </div>
+            <ToggleSwitch
+              checked={false}
+              onChange={() => {}}
+              label="Push Notifications"
+              description="Blocked - please enable in browser settings"
+            />
           ) : (
             <>
-              <div style={{ padding: '1rem', background: '#d4edda', borderRadius: '8px', color: '#155724', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span>
-                  <i className="fas fa-check-circle" style={{ marginRight: '0.5rem' }}></i>
-                  Push notifications are enabled
-                </span>
-                <div>
-                  <button 
-                    type="button" 
-                    onClick={handleTestPush}
-                    className="btn btn-outline"
-                    style={{ marginRight: '0.5rem', padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}
-                  >
-                    Test
-                  </button>
-                  <button 
-                    type="button" 
-                    onClick={handleDisablePush}
-                    className="btn btn-outline"
-                    style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', color: '#dc3545', borderColor: '#dc3545' }}
-                  >
-                    Disable
-                  </button>
-                </div>
-              </div>
-              
               <ToggleSwitch
-                checked={preferences.push.messages}
-                onChange={() => handleToggle('push', 'messages')}
-                label="New Messages"
-                description="Get notified when you receive new messages"
+                checked={pushSubscribed}
+                onChange={pushSubscribed ? handleDisablePush : handleEnablePush}
+                label="Enable Push Notifications"
+                description="Receive instant browser notifications"
               />
-              <ToggleSwitch
-                checked={preferences.push.bookingUpdates}
-                onChange={() => handleToggle('push', 'bookingUpdates')}
-                label="Booking Updates"
-                description="Get notified about booking status changes"
-              />
-              <ToggleSwitch
-                checked={preferences.push.promotions}
-                onChange={() => handleToggle('push', 'promotions')}
-                label="Promotions"
-                description="Get notified about special offers"
-              />
+              {pushSubscribed && (
+                <>
+                  <ToggleSwitch
+                    checked={preferences.push.messages}
+                    onChange={() => handleToggle('push', 'messages')}
+                    label="New Messages"
+                    description="Get notified when you receive new messages"
+                  />
+                  <ToggleSwitch
+                    checked={preferences.push.bookingUpdates}
+                    onChange={() => handleToggle('push', 'bookingUpdates')}
+                    label="Booking Updates"
+                    description="Get notified about booking status changes"
+                  />
+                  <ToggleSwitch
+                    checked={preferences.push.promotions}
+                    onChange={() => handleToggle('push', 'promotions')}
+                    label="Promotions"
+                    description="Get notified about special offers"
+                  />
+                </>
+              )}
             </>
           )}
 
