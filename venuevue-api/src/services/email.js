@@ -453,6 +453,20 @@ async function sendBookingConfirmedToVendor(vendorEmail, vendorName, clientName,
   }, vendorUserId, bookingId, null, 'bookingUpdates');
 }
 
+// Send vendor profile approved notification
+async function sendVendorApproved(vendorEmail, vendorName, businessName, dashboardUrl, userId = null) {
+  return sendTemplatedEmail('vendor_approved', vendorEmail, vendorName, {
+    vendorName, businessName, dashboardUrl
+  }, userId, null, null, 'vendor');
+}
+
+// Send vendor profile rejected notification
+async function sendVendorRejected(vendorEmail, vendorName, businessName, rejectionReason, dashboardUrl, userId = null) {
+  return sendTemplatedEmail('vendor_rejected', vendorEmail, vendorName, {
+    vendorName, businessName, rejectionReason, dashboardUrl
+  }, userId, null, null, 'vendor');
+}
+
 module.exports = {
   sendEmail,
   sendTemplatedEmail,
@@ -469,5 +483,7 @@ module.exports = {
   sendVendorApplicationToAdmin,
   sendVendorWelcome,
   sendBookingConfirmedToClient,
-  sendBookingConfirmedToVendor
+  sendBookingConfirmedToVendor,
+  sendVendorApproved,
+  sendVendorRejected
 };

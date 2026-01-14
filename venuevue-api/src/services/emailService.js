@@ -18,7 +18,9 @@ const {
   sendVendorApplicationToAdmin,
   sendVendorWelcome,
   sendBookingConfirmedToClient,
-  sendBookingConfirmedToVendor
+  sendBookingConfirmedToVendor,
+  sendVendorApproved,
+  sendVendorRejected
 } = require('./email');
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
@@ -436,6 +438,70 @@ async function notifyOfBookingConfirmation(bookingId) {
   }
 }
 
+/**
+ * Send email notification when vendor profile is approved
+ * @param {number} vendorProfileId - The vendor profile ID
+ */
+async function notifyVendorOfApproval(vendorProfileId) {
+  try {
+    const pool = await poolPromise;
+    
+    // Get vendor details via stored procedure
+    const result = await pool.request()
+      .input('VendorProfileID', sql.Int, vendorProfileId)
+      .execute('email.sp_GetVendorForApproval');
+    
+    if (result.recordset.length === 0) return;
+    const data = result.recordset[0];
+    
+    const vendorName = data.DisplayName || data.Name || 'Vendor';
+    const businessName = data.BusinessName || 'Your Business';
+    
+    await sendVendorApproved(
+      data.Email,
+      vendorName,
+      businessName,
+      `${FRONTEND_URL}/dashboard`,
+      data.UserID
+    );
+  } catch (error) {
+    console.error('[NotificationService] Failed to notify vendor of approval:', error.message);
+  }
+}
+
+/**
+ * Send email notification when vendor profile is rejected
+ * @param {number} vendorProfileId - The vendor profile ID
+ * @param {string} rejectionReason - The reason for rejection
+ */
+async function notifyVendorOfRejection(vendorProfileId, rejectionReason) {
+  try {
+    const pool = await poolPromise;
+    
+    // Get vendor details via stored procedure
+    const result = await pool.request()
+      .input('VendorProfileID', sql.Int, vendorProfileId)
+      .execute('email.sp_GetVendorForApproval');
+    
+    if (result.recordset.length === 0) return;
+    const data = result.recordset[0];
+    
+    const vendorName = data.DisplayName || data.Name || 'Vendor';
+    const businessName = data.BusinessName || 'Your Business';
+    
+    await sendVendorRejected(
+      data.Email,
+      vendorName,
+      businessName,
+      rejectionReason || 'Your profile did not meet our requirements.',
+      `${FRONTEND_URL}/become-a-vendor`,
+      data.UserID
+    );
+  } catch (error) {
+    console.error('[NotificationService] Failed to notify vendor of rejection:', error.message);
+  }
+}
+
 module.exports = {
   notifyVendorOfNewRequest,
   notifyClientOfApproval,
@@ -445,5 +511,7 @@ module.exports = {
   notifyClientOfPayment,
   notifyOfBookingCancellation,
   notifyAdminOfVendorApplication,
-  notifyOfBookingConfirmation
+  notifyOfBookingConfirmation,
+  notifyVendorOfApproval,
+  notifyVendorOfRejection
 };

@@ -6,7 +6,7 @@ const cloudinaryService = require('../services/cloudinaryService');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY || '');
 const axios = require('axios');
 const { decodeVendorId, decodeServiceId, decodeImageId, isPublicId } = require('../utils/hashIds');
-const { notifyAdminOfVendorApplication } = require('../services/emailService');
+const { notifyAdminOfVendorApplication, notifyVendorOfApproval, notifyVendorOfRejection } = require('../services/emailService');
 
 // Helper to resolve vendor ID (handles both public ID and numeric ID)
 function resolveVendorIdParam(idParam) {
@@ -5943,6 +5943,13 @@ router.post('/admin/:vendorProfileId/approve', async (req, res) => {
     // Update profile status to approved and make it visible
     await request.execute('vendors.sp_ApproveProfile');
     
+    // Send email notification to vendor
+    try {
+      notifyVendorOfApproval(parseInt(vendorProfileId, 10));
+    } catch (emailErr) {
+      console.error('Failed to send approval notification:', emailErr.message);
+    }
+    
     res.json({ 
       success: true, 
       message: 'Profile approved and is now live',
@@ -5972,6 +5979,13 @@ router.post('/admin/:vendorProfileId/reject', async (req, res) => {
     
     // Update profile status to rejected
     await request.execute('vendors.sp_RejectProfile');
+    
+    // Send email notification to vendor
+    try {
+      notifyVendorOfRejection(parseInt(vendorProfileId, 10), rejectionReason);
+    } catch (emailErr) {
+      console.error('Failed to send rejection notification:', emailErr.message);
+    }
     
     res.json({ 
       success: true, 
