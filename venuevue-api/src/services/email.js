@@ -170,7 +170,7 @@ async function getUserPreferences(userId) {
     const pool = await poolPromise;
     const result = await pool.request()
       .input('UserID', sql.Int, userId)
-      .query('SELECT NotificationPreferences FROM Users WHERE UserID = @UserID');
+      .query('SELECT NotificationPreferences FROM users.Users WHERE UserID = @UserID');
     
     if (result.recordset.length === 0) return null;
     
