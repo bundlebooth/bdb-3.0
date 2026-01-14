@@ -67,15 +67,24 @@ async function sendViaBrevoAPI(to, subject, htmlContent, textContent, senderEmai
   const fromEmail = senderEmail || process.env.SMTP_FROM || process.env.FROM_EMAIL || 'notifications@planbeau.com';
   const fromName = process.env.FROM_NAME || process.env.PLATFORM_NAME || 'PlanBeau';
 
-  // Build email payload with BCC to sender
+  // Build email payload with BCC to sender (matching Brevo API format exactly)
   const emailPayload = {
-    sender: { name: fromName, email: fromEmail },
+    sender: { 
+      email: fromEmail,
+      name: fromName 
+    },
     to: [{ email: to }],
     bcc: [{ email: fromEmail }], // BCC to sender so it appears in Zoho inbox
     subject: subject,
-    htmlContent: htmlContent,
-    textContent: textContent
+    htmlContent: htmlContent
   };
+  
+  // Only add textContent if provided (some Brevo plans may not support both)
+  if (textContent) {
+    emailPayload.textContent = textContent;
+  }
+
+  console.log(`📧 [BREVO API] Sending email from: ${fromEmail} to: ${to} with BCC: ${fromEmail}`);
 
   const response = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',
@@ -262,37 +271,38 @@ async function sendTemplatedEmail(templateKey, recipientEmail, recipientName, va
     // Get the appropriate sender email based on template key or category
     const senderEmail = getSenderEmail(templateKey, emailCategory);
     
-    // Try SMTP first, fallback to API if it fails
-    const t = getTransporter();
+    // Use Brevo API first (better BCC support), fallback to SMTP
     let emailSent = false;
     let lastError = null;
 
-    // Try SMTP if configured
-    if (t) {
-      try {
-        // Use dynamic sender and BCC to sender for Zoho inbox capture
-        await t.sendMail({ 
-          from: senderEmail, 
-          to: recipientEmail, 
-          bcc: senderEmail, // BCC to sender so it appears in Zoho inbox
-          subject, 
-          text, 
-          html 
-        });
-        emailSent = true;
-      } catch (smtpError) {
-        lastError = smtpError;
-      }
+    // Try Brevo REST API first (proper BCC support)
+    try {
+      await sendViaBrevoAPI(recipientEmail, subject, html, text, senderEmail);
+      emailSent = true;
+    } catch (apiError) {
+      console.error('Brevo API failed, trying SMTP fallback:', apiError.message);
+      lastError = apiError;
     }
 
-    // Fallback to Brevo REST API if SMTP failed or not configured
+    // Fallback to SMTP if Brevo API failed
     if (!emailSent) {
-      try {
-        await sendViaBrevoAPI(recipientEmail, subject, html, text, senderEmail);
-        emailSent = true;
-      } catch (apiError) {
-        console.error('Brevo API also failed:', apiError.message);
-        lastError = apiError;
+      const t = getTransporter();
+      if (t) {
+        try {
+          console.log(`📧 [SMTP] Sending email from: ${senderEmail} to: ${recipientEmail} with BCC: ${senderEmail}`);
+          await t.sendMail({ 
+            from: senderEmail, 
+            to: recipientEmail, 
+            bcc: senderEmail, // BCC to sender so it appears in Zoho inbox
+            subject, 
+            text, 
+            html 
+          });
+          emailSent = true;
+        } catch (smtpError) {
+          console.error('SMTP also failed:', smtpError.message);
+          lastError = smtpError;
+        }
       }
     }
 
@@ -316,34 +326,36 @@ async function sendEmail({ to, subject, text, html, from, templateKey = null, em
   // Get the appropriate sender email
   const senderEmail = from || getSenderEmail(templateKey, emailCategory);
   
-  const t = getTransporter();
   let emailSent = false;
 
-  // Try SMTP if configured
-  if (t) {
-    try {
-      await t.sendMail({ 
-        from: senderEmail, 
-        to, 
-        bcc: senderEmail, // BCC to sender so it appears in Zoho inbox
-        subject, 
-        text, 
-        html 
-      });
-      emailSent = true;
-      return;
-    } catch (smtpError) {
-      // SMTP failed, trying Brevo API fallback
-    }
+  // Try Brevo REST API first (proper BCC support)
+  try {
+    await sendViaBrevoAPI(to, subject, html, text, senderEmail);
+    emailSent = true;
+    return;
+  } catch (apiError) {
+    console.error('Brevo API failed, trying SMTP fallback:', apiError.message);
   }
 
-  // Fallback to Brevo API
+  // Fallback to SMTP if Brevo API failed
   if (!emailSent) {
-    try {
-      await sendViaBrevoAPI(to, subject, html, text, senderEmail);
-    } catch (apiError) {
-      console.error('Email sending failed:', apiError.message);
-      throw apiError;
+    const t = getTransporter();
+    if (t) {
+      try {
+        console.log(`📧 [SMTP] Sending email from: ${senderEmail} to: ${to} with BCC: ${senderEmail}`);
+        await t.sendMail({ 
+          from: senderEmail, 
+          to, 
+          bcc: senderEmail, // BCC to sender so it appears in Zoho inbox
+          subject, 
+          text, 
+          html 
+        });
+        return;
+      } catch (smtpError) {
+        console.error('SMTP also failed:', smtpError.message);
+        throw smtpError;
+      }
     }
   }
 }
