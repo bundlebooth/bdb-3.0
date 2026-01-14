@@ -4,16 +4,78 @@ require('dotenv').config();
 
 let transporter = null;
 
+// Email sender configuration based on email type/category
+// Maps template keys and categories to specific sender addresses
+const EMAIL_SENDER_CONFIG = {
+  // Authentication & Security emails
+  'auth_2fa': process.env.EMAIL_NOTIFICATIONS || 'notifications@planbeau.com',
+  '2fa': process.env.EMAIL_NOTIFICATIONS || 'notifications@planbeau.com',
+  
+  // Booking-related emails
+  'booking_request_vendor': process.env.EMAIL_BOOKINGS || 'bookings@planbeau.com',
+  'booking_accepted_client': process.env.EMAIL_BOOKINGS || 'bookings@planbeau.com',
+  'booking_rejected_client': process.env.EMAIL_BOOKINGS || 'bookings@planbeau.com',
+  'bookingUpdates': process.env.EMAIL_BOOKINGS || 'bookings@planbeau.com',
+  
+  // Message notifications
+  'message_vendor_to_client': process.env.EMAIL_NOTIFICATIONS || 'notifications@planbeau.com',
+  'message_client_to_vendor': process.env.EMAIL_NOTIFICATIONS || 'notifications@planbeau.com',
+  'messages': process.env.EMAIL_NOTIFICATIONS || 'notifications@planbeau.com',
+  
+  // Payment emails
+  'payment_received_vendor': process.env.EMAIL_BOOKINGS || 'bookings@planbeau.com',
+  'payments': process.env.EMAIL_BOOKINGS || 'bookings@planbeau.com',
+  
+  // Support emails
+  'support': process.env.EMAIL_SUPPORT || 'support@planbeau.com',
+  
+  // Admin/Operator emails
+  'admin': process.env.EMAIL_ADMIN || 'admin@planbeau.com',
+  'operators': process.env.EMAIL_OPERATORS || 'operators@planbeau.com',
+  
+  // General/Welcome emails
+  'welcome': process.env.EMAIL_HELLO || 'hello@planbeau.com',
+  'hello': process.env.EMAIL_HELLO || 'hello@planbeau.com',
+  
+  // Default fallback
+  'default': process.env.SMTP_FROM || process.env.EMAIL_NOTIFICATIONS || 'notifications@planbeau.com'
+};
+
+// Get sender email based on template key or category
+function getSenderEmail(templateKey, emailCategory) {
+  // First try template key
+  if (templateKey && EMAIL_SENDER_CONFIG[templateKey]) {
+    return EMAIL_SENDER_CONFIG[templateKey];
+  }
+  // Then try category
+  if (emailCategory && EMAIL_SENDER_CONFIG[emailCategory]) {
+    return EMAIL_SENDER_CONFIG[emailCategory];
+  }
+  // Fallback to default
+  return EMAIL_SENDER_CONFIG['default'];
+}
+
 // Send email via Brevo REST API (fallback if SMTP fails)
-async function sendViaBrevoAPI(to, subject, htmlContent, textContent) {
+// Now accepts senderEmail parameter and automatically BCCs to sender
+async function sendViaBrevoAPI(to, subject, htmlContent, textContent, senderEmail = null) {
   // Try multiple env var names for Brevo API key
   const apiKey = process.env.BREVO_API_KEY || process.env.SMTP_PASS;
   if (!apiKey) {
     throw new Error('Brevo API key not configured (need BREVO_API_KEY or SMTP_PASS)');
   }
 
-  const fromEmail = process.env.SMTP_FROM || process.env.FROM_EMAIL || 'no-reply@bundlebooth.ca';
-  const fromName = process.env.FROM_NAME || process.env.PLATFORM_NAME || 'Bundle Booth Entertainment';
+  const fromEmail = senderEmail || process.env.SMTP_FROM || process.env.FROM_EMAIL || 'notifications@planbeau.com';
+  const fromName = process.env.FROM_NAME || process.env.PLATFORM_NAME || 'PlanBeau';
+
+  // Build email payload with BCC to sender
+  const emailPayload = {
+    sender: { name: fromName, email: fromEmail },
+    to: [{ email: to }],
+    bcc: [{ email: fromEmail }], // BCC to sender so it appears in Zoho inbox
+    subject: subject,
+    htmlContent: htmlContent,
+    textContent: textContent
+  };
 
   const response = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',
@@ -22,13 +84,7 @@ async function sendViaBrevoAPI(to, subject, htmlContent, textContent) {
       'Content-Type': 'application/json',
       'api-key': apiKey
     },
-    body: JSON.stringify({
-      sender: { name: fromName, email: fromEmail },
-      to: [{ email: to }],
-      subject: subject,
-      htmlContent: htmlContent,
-      textContent: textContent
-    })
+    body: JSON.stringify(emailPayload)
   });
 
   if (!response.ok) {
@@ -203,6 +259,9 @@ async function sendTemplatedEmail(templateKey, recipientEmail, recipientName, va
     const html = replaceVariables(template.htmlContent, platformVars);
     const text = replaceVariables(template.textContent, platformVars);
 
+    // Get the appropriate sender email based on template key or category
+    const senderEmail = getSenderEmail(templateKey, emailCategory);
+    
     // Try SMTP first, fallback to API if it fails
     const t = getTransporter();
     let emailSent = false;
@@ -211,8 +270,15 @@ async function sendTemplatedEmail(templateKey, recipientEmail, recipientName, va
     // Try SMTP if configured
     if (t) {
       try {
-        const fromAddr = process.env.SMTP_FROM || process.env.FROM_EMAIL || 'no-reply@venuevue.com';
-        await t.sendMail({ from: fromAddr, to: recipientEmail, subject, text, html });
+        // Use dynamic sender and BCC to sender for Zoho inbox capture
+        await t.sendMail({ 
+          from: senderEmail, 
+          to: recipientEmail, 
+          bcc: senderEmail, // BCC to sender so it appears in Zoho inbox
+          subject, 
+          text, 
+          html 
+        });
         emailSent = true;
       } catch (smtpError) {
         lastError = smtpError;
@@ -222,7 +288,7 @@ async function sendTemplatedEmail(templateKey, recipientEmail, recipientName, va
     // Fallback to Brevo REST API if SMTP failed or not configured
     if (!emailSent) {
       try {
-        await sendViaBrevoAPI(recipientEmail, subject, html, text);
+        await sendViaBrevoAPI(recipientEmail, subject, html, text, senderEmail);
         emailSent = true;
       } catch (apiError) {
         console.error('Brevo API also failed:', apiError.message);
@@ -246,15 +312,24 @@ async function sendTemplatedEmail(templateKey, recipientEmail, recipientName, va
 }
 
 // Direct send (for non-templated emails)
-async function sendEmail({ to, subject, text, html, from }) {
+async function sendEmail({ to, subject, text, html, from, templateKey = null, emailCategory = null }) {
+  // Get the appropriate sender email
+  const senderEmail = from || getSenderEmail(templateKey, emailCategory);
+  
   const t = getTransporter();
   let emailSent = false;
 
   // Try SMTP if configured
   if (t) {
     try {
-      const fromAddr = from || process.env.SMTP_FROM || process.env.FROM_EMAIL || 'no-reply@venuevue.com';
-      await t.sendMail({ from: fromAddr, to, subject, text, html });
+      await t.sendMail({ 
+        from: senderEmail, 
+        to, 
+        bcc: senderEmail, // BCC to sender so it appears in Zoho inbox
+        subject, 
+        text, 
+        html 
+      });
       emailSent = true;
       return;
     } catch (smtpError) {
@@ -265,7 +340,7 @@ async function sendEmail({ to, subject, text, html, from }) {
   // Fallback to Brevo API
   if (!emailSent) {
     try {
-      await sendViaBrevoAPI(to, subject, html, text);
+      await sendViaBrevoAPI(to, subject, html, text, senderEmail);
     } catch (apiError) {
       console.error('Email sending failed:', apiError.message);
       throw apiError;
