@@ -343,6 +343,8 @@ async function notifyClientOfPayment(bookingId, amountCents, currency = 'CAD') {
  */
 async function notifyAdminOfVendorApplication(userId, vendorProfileId, businessDetails = {}) {
   try {
+    console.log(`[NotificationService] Starting vendor application notification for userId: ${userId}, vendorProfileId: ${vendorProfileId}`);
+    
     const pool = await poolPromise;
     
     // Get applicant details
@@ -356,10 +358,14 @@ async function notifyAdminOfVendorApplication(userId, vendorProfileId, businessD
     if (result.recordset.length > 0) {
       applicantName = result.recordset[0].Name || 'New Applicant';
       applicantEmail = result.recordset[0].Email || '';
+      console.log(`[NotificationService] Found applicant: ${applicantName} (${applicantEmail})`);
+    } else {
+      console.log(`[NotificationService] No user found for userId: ${userId}`);
     }
     
     // Get admin email from environment or use default
     const adminEmail = process.env.ADMIN_EMAIL || process.env.EMAIL_ADMIN || 'admin@planbeau.com';
+    console.log(`[NotificationService] Sending admin notification to: ${adminEmail}`);
     
     await sendVendorApplicationToAdmin(
       adminEmail,
@@ -370,9 +376,11 @@ async function notifyAdminOfVendorApplication(userId, vendorProfileId, businessD
       businessDetails.category || 'Not specified',
       `${FRONTEND_URL}/admin/vendors`
     );
+    console.log(`[NotificationService] Admin notification sent successfully`);
     
     // Also send welcome email to the new vendor
     if (applicantEmail) {
+      console.log(`[NotificationService] Sending welcome email to vendor: ${applicantEmail}`);
       await sendVendorWelcome(
         applicantEmail,
         applicantName,
@@ -380,9 +388,13 @@ async function notifyAdminOfVendorApplication(userId, vendorProfileId, businessD
         `${FRONTEND_URL}/become-a-vendor`,
         userId
       );
+      console.log(`[NotificationService] Vendor welcome email sent successfully`);
+    } else {
+      console.log(`[NotificationService] No applicant email found, skipping welcome email`);
     }
   } catch (error) {
     console.error('[NotificationService] Failed to notify admin of vendor application:', error.message);
+    console.error('[NotificationService] Full error:', error);
   }
 }
 
@@ -444,6 +456,8 @@ async function notifyOfBookingConfirmation(bookingId) {
  */
 async function notifyVendorOfApproval(vendorProfileId) {
   try {
+    console.log(`[NotificationService] Starting vendor approval notification for vendorProfileId: ${vendorProfileId}`);
+    
     const pool = await poolPromise;
     
     // Get vendor details via stored procedure
@@ -451,8 +465,12 @@ async function notifyVendorOfApproval(vendorProfileId) {
       .input('VendorProfileID', sql.Int, vendorProfileId)
       .execute('email.sp_GetVendorForApproval');
     
-    if (result.recordset.length === 0) return;
+    if (result.recordset.length === 0) {
+      console.log(`[NotificationService] No vendor found for vendorProfileId: ${vendorProfileId}`);
+      return;
+    }
     const data = result.recordset[0];
+    console.log(`[NotificationService] Found vendor: ${data.DisplayName || data.Name} (${data.Email})`);
     
     const vendorName = data.DisplayName || data.Name || 'Vendor';
     const businessName = data.BusinessName || 'Your Business';
@@ -464,8 +482,10 @@ async function notifyVendorOfApproval(vendorProfileId) {
       `${FRONTEND_URL}/dashboard`,
       data.UserID
     );
+    console.log(`[NotificationService] Vendor approval email sent successfully to ${data.Email}`);
   } catch (error) {
     console.error('[NotificationService] Failed to notify vendor of approval:', error.message);
+    console.error('[NotificationService] Full error:', error);
   }
 }
 
@@ -476,6 +496,8 @@ async function notifyVendorOfApproval(vendorProfileId) {
  */
 async function notifyVendorOfRejection(vendorProfileId, rejectionReason) {
   try {
+    console.log(`[NotificationService] Starting vendor rejection notification for vendorProfileId: ${vendorProfileId}`);
+    
     const pool = await poolPromise;
     
     // Get vendor details via stored procedure
@@ -483,8 +505,12 @@ async function notifyVendorOfRejection(vendorProfileId, rejectionReason) {
       .input('VendorProfileID', sql.Int, vendorProfileId)
       .execute('email.sp_GetVendorForApproval');
     
-    if (result.recordset.length === 0) return;
+    if (result.recordset.length === 0) {
+      console.log(`[NotificationService] No vendor found for vendorProfileId: ${vendorProfileId}`);
+      return;
+    }
     const data = result.recordset[0];
+    console.log(`[NotificationService] Found vendor: ${data.DisplayName || data.Name} (${data.Email})`);
     
     const vendorName = data.DisplayName || data.Name || 'Vendor';
     const businessName = data.BusinessName || 'Your Business';
@@ -497,8 +523,10 @@ async function notifyVendorOfRejection(vendorProfileId, rejectionReason) {
       `${FRONTEND_URL}/become-a-vendor`,
       data.UserID
     );
+    console.log(`[NotificationService] Vendor rejection email sent successfully to ${data.Email}`);
   } catch (error) {
     console.error('[NotificationService] Failed to notify vendor of rejection:', error.message);
+    console.error('[NotificationService] Full error:', error);
   }
 }
 

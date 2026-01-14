@@ -57,7 +57,8 @@ function getSenderEmail(templateKey, emailCategory) {
 
 // Send email via Brevo REST API (fallback if SMTP fails)
 // Now accepts senderEmail parameter and automatically BCCs to sender
-async function sendViaBrevoAPI(to, subject, htmlContent, textContent, senderEmail = null) {
+// additionalBcc parameter allows adding extra BCC recipients (e.g., admin email)
+async function sendViaBrevoAPI(to, subject, htmlContent, textContent, senderEmail = null, additionalBcc = null) {
   // Try multiple env var names for Brevo API key
   const apiKey = process.env.BREVO_API_KEY || process.env.SMTP_PASS;
   if (!apiKey) {
@@ -67,6 +68,18 @@ async function sendViaBrevoAPI(to, subject, htmlContent, textContent, senderEmai
   const fromEmail = senderEmail || process.env.SMTP_FROM || process.env.FROM_EMAIL || 'notifications@planbeau.com';
   const fromName = process.env.FROM_NAME || process.env.PLATFORM_NAME || 'PlanBeau';
 
+  // Build BCC list - always include sender, optionally include additional BCCs
+  const bccList = [{ email: fromEmail }];
+  if (additionalBcc) {
+    // additionalBcc can be a string or array of strings
+    const bccEmails = Array.isArray(additionalBcc) ? additionalBcc : [additionalBcc];
+    bccEmails.forEach(email => {
+      if (email && email !== fromEmail && email !== to) {
+        bccList.push({ email });
+      }
+    });
+  }
+
   // Build email payload with BCC to sender (matching Brevo API format exactly)
   const emailPayload = {
     sender: { 
@@ -74,7 +87,7 @@ async function sendViaBrevoAPI(to, subject, htmlContent, textContent, senderEmai
       name: fromName 
     },
     to: [{ email: to }],
-    bcc: [{ email: fromEmail }], // BCC to sender so it appears in Zoho inbox
+    bcc: bccList,
     subject: subject,
     htmlContent: htmlContent
   };
@@ -84,7 +97,7 @@ async function sendViaBrevoAPI(to, subject, htmlContent, textContent, senderEmai
     emailPayload.textContent = textContent;
   }
 
-  console.log(`📧 [BREVO API] Sending email from: ${fromEmail} to: ${to} with BCC: ${fromEmail}`);
+  console.log(`📧 [BREVO API] Sending email from: ${fromEmail} to: ${to} with BCC: ${bccList.map(b => b.email).join(', ')}`);
 
   const response = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',
@@ -237,7 +250,8 @@ async function logEmail(templateKey, recipientEmail, recipientName, subject, sta
 }
 
 // Send email using template
-async function sendTemplatedEmail(templateKey, recipientEmail, recipientName, variables, userId = null, bookingId = null, metadata = null, emailCategory = null) {
+// adminBcc parameter allows adding admin email as BCC recipient
+async function sendTemplatedEmail(templateKey, recipientEmail, recipientName, variables, userId = null, bookingId = null, metadata = null, emailCategory = null, adminBcc = null) {
   try {
     // Check user preferences before sending
     if (emailCategory && userId) {
@@ -277,7 +291,7 @@ async function sendTemplatedEmail(templateKey, recipientEmail, recipientName, va
 
     // Try Brevo REST API first (proper BCC support)
     try {
-      await sendViaBrevoAPI(recipientEmail, subject, html, text, senderEmail);
+      await sendViaBrevoAPI(recipientEmail, subject, html, text, senderEmail, adminBcc);
       emailSent = true;
     } catch (apiError) {
       console.error('Brevo API failed, trying SMTP fallback:', apiError.message);
@@ -289,11 +303,21 @@ async function sendTemplatedEmail(templateKey, recipientEmail, recipientName, va
       const t = getTransporter();
       if (t) {
         try {
-          console.log(`📧 [SMTP] Sending email from: ${senderEmail} to: ${recipientEmail} with BCC: ${senderEmail}`);
+          // Build BCC list for SMTP
+          const bccList = [senderEmail];
+          if (adminBcc) {
+            const bccEmails = Array.isArray(adminBcc) ? adminBcc : [adminBcc];
+            bccEmails.forEach(email => {
+              if (email && email !== senderEmail && email !== recipientEmail) {
+                bccList.push(email);
+              }
+            });
+          }
+          console.log(`📧 [SMTP] Sending email from: ${senderEmail} to: ${recipientEmail} with BCC: ${bccList.join(', ')}`);
           await t.sendMail({ 
             from: senderEmail, 
             to: recipientEmail, 
-            bcc: senderEmail, // BCC to sender so it appears in Zoho inbox
+            bcc: bccList.join(', '),
             subject, 
             text, 
             html 
@@ -426,17 +450,21 @@ async function sendBookingCancelledToVendor(vendorEmail, vendorName, clientName,
 }
 
 // Send vendor application notification to admin
+// Also BCC to SMTP_FROM so it appears in the notifications inbox
 async function sendVendorApplicationToAdmin(adminEmail, applicantName, businessName, businessEmail, businessPhone, category, dashboardUrl) {
+  const smtpFrom = process.env.SMTP_FROM || 'notifications@planbeau.com';
   return sendTemplatedEmail('vendor_application_admin', adminEmail, 'Admin', {
     applicantName, businessName, businessEmail, businessPhone, category, dashboardUrl
-  }, null, null, null, 'admin');
+  }, null, null, null, 'admin', smtpFrom);
 }
 
 // Send welcome email to new vendor after application
+// BCC to admin so they know about new vendor applications
 async function sendVendorWelcome(vendorEmail, vendorName, businessName, dashboardUrl, userId = null) {
+  const adminEmail = process.env.ADMIN_EMAIL || 'admin@planbeau.com';
   return sendTemplatedEmail('vendor_welcome', vendorEmail, vendorName, {
     vendorName, businessName, dashboardUrl
-  }, userId, null, null, 'welcome');
+  }, userId, null, null, 'welcome', adminEmail);
 }
 
 // Send booking confirmed notification to client (after payment)

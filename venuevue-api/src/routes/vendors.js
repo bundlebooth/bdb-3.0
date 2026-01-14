@@ -1480,7 +1480,7 @@ router.post('/register', upload.array('images', 5), async (req, res) => {
       
       // Send email notification to admin about new vendor application
       try {
-        notifyAdminOfVendorApplication(
+        await notifyAdminOfVendorApplication(
           result.recordset[0].UserID,
           vendorProfileId,
           {
@@ -2074,6 +2074,25 @@ router.post('/onboarding', async (req, res) => {
     const updateUserRequest = new sql.Request(pool);
     updateUserRequest.input('UserID', sql.Int, parseInt(userId));
     await updateUserRequest.execute('vendors.sp_SetUserAsVendor');
+
+    // Send email notification to admin about new vendor application
+    try {
+      console.log(`[Onboarding] Sending email notification for userId: ${userId}, vendorProfileId: ${vendorProfileId}`);
+      await notifyAdminOfVendorApplication(
+        parseInt(userId),
+        vendorProfileId,
+        {
+          businessName: businessName,
+          businessEmail: email || null,
+          businessPhone: businessPhone,
+          category: primaryCategory || (categories && categories.length > 0 ? categories[0] : 'Not specified')
+        }
+      );
+      console.log(`[Onboarding] Email notification sent successfully`);
+    } catch (emailErr) {
+      console.error('[Onboarding] Failed to send vendor application notification:', emailErr.message);
+      // Don't fail the onboarding if email fails
+    }
 
     res.status(200).json({
       success: true,
@@ -5900,6 +5919,32 @@ router.post('/:vendorProfileId/submit-for-review', async (req, res) => {
     // Update profile status to pending_review
     await request.execute('vendors.sp_SubmitForReview');
     
+    // Get vendor details for email notification
+    try {
+      const vendorRequest = new sql.Request(pool);
+      vendorRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+      const vendorResult = await vendorRequest.execute('vendors.sp_GetProfileDetails');
+      
+      if (vendorResult.recordset.length > 0) {
+        const vendor = vendorResult.recordset[0];
+        console.log(`[SubmitForReview] Sending email notification for vendorProfileId: ${vendorProfileId}`);
+        await notifyAdminOfVendorApplication(
+          vendor.UserID,
+          parseInt(vendorProfileId),
+          {
+            businessName: vendor.BusinessName,
+            businessEmail: vendor.BusinessEmail || null,
+            businessPhone: vendor.BusinessPhone,
+            category: vendor.PrimaryCategory || 'Not specified'
+          }
+        );
+        console.log(`[SubmitForReview] Email notification sent successfully`);
+      }
+    } catch (emailErr) {
+      console.error('[SubmitForReview] Failed to send vendor application notification:', emailErr.message);
+      // Don't fail the submission if email fails
+    }
+    
     res.json({ 
       success: true, 
       message: 'Profile submitted for review',
@@ -5945,7 +5990,7 @@ router.post('/admin/:vendorProfileId/approve', async (req, res) => {
     
     // Send email notification to vendor
     try {
-      notifyVendorOfApproval(parseInt(vendorProfileId, 10));
+      await notifyVendorOfApproval(parseInt(vendorProfileId, 10));
     } catch (emailErr) {
       console.error('Failed to send approval notification:', emailErr.message);
     }
@@ -5982,7 +6027,7 @@ router.post('/admin/:vendorProfileId/reject', async (req, res) => {
     
     // Send email notification to vendor
     try {
-      notifyVendorOfRejection(parseInt(vendorProfileId, 10), rejectionReason);
+      await notifyVendorOfRejection(parseInt(vendorProfileId, 10), rejectionReason);
     } catch (emailErr) {
       console.error('Failed to send rejection notification:', emailErr.message);
     }
