@@ -4284,6 +4284,58 @@ router.get('/:id/services', async (req, res) => {
   }
 });
 
+// Update a single service by predefined service ID (PATCH - lightweight update)
+router.patch('/:id/services/:predefinedServiceId', async (req, res) => {
+  try {
+    const vendorProfileId = parseVendorProfileId(req.params.id);
+    const predefinedServiceId = parseInt(req.params.predefinedServiceId);
+    const { salePrice, originalPrice, pricingModel, baseDurationMinutes, baseRate, overtimeRatePerHour, fixedPrice, perPersonPrice, minimumAttendees, maximumAttendees, description, imageURL } = req.body;
+    
+    const pool = await poolPromise;
+    
+    // Update VendorSelectedServices table
+    const updateRequest = new sql.Request(pool);
+    updateRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+    updateRequest.input('PredefinedServiceID', sql.Int, predefinedServiceId);
+    updateRequest.input('SalePrice', sql.Decimal(10, 2), salePrice != null && salePrice !== '' ? parseFloat(salePrice) : null);
+    updateRequest.input('OriginalPrice', sql.Decimal(10, 2), originalPrice != null && originalPrice !== '' ? parseFloat(originalPrice) : null);
+    updateRequest.input('PricingModel', sql.NVarChar(50), pricingModel || null);
+    updateRequest.input('BaseDurationMinutes', sql.Int, baseDurationMinutes != null ? parseInt(baseDurationMinutes) : null);
+    updateRequest.input('BaseRate', sql.Decimal(10, 2), baseRate != null && baseRate !== '' ? parseFloat(baseRate) : null);
+    updateRequest.input('OvertimeRatePerHour', sql.Decimal(10, 2), overtimeRatePerHour != null && overtimeRatePerHour !== '' ? parseFloat(overtimeRatePerHour) : null);
+    updateRequest.input('FixedPrice', sql.Decimal(10, 2), fixedPrice != null && fixedPrice !== '' ? parseFloat(fixedPrice) : null);
+    updateRequest.input('PerPersonPrice', sql.Decimal(10, 2), perPersonPrice != null && perPersonPrice !== '' ? parseFloat(perPersonPrice) : null);
+    updateRequest.input('MinimumAttendees', sql.Int, minimumAttendees != null && minimumAttendees !== '' ? parseInt(minimumAttendees) : null);
+    updateRequest.input('MaximumAttendees', sql.Int, maximumAttendees != null && maximumAttendees !== '' ? parseInt(maximumAttendees) : null);
+    updateRequest.input('VendorDescription', sql.NVarChar(sql.MAX), description || null);
+    updateRequest.input('ImageURL', sql.NVarChar(500), imageURL || null);
+    
+    // Direct SQL update since we may not have a stored procedure for this
+    await updateRequest.query(`
+      UPDATE vendors.VendorSelectedServices 
+      SET 
+        SalePrice = @SalePrice,
+        OriginalPrice = @OriginalPrice,
+        PricingModel = COALESCE(@PricingModel, PricingModel),
+        VendorDuration = COALESCE(@BaseDurationMinutes, VendorDuration),
+        BaseRate = @BaseRate,
+        OvertimeRatePerHour = @OvertimeRatePerHour,
+        FixedPrice = @FixedPrice,
+        PerPersonPrice = @PerPersonPrice,
+        MinimumAttendees = @MinimumAttendees,
+        MaximumAttendees = @MaximumAttendees,
+        VendorDescription = COALESCE(@VendorDescription, VendorDescription),
+        ImageURL = COALESCE(@ImageURL, ImageURL)
+      WHERE VendorProfileID = @VendorProfileID AND PredefinedServiceID = @PredefinedServiceID
+    `);
+    
+    res.json({ success: true, message: 'Service updated successfully' });
+  } catch (error) {
+    console.error('Error updating service:', error);
+    res.status(500).json({ success: false, message: 'Failed to update service', error: error.message });
+  }
+});
+
 // Get vendor reviews
 router.get('/:id/reviews', async (req, res) => {
   try {

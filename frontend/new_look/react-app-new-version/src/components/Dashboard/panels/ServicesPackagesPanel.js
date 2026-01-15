@@ -400,14 +400,51 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
     }
   };
 
-  const handleSaveEdit = () => {
-    setServices(services.map(s => 
+  const handleSaveEdit = async () => {
+    // Update local state
+    const updatedServices = services.map(s => 
       s.id === editingService.id 
         ? { ...s, ...editForm }
         : s
-    ));
+    );
+    setServices(updatedServices);
+    const serviceId = editingService.id;
     setEditingService(null);
     setEditForm({});
+    
+    // Save only this single service to database
+    try {
+      const response = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/services/${serviceId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          salePrice: editForm.salePrice,
+          originalPrice: editForm.originalPrice,
+          pricingModel: editForm.pricingModel,
+          baseDurationMinutes: editForm.vendorDuration,
+          baseRate: editForm.baseRate,
+          overtimeRatePerHour: editForm.overtimeRatePerHour,
+          fixedPrice: editForm.fixedPrice,
+          perPersonPrice: editForm.pricePerPerson,
+          minimumAttendees: editForm.minimumAttendees,
+          maximumAttendees: editForm.maximumAttendees,
+          description: editForm.vendorDescription,
+          imageURL: editForm.imageURL
+        })
+      });
+
+      if (response.ok) {
+        showBanner('Service updated successfully!', 'success');
+      } else {
+        showBanner('Failed to save service changes', 'error');
+      }
+    } catch (error) {
+      console.error('Error saving service:', error);
+      showBanner('Failed to save service changes', 'error');
+    }
   };
 
   const handleRemoveService = (serviceId) => {
@@ -699,7 +736,9 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
                   <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>Add Service</h3>
                   <button
                     onClick={() => setShowServicePicker(false)}
-                    style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: '#6b7280', padding: 0 }}
+                    style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#6b7280', padding: '4px 8px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}
+                    onMouseOver={(e) => { e.currentTarget.style.background = '#f3f4f6'; e.currentTarget.style.color = '#111827'; }}
+                    onMouseOut={(e) => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = '#6b7280'; }}
                   >
                     ×
                   </button>
@@ -796,7 +835,9 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
                   <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>{editingService.name}</h3>
                   <button
                     onClick={() => setEditingService(null)}
-                    style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: '#6b7280', padding: 0 }}
+                    style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#6b7280', padding: '4px 8px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}
+                    onMouseOver={(e) => { e.currentTarget.style.background = '#f3f4f6'; e.currentTarget.style.color = '#111827'; }}
+                    onMouseOut={(e) => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = '#6b7280'; }}
                   >
                     ×
                   </button>
@@ -891,8 +932,8 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
                 </div>
 
                 {/* Pricing Model */}
-                <div style={{ marginBottom: '24px' }}>
-                  <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
                     Pricing Model *
                   </label>
                   <select
@@ -903,8 +944,7 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
                       padding: '12px 14px',
                       border: '1px solid #e5e7eb',
                       borderRadius: '8px',
-                      fontSize: '14px',
-                      background: '#f9fafb'
+                      fontSize: '14px'
                     }}
                   >
                     <option value="time_based">Time-based (Hourly)</option>
@@ -915,79 +955,73 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
 
                 {/* Time-based Fields */}
                 {editForm.pricingModel === 'time_based' && (
-                  <div style={{ marginBottom: '24px' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '16px' }}>
-                      <div>
-                        <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px' }}>
-                          Base Duration (min) *
-                        </label>
-                        <input
-                          type="number"
-                          value={editForm.vendorDuration}
-                          onChange={(e) => setEditForm({ ...editForm, vendorDuration: e.target.value })}
-                          min="15"
-                          step="15"
-                          required
-                          style={{
-                            width: '100%',
-                            padding: '12px 14px',
-                            border: '1px solid #e5e7eb',
-                            borderRadius: '8px',
-                            fontSize: '14px',
-                            background: '#f9fafb'
-                          }}
-                        />
-                      </div>
-                      <div>
-                        <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px' }}>
-                          Base Rate ($) *
-                        </label>
-                        <input
-                          type="number"
-                          value={editForm.baseRate}
-                          onChange={(e) => setEditForm({ ...editForm, baseRate: e.target.value })}
-                          min="0"
-                          step="0.01"
-                          required
-                          style={{
-                            width: '100%',
-                            padding: '12px 14px',
-                            border: '1px solid #e5e7eb',
-                            borderRadius: '8px',
-                            fontSize: '14px',
-                            background: '#f9fafb'
-                          }}
-                        />
-                      </div>
-                      <div>
-                        <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px' }}>
-                          Overtime ($/hr) *
-                        </label>
-                        <input
-                          type="number"
-                          value={editForm.overtimeRatePerHour}
-                          onChange={(e) => setEditForm({ ...editForm, overtimeRatePerHour: e.target.value })}
-                          min="0"
-                          step="0.01"
-                          required
-                          style={{
-                            width: '100%',
-                            padding: '12px 14px',
-                            border: '1px solid #e5e7eb',
-                            borderRadius: '8px',
-                            fontSize: '14px',
-                            background: '#f9fafb'
-                          }}
-                        />
-                      </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                        Duration (min) *
+                      </label>
+                      <input
+                        type="number"
+                        value={editForm.vendorDuration}
+                        onChange={(e) => setEditForm({ ...editForm, vendorDuration: e.target.value })}
+                        min="15"
+                        step="15"
+                        required
+                        style={{
+                          width: '100%',
+                          padding: '12px 14px',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '8px',
+                          fontSize: '14px'
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                        Base Rate ($) *
+                      </label>
+                      <input
+                        type="number"
+                        value={editForm.baseRate}
+                        onChange={(e) => setEditForm({ ...editForm, baseRate: e.target.value })}
+                        min="0"
+                        step="0.01"
+                        required
+                        style={{
+                          width: '100%',
+                          padding: '12px 14px',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '8px',
+                          fontSize: '14px'
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                        Overtime ($/hr)
+                      </label>
+                      <input
+                        type="number"
+                        value={editForm.overtimeRatePerHour}
+                        onChange={(e) => setEditForm({ ...editForm, overtimeRatePerHour: e.target.value })}
+                        min="0"
+                        step="0.01"
+                        style={{
+                          width: '100%',
+                          padding: '12px 14px',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '8px',
+                          fontSize: '14px'
+                        }}
+                      />
                     </div>
                   </div>
                 )}
 
                 {/* Fixed Price Fields */}
                 {editForm.pricingModel === 'fixed_price' && (
-                  <div style={{ marginBottom: '24px' }}>
-                    <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px' }}>
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
                       Fixed Price ($) *
                     </label>
                     <input
@@ -1002,8 +1036,7 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
                         padding: '12px 14px',
                         border: '1px solid #e5e7eb',
                         borderRadius: '8px',
-                        fontSize: '14px',
-                        background: '#f9fafb'
+                        fontSize: '14px'
                       }}
                     />
                   </div>
@@ -1011,111 +1044,94 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
 
                 {/* Per Attendee Fields */}
                 {editForm.pricingModel === 'per_attendee' && (
-                  <div style={{ marginBottom: '24px' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '16px' }}>
-                      <div>
-                        <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px' }}>
-                          Price Per Person ($) *
-                        </label>
-                        <input
-                          type="number"
-                          value={editForm.pricePerPerson}
-                          onChange={(e) => setEditForm({ ...editForm, pricePerPerson: e.target.value })}
-                          min="0"
-                          step="0.01"
-                          required
-                          style={{
-                            width: '100%',
-                            padding: '12px 14px',
-                            border: '1px solid #e5e7eb',
-                            borderRadius: '8px',
-                            fontSize: '14px',
-                            background: '#f9fafb'
-                          }}
-                        />
-                      </div>
-                      <div>
-                        <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px' }}>
-                          Min Attendees *
-                        </label>
-                        <input
-                          type="number"
-                          value={editForm.minimumAttendees}
-                          onChange={(e) => setEditForm({ ...editForm, minimumAttendees: e.target.value })}
-                          min="1"
-                          step="1"
-                          required
-                          style={{
-                            width: '100%',
-                            padding: '12px 14px',
-                            border: '1px solid #e5e7eb',
-                            borderRadius: '8px',
-                            fontSize: '14px',
-                            background: '#f9fafb'
-                          }}
-                        />
-                      </div>
-                      <div>
-                        <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px' }}>
-                          Max Attendees *
-                        </label>
-                        <input
-                          type="number"
-                          value={editForm.maximumAttendees}
-                          onChange={(e) => setEditForm({ ...editForm, maximumAttendees: e.target.value })}
-                          min="1"
-                          step="1"
-                          required
-                          style={{
-                            width: '100%',
-                            padding: '12px 14px',
-                            border: '1px solid #e5e7eb',
-                            borderRadius: '8px',
-                            fontSize: '14px',
-                            background: '#f9fafb'
-                          }}
-                        />
-                      </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                        Price/Person ($) *
+                      </label>
+                      <input
+                        type="number"
+                        value={editForm.pricePerPerson}
+                        onChange={(e) => setEditForm({ ...editForm, pricePerPerson: e.target.value })}
+                        min="0"
+                        step="0.01"
+                        required
+                        style={{
+                          width: '100%',
+                          padding: '12px 14px',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '8px',
+                          fontSize: '14px'
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                        Min Attendees
+                      </label>
+                      <input
+                        type="number"
+                        value={editForm.minimumAttendees}
+                        onChange={(e) => setEditForm({ ...editForm, minimumAttendees: e.target.value })}
+                        min="1"
+                        step="1"
+                        style={{
+                          width: '100%',
+                          padding: '12px 14px',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '8px',
+                          fontSize: '14px'
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                        Max Attendees
+                      </label>
+                      <input
+                        type="number"
+                        value={editForm.maximumAttendees}
+                        onChange={(e) => setEditForm({ ...editForm, maximumAttendees: e.target.value })}
+                        min="1"
+                        step="1"
+                        style={{
+                          width: '100%',
+                          padding: '12px 14px',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '8px',
+                          fontSize: '14px'
+                        }}
+                      />
                     </div>
                   </div>
                 )}
 
                 {/* Description */}
-                <div>
-                  <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    Your Description *
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                    Description
                   </label>
                   <textarea
                     value={editForm.vendorDescription}
                     onChange={(e) => setEditForm({ ...editForm, vendorDescription: e.target.value })}
                     placeholder="Add any specific details about how you provide this service..."
                     rows="3"
-                    required
                     style={{
                       width: '100%',
                       padding: '12px 14px',
                       border: '1px solid #e5e7eb',
                       borderRadius: '8px',
                       fontSize: '14px',
-                      background: '#f9fafb',
                       resize: 'vertical',
-                      minHeight: '100px',
-                      fontFamily: 'inherit',
-                      lineHeight: '1.5'
+                      fontFamily: 'inherit'
                     }}
                   />
                 </div>
-              </div>
 
-              {/* Sale Price Section */}
-              <div style={{ marginBottom: '24px', padding: '16px', background: '#fef3c7', borderRadius: '8px', border: '1px solid #fcd34d' }}>
-                <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#92400e', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  <i className="fas fa-tag" style={{ marginRight: '6px' }}></i>
-                  Sale Price (Optional)
-                </label>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                {/* Sale Price Section - matching package modal style */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>
+                    <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
                       Original Price ($)
                     </label>
                     <input
@@ -1127,7 +1143,7 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
                       placeholder="Regular price"
                       style={{
                         width: '100%',
-                        padding: '10px 12px',
+                        padding: '12px 14px',
                         border: '1px solid #e5e7eb',
                         borderRadius: '8px',
                         fontSize: '14px',
@@ -1136,7 +1152,7 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>
+                    <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
                       Sale Price ($)
                     </label>
                     <input
@@ -1148,16 +1164,15 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
                       placeholder="Discounted price"
                       style={{
                         width: '100%',
-                        padding: '10px 12px',
+                        padding: '12px 14px',
                         border: '1px solid #e5e7eb',
                         borderRadius: '8px',
-                        fontSize: '14px',
-                        background: 'white'
+                        fontSize: '14px'
                       }}
                     />
                   </div>
                 </div>
-                <p style={{ margin: '8px 0 0 0', fontSize: '12px', color: '#92400e' }}>
+                <p style={{ margin: '0', fontSize: '12px', color: '#6b7280' }}>
                   If both prices are set, the sale price will be shown with the original price crossed out.
                 </p>
               </div>
@@ -1242,7 +1257,9 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
                   </h3>
                   <button
                     onClick={() => setShowPackageModal(false)}
-                    style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: '#6b7280', padding: 0 }}
+                    style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#6b7280', padding: '4px 8px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}
+                    onMouseOver={(e) => { e.currentTarget.style.background = '#f3f4f6'; e.currentTarget.style.color = '#111827'; }}
+                    onMouseOut={(e) => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = '#6b7280'; }}
                   >
                     ×
                   </button>
