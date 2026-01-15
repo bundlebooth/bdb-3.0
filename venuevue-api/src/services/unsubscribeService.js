@@ -66,8 +66,10 @@ function verifyUnsubscribeToken(token) {
  */
 function getUnsubscribeUrl(userId, email, category = null) {
   const token = generateUnsubscribeToken(userId, email);
-  // Use FRONTEND_URL for the unsubscribe page (user-facing)
-  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  // Always use production URL for emails in production
+  const frontendUrl = process.env.NODE_ENV === 'production' 
+    ? 'https://www.planbeau.com' 
+    : (process.env.FRONTEND_URL || 'http://localhost:3000');
   let url = `${frontendUrl}/unsubscribe/${token}`;
   if (category) {
     url += `?category=${category}`;
@@ -83,7 +85,10 @@ function getUnsubscribeUrl(userId, email, category = null) {
  */
 function getPreferencesUrl(userId, email) {
   const token = generateUnsubscribeToken(userId, email);
-  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  // Always use production URL for emails in production
+  const frontendUrl = process.env.NODE_ENV === 'production' 
+    ? 'https://www.planbeau.com' 
+    : (process.env.FRONTEND_URL || 'http://localhost:3000');
   return `${frontendUrl}/email-preferences/${token}`;
 }
 
@@ -217,7 +222,10 @@ async function processUnsubscribe(token, category = null) {
  */
 function generateUnsubscribeHtml(success, email, category = null) {
   const platformName = process.env.PLATFORM_NAME || 'PlanBeau';
-  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  // Always use production URL in production
+  const frontendUrl = process.env.NODE_ENV === 'production' 
+    ? 'https://www.planbeau.com' 
+    : (process.env.FRONTEND_URL || 'http://localhost:3000');
   
   if (success) {
     return `
