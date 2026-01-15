@@ -28,6 +28,30 @@ const pushService = require('./pushNotificationService');
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
 
 /**
+ * Create an in-app notification for a user
+ * @param {number} userId - The user ID to notify
+ * @param {string} type - Notification type (message, booking, payment, etc.)
+ * @param {string} title - Notification title
+ * @param {string} message - Notification message
+ * @param {number} relatedId - Optional related entity ID (bookingId, conversationId, etc.)
+ */
+async function createInAppNotification(userId, type, title, message, relatedId = null) {
+  try {
+    const pool = await poolPromise;
+    await pool.request()
+      .input('UserID', sql.Int, userId)
+      .input('Type', sql.NVarChar(50), type)
+      .input('Title', sql.NVarChar(255), title)
+      .input('Message', sql.NVarChar(sql.MAX), message)
+      .input('RelatedID', sql.Int, relatedId)
+      .execute('notifications.sp_Create');
+    console.log(`[NotificationService] Created in-app notification for user ${userId}: ${title}`);
+  } catch (error) {
+    console.error('[NotificationService] Failed to create in-app notification:', error.message);
+  }
+}
+
+/**
  * Send email notification when a new booking request is created
  * @param {number} requestId - The booking request ID
  * @param {number} userId - The client's user ID
@@ -77,6 +101,15 @@ async function notifyVendorOfNewRequest(requestId, userId, vendorProfileId, even
     
     // Send push notification to vendor
     await pushService.notifyNewBookingRequest(data.VendorUserID, data.ClientName, serviceName);
+    
+    // Create in-app notification for vendor
+    await createInAppNotification(
+      data.VendorUserID,
+      'booking_request',
+      'New Booking Request',
+      `${data.ClientName} wants to book ${serviceName}`,
+      requestId
+    );
   } catch (error) {
     console.error('[NotificationService] Failed to notify vendor of new request:', error.message);
   }
@@ -110,6 +143,15 @@ async function notifyClientOfApproval(requestId) {
     
     // Send push notification to client
     await pushService.notifyBookingUpdate(data.UserID, 'accepted', data.VendorName);
+    
+    // Create in-app notification for client
+    await createInAppNotification(
+      data.UserID,
+      'booking_accepted',
+      'Booking Request Accepted!',
+      `${data.VendorName} accepted your booking request for ${data.ServiceName}`,
+      requestId
+    );
   } catch (error) {
     console.error('[NotificationService] Failed to notify client of approval:', error.message);
   }
@@ -150,6 +192,15 @@ async function notifyClientOfRejection(requestId) {
     
     // Send push notification to client
     await pushService.notifyBookingUpdate(data.UserID, 'rejected', data.VendorName);
+    
+    // Create in-app notification for client
+    await createInAppNotification(
+      data.UserID,
+      'booking_rejected',
+      'Booking Request Declined',
+      `${data.VendorName} couldn't accept your booking request for ${data.ServiceName}`,
+      requestId
+    );
   } catch (error) {
     console.error('[NotificationService] Failed to notify client of rejection:', error.message);
   }
@@ -191,6 +242,15 @@ async function notifyOfNewMessage(conversationId, senderId, content) {
       
       // Send push notification to vendor
       await pushService.notifyNewMessage(conv.VendorUserID, conv.ClientName, messagePreview);
+      
+      // Create in-app notification for vendor
+      await createInAppNotification(
+        conv.VendorUserID,
+        'message',
+        `New message from ${conv.ClientName}`,
+        messagePreview,
+        conversationId
+      );
     } else {
       // Vendor sending to client
       await sendMessageFromVendor(
@@ -204,6 +264,15 @@ async function notifyOfNewMessage(conversationId, senderId, content) {
       
       // Send push notification to client
       await pushService.notifyNewMessage(conv.UserID, conv.VendorName, messagePreview);
+      
+      // Create in-app notification for client
+      await createInAppNotification(
+        conv.UserID,
+        'message',
+        `New message from ${conv.VendorName}`,
+        messagePreview,
+        conversationId
+      );
     }
   } catch (error) {
     console.error('[NotificationService] Failed to notify of new message:', error.message);
@@ -282,6 +351,15 @@ async function notifyVendorOfPayment(bookingId, amountCents, currency = 'CAD', t
     
     // Send push notification to vendor
     await pushService.notifyPaymentReceived(data.VendorUserID, amount, data.ClientName);
+    
+    // Create in-app notification for vendor
+    await createInAppNotification(
+      data.VendorUserID,
+      'payment',
+      'Payment Received',
+      `You received ${amount} from ${data.ClientName} for ${data.ServiceName}`,
+      bookingId
+    );
   } catch (error) {
     console.error('[NotificationService] Failed to notify vendor of payment:', error.message);
   }
@@ -331,6 +409,15 @@ async function notifyOfBookingCancellation(bookingId, cancelledBy, reason = null
       
       // Send push notification to client
       await pushService.notifyBookingUpdate(data.ClientUserID, 'cancelled', data.VendorName);
+      
+      // Create in-app notification for client
+      await createInAppNotification(
+        data.ClientUserID,
+        'booking_cancelled',
+        'Booking Cancelled',
+        `${data.VendorName} cancelled your booking for ${data.ServiceName || 'Service'}`,
+        bookingId
+      );
     } else if (cancelledBy === 'client') {
       // Notify vendor that client cancelled
       await sendBookingCancelledToVendor(
@@ -352,6 +439,15 @@ async function notifyOfBookingCancellation(bookingId, cancelledBy, reason = null
         url: '/dashboard?tab=bookings',
         tag: 'booking-cancelled'
       });
+      
+      // Create in-app notification for vendor
+      await createInAppNotification(
+        data.VendorUserID,
+        'booking_cancelled',
+        'Booking Cancelled',
+        `${data.ClientName} cancelled their booking for ${data.ServiceName || 'Service'}`,
+        bookingId
+      );
     }
   } catch (error) {
     console.error('[NotificationService] Failed to notify of booking cancellation:', error.message);
@@ -538,6 +634,15 @@ async function notifyOfBookingConfirmation(bookingId) {
       tag: 'booking-confirmed'
     });
     
+    // Create in-app notification for client
+    await createInAppNotification(
+      data.ClientUserID,
+      'booking_confirmed',
+      'Booking Confirmed!',
+      `Your booking with ${data.VendorName} for ${data.ServiceName || 'Service'} is confirmed`,
+      bookingId
+    );
+    
     // Notify vendor
     await sendBookingConfirmedToVendor(
       data.VendorEmail,
@@ -558,6 +663,15 @@ async function notifyOfBookingConfirmation(bookingId) {
       url: '/dashboard?tab=bookings',
       tag: 'booking-confirmed'
     });
+    
+    // Create in-app notification for vendor
+    await createInAppNotification(
+      data.VendorUserID,
+      'booking_confirmed',
+      'Booking Confirmed!',
+      `Booking with ${data.ClientName} for ${data.ServiceName || 'Service'} is confirmed`,
+      bookingId
+    );
   } catch (error) {
     console.error('[NotificationService] Failed to notify of booking confirmation:', error.message);
   }
