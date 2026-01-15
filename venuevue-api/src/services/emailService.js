@@ -23,6 +23,7 @@ const {
   sendVendorRejected
 } = require('./email');
 const { generateInvoicePDF, formatInvoiceData } = require('./invoiceService');
+const pushService = require('./pushNotificationService');
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
 
@@ -73,6 +74,9 @@ async function notifyVendorOfNewRequest(requestId, userId, vendorProfileId, even
       data.VendorUserID,
       null
     );
+    
+    // Send push notification to vendor
+    await pushService.notifyNewBookingRequest(data.VendorUserID, data.ClientName, serviceName);
   } catch (error) {
     console.error('[NotificationService] Failed to notify vendor of new request:', error.message);
   }
@@ -103,6 +107,9 @@ async function notifyClientOfApproval(requestId) {
       data.UserID,
       null
     );
+    
+    // Send push notification to client
+    await pushService.notifyBookingUpdate(data.UserID, 'accepted', data.VendorName);
   } catch (error) {
     console.error('[NotificationService] Failed to notify client of approval:', error.message);
   }
@@ -140,6 +147,9 @@ async function notifyClientOfRejection(requestId) {
       data.UserID,
       null
     );
+    
+    // Send push notification to client
+    await pushService.notifyBookingUpdate(data.UserID, 'rejected', data.VendorName);
   } catch (error) {
     console.error('[NotificationService] Failed to notify client of rejection:', error.message);
   }
@@ -178,6 +188,9 @@ async function notifyOfNewMessage(conversationId, senderId, content) {
         dashboardUrl,
         conv.VendorUserID
       );
+      
+      // Send push notification to vendor
+      await pushService.notifyNewMessage(conv.VendorUserID, conv.ClientName, messagePreview);
     } else {
       // Vendor sending to client
       await sendMessageFromVendor(
@@ -188,6 +201,9 @@ async function notifyOfNewMessage(conversationId, senderId, content) {
         dashboardUrl,
         conv.UserID
       );
+      
+      // Send push notification to client
+      await pushService.notifyNewMessage(conv.UserID, conv.VendorName, messagePreview);
     }
   } catch (error) {
     console.error('[NotificationService] Failed to notify of new message:', error.message);
@@ -263,6 +279,9 @@ async function notifyVendorOfPayment(bookingId, amountCents, currency = 'CAD', t
       bookingId,
       invoiceAttachment
     );
+    
+    // Send push notification to vendor
+    await pushService.notifyPaymentReceived(data.VendorUserID, amount, data.ClientName);
   } catch (error) {
     console.error('[NotificationService] Failed to notify vendor of payment:', error.message);
   }
@@ -309,6 +328,9 @@ async function notifyOfBookingCancellation(bookingId, cancelledBy, reason = null
         data.ClientUserID,
         bookingId
       );
+      
+      // Send push notification to client
+      await pushService.notifyBookingUpdate(data.ClientUserID, 'cancelled', data.VendorName);
     } else if (cancelledBy === 'client') {
       // Notify vendor that client cancelled
       await sendBookingCancelledToVendor(
@@ -322,6 +344,14 @@ async function notifyOfBookingCancellation(bookingId, cancelledBy, reason = null
         data.VendorUserID,
         bookingId
       );
+      
+      // Send push notification to vendor
+      await pushService.sendToUser(data.VendorUserID, {
+        title: 'Booking Cancelled',
+        body: `${data.ClientName} cancelled their booking`,
+        url: '/dashboard?tab=bookings',
+        tag: 'booking-cancelled'
+      });
     }
   } catch (error) {
     console.error('[NotificationService] Failed to notify of booking cancellation:', error.message);
@@ -500,6 +530,14 @@ async function notifyOfBookingConfirmation(bookingId) {
       bookingId
     );
     
+    // Send push notification to client
+    await pushService.sendToUser(data.ClientUserID, {
+      title: 'Booking Confirmed!',
+      body: `Your booking with ${data.VendorName} is confirmed`,
+      url: '/dashboard?tab=bookings',
+      tag: 'booking-confirmed'
+    });
+    
     // Notify vendor
     await sendBookingConfirmedToVendor(
       data.VendorEmail,
@@ -512,6 +550,14 @@ async function notifyOfBookingConfirmation(bookingId) {
       data.VendorUserID,
       bookingId
     );
+    
+    // Send push notification to vendor
+    await pushService.sendToUser(data.VendorUserID, {
+      title: 'Booking Confirmed!',
+      body: `Booking with ${data.ClientName} is confirmed`,
+      url: '/dashboard?tab=bookings',
+      tag: 'booking-confirmed'
+    });
   } catch (error) {
     console.error('[NotificationService] Failed to notify of booking confirmation:', error.message);
   }
