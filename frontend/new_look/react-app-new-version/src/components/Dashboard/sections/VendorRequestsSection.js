@@ -82,11 +82,13 @@ function VendorRequestsSection() {
       const data = await resp.json();
       const bookings = Array.isArray(data) ? data : [];
       
-      // Normalize status
+      // Status is now unified from backend - just normalize to lowercase for consistency
       const normalized = bookings.map(b => ({ 
         ...b, 
-        _status: ((b.Status || '').toString().toLowerCase()) 
-      }))
+        _status: ((b.Status || '').toString().toLowerCase()),
+        _statusCategory: (b.StatusCategory || '').toString().toLowerCase(),
+        _statusLabel: b.StatusLabel || b.Status || 'Unknown'
+      }));
       
       setAllBookings(normalized);
     } catch (error) {
@@ -124,22 +126,22 @@ function VendorRequestsSection() {
   };
 
   const getFilteredBookings = () => {
-    const acceptedStatuses = new Set(['accepted', 'approved', 'confirmed', 'paid']);
-    const cancelledStatuses = new Set(['cancelled', 'cancelled_by_client', 'cancelled_by_vendor', 'cancelled_by_admin']);
-    
+    // Use StatusCategory from backend for consistent filtering
+    // StatusCategory values: 'pending', 'upcoming', 'completed', 'cancelled', 'declined', 'expired'
     let filtered;
     if (activeTab === 'all') {
       filtered = allBookings;
     } else if (activeTab === 'pending') {
-      filtered = allBookings.filter(b => b._status === 'pending' && !isEventPast(b));
+      filtered = allBookings.filter(b => b._statusCategory === 'pending');
     } else if (activeTab === 'approved') {
-      filtered = allBookings.filter(b => acceptedStatuses.has(b._status) && !isEventPast(b) && !cancelledStatuses.has(b._status));
+      // 'approved' tab shows upcoming bookings (approved or paid, event not passed)
+      filtered = allBookings.filter(b => b._statusCategory === 'upcoming');
     } else if (activeTab === 'completed') {
-      filtered = allBookings.filter(b => b._status === 'completed' || (acceptedStatuses.has(b._status) && isEventPast(b)));
+      filtered = allBookings.filter(b => b._statusCategory === 'completed');
     } else if (activeTab === 'cancelled') {
-      filtered = allBookings.filter(b => cancelledStatuses.has(b._status));
+      filtered = allBookings.filter(b => b._statusCategory === 'cancelled');
     } else if (activeTab === 'declined') {
-      filtered = allBookings.filter(b => b._status === 'declined');
+      filtered = allBookings.filter(b => b._statusCategory === 'declined');
     } else {
       filtered = allBookings;
     }

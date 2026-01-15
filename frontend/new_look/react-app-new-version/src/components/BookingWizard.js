@@ -133,21 +133,30 @@ function BookingWizard({ vendorId, onClose, onSuccess }) {
     }
 
     try {
+      // Build services array with proper structure
+      const servicesData = selectedServices.map(s => ({
+        id: s.id,
+        name: s.name,
+        price: s.price || 0
+      }));
+
       const payload = {
         userId: currentUser.id,
         vendorProfileId: vendorId,
         eventName: bookingData.eventName,
         eventType: bookingData.eventType,
         eventDate: bookingData.eventDate,
-        startTime: bookingData.eventTime,
-        endTime: bookingData.eventEndTime || null,
+        eventTime: bookingData.eventTime + ':00',
+        eventEndTime: bookingData.eventEndTime ? bookingData.eventEndTime + ':00' : null,
         attendeeCount: parseInt(bookingData.attendeeCount),
         eventLocation: bookingData.eventLocation,
-        specialRequests: bookingData.specialRequests || '',
-        selectedServices: selectedServices.map(s => s.id)
+        specialRequestText: bookingData.specialRequests || '',
+        services: servicesData,
+        budget: servicesData.reduce((sum, s) => sum + (s.price || 0), 0),
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
       };
 
-      const response = await fetch(`${API_BASE_URL}/bookings/request`, {
+      const response = await fetch(`${API_BASE_URL}/bookings/requests/send`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

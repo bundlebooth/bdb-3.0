@@ -33,10 +33,12 @@ function ClientBookingsSection({ onPayNow, onOpenChat }) {
       const data = await resp.json();
       const bookings = Array.isArray(data) ? data : [];
       
-      // Normalize status
+      // Status is now unified from backend - just normalize to lowercase for consistency
       const normalized = bookings.map(b => ({ 
         ...b, 
-        _status: ((b.Status || '').toString().toLowerCase()) 
+        _status: ((b.Status || '').toString().toLowerCase()),
+        _statusCategory: (b.StatusCategory || '').toString().toLowerCase(),
+        _statusLabel: b.StatusLabel || b.Status || 'Unknown'
       }));
       
       setAllBookings(normalized);
@@ -79,24 +81,24 @@ function ClientBookingsSection({ onPayNow, onOpenChat }) {
   };
 
   const getFilteredBookings = () => {
-    const acceptedStatuses = new Set(['accepted', 'approved', 'confirmed', 'paid']);
-    const cancelledStatuses = new Set(['cancelled', 'cancelled_by_client', 'cancelled_by_vendor', 'cancelled_by_admin']);
-    
+    // Use StatusCategory from backend for consistent filtering
+    // StatusCategory values: 'pending', 'upcoming', 'completed', 'cancelled', 'declined', 'expired'
     let filtered;
     if (activeTab === 'all') {
       filtered = allBookings;
     } else if (activeTab === 'pending') {
-      filtered = allBookings.filter(b => b._status === 'pending' && !isEventPast(b));
+      filtered = allBookings.filter(b => b._statusCategory === 'pending');
     } else if (activeTab === 'accepted') {
-      filtered = allBookings.filter(b => acceptedStatuses.has(b._status) && !isEventPast(b) && !cancelledStatuses.has(b._status));
+      // 'accepted' tab shows upcoming bookings (approved or paid, event not passed)
+      filtered = allBookings.filter(b => b._statusCategory === 'upcoming');
     } else if (activeTab === 'completed') {
-      filtered = allBookings.filter(b => b._status === 'completed' || (acceptedStatuses.has(b._status) && isEventPast(b)));
+      filtered = allBookings.filter(b => b._statusCategory === 'completed');
     } else if (activeTab === 'cancelled') {
-      filtered = allBookings.filter(b => cancelledStatuses.has(b._status));
+      filtered = allBookings.filter(b => b._statusCategory === 'cancelled');
     } else if (activeTab === 'declined') {
-      filtered = allBookings.filter(b => b._status === 'declined');
+      filtered = allBookings.filter(b => b._statusCategory === 'declined');
     } else if (activeTab === 'expired') {
-      filtered = allBookings.filter(b => b._status === 'expired');
+      filtered = allBookings.filter(b => b._statusCategory === 'expired');
     } else {
       filtered = allBookings;
     }
@@ -105,41 +107,30 @@ function ClientBookingsSection({ onPayNow, onOpenChat }) {
   };
 
   // Get detailed status label for client view
+  // Uses unified status from backend for consistency
   const getDetailedStatus = (booking) => {
     const s = booking._status;
-    const isPaid = booking.FullAmountPaid === true || booking.FullAmountPaid === 1 || 
-                   booking.PaymentStatus === 'paid' || booking.PaymentStatus === 'completed' ||
-                   booking._status === 'paid';
+    const isPaid = s === 'paid';
     const isDepositOnly = !isPaid && (booking.DepositPaid === true || booking.DepositPaid === 1);
-    const eventPast = isEventPast(booking);
     
-    // Completed - event has passed
-    if (s === 'completed' || (eventPast && (isPaid || s === 'confirmed' || s === 'accepted' || s === 'approved'))) {
-      return { label: 'Completed', icon: 'fa-check-double', color: '#059669', borderStyle: 'solid' };
-    }
-    // Cancelled statuses
-    if (s === 'cancelled' || s === 'cancelled_by_client' || s === 'cancelled_by_vendor' || s === 'cancelled_by_admin') {
-      return { label: 'Cancelled', icon: 'fa-times-circle', color: '#ef4444', borderStyle: 'solid' };
-    }
-    if (isPaid) {
-      return { label: 'Paid', icon: 'fa-check-circle', color: '#10b981', borderStyle: 'solid' };
-    }
-    if (s === 'pending') {
-      return { label: 'Awaiting Vendor Approval', icon: 'fa-clock', color: '#f59e0b', borderStyle: 'dashed' };
-    }
-    if (s === 'confirmed' || s === 'accepted' || s === 'approved') {
-      if (isDepositOnly) {
-        return { label: 'Balance Due', icon: 'fa-hourglass-half', color: '#8b5cf6', borderStyle: 'dashed' };
-      }
-      return { label: 'Approved', icon: 'fa-check', color: '#10b981', borderStyle: 'dashed' };
-    }
-    if (s === 'declined') {
-      return { label: 'Declined by Vendor', icon: 'fa-times-circle', color: '#ef4444', borderStyle: 'dashed' };
-    }
-    if (s === 'expired') {
-      return { label: 'Expired', icon: 'fa-clock', color: '#6b7280', borderStyle: 'dashed' };
-    }
-    return { label: 'Pending', icon: 'fa-clock', color: '#f59e0b', borderStyle: 'dashed' };
+    // Status configuration map - unified with backend StatusLabel
+    const statusConfig = {
+      pending: { label: 'Awaiting Vendor Approval', icon: 'fa-clock', color: '#f59e0b', borderStyle: 'dashed' },
+      approved: { 
+        label: isDepositOnly ? 'Balance Due' : 'Awaiting Payment', 
+        icon: isDepositOnly ? 'fa-hourglass-half' : 'fa-credit-card', 
+        color: isDepositOnly ? '#8b5cf6' : '#3b82f6', 
+        borderStyle: 'dashed' 
+      },
+      paid: { label: 'Confirmed & Paid', icon: 'fa-check-circle', color: '#10b981', borderStyle: 'solid' },
+      completed: { label: 'Completed', icon: 'fa-check-double', color: '#059669', borderStyle: 'solid' },
+      cancelled: { label: 'Cancelled', icon: 'fa-times-circle', color: '#ef4444', borderStyle: 'solid' },
+      declined: { label: 'Declined by Vendor', icon: 'fa-times-circle', color: '#ef4444', borderStyle: 'dashed' },
+      expired: { label: 'Expired', icon: 'fa-clock', color: '#6b7280', borderStyle: 'dashed' },
+      counter_offer: { label: 'Counter Offer', icon: 'fa-exchange-alt', color: '#8b5cf6', borderStyle: 'dashed' }
+    };
+    
+    return statusConfig[s] || { label: booking._statusLabel || 'Unknown', icon: 'fa-question-circle', color: '#6b7280', borderStyle: 'dashed' };
   };
 
   const handleShowDetails = (booking) => {
