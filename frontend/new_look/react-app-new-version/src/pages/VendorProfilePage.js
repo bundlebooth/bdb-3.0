@@ -1047,20 +1047,20 @@ function VendorProfilePage() {
     );
   };
 
-  // Render vendor badges section
+  // Render vendor badges section - Subtle pastel style with rounded corners
   const renderVendorBadges = () => {
     if (!vendorBadges || vendorBadges.length === 0) return null;
 
     const getBadgeStyle = (badgeType) => {
       const styles = {
-        'new_vendor': { bg: '#e0f2fe', color: '#0369a1', icon: 'fa-sparkles', label: 'New Vendor' },
-        'top_rated': { bg: '#fef3c7', color: '#d97706', icon: 'fa-star', label: 'Top Rated' },
-        'choice_award': { bg: '#fee2e2', color: '#dc2626', icon: 'fa-award', label: 'Choice Award' },
-        'premium': { bg: '#f3e8ff', color: '#7c3aed', icon: 'fa-crown', label: 'Premium' },
-        'verified': { bg: '#d1fae5', color: '#059669', icon: 'fa-check-circle', label: 'Verified' },
-        'featured': { bg: '#fce7f3', color: '#db2777', icon: 'fa-fire', label: 'Featured' }
+        'new_vendor': { bg: '#e0f2fe', iconBg: 'white', iconColor: '#0369a1', textColor: '#0369a1', icon: 'fa-sparkles', label: 'New Vendor' },
+        'top_rated': { bg: '#fef3c7', iconBg: 'white', iconColor: '#d97706', textColor: '#d97706', icon: 'fa-star', label: 'Top Rated' },
+        'choice_award': { bg: '#fee2e2', iconBg: 'white', iconColor: '#dc2626', textColor: '#dc2626', icon: 'fa-award', label: 'Choice Award' },
+        'premium': { bg: '#f3e8ff', iconBg: 'white', iconColor: '#7c3aed', textColor: '#7c3aed', icon: 'fa-crown', label: 'Premium' },
+        'verified': { bg: '#d1fae5', iconBg: 'white', iconColor: '#059669', textColor: '#059669', icon: 'fa-check-circle', label: 'Verified' },
+        'featured': { bg: '#fce7f3', iconBg: 'white', iconColor: '#db2777', textColor: '#db2777', icon: 'fa-fire', label: 'Featured' }
       };
-      return styles[badgeType] || { bg: '#f3f4f6', color: '#6b7280', icon: 'fa-certificate', label: badgeType };
+      return styles[badgeType] || { bg: '#f3f4f6', iconBg: 'white', iconColor: '#6b7280', textColor: '#6b7280', icon: 'fa-certificate', label: badgeType };
     };
 
     return (
@@ -1073,46 +1073,85 @@ function VendorProfilePage() {
               <div 
                 key={index}
                 style={{
+                  width: '110px',
+                  padding: '1rem 0.75rem',
+                  borderRadius: '16px',
+                  background: style.bg,
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
-                  padding: '1rem 1.5rem',
-                  background: style.bg,
-                  borderRadius: '12px',
-                  minWidth: '100px'
+                  justifyContent: 'center',
+                  userSelect: 'none',
+                  WebkitUserSelect: 'none',
+                  MozUserSelect: 'none',
+                  msUserSelect: 'none'
                 }}
               >
-                {badge.ImageURL ? (
+                {/* Icon circle with favicon overlay */}
+                <div style={{
+                  width: '48px',
+                  height: '48px',
+                  borderRadius: '50%',
+                  background: style.iconBg,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: '0.5rem',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                  position: 'relative'
+                }}>
+                  {badge.ImageURL ? (
+                    <img 
+                      src={badge.ImageURL} 
+                      alt={badge.BadgeName || style.label}
+                      style={{ width: '28px', height: '28px', objectFit: 'contain', pointerEvents: 'auto' }}
+                    />
+                  ) : (
+                    <i className={`fas ${style.icon}`} style={{ 
+                      fontSize: '1.25rem', 
+                      color: style.iconColor
+                    }}></i>
+                  )}
+                  {/* PlanBeau favicon logo - positioned at bottom right of icon circle */}
                   <img 
-                    src={badge.ImageURL} 
-                    alt={badge.BadgeName || style.label}
-                    style={{ width: '60px', height: '60px', objectFit: 'contain', marginBottom: '0.5rem' }}
+                    src="/planbeau_fav_icon.png" 
+                    alt="PlanBeau"
+                    style={{ 
+                      position: 'absolute',
+                      bottom: '-2px',
+                      right: '-2px',
+                      width: '18px', 
+                      height: '18px', 
+                      objectFit: 'contain',
+                      background: 'white',
+                      borderRadius: '50%',
+                      padding: '2px',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
+                      pointerEvents: 'auto'
+                    }}
                   />
-                ) : (
-                  <div style={{
-                    width: '60px',
-                    height: '60px',
-                    borderRadius: '50%',
-                    background: 'white',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    marginBottom: '0.5rem',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-                  }}>
-                    <i className={`fas ${style.icon}`} style={{ fontSize: '1.5rem', color: style.color }}></i>
-                  </div>
-                )}
+                </div>
+                
+                {/* Badge name */}
                 <span style={{ 
-                  fontSize: '0.8rem', 
+                  fontSize: '0.75rem', 
                   fontWeight: 600, 
-                  color: style.color,
-                  textAlign: 'center'
+                  color: style.textColor,
+                  textAlign: 'center',
+                  lineHeight: 1.2
                 }}>
                   {badge.BadgeName || style.label}
                 </span>
+                
+                {/* Year */}
                 {badge.Year && (
-                  <span style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                  <span style={{ 
+                    fontSize: '0.7rem', 
+                    fontWeight: 500,
+                    color: style.textColor,
+                    opacity: 0.7,
+                    marginTop: '2px'
+                  }}>
                     {badge.Year}
                   </span>
                 )}

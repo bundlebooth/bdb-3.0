@@ -351,15 +351,33 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
           className="nav-icon" 
           id="notifications-btn" 
           onClick={handleNotificationClick}
-          style={{ cursor: 'pointer' }}
+          style={{ cursor: 'pointer', position: 'relative', overflow: 'visible' }}
         >
           <i className="fas fa-bell"></i>
           <span
-            className="badge"
-            id="notifications-badge"
-            style={{ display: notificationsBadge > 0 ? 'grid' : 'none' }}
+            className="notification-count-badge"
+            style={{
+              position: 'absolute',
+              top: '-6px',
+              right: '-8px',
+              backgroundColor: '#ef4444',
+              color: 'white',
+              fontSize: '10px',
+              fontWeight: 700,
+              minWidth: '18px',
+              height: '18px',
+              borderRadius: '50%',
+              display: notificationsBadge > 0 ? 'flex' : 'none',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '0 4px',
+              border: '2px solid white',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+              zIndex: 10,
+              lineHeight: 1
+            }}
           >
-            {notificationsBadge}
+            {notificationsBadge > 99 ? '99+' : notificationsBadge}
           </span>
         </div>
         {/* User menu button - hamburger + avatar like dashboard - hidden on mobile via CSS */}

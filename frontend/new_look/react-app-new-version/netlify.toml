@@ -5,10 +5,6 @@
 [build.environment]
   CI = "false"
 
-# Enable Netlify's prerendering for SEO (bots get pre-rendered HTML)
-[[plugins]]
-  package = "@netlify/plugin-prerender"
-
 # Headers for SEO and security
 [[headers]]
   for = "/*"

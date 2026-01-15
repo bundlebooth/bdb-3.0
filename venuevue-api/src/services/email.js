@@ -443,17 +443,18 @@ async function sendTwoFactorCode(email, code, userName = 'User', userId = null) 
   return sendTemplatedEmail('auth_2fa', email, userName, { code, userName }, userId, null, null, '2fa', adminEmail);
 }
 
-async function sendBookingRequestToVendor(vendorEmail, vendorName, clientName, serviceName, eventDate, location, budget, dashboardUrl, vendorUserId = null, bookingId = null) {
+async function sendBookingRequestToVendor(vendorEmail, vendorName, clientName, serviceName, eventDate, location, budget, dashboardUrl, vendorUserId = null, bookingId = null, eventTime = null, requestedAt = null) {
   const adminEmail = process.env.ADMIN_EMAIL || 'admin@planbeau.com';
+  const requestedAtFormatted = requestedAt || new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
   return sendTemplatedEmail('booking_request_vendor', vendorEmail, vendorName, {
-    vendorName, clientName, serviceName, eventDate, location, budget, dashboardUrl
+    vendorName, clientName, serviceName, eventDate, eventTime: eventTime || 'TBD', location: location || 'TBD', budget, dashboardUrl, requestedAt: requestedAtFormatted
   }, vendorUserId, bookingId, null, 'bookingUpdates', adminEmail);
 }
 
-async function sendBookingAcceptedToClient(clientEmail, clientName, vendorName, serviceName, dashboardUrl, userId = null, bookingId = null) {
+async function sendBookingAcceptedToClient(clientEmail, clientName, vendorName, serviceName, dashboardUrl, userId = null, bookingId = null, eventDate = null, eventTime = null, location = null, amount = null) {
   const adminEmail = process.env.ADMIN_EMAIL || 'admin@planbeau.com';
   return sendTemplatedEmail('booking_accepted_client', clientEmail, clientName, {
-    clientName, vendorName, serviceName, dashboardUrl
+    clientName, vendorName, serviceName, dashboardUrl, eventDate: eventDate || 'TBD', eventTime: eventTime || 'TBD', location: location || 'TBD', amount: amount || 'TBD'
   }, userId, bookingId, null, 'bookingUpdates', adminEmail);
 }
 
@@ -540,18 +541,18 @@ async function sendVendorWelcome(vendorEmail, vendorName, businessName, dashboar
 }
 
 // Send booking confirmed notification to client (after payment)
-async function sendBookingConfirmedToClient(clientEmail, clientName, vendorName, serviceName, eventDate, eventLocation, dashboardUrl, userId = null, bookingId = null) {
+async function sendBookingConfirmedToClient(clientEmail, clientName, vendorName, serviceName, eventDate, eventLocation, dashboardUrl, userId = null, bookingId = null, eventTime = null) {
   const adminEmail = process.env.ADMIN_EMAIL || 'admin@planbeau.com';
   return sendTemplatedEmail('booking_confirmed_client', clientEmail, clientName, {
-    clientName, vendorName, serviceName, eventDate, eventLocation: eventLocation || 'TBD', dashboardUrl
+    clientName, vendorName, serviceName, eventDate, eventTime: eventTime || 'TBD', location: eventLocation || 'TBD', dashboardUrl
   }, userId, bookingId, null, 'bookingUpdates', adminEmail);
 }
 
 // Send booking confirmed notification to vendor (after payment)
-async function sendBookingConfirmedToVendor(vendorEmail, vendorName, clientName, serviceName, eventDate, eventLocation, dashboardUrl, vendorUserId = null, bookingId = null) {
+async function sendBookingConfirmedToVendor(vendorEmail, vendorName, clientName, serviceName, eventDate, eventLocation, dashboardUrl, vendorUserId = null, bookingId = null, eventTime = null) {
   const adminEmail = process.env.ADMIN_EMAIL || 'admin@planbeau.com';
   return sendTemplatedEmail('booking_confirmed_vendor', vendorEmail, vendorName, {
-    vendorName, clientName, serviceName, eventDate, eventLocation: eventLocation || 'TBD', dashboardUrl
+    vendorName, clientName, serviceName, eventDate, eventTime: eventTime || 'TBD', location: eventLocation || 'TBD', dashboardUrl
   }, vendorUserId, bookingId, null, 'bookingUpdates', adminEmail);
 }
 
