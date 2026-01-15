@@ -40,7 +40,8 @@ function DashboardPage() {
   // Get initial section from URL or state
   const getInitialSection = () => {
     const params = new URLSearchParams(location.search);
-    const sectionParam = params.get('section');
+    // Support both ?section= and ?tab= for backwards compatibility with email links
+    const sectionParam = params.get('section') || params.get('tab');
     if (sectionParam) return sectionParam;
     
     if (location.state?.section) return location.state.section;
@@ -148,7 +149,8 @@ function DashboardPage() {
   // Update activeSection when URL changes (for sidebar navigation)
   useEffect(() => {
     const params = new URLSearchParams(location.search);
-    const sectionParam = params.get('section');
+    // Support both ?section= and ?tab= for backwards compatibility with email links
+    const sectionParam = params.get('section') || params.get('tab');
     if (sectionParam) {
       console.log('DashboardPage: URL section changed to:', sectionParam);
       setActiveSection(sectionParam);

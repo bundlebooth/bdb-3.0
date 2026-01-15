@@ -85,6 +85,7 @@ const EmailPreferencesPage = () => {
     return (
       <div style={styles.container}>
         <div style={styles.card}>
+          <img src="/images/logo.png" alt="PlanBeau" style={styles.logo} />
           <div style={styles.spinner}></div>
           <h2 style={styles.title}>Loading Preferences...</h2>
         </div>
@@ -96,6 +97,7 @@ const EmailPreferencesPage = () => {
     return (
       <div style={styles.container}>
         <div style={styles.card}>
+          <img src="/images/logo.png" alt="PlanBeau" style={styles.logo} />
           <div style={styles.iconError}>
             <svg width="40" height="40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
@@ -105,7 +107,7 @@ const EmailPreferencesPage = () => {
           <p style={styles.text}>
             This preferences link has expired or is invalid. Please log in to manage your email preferences.
           </p>
-          <a href="/dashboard/settings" style={styles.button}>
+          <a href="/dashboard" style={styles.button}>
             Go to Dashboard
           </a>
         </div>
@@ -116,6 +118,7 @@ const EmailPreferencesPage = () => {
   return (
     <div style={styles.container}>
       <div style={styles.cardWide}>
+        <img src="/images/logo.png" alt="PlanBeau" style={styles.logo} />
         <h1 style={styles.title}>Email Preferences</h1>
         <p style={styles.subtitle}>Manage email notifications for <strong>{email}</strong></p>
         
@@ -133,7 +136,7 @@ const EmailPreferencesPage = () => {
                 onClick={() => handleToggle('email', key)}
                 style={{
                   ...styles.toggle,
-                  background: preferences.email[key] ? '#667eea' : '#ccc'
+                  background: preferences.email[key] ? '#222222' : '#ccc'
                 }}
               >
                 <span style={{
@@ -164,7 +167,7 @@ const EmailPreferencesPage = () => {
                   onClick={() => handleToggle('push', key)}
                   style={{
                     ...styles.toggle,
-                    background: value ? '#667eea' : '#ccc'
+                    background: value ? '#222222' : '#ccc'
                   }}
                 >
                   <span style={{
@@ -201,7 +204,7 @@ const EmailPreferencesPage = () => {
 const styles = {
   container: {
     minHeight: '100vh',
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    background: '#f7f7f7',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -210,45 +213,52 @@ const styles = {
   },
   card: {
     background: 'white',
-    borderRadius: '16px',
+    borderRadius: '12px',
     padding: '48px',
     maxWidth: '480px',
     width: '100%',
     textAlign: 'center',
-    boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
+    boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+    border: '1px solid #ebebeb'
   },
   cardWide: {
     background: 'white',
-    borderRadius: '16px',
+    borderRadius: '12px',
     padding: '48px',
     maxWidth: '600px',
     width: '100%',
-    boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
+    boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+    border: '1px solid #ebebeb'
+  },
+  logo: {
+    height: '40px',
+    marginBottom: '32px',
+    display: 'block'
   },
   iconError: {
     width: '80px',
     height: '80px',
-    background: '#f8d7da',
+    background: '#f0f0f0',
     borderRadius: '50%',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     margin: '0 auto 24px',
-    color: '#dc3545'
+    color: '#222222'
   },
   title: {
-    color: '#333',
+    color: '#222222',
     fontSize: '24px',
     marginBottom: '8px',
     fontWeight: '600'
   },
   subtitle: {
-    color: '#666',
+    color: '#717171',
     fontSize: '14px',
     marginBottom: '32px'
   },
   text: {
-    color: '#666',
+    color: '#484848',
     fontSize: '16px',
     lineHeight: '1.6',
     marginBottom: '24px'
@@ -256,16 +266,16 @@ const styles = {
   section: {
     marginBottom: '32px',
     paddingBottom: '24px',
-    borderBottom: '1px solid #eee'
+    borderBottom: '1px solid #ebebeb'
   },
   sectionTitle: {
-    color: '#333',
+    color: '#222222',
     fontSize: '18px',
     marginBottom: '4px',
     fontWeight: '600'
   },
   sectionDesc: {
-    color: '#888',
+    color: '#717171',
     fontSize: '14px',
     marginBottom: '20px'
   },
@@ -281,12 +291,12 @@ const styles = {
     flexDirection: 'column'
   },
   toggleLabel: {
-    color: '#333',
+    color: '#222222',
     fontSize: '15px',
     fontWeight: '500'
   },
   toggleDesc: {
-    color: '#888',
+    color: '#717171',
     fontSize: '13px',
     marginTop: '2px'
   },
@@ -326,7 +336,7 @@ const styles = {
   },
   button: {
     display: 'inline-block',
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    background: '#222222',
     color: 'white',
     padding: '14px 32px',
     borderRadius: '8px',
@@ -336,16 +346,28 @@ const styles = {
     cursor: 'pointer',
     fontSize: '16px'
   },
-  linkButton: {
-    color: '#667eea',
+  buttonSecondary: {
+    display: 'inline-block',
+    background: 'white',
+    color: '#222222',
+    padding: '14px 32px',
+    borderRadius: '8px',
     textDecoration: 'none',
+    fontWeight: '600',
+    border: '1px solid #222222',
+    cursor: 'pointer',
+    fontSize: '16px'
+  },
+  linkButton: {
+    color: '#222222',
+    textDecoration: 'underline',
     fontSize: '14px'
   },
   spinner: {
     width: '40px',
     height: '40px',
     border: '4px solid #f3f3f3',
-    borderTop: '4px solid #667eea',
+    borderTop: '4px solid #222222',
     borderRadius: '50%',
     animation: 'spin 1s linear infinite',
     margin: '0 auto 24px'

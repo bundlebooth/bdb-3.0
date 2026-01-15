@@ -25,9 +25,12 @@ BEGIN
         c.VendorProfileID,
         u.Name AS ClientName,
         u.Email AS ClientEmail,
+        u.ProfileImageURL AS ClientProfilePic,
         vp.BusinessName AS VendorName,
+        vp.LogoUrl AS VendorLogoUrl,
         vu.UserID AS VendorUserID,
-        vu.Email AS VendorEmail
+        vu.Email AS VendorEmail,
+        vu.ProfileImageURL AS VendorProfilePic
     FROM messages.Conversations c
     INNER JOIN users.Users u ON c.UserID = u.UserID
     INNER JOIN vendors.VendorProfiles vp ON c.VendorProfileID = vp.VendorProfileID

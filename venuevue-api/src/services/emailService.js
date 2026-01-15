@@ -230,14 +230,16 @@ async function notifyOfNewMessage(conversationId, senderId, content) {
     
     // Determine sender and recipient
     if (senderId === conv.UserID) {
-      // Client sending to vendor
+      // Client sending to vendor - use client's profile pic
+      const senderProfilePic = conv.ClientProfilePic || null;
       await sendMessageFromClient(
         conv.VendorEmail,
         conv.VendorName,
         conv.ClientName,
         messagePreview,
         dashboardUrl,
-        conv.VendorUserID
+        conv.VendorUserID,
+        senderProfilePic
       );
       
       // Send push notification to vendor
@@ -252,14 +254,16 @@ async function notifyOfNewMessage(conversationId, senderId, content) {
         conversationId
       );
     } else {
-      // Vendor sending to client
+      // Vendor sending to client - use vendor's logo or profile pic
+      const senderProfilePic = conv.VendorLogoUrl || conv.VendorProfilePic || null;
       await sendMessageFromVendor(
         conv.ClientEmail,
         conv.ClientName,
         conv.VendorName,
         messagePreview,
         dashboardUrl,
-        conv.UserID
+        conv.UserID,
+        senderProfilePic
       );
       
       // Send push notification to client

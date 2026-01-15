@@ -461,17 +461,29 @@ async function sendBookingRejectedToClient(clientEmail, clientName, vendorName, 
   }, userId, bookingId, null, 'bookingUpdates', adminEmail);
 }
 
-async function sendMessageFromVendor(clientEmail, clientName, vendorName, messageContent, dashboardUrl, userId = null) {
+async function sendMessageFromVendor(clientEmail, clientName, vendorName, messageContent, dashboardUrl, userId = null, senderProfilePic = null) {
   const adminEmail = process.env.ADMIN_EMAIL || 'admin@planbeau.com';
+  const vendorInitial = vendorName ? vendorName.charAt(0).toUpperCase() : 'V';
+  const messageTime = new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+  // Generate avatar HTML - use profile pic if available, otherwise use initial
+  const senderAvatarHtml = senderProfilePic 
+    ? `<img src="${senderProfilePic}" alt="${vendorName}" style="width:48px;height:48px;border-radius:50%;object-fit:cover">`
+    : `<div style="width:48px;height:48px;background-color:#222222;border-radius:50%;text-align:center;line-height:48px;color:#ffffff;font-weight:600;font-size:18px">${vendorInitial}</div>`;
   return sendTemplatedEmail('message_vendor_to_client', clientEmail, clientName, {
-    clientName, vendorName, messageContent, dashboardUrl
+    clientName, vendorName, messageContent, dashboardUrl, vendorInitial, messageTime, senderAvatarHtml
   }, userId, null, null, 'messages', adminEmail);
 }
 
-async function sendMessageFromClient(vendorEmail, vendorName, clientName, messageContent, dashboardUrl, vendorUserId = null) {
+async function sendMessageFromClient(vendorEmail, vendorName, clientName, messageContent, dashboardUrl, vendorUserId = null, senderProfilePic = null) {
   const adminEmail = process.env.ADMIN_EMAIL || 'admin@planbeau.com';
+  const clientInitial = clientName ? clientName.charAt(0).toUpperCase() : 'C';
+  const messageTime = new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+  // Generate avatar HTML - use profile pic if available, otherwise use initial
+  const senderAvatarHtml = senderProfilePic 
+    ? `<img src="${senderProfilePic}" alt="${clientName}" style="width:48px;height:48px;border-radius:50%;object-fit:cover">`
+    : `<div style="width:48px;height:48px;background-color:#222222;border-radius:50%;text-align:center;line-height:48px;color:#ffffff;font-weight:600;font-size:18px">${clientInitial}</div>`;
   return sendTemplatedEmail('message_client_to_vendor', vendorEmail, vendorName, {
-    vendorName, clientName, messageContent, dashboardUrl
+    vendorName, clientName, messageContent, dashboardUrl, clientInitial, messageTime, senderAvatarHtml
   }, vendorUserId, null, null, 'messages', adminEmail);
 }
 
