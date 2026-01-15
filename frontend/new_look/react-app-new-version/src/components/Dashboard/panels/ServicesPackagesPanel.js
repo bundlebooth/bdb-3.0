@@ -356,6 +356,8 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
       pricingModel: service.pricingModel || 'time_based',
       vendorDuration: service.vendorDuration || service.defaultDuration || 60,
       baseRate: service.baseRate !== null && service.baseRate !== undefined ? service.baseRate : '',
+      salePrice: service.salePrice || service.SalePrice || '',
+      originalPrice: service.originalPrice || service.OriginalPrice || '',
       overtimeRatePerHour: service.overtimeRatePerHour !== null && service.overtimeRatePerHour !== undefined ? service.overtimeRatePerHour : '',
       fixedPrice: service.fixedPrice !== null && service.fixedPrice !== undefined ? service.fixedPrice : '',
       pricePerPerson: service.pricePerPerson !== null && service.pricePerPerson !== undefined ? service.pricePerPerson : '',
@@ -438,13 +440,17 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
           pricePerPerson: (s.pricePerPerson !== null && s.pricePerPerson !== undefined && s.pricePerPerson !== '') ? parseFloat(s.pricePerPerson) : null,
           minimumAttendees: (s.minimumAttendees !== null && s.minimumAttendees !== undefined && s.minimumAttendees !== '') ? parseInt(s.minimumAttendees) : null,
           maximumAttendees: (s.maximumAttendees !== null && s.maximumAttendees !== undefined && s.maximumAttendees !== '') ? parseInt(s.maximumAttendees) : null,
-          price: s.vendorPrice || s.fixedPrice || 0
+          price: s.vendorPrice || s.fixedPrice || 0,
+          salePrice: (s.salePrice !== null && s.salePrice !== undefined && s.salePrice !== '') ? parseFloat(s.salePrice) : null,
+          originalPrice: (s.originalPrice !== null && s.originalPrice !== undefined && s.originalPrice !== '') ? parseFloat(s.originalPrice) : null
         })),
         services: services.map(s => ({
           name: s.name,
           description: s.vendorDescription || s.description || '',
           imageURL: s.imageURL || null,
           pricingModel: s.pricingModel || 'time_based',
+          salePrice: (s.salePrice !== null && s.salePrice !== undefined && s.salePrice !== '') ? parseFloat(s.salePrice) : null,
+          originalPrice: (s.originalPrice !== null && s.originalPrice !== undefined && s.originalPrice !== '') ? parseFloat(s.originalPrice) : null,
           baseDurationMinutes: parseInt(s.vendorDuration) || s.defaultDuration || 60,
           baseRate: (s.baseRate !== null && s.baseRate !== undefined && s.baseRate !== '') ? parseFloat(s.baseRate) : null,
           overtimeRatePerHour: (s.overtimeRatePerHour !== null && s.overtimeRatePerHour !== undefined && s.overtimeRatePerHour !== '') ? parseFloat(s.overtimeRatePerHour) : null,
@@ -1101,6 +1107,61 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
                 </div>
               </div>
 
+              {/* Sale Price Section */}
+              <div style={{ marginBottom: '24px', padding: '16px', background: '#fef3c7', borderRadius: '8px', border: '1px solid #fcd34d' }}>
+                <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#92400e', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  <i className="fas fa-tag" style={{ marginRight: '6px' }}></i>
+                  Sale Price (Optional)
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>
+                      Original Price ($)
+                    </label>
+                    <input
+                      type="number"
+                      value={editForm.originalPrice || ''}
+                      onChange={(e) => setEditForm({ ...editForm, originalPrice: e.target.value })}
+                      min="0"
+                      step="0.01"
+                      placeholder="Regular price"
+                      style={{
+                        width: '100%',
+                        padding: '10px 12px',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        background: 'white'
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>
+                      Sale Price ($)
+                    </label>
+                    <input
+                      type="number"
+                      value={editForm.salePrice || ''}
+                      onChange={(e) => setEditForm({ ...editForm, salePrice: e.target.value })}
+                      min="0"
+                      step="0.01"
+                      placeholder="Discounted price"
+                      style={{
+                        width: '100%',
+                        padding: '10px 12px',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        background: 'white'
+                      }}
+                    />
+                  </div>
+                </div>
+                <p style={{ margin: '8px 0 0 0', fontSize: '12px', color: '#92400e' }}>
+                  If both prices are set, the sale price will be shown with the original price crossed out.
+                </p>
+              </div>
+
               {/* Modal Footer */}
               <div style={{ padding: '16px 24px', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
                 <button
@@ -1109,13 +1170,13 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
                     padding: '10px 20px',
                     border: 'none',
                     background: 'transparent',
-                    color: '#6366f1',
+                    color: '#222',
                     borderRadius: '6px',
                     fontWeight: 500,
                     cursor: 'pointer',
                     fontSize: '14px'
                   }}
-                  onMouseOver={(e) => e.currentTarget.style.background = '#eef2ff'}
+                  onMouseOver={(e) => e.currentTarget.style.background = '#f3f4f6'}
                   onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
                 >
                   Cancel
@@ -1125,15 +1186,15 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
                   style={{
                     padding: '10px 20px',
                     border: 'none',
-                    background: '#6366f1',
+                    background: '#222',
                     color: 'white',
                     borderRadius: '6px',
                     fontWeight: 500,
                     cursor: 'pointer',
                     fontSize: '14px'
                   }}
-                  onMouseOver={(e) => e.currentTarget.style.background = '#4f46e5'}
-                  onMouseOut={(e) => e.currentTarget.style.background = '#6366f1'}
+                  onMouseOver={(e) => e.currentTarget.style.background = '#000'}
+                  onMouseOut={(e) => e.currentTarget.style.background = '#222'}
                 >
                   Save Changes
                 </button>

@@ -8,6 +8,53 @@ export function updatePageTitle(notificationCount) {
   } else {
     document.title = baseTitle;
   }
+  
+  // Update favicon with red dot indicator
+  updateFaviconWithNotification(notificationCount > 0);
+}
+
+// Update favicon with red notification dot
+let originalFavicon = null;
+export function updateFaviconWithNotification(hasNotifications) {
+  const favicon = document.querySelector('link[rel="icon"]') || document.querySelector('link[rel="shortcut icon"]');
+  if (!favicon) return;
+  
+  // Store original favicon URL
+  if (!originalFavicon) {
+    originalFavicon = favicon.href;
+  }
+  
+  if (!hasNotifications) {
+    // Restore original favicon
+    favicon.href = originalFavicon;
+    return;
+  }
+  
+  // Create canvas to draw favicon with red dot
+  const canvas = document.createElement('canvas');
+  canvas.width = 32;
+  canvas.height = 32;
+  const ctx = canvas.getContext('2d');
+  
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = () => {
+    // Draw original favicon
+    ctx.drawImage(img, 0, 0, 32, 32);
+    
+    // Draw red notification dot in top-right corner
+    ctx.beginPath();
+    ctx.arc(26, 6, 6, 0, 2 * Math.PI);
+    ctx.fillStyle = '#ef4444';
+    ctx.fill();
+    ctx.strokeStyle = 'white';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    
+    // Update favicon
+    favicon.href = canvas.toDataURL('image/png');
+  };
+  img.src = originalFavicon;
 }
 
 // Debounce function
@@ -99,6 +146,117 @@ export function formatTimeAgo(dateString) {
 // Format money
 export function formatMoney(amount) {
   return `$${Number(amount || 0).toFixed(2)}`;
+}
+
+// Canadian province abbreviations
+const PROVINCE_ABBREVIATIONS = {
+  'alberta': 'AB',
+  'british columbia': 'BC',
+  'manitoba': 'MB',
+  'new brunswick': 'NB',
+  'newfoundland and labrador': 'NL',
+  'newfoundland': 'NL',
+  'northwest territories': 'NT',
+  'nova scotia': 'NS',
+  'nunavut': 'NU',
+  'ontario': 'ON',
+  'prince edward island': 'PE',
+  'quebec': 'QC',
+  'saskatchewan': 'SK',
+  'yukon': 'YT'
+};
+
+// Format location to "City, AB" format for display
+export function formatLocationShort(location) {
+  if (!location) return '';
+  
+  // If already in short format (e.g., "Toronto, ON"), return as-is
+  if (/^[^,]+,\s*[A-Z]{2}$/.test(location.trim())) {
+    return location.trim();
+  }
+  
+  // Split by comma first, then by space if no comma
+  let parts = location.split(',').map(p => p.trim()).filter(Boolean);
+  
+  // If only one part (no comma), try splitting by space to find province
+  if (parts.length === 1) {
+    const words = location.trim().split(/\s+/);
+    if (words.length >= 2) {
+      // Check if last word is a province name
+      const lastWord = words[words.length - 1].toLowerCase();
+      if (PROVINCE_ABBREVIATIONS[lastWord]) {
+        const city = words.slice(0, -1).join(' ');
+        return `${city}, ${PROVINCE_ABBREVIATIONS[lastWord]}`;
+      }
+      // Check if last two words form a province name (e.g., "British Columbia")
+      if (words.length >= 3) {
+        const lastTwoWords = words.slice(-2).join(' ').toLowerCase();
+        if (PROVINCE_ABBREVIATIONS[lastTwoWords]) {
+          const city = words.slice(0, -2).join(' ');
+          return `${city}, ${PROVINCE_ABBREVIATIONS[lastTwoWords]}`;
+        }
+      }
+    }
+  }
+  
+  if (parts.length === 0) return location;
+  
+  // Get city (first part)
+  const city = parts[0];
+  
+  // Try to find province in remaining parts
+  let provinceAbbr = '';
+  for (let i = 1; i < parts.length; i++) {
+    const part = parts[i].toLowerCase().replace('canada', '').trim();
+    if (PROVINCE_ABBREVIATIONS[part]) {
+      provinceAbbr = PROVINCE_ABBREVIATIONS[part];
+      break;
+    }
+    // Check if it's already an abbreviation
+    if (/^[A-Z]{2}$/.test(parts[i].trim())) {
+      provinceAbbr = parts[i].trim();
+      break;
+    }
+  }
+  
+  if (provinceAbbr) {
+    return `${city}, ${provinceAbbr}`;
+  }
+  
+  // If no province found, just return city
+  return city;
+}
+
+// Format response time to "Responds within X hours" format
+export function formatResponseTime(minutes) {
+  if (!minutes || minutes <= 0) return 'Responds within a few hours';
+  
+  if (minutes < 60) {
+    return `Responds within ${minutes} min${minutes !== 1 ? 's' : ''}`;
+  } else if (minutes < 120) {
+    return 'Responds within 1 hour';
+  } else if (minutes < 1440) { // Less than 24 hours
+    const hours = Math.round(minutes / 60);
+    return `Responds within ${hours} hours`;
+  } else {
+    const days = Math.round(minutes / 1440);
+    return `Responds within ${days} day${days !== 1 ? 's' : ''}`;
+  }
+}
+
+// Format response time for vendor cards (shorter format)
+export function formatResponseTimeShort(minutes) {
+  if (!minutes || minutes <= 0) return 'Quick responder';
+  
+  if (minutes < 60) {
+    return `~${minutes} mins`;
+  } else if (minutes < 1440) {
+    const hours = Math.round(minutes / 60);
+    return `~${hours} hr${hours !== 1 ? 's' : ''}`;
+  } else {
+    const days = Math.round(minutes / 1440);
+    return `~${days} day${days !== 1 ? 's' : ''}`;
+  }
 }
 
 // Generate session ID

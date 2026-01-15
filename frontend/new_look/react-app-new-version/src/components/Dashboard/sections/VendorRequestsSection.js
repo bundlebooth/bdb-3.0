@@ -3,6 +3,7 @@ import { useAuth } from '../../../context/AuthContext';
 import { API_BASE_URL } from '../../../config';
 import { showBanner } from '../../../utils/banners';
 import { buildInvoiceUrl } from '../../../utils/urlHelpers';
+import { getBookingStatusConfig, isEventPast } from '../../../utils/bookingStatus';
 import BookingDetailsModal from '../BookingDetailsModal';
 
 function VendorRequestsSection() {
@@ -118,12 +119,7 @@ function VendorRequestsSection() {
     return sorted;
   };
 
-  // Check if event date has passed
-  const isEventPast = (booking) => {
-    const eventDate = booking.EventDate || booking.eventDate;
-    if (!eventDate) return false;
-    return new Date(eventDate) < new Date();
-  };
+  // isEventPast is now imported from bookingStatus.js utility
 
   const getFilteredBookings = () => {
     // Use StatusCategory from backend for consistent filtering
@@ -149,40 +145,9 @@ function VendorRequestsSection() {
     return sortBookings(filtered);
   };
 
-  // Get detailed status label for vendor view
+  // Get detailed status label for vendor view - uses shared utility
   const getDetailedStatus = (booking) => {
-    const s = booking._status;
-    const isPaid = booking.FullAmountPaid === true || booking.FullAmountPaid === 1;
-    const isDepositOnly = !isPaid && (booking.DepositPaid === true || booking.DepositPaid === 1);
-    const eventPast = isEventPast(booking);
-    
-    // Completed - event has passed
-    if (s === 'completed' || (eventPast && (isPaid || s === 'confirmed' || s === 'accepted' || s === 'approved'))) {
-      return { label: 'Completed', icon: 'fa-check-double', color: '#059669', borderStyle: 'solid' };
-    }
-    // Cancelled statuses
-    if (s === 'cancelled' || s === 'cancelled_by_client' || s === 'cancelled_by_vendor' || s === 'cancelled_by_admin') {
-      return { label: 'Cancelled', icon: 'fa-times-circle', color: '#ef4444', borderStyle: 'solid' };
-    }
-    if (isPaid) {
-      return { label: 'Paid', icon: 'fa-check-circle', color: '#10b981', borderStyle: 'solid' };
-    }
-    if (s === 'pending') {
-      return { label: 'Awaiting Your Approval', icon: 'fa-clock', color: '#f59e0b', borderStyle: 'dashed' };
-    }
-    if (s === 'confirmed' || s === 'accepted' || s === 'approved') {
-      if (isDepositOnly) {
-        return { label: 'Awaiting Client Balance', icon: 'fa-credit-card', color: '#3b82f6', borderStyle: 'dashed' };
-      }
-      return { label: 'Awaiting Client Payment', icon: 'fa-credit-card', color: '#3b82f6', borderStyle: 'dashed' };
-    }
-    if (s === 'declined') {
-      return { label: 'Declined', icon: 'fa-times-circle', color: '#ef4444', borderStyle: 'dashed' };
-    }
-    if (s === 'expired') {
-      return { label: 'Expired', icon: 'fa-clock', color: '#6b7280', borderStyle: 'dashed' };
-    }
-    return { label: 'Pending', icon: 'fa-clock', color: '#f59e0b', borderStyle: 'dashed' };
+    return getBookingStatusConfig(booking, true); // true = vendor view
   };
 
   const handleShowDetails = (booking) => {
@@ -391,27 +356,30 @@ function VendorRequestsSection() {
       weekday = eventDate.toLocaleDateString('en-US', { weekday: 'short' });
       
       // Use StartTime and EndTime from the booking if available
+      const formatTime = (timeVal) => {
+        if (!timeVal) return '';
+        // Handle time string format (HH:MM:SS.nnnnnnn or HH:MM:SS or HH:MM)
+        const timeStrVal = typeof timeVal === 'string' ? timeVal : timeVal.toString();
+        const parts = timeStrVal.split(':');
+        const hours = parseInt(parts[0], 10) || 0;
+        const minutes = parseInt(parts[1], 10) || 0;
+        const hour12 = hours % 12 || 12;
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        return `${hour12}:${String(minutes).padStart(2, '0')} ${ampm}`;
+      };
+      
       if (booking.StartTime || booking.EndTime) {
-        const formatTime = (timeVal) => {
-          if (!timeVal) return '';
-          // Handle time string format (HH:MM:SS.nnnnnnn or HH:MM:SS or HH:MM)
-          const timeStr = typeof timeVal === 'string' ? timeVal : timeVal.toString();
-          const parts = timeStr.split(':');
-          const hours = parseInt(parts[0], 10) || 0;
-          const minutes = parseInt(parts[1], 10) || 0;
-          const hour12 = hours % 12 || 12;
-          const ampm = hours >= 12 ? 'PM' : 'AM';
-          return `${hour12}:${String(minutes).padStart(2, '0')} ${ampm}`;
-        };
         const startTimeFormatted = formatTime(booking.StartTime);
         const endTimeFormatted = formatTime(booking.EndTime);
         timeStr = startTimeFormatted && endTimeFormatted 
           ? `${startTimeFormatted} - ${endTimeFormatted}` 
           : startTimeFormatted || endTimeFormatted;
       } else {
-        // Fallback to event date time
+        // Fallback to event date time - show start and estimated end (90 min default)
         const startTime = eventDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-        timeStr = startTime;
+        const endDateTime = new Date(eventDate.getTime() + 90 * 60000);
+        const endTime = endDateTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+        timeStr = `${startTime} - ${endTime}`;
       }
     }
 
@@ -472,7 +440,7 @@ function VendorRequestsSection() {
           {timeStr && (
             <div className="booking-time-row">
               <i className="fas fa-clock" style={{ color: '#6b7280', fontSize: '12px' }}></i>
-              <span className="booking-time">{timeStr}</span>
+              <span className="booking-time">{timeStr}{booking.Timezone ? ` (${booking.Timezone})` : ''}</span>
             </div>
           )}
           {booking.TotalAmount != null && booking.TotalAmount !== '' && Number(booking.TotalAmount) > 0 ? (
@@ -484,8 +452,8 @@ function VendorRequestsSection() {
         </div>
         <div className="booking-actions" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px', paddingRight: '10px' }}>
           <div className="status-col" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-            <div className="request-status-badge" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '999px', fontSize: '12px', background: `${statusCfg.color}10`, color: '#111827', border: `1px ${statusCfg.borderStyle || 'solid'} ${statusCfg.color}` }}>
-              <i className={`fas ${statusCfg.icon}`} style={{ color: statusCfg.color }}></i>
+            <div className="request-status-badge" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '999px', fontSize: '12px', background: statusCfg.bg, color: statusCfg.color, border: `1px ${statusCfg.borderStyle || 'solid'} ${statusCfg.color}` }}>
+              <i className={`fas ${statusCfg.icon}`} style={{ fontSize: '11px' }}></i>
               <span>{statusCfg.label}</span>
             </div>
             {s === 'declined' && booking.DeclineReason && (
@@ -658,7 +626,8 @@ function VendorRequestsSection() {
       <BookingDetailsModal 
         isOpen={showDetailsModal} 
         onClose={handleCloseDetails} 
-        booking={selectedBooking} 
+        booking={selectedBooking}
+        isVendorView={true}
       />
       
       {/* Cancel Booking Modal - Vendor gets full refund warning */}

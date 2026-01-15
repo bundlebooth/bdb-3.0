@@ -1,5 +1,5 @@
 import React, { memo } from 'react';
-import { getCategoryIconHtml, mapTypeToCategory } from '../utils/helpers';
+import { getCategoryIconHtml, mapTypeToCategory, formatLocationShort } from '../utils/helpers';
 import { buildVendorProfileUrl } from '../utils/urlHelpers';
 
 const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavorite, onView, onHighlight, showViewCount, showResponseTime, showAnalyticsBadge, analyticsBadgeType, onlineStatus }) {
@@ -95,11 +95,12 @@ const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavori
   const reviewCount = inAppReviewCount > 0 ? inAppReviewCount : googleReviewCount;
   const isGoogleReview = inAppReviewCount === 0 && googleReviewCount > 0;
   
-  // Location
+  // Location - format to "City, AB" short format
   const locCity = vendor.City || vendor.city || '';
   const locState = vendor.State || vendor.state || '';
-  const locationText = (vendor.location && vendor.location.trim()) || 
+  const rawLocation = (vendor.location && vendor.location.trim()) || 
                        [locCity, locState].filter(Boolean).join(', ');
+  const locationText = formatLocationShort(rawLocation);
   
   // Response time - only show if explicitly passed showResponseTime prop
   const responseTime = vendor.ResponseTime || vendor.responseTime || null;

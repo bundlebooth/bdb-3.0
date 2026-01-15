@@ -89,6 +89,16 @@ async function notifyVendorOfNewRequest(requestId, userId, vendorProfileId, even
     // Get service name
     const serviceName = eventDetails.serviceName || 'Service';
     
+    // Format event time with timezone
+    let eventTime = null;
+    if (eventDetails.startTime) {
+      eventTime = eventDetails.startTime;
+      if (eventDetails.endTime) {
+        eventTime += ` - ${eventDetails.endTime}`;
+      }
+    }
+    const timezone = eventDetails.timezone || null;
+    
     await sendBookingRequestToVendor(
       data.VendorEmail,
       data.VendorBusinessName || data.VendorName,
@@ -99,7 +109,10 @@ async function notifyVendorOfNewRequest(requestId, userId, vendorProfileId, even
       budget,
       `${FRONTEND_URL}/dashboard`,
       data.VendorUserID,
-      null
+      null,
+      eventTime,
+      null,
+      timezone
     );
     
     // Send push notification to vendor

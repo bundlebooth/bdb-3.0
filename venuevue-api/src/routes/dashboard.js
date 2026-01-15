@@ -242,6 +242,40 @@ router.get('/:id/bookings/all', async (req, res) => {
     // Use unified stored procedure for consistent status handling
     const result = await request.execute('vendors.sp_GetUnifiedBookings');
     
+    // Get vendor timezone and convert to readable abbreviation
+    let vendorTimezone = 'EST';
+    try {
+      const tzRequest = new sql.Request(pool);
+      tzRequest.input('VendorProfileID', sql.Int, parseInt(id));
+      const tzResult = await tzRequest.query(`
+        SELECT TOP 1 bh.Timezone, vp.TimeZone as ProfileTimezone
+        FROM vendors.VendorProfiles vp
+        LEFT JOIN vendors.BusinessHours bh ON bh.VendorProfileID = vp.VendorProfileID
+        WHERE vp.VendorProfileID = @VendorProfileID
+      `);
+      if (tzResult.recordset.length > 0) {
+        const tz = tzResult.recordset[0].Timezone || tzResult.recordset[0].ProfileTimezone;
+        if (tz) {
+          // Convert IANA timezone to readable abbreviation
+          const tzMap = {
+            'America/Toronto': 'EST',
+            'America/New_York': 'EST',
+            'America/Chicago': 'CST',
+            'America/Denver': 'MST',
+            'America/Los_Angeles': 'PST',
+            'America/Vancouver': 'PST',
+            'America/Edmonton': 'MST',
+            'America/Winnipeg': 'CST',
+            'America/Halifax': 'AST',
+            'America/St_Johns': 'NST'
+          };
+          vendorTimezone = tzMap[tz] || 'EST';
+        }
+      }
+    } catch (tzErr) {
+      console.error('Error fetching vendor timezone:', tzErr);
+    }
+    
     // Fix date serialization - convert Date objects to ISO strings
     const bookings = result.recordset.map(booking => ({
       ...booking,
@@ -250,7 +284,8 @@ router.get('/:id/bookings/all', async (req, res) => {
       CreatedAt: booking.CreatedAt instanceof Date ? booking.CreatedAt.toISOString() : booking.CreatedAt,
       UpdatedAt: booking.UpdatedAt instanceof Date ? booking.UpdatedAt.toISOString() : booking.UpdatedAt,
       ExpiresAt: booking.ExpiresAt instanceof Date ? booking.ExpiresAt.toISOString() : booking.ExpiresAt,
-      CancellationDate: booking.CancellationDate instanceof Date ? booking.CancellationDate.toISOString() : booking.CancellationDate
+      CancellationDate: booking.CancellationDate instanceof Date ? booking.CancellationDate.toISOString() : booking.CancellationDate,
+      Timezone: vendorTimezone
     }));
     
     res.json(bookings);

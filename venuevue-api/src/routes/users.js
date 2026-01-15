@@ -606,18 +606,57 @@ router.get('/:id/bookings/all', async (req, res) => {
     // Use unified stored procedure for consistent status handling
     const result = await request.execute('users.sp_GetUnifiedBookings');
     
-    // Fix date serialization - convert Date objects to ISO strings
-    const bookings = result.recordset.map(booking => ({
-      ...booking,
-      EventDate: booking.EventDate instanceof Date ? booking.EventDate.toISOString() : booking.EventDate,
-      EndDate: booking.EndDate instanceof Date ? booking.EndDate.toISOString() : booking.EndDate,
-      CreatedAt: booking.CreatedAt instanceof Date ? booking.CreatedAt.toISOString() : booking.CreatedAt,
-      UpdatedAt: booking.UpdatedAt instanceof Date ? booking.UpdatedAt.toISOString() : booking.UpdatedAt,
-      ExpiresAt: booking.ExpiresAt instanceof Date ? booking.ExpiresAt.toISOString() : booking.ExpiresAt,
-      CancellationDate: booking.CancellationDate instanceof Date ? booking.CancellationDate.toISOString() : booking.CancellationDate
+    // Get vendor timezones for each booking
+    const tzMap = {
+      'America/Toronto': 'EST',
+      'America/New_York': 'EST',
+      'America/Chicago': 'CST',
+      'America/Denver': 'MST',
+      'America/Los_Angeles': 'PST',
+      'America/Vancouver': 'PST',
+      'America/Edmonton': 'MST',
+      'America/Winnipeg': 'CST',
+      'America/Halifax': 'AST',
+      'America/St_Johns': 'NST'
+    };
+    
+    // Fix date serialization - convert Date objects to ISO strings and add vendor timezone
+    const bookingsWithTimezone = await Promise.all(result.recordset.map(async (booking) => {
+      let vendorTimezone = 'EST';
+      if (booking.VendorProfileID) {
+        try {
+          const tzRequest = pool.request();
+          tzRequest.input('VendorProfileID', sql.Int, booking.VendorProfileID);
+          const tzResult = await tzRequest.query(`
+            SELECT TOP 1 bh.Timezone, vp.TimeZone as ProfileTimezone
+            FROM vendors.VendorProfiles vp
+            LEFT JOIN vendors.BusinessHours bh ON bh.VendorProfileID = vp.VendorProfileID
+            WHERE vp.VendorProfileID = @VendorProfileID
+          `);
+          if (tzResult.recordset.length > 0) {
+            const tz = tzResult.recordset[0].Timezone || tzResult.recordset[0].ProfileTimezone;
+            if (tz) {
+              vendorTimezone = tzMap[tz] || tz;
+            }
+          }
+        } catch (tzErr) {
+          // Use default timezone
+        }
+      }
+      
+      return {
+        ...booking,
+        EventDate: booking.EventDate instanceof Date ? booking.EventDate.toISOString() : booking.EventDate,
+        EndDate: booking.EndDate instanceof Date ? booking.EndDate.toISOString() : booking.EndDate,
+        CreatedAt: booking.CreatedAt instanceof Date ? booking.CreatedAt.toISOString() : booking.CreatedAt,
+        UpdatedAt: booking.UpdatedAt instanceof Date ? booking.UpdatedAt.toISOString() : booking.UpdatedAt,
+        ExpiresAt: booking.ExpiresAt instanceof Date ? booking.ExpiresAt.toISOString() : booking.ExpiresAt,
+        CancellationDate: booking.CancellationDate instanceof Date ? booking.CancellationDate.toISOString() : booking.CancellationDate,
+        Timezone: booking.Timezone || vendorTimezone
+      };
     }));
     
-    res.json(bookings);
+    res.json(bookingsWithTimezone);
   } catch (err) {
     console.error('Get all user bookings error:', err);
     res.status(500).json({ message: 'Failed to get user bookings', error: err.message });

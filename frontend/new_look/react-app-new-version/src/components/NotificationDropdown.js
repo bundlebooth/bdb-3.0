@@ -3,13 +3,21 @@ import { useNavigate } from 'react-router-dom';
 import { getUserNotifications, markNotificationAsRead, markAllNotificationsAsRead } from '../utils/notifications';
 import { useAuth } from '../context/AuthContext';
 
-function NotificationDropdown({ isOpen, onClose, anchorEl }) {
+function NotificationDropdown({ isOpen, onClose, anchorEl, onBadgeCountChange }) {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all'); // 'all' or 'unread'
   const dropdownRef = useRef(null);
+  
+  // Update badge count whenever notifications change
+  useEffect(() => {
+    if (onBadgeCountChange) {
+      const unreadCount = notifications.filter(n => !n.isRead && !n.read).length;
+      onBadgeCountChange(unreadCount);
+    }
+  }, [notifications, onBadgeCountChange]);
 
   useEffect(() => {
     if (isOpen && currentUser?.id) {

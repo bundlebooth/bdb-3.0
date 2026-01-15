@@ -39,6 +39,11 @@ export const ServiceCard = ({
   const category = service.CategoryName || service.category || service.Category || '';
   const duration = service.DurationMinutes || service.durationMinutes || service.VendorDurationMinutes || service.baseDuration || service.vendorDuration || service.baseDurationMinutes || service.Duration || null;
   
+  // Sale price support
+  const salePrice = service.SalePrice || service.salePrice || null;
+  const originalPrice = service.OriginalPrice || service.originalPrice || null;
+  const isOnSale = salePrice && parseFloat(salePrice) > 0 && originalPrice && parseFloat(originalPrice) > parseFloat(salePrice);
+  
   // Get pricing info - check all possible field names from different API endpoints
   const getPricing = () => {
     // Check for different pricing formats from various API responses
@@ -130,11 +135,21 @@ export const ServiceCard = ({
         <div className="psc-card-details">
           <div className="psc-card-header">
             <div className="psc-card-info">
-              <h3 className="psc-card-title">{name}</h3>
+              <h3 className="psc-card-title">
+                {name}
+                {isOnSale && <span className="psc-sale-badge">SALE!</span>}
+              </h3>
               
-              {/* Pricing */}
+              {/* Pricing - with sale price support */}
               <div className="psc-card-pricing">
-                <span className="psc-price">{priceDisplay}</span>
+                {isOnSale ? (
+                  <>
+                    <span className="psc-price">${parseFloat(salePrice).toFixed(0)}</span>
+                    <span className="psc-price-original">${parseFloat(originalPrice).toFixed(0)}</span>
+                  </>
+                ) : (
+                  <span className="psc-price">{priceDisplay}</span>
+                )}
                 <span className="psc-price-suffix">{getPriceSuffix()}</span>
               </div>
               

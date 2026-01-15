@@ -75,14 +75,36 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false, u
     })();
     const reviewCount = vendor.totalReviews ?? vendor.reviewCount ?? vendor.TotalReviews ?? 0;
     
-    // Location
+    // Location - format to "City, AB" short format
     const locCity = vendor.City || vendor.city || '';
     const locState = vendor.State || vendor.state || '';
-    const locationText = (vendor.location && vendor.location.trim()) || 
+    const rawLocation = (vendor.location && vendor.location.trim()) || 
                         [locCity, locState].filter(Boolean).join(', ');
+    // Format location to short format inline (avoid import in this file)
+    const locationText = (() => {
+      if (!rawLocation) return '';
+      if (/^[^,]+,\s*[A-Z]{2}$/.test(rawLocation.trim())) return rawLocation.trim();
+      const parts = rawLocation.split(',').map(p => p.trim()).filter(Boolean);
+      if (parts.length === 0) return rawLocation;
+      const city = parts[0];
+      const provAbbr = { 'alberta': 'AB', 'british columbia': 'BC', 'manitoba': 'MB', 'new brunswick': 'NB', 'newfoundland and labrador': 'NL', 'newfoundland': 'NL', 'northwest territories': 'NT', 'nova scotia': 'NS', 'nunavut': 'NU', 'ontario': 'ON', 'prince edward island': 'PE', 'quebec': 'QC', 'saskatchewan': 'SK', 'yukon': 'YT' };
+      for (let i = 1; i < parts.length; i++) {
+        const part = parts[i].toLowerCase().replace('canada', '').trim();
+        if (provAbbr[part]) return `${city}, ${provAbbr[part]}`;
+        if (/^[A-Z]{2}$/.test(parts[i].trim())) return `${city}, ${parts[i].trim()}`;
+      }
+      return city;
+    })();
     
-    // Response time
-    const responseTime = vendor.ResponseTime || vendor.responseTime || 'within a few hours';
+    // Response time - format to "Responds within X hours"
+    const responseTimeMinutes = vendor.avgResponseMinutes || vendor.ResponseTimeMinutes || 0;
+    const responseTime = (() => {
+      if (!responseTimeMinutes || responseTimeMinutes <= 0) return 'within a few hours';
+      if (responseTimeMinutes < 60) return `within ${responseTimeMinutes} mins`;
+      if (responseTimeMinutes < 120) return 'within 1 hour';
+      if (responseTimeMinutes < 1440) return `within ${Math.round(responseTimeMinutes / 60)} hours`;
+      return `within ${Math.round(responseTimeMinutes / 1440)} days`;
+    })();
     const businessName = vendor.BusinessName || vendor.name || 'Vendor';
     
     // Match the main vendor card style with proper image display - smaller size for map

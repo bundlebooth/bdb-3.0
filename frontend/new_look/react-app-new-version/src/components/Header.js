@@ -180,8 +180,25 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
           setMessagesBadge(msgData.unreadCount || 0);
         }
 
-        // Load notifications count
-        const notifCount = await getUnreadNotificationCount(currentUser.id);
+        // Load notifications count - try API first, then count from fetched notifications
+        let notifCount = await getUnreadNotificationCount(currentUser.id);
+        
+        // If API returns 0, also try fetching all notifications and counting unread
+        if (notifCount === 0) {
+          try {
+            const notifResponse = await fetch(`${API_BASE_URL}/notifications/user/${currentUser.id}`, {
+              headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+            });
+            if (notifResponse.ok) {
+              const notifData = await notifResponse.json();
+              const notifications = notifData.notifications || [];
+              notifCount = notifications.filter(n => !n.IsRead && !n.isRead && !n.read).length;
+            }
+          } catch (e) {
+            console.error('Failed to count notifications:', e);
+          }
+        }
+        
         setNotificationsBadge(notifCount);
         updatePageTitle(notifCount);
       } catch (error) {
@@ -354,31 +371,29 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
           style={{ cursor: 'pointer', position: 'relative', overflow: 'visible' }}
         >
           <i className="fas fa-bell"></i>
-          <span
-            className="notification-count-badge"
-            style={{
-              position: 'absolute',
-              top: '-6px',
-              right: '-8px',
-              backgroundColor: '#ef4444',
-              color: 'white',
-              fontSize: '10px',
-              fontWeight: 700,
-              minWidth: '18px',
-              height: '18px',
-              borderRadius: '50%',
-              display: notificationsBadge > 0 ? 'flex' : 'none',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '0 4px',
-              border: '2px solid white',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
-              zIndex: 10,
-              lineHeight: 1
-            }}
-          >
-            {notificationsBadge > 99 ? '99+' : notificationsBadge}
-          </span>
+          {notificationsBadge > 0 && (
+            <span
+              style={{
+                background: '#ef4444',
+                color: 'white',
+                fontSize: '11px',
+                fontWeight: 600,
+                minWidth: '18px',
+                height: '18px',
+                borderRadius: '9px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '0 5px',
+                marginLeft: '4px',
+                position: 'absolute',
+                top: '-8px',
+                right: '-10px'
+              }}
+            >
+              {notificationsBadge > 99 ? '99+' : notificationsBadge}
+            </span>
+          )}
         </div>
         {/* User menu button - hamburger + avatar like dashboard - hidden on mobile via CSS */}
         <div
@@ -469,6 +484,10 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
         isOpen={notificationDropdownOpen} 
         onClose={handleNotificationDropdownClose}
         anchorEl={notificationBtnRef.current}
+        onBadgeCountChange={(count) => {
+          setNotificationsBadge(count);
+          updatePageTitle(count);
+        }}
       />
     </header>
     

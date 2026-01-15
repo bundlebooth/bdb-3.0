@@ -3,6 +3,7 @@ import { useAuth } from '../../../context/AuthContext';
 import { showBanner } from '../../../utils/banners';
 import { API_BASE_URL } from '../../../config';
 import { buildInvoiceUrl } from '../../../utils/urlHelpers';
+import { getBookingStatusConfig } from '../../../utils/bookingStatus';
 import BookingDetailsModal from '../BookingDetailsModal';
 
 function ClientBookingsSection({ onPayNow, onOpenChat }) {
@@ -106,31 +107,9 @@ function ClientBookingsSection({ onPayNow, onOpenChat }) {
     return sortBookings(filtered);
   };
 
-  // Get detailed status label for client view
-  // Uses unified status from backend for consistency
+  // Get detailed status label for client view - uses shared utility
   const getDetailedStatus = (booking) => {
-    const s = booking._status;
-    const isPaid = s === 'paid';
-    const isDepositOnly = !isPaid && (booking.DepositPaid === true || booking.DepositPaid === 1);
-    
-    // Status configuration map - unified with backend StatusLabel
-    const statusConfig = {
-      pending: { label: 'Awaiting Vendor Approval', icon: 'fa-clock', color: '#f59e0b', borderStyle: 'dashed' },
-      approved: { 
-        label: isDepositOnly ? 'Balance Due' : 'Awaiting Payment', 
-        icon: isDepositOnly ? 'fa-hourglass-half' : 'fa-credit-card', 
-        color: isDepositOnly ? '#8b5cf6' : '#3b82f6', 
-        borderStyle: 'dashed' 
-      },
-      paid: { label: 'Confirmed & Paid', icon: 'fa-check-circle', color: '#10b981', borderStyle: 'solid' },
-      completed: { label: 'Completed', icon: 'fa-check-double', color: '#059669', borderStyle: 'solid' },
-      cancelled: { label: 'Cancelled', icon: 'fa-times-circle', color: '#ef4444', borderStyle: 'solid' },
-      declined: { label: 'Declined by Vendor', icon: 'fa-times-circle', color: '#ef4444', borderStyle: 'dashed' },
-      expired: { label: 'Expired', icon: 'fa-clock', color: '#6b7280', borderStyle: 'dashed' },
-      counter_offer: { label: 'Counter Offer', icon: 'fa-exchange-alt', color: '#8b5cf6', borderStyle: 'dashed' }
-    };
-    
-    return statusConfig[s] || { label: booking._statusLabel || 'Unknown', icon: 'fa-question-circle', color: '#6b7280', borderStyle: 'dashed' };
+    return getBookingStatusConfig(booking, false); // false = client view
   };
 
   const handleShowDetails = (booking) => {
@@ -312,9 +291,31 @@ function ClientBookingsSection({ onPayNow, onOpenChat }) {
       month = eventDate.toLocaleDateString('en-US', { month: 'short' });
       day = eventDate.getDate();
       weekday = eventDate.toLocaleDateString('en-US', { weekday: 'short' });
-      const startTime = eventDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-      const endTime = new Date(eventDate.getTime() + 90 * 60000).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-      timeStr = `${startTime} - ${endTime}`;
+      
+      // Use StartTime/EndTime if available, otherwise fallback to EventDate
+      const formatTime = (timeVal) => {
+        if (!timeVal) return '';
+        const timeStrVal = typeof timeVal === 'string' ? timeVal : timeVal.toString();
+        const parts = timeStrVal.split(':');
+        const hours = parseInt(parts[0], 10) || 0;
+        const minutes = parseInt(parts[1], 10) || 0;
+        const hour12 = hours % 12 || 12;
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        return `${hour12}:${String(minutes).padStart(2, '0')} ${ampm}`;
+      };
+      
+      if (booking.StartTime || booking.EndTime) {
+        const startFormatted = formatTime(booking.StartTime);
+        const endFormatted = formatTime(booking.EndTime);
+        timeStr = startFormatted && endFormatted 
+          ? `${startFormatted} - ${endFormatted}` 
+          : startFormatted || endFormatted;
+      } else {
+        const startTime = eventDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+        const endDateTime = new Date(eventDate.getTime() + 90 * 60000);
+        const endTime = endDateTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+        timeStr = `${startTime} - ${endTime}`;
+      }
     }
 
     // Get detailed status
@@ -357,7 +358,7 @@ function ClientBookingsSection({ onPayNow, onOpenChat }) {
           {timeStr && (
             <div className="booking-time-row">
               <i className="fas fa-clock" style={{ color: '#6b7280', fontSize: '12px' }}></i>
-              <span className="booking-time">{timeStr}</span>
+              <span className="booking-time">{timeStr}{booking.Timezone ? ` (${booking.Timezone})` : ''}</span>
             </div>
           )}
           {booking.TotalAmount != null && booking.TotalAmount !== '' && Number(booking.TotalAmount) > 0 && (
@@ -369,8 +370,8 @@ function ClientBookingsSection({ onPayNow, onOpenChat }) {
         </div>
         <div className="booking-actions" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px', paddingRight: '10px' }}>
           <div className="status-col" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-            <div className="request-status-badge" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '999px', fontSize: '12px', background: `${statusCfg.color}10`, color: '#111827', border: `1px ${statusCfg.borderStyle || 'solid'} ${statusCfg.color}` }}>
-              <i className={`fas ${statusCfg.icon}`} style={{ color: statusCfg.color }}></i>
+            <div className="request-status-badge" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '999px', fontSize: '12px', background: statusCfg.bg, color: statusCfg.color, border: `1px ${statusCfg.borderStyle || 'solid'} ${statusCfg.color}` }}>
+              <i className={`fas ${statusCfg.icon}`} style={{ fontSize: '11px' }}></i>
               <span>{statusCfg.label}</span>
             </div>
             {s === 'declined' && booking.DeclineReason && (
@@ -505,7 +506,8 @@ function ClientBookingsSection({ onPayNow, onOpenChat }) {
       <BookingDetailsModal 
         isOpen={showDetailsModal} 
         onClose={handleCloseDetails} 
-        booking={selectedBooking} 
+        booking={selectedBooking}
+        isVendorView={false}
       />
       
       {/* Cancel Booking Modal */}

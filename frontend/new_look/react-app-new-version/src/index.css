@@ -1,4 +1,7 @@
-﻿:root {
+﻿/* Import shared modal styles */
+@import './styles/shared-modal.css';
+
+:root {
     --primary: #4F86E8;
     --primary-dark: #3A6FD4;
     --secondary: #f7fafc;
