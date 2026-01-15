@@ -1764,7 +1764,7 @@ router.get('/verify-intent', async (req, res) => {
           console.log('[VerifyIntent] Found request:', { UserID: req.UserID, VendorProfileID: req.VendorProfileID });
           
           // Parse services JSON to get price
-          let totalAmount = req.Budget || 0;
+          let totalAmount = req.TotalAmount || 0;
           let serviceId = null;
           try {
             const services = JSON.parse(req.Services || '[]');

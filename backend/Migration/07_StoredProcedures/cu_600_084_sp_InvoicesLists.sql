@@ -38,7 +38,7 @@ BEGIN
     IF EXISTS (SELECT 1 FROM sys.views WHERE object_id = OBJECT_ID(N'[invoices].[vw_InvoicesList]'))
     BEGIN
         SELECT * FROM [invoices].[vw_InvoicesList]
-        WHERE UserID = @UserID
+        WHERE ClientUserID = @UserID
         ORDER BY IssueDate DESC;
     END
     ELSE

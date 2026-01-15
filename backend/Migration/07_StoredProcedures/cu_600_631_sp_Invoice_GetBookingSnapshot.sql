@@ -20,7 +20,8 @@ BEGIN
     
     SELECT TOP 1 
       b.BookingID, b.UserID, b.VendorProfileID, b.EventDate, b.EndDate, b.Status,
-      b.TotalAmount, b.DepositAmount, b.DepositPaid, b.FullAmountPaid,
+      b.TotalAmount,
+      b.DepositAmount, b.DepositPaid, b.FullAmountPaid,
       b.EventName, b.EventType, b.EventLocation, b.TimeZone, b.ServiceID,
       u.Name AS ClientName, u.Email AS ClientEmail,
       vp.BusinessName AS VendorName

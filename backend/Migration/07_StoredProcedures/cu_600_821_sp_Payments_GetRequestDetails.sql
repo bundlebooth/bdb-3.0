@@ -12,10 +12,11 @@ AS
 BEGIN
     SET NOCOUNT ON;
     
+    -- Use unified Bookings table, TotalAmount is the authoritative amount field
     SELECT UserID, VendorProfileID, EventDate, EventTime, EventEndTime, 
-           EventLocation, AttendeeCount, Budget, Services, SpecialRequests, 
+           EventLocation, AttendeeCount, TotalAmount, Services, SpecialRequests, 
            EventName, EventType, TimeZone 
-    FROM bookings.BookingRequests 
-    WHERE RequestID = @RequestID;
+    FROM bookings.Bookings 
+    WHERE BookingID = @RequestID;
 END
 GO
