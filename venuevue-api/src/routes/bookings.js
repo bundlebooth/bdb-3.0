@@ -858,13 +858,10 @@ router.post('/requests/send', async (req, res) => {
 
     // Check for existing conversation or create a new one
     let conversationId;
-    const convLookup = await pool.request()
-      .input('UserID', sql.Int, userId)
-      .input('VendorProfileID', sql.Int, vendorProfileId)
-      .query(`
-        SELECT ConversationID FROM messages.Conversations 
-        WHERE UserID = @UserID AND VendorProfileID = @VendorProfileID
-      `);
+    const convLookupRequest = pool.request();
+    convLookupRequest.input('UserID', sql.Int, userId);
+    convLookupRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+    const convLookup = await convLookupRequest.execute('messages.sp_CheckExistingConversation');
 
     if (convLookup.recordset.length > 0) {
       // Use existing conversation
@@ -1880,14 +1877,10 @@ router.post('/:id/client-cancel', async (req, res) => {
 
     // Update invoice status if exists
     try {
-      await pool.request()
-        .input('BookingID', sql.Int, bookingId)
-        .input('Status', sql.NVarChar(50), 'cancelled')
-        .query(`
-          UPDATE invoices.Invoices 
-          SET Status = @Status, UpdatedAt = GETUTCDATE() 
-          WHERE BookingID = @BookingID
-        `);
+      const invoiceRequest = pool.request();
+      invoiceRequest.input('BookingID', sql.Int, bookingId);
+      invoiceRequest.input('Status', sql.NVarChar(50), 'cancelled');
+      await invoiceRequest.execute('bookings.sp_UpdateInvoiceStatus');
     } catch (invoiceErr) {
       console.error('Invoice update error:', invoiceErr);
     }
@@ -2030,10 +2023,10 @@ router.post('/:id/vendor-cancel', async (req, res) => {
 
     // Update invoice status
     try {
-      await pool.request()
-        .input('BookingID', sql.Int, bookingId)
-        .input('Status', sql.NVarChar(50), 'cancelled')
-        .query(`UPDATE invoices.Invoices SET Status = @Status, UpdatedAt = GETUTCDATE() WHERE BookingID = @BookingID`);
+      const invoiceUpdateRequest = pool.request();
+      invoiceUpdateRequest.input('BookingID', sql.Int, bookingId);
+      invoiceUpdateRequest.input('Status', sql.NVarChar(50), 'cancelled');
+      await invoiceUpdateRequest.execute('bookings.sp_UpdateInvoiceStatus');
     } catch (invoiceErr) {
       console.error('Invoice update error:', invoiceErr);
     }

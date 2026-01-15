@@ -312,32 +312,15 @@ router.get('/vendor/:vendorId/dashboard', authenticate, async (req, res) => {
         if (days <= 30) {
             try {
                 // Query actual views and bookings per day
-                const dailyResult = await pool.request()
-                    .input('VendorProfileID', sql.Int, vendorId)
-                    .input('DaysBack', sql.Int, days)
-                    .query(`
-                        SELECT 
-                            CAST(ViewedAt AS DATE) AS ViewDate, 
-                            COUNT(*) AS ViewCount
-                        FROM vendors.VendorProfileViews
-                        WHERE VendorProfileID = @VendorProfileID
-                        AND ViewedAt >= DATEADD(DAY, -@DaysBack, GETDATE())
-                        GROUP BY CAST(ViewedAt AS DATE)
-                    `);
+                const dailyRequest = pool.request();
+                dailyRequest.input('VendorProfileID', sql.Int, vendorId);
+                dailyRequest.input('DaysBack', sql.Int, days);
+                const dailyResult = await dailyRequest.execute('analytics.sp_GetDailyViews');
                 
-                const bookingsResult = await pool.request()
-                    .input('VendorProfileID', sql.Int, vendorId)
-                    .input('DaysBack', sql.Int, days)
-                    .query(`
-                        SELECT 
-                            CAST(CreatedAt AS DATE) AS BookingDate, 
-                            COUNT(*) AS BookingCount, 
-                            SUM(ISNULL(TotalAmount, 0)) AS Revenue
-                        FROM bookings.Bookings
-                        WHERE VendorProfileID = @VendorProfileID
-                        AND CreatedAt >= DATEADD(DAY, -@DaysBack, GETDATE())
-                        GROUP BY CAST(CreatedAt AS DATE)
-                    `);
+                const bookingsRequest = pool.request();
+                bookingsRequest.input('VendorProfileID', sql.Int, vendorId);
+                bookingsRequest.input('DaysBack', sql.Int, days);
+                const bookingsResult = await bookingsRequest.execute('analytics.sp_GetDailyBookings');
                 
                 // Create a map of views and bookings by date
                 const viewsMap = {};

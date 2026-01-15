@@ -153,45 +153,17 @@ router.get('/blogs', async (req, res) => {
     const { category, page = 1, limit = 12, featured } = req.query;
     const pool = await poolPromise;
     
-    let query = `
-      SELECT 
-        BlogID, Title, Slug, Excerpt, FeaturedImageURL,
-        Category, Tags, Author, AuthorImageURL,
-        IsFeatured, ViewCount, PublishedAt
-      FROM content.Blogs
-      WHERE Status = 'published'
-    `;
-    
     const request = pool.request();
+    request.input('Category', sql.NVarChar(100), category || null);
+    request.input('Search', sql.NVarChar(100), null);
+    request.input('PageNumber', sql.Int, parseInt(page));
+    request.input('PageSize', sql.Int, parseInt(limit));
     
-    if (category) {
-      query += ` AND Category = @Category`;
-      request.input('Category', sql.NVarChar(100), category);
-    }
-    
-    if (featured === 'true') {
-      query += ` AND IsFeatured = 1`;
-    }
-    
-    query += ` ORDER BY IsFeatured DESC, PublishedAt DESC`;
-    query += ` OFFSET @Offset ROWS FETCH NEXT @Limit ROWS ONLY`;
-    
-    const offset = (parseInt(page) - 1) * parseInt(limit);
-    request.input('Offset', sql.Int, offset);
-    request.input('Limit', sql.Int, parseInt(limit));
-    
-    const result = await request.query(query);
-    
-    // Get total count
-    let countQuery = `SELECT COUNT(*) as total FROM content.Blogs WHERE Status = 'published'`;
-    if (category) {
-      countQuery += ` AND Category = '${category}'`;
-    }
-    const countResult = await pool.request().query(countQuery);
+    const result = await request.execute('content.sp_GetBlogs');
     
     res.json({
-      blogs: result.recordset || [],
-      total: countResult.recordset[0]?.total || 0,
+      blogs: result.recordsets[0] || [],
+      total: result.recordsets[1]?.[0]?.total || 0,
       page: parseInt(page),
       limit: parseInt(limit)
     });
@@ -206,14 +178,9 @@ router.get('/blogs/featured', async (req, res) => {
   try {
     const pool = await poolPromise;
     
-    const result = await pool.request().query(`
-      SELECT TOP 5
-        BlogID, Title, Slug, Excerpt, FeaturedImageURL,
-        Category, Author, AuthorImageURL, PublishedAt
-      FROM content.Blogs
-      WHERE Status = 'published' AND IsFeatured = 1
-      ORDER BY PublishedAt DESC
-    `);
+    const request = pool.request();
+    request.input('Limit', sql.Int, 5);
+    const result = await request.execute('content.sp_GetFeaturedBlogs');
     
     res.json({ blogs: result.recordset || [] });
   } catch (error) {
@@ -228,41 +195,27 @@ router.get('/blogs/:slug', async (req, res) => {
     const { slug } = req.params;
     const pool = await poolPromise;
     
-    const result = await pool.request()
-      .input('Slug', sql.NVarChar(255), slug)
-      .query(`
-        SELECT 
-          BlogID, Title, Slug, Excerpt, Content, FeaturedImageURL,
-          Category, Tags, Author, AuthorImageURL,
-          IsFeatured, ViewCount, PublishedAt, CreatedAt
-        FROM content.Blogs
-        WHERE Slug = @Slug AND Status = 'published'
-      `);
+    // Get blog by slug
+    const request = pool.request();
+    request.input('Slug', sql.NVarChar(255), slug);
+    const result = await request.execute('content.sp_GetBlogBySlug');
     
     if (result.recordset.length === 0) {
       return res.status(404).json({ error: 'Blog post not found' });
     }
     
     // Increment view count
-    await pool.request()
-      .input('Slug', sql.NVarChar(255), slug)
-      .query('UPDATE content.Blogs SET ViewCount = ISNULL(ViewCount, 0) + 1 WHERE Slug = @Slug');
+    const viewRequest = pool.request();
+    viewRequest.input('Slug', sql.NVarChar(255), slug);
+    await viewRequest.execute('content.sp_IncrementBlogViewCount');
     
     // Get related posts
     const blog = result.recordset[0];
-    const relatedResult = await pool.request()
-      .input('BlogID', sql.Int, blog.BlogID)
-      .input('Category', sql.NVarChar(100), blog.Category)
-      .query(`
-        SELECT TOP 3
-          BlogID, Title, Slug, Excerpt, FeaturedImageURL,
-          Category, Author, PublishedAt
-        FROM content.Blogs
-        WHERE Status = 'published' 
-          AND BlogID != @BlogID
-          AND Category = @Category
-        ORDER BY PublishedAt DESC
-      `);
+    const relatedRequest = pool.request();
+    relatedRequest.input('BlogID', sql.Int, blog.BlogID);
+    relatedRequest.input('Category', sql.NVarChar(100), blog.Category);
+    relatedRequest.input('Limit', sql.Int, 3);
+    const relatedResult = await relatedRequest.execute('content.sp_GetRelatedBlogs');
     
     res.json({ 
       blog: blog,
@@ -279,13 +232,7 @@ router.get('/blog-categories', async (req, res) => {
   try {
     const pool = await poolPromise;
     
-    const result = await pool.request().query(`
-      SELECT Category, COUNT(*) as PostCount
-      FROM content.Blogs
-      WHERE Status = 'published'
-      GROUP BY Category
-      ORDER BY PostCount DESC
-    `);
+    const result = await pool.request().execute('content.sp_GetBlogCategories');
     
     res.json({ categories: result.recordset || [] });
   } catch (error) {

@@ -906,9 +906,9 @@ router.post('/payment-intent', async (req, res) => {
     // If clientProvince not provided, try to get it from the booking's event location
     if (!resolvedProvince && bookingId) {
       try {
-        const bookingRes = await pool.request()
-          .input('BookingID', sql.Int, bookingId)
-          .query('SELECT EventLocation FROM bookings.Bookings WHERE BookingID = @BookingID');
+        const locationRequest = pool.request();
+        locationRequest.input('BookingID', sql.Int, bookingId);
+        const bookingRes = await locationRequest.execute('payments.sp_GetBookingEventLocation');
         if (bookingRes.recordset.length > 0) {
           const eventLocation = bookingRes.recordset[0].EventLocation || '';
           resolvedProvince = extractProvinceFromLocation(eventLocation);
@@ -1754,10 +1754,10 @@ router.get('/verify-intent', async (req, res) => {
     if (requestId && !bookingId) {
       console.log('[VerifyIntent] Creating booking from request:', requestId);
       try {
-        // Get request details using direct query
-        const reqInfo = await pool.request()
-          .input('RequestID', sql.Int, requestId)
-          .query('SELECT UserID, VendorProfileID, EventDate, EventTime, EventEndTime, EventLocation, AttendeeCount, Budget, Services, SpecialRequests, EventName, EventType, TimeZone FROM bookings.BookingRequests WHERE RequestID = @RequestID');
+        // Get request details using stored procedure
+        const reqInfoRequest = pool.request();
+        reqInfoRequest.input('RequestID', sql.Int, requestId);
+        const reqInfo = await reqInfoRequest.execute('payments.sp_GetRequestDetails');
         
         if (reqInfo.recordset.length > 0) {
           const req = reqInfo.recordset[0];
@@ -1774,32 +1774,28 @@ router.get('/verify-intent', async (req, res) => {
             }
           } catch (e) { console.warn('[VerifyIntent] Parse services error:', e?.message); }
 
-          // Create confirmed booking using direct INSERT
-          const insertResult = await pool.request()
-            .input('UserID', sql.Int, req.UserID)
-            .input('VendorProfileID', sql.Int, req.VendorProfileID)
-            .input('ServiceID', sql.Int, serviceId)
-            .input('EventDate', sql.DateTime, req.EventDate)
-            .input('TotalAmount', sql.Decimal(10, 2), totalAmount)
-            .input('AttendeeCount', sql.Int, req.AttendeeCount || 1)
-            .input('SpecialRequests', sql.NVarChar(sql.MAX), req.SpecialRequests)
-            .input('EventLocation', sql.NVarChar(500), req.EventLocation)
-            .input('StripePaymentIntentID', sql.NVarChar(100), paymentIntentId)
-            .query(`
-              INSERT INTO bookings.Bookings (UserID, VendorProfileID, ServiceID, EventDate, Status, AttendeeCount, SpecialRequests, TotalAmount, EventLocation, StripePaymentIntentID, FullAmountPaid, CreatedAt)
-              OUTPUT INSERTED.BookingID
-              VALUES (@UserID, @VendorProfileID, @ServiceID, @EventDate, 'confirmed', @AttendeeCount, @SpecialRequests, @TotalAmount, @EventLocation, @StripePaymentIntentID, 1, GETDATE())
-            `);
+          // Create confirmed booking using stored procedure
+          const insertRequest = pool.request();
+          insertRequest.input('UserID', sql.Int, req.UserID);
+          insertRequest.input('VendorProfileID', sql.Int, req.VendorProfileID);
+          insertRequest.input('ServiceID', sql.Int, serviceId);
+          insertRequest.input('EventDate', sql.DateTime, req.EventDate);
+          insertRequest.input('TotalAmount', sql.Decimal(10, 2), totalAmount);
+          insertRequest.input('AttendeeCount', sql.Int, req.AttendeeCount || 1);
+          insertRequest.input('SpecialRequests', sql.NVarChar(sql.MAX), req.SpecialRequests);
+          insertRequest.input('EventLocation', sql.NVarChar(500), req.EventLocation);
+          insertRequest.input('StripePaymentIntentID', sql.NVarChar(100), paymentIntentId);
+          const insertResult = await insertRequest.execute('payments.sp_CreateBookingFromRequest');
           
           if (insertResult.recordset && insertResult.recordset.length > 0) {
             bookingId = insertResult.recordset[0].BookingID;
             console.log('[VerifyIntent] Created booking:', bookingId);
             
             // Update request status to confirmed
-            await pool.request()
-              .input('RequestID', sql.Int, requestId)
-              .input('PaymentIntentID', sql.NVarChar(100), paymentIntentId)
-              .query("UPDATE bookings.BookingRequests SET Status = 'confirmed', ConfirmedAt = GETDATE(), PaymentIntentID = @PaymentIntentID WHERE RequestID = @RequestID");
+            const confirmRequest = pool.request();
+            confirmRequest.input('RequestID', sql.Int, requestId);
+            confirmRequest.input('PaymentIntentID', sql.NVarChar(100), paymentIntentId);
+            await confirmRequest.execute('payments.sp_ConfirmRequest');
             
             console.log('[VerifyIntent] Updated request status to confirmed');
           }

@@ -612,18 +612,9 @@ router.get('/read-status/:conversationId', async (req, res) => {
     }
 
     const pool = await poolPromise;
-    const result = await pool.request()
-      .input('ConversationID', sql.Int, parseInt(conversationId))
-      .query(`
-        SELECT 
-          MessageID,
-          SenderID,
-          IsRead,
-          ReadAt
-        FROM messages.Messages
-        WHERE ConversationID = @ConversationID
-        ORDER BY CreatedAt
-      `);
+    const request = pool.request();
+    request.input('ConversationID', sql.Int, parseInt(conversationId));
+    const result = await request.execute('messages.sp_GetReadStatus');
 
     const readStatus = {};
     result.recordset.forEach(msg => {

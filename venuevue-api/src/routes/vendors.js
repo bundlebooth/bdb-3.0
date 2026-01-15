@@ -1448,7 +1448,7 @@ router.post('/register', upload.array('images', 5), async (req, res) => {
     const [city, state] = address ? address.split(',').map(s => s.trim()) : ['', ''];
     request.input('City', sql.NVarChar(100), city || '');
     request.input('State', sql.NVarChar(50), state || '');
-    request.input('Country', sql.NVarChar(50), country || 'Canada');
+    request.input('Country', sql.NVarChar(50), country || 'USA');
     request.input('PostalCode', sql.NVarChar(20), postalCode || '');
     
     request.input('Categories', sql.NVarChar(sql.MAX), JSON.stringify(categoriesData));
@@ -5830,11 +5830,7 @@ router.put('/:id/images/reorder', async (req, res) => {
       request.input('VendorProfileID', sql.Int, vendorProfileId);
       request.input('DisplayOrder', sql.Int, img.displayOrder);
       
-      await request.query(`
-        UPDATE vendors.VendorImages 
-        SET DisplayOrder = @DisplayOrder 
-        WHERE ImageID = @ImageID AND VendorProfileID = @VendorProfileID
-      `);
+      await request.execute('vendors.sp_UpdateImageDisplayOrder');
     }
     
     res.json({ success: true, message: 'Images reordered successfully' });
@@ -6523,14 +6519,9 @@ router.get('/:id/categories', async (req, res) => {
     }
 
     const pool = await poolPromise;
-    const result = await pool.request()
-      .input('VendorProfileID', sql.Int, vendorProfileId)
-      .query(`
-        SELECT vc.CategoryName, vc.IsPrimary
-        FROM vendors.VendorCategories vc
-        WHERE vc.VendorProfileID = @VendorProfileID
-        ORDER BY vc.IsPrimary DESC, vc.CategoryName
-      `);
+    const request = pool.request();
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
+    const result = await request.execute('vendors.sp_GetVendorCategories');
     
     res.json({ 
       success: true, 
@@ -6564,18 +6555,10 @@ router.get('/:id/packages', async (req, res) => {
       const result = await request.execute('vendors.sp_GetVendorPackages');
       res.json({ success: true, packages: result.recordset || [] });
     } catch (spError) {
-      // Fallback: direct query if stored procedure doesn't exist
-      const result = await pool.request()
-        .input('VendorProfileID', sql.Int, vendorProfileId)
-        .query(`
-          SELECT 
-            PackageID, VendorProfileID, PackageName, Description,
-            Price, SalePrice, PriceType, DurationMinutes, ImageURL, FinePrint,
-            IncludedServices, IsActive, CreatedAt, UpdatedAt
-          FROM vendors.Packages
-          WHERE VendorProfileID = @VendorProfileID AND IsActive = 1
-          ORDER BY CreatedAt DESC
-        `);
+      // Fallback: use fallback stored procedure
+      const fallbackRequest = pool.request();
+      fallbackRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+      const result = await fallbackRequest.execute('vendors.sp_GetPackagesFallback');
       
       // Parse IncludedServices JSON for each package
       const packages = (result.recordset || []).map(pkg => ({
@@ -6626,57 +6609,39 @@ router.post('/:id/packages', async (req, res) => {
       const result = await request.execute('vendors.sp_UpsertVendorPackage');
       res.json({ success: true, packageId: result.recordset[0]?.PackageID, message: 'Package saved successfully' });
     } catch (spError) {
-      // Fallback: direct upsert if stored procedure doesn't exist
+      // Fallback: use fallback stored procedures
       if (packageId) {
         // Update existing package
-        await pool.request()
-          .input('PackageID', sql.Int, packageId)
-          .input('VendorProfileID', sql.Int, vendorProfileId)
-          .input('PackageName', sql.NVarChar(200), name)
-          .input('Description', sql.NVarChar(sql.MAX), description || null)
-          .input('Price', sql.Decimal(10, 2), price)
-          .input('SalePrice', sql.Decimal(10, 2), salePrice || null)
-          .input('PriceType', sql.NVarChar(50), priceType || 'fixed')
-          .input('DurationMinutes', sql.Int, durationMinutes || null)
-          .input('ImageURL', sql.NVarChar(500), imageURL || null)
-          .input('FinePrint', sql.NVarChar(sql.MAX), finePrint || null)
-          .input('IncludedServices', sql.NVarChar(sql.MAX), JSON.stringify(includedServices || []))
-          .input('IsActive', sql.Bit, isActive !== false ? 1 : 0)
-          .query(`
-            UPDATE vendors.Packages SET
-              PackageName = @PackageName,
-              Description = @Description,
-              Price = @Price,
-              SalePrice = @SalePrice,
-              PriceType = @PriceType,
-              DurationMinutes = @DurationMinutes,
-              ImageURL = @ImageURL,
-              FinePrint = @FinePrint,
-              IncludedServices = @IncludedServices,
-              IsActive = @IsActive,
-              UpdatedAt = GETDATE()
-            WHERE PackageID = @PackageID AND VendorProfileID = @VendorProfileID
-          `);
+        const updateRequest = pool.request();
+        updateRequest.input('PackageID', sql.Int, packageId);
+        updateRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+        updateRequest.input('PackageName', sql.NVarChar(200), name);
+        updateRequest.input('Description', sql.NVarChar(sql.MAX), description || null);
+        updateRequest.input('Price', sql.Decimal(10, 2), price);
+        updateRequest.input('SalePrice', sql.Decimal(10, 2), salePrice || null);
+        updateRequest.input('PriceType', sql.NVarChar(50), priceType || 'fixed');
+        updateRequest.input('DurationMinutes', sql.Int, durationMinutes || null);
+        updateRequest.input('ImageURL', sql.NVarChar(500), imageURL || null);
+        updateRequest.input('FinePrint', sql.NVarChar(sql.MAX), finePrint || null);
+        updateRequest.input('IncludedServices', sql.NVarChar(sql.MAX), JSON.stringify(includedServices || []));
+        updateRequest.input('IsActive', sql.Bit, isActive !== false ? 1 : 0);
+        await updateRequest.execute('vendors.sp_UpdatePackageFull');
         res.json({ success: true, packageId, message: 'Package updated successfully' });
       } else {
         // Insert new package
-        const insertResult = await pool.request()
-          .input('VendorProfileID', sql.Int, vendorProfileId)
-          .input('PackageName', sql.NVarChar(200), name)
-          .input('Description', sql.NVarChar(sql.MAX), description || null)
-          .input('Price', sql.Decimal(10, 2), price)
-          .input('SalePrice', sql.Decimal(10, 2), salePrice || null)
-          .input('PriceType', sql.NVarChar(50), priceType || 'fixed')
-          .input('DurationMinutes', sql.Int, durationMinutes || null)
-          .input('ImageURL', sql.NVarChar(500), imageURL || null)
-          .input('FinePrint', sql.NVarChar(sql.MAX), finePrint || null)
-          .input('IncludedServices', sql.NVarChar(sql.MAX), JSON.stringify(includedServices || []))
-          .input('IsActive', sql.Bit, isActive !== false ? 1 : 0)
-          .query(`
-            INSERT INTO vendors.Packages (VendorProfileID, PackageName, Description, Price, SalePrice, PriceType, DurationMinutes, ImageURL, FinePrint, IncludedServices, IsActive, CreatedAt, UpdatedAt)
-            OUTPUT INSERTED.PackageID
-            VALUES (@VendorProfileID, @PackageName, @Description, @Price, @SalePrice, @PriceType, @DurationMinutes, @ImageURL, @FinePrint, @IncludedServices, @IsActive, GETDATE(), GETDATE())
-          `);
+        const insertRequest = pool.request();
+        insertRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+        insertRequest.input('PackageName', sql.NVarChar(200), name);
+        insertRequest.input('Description', sql.NVarChar(sql.MAX), description || null);
+        insertRequest.input('Price', sql.Decimal(10, 2), price);
+        insertRequest.input('SalePrice', sql.Decimal(10, 2), salePrice || null);
+        insertRequest.input('PriceType', sql.NVarChar(50), priceType || 'fixed');
+        insertRequest.input('DurationMinutes', sql.Int, durationMinutes || null);
+        insertRequest.input('ImageURL', sql.NVarChar(500), imageURL || null);
+        insertRequest.input('FinePrint', sql.NVarChar(sql.MAX), finePrint || null);
+        insertRequest.input('IncludedServices', sql.NVarChar(sql.MAX), JSON.stringify(includedServices || []));
+        insertRequest.input('IsActive', sql.Bit, isActive !== false ? 1 : 0);
+        const insertResult = await insertRequest.execute('vendors.sp_InsertPackageFull');
         res.json({ success: true, packageId: insertResult.recordset[0]?.PackageID, message: 'Package created successfully' });
       }
     }
@@ -6699,13 +6664,10 @@ router.delete('/:id/packages/:packageId', async (req, res) => {
     const pool = await poolPromise;
     
     // Soft delete by setting IsActive = 0
-    await pool.request()
-      .input('PackageID', sql.Int, packageId)
-      .input('VendorProfileID', sql.Int, vendorProfileId)
-      .query(`
-        UPDATE vendors.Packages SET IsActive = 0, UpdatedAt = GETDATE()
-        WHERE PackageID = @PackageID AND VendorProfileID = @VendorProfileID
-      `);
+    const deleteRequest = pool.request();
+    deleteRequest.input('PackageID', sql.Int, packageId);
+    deleteRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+    await deleteRequest.execute('vendors.sp_SoftDeletePackage');
     
     res.json({ success: true, message: 'Package deleted successfully' });
   } catch (err) {

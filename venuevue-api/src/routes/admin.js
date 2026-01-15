@@ -2124,44 +2124,12 @@ router.post('/categories/:id/visibility', async (req, res) => {
     const { visible } = req.body;
     const pool = await getPool();
     
-    // Try to update the VendorCategories table with IsVisible column
-    try {
-      const updateQuery = `
-        UPDATE dbo.VendorCategories 
-        SET IsVisible = @IsVisible, UpdatedAt = GETDATE()
-        WHERE CategoryID = @CategoryID
-      `;
-      
-      const request = pool.request();
-      request.input('CategoryID', sql.Int, id);
-      request.input('IsVisible', sql.Bit, visible ? 1 : 0);
-      
-      await request.query(updateQuery);
-    } catch (updateError) {
-      // If IsVisible column doesn't exist, try adding it first
-      console.log('Attempting to add IsVisible column...');
-      try {
-        await pool.request().query(`
-          IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('dbo.VendorCategories') AND name = 'IsVisible')
-          BEGIN
-            ALTER TABLE dbo.VendorCategories ADD IsVisible BIT DEFAULT 1
-          END
-        `);
-        
-        // Now update
-        const request = pool.request();
-        request.input('CategoryID', sql.Int, id);
-        request.input('IsVisible', sql.Bit, visible ? 1 : 0);
-        
-        await request.query(`
-          UPDATE dbo.VendorCategories 
-          SET IsVisible = @IsVisible
-          WHERE CategoryID = @CategoryID
-        `);
-      } catch (alterError) {
-        console.error('Could not add IsVisible column:', alterError.message);
-      }
-    }
+    // Update category visibility using stored procedure
+    const request = pool.request();
+    request.input('CategoryID', sql.Int, id);
+    request.input('IsVisible', sql.Bit, visible ? 1 : 0);
+    
+    await request.execute('admin.sp_UpdateCategoryVisibility');
     
     res.json({ success: true, message: `Category visibility updated to ${visible}` });
   } catch (error) {
@@ -2842,14 +2810,7 @@ router.get('/blogs/:id', async (req, res) => {
     const request = pool.request();
     request.input('BlogID', sql.Int, id);
     
-    const result = await request.query(`
-      SELECT 
-        BlogID, Title, Slug, Excerpt, Content, FeaturedImageURL,
-        Category, Tags, Author, AuthorImageURL, Status,
-        IsFeatured, ViewCount, PublishedAt, CreatedAt, UpdatedAt
-      FROM content.Blogs
-      WHERE BlogID = @BlogID
-    `);
+    const result = await request.execute('admin.sp_GetBlogById');
     
     if (result.recordset.length === 0) {
       return res.status(404).json({ error: 'Blog post not found' });
@@ -2888,19 +2849,7 @@ router.post('/blogs', async (req, res) => {
     request.input('IsFeatured', sql.Bit, isFeatured || false);
     request.input('PublishedAt', sql.DateTime2, status === 'published' ? new Date() : null);
     
-    const result = await request.query(`
-      INSERT INTO content.Blogs (
-        Title, Slug, Excerpt, Content, FeaturedImageURL,
-        Category, Tags, Author, AuthorImageURL, Status,
-        IsFeatured, PublishedAt, CreatedAt, UpdatedAt
-      )
-      OUTPUT INSERTED.BlogID
-      VALUES (
-        @Title, @Slug, @Excerpt, @Content, @FeaturedImageURL,
-        @Category, @Tags, @Author, @AuthorImageURL, @Status,
-        @IsFeatured, @PublishedAt, GETDATE(), GETDATE()
-      )
-    `);
+    const result = await request.execute('admin.sp_CreateBlog');
     
     res.json({ success: true, blogId: result.recordset[0].BlogID });
   } catch (error) {
@@ -2920,9 +2869,9 @@ router.put('/blogs/:id', async (req, res) => {
     const pool = await getPool();
     
     // Get current blog to check status change
-    const currentBlog = await pool.request()
-      .input('BlogID', sql.Int, id)
-      .query('SELECT Status, PublishedAt FROM content.Blogs WHERE BlogID = @BlogID');
+    const statusRequest = pool.request();
+    statusRequest.input('BlogID', sql.Int, id);
+    const currentBlog = await statusRequest.execute('admin.sp_GetBlogStatus');
     
     const wasPublished = currentBlog.recordset[0]?.Status === 'published';
     const isNowPublished = status === 'published';
@@ -2940,30 +2889,9 @@ router.put('/blogs/:id', async (req, res) => {
     request.input('AuthorImageURL', sql.NVarChar(500), authorImageUrl || null);
     request.input('Status', sql.NVarChar(50), status || 'draft');
     request.input('IsFeatured', sql.Bit, isFeatured || false);
+    request.input('SetPublishedAt', sql.Bit, !wasPublished && isNowPublished ? 1 : 0);
     
-    // Set PublishedAt if publishing for the first time
-    let publishedAtClause = '';
-    if (!wasPublished && isNowPublished) {
-      publishedAtClause = ', PublishedAt = GETDATE()';
-    }
-    
-    await request.query(`
-      UPDATE content.Blogs SET
-        Title = @Title,
-        Slug = @Slug,
-        Excerpt = @Excerpt,
-        Content = @Content,
-        FeaturedImageURL = @FeaturedImageURL,
-        Category = @Category,
-        Tags = @Tags,
-        Author = @Author,
-        AuthorImageURL = @AuthorImageURL,
-        Status = @Status,
-        IsFeatured = @IsFeatured,
-        UpdatedAt = GETDATE()
-        ${publishedAtClause}
-      WHERE BlogID = @BlogID
-    `);
+    await request.execute('admin.sp_UpdateBlog');
     
     res.json({ success: true, message: 'Blog updated' });
   } catch (error) {
@@ -2978,9 +2906,9 @@ router.delete('/blogs/:id', async (req, res) => {
     const { id } = req.params;
     const pool = await getPool();
     
-    await pool.request()
-      .input('BlogID', sql.Int, id)
-      .query('DELETE FROM content.Blogs WHERE BlogID = @BlogID');
+    const deleteRequest = pool.request();
+    deleteRequest.input('BlogID', sql.Int, id);
+    await deleteRequest.execute('admin.sp_DeleteBlog');
     
     res.json({ success: true, message: 'Blog deleted' });
   } catch (error) {
@@ -2995,15 +2923,9 @@ router.post('/blogs/:id/publish', async (req, res) => {
     const { id } = req.params;
     const pool = await getPool();
     
-    await pool.request()
-      .input('BlogID', sql.Int, id)
-      .query(`
-        UPDATE content.Blogs SET
-          Status = 'published',
-          PublishedAt = COALESCE(PublishedAt, GETDATE()),
-          UpdatedAt = GETDATE()
-        WHERE BlogID = @BlogID
-      `);
+    const publishRequest = pool.request();
+    publishRequest.input('BlogID', sql.Int, id);
+    await publishRequest.execute('admin.sp_PublishBlog');
     
     res.json({ success: true, message: 'Blog published' });
   } catch (error) {
@@ -3018,14 +2940,9 @@ router.post('/blogs/:id/unpublish', async (req, res) => {
     const { id } = req.params;
     const pool = await getPool();
     
-    await pool.request()
-      .input('BlogID', sql.Int, id)
-      .query(`
-        UPDATE content.Blogs SET
-          Status = 'draft',
-          UpdatedAt = GETDATE()
-        WHERE BlogID = @BlogID
-      `);
+    const unpublishRequest = pool.request();
+    unpublishRequest.input('BlogID', sql.Int, id);
+    await unpublishRequest.execute('admin.sp_UnpublishBlog');
     
     res.json({ success: true, message: 'Blog unpublished' });
   } catch (error) {
@@ -3041,15 +2958,10 @@ router.post('/blogs/:id/feature', async (req, res) => {
     const { featured } = req.body;
     const pool = await getPool();
     
-    await pool.request()
-      .input('BlogID', sql.Int, id)
-      .input('IsFeatured', sql.Bit, featured)
-      .query(`
-        UPDATE content.Blogs SET
-          IsFeatured = @IsFeatured,
-          UpdatedAt = GETDATE()
-        WHERE BlogID = @BlogID
-      `);
+    const featureRequest = pool.request();
+    featureRequest.input('BlogID', sql.Int, id);
+    featureRequest.input('IsFeatured', sql.Bit, featured);
+    await featureRequest.execute('admin.sp_ToggleBlogFeatured');
     
     res.json({ success: true, message: featured ? 'Blog featured' : 'Blog unfeatured' });
   } catch (error) {
@@ -3063,12 +2975,7 @@ router.get('/blog-categories', async (req, res) => {
   try {
     const pool = await getPool();
     
-    const result = await pool.request().query(`
-      SELECT DISTINCT Category, COUNT(*) as PostCount
-      FROM content.Blogs
-      GROUP BY Category
-      ORDER BY Category
-    `);
+    const result = await pool.request().execute('admin.sp_GetBlogCategories');
     
     // Add default categories if none exist
     const defaultCategories = [

@@ -179,9 +179,9 @@ router.delete('/posts/:postId', async (req, res) => {
     const pool = await poolPromise;
     
     // Check if user is author or admin
-    const checkResult = await pool.request()
-      .input('PostID', sql.Int, postId)
-      .query('SELECT AuthorID FROM forum.ForumPosts WHERE PostID = @PostID');
+    const checkRequest = pool.request();
+    checkRequest.input('PostID', sql.Int, postId);
+    const checkResult = await checkRequest.execute('forum.sp_CheckPostAuthor');
     
     if (!checkResult.recordset[0]) {
       return res.status(404).json({ success: false, message: 'Post not found' });
@@ -191,9 +191,9 @@ router.delete('/posts/:postId', async (req, res) => {
       return res.status(403).json({ success: false, message: 'Not authorized to delete this post' });
     }
     
-    await pool.request()
-      .input('PostID', sql.Int, postId)
-      .query('UPDATE forum.ForumPosts SET IsDeleted = 1, UpdatedAt = GETDATE() WHERE PostID = @PostID');
+    const deleteRequest = pool.request();
+    deleteRequest.input('PostID', sql.Int, postId);
+    await deleteRequest.execute('forum.sp_SoftDeletePost');
     
     res.json({ success: true, message: 'Post deleted' });
   } catch (err) {
@@ -211,9 +211,9 @@ router.delete('/comments/:commentId', async (req, res) => {
     const pool = await poolPromise;
     
     // Check if user is author
-    const checkResult = await pool.request()
-      .input('CommentID', sql.Int, commentId)
-      .query('SELECT AuthorID, PostID FROM forum.ForumComments WHERE CommentID = @CommentID');
+    const checkRequest = pool.request();
+    checkRequest.input('CommentID', sql.Int, commentId);
+    const checkResult = await checkRequest.execute('forum.sp_CheckCommentAuthor');
     
     if (!checkResult.recordset[0]) {
       return res.status(404).json({ success: false, message: 'Comment not found' });
@@ -223,14 +223,14 @@ router.delete('/comments/:commentId', async (req, res) => {
       return res.status(403).json({ success: false, message: 'Not authorized to delete this comment' });
     }
     
-    await pool.request()
-      .input('CommentID', sql.Int, commentId)
-      .query('UPDATE forum.ForumComments SET IsDeleted = 1, UpdatedAt = GETDATE() WHERE CommentID = @CommentID');
+    const deleteRequest = pool.request();
+    deleteRequest.input('CommentID', sql.Int, commentId);
+    await deleteRequest.execute('forum.sp_SoftDeleteComment');
     
     // Update comment count
-    await pool.request()
-      .input('PostID', sql.Int, checkResult.recordset[0].PostID)
-      .query('UPDATE forum.ForumPosts SET CommentCount = CommentCount - 1 WHERE PostID = @PostID');
+    const countRequest = pool.request();
+    countRequest.input('PostID', sql.Int, checkResult.recordset[0].PostID);
+    await countRequest.execute('forum.sp_DecrementCommentCount');
     
     res.json({ success: true, message: 'Comment deleted' });
   } catch (err) {
