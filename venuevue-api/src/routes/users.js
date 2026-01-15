@@ -392,7 +392,7 @@ router.post('/social-login', async (req, res) => {
     request.input('Email', sql.NVarChar(100), email.toLowerCase().trim());
     request.input('Name', sql.NVarChar(100), name);
     request.input('AuthProvider', sql.NVarChar(20), authProvider);
-    request.input('ProfileImageURL', sql.NVarChar(255), avatar || null);
+    request.input('ProfileImageURL', sql.NVarChar(255), avatar || '');
     request.input('IsVendor', sql.Bit, isVendorFlag);
 
     const result = await request.execute('users.sp_RegisterSocialUser');

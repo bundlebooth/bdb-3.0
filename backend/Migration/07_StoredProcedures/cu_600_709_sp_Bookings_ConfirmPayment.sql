@@ -24,6 +24,11 @@ AS
 BEGIN
     SET NOCOUNT ON;
     
+    DECLARE @VendorProfileID INT;
+    
+    -- Get VendorProfileID before update
+    SELECT @VendorProfileID = VendorProfileID FROM bookings.Bookings WHERE BookingID = @BookingID;
+    
     UPDATE bookings.Bookings
     SET Status = 'paid',
         StripePaymentIntentID = COALESCE(@PaymentIntentID, StripePaymentIntentID),
@@ -43,6 +48,10 @@ BEGIN
     
     INSERT INTO bookings.BookingTimeline (BookingID, Status, ChangedBy, Notes, CreatedAt)
     VALUES (@BookingID, 'paid', NULL, 'Payment confirmed', GETDATE());
+    
+    -- Refresh vendor stats (TotalBookings, etc.)
+    IF @VendorProfileID IS NOT NULL
+        EXEC vendors.sp_RefreshVendorStats @VendorProfileID = @VendorProfileID;
     
     SELECT @BookingID AS BookingID;
 END;

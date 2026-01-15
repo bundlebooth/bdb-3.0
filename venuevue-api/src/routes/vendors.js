@@ -1439,17 +1439,17 @@ router.post('/register', upload.array('images', 5), async (req, res) => {
     request.input('UserID', sql.Int, userId ? parseInt(userId) : null);
     request.input('BusinessName', sql.NVarChar(100), businessName);
     request.input('DisplayName', sql.NVarChar(100), displayName || businessName);
-    request.input('BusinessDescription', sql.NVarChar(sql.MAX), description);
-    request.input('BusinessPhone', sql.NVarChar(20), businessPhone || phone);
-    request.input('Website', sql.NVarChar(255), website);
+    request.input('BusinessDescription', sql.NVarChar(sql.MAX), description || '');
+    request.input('BusinessPhone', sql.NVarChar(20), businessPhone || phone || '');
+    request.input('Website', sql.NVarChar(255), website || '');
     request.input('YearsInBusiness', sql.Int, yearsInBusiness ? parseInt(yearsInBusiness) : null);
-    request.input('Address', sql.NVarChar(255), address);
+    request.input('Address', sql.NVarChar(255), address || '');
     
-    const [city, state] = address ? address.split(',').map(s => s.trim()) : [null, null];
-    request.input('City', sql.NVarChar(100), city);
-    request.input('State', sql.NVarChar(50), state);
-    request.input('Country', sql.NVarChar(50), country || 'USA');
-    request.input('PostalCode', sql.NVarChar(20), postalCode);
+    const [city, state] = address ? address.split(',').map(s => s.trim()) : ['', ''];
+    request.input('City', sql.NVarChar(100), city || '');
+    request.input('State', sql.NVarChar(50), state || '');
+    request.input('Country', sql.NVarChar(50), country || 'Canada');
+    request.input('PostalCode', sql.NVarChar(20), postalCode || '');
     
     request.input('Categories', sql.NVarChar(sql.MAX), JSON.stringify(categoriesData));
     request.input('Services', sql.NVarChar(sql.MAX), JSON.stringify(servicesData));
@@ -1468,7 +1468,7 @@ router.post('/register', upload.array('images', 5), async (req, res) => {
             serviceRequest.input('PredefinedServiceID', sql.Int, predefinedService.id);
             serviceRequest.input('VendorPrice', sql.Decimal(10, 2), predefinedService.vendorPrice);
             serviceRequest.input('VendorDuration', sql.Int, predefinedService.vendorDuration);
-            serviceRequest.input('VendorDescription', sql.NVarChar(sql.MAX), predefinedService.vendorDescription || null);
+            serviceRequest.input('VendorDescription', sql.NVarChar(sql.MAX), predefinedService.vendorDescription || '');
             
             await serviceRequest.execute('vendors.sp_InsertPredefinedService');
           } catch (serviceError) {

@@ -347,6 +347,28 @@ router.post('/requests', async (req, res) => {
       });
     }
 
+    // Require essential event details
+    if (!eventDetails.name || eventDetails.name.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'Event name is required'
+      });
+    }
+
+    if (!eventDetails.type || eventDetails.type.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'Event type is required'
+      });
+    }
+
+    if (!eventDetails.location || eventDetails.location.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'Event location is required'
+      });
+    }
+
     const pool = await poolPromise;
     const requests = [];
 
@@ -417,14 +439,14 @@ router.post('/requests', async (req, res) => {
         request.input('Services', sql.NVarChar(sql.MAX), JSON.stringify(services));
         request.input('EventDate', sql.VarChar(10), String(eventDetails.date));
         request.input('EventTime', sql.VarChar(8), formattedTime);
-        request.input('EventEndTime', sql.VarChar(8), formattedEndTime || null);
-        request.input('EventLocation', sql.NVarChar(500), eventDetails.location || null);
+        request.input('EventEndTime', sql.VarChar(8), formattedEndTime || '');
+        request.input('EventLocation', sql.NVarChar(500), eventDetails.location || '');
         request.input('AttendeeCount', sql.Int, eventDetails.attendeeCount || 50);
         request.input('Budget', sql.Decimal(10, 2), budget);
-        request.input('SpecialRequests', sql.NVarChar(sql.MAX), eventDetails.specialRequests || null);
-        request.input('EventName', sql.NVarChar(255), eventDetails.name || null);
-        request.input('EventType', sql.NVarChar(100), eventDetails.type || null);
-        request.input('TimeZone', sql.NVarChar(100), eventDetails.timezone || null);
+        request.input('SpecialRequests', sql.NVarChar(sql.MAX), eventDetails.specialRequests || '');
+        request.input('EventName', sql.NVarChar(255), eventDetails.name || 'Booking');
+        request.input('EventType', sql.NVarChar(100), eventDetails.type || '');
+        request.input('TimeZone', sql.NVarChar(100), eventDetails.timezone || 'America/Toronto');
         request.input('Status', sql.NVarChar(50), 'pending');
         
         // Set expiry to 24 hours from now
@@ -735,11 +757,46 @@ router.post('/requests/send', async (req, res) => {
       packagePrice
     } = req.body;
 
-    // Validation
+    // Validation - require all essential booking data
     if (!userId || !vendorProfileId) {
       return res.status(400).json({ 
         success: false,
         message: 'User ID and Vendor Profile ID are required' 
+      });
+    }
+
+    if (!eventDate) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Event date is required' 
+      });
+    }
+
+    if (!eventTime) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Event time is required' 
+      });
+    }
+
+    if (!eventName || eventName.trim() === '') {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Event name is required' 
+      });
+    }
+
+    if (!eventType || eventType.trim() === '') {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Event type is required' 
+      });
+    }
+
+    if (!eventLocation || eventLocation.trim() === '') {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Event location is required' 
       });
     }
 
@@ -777,19 +834,19 @@ router.post('/requests/send', async (req, res) => {
 
     request.input('UserID', sql.Int, userId);
     request.input('VendorProfileID', sql.Int, vendorProfileId);
-    request.input('EventDate', sql.VarChar(10), eventDate || null);
-    request.input('EventTime', sql.VarChar(8), eventTime || null);
-    request.input('EventEndTime', sql.VarChar(8), eventEndTime || null);
-    request.input('EventLocation', sql.NVarChar(500), eventLocation || null);
-    request.input('AttendeeCount', sql.Int, attendeeCount || null);
+    request.input('EventDate', sql.VarChar(10), eventDate || '');
+    request.input('EventTime', sql.VarChar(8), eventTime || '09:00:00');
+    request.input('EventEndTime', sql.VarChar(8), eventEndTime || '');
+    request.input('EventLocation', sql.NVarChar(500), eventLocation || '');
+    request.input('AttendeeCount', sql.Int, attendeeCount || 1);
     request.input('Budget', sql.Decimal(10, 2), finalBudget);
-    request.input('Services', sql.NVarChar(sql.MAX), servicesJson);
-    request.input('EventName', sql.NVarChar(255), eventName || null);
-    request.input('EventType', sql.NVarChar(100), eventType || null);
-    request.input('TimeZone', sql.NVarChar(100), timeZone || null);
+    request.input('Services', sql.NVarChar(sql.MAX), servicesJson || '[]');
+    request.input('EventName', sql.NVarChar(255), eventName || 'Booking');
+    request.input('EventType', sql.NVarChar(100), eventType || '');
+    request.input('TimeZone', sql.NVarChar(100), timeZone || 'America/Toronto');
     request.input('Status', sql.NVarChar(50), 'pending');
     request.input('ExpiresAt', sql.DateTime, expiresAt);
-    request.input('SpecialRequests', sql.NVarChar(sql.MAX), specialRequestText || null);
+    request.input('SpecialRequests', sql.NVarChar(sql.MAX), specialRequestText || '');
 
     const result = await request.execute('bookings.sp_InsertRequest');
 
