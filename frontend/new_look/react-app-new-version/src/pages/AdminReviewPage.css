@@ -100,7 +100,7 @@
 .stat-number {
   font-size: 2.5rem;
   font-weight: 700;
-  color: #5e72e4;
+  color: #4F86E8;
 }
 
 .stat-label {
@@ -242,7 +242,7 @@
 }
 
 .detail-row .value a {
-  color: #5e72e4;
+  color: #4F86E8;
   text-decoration: none;
 }
 
@@ -404,7 +404,7 @@
 
 .form-group textarea:focus {
   outline: none;
-  border-color: #5e72e4;
+  border-color: #4F86E8;
   box-shadow: 0 0 0 3px rgba(94, 114, 228, 0.1);
 }
 
@@ -464,7 +464,7 @@
   width: 40px;
   height: 40px;
   border: 3px solid #e5e7eb;
-  border-top-color: #5e72e4;
+  border-top-color: #4F86E8;
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }

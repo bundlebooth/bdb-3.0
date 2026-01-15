@@ -56,7 +56,7 @@
 }
 
 .payment-modal-header h2 i {
-  color: var(--primary, #5e72e4);
+  color: var(--primary, #4F86E8);
 }
 
 .payment-modal-header .close-btn {
@@ -77,7 +77,7 @@
 }
 
 .payment-modal-header .close-btn:hover {
-  color: var(--primary, #5e72e4);
+  color: var(--primary, #4F86E8);
 }
 
 .payment-modal-body {
@@ -269,7 +269,7 @@
 }
 
 .price-breakdown .breakdown-row.total .total-amount {
-  color: var(--primary, #5e72e4);
+  color: var(--primary, #4F86E8);
   font-size: 1.25rem;
 }
 
@@ -295,7 +295,7 @@
   width: 40px;
   height: 40px;
   border: 3px solid var(--border, #e2e8f0);
-  border-top-color: var(--primary, #5e72e4);
+  border-top-color: var(--primary, #4F86E8);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
   margin-bottom: 1rem;
@@ -376,7 +376,7 @@
 
 .payment-tax-notice i {
   flex-shrink: 0;
-  color: var(--primary, #5e72e4);
+  color: var(--primary, #4F86E8);
 }
 
 /* Action Buttons */
@@ -401,8 +401,8 @@
 
 .payment-actions .btn-outline {
   background: transparent;
-  border: 1px solid var(--primary, #5e72e4);
-  color: var(--primary, #5e72e4);
+  border: 1px solid var(--primary, #4F86E8);
+  color: var(--primary, #4F86E8);
 }
 
 .payment-actions .btn-outline:hover:not(:disabled) {

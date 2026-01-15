@@ -144,7 +144,7 @@
 }
 
 .landing-header.scrolled .login-btn {
-  background: #5e72e4;
+  background: #4F86E8;
   color: white;
   border: none;
 }
@@ -342,7 +342,7 @@
 }
 
 .hero-search-bar-simple .search-btn-simple {
-  background: #5e72e4;
+  background: #4F86E8;
   color: white;
   border: none;
   padding: 14px 32px;
@@ -422,7 +422,7 @@
 }
 
 .hero-search-bar-styled .location-icon:hover {
-  color: #5e72e4;
+  color: #4F86E8;
 }
 
 .hero-search-bar-styled .search-divider-line {
@@ -434,7 +434,7 @@
 }
 
 .hero-search-bar-styled .search-btn-styled {
-  background: #5e72e4;
+  background: #4F86E8;
   color: white;
   border: none;
   padding: 14px 24px;
@@ -758,12 +758,12 @@
 
 .view-all-btn {
   background: transparent;
-  border: 1px solid #5e72e4;
+  border: 1px solid #4F86E8;
   padding: 10px 20px;
   border-radius: 8px;
   font-size: 14px;
   font-weight: 500;
-  color: #5e72e4;
+  color: #4F86E8;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -772,7 +772,7 @@
 }
 
 .view-all-btn:hover {
-  background: #5e72e4;
+  background: #4F86E8;
   color: white;
 }
 
@@ -972,7 +972,7 @@
   width: 40px;
   height: 40px;
   border: 3px solid #f3f3f3;
-  border-top: 3px solid #5e72e4;
+  border-top: 3px solid #4F86E8;
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin-bottom: 16px;
@@ -1015,13 +1015,13 @@
 .category-card:hover {
   transform: translateY(-4px);
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1);
-  border-color: #5e72e4;
+  border-color: #4F86E8;
 }
 
 .category-icon {
   width: 56px;
   height: 56px;
-  background: linear-gradient(135deg, #5e72e4 0%, #825ee4 100%);
+  background: linear-gradient(135deg, #4F86E8 0%, #825ee4 100%);
   border-radius: 16px;
   display: flex;
   align-items: center;
@@ -1105,7 +1105,7 @@
 
 .feature-icon i {
   font-size: 20px;
-  color: #5e72e4;
+  color: #4F86E8;
 }
 
 .feature-card h3 {
@@ -1189,7 +1189,7 @@
 }
 
 .why-text p .highlight {
-  color: #5e72e4;
+  color: #4F86E8;
   font-weight: 500;
 }
 
@@ -1898,7 +1898,7 @@
 }
 
 .explore-all-btn {
-  background: #5e72e4;
+  background: #4F86E8;
   color: white;
   border: none;
   padding: 14px 32px;
@@ -2034,7 +2034,7 @@
 }
 
 .landing-page .discovery-section .vendor-section-show-all:hover {
-  color: #5e72e4 !important;
+  color: #4F86E8 !important;
 }
 
 .landing-page .discovery-section .vendor-section-nav-btn {
@@ -2177,7 +2177,7 @@
   margin-bottom: 20px;
   font-size: 13px;
   font-weight: 600;
-  color: #5e72e4;
+  color: #4F86E8;
 }
 
 .feature-badge i {
@@ -2245,7 +2245,7 @@
   align-items: center;
   gap: 10px;
   padding: 14px 28px;
-  background: linear-gradient(135deg, #5e72e4 0%, #825ee4 100%);
+  background: linear-gradient(135deg, #4F86E8 0%, #825ee4 100%);
   color: white;
   border: none;
   border-radius: 10px;
@@ -2543,7 +2543,7 @@
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #5e72e4 0%, #825ee4 100%);
+  background: linear-gradient(135deg, #4F86E8 0%, #825ee4 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2778,7 +2778,7 @@
   font-weight: 700;
   color: white;
   margin-bottom: 8px;
-  background: linear-gradient(135deg, #5e72e4 0%, #825ee4 100%);
+  background: linear-gradient(135deg, #4F86E8 0%, #825ee4 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -2995,7 +2995,7 @@
 
 .feature-icon-box i {
   font-size: 20px;
-  color: #5e72e4;
+  color: #4F86E8;
 }
 
 .marketplace-feature h3 {
@@ -3196,7 +3196,7 @@
 /* Engagement CTA Section */
 .engagement-cta-section {
   padding: 80px 0;
-  background: linear-gradient(135deg, #5e72e4 0%, #825ee4 100%);
+  background: linear-gradient(135deg, #4F86E8 0%, #825ee4 100%);
   text-align: center;
 }
 
@@ -3228,7 +3228,7 @@
 
 .engagement-buttons .cta-primary {
   background: white;
-  color: #5e72e4;
+  color: #4F86E8;
   border: none;
   padding: 16px 40px;
   font-size: 16px;

@@ -113,7 +113,7 @@
 }
 
 .dashboard-nav-tab:hover {
-  color: var(--primary, #5e72e4);
+  color: var(--primary, #4F86E8);
 }
 
 /* Notification Badge for Nav Tabs */
@@ -133,7 +133,7 @@
 }
 
 .dashboard-nav-tab.active {
-  color: var(--primary, #5e72e4);
+  color: var(--primary, #4F86E8);
   font-weight: 500;
 }
 
@@ -146,7 +146,7 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--primary, #5e72e4);
+  background: var(--primary, #4F86E8);
 }
 
 /* Desktop only elements */
@@ -245,7 +245,7 @@
 }
 
 .mobile-nav-item.active {
-  color: var(--primary, #5e72e4);
+  color: var(--primary, #4F86E8);
   font-weight: 500;
   background: #f8f8ff;
 }
@@ -258,7 +258,7 @@
 }
 
 .mobile-nav-item.active i {
-  color: var(--primary, #5e72e4);
+  color: var(--primary, #4F86E8);
 }
 
 .mobile-nav-divider {
@@ -324,7 +324,7 @@
 }
 
 .view-mode-btn.active {
-  background: var(--primary, #5e72e4);
+  background: var(--primary, #4F86E8);
   color: white;
 }
 
@@ -363,7 +363,7 @@
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #5e72e4 0%, #825ee4 100%);
+  background: linear-gradient(135deg, #4F86E8 0%, #825ee4 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -434,7 +434,7 @@
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #5e72e4 0%, #825ee4 100%);
+  background: linear-gradient(135deg, #4F86E8 0%, #825ee4 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -501,7 +501,7 @@
 }
 
 .sidebar-item.active {
-  color: var(--primary, #5e72e4);
+  color: var(--primary, #4F86E8);
   background: #f8f8ff;
 }
 
@@ -513,7 +513,7 @@
 }
 
 .sidebar-item.active i {
-  color: var(--primary, #5e72e4);
+  color: var(--primary, #4F86E8);
 }
 
 .sidebar-item.logout {
@@ -558,7 +558,7 @@
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #5e72e4 0%, #825ee4 100%);
+  background: linear-gradient(135deg, #4F86E8 0%, #825ee4 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -990,7 +990,7 @@
   }
 
   .mobile-page-selector .mobile-nav-item.active {
-    color: var(--primary, #5e72e4);
+    color: var(--primary, #4F86E8);
     font-weight: 500;
     background: #f8f8ff;
   }
@@ -1003,7 +1003,7 @@
   }
 
   .mobile-page-selector .mobile-nav-item.active i {
-    color: var(--primary, #5e72e4);
+    color: var(--primary, #4F86E8);
   }
 
   /* Add spacing between page bar and content */

@@ -73,7 +73,7 @@
 }
 
 .vendor-landing-nav .primary-btn {
-  background: #5e72e4;
+  background: #4F86E8;
   color: white;
   border: none;
 }
@@ -102,7 +102,7 @@
   display: inline-block;
   font-size: 13px;
   font-weight: 600;
-  color: #5e72e4;
+  color: #4F86E8;
   margin-bottom: 16px;
   text-transform: uppercase;
   letter-spacing: 1px;
@@ -137,7 +137,7 @@
 .stat-number {
   font-size: 28px;
   font-weight: 700;
-  color: #5e72e4;
+  color: #4F86E8;
 }
 
 .stat-label {
@@ -162,7 +162,7 @@
   display: inline-block;
   font-size: 13px;
   font-weight: 500;
-  color: #5e72e4;
+  color: #4F86E8;
   margin-bottom: 20px;
   letter-spacing: 0.5px;
 }
@@ -193,7 +193,7 @@
 }
 
 .hero-cta-btn {
-  background: #5e72e4;
+  background: #4F86E8;
   color: white;
   border: none;
   padding: 16px 40px;
@@ -232,7 +232,7 @@
 }
 
 .vendor-categories-section .section-subtitle strong {
-  color: #5e72e4;
+  color: #4F86E8;
   font-weight: 600;
 }
 
@@ -288,7 +288,7 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  color: #5e72e4;
+  color: #4F86E8;
 }
 
 .why-text h3 {
@@ -306,7 +306,7 @@
 }
 
 .why-text .highlight {
-  color: #5e72e4;
+  color: #4F86E8;
   font-weight: 500;
 }
 
@@ -366,7 +366,7 @@
   align-items: center;
   justify-content: center;
   margin-bottom: 20px;
-  color: #5e72e4;
+  color: #4F86E8;
 }
 
 .feature-card h3 {
@@ -419,7 +419,7 @@
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background: #5e72e4;
+  background: #4F86E8;
   color: white;
   display: flex;
   align-items: center;
@@ -438,7 +438,7 @@
 
 .step-subtitle {
   font-size: 14px;
-  color: #5e72e4;
+  color: #4F86E8;
   font-weight: 500;
   margin: 0 0 12px 0;
 }
@@ -503,7 +503,7 @@
 }
 
 .testimonial-text .testimonial-label {
-  color: #5e72e4;
+  color: #4F86E8;
   font-size: 13px;
   font-weight: 600;
   text-transform: uppercase;
@@ -543,13 +543,13 @@
   width: 40px;
   height: 40px;
   margin-bottom: 16px;
-  color: #5e72e4;
+  color: #4F86E8;
 }
 
 .step-item h4 {
   font-size: 16px;
   font-weight: 600;
-  color: #5e72e4;
+  color: #4F86E8;
   margin: 0 0 8px 0;
 }
 
@@ -581,7 +581,7 @@
 }
 
 .cta-btn-large {
-  background: #5e72e4;
+  background: #4F86E8;
   color: white;
   border: none;
   padding: 18px 48px;
@@ -608,7 +608,7 @@
 /* Vendor Stats Section */
 .vendor-stats-section {
   padding: 60px 0;
-  background: #5e72e4;
+  background: #4F86E8;
   text-align: center;
 }
 
@@ -678,7 +678,7 @@
   align-items: center;
   justify-content: center;
   margin: 0 auto 16px;
-  color: #5e72e4;
+  color: #4F86E8;
 }
 
 .benefit-card h3 {
@@ -1131,7 +1131,7 @@
   margin-bottom: 20px;
   font-size: 13px;
   font-weight: 600;
-  color: #5e72e4;
+  color: #4F86E8;
 }
 
 .vendor-badge-green {
@@ -1204,7 +1204,7 @@
 .discovery-stat .stat-big {
   font-size: 36px;
   font-weight: 700;
-  color: #5e72e4;
+  color: #4F86E8;
 }
 
 .discovery-stat .stat-desc {
@@ -1290,7 +1290,7 @@
 }
 
 .portfolio-stat svg {
-  color: #5e72e4;
+  color: #4F86E8;
 }
 
 .portfolio-stat div {
@@ -1338,7 +1338,7 @@
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #5e72e4 0%, #825ee4 100%);
+  background: linear-gradient(135deg, #4F86E8 0%, #825ee4 100%);
 }
 
 .mockup-info {
@@ -1421,7 +1421,7 @@
   position: absolute;
   width: 36px;
   height: 36px;
-  background: #5e72e4;
+  background: #4F86E8;
   border-radius: 50% 50% 50% 0;
   transform: rotate(-45deg);
   display: flex;
@@ -1575,7 +1575,7 @@
 }
 
 .chat-bubble-vendor {
-  background: #5e72e4;
+  background: #4F86E8;
   color: white;
   align-self: flex-end;
   border-bottom-right-radius: 4px;
@@ -1707,7 +1707,7 @@
 }
 
 .floating-badge-2 svg {
-  color: #5e72e4;
+  color: #4F86E8;
 }
 
 @keyframes float {

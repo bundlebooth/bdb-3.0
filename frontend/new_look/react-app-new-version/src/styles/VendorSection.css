@@ -483,12 +483,12 @@
 
 /* Focus styles for accessibility */
 .vendor-section-nav-btn:focus {
-  outline: 2px solid #5e72e4;
+  outline: 2px solid #4F86E8;
   outline-offset: 2px;
 }
 
 .vendor-section-card-wrapper:focus-within {
-  outline: 2px solid #5e72e4;
+  outline: 2px solid #4F86E8;
   outline-offset: 4px;
   border-radius: 12px;
 }

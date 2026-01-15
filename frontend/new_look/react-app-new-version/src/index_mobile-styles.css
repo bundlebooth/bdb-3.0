@@ -1,6 +1,6 @@
 ﻿:root {
-    --primary: #5e72e4;
-    --primary-dark: #4c60d3;
+    --primary: #4F86E8;
+    --primary-dark: #3A6FD4;
     --secondary: #f7fafc;
     --surface-bg: white;
     --accent: #ff6b6b;
@@ -736,7 +736,7 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
     top: 12px;
     left: 12px;
     background: rgba(255, 255, 255, 0.95);
-    color: #5e72e4;
+    color: #4F86E8;
     padding: 0.4rem 0.8rem;
     border-radius: 25px;
     font-size: 0.75rem;
@@ -808,7 +808,7 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
     padding: 1rem;
     background: #f8fafc;
     border-radius: 12px;
-    border-left: 4px solid #5e72e4;
+    border-left: 4px solid #4F86E8;
 }
 
 .feature {
@@ -821,7 +821,7 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
 }
 
 .feature-icon {
-    color: #5e72e4;
+    color: #4F86E8;
     font-size: 1rem;
 }
 
@@ -887,7 +887,7 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
     width: 32px;
     height: 32px;
     border-radius: 50%;
-    background: #5e72e4;
+    background: #4F86E8;
     color: white;
     display: flex;
     align-items: center;
@@ -922,8 +922,8 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
 }
 
 .vendor-checkbox.checked {
-    background: #5e72e4;
-    border-color: #5e72e4;
+    background: #4F86E8;
+    border-color: #4F86E8;
     color: white;
 }
 
@@ -6933,7 +6933,7 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
 
 .mobile-book-now-footer .btn-book-now {
     width: 100%;
-    background: var(--primary, #5e72e4);
+    background: var(--primary, #4F86E8);
     color: white;
     border: none;
     padding: 1rem 1.5rem;
@@ -7008,7 +7008,7 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
 
 .chat-button {
     padding: 15px 28px;
-    background: var(--primary, #5e72e4);
+    background: var(--primary, #4F86E8);
     border-radius: 12px 12px 0 0;
     display: flex;
     align-items: center;
@@ -7024,7 +7024,7 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
 .chat-button:hover {
     transform: translateY(-3px);
     box-shadow: 0 -4px 16px rgba(94, 114, 228, 0.35);
-    background: var(--primary-dark, #4c60d3);
+    background: var(--primary-dark, #3A6FD4);
 }
 
 .chat-button i {
@@ -7689,8 +7689,8 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
 
 .scroll-arrow:hover {
     background: #f3f4f6 !important;
-    border-color: #5e72e4 !important;
-    color: #5e72e4 !important;
+    border-color: #4F86E8 !important;
+    color: #4F86E8 !important;
 }
 
 .scroll-arrow:active {
@@ -8425,7 +8425,7 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
         width: 28px !important;
         height: 28px !important;
         font-size: 12px !important;
-        background: var(--primary, #5e72e4) !important;
+        background: var(--primary, #4F86E8) !important;
         flex-shrink: 0 !important;
     }
     
@@ -8474,7 +8474,7 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
     }
     
     .enhanced-search-container.expanded .search-field.active {
-        border-color: var(--primary, #5e72e4) !important;
+        border-color: var(--primary, #4F86E8) !important;
         background: white !important;
     }
     
