@@ -297,11 +297,15 @@ async function sendTemplatedEmail(templateKey, recipientEmail, recipientName, va
       preferencesUrl = getPreferencesUrl(userId, recipientEmail);
     }
     
+    // Always use production URL for logo in emails (email clients need absolute public URLs)
+    const productionUrl = 'https://www.planbeau.com';
+    
     const platformVars = {
       platformName: process.env.PLATFORM_NAME || 'PlanBeau',
       platformUrl: process.env.PLATFORM_URL || 'planbeau.com',
       frontendUrl: frontendUrl,
-      logoUrl: `${frontendUrl}/images/logo.png`,
+      logoUrl: `${productionUrl}/images/logo.png`,
+      faviconUrl: `${productionUrl}/planbeau_fav_icon.png`,
       currentYear: new Date().getFullYear().toString(),
       recipientEmail,
       unsubscribeUrl,

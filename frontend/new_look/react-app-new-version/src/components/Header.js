@@ -401,7 +401,7 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
           ) : (
             <div
               style={{
-                backgroundColor: 'var(--primary)',
+                backgroundColor: currentUser ? 'var(--primary)' : '#717171',
                 color: 'white',
                 borderRadius: '50%',
                 width: '32px',
@@ -414,7 +414,7 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
                 position: 'relative'
               }}
             >
-              {currentUser ? currentUser.name.charAt(0).toUpperCase() : 'S'}
+              {currentUser ? currentUser.name.charAt(0).toUpperCase() : <i className="fas fa-user" style={{ fontSize: '14px' }}></i>}
             </div>
           )}
           {/* Exclamation mark indicator for incomplete profile - only show if NOT live */}
