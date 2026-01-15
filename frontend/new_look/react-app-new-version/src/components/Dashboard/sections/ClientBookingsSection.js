@@ -360,10 +360,10 @@ function ClientBookingsSection({ onPayNow, onOpenChat }) {
               <span className="booking-time">{timeStr}</span>
             </div>
           )}
-          {((booking.TotalAmount != null && booking.TotalAmount !== '' && Number(booking.TotalAmount) > 0) || (booking.Budget != null && booking.Budget !== '' && Number(booking.Budget) > 0)) && (
+          {booking.TotalAmount != null && booking.TotalAmount !== '' && Number(booking.TotalAmount) > 0 && (
             <div className="booking-price-row">
               <i className="fas fa-dollar-sign" style={{ color: '#6b7280', fontSize: '12px' }}></i>
-              <span className="booking-price">${Number(booking.TotalAmount || booking.Budget || 0).toLocaleString()}</span>
+              <span className="booking-price">${Number(booking.TotalAmount).toLocaleString()}</span>
             </div>
           )}
         </div>

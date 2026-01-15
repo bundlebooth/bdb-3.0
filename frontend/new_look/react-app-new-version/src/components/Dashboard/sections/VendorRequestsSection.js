@@ -195,10 +195,10 @@ function VendorRequestsSection() {
     setSelectedBooking(null);
   };
 
-  const handleApproveRequest = async (requestId) => {
-    setProcessingAction(`approve-${requestId}`);
+  const handleApproveRequest = async (bookingId) => {
+    setProcessingAction(`approve-${bookingId}`);
     try {
-      const response = await fetch(`${API_BASE_URL}/bookings/requests/${requestId}/approve`, {
+      const response = await fetch(`${API_BASE_URL}/bookings/requests/${bookingId}/approve`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -210,7 +210,7 @@ function VendorRequestsSection() {
       if (response.ok) {
         // Update the booking status locally without full reload
         setAllBookings(prev => prev.map(b => 
-          b.RequestID === requestId ? { ...b, _status: 'approved', Status: 'approved' } : b
+          b.BookingID === bookingId ? { ...b, _status: 'approved', _statusCategory: 'upcoming', Status: 'approved' } : b
         ));
         showBanner('Request approved successfully', 'success');
       } else {
@@ -225,10 +225,10 @@ function VendorRequestsSection() {
     }
   };
 
-  const handleDeclineRequest = async (requestId) => {
-    setProcessingAction(`decline-${requestId}`);
+  const handleDeclineRequest = async (bookingId) => {
+    setProcessingAction(`decline-${bookingId}`);
     try {
-      const response = await fetch(`${API_BASE_URL}/bookings/requests/${requestId}/decline`, {
+      const response = await fetch(`${API_BASE_URL}/bookings/requests/${bookingId}/decline`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -240,7 +240,7 @@ function VendorRequestsSection() {
       if (response.ok) {
         // Update the booking status locally without full reload
         setAllBookings(prev => prev.map(b => 
-          b.RequestID === requestId ? { ...b, _status: 'declined', Status: 'declined' } : b
+          b.BookingID === bookingId ? { ...b, _status: 'declined', _statusCategory: 'declined', Status: 'declined' } : b
         ));
         showBanner('Request declined', 'info');
       } else {
@@ -419,9 +419,9 @@ function VendorRequestsSection() {
     const s = booking._status || 'pending';
     const statusCfg = getDetailedStatus(booking);
 
-    // Use RequestID for pending requests, BookingID for confirmed bookings
-    const itemId = booking.RequestID || booking.BookingID;
-    const isRequest = !!booking.RequestID;
+    // Use BookingID as the primary identifier (RequestID is legacy/nullable)
+    const itemId = booking.BookingID || booking.RequestID;
+    const isPendingRequest = s === 'pending';
     const isMenuOpen = openActionMenu === itemId;
 
     return (
@@ -475,10 +475,10 @@ function VendorRequestsSection() {
               <span className="booking-time">{timeStr}</span>
             </div>
           )}
-          {(booking.TotalAmount != null && booking.TotalAmount !== '' && Number(booking.TotalAmount) > 0) || (booking.Budget != null && booking.Budget !== '' && Number(booking.Budget) > 0) ? (
+          {booking.TotalAmount != null && booking.TotalAmount !== '' && Number(booking.TotalAmount) > 0 ? (
             <div className="booking-price-row">
               <i className="fas fa-dollar-sign" style={{ color: '#6b7280', fontSize: '12px' }}></i>
-              <span className="booking-price">${Number(booking.TotalAmount || booking.Budget || 0).toLocaleString()}</span>
+              <span className="booking-price">${Number(booking.TotalAmount).toLocaleString()}</span>
             </div>
           ) : null}
         </div>
@@ -495,28 +495,28 @@ function VendorRequestsSection() {
             )}
           </div>
           <div className="actions-row" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            {s === 'pending' && isRequest && (
+            {isPendingRequest && (
               <>
                 <span 
-                  onClick={() => !processingAction && handleApproveRequest(booking.RequestID)}
+                  onClick={() => !processingAction && handleApproveRequest(booking.BookingID)}
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: '6px',
                     padding: '7px 18px',
-                    background: processingAction === `approve-${booking.RequestID}` ? '#059669' : '#10b981',
+                    background: processingAction === `approve-${booking.BookingID}` ? '#059669' : '#10b981',
                     color: 'white',
                     borderRadius: '6px',
                     fontSize: '13px',
                     fontWeight: 500,
                     cursor: processingAction ? 'not-allowed' : 'pointer',
                     whiteSpace: 'nowrap',
-                    opacity: processingAction && processingAction !== `approve-${booking.RequestID}` ? 0.6 : 1,
+                    opacity: processingAction && processingAction !== `approve-${booking.BookingID}` ? 0.6 : 1,
                     minWidth: '90px'
                   }}
                 >
-                  {processingAction === `approve-${booking.RequestID}` ? (
+                  {processingAction === `approve-${booking.BookingID}` ? (
                     <i className="fas fa-spinner fa-spin" style={{ fontSize: '12px' }}></i>
                   ) : (
                     <>
@@ -526,25 +526,25 @@ function VendorRequestsSection() {
                   )}
                 </span>
                 <span 
-                  onClick={() => !processingAction && handleDeclineRequest(booking.RequestID)}
+                  onClick={() => !processingAction && handleDeclineRequest(booking.BookingID)}
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: '6px',
                     padding: '7px 18px',
-                    background: processingAction === `decline-${booking.RequestID}` ? '#dc2626' : '#ef4444',
+                    background: processingAction === `decline-${booking.BookingID}` ? '#dc2626' : '#ef4444',
                     color: 'white',
                     borderRadius: '6px',
                     fontSize: '13px',
                     fontWeight: 500,
                     cursor: processingAction ? 'not-allowed' : 'pointer',
                     whiteSpace: 'nowrap',
-                    opacity: processingAction && processingAction !== `decline-${booking.RequestID}` ? 0.6 : 1,
+                    opacity: processingAction && processingAction !== `decline-${booking.BookingID}` ? 0.6 : 1,
                     minWidth: '85px'
                   }}
                 >
-                  {processingAction === `decline-${booking.RequestID}` ? (
+                  {processingAction === `decline-${booking.BookingID}` ? (
                     <i className="fas fa-spinner fa-spin" style={{ fontSize: '12px' }}></i>
                   ) : (
                     <>
