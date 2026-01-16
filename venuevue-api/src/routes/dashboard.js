@@ -242,34 +242,28 @@ router.get('/:id/bookings/all', async (req, res) => {
     // Use unified stored procedure for consistent status handling
     const result = await request.execute('vendors.sp_GetUnifiedBookings');
     
-    // Get vendor timezone and convert to readable abbreviation
+    // Get vendor timezone from business hours
     let vendorTimezone = 'EST';
     try {
       const tzRequest = new sql.Request(pool);
       tzRequest.input('VendorProfileID', sql.Int, parseInt(id));
-      const tzResult = await tzRequest.query(`
-        SELECT TOP 1 vp.TimeZone
-        FROM vendors.VendorProfiles vp
-        WHERE vp.VendorProfileID = @VendorProfileID
-      `);
-      if (tzResult.recordset.length > 0) {
-        const tz = tzResult.recordset[0].TimeZone;
-        if (tz) {
-          // Convert IANA timezone to readable abbreviation
-          const tzMap = {
-            'America/Toronto': 'EST',
-            'America/New_York': 'EST',
-            'America/Chicago': 'CST',
-            'America/Denver': 'MST',
-            'America/Los_Angeles': 'PST',
-            'America/Vancouver': 'PST',
-            'America/Edmonton': 'MST',
-            'America/Winnipeg': 'CST',
-            'America/Halifax': 'AST',
-            'America/St_Johns': 'NST'
-          };
-          vendorTimezone = tzMap[tz] || 'EST';
-        }
+      const tzResult = await tzRequest.execute('vendors.sp_GetBusinessHours');
+      if (tzResult.recordset && tzResult.recordset.length > 0 && tzResult.recordset[0].Timezone) {
+        const tz = tzResult.recordset[0].Timezone;
+        // Convert IANA timezone to readable abbreviation
+        const tzMap = {
+          'America/Toronto': 'EST',
+          'America/New_York': 'EST',
+          'America/Chicago': 'CST',
+          'America/Denver': 'MST',
+          'America/Los_Angeles': 'PST',
+          'America/Vancouver': 'PST',
+          'America/Edmonton': 'MST',
+          'America/Winnipeg': 'CST',
+          'America/Halifax': 'AST',
+          'America/St_Johns': 'NST'
+        };
+        vendorTimezone = tzMap[tz] || tz;
       }
     } catch (tzErr) {
       console.error('Error fetching vendor timezone:', tzErr);

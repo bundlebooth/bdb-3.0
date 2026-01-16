@@ -621,25 +621,21 @@ router.get('/:id/bookings/all', async (req, res) => {
     };
     
     // Fix date serialization - convert Date objects to ISO strings and add vendor timezone
+    // Fetch timezone from business hours for each vendor
     const bookingsWithTimezone = await Promise.all(result.recordset.map(async (booking) => {
       let vendorTimezone = 'EST';
+      
       if (booking.VendorProfileID) {
         try {
           const tzRequest = pool.request();
           tzRequest.input('VendorProfileID', sql.Int, booking.VendorProfileID);
-          const tzResult = await tzRequest.query(`
-            SELECT TOP 1 vp.TimeZone
-            FROM vendors.VendorProfiles vp
-            WHERE vp.VendorProfileID = @VendorProfileID
-          `);
-          if (tzResult.recordset.length > 0) {
-            const tz = tzResult.recordset[0].TimeZone;
-            if (tz) {
-              vendorTimezone = tzMap[tz] || tz;
-            }
+          const tzResult = await tzRequest.execute('vendors.sp_GetBusinessHours');
+          if (tzResult.recordset && tzResult.recordset.length > 0 && tzResult.recordset[0].Timezone) {
+            const tz = tzResult.recordset[0].Timezone;
+            vendorTimezone = tzMap[tz] || tz;
           }
         } catch (tzErr) {
-          // Use default timezone
+          // Use default timezone on error
         }
       }
       
