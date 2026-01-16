@@ -457,80 +457,53 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
   };
 
   const handleSaveEdit = async () => {
-    // Update local state with properly mapped field names
-    const updatedService = { 
-      ...editingService, 
-      pricingModel: editForm.pricingModel,
-      vendorDuration: editForm.vendorDuration,
-      baseRate: editForm.baseRate,
-      overtimeRatePerHour: editForm.overtimeRatePerHour,
-      fixedPrice: editForm.fixedPrice,
-      pricePerPerson: editForm.pricePerPerson,
-      minimumAttendees: editForm.minimumAttendees,
-      maximumAttendees: editForm.maximumAttendees,
-      vendorDescription: editForm.vendorDescription,
-      imageURL: editForm.imageURL,
-      salePrice: editForm.salePrice
-    };
-    
-    const updatedServices = services.map(s => 
-      s.id === editingService.id ? updatedService : s
-    );
-    setServices(updatedServices);
-    const serviceId = editingService.id;
-    
     // Check if this service exists in the database (has been saved before)
-    // Services loaded from DB have VendorSelectedServiceID or similar markers
     const isExistingService = editingService.VendorSelectedServiceID || editingService.vendorPrice !== undefined;
+    const predefinedServiceId = editingService.id;
     
-    setEditingService(null);
-    setEditForm({});
-    
-    if (isExistingService) {
-      // Save only this single service to database
-      try {
-        const response = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/services/${serviceId}`, {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          },
-          body: JSON.stringify({
-            salePrice: editForm.salePrice,
-            originalPrice: editForm.originalPrice,
-            pricingModel: editForm.pricingModel,
-            baseDurationMinutes: editForm.vendorDuration,
-            baseRate: editForm.baseRate,
-            overtimeRatePerHour: editForm.overtimeRatePerHour,
-            fixedPrice: editForm.fixedPrice,
-            perPersonPrice: editForm.pricePerPerson,
-            minimumAttendees: editForm.minimumAttendees,
-            maximumAttendees: editForm.maximumAttendees,
-            description: editForm.vendorDescription,
-            imageURL: editForm.imageURL
-          })
-        });
+    try {
+      // Build payload - same structure for both new and existing services
+      const payload = {
+        predefinedServiceId: predefinedServiceId,
+        pricingModel: editForm.pricingModel,
+        baseDurationMinutes: parseInt(editForm.vendorDuration) || 60,
+        baseRate: editForm.baseRate ? parseFloat(editForm.baseRate) : null,
+        overtimeRatePerHour: editForm.overtimeRatePerHour ? parseFloat(editForm.overtimeRatePerHour) : null,
+        fixedPrice: editForm.fixedPrice ? parseFloat(editForm.fixedPrice) : null,
+        perPersonPrice: editForm.pricePerPerson ? parseFloat(editForm.pricePerPerson) : null,
+        minimumAttendees: editForm.minimumAttendees ? parseInt(editForm.minimumAttendees) : null,
+        maximumAttendees: editForm.maximumAttendees ? parseInt(editForm.maximumAttendees) : null,
+        description: editForm.vendorDescription || '',
+        imageURL: editForm.imageURL || null,
+        salePrice: editForm.salePrice ? parseFloat(editForm.salePrice) : null
+      };
 
-        if (response.ok) {
-          showBanner('Service updated successfully!', 'success');
-          // Reload services from API to get fresh data
-          await loadServices();
-        } else {
-          showBanner('Failed to save service changes', 'error');
-        }
-      } catch (error) {
-        console.error('Error saving service:', error);
-        showBanner('Failed to save service changes', 'error');
+      // Use PATCH for existing, or PATCH for new (the endpoint handles both via upsert)
+      const response = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/services/${predefinedServiceId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (response.ok) {
+        showBanner(isExistingService ? 'Service updated successfully!' : 'Service added successfully!', 'success');
+        
+        // Close modal and clear editing state
+        setEditingService(null);
+        setEditForm({});
+        
+        // Reload services to get fresh data with proper IDs (like packages do)
+        await loadServices();
+      } else {
+        const data = await response.json().catch(() => ({}));
+        showBanner(data.message || 'Failed to save service', 'error');
       }
-    } else {
-      // New service - save all services to database immediately
-      try {
-        await handleSaveServices();
-        showBanner('Service added and saved successfully!', 'success');
-      } catch (error) {
-        console.error('Error saving new service:', error);
-        showBanner('Failed to save new service', 'error');
-      }
+    } catch (error) {
+      console.error('Error saving service:', error);
+      showBanner('Failed to save service', 'error');
     }
   };
 

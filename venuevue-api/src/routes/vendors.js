@@ -4285,7 +4285,7 @@ router.get('/:id/services', async (req, res) => {
   }
 });
 
-// Update a single service by predefined service ID (PATCH - lightweight update)
+// Update or create a single service by predefined service ID (PATCH - upsert)
 router.patch('/:id/services/:predefinedServiceId', async (req, res) => {
   try {
     const vendorProfileId = parseVendorProfileId(req.params.id);
@@ -4296,47 +4296,71 @@ router.patch('/:id/services/:predefinedServiceId', async (req, res) => {
     
     const pool = await poolPromise;
     
-    // Update vendors.Services table - only columns that exist in the table
-    const updateRequest = new sql.Request(pool);
-    updateRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-    updateRequest.input('LinkedPredefinedServiceID', sql.Int, predefinedServiceId);
-    updateRequest.input('PricingModel', sql.NVarChar(50), pricingModel || null);
-    updateRequest.input('BaseDurationMinutes', sql.Int, baseDurationMinutes != null ? parseInt(baseDurationMinutes) : null);
-    updateRequest.input('BaseRate', sql.Decimal(10, 2), baseRate != null && baseRate !== '' ? parseFloat(baseRate) : null);
-    updateRequest.input('OvertimeRatePerHour', sql.Decimal(10, 2), overtimeRatePerHour != null && overtimeRatePerHour !== '' ? parseFloat(overtimeRatePerHour) : null);
-    updateRequest.input('FixedPrice', sql.Decimal(10, 2), fixedPrice != null && fixedPrice !== '' ? parseFloat(fixedPrice) : null);
-    updateRequest.input('PricePerPerson', sql.Decimal(10, 2), perPersonPrice != null && perPersonPrice !== '' ? parseFloat(perPersonPrice) : null);
-    updateRequest.input('MinimumAttendees', sql.Int, minimumAttendees != null && minimumAttendees !== '' ? parseInt(minimumAttendees) : null);
-    updateRequest.input('MaximumAttendees', sql.Int, maximumAttendees != null && maximumAttendees !== '' ? parseInt(maximumAttendees) : null);
-    updateRequest.input('Description', sql.NVarChar(sql.MAX), description || null);
-    updateRequest.input('ImageURL', sql.NVarChar(500), imageURL || null);
-    updateRequest.input('SalePrice', sql.Decimal(10, 2), salePrice != null && salePrice !== '' ? parseFloat(salePrice) : null);
-    
-    // Update vendors.Services table - includes SalePrice column
-    const result = await updateRequest.query(`
-      UPDATE vendors.Services 
-      SET 
-        PricingModel = COALESCE(@PricingModel, PricingModel),
-        BaseDurationMinutes = COALESCE(@BaseDurationMinutes, BaseDurationMinutes),
-        DurationMinutes = COALESCE(@BaseDurationMinutes, DurationMinutes),
-        BaseRate = @BaseRate,
-        OvertimeRatePerHour = @OvertimeRatePerHour,
-        FixedPrice = @FixedPrice,
-        PricePerPerson = @PricePerPerson,
-        MinimumAttendees = @MinimumAttendees,
-        MaximumAttendees = @MaximumAttendees,
-        Description = COALESCE(@Description, Description),
-        ImageURL = COALESCE(@ImageURL, ImageURL),
-        SalePrice = @SalePrice
+    // Check if service already exists
+    const checkRequest = new sql.Request(pool);
+    checkRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+    checkRequest.input('LinkedPredefinedServiceID', sql.Int, predefinedServiceId);
+    const checkResult = await checkRequest.query(`
+      SELECT ServiceID FROM vendors.Services 
       WHERE VendorProfileID = @VendorProfileID AND LinkedPredefinedServiceID = @LinkedPredefinedServiceID
     `);
     
-    console.log('Update result - rows affected:', result.rowsAffected);
+    const serviceExists = checkResult.recordset.length > 0;
     
-    res.json({ success: true, message: 'Service updated successfully', rowsAffected: result.rowsAffected });
+    // Get predefined service details for name and category
+    const predefinedRequest = new sql.Request(pool);
+    predefinedRequest.input('PredefinedServiceID', sql.Int, predefinedServiceId);
+    const predefinedResult = await predefinedRequest.query(`
+      SELECT ServiceName, Category FROM admin.PredefinedServices WHERE PredefinedServiceID = @PredefinedServiceID
+    `);
+    const predefinedService = predefinedResult.recordset[0] || {};
+    const serviceName = predefinedService.ServiceName || 'Service';
+    const categoryName = predefinedService.Category || 'General';
+    
+    // Use sp_UpsertService stored procedure for both create and update
+    const upsertRequest = new sql.Request(pool);
+    upsertRequest.input('ServiceID', sql.Int, serviceExists ? checkResult.recordset[0].ServiceID : null);
+    upsertRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+    upsertRequest.input('CategoryID', sql.Int, null);
+    upsertRequest.input('CategoryName', sql.NVarChar, categoryName);
+    upsertRequest.input('Name', sql.NVarChar, serviceName);
+    upsertRequest.input('ServiceName', sql.NVarChar, serviceName);
+    upsertRequest.input('Description', sql.NVarChar, description || null);
+    upsertRequest.input('ServiceDescription', sql.NVarChar, description || null);
+    upsertRequest.input('Price', sql.Decimal(10, 2), fixedPrice || baseRate || perPersonPrice || 0);
+    upsertRequest.input('DurationMinutes', sql.Int, baseDurationMinutes != null ? parseInt(baseDurationMinutes) : 60);
+    upsertRequest.input('MaxAttendees', sql.Int, maximumAttendees != null ? parseInt(maximumAttendees) : null);
+    upsertRequest.input('IsActive', sql.Bit, 1);
+    upsertRequest.input('RequiresDeposit', sql.Bit, 1);
+    upsertRequest.input('DepositPercentage', sql.Decimal(5, 2), 20);
+    upsertRequest.input('CancellationPolicy', sql.NVarChar, null);
+    upsertRequest.input('LinkedPredefinedServiceID', sql.Int, predefinedServiceId);
+    upsertRequest.input('PricingModel', sql.NVarChar, pricingModel || 'time_based');
+    upsertRequest.input('BaseDurationMinutes', sql.Int, baseDurationMinutes != null ? parseInt(baseDurationMinutes) : 60);
+    upsertRequest.input('BaseRate', sql.Decimal(10, 2), baseRate != null && baseRate !== '' ? parseFloat(baseRate) : null);
+    upsertRequest.input('OvertimeRatePerHour', sql.Decimal(10, 2), overtimeRatePerHour != null && overtimeRatePerHour !== '' ? parseFloat(overtimeRatePerHour) : null);
+    upsertRequest.input('MinimumBookingFee', sql.Decimal(10, 2), null);
+    upsertRequest.input('FixedPricingType', sql.NVarChar, pricingModel === 'per_attendee' ? 'per_attendee' : (pricingModel === 'fixed_price' ? 'fixed_price' : null));
+    upsertRequest.input('FixedPrice', sql.Decimal(10, 2), fixedPrice != null && fixedPrice !== '' ? parseFloat(fixedPrice) : null);
+    upsertRequest.input('PricePerPerson', sql.Decimal(10, 2), perPersonPrice != null && perPersonPrice !== '' ? parseFloat(perPersonPrice) : null);
+    upsertRequest.input('MinimumAttendees', sql.Int, minimumAttendees != null && minimumAttendees !== '' ? parseInt(minimumAttendees) : null);
+    upsertRequest.input('MaximumAttendees', sql.Int, maximumAttendees != null && maximumAttendees !== '' ? parseInt(maximumAttendees) : null);
+    upsertRequest.input('ImageURL', sql.NVarChar(500), imageURL || null);
+    upsertRequest.input('SalePrice', sql.Decimal(10, 2), salePrice != null && salePrice !== '' ? parseFloat(salePrice) : null);
+    
+    const result = await upsertRequest.execute('vendors.sp_UpsertService');
+    const serviceId = result.recordset && result.recordset[0] ? result.recordset[0].ServiceID : null;
+    
+    console.log('Upsert result - serviceId:', serviceId, 'existed:', serviceExists);
+    
+    res.json({ 
+      success: true, 
+      message: serviceExists ? 'Service updated successfully' : 'Service created successfully',
+      serviceId: serviceId
+    });
   } catch (error) {
-    console.error('Error updating service:', error);
-    res.status(500).json({ success: false, message: 'Failed to update service', error: error.message });
+    console.error('Error saving service:', error);
+    res.status(500).json({ success: false, message: 'Failed to save service', error: error.message });
   }
 });
 
