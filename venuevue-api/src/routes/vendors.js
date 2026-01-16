@@ -3607,6 +3607,7 @@ router.post('/setup/step3-services', async (req, res) => {
           serviceRequest.input('MinimumAttendees', sql.Int, selectedService.minimumAttendees || null);
           serviceRequest.input('MaximumAttendees', sql.Int, selectedService.maximumAttendees || null);
           serviceRequest.input('ImageURL', sql.NVarChar(500), imageUrlValue);
+          serviceRequest.input('SalePrice', sql.Decimal(10, 2), selectedService.salePrice != null ? parseFloat(selectedService.salePrice) : null);
 
           await serviceRequest.execute('vendors.sp_UpsertService');
           

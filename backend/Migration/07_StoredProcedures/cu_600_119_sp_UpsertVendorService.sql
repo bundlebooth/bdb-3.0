@@ -50,7 +50,8 @@ CREATE PROCEDURE [vendors].[sp_UpsertService]
     @PricePerPerson DECIMAL(10,2) = NULL,
     @MinimumAttendees INT = NULL,
     @MaximumAttendees INT = NULL,
-    @ImageURL NVARCHAR(500) = NULL
+    @ImageURL NVARCHAR(500) = NULL,
+    @SalePrice DECIMAL(10,2) = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -108,6 +109,32 @@ BEGIN
         SET @NormOvertimeRatePerHour = NULL;
         SET @NormMinimumBookingFee = NULL;
     END
+    ELSE IF @NormPricingModel = 'fixed_price'
+    BEGIN
+        -- Handle fixed_price as a direct pricing model (not nested under fixed_based)
+        SET @NormFixedPricingType = 'fixed_price';
+        SET @NormFixedPrice = @FixedPrice;
+        SET @NormPricePerPerson = NULL;
+        SET @NormMinimumAttendees = NULL;
+        SET @NormMaximumAttendees = NULL;
+        SET @NormBaseDurationMinutes = @BaseDurationMinutes;
+        SET @NormBaseRate = NULL;
+        SET @NormOvertimeRatePerHour = NULL;
+        SET @NormMinimumBookingFee = NULL;
+    END
+    ELSE IF @NormPricingModel = 'per_attendee'
+    BEGIN
+        -- Handle per_attendee as a direct pricing model (not nested under fixed_based)
+        SET @NormFixedPricingType = 'per_attendee';
+        SET @NormPricePerPerson = @PricePerPerson;
+        SET @NormMinimumAttendees = @MinimumAttendees;
+        SET @NormMaximumAttendees = @MaximumAttendees;
+        SET @NormFixedPrice = NULL;
+        SET @NormBaseDurationMinutes = @BaseDurationMinutes;
+        SET @NormBaseRate = NULL;
+        SET @NormOvertimeRatePerHour = NULL;
+        SET @NormMinimumBookingFee = NULL;
+    END
 
     -- Resolve CategoryID from CategoryName if needed (backward compatibility)
     IF @CategoryID IS NULL AND @CategoryName IS NOT NULL
@@ -138,13 +165,13 @@ BEGIN
                 Price, DurationMinutes, MaxAttendees, IsActive, RequiresDeposit, DepositPercentage, CancellationPolicy, LinkedPredefinedServiceID,
                 PricingModel, BaseDurationMinutes, BaseRate, OvertimeRatePerHour, MinimumBookingFee,
                 FixedPricingType, FixedPrice, PricePerPerson, MinimumAttendees, MaximumAttendees,
-                ImageURL, CreatedAt
+                ImageURL, SalePrice, CreatedAt
             ) VALUES (
                 @VendorProfileID, @CategoryID, @Name, @Description,
                 @Price, @DurationMinutes, @MaxAttendees, @IsActive, @RequiresDeposit, @DepositPercentage, @CancellationPolicy, @LinkedPredefinedServiceID,
                 @NormPricingModel, @NormBaseDurationMinutes, @NormBaseRate, @NormOvertimeRatePerHour, @NormMinimumBookingFee,
                 @NormFixedPricingType, @NormFixedPrice, @NormPricePerPerson, @NormMinimumAttendees, @NormMaximumAttendees,
-                @ImageURL, GETDATE()
+                @ImageURL, @SalePrice, GETDATE()
             );
             
             SELECT SCOPE_IDENTITY() AS ServiceID;
@@ -175,6 +202,7 @@ BEGIN
                 MinimumAttendees = @NormMinimumAttendees,
                 MaximumAttendees = @NormMaximumAttendees,
                 ImageURL = @ImageURL,
+                SalePrice = @SalePrice,
                 UpdatedAt = GETDATE()
             WHERE ServiceID = @ServiceID;
             
