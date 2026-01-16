@@ -1228,9 +1228,9 @@ function VendorProfilePage() {
         {/* Services Tab */}
         {(offeringsTab === 'services' || !hasPackages) && hasServices && (
           <PackageServiceList>
-            {services.map((service) => (
+            {services.map((service, index) => (
               <ServiceCard
-                key={service.ServiceID || service.VendorServiceID}
+                key={service.ServiceID || service.VendorServiceID || service.VendorSelectedServiceID || `service-${index}`}
                 service={service}
                 onClick={() => { setSelectedService(service); setServiceModalOpen(true); }}
                 selectable={false}
