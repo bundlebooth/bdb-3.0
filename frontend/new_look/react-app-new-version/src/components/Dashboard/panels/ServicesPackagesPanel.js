@@ -94,11 +94,17 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
       includedServices: [],
       price: '',
       salePrice: '',
-      priceType: 'fixed',
+      priceType: 'fixed_price',
       durationMinutes: '',
       imageURL: '',
       finePrint: '',
-      isActive: true
+      isActive: true,
+      baseRate: '',
+      overtimeRate: '',
+      fixedPrice: '',
+      pricePerPerson: '',
+      minAttendees: '',
+      maxAttendees: ''
     });
     setShowPackageModal(true);
   };
@@ -133,9 +139,28 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
       showBanner('Package name is required', 'error');
       return;
     }
-    if (!packageForm.price) {
-      showBanner('Package price is required', 'error');
-      return;
+    
+    // Validate price based on pricing model
+    let priceValue = 0;
+    if (packageForm.priceType === 'time_based') {
+      if (!packageForm.baseRate) {
+        showBanner('Base rate is required for hourly pricing', 'error');
+        return;
+      }
+      priceValue = parseFloat(packageForm.baseRate);
+    } else if (packageForm.priceType === 'per_attendee') {
+      if (!packageForm.pricePerPerson) {
+        showBanner('Price per person is required', 'error');
+        return;
+      }
+      priceValue = parseFloat(packageForm.pricePerPerson);
+    } else {
+      // fixed_price
+      if (!packageForm.fixedPrice && !packageForm.price) {
+        showBanner('Package price is required', 'error');
+        return;
+      }
+      priceValue = parseFloat(packageForm.fixedPrice || packageForm.price);
     }
 
     try {
@@ -144,7 +169,7 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
         name: packageForm.name.trim(),
         description: packageForm.description,
         includedServices: packageForm.includedServices,
-        price: parseFloat(packageForm.price),
+        price: priceValue,
         salePrice: packageForm.salePrice ? parseFloat(packageForm.salePrice) : null,
         priceType: packageForm.priceType,
         durationMinutes: packageForm.durationMinutes ? parseInt(packageForm.durationMinutes) : null,
@@ -1168,52 +1193,29 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
                 {/* Sale Price Section - only for non-hourly pricing models */}
                 {editForm.pricingModel !== 'time_based' && (
                   <>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-                      <div>
-                        <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
-                          Original Price ($)
-                        </label>
-                        <input
-                          type="number"
-                          value={editForm.originalPrice || ''}
-                          onChange={(e) => setEditForm({ ...editForm, originalPrice: e.target.value })}
-                          min="0"
-                          step="0.01"
-                          placeholder="Regular price"
-                          style={{
-                            width: '100%',
-                            padding: '12px 14px',
-                            border: '1px solid #e5e7eb',
-                            borderRadius: '8px',
-                            fontSize: '14px',
-                            background: 'white'
-                          }}
-                        />
-                      </div>
-                      <div>
-                        <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
-                          Sale Price ($)
-                        </label>
-                        <input
-                          type="number"
-                          value={editForm.salePrice || ''}
-                          onChange={(e) => setEditForm({ ...editForm, salePrice: e.target.value })}
-                          min="0"
-                          step="0.01"
-                          placeholder="Discounted price"
-                          style={{
-                            width: '100%',
-                            padding: '12px 14px',
-                            border: '1px solid #e5e7eb',
-                            borderRadius: '8px',
-                            fontSize: '14px'
-                          }}
-                        />
-                      </div>
+                    <div style={{ marginBottom: '16px' }}>
+                      <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                        Sale Price ($)
+                      </label>
+                      <input
+                        type="number"
+                        value={editForm.salePrice || ''}
+                        onChange={(e) => setEditForm({ ...editForm, salePrice: e.target.value })}
+                        min="0"
+                        step="0.01"
+                        placeholder="Leave empty if no sale"
+                        style={{
+                          width: '100%',
+                          padding: '12px 14px',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '8px',
+                          fontSize: '14px'
+                        }}
+                      />
+                      <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#6b7280' }}>
+                        If set, this price will be shown with the regular price crossed out.
+                      </p>
                     </div>
-                    <p style={{ margin: '0', fontSize: '12px', color: '#6b7280' }}>
-                      If both prices are set, the sale price will be shown with the original price crossed out.
-                    </p>
                   </>
                 )}
               </div>
@@ -1553,54 +1555,32 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
                   />
                 </div>
 
-                {/* Original Price / Sale Price - Only for non-hourly pricing models */}
+                {/* Sale Price - Only for non-hourly pricing models */}
                 {packageForm.priceType !== 'time_based' && (
                   <>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-                      <div>
-                        <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
-                          Original Price ($)
-                        </label>
-                        <input
-                          type="number"
-                          value={packageForm.price}
-                          onChange={(e) => setPackageForm({ ...packageForm, price: e.target.value })}
-                          placeholder="Regular price"
-                          min="0"
-                          step="0.01"
-                          style={{
-                            width: '100%',
-                            padding: '12px 14px',
-                            border: '1px solid #e5e7eb',
-                            borderRadius: '8px',
-                            fontSize: '14px'
-                          }}
-                        />
-                      </div>
-                      <div>
-                        <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
-                          Sale Price ($)
-                        </label>
-                        <input
-                          type="number"
-                          value={packageForm.salePrice}
-                          onChange={(e) => setPackageForm({ ...packageForm, salePrice: e.target.value })}
-                          placeholder="Discounted price"
-                          min="0"
-                          step="0.01"
-                          style={{
-                            width: '100%',
-                            padding: '12px 14px',
-                            border: '1px solid #e5e7eb',
-                            borderRadius: '8px',
-                            fontSize: '14px'
-                          }}
-                        />
-                      </div>
+                    <div style={{ marginBottom: '16px' }}>
+                      <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                        Sale Price ($)
+                      </label>
+                      <input
+                        type="number"
+                        value={packageForm.salePrice}
+                        onChange={(e) => setPackageForm({ ...packageForm, salePrice: e.target.value })}
+                        placeholder="Leave empty if no sale"
+                        min="0"
+                        step="0.01"
+                        style={{
+                          width: '100%',
+                          padding: '12px 14px',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '8px',
+                          fontSize: '14px'
+                        }}
+                      />
+                      <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#6b7280' }}>
+                        If set, this price will be shown with the regular price crossed out.
+                      </p>
                     </div>
-                    <p style={{ fontSize: '12px', color: '#6b7280', marginBottom: '16px', marginTop: '-8px' }}>
-                      If both prices are set, the sale price will be shown with the original price crossed out.
-                    </p>
                   </>
                 )}
 

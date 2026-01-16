@@ -93,13 +93,6 @@ export const ServiceCard = ({
     switch (pricingModel) {
       case 'per_person':
       case 'per_attendee':
-        if (minAttendees && maxAttendees) {
-          return `/ person (${minAttendees}-${maxAttendees} guests)`;
-        } else if (minAttendees) {
-          return `/ person (min ${minAttendees})`;
-        } else if (maxAttendees) {
-          return `/ person (max ${maxAttendees})`;
-        }
         return '/ person';
       case 'per_hour':
       case 'hourly':
@@ -271,18 +264,11 @@ export const PackageCard = ({
   const salePrice = (pkg.SalePrice || pkg.salePrice) ? parseFloat(pkg.SalePrice || pkg.salePrice) : null;
   const isOnSale = salePrice && salePrice < price && priceType !== 'time_based';
   
-  // Get price suffix based on pricing model
+  // Get price suffix based on pricing model (removed guest count text - icon shows it)
   const getPriceSuffix = () => {
     if (priceType === 'time_based') {
       return '/ hour';
     } else if (priceType === 'per_attendee' || priceType === 'per_person') {
-      if (minAttendees && maxAttendees) {
-        return `/ person (${minAttendees}-${maxAttendees} guests)`;
-      } else if (minAttendees) {
-        return `/ person (min ${minAttendees})`;
-      } else if (maxAttendees) {
-        return `/ person (max ${maxAttendees})`;
-      }
       return '/ person';
     }
     return '/ package';

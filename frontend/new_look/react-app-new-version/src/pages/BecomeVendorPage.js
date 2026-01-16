@@ -3083,7 +3083,13 @@ function ServicesStep({ formData, setFormData }) {
       description: '', 
       price: '', 
       salePrice: '',
-      priceType: 'flat', 
+      priceType: 'fixed_price',
+      baseRate: '',
+      overtimeRate: '',
+      fixedPrice: '',
+      pricePerPerson: '',
+      minAttendees: '',
+      maxAttendees: '',
       includedServices: [],
       imageURL: '',
       finePrint: '',
@@ -3134,12 +3140,28 @@ function ServicesStep({ formData, setFormData }) {
   };
 
   const handleSavePackage = () => {
-    if (!editingPackage?.name || !editingPackage?.price) return;
+    if (!editingPackage?.name) return;
+    
+    // Determine price based on pricing model
+    let priceValue = 0;
+    const priceType = editingPackage.priceType || 'fixed_price';
+    
+    if (priceType === 'time_based') {
+      if (!editingPackage.baseRate) return;
+      priceValue = parseFloat(editingPackage.baseRate);
+    } else if (priceType === 'per_attendee') {
+      if (!editingPackage.pricePerPerson) return;
+      priceValue = parseFloat(editingPackage.pricePerPerson);
+    } else {
+      // fixed_price
+      if (!editingPackage.fixedPrice && !editingPackage.price) return;
+      priceValue = parseFloat(editingPackage.fixedPrice || editingPackage.price);
+    }
     
     const packageData = { 
       ...editingPackage, 
       id: editingPackage.id || Date.now(), 
-      price: parseFloat(editingPackage.price),
+      price: priceValue,
       salePrice: editingPackage.salePrice ? parseFloat(editingPackage.salePrice) : null,
       baseRate: editingPackage.baseRate ? parseFloat(editingPackage.baseRate) : null,
       overtimeRate: editingPackage.overtimeRate ? parseFloat(editingPackage.overtimeRate) : null,
@@ -3630,42 +3652,26 @@ function ServicesStep({ formData, setFormData }) {
                 </>
               )}
 
-              {/* Original Price / Sale Price - Only for non-hourly pricing models */}
+              {/* Sale Price - Only for non-hourly pricing models */}
               {editingPackage?.priceType !== 'time_based' && (
                 <>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-                    <div>
-                      <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
-                        Original Price ($)
-                      </label>
-                      <input
-                        type="number"
-                        value={editingPackage?.price || ''}
-                        onChange={(e) => setEditingPackage(prev => ({ ...prev, price: e.target.value }))}
-                        placeholder="Regular price"
-                        min="0"
-                        step="0.01"
-                        style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '14px' }}
-                      />
-                    </div>
-                    <div>
-                      <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
-                        Sale Price ($)
-                      </label>
-                      <input
-                        type="number"
-                        value={editingPackage?.salePrice || ''}
-                        onChange={(e) => setEditingPackage(prev => ({ ...prev, salePrice: e.target.value }))}
-                        placeholder="Discounted price"
-                        min="0"
-                        step="0.01"
-                        style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '14px' }}
-                      />
-                    </div>
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                      Sale Price ($)
+                    </label>
+                    <input
+                      type="number"
+                      value={editingPackage?.salePrice || ''}
+                      onChange={(e) => setEditingPackage(prev => ({ ...prev, salePrice: e.target.value }))}
+                      placeholder="Leave empty if no sale"
+                      min="0"
+                      step="0.01"
+                      style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '14px' }}
+                    />
+                    <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#6b7280' }}>
+                      If set, this price will be shown with the regular price crossed out.
+                    </p>
                   </div>
-                  <p style={{ fontSize: '12px', color: '#6b7280', marginBottom: '16px', marginTop: '-8px' }}>
-                    If both prices are set, the sale price will be shown with the original price crossed out.
-                  </p>
                 </>
               )}
 
@@ -4131,51 +4137,29 @@ function ServicesStep({ formData, setFormData }) {
               {/* Sale Price Section - only for non-hourly pricing models */}
               {editingService.pricingModel !== 'time_based' && (
                 <>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-                    <div>
-                      <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
-                        Original Price ($)
-                      </label>
-                      <input
-                        type="number"
-                        value={editingService.originalPrice || ''}
-                        onChange={(e) => handleEditModalUpdate('originalPrice', e.target.value)}
-                        min="0"
-                        step="0.01"
-                        placeholder="Regular price"
-                        style={{
-                          width: '100%',
-                          padding: '12px 14px',
-                          border: '1px solid #e5e7eb',
-                          borderRadius: '8px',
-                          fontSize: '14px'
-                        }}
-                      />
-                    </div>
-                    <div>
-                      <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
-                        Sale Price ($)
-                      </label>
-                      <input
-                        type="number"
-                        value={editingService.salePrice || ''}
-                        onChange={(e) => handleEditModalUpdate('salePrice', e.target.value)}
-                        min="0"
-                        step="0.01"
-                        placeholder="Discounted price"
-                        style={{
-                          width: '100%',
-                          padding: '12px 14px',
-                          border: '1px solid #e5e7eb',
-                          borderRadius: '8px',
-                          fontSize: '14px'
-                        }}
-                      />
-                    </div>
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                      Sale Price ($)
+                    </label>
+                    <input
+                      type="number"
+                      value={editingService.salePrice || ''}
+                      onChange={(e) => handleEditModalUpdate('salePrice', e.target.value)}
+                      min="0"
+                      step="0.01"
+                      placeholder="Leave empty if no sale"
+                      style={{
+                        width: '100%',
+                        padding: '12px 14px',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '8px',
+                        fontSize: '14px'
+                      }}
+                    />
+                    <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#6b7280' }}>
+                      If set, this price will be shown with the regular price crossed out.
+                    </p>
                   </div>
-                  <p style={{ margin: '0', fontSize: '12px', color: '#6b7280' }}>
-                    If both prices are set, the sale price will be shown with the original price crossed out.
-                  </p>
                 </>
               )}
             </div>

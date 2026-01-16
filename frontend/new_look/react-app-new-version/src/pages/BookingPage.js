@@ -543,7 +543,7 @@ function BookingPage() {
     });
   };
 
-  // Select package with duration validation
+  // Select package with duration and attendee validation
   const selectPackage = (pkg) => {
     if (selectedPackage?.PackageID === pkg.PackageID) {
       setSelectedPackage(null); // Deselect if already selected
@@ -559,9 +559,23 @@ function BookingPage() {
           itemDuration: durationCheck.itemDuration,
           slotDuration: durationCheck.slotDuration
         });
-      } else {
-        setSelectedPackage(pkg);
+        return;
       }
+      
+      // Check attendee limits for packages with per_attendee pricing
+      const attendeeCheck = checkAttendeeFits(pkg);
+      if (!attendeeCheck.fits) {
+        setAttendeeWarning({
+          type: 'package',
+          name: pkg.PackageName || pkg.name,
+          min: attendeeCheck.min,
+          max: attendeeCheck.max,
+          current: attendeeCheck.current
+        });
+        return;
+      }
+      
+      setSelectedPackage(pkg);
     }
   };
 
@@ -879,17 +893,18 @@ function BookingPage() {
   const [attendeeWarning, setAttendeeWarning] = useState(null);
   
   // Check if attendee count fits service/package limits
-  const checkAttendeeFits = (service) => {
+  const checkAttendeeFits = (item) => {
     const attendees = parseInt(bookingData.attendeeCount) || 0;
-    const pricingModel = service.PricingModel || service.pricingModel;
+    // Check both PricingModel (services) and PriceType (packages)
+    const pricingModel = item.PricingModel || item.pricingModel || item.PriceType || item.priceType;
     
     // Only check for per_attendee pricing model
     if (pricingModel !== 'per_attendee' && pricingModel !== 'per_person') {
       return { fits: true };
     }
     
-    const minAttendees = service.MinAttendees || service.minAttendees || service.MinimumAttendees || service.minimumAttendees;
-    const maxAttendees = service.MaxAttendees || service.maxAttendees || service.MaximumAttendees || service.maximumAttendees;
+    const minAttendees = item.MinAttendees || item.minAttendees || item.MinimumAttendees || item.minimumAttendees;
+    const maxAttendees = item.MaxAttendees || item.maxAttendees || item.MaximumAttendees || item.maximumAttendees;
     
     if (minAttendees && attendees < parseInt(minAttendees)) {
       return { fits: false, min: minAttendees, max: maxAttendees, current: attendees, reason: 'below_min' };

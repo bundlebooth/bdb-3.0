@@ -74,6 +74,10 @@ function VendorProfilePage() {
   const [selectedPackage, setSelectedPackage] = useState(null);
   const [packageModalOpen, setPackageModalOpen] = useState(false);
   const [offeringsTab, setOfferingsTab] = useState('packages'); // 'packages' or 'services'
+  
+  // Service detail modal state
+  const [selectedService, setSelectedService] = useState(null);
+  const [serviceModalOpen, setServiceModalOpen] = useState(false);
 
   // Cancellation policy state
   const [cancellationPolicy, setCancellationPolicy] = useState(null);
@@ -1228,6 +1232,7 @@ function VendorProfilePage() {
               <ServiceCard
                 key={service.ServiceID || service.VendorServiceID}
                 service={service}
+                onClick={() => { setSelectedService(service); setServiceModalOpen(true); }}
                 selectable={false}
               />
             ))}
@@ -3130,6 +3135,194 @@ function VendorProfilePage() {
                 onClick={() => {
                   setPackageModalOpen(false);
                   setSelectedPackage(null);
+                  navigate(`/booking/${vendorId}`);
+                }}
+                style={{
+                  width: '100%',
+                  padding: '14px 24px',
+                  background: '#222',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '1rem',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                Request Booking
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Service Detail Modal - Clean Airbnb Style */}
+      {serviceModalOpen && selectedService && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            background: 'rgba(0, 0, 0, 0.5)',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '1rem'
+          }}
+          onClick={() => { setServiceModalOpen(false); setSelectedService(null); }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'white',
+              borderRadius: '12px',
+              width: '100%',
+              maxWidth: '500px',
+              maxHeight: '85vh',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden'
+            }}
+          >
+            {/* Header */}
+            <div style={{
+              padding: '16px 20px',
+              borderBottom: '1px solid #ebebeb',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <h2 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: '#222' }}>
+                {selectedService.Name || selectedService.ServiceName || selectedService.name}
+              </h2>
+              <button
+                onClick={() => { setServiceModalOpen(false); setSelectedService(null); }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '1.5rem',
+                  cursor: 'pointer',
+                  color: '#717171',
+                  padding: '4px'
+                }}
+              >
+                ×
+              </button>
+            </div>
+            
+            {/* Scrollable Content */}
+            <div style={{ maxHeight: 'calc(85vh - 140px)', overflowY: 'auto' }}>
+              {/* Service Image */}
+              {(selectedService.ImageURL || selectedService.imageURL) && (
+                <div style={{ width: '100%', aspectRatio: '16/9', background: '#f7f7f7' }}>
+                  <img 
+                    src={selectedService.ImageURL || selectedService.imageURL} 
+                    alt={selectedService.Name || selectedService.ServiceName} 
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                  />
+                </div>
+              )}
+              
+              <div style={{ padding: '20px' }}>
+                {/* Pricing - Prominent */}
+                <div style={{ marginBottom: '20px' }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', flexWrap: 'wrap' }}>
+                    {(() => {
+                      const pricingModel = selectedService.PricingModel || selectedService.pricingModel;
+                      const salePrice = selectedService.SalePrice || selectedService.salePrice;
+                      let price = 0;
+                      let suffix = '';
+                      
+                      if (pricingModel === 'time_based') {
+                        price = parseFloat(selectedService.BaseRate || selectedService.baseRate || 0);
+                        suffix = '/ hour';
+                      } else if (pricingModel === 'per_attendee') {
+                        price = parseFloat(selectedService.PricePerPerson || selectedService.pricePerPerson || 0);
+                        suffix = '/ person';
+                      } else {
+                        price = parseFloat(selectedService.FixedPrice || selectedService.fixedPrice || selectedService.Price || 0);
+                        suffix = 'fixed price';
+                      }
+                      
+                      const isOnSale = salePrice && parseFloat(salePrice) < price && pricingModel !== 'time_based';
+                      
+                      return isOnSale ? (
+                        <>
+                          <span style={{ fontSize: '1.5rem', fontWeight: 600, color: '#222' }}>
+                            ${parseFloat(salePrice).toFixed(0)}
+                          </span>
+                          <span style={{ fontSize: '1rem', color: '#717171', textDecoration: 'line-through' }}>
+                            ${price.toFixed(0)}
+                          </span>
+                          <span style={{ color: '#e31c5f', fontSize: '0.875rem', fontWeight: 600 }}>SALE!</span>
+                          <span style={{ fontSize: '1rem', color: '#717171' }}>{suffix}</span>
+                        </>
+                      ) : (
+                        <>
+                          <span style={{ fontSize: '1.5rem', fontWeight: 600, color: '#222' }}>
+                            ${price.toFixed(0)}
+                          </span>
+                          <span style={{ fontSize: '1rem', color: '#717171' }}>{suffix}</span>
+                        </>
+                      );
+                    })()}
+                  </div>
+                </div>
+                
+                {/* Duration */}
+                {(selectedService.BaseDurationMinutes || selectedService.baseDurationMinutes) && (
+                  <div style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <i className="far fa-clock" style={{ color: '#717171' }}></i>
+                    <span style={{ color: '#484848', fontSize: '0.95rem' }}>
+                      {(() => {
+                        const mins = parseInt(selectedService.BaseDurationMinutes || selectedService.baseDurationMinutes);
+                        if (mins >= 60) {
+                          const hours = Math.floor(mins / 60);
+                          const remainingMins = mins % 60;
+                          return remainingMins > 0 ? `${hours}h ${remainingMins}m` : `${hours} hour${hours > 1 ? 's' : ''}`;
+                        }
+                        return `${mins} min`;
+                      })()}
+                    </span>
+                  </div>
+                )}
+                
+                {/* Attendee Range for per_attendee */}
+                {(selectedService.PricingModel === 'per_attendee' || selectedService.pricingModel === 'per_attendee') && 
+                 (selectedService.MinimumAttendees || selectedService.MaximumAttendees) && (
+                  <div style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <i className="fas fa-users" style={{ color: '#717171' }}></i>
+                    <span style={{ color: '#484848', fontSize: '0.95rem' }}>
+                      {selectedService.MinimumAttendees && selectedService.MaximumAttendees 
+                        ? `${selectedService.MinimumAttendees}-${selectedService.MaximumAttendees} guests`
+                        : selectedService.MinimumAttendees 
+                          ? `Min ${selectedService.MinimumAttendees} guests`
+                          : `Max ${selectedService.MaximumAttendees} guests`
+                      }
+                    </span>
+                  </div>
+                )}
+                
+                {/* Description */}
+                {(selectedService.Description || selectedService.description) && (
+                  <div style={{ marginBottom: '20px' }}>
+                    <p style={{ margin: 0, color: '#484848', fontSize: '0.95rem', lineHeight: 1.6 }}>
+                      {selectedService.Description || selectedService.description}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            {/* Fixed Footer with Button */}
+            <div style={{ padding: '16px 20px', borderTop: '1px solid #ebebeb', background: '#fff' }}>
+              <button
+                onClick={() => {
+                  setServiceModalOpen(false);
+                  setSelectedService(null);
                   navigate(`/booking/${vendorId}`);
                 }}
                 style={{
