@@ -1892,13 +1892,19 @@ router.post('/onboarding', async (req, res) => {
       }
     }
 
-    // Update service areas
-    if (serviceAreas && serviceAreas.length > 0) {
+    // Update service areas - only if there are valid areas with city names
+    // Filter out empty/invalid service areas to allow partial saves
+    const validServiceAreas = (serviceAreas || []).filter(area => {
+      const cityName = area.city || area.name || area;
+      return cityName && typeof cityName === 'string' && cityName.trim().length > 0;
+    });
+    
+    if (validServiceAreas.length > 0) {
       const deleteAreasRequest = new sql.Request(pool);
       deleteAreasRequest.input('VendorProfileID', sql.Int, vendorProfileId);
       await deleteAreasRequest.execute('vendors.sp_DeleteServiceAreas');
 
-      for (const area of serviceAreas) {
+      for (const area of validServiceAreas) {
         const areaRequest = new sql.Request(pool);
         areaRequest.input('VendorProfileID', sql.Int, vendorProfileId);
         areaRequest.input('GooglePlaceID', sql.NVarChar(100), area.placeId || '');
