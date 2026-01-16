@@ -90,6 +90,33 @@
   font-weight: 700;
 }
 
+/* Sale Ribbon */
+.psc-sale-ribbon {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3);
+  z-index: 10;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.psc-sale-ribbon::before {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  right: 0;
+  border-width: 4px;
+  border-style: solid;
+  border-color: #991b1b transparent transparent #991b1b;
+}
+
 /* Pricing */
 .psc-card-pricing {
   display: flex;

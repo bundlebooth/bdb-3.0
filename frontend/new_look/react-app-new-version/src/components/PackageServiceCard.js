@@ -39,10 +39,29 @@ export const ServiceCard = ({
   const category = service.CategoryName || service.category || service.Category || '';
   const duration = service.DurationMinutes || service.durationMinutes || service.VendorDurationMinutes || service.baseDuration || service.vendorDuration || service.baseDurationMinutes || service.Duration || null;
   
-  // Sale price support
+  // Sale price support - check multiple field names
   const salePrice = service.SalePrice || service.salePrice || null;
-  const originalPrice = service.OriginalPrice || service.originalPrice || null;
-  const isOnSale = salePrice && parseFloat(salePrice) > 0 && originalPrice && parseFloat(originalPrice) > parseFloat(salePrice);
+  
+  // Get the regular price for comparison (originalPrice or the computed price)
+  const getPricingModel = () => service.pricingModel || service.PricingModel || 'time_based';
+  const pricingModel = getPricingModel();
+  
+  // Determine the regular price based on pricing model
+  const getRegularPrice = () => {
+    if (pricingModel === 'fixed_price' || pricingModel === 'fixed') {
+      return parseFloat(service.FixedPrice || service.fixedPrice || service.Price || 0);
+    } else if (pricingModel === 'per_attendee' || pricingModel === 'per_person') {
+      return parseFloat(service.PricePerPerson || service.pricePerPerson || service.Price || 0);
+    } else {
+      return parseFloat(service.BaseRate || service.baseRate || service.Price || 0);
+    }
+  };
+  
+  const regularPrice = service.OriginalPrice || service.originalPrice || getRegularPrice();
+  const isOnSale = salePrice && parseFloat(salePrice) > 0 && regularPrice && parseFloat(regularPrice) > parseFloat(salePrice) && pricingModel !== 'time_based';
+  
+  // Calculate discount percentage for ribbon
+  const discountPercent = isOnSale ? Math.round(((parseFloat(regularPrice) - parseFloat(salePrice)) / parseFloat(regularPrice)) * 100) : 0;
   
   // Get pricing info - check all possible field names from different API endpoints
   const getPricing = () => {
@@ -125,7 +144,14 @@ export const ServiceCard = ({
     <div 
       className={`psc-card ${isSelected ? 'psc-card-selected' : ''} ${selectable ? 'psc-card-selectable' : ''}`}
       onClick={onClick}
+      style={{ position: 'relative', overflow: 'visible' }}
     >
+      {/* Sale Ribbon */}
+      {isOnSale && (
+        <div className="psc-sale-ribbon">
+          <span>{discountPercent}% OFF</span>
+        </div>
+      )}
       <div className="psc-card-content">
         {/* Image/Icon */}
         <div className="psc-card-image">
@@ -142,7 +168,6 @@ export const ServiceCard = ({
             <div className="psc-card-info">
               <h3 className="psc-card-title">
                 {name}
-                {isOnSale && <span className="psc-sale-badge">SALE!</span>}
               </h3>
               
               {/* Pricing - with sale price support */}
@@ -150,7 +175,7 @@ export const ServiceCard = ({
                 {isOnSale ? (
                   <>
                     <span className="psc-price">${parseFloat(salePrice).toFixed(0)}</span>
-                    <span className="psc-price-original">${parseFloat(originalPrice).toFixed(0)}</span>
+                    <span className="psc-price-original">${parseFloat(regularPrice).toFixed(0)}</span>
                   </>
                 ) : (
                   <span className="psc-price">{priceDisplay}</span>
@@ -262,7 +287,10 @@ export const PackageCard = ({
   
   const price = getPrice();
   const salePrice = (pkg.SalePrice || pkg.salePrice) ? parseFloat(pkg.SalePrice || pkg.salePrice) : null;
-  const isOnSale = salePrice && salePrice < price && priceType !== 'time_based';
+  const isOnSale = salePrice && salePrice > 0 && salePrice < price && priceType !== 'time_based';
+  
+  // Calculate discount percentage for ribbon
+  const discountPercent = isOnSale ? Math.round(((price - salePrice) / price) * 100) : 0;
   
   // Get price suffix based on pricing model (removed guest count text - icon shows it)
   const getPriceSuffix = () => {
@@ -293,7 +321,14 @@ export const PackageCard = ({
     <div 
       className={`psc-card ${isSelected ? 'psc-card-selected' : ''} ${selectable ? 'psc-card-selectable' : ''}`}
       onClick={onClick}
+      style={{ position: 'relative', overflow: 'visible' }}
     >
+      {/* Sale Ribbon */}
+      {isOnSale && (
+        <div className="psc-sale-ribbon">
+          <span>{discountPercent}% OFF</span>
+        </div>
+      )}
       <div className="psc-card-content">
         {/* Image/Icon */}
         <div className="psc-card-image">
@@ -310,7 +345,6 @@ export const PackageCard = ({
             <div className="psc-card-info">
               <h3 className="psc-card-title">
                 {name}
-                {isOnSale && <span className="psc-sale-badge">SALE!</span>}
               </h3>
               
               {/* Pricing */}

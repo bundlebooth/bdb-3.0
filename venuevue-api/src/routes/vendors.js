@@ -4289,7 +4289,7 @@ router.patch('/:id/services/:predefinedServiceId', async (req, res) => {
   try {
     const vendorProfileId = parseVendorProfileId(req.params.id);
     const predefinedServiceId = parseInt(req.params.predefinedServiceId);
-    const { pricingModel, baseDurationMinutes, baseRate, overtimeRatePerHour, fixedPrice, perPersonPrice, minimumAttendees, maximumAttendees, description, imageURL } = req.body;
+    const { pricingModel, baseDurationMinutes, baseRate, overtimeRatePerHour, fixedPrice, perPersonPrice, minimumAttendees, maximumAttendees, description, imageURL, salePrice } = req.body;
     
     const pool = await poolPromise;
     
@@ -4307,8 +4307,9 @@ router.patch('/:id/services/:predefinedServiceId', async (req, res) => {
     updateRequest.input('MaximumAttendees', sql.Int, maximumAttendees != null && maximumAttendees !== '' ? parseInt(maximumAttendees) : null);
     updateRequest.input('Description', sql.NVarChar(sql.MAX), description || null);
     updateRequest.input('ImageURL', sql.NVarChar(500), imageURL || null);
+    updateRequest.input('SalePrice', sql.Decimal(10, 2), salePrice != null && salePrice !== '' ? parseFloat(salePrice) : null);
     
-    // Update vendors.Services table - removed SalePrice and OriginalPrice as columns don't exist
+    // Update vendors.Services table - includes SalePrice column
     await updateRequest.query(`
       UPDATE vendors.Services 
       SET 
@@ -4322,7 +4323,8 @@ router.patch('/:id/services/:predefinedServiceId', async (req, res) => {
         MinimumAttendees = @MinimumAttendees,
         MaximumAttendees = @MaximumAttendees,
         Description = COALESCE(@Description, Description),
-        ImageURL = COALESCE(@ImageURL, ImageURL)
+        ImageURL = COALESCE(@ImageURL, ImageURL),
+        SalePrice = @SalePrice
       WHERE VendorProfileID = @VendorProfileID AND LinkedPredefinedServiceID = @LinkedPredefinedServiceID
     `);
     

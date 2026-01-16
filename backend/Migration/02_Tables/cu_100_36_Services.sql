@@ -44,6 +44,7 @@ BEGIN
 	[MaximumAttendees] [int] NULL,
 	[PricingModel] [nvarchar](20) NULL,
 	[ImageURL] [nvarchar](500) NULL,
+	[SalePrice] [decimal](10, 2) NULL,
 PRIMARY KEY CLUSTERED 
 (
 	[ServiceID] ASC

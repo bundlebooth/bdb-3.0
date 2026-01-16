@@ -195,9 +195,13 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
 
       if (response.ok) {
         showBanner(editingPackage ? 'Package updated successfully!' : 'Package created successfully!', 'success');
+        
+        // Close modal and clear editing state
         setShowPackageModal(false);
         setEditingPackage(null);
-        loadPackages();
+        
+        // Reload packages to get fresh data with proper IDs
+        await loadPackages();
       } else {
         const data = await response.json();
         showBanner(data.message || 'Failed to save package', 'error');
@@ -357,7 +361,8 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
                 pricePerPerson: s.PricePerPerson !== null && s.PricePerPerson !== undefined ? s.PricePerPerson : null,
                 minimumAttendees: s.MinimumAttendees !== null && s.MinimumAttendees !== undefined ? s.MinimumAttendees : null,
                 maximumAttendees: s.MaximumAttendees !== null && s.MaximumAttendees !== undefined ? s.MaximumAttendees : null,
-                minimumBookingFee: s.MinimumBookingFee !== null && s.MinimumBookingFee !== undefined ? s.MinimumBookingFee : null
+                minimumBookingFee: s.MinimumBookingFee !== null && s.MinimumBookingFee !== undefined ? s.MinimumBookingFee : null,
+                salePrice: s.SalePrice !== null && s.SalePrice !== undefined ? s.SalePrice : null
               };
             }
             return null;
@@ -460,7 +465,8 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
             minimumAttendees: editForm.minimumAttendees,
             maximumAttendees: editForm.maximumAttendees,
             vendorDescription: editForm.vendorDescription,
-            imageURL: editForm.imageURL
+            imageURL: editForm.imageURL,
+            salePrice: editForm.salePrice
           }
         : s
     );
@@ -573,7 +579,7 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
       
       if (response.ok) {
         showBanner('Services saved successfully!', 'success');
-        loadServices();
+        await loadServices();
       } else {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.message || 'Failed to save services');
