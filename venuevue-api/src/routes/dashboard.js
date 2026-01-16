@@ -248,13 +248,12 @@ router.get('/:id/bookings/all', async (req, res) => {
       const tzRequest = new sql.Request(pool);
       tzRequest.input('VendorProfileID', sql.Int, parseInt(id));
       const tzResult = await tzRequest.query(`
-        SELECT TOP 1 bh.Timezone, vp.TimeZone as ProfileTimezone
+        SELECT TOP 1 vp.TimeZone
         FROM vendors.VendorProfiles vp
-        LEFT JOIN vendors.BusinessHours bh ON bh.VendorProfileID = vp.VendorProfileID
         WHERE vp.VendorProfileID = @VendorProfileID
       `);
       if (tzResult.recordset.length > 0) {
-        const tz = tzResult.recordset[0].Timezone || tzResult.recordset[0].ProfileTimezone;
+        const tz = tzResult.recordset[0].TimeZone;
         if (tz) {
           // Convert IANA timezone to readable abbreviation
           const tzMap = {
