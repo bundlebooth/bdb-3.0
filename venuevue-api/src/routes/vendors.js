@@ -1741,6 +1741,7 @@ router.post('/profile', async (req, res) => {
 });
 
 // Complete vendor onboarding - handles all onboarding data in one request
+// Supports partial saves - users can save progress at any step
 router.post('/onboarding', async (req, res) => {
   try {
     const {
@@ -1780,7 +1781,8 @@ router.post('/onboarding', async (req, res) => {
       googlePlaceId
     } = req.body;
 
-    // Validation
+    // Validation - only userId is truly required
+    // All other fields are optional to allow partial saves at any step
     if (!userId) {
       return res.status(400).json({
         success: false,
@@ -1788,12 +1790,11 @@ router.post('/onboarding', async (req, res) => {
       });
     }
 
-    if (!businessName || !displayName || !businessPhone) {
-      return res.status(400).json({
-        success: false,
-        message: 'Required fields: businessName, displayName, businessPhone'
-      });
-    }
+    // Use placeholder values for required DB fields if not provided
+    // This allows users to save progress at any step (e.g., just categories)
+    const effectiveBusinessName = businessName || 'Draft Profile';
+    const effectiveDisplayName = displayName || businessName || 'Draft Profile';
+    const effectiveBusinessPhone = businessPhone || '';
 
     const pool = await poolPromise;
     
@@ -1816,10 +1817,10 @@ router.post('/onboarding', async (req, res) => {
       
       const updateRequest = new sql.Request(pool);
       updateRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-      updateRequest.input('BusinessName', sql.NVarChar(100), businessName);
-      updateRequest.input('DisplayName', sql.NVarChar(100), displayName);
+      updateRequest.input('BusinessName', sql.NVarChar(100), effectiveBusinessName);
+      updateRequest.input('DisplayName', sql.NVarChar(100), effectiveDisplayName);
       updateRequest.input('BusinessDescription', sql.NVarChar(sql.MAX), businessDescription || '');
-      updateRequest.input('BusinessPhone', sql.NVarChar(20), businessPhone);
+      updateRequest.input('BusinessPhone', sql.NVarChar(20), effectiveBusinessPhone);
       updateRequest.input('Website', sql.NVarChar(255), website || null);
       updateRequest.input('YearsInBusiness', sql.Int, parseInt(yearsInBusiness) || 1);
       updateRequest.input('Address', sql.NVarChar(255), address || null);
@@ -1839,10 +1840,10 @@ router.post('/onboarding', async (req, res) => {
       // Create new profile
       const createRequest = new sql.Request(pool);
       createRequest.input('UserID', sql.Int, parseInt(userId));
-      createRequest.input('BusinessName', sql.NVarChar(100), businessName);
-      createRequest.input('DisplayName', sql.NVarChar(100), displayName);
+      createRequest.input('BusinessName', sql.NVarChar(100), effectiveBusinessName);
+      createRequest.input('DisplayName', sql.NVarChar(100), effectiveDisplayName);
       createRequest.input('BusinessDescription', sql.NVarChar(sql.MAX), businessDescription || '');
-      createRequest.input('BusinessPhone', sql.NVarChar(20), businessPhone);
+      createRequest.input('BusinessPhone', sql.NVarChar(20), effectiveBusinessPhone);
       createRequest.input('Website', sql.NVarChar(255), website || null);
       createRequest.input('YearsInBusiness', sql.Int, parseInt(yearsInBusiness) || 1);
       createRequest.input('Address', sql.NVarChar(255), address || null);

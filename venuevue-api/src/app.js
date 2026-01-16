@@ -32,9 +32,9 @@ app.use(morgan('combined'));
 const { router: paymentsRouter, webhook: paymentsWebhook } = require('./routes/payments');
 app.post('/api/payments/webhook', expressRaw({ type: 'application/json' }), paymentsWebhook);
 
-// Regular body parsers
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+// Regular body parsers - increased limit to handle base64 images
+app.use(bodyParser.json({ limit: '10mb' }));
+app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
 
 // Public ID middleware - resolves public IDs in requests and transforms responses
 app.use(resolvePublicIds);
