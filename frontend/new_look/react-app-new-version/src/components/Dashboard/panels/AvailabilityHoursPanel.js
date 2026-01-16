@@ -47,9 +47,15 @@ function AvailabilityHoursPanel({ onBack, vendorProfileId }) {
         const profile = result.data?.profile || result.profile || result;
         const businessHours = result.data?.businessHours || result.businessHours || [];
         
-        // Set timezone from profile
-        if (profile.Timezone) {
-          setTimezone(profile.Timezone);
+        // Set timezone from profile - check multiple possible field names
+        const tz = profile.Timezone || profile.timezone || profile.TimeZone || profile.time_zone;
+        if (tz) {
+          setTimezone(tz);
+        }
+        
+        // Also check if timezone is stored in businessHours
+        if (!tz && businessHours.length > 0 && businessHours[0].Timezone) {
+          setTimezone(businessHours[0].Timezone);
         }
         
         // Convert business hours array to object format
@@ -79,6 +85,8 @@ function AvailabilityHoursPanel({ onBack, vendorProfileId }) {
     }
   };
 
+  const [timeError, setTimeError] = useState(null);
+
   const handleHourChange = (day, field, value) => {
     setHours(prev => {
       const currentDayHours = prev[day];
@@ -92,6 +100,8 @@ function AvailabilityHoursPanel({ onBack, vendorProfileId }) {
           const [hours, mins] = value.split(':').map(Number);
           const adjustedHours = hours + 1 > 23 ? 23 : hours + 1;
           const adjustedClose = `${String(adjustedHours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+          setTimeError({ day, message: 'Close time adjusted - overnight hours not supported' });
+          setTimeout(() => setTimeError(null), 3000);
           return {
             ...prev,
             [day]: {
@@ -101,12 +111,15 @@ function AvailabilityHoursPanel({ onBack, vendorProfileId }) {
             }
           };
         }
-        // If setting close time and it would be <= open time, don't allow it
+        // If setting close time and it would be <= open time, show error and don't allow it
         if (field === 'close') {
+          setTimeError({ day, message: 'Close time must be after open time - overnight hours not supported' });
+          setTimeout(() => setTimeError(null), 3000);
           return prev; // Don't update, keep current value
         }
       }
       
+      setTimeError(null);
       return {
         ...prev,
         [day]: {
@@ -254,26 +267,41 @@ function AvailabilityHoursPanel({ onBack, vendorProfileId }) {
                 <div style={{ fontWeight: 600 }}>{day.label}</div>
                 
                 {!hours[day.key].closed ? (
-                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <label style={{ fontSize: '0.85rem', color: 'var(--text-light)' }}>Open:</label>
-                      <input
-                        type="time"
-                        value={hours[day.key].open}
-                        onChange={(e) => handleHourChange(day.key, 'open', e.target.value)}
-                        style={{ padding: '0.5rem', border: '1px solid var(--border)', borderRadius: 'var(--radius)' }}
-                      />
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <label style={{ fontSize: '0.85rem', color: 'var(--text-light)' }}>Open:</label>
+                        <input
+                          type="time"
+                          value={hours[day.key].open}
+                          onChange={(e) => handleHourChange(day.key, 'open', e.target.value)}
+                          max="22:59"
+                          style={{ padding: '0.5rem', border: '1px solid var(--border)', borderRadius: 'var(--radius)' }}
+                        />
+                      </div>
+                      <span style={{ color: 'var(--text-light)' }}>-</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <label style={{ fontSize: '0.85rem', color: 'var(--text-light)' }}>Close:</label>
+                        <input
+                          type="time"
+                          value={hours[day.key].close}
+                          min={hours[day.key].open}
+                          onChange={(e) => handleHourChange(day.key, 'close', e.target.value)}
+                          style={{ 
+                            padding: '0.5rem', 
+                            border: timeError?.day === day.key ? '1px solid #ef4444' : '1px solid var(--border)', 
+                            borderRadius: 'var(--radius)',
+                            backgroundColor: timeError?.day === day.key ? '#fef2f2' : 'white'
+                          }}
+                        />
+                      </div>
                     </div>
-                    <span style={{ color: 'var(--text-light)' }}>-</span>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <label style={{ fontSize: '0.85rem', color: 'var(--text-light)' }}>Close:</label>
-                      <input
-                        type="time"
-                        value={hours[day.key].close}
-                        onChange={(e) => handleHourChange(day.key, 'close', e.target.value)}
-                        style={{ padding: '0.5rem', border: '1px solid var(--border)', borderRadius: 'var(--radius)' }}
-                      />
-                    </div>
+                    {timeError?.day === day.key && (
+                      <div style={{ fontSize: '0.8rem', color: '#ef4444', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                        <i className="fas fa-exclamation-circle"></i>
+                        {timeError.message}
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div style={{ color: 'var(--text-light)', fontStyle: 'italic' }}>
@@ -303,7 +331,13 @@ function AvailabilityHoursPanel({ onBack, vendorProfileId }) {
             </div>
           </div>
 
-          <button className="btn btn-primary" id="save-business-hours-btn" onClick={handleSubmit}>
+          <button 
+            className="btn btn-primary" 
+            id="save-business-hours-btn" 
+            onClick={handleSubmit}
+            disabled={!!timeError}
+            style={{ opacity: timeError ? 0.5 : 1, cursor: timeError ? 'not-allowed' : 'pointer' }}
+          >
             Save
           </button>
         </form>

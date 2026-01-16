@@ -324,6 +324,7 @@
     position: sticky;
     top: 80px; /* Account for header height */
     align-self: start;
+    z-index: 50;
 }
 
 /* Section Styles */
@@ -603,7 +604,7 @@
 /* Sidebar Card */
 .sidebar-card {
     background: white;
-    border: 1px solid #ffffff !important;
+    border: 1px solid #dddddd;
     border-radius: 12px;
     padding: 1.5rem;
     margin-bottom: 1.5rem;

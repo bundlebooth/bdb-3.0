@@ -4522,7 +4522,7 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
 .settings-card-icon {
     width: 40px;
     height: 40px;
-    background: #f7f7f9;
+    background: var(--secondary, #e8f4fd);
     border-radius: 8px;
     display: flex;
     align-items: center;

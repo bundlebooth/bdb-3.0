@@ -1189,6 +1189,17 @@ function VendorProfilePage() {
   };
 
   // Render enhanced services with better formatting - show both services and packages with toggle
+  // Helper function to get cancellation policy badge styles
+  const getCancellationPolicyBadge = (policyType) => {
+    const policies = {
+      flexible: { bg: '#d1fae5', color: '#065f46', icon: 'fa-shield-alt', label: 'Flexible Cancellation' },
+      moderate: { bg: '#fef3c7', color: '#92400e', icon: 'fa-shield-alt', label: 'Moderate Cancellation' },
+      strict: { bg: '#fee2e2', color: '#991b1b', icon: 'fa-shield-alt', label: 'Strict Cancellation' },
+      custom: { bg: '#e0e7ff', color: '#3730a3', icon: 'fa-shield-alt', label: 'Custom Policy' }
+    };
+    return policies[policyType] || policies.flexible;
+  };
+
   const renderEnhancedServices = () => {
     const hasPackages = packages && packages.length > 0;
     const services = vendor?.services || [];
@@ -1196,6 +1207,35 @@ function VendorProfilePage() {
     
     // Show nothing if no services and no packages
     if (!hasPackages && !hasServices) return null;
+
+    const policyType = cancellationPolicy?.PolicyType || null;
+    const policyBadge = policyType ? getCancellationPolicyBadge(policyType) : null;
+
+    // Build policy description
+    const getPolicyDescription = () => {
+      if (!cancellationPolicy) return null;
+      const type = cancellationPolicy.PolicyType;
+      if (type === 'flexible') {
+        return 'Full refund if cancelled at least 24 hours before the event.';
+      } else if (type === 'moderate') {
+        return 'Full refund if cancelled 7+ days before. 50% refund if cancelled 3-7 days before.';
+      } else if (type === 'strict') {
+        return '50% refund if cancelled 14+ days before. No refund within 14 days of event.';
+      } else if (type === 'custom') {
+        const parts = [];
+        if (cancellationPolicy.FullRefundDays > 0) {
+          parts.push(`Full refund if cancelled ${cancellationPolicy.FullRefundDays}+ days before`);
+        }
+        if (cancellationPolicy.PartialRefundDays > 0 && cancellationPolicy.PartialRefundPercent > 0) {
+          parts.push(`${cancellationPolicy.PartialRefundPercent}% refund if cancelled ${cancellationPolicy.PartialRefundDays}-${cancellationPolicy.FullRefundDays - 1} days before`);
+        }
+        if (cancellationPolicy.NoRefundDays > 0) {
+          parts.push(`No refund within ${cancellationPolicy.NoRefundDays} day(s) of event`);
+        }
+        return parts.join('. ') + (parts.length > 0 ? '.' : '');
+      }
+      return null;
+    };
 
     return (
       <div className="content-section">
@@ -1237,6 +1277,37 @@ function VendorProfilePage() {
               />
             ))}
           </PackageServiceList>
+        )}
+
+        {/* Cancellation Policy - at bottom of services/packages */}
+        {policyBadge && (
+          <div style={{
+            marginTop: '1.5rem',
+            padding: '1rem 1.25rem',
+            background: '#f9fafb',
+            borderRadius: '12px',
+            border: '1px solid #e5e7eb'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+              <span style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '28px',
+                height: '28px',
+                borderRadius: '50%',
+                background: policyBadge.bg
+              }}>
+                <i className={`fas ${policyBadge.icon}`} style={{ color: policyBadge.color, fontSize: '0.85rem' }}></i>
+              </span>
+              <span style={{ fontWeight: 600, color: '#222', fontSize: '0.95rem' }}>
+                {policyBadge.label}
+              </span>
+            </div>
+            <p style={{ margin: 0, color: '#6b7280', fontSize: '0.9rem', lineHeight: 1.5 }}>
+              {getPolicyDescription()}
+            </p>
+          </div>
         )}
       </div>
     );
@@ -2533,8 +2604,7 @@ function VendorProfilePage() {
           {/* 6. Things to Know */}
           {renderEnhancedFAQs()}
 
-          {/* 7. Cancellation Policy */}
-          {renderCancellationPolicy()}
+          {/* Cancellation Policy - Now shown on individual packages/services */}
 
           {/* 7. Where You'll Find Us (Map + Cities Served) */}
           {renderLocationAndServiceAreas()}
@@ -2603,21 +2673,6 @@ function VendorProfilePage() {
                   }}
                 >
                   Hosted by {profile.HostName || profile.ContactName || profile.BusinessName?.split(' ')[0] || 'Host'}
-                  {profile.IsVerified && (
-                    <span style={{ 
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      width: '16px',
-                      height: '16px',
-                      borderRadius: '50%',
-                      background: '#22c55e',
-                      color: 'white',
-                      fontSize: '10px'
-                    }}>
-                      <i className="fas fa-check"></i>
-                    </span>
-                  )}
                 </div>
                 <div style={{ fontSize: '0.85rem', color: '#717171', marginTop: '2px' }}>
                   {profile.ResponseRating && (

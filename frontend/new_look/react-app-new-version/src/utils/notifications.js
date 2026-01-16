@@ -1,5 +1,50 @@
 import { API_BASE_URL } from '../config';
 
+// Update favicon with red notification dot
+let originalFavicon = null;
+function updateFaviconWithNotification(hasNotifications) {
+  const favicon = document.querySelector('link[rel="icon"]') || document.querySelector('link[rel="shortcut icon"]');
+  if (!favicon) return;
+  
+  // Store original favicon URL
+  if (!originalFavicon) {
+    originalFavicon = favicon.href;
+  }
+  
+  if (!hasNotifications) {
+    // Restore original favicon
+    favicon.href = originalFavicon;
+    return;
+  }
+  
+  // Create canvas to draw favicon with red dot
+  const canvas = document.createElement('canvas');
+  canvas.width = 32;
+  canvas.height = 32;
+  const ctx = canvas.getContext('2d');
+  
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = () => {
+    // Draw original favicon
+    ctx.drawImage(img, 0, 0, 32, 32);
+    
+    // Draw solid red notification dot in bottom-right corner
+    ctx.beginPath();
+    ctx.arc(26, 26, 6, 0, 2 * Math.PI);
+    ctx.fillStyle = '#ef4444';
+    ctx.fill();
+    
+    // Update favicon
+    favicon.href = canvas.toDataURL('image/png');
+  };
+  img.onerror = () => {
+    // If image fails to load, just skip the favicon update
+    console.warn('Failed to load favicon for notification dot');
+  };
+  img.src = originalFavicon;
+}
+
 // Update page title with notification count
 export function updatePageTitle(notificationCount) {
   const baseTitle = 'PlanBeau - Event Booking Platform';
@@ -8,6 +53,9 @@ export function updatePageTitle(notificationCount) {
   } else {
     document.title = baseTitle;
   }
+  
+  // Update favicon with red dot indicator
+  updateFaviconWithNotification(notificationCount > 0);
 }
 
 // Create notification via API

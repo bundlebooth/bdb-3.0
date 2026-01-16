@@ -38,6 +38,7 @@ export const ServiceCard = ({
   const imageURL = service.ImageURL || service.imageURL || service.Image || '';
   const category = service.CategoryName || service.category || service.Category || '';
   const duration = service.DurationMinutes || service.durationMinutes || service.VendorDurationMinutes || service.baseDuration || service.vendorDuration || service.baseDurationMinutes || service.Duration || null;
+  const cancellationPolicy = service.CancellationPolicy || service.cancellationPolicy || null;
   
   // Sale price support - check multiple field names
   const salePrice = service.SalePrice || service.salePrice || null;
@@ -213,6 +214,19 @@ export const ServiceCard = ({
                 {category && (
                   <span className="psc-tag">{category}</span>
                 )}
+                {/* Cancellation Policy Badge */}
+                {cancellationPolicy && (
+                  <span 
+                    className="psc-tag" 
+                    style={{ 
+                      background: cancellationPolicy === 'flexible' ? '#d1fae5' : cancellationPolicy === 'moderate' ? '#fef3c7' : cancellationPolicy === 'strict' ? '#fee2e2' : '#f3f4f6',
+                      color: cancellationPolicy === 'flexible' ? '#065f46' : cancellationPolicy === 'moderate' ? '#92400e' : cancellationPolicy === 'strict' ? '#991b1b' : '#374151'
+                    }}
+                  >
+                    <i className="fas fa-shield-alt" style={{ marginRight: '4px' }}></i>
+                    {cancellationPolicy.charAt(0).toUpperCase() + cancellationPolicy.slice(1)}
+                  </span>
+                )}
               </div>
             </div>
             
@@ -269,6 +283,7 @@ export const PackageCard = ({
   const priceType = pkg.PriceType || pkg.priceType || 'fixed_price';
   const includedServices = pkg.IncludedServices || pkg.includedServices || [];
   const duration = pkg.DurationMinutes || pkg.Duration || pkg.duration || null;
+  const cancellationPolicy = pkg.CancellationPolicy || pkg.cancellationPolicy || null;
   
   // Get min/max attendees for per_attendee pricing
   const minAttendees = pkg.MinAttendees || pkg.minAttendees || null;
@@ -389,6 +404,19 @@ export const PackageCard = ({
                   <span className="psc-tag">
                     <i className="fas fa-layer-group" style={{ marginRight: '4px' }}></i>
                     {includedServices.length} service{includedServices.length > 1 ? 's' : ''}
+                  </span>
+                )}
+                {/* Cancellation Policy Badge */}
+                {cancellationPolicy && (
+                  <span 
+                    className="psc-tag" 
+                    style={{ 
+                      background: cancellationPolicy === 'flexible' ? '#d1fae5' : cancellationPolicy === 'moderate' ? '#fef3c7' : cancellationPolicy === 'strict' ? '#fee2e2' : '#f3f4f6',
+                      color: cancellationPolicy === 'flexible' ? '#065f46' : cancellationPolicy === 'moderate' ? '#92400e' : cancellationPolicy === 'strict' ? '#991b1b' : '#374151'
+                    }}
+                  >
+                    <i className={`fas ${cancellationPolicy === 'flexible' ? 'fa-shield-alt' : cancellationPolicy === 'moderate' ? 'fa-shield-alt' : cancellationPolicy === 'strict' ? 'fa-shield-alt' : 'fa-shield-alt'}`} style={{ marginRight: '4px' }}></i>
+                    {cancellationPolicy.charAt(0).toUpperCase() + cancellationPolicy.slice(1)}
                   </span>
                 )}
               </div>

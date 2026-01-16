@@ -42,14 +42,11 @@ export function updateFaviconWithNotification(hasNotifications) {
     // Draw original favicon
     ctx.drawImage(img, 0, 0, 32, 32);
     
-    // Draw red notification dot in top-right corner
+    // Draw solid red notification dot in bottom-right corner
     ctx.beginPath();
-    ctx.arc(26, 6, 6, 0, 2 * Math.PI);
+    ctx.arc(26, 26, 6, 0, 2 * Math.PI);
     ctx.fillStyle = '#ef4444';
     ctx.fill();
-    ctx.strokeStyle = 'white';
-    ctx.lineWidth = 1;
-    ctx.stroke();
     
     // Update favicon
     favicon.href = canvas.toDataURL('image/png');

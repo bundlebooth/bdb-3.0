@@ -1544,12 +1544,15 @@ function BookingPage() {
                       return sum + (isHourly && totalHours > 0 ? price * totalHours : price);
                     }, 0);
 
-                    // Calculate package price
-                    const packagePrice = selectedPackage 
+                    // Calculate package price (with hourly multiplier if applicable)
+                    const packagePriceType = selectedPackage?.PriceType || selectedPackage?.priceType || 'fixed_price';
+                    const isPackageHourly = packagePriceType === 'time_based' || packagePriceType === 'hourly';
+                    const packageBasePrice = selectedPackage 
                       ? (selectedPackage.SalePrice && parseFloat(selectedPackage.SalePrice) < parseFloat(selectedPackage.Price) 
                           ? parseFloat(selectedPackage.SalePrice) 
-                          : parseFloat(selectedPackage.Price || selectedPackage.price || 0))
+                          : parseFloat(selectedPackage.BaseRate || selectedPackage.baseRate || selectedPackage.Price || selectedPackage.price || 0))
                       : 0;
+                    const packagePrice = isPackageHourly && totalHours > 0 ? packageBasePrice * totalHours : packageBasePrice;
 
                     // Subtotal before fees
                     const subtotal = servicesSubtotal + packagePrice;
@@ -1638,6 +1641,11 @@ function BookingPage() {
                               <span style={{ color: '#222', fontSize: '0.95rem' }}>
                                 {selectedPackage.PackageName || selectedPackage.name}
                               </span>
+                              {isPackageHourly && totalHours > 0 && (
+                                <span style={{ color: '#6b7280', fontSize: '0.85rem', marginLeft: '4px' }}>
+                                  (${packageBasePrice.toFixed(2)} × {totalHours % 1 === 0 ? totalHours : totalHours.toFixed(1)} hrs)
+                                </span>
+                              )}
                               {selectedPackage.PriceType === 'per_person' && bookingData.attendeeCount && (
                                 <span style={{ color: '#6b7280', fontSize: '0.85rem', marginLeft: '4px' }}>
                                   × {bookingData.attendeeCount}
@@ -1751,10 +1759,10 @@ function BookingPage() {
             {cancellationPolicy && (() => {
               const policyType = cancellationPolicy.PolicyType || 'flexible';
               const policyInfo = {
-                flexible: { title: 'Flexible', color: '#28a745', bg: '#d4edda', icon: 'fa-check-circle' },
-                moderate: { title: 'Moderate', color: '#856404', bg: '#fff3cd', icon: 'fa-clock' },
-                strict: { title: 'Strict', color: '#dc3545', bg: '#f8d7da', icon: 'fa-exclamation-circle' },
-                custom: { title: 'Custom', color: '#6c757d', bg: '#e2e3e5', icon: 'fa-cog' }
+                flexible: { title: 'Flexible', color: '#065f46', bg: '#d1fae5', icon: 'fa-shield-alt' },
+                moderate: { title: 'Moderate', color: '#92400e', bg: '#fef3c7', icon: 'fa-shield-alt' },
+                strict: { title: 'Strict', color: '#991b1b', bg: '#fee2e2', icon: 'fa-shield-alt' },
+                custom: { title: 'Custom', color: '#3730a3', bg: '#e0e7ff', icon: 'fa-shield-alt' }
               };
               const info = policyInfo[policyType] || policyInfo.flexible;
               

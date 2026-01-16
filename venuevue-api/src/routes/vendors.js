@@ -2559,23 +2559,25 @@ router.get('/:id', async (req, res) => {
       });
     }
 
-    // Capture the recordsets into their respective variables
-    const [
-      profileRecordset, 
-      categoriesRecordset, 
-      servicesRecordset,
-      portfolioRecordset, 
-      reviewsRecordset, 
-      faqsRecordset,
-      teamRecordset,
-      socialMediaRecordset,
-      businessHoursRecordset,
-      imagesRecordset,
-      categoryAnswersRecordset,
-      isFavoriteRecordset,
-      availableSlotsRecordset
-    ] = result.recordsets;
-
+    // Capture the recordsets into their respective variables with safe defaults
+    // Stored procedure sp_GetDetails returns recordsets in this order:
+    // 0: Profile, 1: Categories, 2: Services, 3: Portfolio, 4: Reviews, 5: FAQs,
+    // 6: Team, 7: Social Media, 8: Business Hours, 9: Images, 10: Category Answers,
+    // 11: Is Favorite, 12: Available Slots
+    const profileRecordset = result.recordsets[0] || [];
+    const categoriesRecordset = result.recordsets[1] || [];
+    const servicesRecordset = result.recordsets[2] || [];
+    const portfolioRecordset = result.recordsets[3] || [];
+    const reviewsRecordset = result.recordsets[4] || [];
+    const faqsRecordset = result.recordsets[5] || [];
+    const teamRecordset = result.recordsets[6] || [];
+    const socialMediaRecordset = result.recordsets[7] || [];
+    const businessHoursRecordset = result.recordsets[8] || [];
+    const imagesRecordset = result.recordsets[9] || [];
+    const categoryAnswersRecordset = result.recordsets[10] || [];
+    const isFavoriteRecordset = result.recordsets[11] || [];
+    const availableSlotsRecordset = result.recordsets[12] || [];
+    
     // Get service areas for this vendor
     let serviceAreas = [];
     try {
@@ -2599,7 +2601,7 @@ router.get('/:id', async (req, res) => {
       return timeValue;
     };
     
-    const businessHours = businessHoursRecordset.map(bh => ({
+    const businessHours = (businessHoursRecordset || []).map(bh => ({
       ...bh,
       OpenTime: formatTime(bh.OpenTime),
       CloseTime: formatTime(bh.CloseTime)

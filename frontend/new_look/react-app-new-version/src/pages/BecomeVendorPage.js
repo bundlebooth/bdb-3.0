@@ -4234,29 +4234,33 @@ function CancellationPolicyStep({ formData, setFormData }) {
       id: 'flexible',
       name: 'Flexible',
       description: 'Full refund up to 24 hours before the event',
-      icon: 'fa-smile',
-      color: '#10b981'
+      icon: 'fa-shield-alt',
+      color: '#065f46',
+      bg: '#d1fae5'
     },
     {
       id: 'moderate',
       name: 'Moderate',
       description: 'Full refund 7 days before, 50% refund 3 days before',
-      icon: 'fa-balance-scale',
-      color: '#f59e0b'
+      icon: 'fa-shield-alt',
+      color: '#92400e',
+      bg: '#fef3c7'
     },
     {
       id: 'strict',
       name: 'Strict',
       description: '50% refund 14 days before, no refund after',
       icon: 'fa-shield-alt',
-      color: '#ef4444'
+      color: '#991b1b',
+      bg: '#fee2e2'
     },
     {
       id: 'custom',
       name: 'Custom',
       description: 'Set your own cancellation terms',
-      icon: 'fa-cog',
-      color: '#6366f1'
+      icon: 'fa-shield-alt',
+      color: '#3730a3',
+      bg: '#e0e7ff'
     }
   ];
 
