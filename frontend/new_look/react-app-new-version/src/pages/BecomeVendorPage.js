@@ -3136,7 +3136,19 @@ function ServicesStep({ formData, setFormData }) {
   const handleSavePackage = () => {
     if (!editingPackage?.name || !editingPackage?.price) return;
     
-    const packageData = { ...editingPackage, id: editingPackage.id || Date.now(), price: parseFloat(editingPackage.price) };
+    const packageData = { 
+      ...editingPackage, 
+      id: editingPackage.id || Date.now(), 
+      price: parseFloat(editingPackage.price),
+      salePrice: editingPackage.salePrice ? parseFloat(editingPackage.salePrice) : null,
+      baseRate: editingPackage.baseRate ? parseFloat(editingPackage.baseRate) : null,
+      overtimeRate: editingPackage.overtimeRate ? parseFloat(editingPackage.overtimeRate) : null,
+      fixedPrice: editingPackage.fixedPrice ? parseFloat(editingPackage.fixedPrice) : null,
+      pricePerPerson: editingPackage.pricePerPerson ? parseFloat(editingPackage.pricePerPerson) : null,
+      minAttendees: editingPackage.minAttendees ? parseInt(editingPackage.minAttendees) : null,
+      maxAttendees: editingPackage.maxAttendees ? parseInt(editingPackage.maxAttendees) : null,
+      durationMinutes: editingPackage.duration ? Math.round(parseFloat(editingPackage.duration) * 60) : null
+    };
     delete packageData._index;
     
     let updatedPackages;
@@ -3463,68 +3475,26 @@ function ServicesStep({ formData, setFormData }) {
                 />
               </div>
 
-              {/* Pricing Row - Price, Sale Price, Duration, Price Type */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-                <div>
-                  <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
-                    Price *
-                  </label>
-                  <input
-                    type="number"
-                    value={editingPackage?.price || ''}
-                    onChange={(e) => setEditingPackage(prev => ({ ...prev, price: e.target.value }))}
-                    placeholder="0"
-                    min="0"
-                    step="0.01"
-                    style={{
-                      width: '100%',
-                      padding: '12px 14px',
-                      border: '1px solid #e5e7eb',
-                      borderRadius: '8px',
-                      fontSize: '14px'
-                    }}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
-                    Sale Price
-                  </label>
-                  <input
-                    type="number"
-                    value={editingPackage?.salePrice || ''}
-                    onChange={(e) => setEditingPackage(prev => ({ ...prev, salePrice: e.target.value }))}
-                    placeholder="Optional"
-                    min="0"
-                    step="0.01"
-                    style={{
-                      width: '100%',
-                      padding: '12px 14px',
-                      border: '1px solid #e5e7eb',
-                      borderRadius: '8px',
-                      fontSize: '14px'
-                    }}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
-                    Price Type
-                  </label>
-                  <select
-                    value={editingPackage?.priceType || 'fixed_price'}
-                    onChange={(e) => setEditingPackage(prev => ({ ...prev, priceType: e.target.value }))}
-                    style={{
-                      width: '100%',
-                      padding: '12px 14px',
-                      border: '1px solid #e5e7eb',
-                      borderRadius: '8px',
-                      fontSize: '14px'
-                    }}
-                  >
-                    <option value="time_based">Time-based (Hourly)</option>
-                    <option value="fixed_price">Fixed Price</option>
-                    <option value="per_attendee">Per Attendee</option>
-                  </select>
-                </div>
+              {/* Pricing Model - First */}
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                  Pricing Model *
+                </label>
+                <select
+                  value={editingPackage?.priceType || 'time_based'}
+                  onChange={(e) => setEditingPackage(prev => ({ ...prev, priceType: e.target.value }))}
+                  style={{
+                    width: '100%',
+                    padding: '12px 14px',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    fontSize: '14px'
+                  }}
+                >
+                  <option value="time_based">Time-based (Hourly)</option>
+                  <option value="fixed_price">Fixed Price</option>
+                  <option value="per_attendee">Per Attendee</option>
+                </select>
               </div>
 
               {/* Dynamic Pricing Fields based on Price Type */}
@@ -3604,45 +3574,99 @@ function ServicesStep({ formData, setFormData }) {
               )}
 
               {editingPackage?.priceType === 'per_attendee' && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-                  <div>
+                <>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                        Price/Person ($) *
+                      </label>
+                      <input
+                        type="number"
+                        value={editingPackage?.pricePerPerson || editingPackage?.price || ''}
+                        onChange={(e) => setEditingPackage(prev => ({ ...prev, pricePerPerson: e.target.value, price: e.target.value }))}
+                        min="0"
+                        step="0.01"
+                        style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '14px' }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                        Min Attendees
+                      </label>
+                      <input
+                        type="number"
+                        value={editingPackage?.minAttendees || ''}
+                        onChange={(e) => setEditingPackage(prev => ({ ...prev, minAttendees: e.target.value }))}
+                        min="1"
+                        style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '14px' }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                        Max Attendees
+                      </label>
+                      <input
+                        type="number"
+                        value={editingPackage?.maxAttendees || ''}
+                        onChange={(e) => setEditingPackage(prev => ({ ...prev, maxAttendees: e.target.value }))}
+                        min="1"
+                        style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '14px' }}
+                      />
+                    </div>
+                  </div>
+                  <div style={{ marginBottom: '16px' }}>
                     <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
-                      Price/Person ($) *
+                      Duration (hours)
                     </label>
                     <input
                       type="number"
-                      value={editingPackage?.pricePerPerson || editingPackage?.price || ''}
-                      onChange={(e) => setEditingPackage(prev => ({ ...prev, pricePerPerson: e.target.value, price: e.target.value }))}
-                      min="0"
-                      step="0.01"
+                      value={editingPackage?.duration || ''}
+                      onChange={(e) => setEditingPackage(prev => ({ ...prev, duration: e.target.value }))}
+                      min="0.5"
+                      step="0.5"
                       style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '14px' }}
                     />
                   </div>
-                  <div>
-                    <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
-                      Min Attendees
-                    </label>
-                    <input
-                      type="number"
-                      value={editingPackage?.minAttendees || ''}
-                      onChange={(e) => setEditingPackage(prev => ({ ...prev, minAttendees: e.target.value }))}
-                      min="1"
-                      style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '14px' }}
-                    />
+                </>
+              )}
+
+              {/* Original Price / Sale Price - Only for non-hourly pricing models */}
+              {editingPackage?.priceType !== 'time_based' && (
+                <>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                        Original Price ($)
+                      </label>
+                      <input
+                        type="number"
+                        value={editingPackage?.price || ''}
+                        onChange={(e) => setEditingPackage(prev => ({ ...prev, price: e.target.value }))}
+                        placeholder="Regular price"
+                        min="0"
+                        step="0.01"
+                        style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '14px' }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                        Sale Price ($)
+                      </label>
+                      <input
+                        type="number"
+                        value={editingPackage?.salePrice || ''}
+                        onChange={(e) => setEditingPackage(prev => ({ ...prev, salePrice: e.target.value }))}
+                        placeholder="Discounted price"
+                        min="0"
+                        step="0.01"
+                        style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '14px' }}
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
-                      Max Attendees
-                    </label>
-                    <input
-                      type="number"
-                      value={editingPackage?.maxAttendees || ''}
-                      onChange={(e) => setEditingPackage(prev => ({ ...prev, maxAttendees: e.target.value }))}
-                      min="1"
-                      style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '14px' }}
-                    />
-                  </div>
-                </div>
+                  <p style={{ fontSize: '12px', color: '#6b7280', marginBottom: '16px', marginTop: '-8px' }}>
+                    If both prices are set, the sale price will be shown with the original price crossed out.
+                  </p>
+                </>
               )}
 
               {/* Included Services */}
@@ -3923,93 +3947,164 @@ function ServicesStep({ formData, setFormData }) {
                 </div>
               </div>
 
-              {/* Pricing Model and Duration */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
-                <div>
-                  <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    Pricing Model
-                  </label>
-                  <select
-                    value={editingService.pricingModel || 'hourly'}
-                    onChange={(e) => handleEditModalUpdate('pricingModel', e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '12px 14px',
-                      border: '1px solid #e5e7eb',
-                      borderRadius: '8px',
-                      fontSize: '14px'
-                    }}
-                  >
-                    <option value="time_based">Time-based (Hourly)</option>
-                    <option value="fixed_price">Fixed Price</option>
-                    <option value="per_attendee">Per Attendee</option>
-                  </select>
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    Base Duration (hours)
-                  </label>
-                  <input
-                    type="number"
-                    value={editingService.baseDuration || ''}
-                    onChange={(e) => handleEditModalUpdate('baseDuration', e.target.value)}
-                    placeholder="2"
-                    min="0"
-                    step="0.5"
-                    style={{
-                      width: '100%',
-                      padding: '12px 14px',
-                      border: '1px solid #e5e7eb',
-                      borderRadius: '8px',
-                      fontSize: '14px'
-                    }}
-                  />
-                </div>
+              {/* Pricing Model */}
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  Pricing Model *
+                </label>
+                <select
+                  value={editingService.pricingModel || 'time_based'}
+                  onChange={(e) => handleEditModalUpdate('pricingModel', e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '12px 14px',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    fontSize: '14px'
+                  }}
+                >
+                  <option value="time_based">Time-based (Hourly)</option>
+                  <option value="fixed_price">Fixed Price</option>
+                  <option value="per_attendee">Per Attendee</option>
+                </select>
               </div>
 
-              {/* Base Rate and Overtime Rate */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
-                <div>
-                  <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    Base Rate ($)
-                  </label>
-                  <input
-                    type="number"
-                    value={editingService.baseRate || ''}
-                    onChange={(e) => handleEditModalUpdate('baseRate', e.target.value)}
-                    placeholder="100"
-                    min="0"
-                    step="1"
-                    style={{
-                      width: '100%',
-                      padding: '12px 14px',
-                      border: '1px solid #e5e7eb',
-                      borderRadius: '8px',
-                      fontSize: '14px'
-                    }}
-                  />
+              {/* Time-based (Hourly) Fields */}
+              {editingService.pricingModel === 'time_based' && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                      Duration (hours) *
+                    </label>
+                    <input
+                      type="number"
+                      value={editingService.baseDuration || ''}
+                      onChange={(e) => handleEditModalUpdate('baseDuration', e.target.value)}
+                      min="0.5"
+                      step="0.5"
+                      style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '14px' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                      Base Rate ($) *
+                    </label>
+                    <input
+                      type="number"
+                      value={editingService.baseRate || ''}
+                      onChange={(e) => handleEditModalUpdate('baseRate', e.target.value)}
+                      min="0"
+                      step="0.01"
+                      style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '14px' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                      Overtime ($/hr)
+                    </label>
+                    <input
+                      type="number"
+                      value={editingService.overtimeRate || ''}
+                      onChange={(e) => handleEditModalUpdate('overtimeRate', e.target.value)}
+                      min="0"
+                      step="0.01"
+                      style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '14px' }}
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    Overtime Rate ($/hr)
-                  </label>
-                  <input
-                    type="number"
-                    value={editingService.overtimeRate || ''}
-                    onChange={(e) => handleEditModalUpdate('overtimeRate', e.target.value)}
-                    placeholder="100"
-                    min="0"
-                    step="1"
-                    style={{
-                      width: '100%',
-                      padding: '12px 14px',
-                      border: '1px solid #e5e7eb',
-                      borderRadius: '8px',
-                      fontSize: '14px'
-                    }}
-                  />
+              )}
+
+              {/* Fixed Price Fields */}
+              {editingService.pricingModel === 'fixed_price' && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                      Fixed Price ($) *
+                    </label>
+                    <input
+                      type="number"
+                      value={editingService.fixedPrice || ''}
+                      onChange={(e) => handleEditModalUpdate('fixedPrice', e.target.value)}
+                      min="0"
+                      step="0.01"
+                      style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '14px' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                      Duration (hours)
+                    </label>
+                    <input
+                      type="number"
+                      value={editingService.baseDuration || ''}
+                      onChange={(e) => handleEditModalUpdate('baseDuration', e.target.value)}
+                      min="0.5"
+                      step="0.5"
+                      style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '14px' }}
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {/* Per Attendee Fields */}
+              {editingService.pricingModel === 'per_attendee' && (
+                <>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                        Price/Person ($) *
+                      </label>
+                      <input
+                        type="number"
+                        value={editingService.pricePerPerson || ''}
+                        onChange={(e) => handleEditModalUpdate('pricePerPerson', e.target.value)}
+                        min="0"
+                        step="0.01"
+                        style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '14px' }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                        Min Attendees
+                      </label>
+                      <input
+                        type="number"
+                        value={editingService.minimumAttendees || ''}
+                        onChange={(e) => handleEditModalUpdate('minimumAttendees', e.target.value)}
+                        min="1"
+                        step="1"
+                        style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '14px' }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                        Max Attendees
+                      </label>
+                      <input
+                        type="number"
+                        value={editingService.maximumAttendees || ''}
+                        onChange={(e) => handleEditModalUpdate('maximumAttendees', e.target.value)}
+                        min="1"
+                        step="1"
+                        style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '14px' }}
+                      />
+                    </div>
+                  </div>
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                      Duration (hours)
+                    </label>
+                    <input
+                      type="number"
+                      value={editingService.baseDuration || ''}
+                      onChange={(e) => handleEditModalUpdate('baseDuration', e.target.value)}
+                      min="0.5"
+                      step="0.5"
+                      style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '14px' }}
+                    />
+                  </div>
+                </>
+              )}
 
               {/* Description */}
               <div style={{ marginBottom: '16px' }}>
@@ -4033,52 +4128,56 @@ function ServicesStep({ formData, setFormData }) {
                 />
               </div>
 
-              {/* Sale Price Section - matching ServicesPackagesPanel */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-                <div>
-                  <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
-                    Original Price ($)
-                  </label>
-                  <input
-                    type="number"
-                    value={editingService.originalPrice || ''}
-                    onChange={(e) => handleEditModalUpdate('originalPrice', e.target.value)}
-                    min="0"
-                    step="0.01"
-                    placeholder="Regular price"
-                    style={{
-                      width: '100%',
-                      padding: '12px 14px',
-                      border: '1px solid #e5e7eb',
-                      borderRadius: '8px',
-                      fontSize: '14px'
-                    }}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
-                    Sale Price ($)
-                  </label>
-                  <input
-                    type="number"
-                    value={editingService.salePrice || ''}
-                    onChange={(e) => handleEditModalUpdate('salePrice', e.target.value)}
-                    min="0"
-                    step="0.01"
-                    placeholder="Discounted price"
-                    style={{
-                      width: '100%',
-                      padding: '12px 14px',
-                      border: '1px solid #e5e7eb',
-                      borderRadius: '8px',
-                      fontSize: '14px'
-                    }}
-                  />
-                </div>
-              </div>
-              <p style={{ margin: '0', fontSize: '12px', color: '#6b7280' }}>
-                If both prices are set, the sale price will be shown with the original price crossed out.
-              </p>
+              {/* Sale Price Section - only for non-hourly pricing models */}
+              {editingService.pricingModel !== 'time_based' && (
+                <>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                        Original Price ($)
+                      </label>
+                      <input
+                        type="number"
+                        value={editingService.originalPrice || ''}
+                        onChange={(e) => handleEditModalUpdate('originalPrice', e.target.value)}
+                        min="0"
+                        step="0.01"
+                        placeholder="Regular price"
+                        style={{
+                          width: '100%',
+                          padding: '12px 14px',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '8px',
+                          fontSize: '14px'
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                        Sale Price ($)
+                      </label>
+                      <input
+                        type="number"
+                        value={editingService.salePrice || ''}
+                        onChange={(e) => handleEditModalUpdate('salePrice', e.target.value)}
+                        min="0"
+                        step="0.01"
+                        placeholder="Discounted price"
+                        style={{
+                          width: '100%',
+                          padding: '12px 14px',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '8px',
+                          fontSize: '14px'
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <p style={{ margin: '0', fontSize: '12px', color: '#6b7280' }}>
+                    If both prices are set, the sale price will be shown with the original price crossed out.
+                  </p>
+                </>
+              )}
             </div>
 
             {/* Modal Footer */}

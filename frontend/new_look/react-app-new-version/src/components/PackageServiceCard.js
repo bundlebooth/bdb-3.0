@@ -248,12 +248,45 @@ export const PackageCard = ({
   const name = pkg.PackageName || pkg.name || '';
   const description = pkg.Description || pkg.description || '';
   const imageURL = pkg.ImageURL || pkg.imageURL || '';
-  const price = parseFloat(pkg.Price || pkg.price || 0);
-  const salePrice = pkg.SalePrice ? parseFloat(pkg.SalePrice) : null;
-  const priceType = pkg.PriceType || pkg.priceType || 'package';
+  const priceType = pkg.PriceType || pkg.priceType || 'fixed_price';
   const includedServices = pkg.IncludedServices || pkg.includedServices || [];
-  const isOnSale = salePrice && salePrice < price;
   const duration = pkg.DurationMinutes || pkg.Duration || pkg.duration || null;
+  
+  // Get min/max attendees for per_attendee pricing
+  const minAttendees = pkg.MinAttendees || pkg.minAttendees || null;
+  const maxAttendees = pkg.MaxAttendees || pkg.maxAttendees || null;
+  
+  // Get pricing based on price type
+  const getPrice = () => {
+    if (priceType === 'time_based') {
+      return parseFloat(pkg.BaseRate || pkg.baseRate || pkg.Price || pkg.price || 0);
+    } else if (priceType === 'per_attendee') {
+      return parseFloat(pkg.PricePerPerson || pkg.pricePerPerson || pkg.Price || pkg.price || 0);
+    } else {
+      return parseFloat(pkg.FixedPrice || pkg.fixedPrice || pkg.Price || pkg.price || 0);
+    }
+  };
+  
+  const price = getPrice();
+  const salePrice = (pkg.SalePrice || pkg.salePrice) ? parseFloat(pkg.SalePrice || pkg.salePrice) : null;
+  const isOnSale = salePrice && salePrice < price && priceType !== 'time_based';
+  
+  // Get price suffix based on pricing model
+  const getPriceSuffix = () => {
+    if (priceType === 'time_based') {
+      return '/ hour';
+    } else if (priceType === 'per_attendee' || priceType === 'per_person') {
+      if (minAttendees && maxAttendees) {
+        return `/ person (${minAttendees}-${maxAttendees} guests)`;
+      } else if (minAttendees) {
+        return `/ person (min ${minAttendees})`;
+      } else if (maxAttendees) {
+        return `/ person (max ${maxAttendees})`;
+      }
+      return '/ person';
+    }
+    return '/ package';
+  };
 
   // Format duration
   const formatDuration = (mins) => {
@@ -304,22 +337,37 @@ export const PackageCard = ({
                 ) : (
                   <span className="psc-price">${price.toFixed(0)}</span>
                 )}
-                <span className="psc-price-suffix">
-                  / {priceType === 'per_person' ? 'person' : 'package'}
-                </span>
+                <span className="psc-price-suffix">{getPriceSuffix()}</span>
               </div>
               
-              {/* Tags - Duration and Included Services */}
+              {/* Tags - Pricing Model, Duration and Included Services */}
               <div className="psc-card-tags">
+                {(() => {
+                  if (priceType === 'time_based') {
+                    return <span className="psc-tag"><i className="far fa-clock" style={{ marginRight: '4px' }}></i>Hourly</span>;
+                  } else if (priceType === 'fixed_price' || priceType === 'fixed') {
+                    return <span className="psc-tag"><i className="fas fa-tag" style={{ marginRight: '4px' }}></i>Fixed</span>;
+                  } else if (priceType === 'per_attendee' || priceType === 'per_person') {
+                    if (minAttendees && maxAttendees) {
+                      return <span className="psc-tag"><i className="fas fa-users" style={{ marginRight: '4px' }}></i>{minAttendees}-{maxAttendees}</span>;
+                    } else if (minAttendees) {
+                      return <span className="psc-tag"><i className="fas fa-users" style={{ marginRight: '4px' }}></i>Min {minAttendees}</span>;
+                    } else if (maxAttendees) {
+                      return <span className="psc-tag"><i className="fas fa-users" style={{ marginRight: '4px' }}></i>Max {maxAttendees}</span>;
+                    }
+                    return <span className="psc-tag"><i className="fas fa-users" style={{ marginRight: '4px' }}></i>Per Person</span>;
+                  }
+                  return null;
+                })()}
                 {formatDuration(duration) && (
                   <span className="psc-tag">
-                    <i className="far fa-clock"></i>
+                    <i className="far fa-clock" style={{ marginRight: '4px' }}></i>
                     {formatDuration(duration)}
                   </span>
                 )}
                 {includedServices.length > 0 && (
                   <span className="psc-tag">
-                    <i className="fas fa-layer-group"></i>
+                    <i className="fas fa-layer-group" style={{ marginRight: '4px' }}></i>
                     {includedServices.length} service{includedServices.length > 1 ? 's' : ''}
                   </span>
                 )}

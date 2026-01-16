@@ -6632,7 +6632,7 @@ router.post('/:id/packages', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid vendor profile ID' });
     }
 
-    const { packageId, name, description, includedServices, price, salePrice, priceType, durationMinutes, imageURL, finePrint, isActive } = req.body;
+    const { packageId, name, description, includedServices, price, salePrice, priceType, durationMinutes, imageURL, finePrint, isActive, baseRate, overtimeRate, fixedPrice, pricePerPerson, minAttendees, maxAttendees } = req.body;
     
     if (!name || !price) {
       return res.status(400).json({ success: false, message: 'Package name and price are required' });
@@ -6646,12 +6646,18 @@ router.post('/:id/packages', async (req, res) => {
     request.input('Description', sql.NVarChar(sql.MAX), description || null);
     request.input('Price', sql.Decimal(10, 2), price);
     request.input('SalePrice', sql.Decimal(10, 2), salePrice || null);
-    request.input('PriceType', sql.NVarChar(50), priceType || 'fixed');
+    request.input('PriceType', sql.NVarChar(50), priceType || 'fixed_price');
     request.input('DurationMinutes', sql.Int, durationMinutes || null);
     request.input('ImageURL', sql.NVarChar(500), imageURL || null);
     request.input('FinePrint', sql.NVarChar(sql.MAX), finePrint || null);
     request.input('IncludedServices', sql.NVarChar(sql.MAX), JSON.stringify(includedServices || []));
     request.input('IsActive', sql.Bit, isActive !== false ? 1 : 0);
+    request.input('BaseRate', sql.Decimal(10, 2), baseRate || null);
+    request.input('OvertimeRate', sql.Decimal(10, 2), overtimeRate || null);
+    request.input('FixedPrice', sql.Decimal(10, 2), fixedPrice || null);
+    request.input('PricePerPerson', sql.Decimal(10, 2), pricePerPerson || null);
+    request.input('MinAttendees', sql.Int, minAttendees || null);
+    request.input('MaxAttendees', sql.Int, maxAttendees || null);
     
     // Try stored procedure first, fallback to direct query
     try {
@@ -6668,12 +6674,18 @@ router.post('/:id/packages', async (req, res) => {
         updateRequest.input('Description', sql.NVarChar(sql.MAX), description || null);
         updateRequest.input('Price', sql.Decimal(10, 2), price);
         updateRequest.input('SalePrice', sql.Decimal(10, 2), salePrice || null);
-        updateRequest.input('PriceType', sql.NVarChar(50), priceType || 'fixed');
+        updateRequest.input('PriceType', sql.NVarChar(50), priceType || 'fixed_price');
         updateRequest.input('DurationMinutes', sql.Int, durationMinutes || null);
         updateRequest.input('ImageURL', sql.NVarChar(500), imageURL || null);
         updateRequest.input('FinePrint', sql.NVarChar(sql.MAX), finePrint || null);
         updateRequest.input('IncludedServices', sql.NVarChar(sql.MAX), JSON.stringify(includedServices || []));
         updateRequest.input('IsActive', sql.Bit, isActive !== false ? 1 : 0);
+        updateRequest.input('BaseRate', sql.Decimal(10, 2), baseRate || null);
+        updateRequest.input('OvertimeRate', sql.Decimal(10, 2), overtimeRate || null);
+        updateRequest.input('FixedPrice', sql.Decimal(10, 2), fixedPrice || null);
+        updateRequest.input('PricePerPerson', sql.Decimal(10, 2), pricePerPerson || null);
+        updateRequest.input('MinAttendees', sql.Int, minAttendees || null);
+        updateRequest.input('MaxAttendees', sql.Int, maxAttendees || null);
         await updateRequest.execute('vendors.sp_UpdatePackageFull');
         res.json({ success: true, packageId, message: 'Package updated successfully' });
       } else {
@@ -6684,12 +6696,18 @@ router.post('/:id/packages', async (req, res) => {
         insertRequest.input('Description', sql.NVarChar(sql.MAX), description || null);
         insertRequest.input('Price', sql.Decimal(10, 2), price);
         insertRequest.input('SalePrice', sql.Decimal(10, 2), salePrice || null);
-        insertRequest.input('PriceType', sql.NVarChar(50), priceType || 'fixed');
+        insertRequest.input('PriceType', sql.NVarChar(50), priceType || 'fixed_price');
         insertRequest.input('DurationMinutes', sql.Int, durationMinutes || null);
         insertRequest.input('ImageURL', sql.NVarChar(500), imageURL || null);
         insertRequest.input('FinePrint', sql.NVarChar(sql.MAX), finePrint || null);
         insertRequest.input('IncludedServices', sql.NVarChar(sql.MAX), JSON.stringify(includedServices || []));
         insertRequest.input('IsActive', sql.Bit, isActive !== false ? 1 : 0);
+        insertRequest.input('BaseRate', sql.Decimal(10, 2), baseRate || null);
+        insertRequest.input('OvertimeRate', sql.Decimal(10, 2), overtimeRate || null);
+        insertRequest.input('FixedPrice', sql.Decimal(10, 2), fixedPrice || null);
+        insertRequest.input('PricePerPerson', sql.Decimal(10, 2), pricePerPerson || null);
+        insertRequest.input('MinAttendees', sql.Int, minAttendees || null);
+        insertRequest.input('MaxAttendees', sql.Int, maxAttendees || null);
         const insertResult = await insertRequest.execute('vendors.sp_InsertPackageFull');
         res.json({ success: true, packageId: insertResult.recordset[0]?.PackageID, message: 'Package created successfully' });
       }

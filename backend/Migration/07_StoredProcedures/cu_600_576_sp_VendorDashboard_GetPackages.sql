@@ -3,6 +3,7 @@
 -- Description: Gets vendor packages
 -- Phase: 600 (Stored Procedures)
 -- Schema: vendors
+-- Updated: Added pricing model columns
 -- =============================================
 SET QUOTED_IDENTIFIER ON;
 SET ANSI_NULLS ON;
@@ -18,7 +19,9 @@ AS
 BEGIN
     SET NOCOUNT ON;
     
-    SELECT PackageID, Name, Description, Price, DurationMinutes, MaxGuests, WhatsIncluded
-    FROM Packages WHERE VendorProfileID = @VendorProfileID ORDER BY PackageID;
+    SELECT PackageID, PackageName, Description, Price, SalePrice, PriceType, DurationMinutes, 
+           ImageURL, FinePrint, IncludedServices, IsActive,
+           BaseRate, OvertimeRate, FixedPrice, PricePerPerson, MinAttendees, MaxAttendees
+    FROM vendors.Packages WHERE VendorProfileID = @VendorProfileID ORDER BY PackageID;
 END
 GO

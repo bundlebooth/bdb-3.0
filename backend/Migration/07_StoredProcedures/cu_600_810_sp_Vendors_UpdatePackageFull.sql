@@ -1,6 +1,7 @@
 -- =============================================
 -- Vendors - Update Package Full
 -- Created: API Audit - Security Enhancement
+-- Updated: Added pricing model columns (BaseRate, OvertimeRate, FixedPrice, PricePerPerson, MinAttendees, MaxAttendees)
 -- =============================================
 IF OBJECT_ID('vendors.sp_UpdatePackageFull', 'P') IS NOT NULL
     DROP PROCEDURE vendors.sp_UpdatePackageFull;
@@ -18,7 +19,13 @@ CREATE PROCEDURE vendors.sp_UpdatePackageFull
     @ImageURL NVARCHAR(500),
     @FinePrint NVARCHAR(MAX),
     @IncludedServices NVARCHAR(MAX),
-    @IsActive BIT
+    @IsActive BIT,
+    @BaseRate DECIMAL(10,2) = NULL,
+    @OvertimeRate DECIMAL(10,2) = NULL,
+    @FixedPrice DECIMAL(10,2) = NULL,
+    @PricePerPerson DECIMAL(10,2) = NULL,
+    @MinAttendees INT = NULL,
+    @MaxAttendees INT = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -34,6 +41,12 @@ BEGIN
         FinePrint = @FinePrint,
         IncludedServices = @IncludedServices,
         IsActive = @IsActive,
+        BaseRate = @BaseRate,
+        OvertimeRate = @OvertimeRate,
+        FixedPrice = @FixedPrice,
+        PricePerPerson = @PricePerPerson,
+        MinAttendees = @MinAttendees,
+        MaxAttendees = @MaxAttendees,
         UpdatedAt = GETDATE()
     WHERE PackageID = @PackageID AND VendorProfileID = @VendorProfileID;
 END

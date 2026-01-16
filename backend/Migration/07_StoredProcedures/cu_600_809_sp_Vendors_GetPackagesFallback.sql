@@ -1,6 +1,7 @@
 -- =============================================
 -- Vendors - Get Packages Fallback
 -- Created: API Audit - Security Enhancement
+-- Updated: Added pricing model columns
 -- =============================================
 IF OBJECT_ID('vendors.sp_GetPackagesFallback', 'P') IS NOT NULL
     DROP PROCEDURE vendors.sp_GetPackagesFallback;
@@ -15,7 +16,8 @@ BEGIN
     SELECT 
         PackageID, VendorProfileID, PackageName, Description,
         Price, SalePrice, PriceType, DurationMinutes, ImageURL, FinePrint,
-        IncludedServices, IsActive, CreatedAt, UpdatedAt
+        IncludedServices, IsActive, CreatedAt, UpdatedAt,
+        BaseRate, OvertimeRate, FixedPrice, PricePerPerson, MinAttendees, MaxAttendees
     FROM vendors.Packages
     WHERE VendorProfileID = @VendorProfileID AND IsActive = 1
     ORDER BY CreatedAt DESC;
