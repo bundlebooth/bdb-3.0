@@ -11,13 +11,14 @@ function NotificationDropdown({ isOpen, onClose, anchorEl, onBadgeCountChange })
   const [activeTab, setActiveTab] = useState('all'); // 'all' or 'unread'
   const dropdownRef = useRef(null);
   
-  // Update badge count whenever notifications change
+  // Update badge count whenever notifications change - only when dropdown is open
+  // This prevents overwriting Header's initial count with 0 on mount
   useEffect(() => {
-    if (onBadgeCountChange) {
+    if (onBadgeCountChange && isOpen && !loading) {
       const unreadCount = notifications.filter(n => !n.isRead && !n.read).length;
       onBadgeCountChange(unreadCount);
     }
-  }, [notifications, onBadgeCountChange]);
+  }, [notifications, onBadgeCountChange, isOpen, loading]);
 
   useEffect(() => {
     if (isOpen && currentUser?.id) {
