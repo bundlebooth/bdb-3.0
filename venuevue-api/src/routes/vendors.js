@@ -4305,8 +4305,8 @@ router.patch('/:id/services/:predefinedServiceId', async (req, res) => {
     updateRequest.input('OvertimeRatePerHour', sql.Decimal(10, 2), overtimeRatePerHour != null && overtimeRatePerHour !== '' ? parseFloat(overtimeRatePerHour) : null);
     updateRequest.input('FixedPrice', sql.Decimal(10, 2), fixedPrice != null && fixedPrice !== '' ? parseFloat(fixedPrice) : null);
     updateRequest.input('PerPersonPrice', sql.Decimal(10, 2), perPersonPrice != null && perPersonPrice !== '' ? parseFloat(perPersonPrice) : null);
-    updateRequest.input('MinimumAttendees', sql.Int, minimumAttendees != null && minimumAttendees !== '' ? parseInt(minimumAttendees) : null);
-    updateRequest.input('MaximumAttendees', sql.Int, maximumAttendees != null && maximumAttendees !== '' ? parseInt(maximumAttendees) : null);
+    updateRequest.input('MinAttendees', sql.Int, minimumAttendees != null && minimumAttendees !== '' ? parseInt(minimumAttendees) : null);
+    updateRequest.input('MaxAttendees', sql.Int, maximumAttendees != null && maximumAttendees !== '' ? parseInt(maximumAttendees) : null);
     updateRequest.input('VendorDescription', sql.NVarChar(sql.MAX), description || null);
     updateRequest.input('ImageURL', sql.NVarChar(500), imageURL || null);
     
@@ -4322,8 +4322,8 @@ router.patch('/:id/services/:predefinedServiceId', async (req, res) => {
         OvertimeRatePerHour = @OvertimeRatePerHour,
         FixedPrice = @FixedPrice,
         PerPersonPrice = @PerPersonPrice,
-        MinimumAttendees = @MinimumAttendees,
-        MaximumAttendees = @MaximumAttendees,
+        MinAttendees = @MinAttendees,
+        MaxAttendees = @MaxAttendees,
         VendorDescription = COALESCE(@VendorDescription, VendorDescription),
         ImageURL = COALESCE(@ImageURL, ImageURL)
       WHERE VendorProfileID = @VendorProfileID AND PredefinedServiceID = @PredefinedServiceID

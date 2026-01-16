@@ -84,10 +84,22 @@ export const ServiceCard = ({
   const pricing = getPricing();
   const priceDisplay = pricing.price > 0 ? `$${pricing.price.toFixed(0)}` : 'Price TBD';
   
+  // Get min/max attendees for per_attendee pricing
+  const minAttendees = service.MinimumAttendees || service.minimumAttendees || null;
+  const maxAttendees = service.MaximumAttendees || service.maximumAttendees || null;
+  
   const getPriceSuffix = () => {
-    switch (pricing.type) {
+    const pricingModel = service.pricingModel || service.PricingModel || pricing.type;
+    switch (pricingModel) {
       case 'per_person':
       case 'per_attendee':
+        if (minAttendees && maxAttendees) {
+          return `/ person (${minAttendees}-${maxAttendees} guests)`;
+        } else if (minAttendees) {
+          return `/ person (min ${minAttendees})`;
+        } else if (maxAttendees) {
+          return `/ person (max ${maxAttendees})`;
+        }
         return '/ person';
       case 'per_hour':
       case 'hourly':
@@ -95,9 +107,9 @@ export const ServiceCard = ({
         return '/ hour';
       case 'fixed':
       case 'fixed_price':
-        return 'fixed';
+        return 'fixed price';
       default:
-        return '/ service';
+        return '';
     }
   };
 
@@ -153,11 +165,21 @@ export const ServiceCard = ({
                 <span className="psc-price-suffix">{getPriceSuffix()}</span>
               </div>
               
-              {/* Tags - Duration and Category */}
+              {/* Tags - Pricing Model, Duration and Category */}
               <div className="psc-card-tags">
+                {(() => {
+                  const pricingModel = service.pricingModel || service.PricingModel || pricing.type;
+                  if (pricingModel === 'time_based' || pricingModel === 'hourly' || pricingModel === 'per_hour') {
+                    return <span className="psc-tag"><i className="far fa-clock"></i> Hourly</span>;
+                  } else if (pricingModel === 'fixed_price' || pricingModel === 'fixed') {
+                    return <span className="psc-tag"><i className="fas fa-tag"></i> Fixed</span>;
+                  } else if (pricingModel === 'per_attendee' || pricingModel === 'per_person') {
+                    return <span className="psc-tag"><i className="fas fa-users"></i> Per Person</span>;
+                  }
+                  return null;
+                })()}
                 {formatDuration(duration) && (
                   <span className="psc-tag">
-                    <i className="far fa-clock"></i>
                     {formatDuration(duration)}
                   </span>
                 )}

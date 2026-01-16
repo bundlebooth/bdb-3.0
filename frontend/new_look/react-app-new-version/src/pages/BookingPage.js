@@ -600,8 +600,45 @@ function BookingPage() {
     }
     
     if (step === 2) {
-      if (!selectedPackage) {
-        const proceed = window.confirm('You haven\'t selected a package. Do you want to continue anyway?');
+      // Validate attendee count against selected package/services min/max
+      const attendees = parseInt(bookingData.attendeeCount) || 0;
+      
+      // Check package attendee limits
+      if (selectedPackage) {
+        const minAttendees = selectedPackage.MinAttendees || selectedPackage.minAttendees || selectedPackage.MinimumAttendees || selectedPackage.minimumAttendees;
+        const maxAttendees = selectedPackage.MaxAttendees || selectedPackage.maxAttendees || selectedPackage.MaximumAttendees || selectedPackage.maximumAttendees;
+        
+        if (minAttendees && attendees < parseInt(minAttendees)) {
+          alert(`This package requires at least ${minAttendees} guests. You entered ${attendees} guests.`);
+          return false;
+        }
+        if (maxAttendees && attendees > parseInt(maxAttendees)) {
+          alert(`This package allows a maximum of ${maxAttendees} guests. You entered ${attendees} guests.`);
+          return false;
+        }
+      }
+      
+      // Check selected services attendee limits
+      for (const service of selectedServices) {
+        const pricingModel = service.PricingModel || service.pricingModel;
+        if (pricingModel === 'per_attendee' || pricingModel === 'per_person') {
+          const minAttendees = service.MinAttendees || service.minAttendees || service.MinimumAttendees || service.minimumAttendees;
+          const maxAttendees = service.MaxAttendees || service.maxAttendees || service.MaximumAttendees || service.maximumAttendees;
+          const serviceName = service.ServiceName || service.name;
+          
+          if (minAttendees && attendees < parseInt(minAttendees)) {
+            alert(`"${serviceName}" requires at least ${minAttendees} guests. You entered ${attendees} guests.`);
+            return false;
+          }
+          if (maxAttendees && attendees > parseInt(maxAttendees)) {
+            alert(`"${serviceName}" allows a maximum of ${maxAttendees} guests. You entered ${attendees} guests.`);
+            return false;
+          }
+        }
+      }
+      
+      if (!selectedPackage && selectedServices.length === 0) {
+        const proceed = window.confirm('You haven\'t selected a package or services. Do you want to continue anyway?');
         return proceed;
       }
       return true;

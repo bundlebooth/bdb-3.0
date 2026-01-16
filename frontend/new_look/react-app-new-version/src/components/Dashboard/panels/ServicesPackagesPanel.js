@@ -607,33 +607,35 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
                 />
               ))}
               
-              {/* Add Package Card - Horizontal */}
-              <div 
+              {/* Add Package Button - Black style */}
+              <button 
                 onClick={services.length > 0 ? handleCreatePackage : () => { showBanner('Please create individual services first', 'warning'); setActiveTab('services'); }}
                 style={{
-                  height: '80px',
-                  border: '1px dashed #d1d5db',
-                  borderRadius: '12px',
-                  background: '#fafafa',
+                  width: '100%',
+                  padding: '12px 24px',
+                  background: '#222',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   cursor: 'pointer',
-                  gap: '12px',
+                  gap: '8px',
+                  fontSize: '14px',
+                  fontWeight: 500,
                   transition: 'all 0.2s'
                 }}
                 onMouseOver={(e) => {
-                  e.currentTarget.style.borderColor = '#222';
-                  e.currentTarget.style.background = '#f9fafb';
+                  e.currentTarget.style.background = '#333';
                 }}
                 onMouseOut={(e) => {
-                  e.currentTarget.style.borderColor = '#d1d5db';
-                  e.currentTarget.style.background = '#fafafa';
+                  e.currentTarget.style.background = '#222';
                 }}
               >
-                <i className="fas fa-plus" style={{ fontSize: '1rem', color: '#6b7280' }}></i>
-                <span style={{ fontWeight: 500, color: '#6b7280' }}>Add a package</span>
-              </div>
+                <i className="fas fa-plus" style={{ fontSize: '0.875rem' }}></i>
+                <span>Add a package</span>
+              </button>
             </PackageServiceList>
 
             {/* Save Button for Packages */}
@@ -665,33 +667,35 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
               />
             ))}
             
-            {/* Add Service Card - Horizontal */}
-            <div 
+            {/* Add Service Button - Black style matching packages */}
+            <button 
               onClick={() => setShowServicePicker(true)}
               style={{
-                height: '80px',
-                border: '1px dashed #d1d5db',
-                borderRadius: '12px',
-                background: '#fafafa',
+                width: '100%',
+                padding: '12px 24px',
+                background: '#222',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 cursor: 'pointer',
-                gap: '12px',
+                gap: '8px',
+                fontSize: '14px',
+                fontWeight: 500,
                 transition: 'all 0.2s'
               }}
               onMouseOver={(e) => {
-                e.currentTarget.style.borderColor = '#222';
-                e.currentTarget.style.background = '#f9fafb';
+                e.currentTarget.style.background = '#333';
               }}
               onMouseOut={(e) => {
-                e.currentTarget.style.borderColor = '#d1d5db';
-                e.currentTarget.style.background = '#fafafa';
+                e.currentTarget.style.background = '#222';
               }}
             >
-              <i className="fas fa-plus" style={{ fontSize: '1rem', color: '#6b7280' }}></i>
-              <span style={{ fontWeight: 500, color: '#6b7280' }}>Add a service</span>
-            </div>
+              <i className="fas fa-plus" style={{ fontSize: '0.875rem' }}></i>
+              <span>Add a service</span>
+            </button>
           </PackageServiceList>
 
           <div style={{ marginTop: '2rem' }}>
@@ -958,14 +962,14 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
                     <div>
                       <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
-                        Duration (min) *
+                        Duration (hours) *
                       </label>
                       <input
                         type="number"
-                        value={editForm.vendorDuration}
-                        onChange={(e) => setEditForm({ ...editForm, vendorDuration: e.target.value })}
-                        min="15"
-                        step="15"
+                        value={editForm.vendorDuration ? (editForm.vendorDuration / 60).toFixed(1) : ''}
+                        onChange={(e) => setEditForm({ ...editForm, vendorDuration: e.target.value ? Math.round(parseFloat(e.target.value) * 60) : '' })}
+                        min="0.5"
+                        step="0.5"
                         required
                         style={{
                           width: '100%',
@@ -1414,8 +1418,9 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
                         fontSize: '14px'
                       }}
                     >
-                      <option value="fixed">Fixed Price</option>
-                      <option value="per_person">Per Person</option>
+                      <option value="time_based">Time-based (Hourly)</option>
+                      <option value="fixed_price">Fixed Price</option>
+                      <option value="per_attendee">Per Attendee</option>
                     </select>
                   </div>
                 </div>
@@ -1423,15 +1428,15 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
                 {/* Duration */}
                 <div style={{ marginBottom: '16px' }}>
                   <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
-                    Duration (minutes)
+                    Duration (hours)
                   </label>
                   <input
                     type="number"
-                    value={packageForm.durationMinutes}
-                    onChange={(e) => setPackageForm({ ...packageForm, durationMinutes: e.target.value })}
-                    placeholder="e.g., 120 for 2 hours"
-                    min="0"
-                    step="15"
+                    value={packageForm.durationMinutes ? (packageForm.durationMinutes / 60).toFixed(1) : ''}
+                    onChange={(e) => setPackageForm({ ...packageForm, durationMinutes: e.target.value ? Math.round(parseFloat(e.target.value) * 60) : '' })}
+                    placeholder="e.g., 2 for 2 hours"
+                    min="0.5"
+                    step="0.5"
                     style={{
                       width: '100%',
                       padding: '12px 14px',
@@ -1441,7 +1446,7 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
                     }}
                   />
                   <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#9ca3af' }}>
-                    How long does this package typically take? (e.g., 60 = 1 hour, 120 = 2 hours)
+                    How long does this package typically take?
                   </p>
                 </div>
 

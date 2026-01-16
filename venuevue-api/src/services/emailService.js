@@ -81,8 +81,8 @@ async function notifyVendorOfNewRequest(requestId, userId, vendorProfileId, even
         })
       : 'Not specified';
     
-    // Format budget
-    const budget = eventDetails.budget 
+    // Format total (was budget)
+    const total = eventDetails.budget 
       ? `$${Number(eventDetails.budget).toFixed(2)}`
       : 'Not specified';
     
@@ -106,7 +106,7 @@ async function notifyVendorOfNewRequest(requestId, userId, vendorProfileId, even
       serviceName,
       eventDate,
       eventDetails.location || 'Not specified',
-      budget,
+      total,
       `${FRONTEND_URL}/dashboard`,
       data.VendorUserID,
       null,

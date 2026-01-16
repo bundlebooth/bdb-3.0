@@ -443,12 +443,12 @@ async function sendTwoFactorCode(email, code, userName = 'User', userId = null) 
   return sendTemplatedEmail('auth_2fa', email, userName, { code, userName }, userId, null, null, '2fa', adminEmail);
 }
 
-async function sendBookingRequestToVendor(vendorEmail, vendorName, clientName, serviceName, eventDate, location, budget, dashboardUrl, vendorUserId = null, bookingId = null, eventTime = null, requestedAt = null, timezone = null) {
+async function sendBookingRequestToVendor(vendorEmail, vendorName, clientName, serviceName, eventDate, location, total, dashboardUrl, vendorUserId = null, bookingId = null, eventTime = null, requestedAt = null, timezone = null) {
   const adminEmail = process.env.ADMIN_EMAIL || 'admin@planbeau.com';
   const requestedAtFormatted = requestedAt || new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
   const timezoneDisplay = timezone || 'Local Time';
   return sendTemplatedEmail('booking_request_vendor', vendorEmail, vendorName, {
-    vendorName, clientName, serviceName, eventDate, eventTime: eventTime ? `${eventTime} (${timezoneDisplay})` : 'TBD', location: location || 'TBD', budget, dashboardUrl, requestedAt: requestedAtFormatted, timezone: timezoneDisplay
+    vendorName, clientName, serviceName, eventDate, eventTime: eventTime ? `${eventTime} (${timezoneDisplay})` : 'TBD', location: location || 'TBD', total, dashboardUrl, requestedAt: requestedAtFormatted, timezone: timezoneDisplay
   }, vendorUserId, bookingId, null, 'bookingUpdates', adminEmail);
 }
 

@@ -911,7 +911,10 @@ router.post('/requests/send', async (req, res) => {
         eventDate,
         location: eventLocation,
         budget: finalBudget,
-        serviceName
+        serviceName,
+        startTime: eventTime,
+        endTime: eventEndTime,
+        timezone: timeZone
       });
     }
 

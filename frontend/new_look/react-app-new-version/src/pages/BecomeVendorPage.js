@@ -3207,33 +3207,35 @@ function ServicesStep({ formData, setFormData }) {
           />
         ))}
         
-        {/* Add Service Card - Same style as ServicesPackagesPanel */}
-        <div 
+        {/* Add Service Button - Black style matching ServicesPackagesPanel */}
+        <button 
           onClick={() => setShowModal(true)}
           style={{
-            height: '80px',
-            border: '1px dashed #d1d5db',
-            borderRadius: '12px',
-            background: '#fafafa',
+            width: '100%',
+            padding: '12px 24px',
+            background: '#222',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             cursor: 'pointer',
-            gap: '12px',
+            gap: '8px',
+            fontSize: '14px',
+            fontWeight: 500,
             transition: 'all 0.2s'
           }}
           onMouseOver={(e) => {
-            e.currentTarget.style.borderColor = '#222';
-            e.currentTarget.style.background = '#f9fafb';
+            e.currentTarget.style.background = '#333';
           }}
           onMouseOut={(e) => {
-            e.currentTarget.style.borderColor = '#d1d5db';
-            e.currentTarget.style.background = '#fafafa';
+            e.currentTarget.style.background = '#222';
           }}
         >
-          <i className="fas fa-plus" style={{ fontSize: '1rem', color: '#6b7280' }}></i>
-          <span style={{ fontWeight: 500, color: '#6b7280' }}>Add a service</span>
-        </div>
+          <i className="fas fa-plus" style={{ fontSize: '0.875rem' }}></i>
+          <span>Add a service</span>
+        </button>
       </PackageServiceList>
 
       {/* Service Selection Modal */}
@@ -3335,16 +3337,16 @@ function ServicesStep({ formData, setFormData }) {
             })}
           </PackageServiceList>
             
-          {/* Add Package Card */}
-          <div 
+          {/* Add Package Button - Black style */}
+          <button 
             onClick={handleAddPackage}
-            style={{ height: '80px', border: '1px dashed #d1d5db', borderRadius: '12px', background: '#fafafa', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', gap: '12px', transition: 'all 0.2s', marginTop: '1rem' }}
-            onMouseOver={(e) => { e.currentTarget.style.borderColor = '#222'; e.currentTarget.style.background = '#f9fafb'; }}
-            onMouseOut={(e) => { e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.background = '#fafafa'; }}
+            style={{ width: '100%', padding: '12px 24px', background: '#222', color: 'white', border: 'none', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', gap: '8px', fontSize: '14px', fontWeight: 500, transition: 'all 0.2s', marginTop: '1rem' }}
+            onMouseOver={(e) => { e.currentTarget.style.background = '#333'; }}
+            onMouseOut={(e) => { e.currentTarget.style.background = '#222'; }}
           >
-            <i className="fas fa-plus" style={{ fontSize: '1rem', color: '#6b7280' }}></i>
-            <span style={{ fontWeight: 500, color: '#6b7280' }}>Add a package</span>
-          </div>
+            <i className="fas fa-plus" style={{ fontSize: '0.875rem' }}></i>
+            <span>Add a package</span>
+          </button>
         </div>
       )}
 
@@ -3552,7 +3554,7 @@ function ServicesStep({ formData, setFormData }) {
                     Price Type
                   </label>
                   <select
-                    value={editingPackage?.priceType || 'flat'}
+                    value={editingPackage?.priceType || 'fixed_price'}
                     onChange={(e) => setEditingPackage(prev => ({ ...prev, priceType: e.target.value }))}
                     style={{
                       width: '100%',
@@ -3562,8 +3564,9 @@ function ServicesStep({ formData, setFormData }) {
                       fontSize: '14px'
                     }}
                   >
-                    <option value="flat">Fixed Price</option>
-                    <option value="per_person">Per Person</option>
+                    <option value="time_based">Time-based (Hourly)</option>
+                    <option value="fixed_price">Fixed Price</option>
+                    <option value="per_attendee">Per Attendee</option>
                   </select>
                 </div>
               </div>
@@ -3761,7 +3764,9 @@ function ServicesStep({ formData, setFormData }) {
                 <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>Edit Service</h3>
                 <button
                   onClick={() => setShowEditModal(false)}
-                  style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: '#6b7280', padding: 0 }}
+                  style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#6b7280', padding: '4px 8px', borderRadius: '6px' }}
+                  onMouseOver={(e) => e.currentTarget.style.background = '#f3f4f6'}
+                  onMouseOut={(e) => e.currentTarget.style.background = 'none'}
                 >
                   ×
                 </button>
@@ -3858,13 +3863,12 @@ function ServicesStep({ formData, setFormData }) {
                       padding: '12px 14px',
                       border: '1px solid #e5e7eb',
                       borderRadius: '8px',
-                      fontSize: '14px',
-                      background: '#f9fafb'
+                      fontSize: '14px'
                     }}
                   >
-                    <option value="hourly">Hourly Rate</option>
-                    <option value="fixed">Fixed Price</option>
-                    <option value="per_person">Per Person</option>
+                    <option value="time_based">Time-based (Hourly)</option>
+                    <option value="fixed_price">Fixed Price</option>
+                    <option value="per_attendee">Per Attendee</option>
                   </select>
                 </div>
                 <div>
@@ -3883,8 +3887,7 @@ function ServicesStep({ formData, setFormData }) {
                       padding: '12px 14px',
                       border: '1px solid #e5e7eb',
                       borderRadius: '8px',
-                      fontSize: '14px',
-                      background: '#f9fafb'
+                      fontSize: '14px'
                     }}
                   />
                 </div>
@@ -3908,8 +3911,7 @@ function ServicesStep({ formData, setFormData }) {
                       padding: '12px 14px',
                       border: '1px solid #e5e7eb',
                       borderRadius: '8px',
-                      fontSize: '14px',
-                      background: '#f9fafb'
+                      fontSize: '14px'
                     }}
                   />
                 </div>
@@ -3929,16 +3931,15 @@ function ServicesStep({ formData, setFormData }) {
                       padding: '12px 14px',
                       border: '1px solid #e5e7eb',
                       borderRadius: '8px',
-                      fontSize: '14px',
-                      background: '#f9fafb'
+                      fontSize: '14px'
                     }}
                   />
                 </div>
               </div>
 
               {/* Description */}
-              <div>
-                <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
                   Description
                 </label>
                 <textarea
@@ -3952,12 +3953,58 @@ function ServicesStep({ formData, setFormData }) {
                     border: '1px solid #e5e7eb',
                     borderRadius: '8px',
                     fontSize: '14px',
-                    background: '#f9fafb',
                     resize: 'vertical',
-                    minHeight: '100px'
+                    fontFamily: 'inherit'
                   }}
                 />
               </div>
+
+              {/* Sale Price Section - matching ServicesPackagesPanel */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                <div>
+                  <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                    Original Price ($)
+                  </label>
+                  <input
+                    type="number"
+                    value={editingService.originalPrice || ''}
+                    onChange={(e) => handleEditModalUpdate('originalPrice', e.target.value)}
+                    min="0"
+                    step="0.01"
+                    placeholder="Regular price"
+                    style={{
+                      width: '100%',
+                      padding: '12px 14px',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                      fontSize: '14px'
+                    }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                    Sale Price ($)
+                  </label>
+                  <input
+                    type="number"
+                    value={editingService.salePrice || ''}
+                    onChange={(e) => handleEditModalUpdate('salePrice', e.target.value)}
+                    min="0"
+                    step="0.01"
+                    placeholder="Discounted price"
+                    style={{
+                      width: '100%',
+                      padding: '12px 14px',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                      fontSize: '14px'
+                    }}
+                  />
+                </div>
+              </div>
+              <p style={{ margin: '0', fontSize: '12px', color: '#6b7280' }}>
+                If both prices are set, the sale price will be shown with the original price crossed out.
+              </p>
             </div>
 
             {/* Modal Footer */}
@@ -3966,14 +4013,16 @@ function ServicesStep({ formData, setFormData }) {
                 onClick={() => setShowEditModal(false)}
                 style={{
                   padding: '10px 20px',
-                  border: '1px solid #e5e7eb',
-                  background: 'white',
-                  color: '#374151',
-                  borderRadius: '8px',
+                  border: 'none',
+                  background: 'transparent',
+                  color: '#222',
+                  borderRadius: '6px',
                   fontWeight: 500,
                   cursor: 'pointer',
                   fontSize: '14px'
                 }}
+                onMouseOver={(e) => e.currentTarget.style.background = '#f3f4f6'}
+                onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
               >
                 Cancel
               </button>
@@ -3982,9 +4031,9 @@ function ServicesStep({ formData, setFormData }) {
                 style={{
                   padding: '10px 20px',
                   border: 'none',
-                  background: '#111827',
+                  background: '#222',
                   color: 'white',
-                  borderRadius: '8px',
+                  borderRadius: '6px',
                   fontWeight: 500,
                   cursor: 'pointer',
                   fontSize: '14px'
