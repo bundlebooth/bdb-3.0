@@ -391,19 +391,22 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
       fixedPrice: null,
       pricePerPerson: null,
       minimumAttendees: null,
-      maximumAttendees: null
+      maximumAttendees: null,
+      salePrice: null
     };
     setServices([...services, newService]);
     setSelectedCount(selectedCount + 1);
     setShowServicePicker(false);
     setSearchQuery('');
+    
+    // Immediately open edit modal so user can configure the service
+    handleEditService(newService);
   };
 
   const handleEditService = (service) => {
     console.log('Editing service:', service); // Debug log
-    setEditingService(service);
     // Pre-fill form with saved data from database - check all possible property name variations
-    setEditForm({
+    const formData = {
       pricingModel: service.pricingModel || service.PricingModel || 'time_based',
       vendorDuration: service.vendorDuration || service.VendorDurationMinutes || service.BaseDurationMinutes || service.defaultDuration || 60,
       baseRate: service.baseRate ?? service.BaseRate ?? '',
@@ -416,7 +419,10 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
       minimumBookingFee: service.minimumBookingFee ?? service.MinimumBookingFee ?? '',
       vendorDescription: service.vendorDescription || service.VendorDescription || service.Description || '',
       imageURL: service.imageURL || service.ImageURL || ''
-    });
+    };
+    console.log('Setting editForm:', formData); // Debug log
+    setEditForm(formData);
+    setEditingService(service);
   };
 
   // Handle service image upload
@@ -452,63 +458,73 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
 
   const handleSaveEdit = async () => {
     // Update local state with properly mapped field names
+    const updatedService = { 
+      ...editingService, 
+      pricingModel: editForm.pricingModel,
+      vendorDuration: editForm.vendorDuration,
+      baseRate: editForm.baseRate,
+      overtimeRatePerHour: editForm.overtimeRatePerHour,
+      fixedPrice: editForm.fixedPrice,
+      pricePerPerson: editForm.pricePerPerson,
+      minimumAttendees: editForm.minimumAttendees,
+      maximumAttendees: editForm.maximumAttendees,
+      vendorDescription: editForm.vendorDescription,
+      imageURL: editForm.imageURL,
+      salePrice: editForm.salePrice
+    };
+    
     const updatedServices = services.map(s => 
-      s.id === editingService.id 
-        ? { 
-            ...s, 
-            pricingModel: editForm.pricingModel,
-            vendorDuration: editForm.vendorDuration,
-            baseRate: editForm.baseRate,
-            overtimeRatePerHour: editForm.overtimeRatePerHour,
-            fixedPrice: editForm.fixedPrice,
-            pricePerPerson: editForm.pricePerPerson,
-            minimumAttendees: editForm.minimumAttendees,
-            maximumAttendees: editForm.maximumAttendees,
-            vendorDescription: editForm.vendorDescription,
-            imageURL: editForm.imageURL,
-            salePrice: editForm.salePrice
-          }
-        : s
+      s.id === editingService.id ? updatedService : s
     );
     setServices(updatedServices);
     const serviceId = editingService.id;
+    
+    // Check if this service exists in the database (has been saved before)
+    // Services loaded from DB have VendorSelectedServiceID or similar markers
+    const isExistingService = editingService.VendorSelectedServiceID || editingService.vendorPrice !== undefined;
+    
     setEditingService(null);
     setEditForm({});
     
-    // Save only this single service to database
-    try {
-      const response = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/services/${serviceId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          salePrice: editForm.salePrice,
-          originalPrice: editForm.originalPrice,
-          pricingModel: editForm.pricingModel,
-          baseDurationMinutes: editForm.vendorDuration,
-          baseRate: editForm.baseRate,
-          overtimeRatePerHour: editForm.overtimeRatePerHour,
-          fixedPrice: editForm.fixedPrice,
-          perPersonPrice: editForm.pricePerPerson,
-          minimumAttendees: editForm.minimumAttendees,
-          maximumAttendees: editForm.maximumAttendees,
-          description: editForm.vendorDescription,
-          imageURL: editForm.imageURL
-        })
-      });
+    if (isExistingService) {
+      // Save only this single service to database
+      try {
+        const response = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/services/${serviceId}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({
+            salePrice: editForm.salePrice,
+            originalPrice: editForm.originalPrice,
+            pricingModel: editForm.pricingModel,
+            baseDurationMinutes: editForm.vendorDuration,
+            baseRate: editForm.baseRate,
+            overtimeRatePerHour: editForm.overtimeRatePerHour,
+            fixedPrice: editForm.fixedPrice,
+            perPersonPrice: editForm.pricePerPerson,
+            minimumAttendees: editForm.minimumAttendees,
+            maximumAttendees: editForm.maximumAttendees,
+            description: editForm.vendorDescription,
+            imageURL: editForm.imageURL
+          })
+        });
 
-      if (response.ok) {
-        showBanner('Service updated successfully!', 'success');
-        // Reload services from API to get fresh data
-        loadServices();
-      } else {
+        if (response.ok) {
+          showBanner('Service updated successfully!', 'success');
+          // Reload services from API to get fresh data
+          await loadServices();
+        } else {
+          showBanner('Failed to save service changes', 'error');
+        }
+      } catch (error) {
+        console.error('Error saving service:', error);
         showBanner('Failed to save service changes', 'error');
       }
-    } catch (error) {
-      console.error('Error saving service:', error);
-      showBanner('Failed to save service changes', 'error');
+    } else {
+      // New service - just update local state, will be saved when user clicks "Save All Services"
+      showBanner('Service configured! Click "Save All Services" to save to database.', 'info');
     }
   };
 
@@ -1196,33 +1212,33 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
                   />
                 </div>
 
-                {/* Sale Price Section - only for non-hourly pricing models */}
-                {editForm.pricingModel !== 'time_based' && (
-                  <>
-                    <div style={{ marginBottom: '16px' }}>
-                      <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
-                        Sale Price ($)
-                      </label>
-                      <input
-                        type="number"
-                        value={editForm.salePrice || ''}
-                        onChange={(e) => setEditForm({ ...editForm, salePrice: e.target.value })}
-                        min="0"
-                        step="0.01"
-                        placeholder="Leave empty if no sale"
-                        style={{
-                          width: '100%',
-                          padding: '12px 14px',
-                          border: '1px solid #e5e7eb',
-                          borderRadius: '8px',
-                          fontSize: '14px'
-                        }}
-                      />
-                      <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#6b7280' }}>
-                        If set, this price will be shown with the regular price crossed out.
-                      </p>
-                    </div>
-                  </>
+                {/* Sale Price Section - show for all non-time_based pricing models */}
+                {editForm.pricingModel && editForm.pricingModel !== 'time_based' && (
+                  <div style={{ marginBottom: '16px', padding: '16px', background: '#fef3c7', borderRadius: '8px', border: '1px solid #fcd34d' }}>
+                    <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#92400e', marginBottom: '8px', textTransform: 'uppercase' }}>
+                      <i className="fas fa-tag" style={{ marginRight: '6px' }}></i>
+                      Sale Price ($) - Optional Promotion
+                    </label>
+                    <input
+                      type="number"
+                      value={editForm.salePrice || ''}
+                      onChange={(e) => setEditForm({ ...editForm, salePrice: e.target.value })}
+                      min="0"
+                      step="0.01"
+                      placeholder="Enter sale price to show discount ribbon"
+                      style={{
+                        width: '100%',
+                        padding: '12px 14px',
+                        border: '1px solid #fcd34d',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        background: 'white'
+                      }}
+                    />
+                    <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#92400e' }}>
+                      Set a sale price lower than the regular price to display a discount ribbon on the service card.
+                    </p>
+                  </div>
                 )}
               </div>
 

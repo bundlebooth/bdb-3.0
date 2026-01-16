@@ -4291,6 +4291,8 @@ router.patch('/:id/services/:predefinedServiceId', async (req, res) => {
     const predefinedServiceId = parseInt(req.params.predefinedServiceId);
     const { pricingModel, baseDurationMinutes, baseRate, overtimeRatePerHour, fixedPrice, perPersonPrice, minimumAttendees, maximumAttendees, description, imageURL, salePrice } = req.body;
     
+    console.log('PATCH service request:', { vendorProfileId, predefinedServiceId, salePrice, pricingModel, fixedPrice });
+    
     const pool = await poolPromise;
     
     // Update vendors.Services table - only columns that exist in the table
@@ -4310,7 +4312,7 @@ router.patch('/:id/services/:predefinedServiceId', async (req, res) => {
     updateRequest.input('SalePrice', sql.Decimal(10, 2), salePrice != null && salePrice !== '' ? parseFloat(salePrice) : null);
     
     // Update vendors.Services table - includes SalePrice column
-    await updateRequest.query(`
+    const result = await updateRequest.query(`
       UPDATE vendors.Services 
       SET 
         PricingModel = COALESCE(@PricingModel, PricingModel),
@@ -4328,7 +4330,9 @@ router.patch('/:id/services/:predefinedServiceId', async (req, res) => {
       WHERE VendorProfileID = @VendorProfileID AND LinkedPredefinedServiceID = @LinkedPredefinedServiceID
     `);
     
-    res.json({ success: true, message: 'Service updated successfully' });
+    console.log('Update result - rows affected:', result.rowsAffected);
+    
+    res.json({ success: true, message: 'Service updated successfully', rowsAffected: result.rowsAffected });
   } catch (error) {
     console.error('Error updating service:', error);
     res.status(500).json({ success: false, message: 'Failed to update service', error: error.message });
