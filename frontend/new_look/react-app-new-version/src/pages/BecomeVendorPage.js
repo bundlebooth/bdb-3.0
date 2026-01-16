@@ -3192,7 +3192,24 @@ function ServicesStep({ formData, setFormData }) {
         <>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
             <h5 style={{ margin: 0, color: '#222', fontWeight: 600, fontSize: '1.25rem' }}>Your Services</h5>
-            <span style={{ color: '#6b7280', fontSize: '0.9rem' }}>{formData.selectedServices.length} added</span>
+            <button
+              onClick={() => setShowModal(true)}
+              style={{
+                padding: '10px 20px',
+                background: '#222',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '0.9rem',
+                fontWeight: 500,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}
+            >
+              <i className="fas fa-plus"></i> Add Service
+            </button>
           </div>
 
       {/* Selected Services List - Using Universal ServiceCard Component */}
@@ -3206,36 +3223,6 @@ function ServicesStep({ formData, setFormData }) {
             onDelete={() => handleRemoveService(service.serviceId)}
           />
         ))}
-        
-        {/* Add Service Button - Black style matching ServicesPackagesPanel */}
-        <button 
-          onClick={() => setShowModal(true)}
-          style={{
-            width: '100%',
-            padding: '12px 24px',
-            background: '#222',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            gap: '8px',
-            fontSize: '14px',
-            fontWeight: 500,
-            transition: 'all 0.2s'
-          }}
-          onMouseOver={(e) => {
-            e.currentTarget.style.background = '#333';
-          }}
-          onMouseOut={(e) => {
-            e.currentTarget.style.background = '#222';
-          }}
-        >
-          <i className="fas fa-plus" style={{ fontSize: '0.875rem' }}></i>
-          <span>Add a service</span>
-        </button>
       </PackageServiceList>
 
       {/* Service Selection Modal */}
@@ -3336,17 +3323,6 @@ function ServicesStep({ formData, setFormData }) {
               );
             })}
           </PackageServiceList>
-            
-          {/* Add Package Button - Black style */}
-          <button 
-            onClick={handleAddPackage}
-            style={{ width: '100%', padding: '12px 24px', background: '#222', color: 'white', border: 'none', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', gap: '8px', fontSize: '14px', fontWeight: 500, transition: 'all 0.2s', marginTop: '1rem' }}
-            onMouseOver={(e) => { e.currentTarget.style.background = '#333'; }}
-            onMouseOut={(e) => { e.currentTarget.style.background = '#222'; }}
-          >
-            <i className="fas fa-plus" style={{ fontSize: '0.875rem' }}></i>
-            <span>Add a package</span>
-          </button>
         </div>
       )}
 
@@ -3531,26 +3507,6 @@ function ServicesStep({ formData, setFormData }) {
                 </div>
                 <div>
                   <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
-                    Duration (hrs)
-                  </label>
-                  <input
-                    type="number"
-                    value={editingPackage?.duration || ''}
-                    onChange={(e) => setEditingPackage(prev => ({ ...prev, duration: e.target.value }))}
-                    placeholder="e.g., 4"
-                    min="0"
-                    step="0.5"
-                    style={{
-                      width: '100%',
-                      padding: '12px 14px',
-                      border: '1px solid #e5e7eb',
-                      borderRadius: '8px',
-                      fontSize: '14px'
-                    }}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
                     Price Type
                   </label>
                   <select
@@ -3570,6 +3526,124 @@ function ServicesStep({ formData, setFormData }) {
                   </select>
                 </div>
               </div>
+
+              {/* Dynamic Pricing Fields based on Price Type */}
+              {editingPackage?.priceType === 'time_based' && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                      Duration (hours) *
+                    </label>
+                    <input
+                      type="number"
+                      value={editingPackage?.duration || ''}
+                      onChange={(e) => setEditingPackage(prev => ({ ...prev, duration: e.target.value }))}
+                      min="0.5"
+                      step="0.5"
+                      style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '14px' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                      Base Rate ($) *
+                    </label>
+                    <input
+                      type="number"
+                      value={editingPackage?.baseRate || ''}
+                      onChange={(e) => setEditingPackage(prev => ({ ...prev, baseRate: e.target.value }))}
+                      min="0"
+                      step="0.01"
+                      style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '14px' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                      Overtime ($/hr)
+                    </label>
+                    <input
+                      type="number"
+                      value={editingPackage?.overtimeRate || ''}
+                      onChange={(e) => setEditingPackage(prev => ({ ...prev, overtimeRate: e.target.value }))}
+                      min="0"
+                      step="0.01"
+                      style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '14px' }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {editingPackage?.priceType === 'fixed_price' && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                      Fixed Price ($) *
+                    </label>
+                    <input
+                      type="number"
+                      value={editingPackage?.fixedPrice || editingPackage?.price || ''}
+                      onChange={(e) => setEditingPackage(prev => ({ ...prev, fixedPrice: e.target.value, price: e.target.value }))}
+                      min="0"
+                      step="0.01"
+                      style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '14px' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                      Duration (hours)
+                    </label>
+                    <input
+                      type="number"
+                      value={editingPackage?.duration || ''}
+                      onChange={(e) => setEditingPackage(prev => ({ ...prev, duration: e.target.value }))}
+                      min="0.5"
+                      step="0.5"
+                      style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '14px' }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {editingPackage?.priceType === 'per_attendee' && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                      Price/Person ($) *
+                    </label>
+                    <input
+                      type="number"
+                      value={editingPackage?.pricePerPerson || editingPackage?.price || ''}
+                      onChange={(e) => setEditingPackage(prev => ({ ...prev, pricePerPerson: e.target.value, price: e.target.value }))}
+                      min="0"
+                      step="0.01"
+                      style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '14px' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                      Min Attendees
+                    </label>
+                    <input
+                      type="number"
+                      value={editingPackage?.minAttendees || ''}
+                      onChange={(e) => setEditingPackage(prev => ({ ...prev, minAttendees: e.target.value }))}
+                      min="1"
+                      style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '14px' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                      Max Attendees
+                    </label>
+                    <input
+                      type="number"
+                      value={editingPackage?.maxAttendees || ''}
+                      onChange={(e) => setEditingPackage(prev => ({ ...prev, maxAttendees: e.target.value }))}
+                      min="1"
+                      style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '14px' }}
+                    />
+                  </div>
+                </div>
+              )}
 
               {/* Included Services */}
               <div style={{ marginBottom: '16px' }}>

@@ -4293,10 +4293,10 @@ router.patch('/:id/services/:predefinedServiceId', async (req, res) => {
     
     const pool = await poolPromise;
     
-    // Update VendorSelectedServices table
+    // Update vendors.Services table (the main services table with all pricing fields)
     const updateRequest = new sql.Request(pool);
     updateRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-    updateRequest.input('PredefinedServiceID', sql.Int, predefinedServiceId);
+    updateRequest.input('LinkedPredefinedServiceID', sql.Int, predefinedServiceId);
     updateRequest.input('SalePrice', sql.Decimal(10, 2), salePrice != null && salePrice !== '' ? parseFloat(salePrice) : null);
     updateRequest.input('OriginalPrice', sql.Decimal(10, 2), originalPrice != null && originalPrice !== '' ? parseFloat(originalPrice) : null);
     updateRequest.input('PricingModel', sql.NVarChar(50), pricingModel || null);
@@ -4304,29 +4304,30 @@ router.patch('/:id/services/:predefinedServiceId', async (req, res) => {
     updateRequest.input('BaseRate', sql.Decimal(10, 2), baseRate != null && baseRate !== '' ? parseFloat(baseRate) : null);
     updateRequest.input('OvertimeRatePerHour', sql.Decimal(10, 2), overtimeRatePerHour != null && overtimeRatePerHour !== '' ? parseFloat(overtimeRatePerHour) : null);
     updateRequest.input('FixedPrice', sql.Decimal(10, 2), fixedPrice != null && fixedPrice !== '' ? parseFloat(fixedPrice) : null);
-    updateRequest.input('PerPersonPrice', sql.Decimal(10, 2), perPersonPrice != null && perPersonPrice !== '' ? parseFloat(perPersonPrice) : null);
-    updateRequest.input('MinAttendees', sql.Int, minimumAttendees != null && minimumAttendees !== '' ? parseInt(minimumAttendees) : null);
-    updateRequest.input('MaxAttendees', sql.Int, maximumAttendees != null && maximumAttendees !== '' ? parseInt(maximumAttendees) : null);
-    updateRequest.input('VendorDescription', sql.NVarChar(sql.MAX), description || null);
+    updateRequest.input('PricePerPerson', sql.Decimal(10, 2), perPersonPrice != null && perPersonPrice !== '' ? parseFloat(perPersonPrice) : null);
+    updateRequest.input('MinimumAttendees', sql.Int, minimumAttendees != null && minimumAttendees !== '' ? parseInt(minimumAttendees) : null);
+    updateRequest.input('MaximumAttendees', sql.Int, maximumAttendees != null && maximumAttendees !== '' ? parseInt(maximumAttendees) : null);
+    updateRequest.input('Description', sql.NVarChar(sql.MAX), description || null);
     updateRequest.input('ImageURL', sql.NVarChar(500), imageURL || null);
     
-    // Direct SQL update since we may not have a stored procedure for this
+    // Update vendors.Services table which has the correct column names
     await updateRequest.query(`
-      UPDATE vendors.VendorSelectedServices 
+      UPDATE vendors.Services 
       SET 
         SalePrice = @SalePrice,
         OriginalPrice = @OriginalPrice,
         PricingModel = COALESCE(@PricingModel, PricingModel),
-        VendorDuration = COALESCE(@BaseDurationMinutes, VendorDuration),
+        BaseDurationMinutes = COALESCE(@BaseDurationMinutes, BaseDurationMinutes),
+        DurationMinutes = COALESCE(@BaseDurationMinutes, DurationMinutes),
         BaseRate = @BaseRate,
         OvertimeRatePerHour = @OvertimeRatePerHour,
         FixedPrice = @FixedPrice,
-        PerPersonPrice = @PerPersonPrice,
-        MinAttendees = @MinAttendees,
-        MaxAttendees = @MaxAttendees,
-        VendorDescription = COALESCE(@VendorDescription, VendorDescription),
+        PricePerPerson = @PricePerPerson,
+        MinimumAttendees = @MinimumAttendees,
+        MaximumAttendees = @MaximumAttendees,
+        Description = COALESCE(@Description, Description),
         ImageURL = COALESCE(@ImageURL, ImageURL)
-      WHERE VendorProfileID = @VendorProfileID AND PredefinedServiceID = @PredefinedServiceID
+      WHERE VendorProfileID = @VendorProfileID AND LinkedPredefinedServiceID = @LinkedPredefinedServiceID
     `);
     
     res.json({ success: true, message: 'Service updated successfully' });

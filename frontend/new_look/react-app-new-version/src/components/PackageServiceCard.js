@@ -170,16 +170,17 @@ export const ServiceCard = ({
                 {(() => {
                   const pricingModel = service.pricingModel || service.PricingModel || pricing.type;
                   if (pricingModel === 'time_based' || pricingModel === 'hourly' || pricingModel === 'per_hour') {
-                    return <span className="psc-tag"><i className="far fa-clock"></i> Hourly</span>;
+                    return <span className="psc-tag"><i className="far fa-clock" style={{ marginRight: '4px' }}></i>Hourly</span>;
                   } else if (pricingModel === 'fixed_price' || pricingModel === 'fixed') {
-                    return <span className="psc-tag"><i className="fas fa-tag"></i> Fixed</span>;
+                    return <span className="psc-tag"><i className="fas fa-tag" style={{ marginRight: '4px' }}></i>Fixed</span>;
                   } else if (pricingModel === 'per_attendee' || pricingModel === 'per_person') {
-                    return <span className="psc-tag"><i className="fas fa-users"></i> Per Person</span>;
+                    return <span className="psc-tag"><i className="fas fa-users" style={{ marginRight: '4px' }}></i>Per Person</span>;
                   }
                   return null;
                 })()}
                 {formatDuration(duration) && (
                   <span className="psc-tag">
+                    <i className="far fa-clock" style={{ marginRight: '4px' }}></i>
                     {formatDuration(duration)}
                   </span>
                 )}

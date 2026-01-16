@@ -25,11 +25,17 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
     includedServices: [],
     price: '',
     salePrice: '',
-    priceType: 'fixed', // 'fixed' or 'per_person'
+    priceType: 'fixed_price',
     durationMinutes: '',
     imageURL: '',
     finePrint: '',
-    isActive: true
+    isActive: true,
+    baseRate: '',
+    overtimeRate: '',
+    fixedPrice: '',
+    pricePerPerson: '',
+    minAttendees: '',
+    maxAttendees: ''
   });
   const [packageServiceSearch, setPackageServiceSearch] = useState('');
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -607,35 +613,6 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
                 />
               ))}
               
-              {/* Add Package Button - Black style */}
-              <button 
-                onClick={services.length > 0 ? handleCreatePackage : () => { showBanner('Please create individual services first', 'warning'); setActiveTab('services'); }}
-                style={{
-                  width: '100%',
-                  padding: '12px 24px',
-                  background: '#222',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  gap: '8px',
-                  fontSize: '14px',
-                  fontWeight: 500,
-                  transition: 'all 0.2s'
-                }}
-                onMouseOver={(e) => {
-                  e.currentTarget.style.background = '#333';
-                }}
-                onMouseOut={(e) => {
-                  e.currentTarget.style.background = '#222';
-                }}
-              >
-                <i className="fas fa-plus" style={{ fontSize: '0.875rem' }}></i>
-                <span>Add a package</span>
-              </button>
             </PackageServiceList>
 
             {/* Save Button for Packages */}
@@ -651,9 +628,24 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
         <div id="vendor-settings-services-container" style={{ display: !loading && activeTab === 'services' ? 'block' : 'none' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
             <h5 style={{ margin: 0, color: '#222', fontWeight: 600, fontSize: '1.25rem' }}>Your Services</h5>
-            <span id="vendor-settings-selected-count" style={{ color: '#6b7280', fontSize: '0.9rem' }}>
-              {selectedCount} added
-            </span>
+            <button
+              onClick={() => setShowServicePicker(true)}
+              style={{
+                padding: '10px 20px',
+                background: '#222',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '0.9rem',
+                fontWeight: 500,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}
+            >
+              <i className="fas fa-plus"></i> Add Service
+            </button>
           </div>
 
           <PackageServiceList>
@@ -667,35 +659,6 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
               />
             ))}
             
-            {/* Add Service Button - Black style matching packages */}
-            <button 
-              onClick={() => setShowServicePicker(true)}
-              style={{
-                width: '100%',
-                padding: '12px 24px',
-                background: '#222',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                gap: '8px',
-                fontSize: '14px',
-                fontWeight: 500,
-                transition: 'all 0.2s'
-              }}
-              onMouseOver={(e) => {
-                e.currentTarget.style.background = '#333';
-              }}
-              onMouseOut={(e) => {
-                e.currentTarget.style.background = '#222';
-              }}
-            >
-              <i className="fas fa-plus" style={{ fontSize: '0.875rem' }}></i>
-              <span>Add a service</span>
-            </button>
           </PackageServiceList>
 
           <div style={{ marginTop: '2rem' }}>
@@ -1425,30 +1388,123 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
                   </div>
                 </div>
 
-                {/* Duration */}
-                <div style={{ marginBottom: '16px' }}>
-                  <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
-                    Duration (hours)
-                  </label>
-                  <input
-                    type="number"
-                    value={packageForm.durationMinutes ? (packageForm.durationMinutes / 60).toFixed(1) : ''}
-                    onChange={(e) => setPackageForm({ ...packageForm, durationMinutes: e.target.value ? Math.round(parseFloat(e.target.value) * 60) : '' })}
-                    placeholder="e.g., 2 for 2 hours"
-                    min="0.5"
-                    step="0.5"
-                    style={{
-                      width: '100%',
-                      padding: '12px 14px',
-                      border: '1px solid #e5e7eb',
-                      borderRadius: '8px',
-                      fontSize: '14px'
-                    }}
-                  />
-                  <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#9ca3af' }}>
-                    How long does this package typically take?
-                  </p>
-                </div>
+                {/* Dynamic Pricing Fields based on Price Type - matching service modal */}
+                {packageForm.priceType === 'time_based' && (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                        Duration (hours) *
+                      </label>
+                      <input
+                        type="number"
+                        value={packageForm.durationMinutes ? (packageForm.durationMinutes / 60).toFixed(1) : ''}
+                        onChange={(e) => setPackageForm({ ...packageForm, durationMinutes: e.target.value ? Math.round(parseFloat(e.target.value) * 60) : '' })}
+                        min="0.5"
+                        step="0.5"
+                        style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '14px' }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                        Base Rate ($) *
+                      </label>
+                      <input
+                        type="number"
+                        value={packageForm.baseRate || ''}
+                        onChange={(e) => setPackageForm({ ...packageForm, baseRate: e.target.value })}
+                        min="0"
+                        step="0.01"
+                        style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '14px' }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                        Overtime ($/hr)
+                      </label>
+                      <input
+                        type="number"
+                        value={packageForm.overtimeRate || ''}
+                        onChange={(e) => setPackageForm({ ...packageForm, overtimeRate: e.target.value })}
+                        min="0"
+                        step="0.01"
+                        style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '14px' }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {packageForm.priceType === 'fixed_price' && (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                        Fixed Price ($) *
+                      </label>
+                      <input
+                        type="number"
+                        value={packageForm.fixedPrice || ''}
+                        onChange={(e) => setPackageForm({ ...packageForm, fixedPrice: e.target.value })}
+                        min="0"
+                        step="0.01"
+                        style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '14px' }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                        Duration (hours)
+                      </label>
+                      <input
+                        type="number"
+                        value={packageForm.durationMinutes ? (packageForm.durationMinutes / 60).toFixed(1) : ''}
+                        onChange={(e) => setPackageForm({ ...packageForm, durationMinutes: e.target.value ? Math.round(parseFloat(e.target.value) * 60) : '' })}
+                        min="0.5"
+                        step="0.5"
+                        style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '14px' }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {packageForm.priceType === 'per_attendee' && (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                        Price/Person ($) *
+                      </label>
+                      <input
+                        type="number"
+                        value={packageForm.pricePerPerson || ''}
+                        onChange={(e) => setPackageForm({ ...packageForm, pricePerPerson: e.target.value })}
+                        min="0"
+                        step="0.01"
+                        style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '14px' }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                        Min Attendees
+                      </label>
+                      <input
+                        type="number"
+                        value={packageForm.minAttendees || ''}
+                        onChange={(e) => setPackageForm({ ...packageForm, minAttendees: e.target.value })}
+                        min="1"
+                        style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '14px' }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                        Max Attendees
+                      </label>
+                      <input
+                        type="number"
+                        value={packageForm.maxAttendees || ''}
+                        onChange={(e) => setPackageForm({ ...packageForm, maxAttendees: e.target.value })}
+                        min="1"
+                        style={{ width: '100%', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '14px' }}
+                      />
+                    </div>
+                  </div>
+                )}
 
                 {/* Included Services */}
                 <div style={{ marginBottom: '16px' }}>

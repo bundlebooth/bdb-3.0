@@ -603,17 +603,18 @@ function BookingPage() {
       // Validate attendee count against selected package/services min/max
       const attendees = parseInt(bookingData.attendeeCount) || 0;
       
-      // Check package attendee limits
+      // Check package attendee limits (for any package with min/max set, regardless of pricing model)
       if (selectedPackage) {
         const minAttendees = selectedPackage.MinAttendees || selectedPackage.minAttendees || selectedPackage.MinimumAttendees || selectedPackage.minimumAttendees;
         const maxAttendees = selectedPackage.MaxAttendees || selectedPackage.maxAttendees || selectedPackage.MaximumAttendees || selectedPackage.maximumAttendees;
+        const packageName = selectedPackage.PackageName || selectedPackage.name || 'This package';
         
         if (minAttendees && attendees < parseInt(minAttendees)) {
-          alert(`This package requires at least ${minAttendees} guests. You entered ${attendees} guests.`);
+          alert(`"${packageName}" requires at least ${minAttendees} guests. You entered ${attendees} guests.`);
           return false;
         }
         if (maxAttendees && attendees > parseInt(maxAttendees)) {
-          alert(`This package allows a maximum of ${maxAttendees} guests. You entered ${attendees} guests.`);
+          alert(`"${packageName}" allows a maximum of ${maxAttendees} guests. You entered ${attendees} guests.`);
           return false;
         }
       }
