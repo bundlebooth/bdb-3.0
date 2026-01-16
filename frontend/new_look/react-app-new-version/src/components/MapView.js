@@ -335,10 +335,18 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false, u
     
     isInitializingRef.current = true;
     
-    if (!window.google || !window.google.maps) {
-      // Wait for Google Maps to be loaded from CDN
+    // Check if Google Maps API is fully loaded (including ControlPosition)
+    const isGoogleMapsReady = () => {
+      return window.google && 
+             window.google.maps && 
+             window.google.maps.Map && 
+             window.google.maps.ControlPosition;
+    };
+    
+    if (!isGoogleMapsReady()) {
+      // Wait for Google Maps to be fully loaded from CDN
       const checkGoogleMaps = setInterval(() => {
-        if (window.google && window.google.maps) {
+        if (isGoogleMapsReady()) {
           clearInterval(checkGoogleMaps);
           createMap();
           isInitializingRef.current = false;

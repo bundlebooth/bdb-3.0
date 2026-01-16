@@ -523,8 +523,14 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
         showBanner('Failed to save service changes', 'error');
       }
     } else {
-      // New service - just update local state, will be saved when user clicks "Save All Services"
-      showBanner('Service configured! Click "Save All Services" to save to database.', 'info');
+      // New service - save all services to database immediately
+      try {
+        await handleSaveServices();
+        showBanner('Service added and saved successfully!', 'success');
+      } catch (error) {
+        console.error('Error saving new service:', error);
+        showBanner('Failed to save new service', 'error');
+      }
     }
   };
 

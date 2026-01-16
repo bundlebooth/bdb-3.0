@@ -103,7 +103,8 @@ BEGIN
         s.FixedPrice,
         s.PricePerPerson,
         s.MinimumAttendees,
-        s.MaximumAttendees AS Capacity
+        s.MaximumAttendees AS Capacity,
+        s.SalePrice
     FROM vendors.Services s
     LEFT JOIN admin.PredefinedServices ps ON ps.PredefinedServiceID = s.LinkedPredefinedServiceID
     WHERE s.VendorProfileID = @VendorProfileID 
