@@ -619,13 +619,13 @@ function BookingPage() {
         }
       }
       
-      // Check selected services attendee limits
+      // Check selected services attendee limits (only for per_attendee pricing model)
       for (const service of selectedServices) {
         const pricingModel = service.PricingModel || service.pricingModel;
         if (pricingModel === 'per_attendee' || pricingModel === 'per_person') {
           const minAttendees = service.MinAttendees || service.minAttendees || service.MinimumAttendees || service.minimumAttendees;
           const maxAttendees = service.MaxAttendees || service.maxAttendees || service.MaximumAttendees || service.maximumAttendees;
-          const serviceName = service.ServiceName || service.name;
+          const serviceName = service.ServiceName || service.name || service.serviceName;
           
           if (minAttendees && attendees < parseInt(minAttendees)) {
             alert(`"${serviceName}" requires at least ${minAttendees} guests. You entered ${attendees} guests.`);
@@ -874,6 +874,31 @@ function BookingPage() {
 
   // State for duration warning modal
   const [durationWarning, setDurationWarning] = useState(null);
+  
+  // State for attendee warning modal
+  const [attendeeWarning, setAttendeeWarning] = useState(null);
+  
+  // Check if attendee count fits service/package limits
+  const checkAttendeeFits = (service) => {
+    const attendees = parseInt(bookingData.attendeeCount) || 0;
+    const pricingModel = service.PricingModel || service.pricingModel;
+    
+    // Only check for per_attendee pricing model
+    if (pricingModel !== 'per_attendee' && pricingModel !== 'per_person') {
+      return { fits: true };
+    }
+    
+    const minAttendees = service.MinAttendees || service.minAttendees || service.MinimumAttendees || service.minimumAttendees;
+    const maxAttendees = service.MaxAttendees || service.maxAttendees || service.MaximumAttendees || service.maximumAttendees;
+    
+    if (minAttendees && attendees < parseInt(minAttendees)) {
+      return { fits: false, min: minAttendees, max: maxAttendees, current: attendees, reason: 'below_min' };
+    }
+    if (maxAttendees && attendees > parseInt(maxAttendees)) {
+      return { fits: false, min: minAttendees, max: maxAttendees, current: attendees, reason: 'above_max' };
+    }
+    return { fits: true };
+  };
 
   const profile = vendorData?.profile || {};
   const businessName = profile.BusinessName || profile.Name || 'Vendor';
@@ -1195,7 +1220,20 @@ function BookingPage() {
                                   slotDuration: durationCheck.slotDuration
                                 });
                               } else {
-                                setSelectedServices([...selectedServices, service]);
+                                // Check attendee limits for per_attendee pricing
+                                const attendeeCheck = checkAttendeeFits(service);
+                                if (!attendeeCheck.fits) {
+                                  setAttendeeWarning({
+                                    type: 'service',
+                                    name: serviceName,
+                                    min: attendeeCheck.min,
+                                    max: attendeeCheck.max,
+                                    current: attendeeCheck.current,
+                                    reason: attendeeCheck.reason
+                                  });
+                                } else {
+                                  setSelectedServices([...selectedServices, service]);
+                                }
                               }
                             }
                           }}
@@ -1842,6 +1880,50 @@ function BookingPage() {
             </p>
             <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>
               Please go back to Step 1 to select a longer time slot, or choose a different {durationWarning.type}.
+            </p>
+          </div>
+        </UniversalModal>
+      )}
+
+      {/* Attendee Warning Modal */}
+      {attendeeWarning && (
+        <UniversalModal
+          isOpen={!!attendeeWarning}
+          onClose={() => setAttendeeWarning(null)}
+          title="Guest Count Doesn't Match"
+          size="small"
+          footerCentered={true}
+          primaryAction={{
+            label: 'Go to Step 1',
+            onClick: () => {
+              setAttendeeWarning(null);
+              setCurrentStep(1);
+            }
+          }}
+          secondaryAction={{
+            label: 'Choose Another',
+            onClick: () => setAttendeeWarning(null)
+          }}
+        >
+          <div style={{ textAlign: 'center', padding: '1rem 0' }}>
+            <div style={{
+              width: '64px',
+              height: '64px',
+              borderRadius: '50%',
+              background: '#fef3c7',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 1.5rem'
+            }}>
+              <i className="fas fa-users" style={{ fontSize: '28px', color: '#f59e0b' }}></i>
+            </div>
+            <p style={{ color: '#6b7280', marginBottom: '1rem', lineHeight: 1.6 }}>
+              The <strong>{attendeeWarning.name}</strong> {attendeeWarning.type} requires <strong>{attendeeWarning.min}-{attendeeWarning.max} guests</strong>, 
+              but you entered <strong>{attendeeWarning.current} guests</strong>.
+            </p>
+            <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>
+              Please go back to Step 1 to update your guest count, or choose a different {attendeeWarning.type}.
             </p>
           </div>
         </UniversalModal>

@@ -356,22 +356,22 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
   };
 
   const handleEditService = (service) => {
+    console.log('Editing service:', service); // Debug log
     setEditingService(service);
-    // Pre-fill form with saved data from database
+    // Pre-fill form with saved data from database - check all possible property name variations
     setEditForm({
-      pricingModel: service.pricingModel || 'time_based',
-      vendorDuration: service.vendorDuration || service.defaultDuration || 60,
-      baseRate: service.baseRate !== null && service.baseRate !== undefined ? service.baseRate : '',
-      salePrice: service.salePrice || service.SalePrice || '',
-      originalPrice: service.originalPrice || service.OriginalPrice || '',
-      overtimeRatePerHour: service.overtimeRatePerHour !== null && service.overtimeRatePerHour !== undefined ? service.overtimeRatePerHour : '',
-      fixedPrice: service.fixedPrice !== null && service.fixedPrice !== undefined ? service.fixedPrice : '',
-      pricePerPerson: service.pricePerPerson !== null && service.pricePerPerson !== undefined ? service.pricePerPerson : '',
-      minimumAttendees: service.minimumAttendees || '',
-      maximumAttendees: service.maximumAttendees || '',
-      minimumBookingFee: service.minimumBookingFee || '',
-      vendorDescription: service.vendorDescription || '',
-      imageURL: service.imageURL || ''
+      pricingModel: service.pricingModel || service.PricingModel || 'time_based',
+      vendorDuration: service.vendorDuration || service.VendorDurationMinutes || service.BaseDurationMinutes || service.defaultDuration || 60,
+      baseRate: service.baseRate ?? service.BaseRate ?? '',
+      salePrice: service.salePrice ?? service.SalePrice ?? '',
+      overtimeRatePerHour: service.overtimeRatePerHour ?? service.OvertimeRatePerHour ?? '',
+      fixedPrice: service.fixedPrice ?? service.FixedPrice ?? '',
+      pricePerPerson: service.pricePerPerson ?? service.PricePerPerson ?? '',
+      minimumAttendees: service.minimumAttendees ?? service.MinimumAttendees ?? '',
+      maximumAttendees: service.maximumAttendees ?? service.MaximumAttendees ?? '',
+      minimumBookingFee: service.minimumBookingFee ?? service.MinimumBookingFee ?? '',
+      vendorDescription: service.vendorDescription || service.VendorDescription || service.Description || '',
+      imageURL: service.imageURL || service.ImageURL || ''
     });
   };
 
@@ -407,10 +407,22 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
   };
 
   const handleSaveEdit = async () => {
-    // Update local state
+    // Update local state with properly mapped field names
     const updatedServices = services.map(s => 
       s.id === editingService.id 
-        ? { ...s, ...editForm }
+        ? { 
+            ...s, 
+            pricingModel: editForm.pricingModel,
+            vendorDuration: editForm.vendorDuration,
+            baseRate: editForm.baseRate,
+            overtimeRatePerHour: editForm.overtimeRatePerHour,
+            fixedPrice: editForm.fixedPrice,
+            pricePerPerson: editForm.pricePerPerson,
+            minimumAttendees: editForm.minimumAttendees,
+            maximumAttendees: editForm.maximumAttendees,
+            vendorDescription: editForm.vendorDescription,
+            imageURL: editForm.imageURL
+          }
         : s
     );
     setServices(updatedServices);
@@ -444,6 +456,8 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
 
       if (response.ok) {
         showBanner('Service updated successfully!', 'success');
+        // Reload services from API to get fresh data
+        loadServices();
       } else {
         showBanner('Failed to save service changes', 'error');
       }
@@ -1303,92 +1317,29 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
                   />
                 </div>
 
-                {/* Description */}
+                {/* Pricing Model - First */}
                 <div style={{ marginBottom: '16px' }}>
                   <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
-                    Description
+                    Pricing Model *
                   </label>
-                  <textarea
-                    value={packageForm.description}
-                    onChange={(e) => setPackageForm({ ...packageForm, description: e.target.value })}
-                    placeholder="Describe what's included in this package..."
-                    rows={3}
+                  <select
+                    value={packageForm.priceType}
+                    onChange={(e) => setPackageForm({ ...packageForm, priceType: e.target.value })}
                     style={{
                       width: '100%',
                       padding: '12px 14px',
                       border: '1px solid #e5e7eb',
                       borderRadius: '8px',
-                      fontSize: '14px',
-                      resize: 'vertical'
+                      fontSize: '14px'
                     }}
-                  />
+                  >
+                    <option value="time_based">Time-based (Hourly)</option>
+                    <option value="fixed_price">Fixed Price</option>
+                    <option value="per_attendee">Per Attendee</option>
+                  </select>
                 </div>
 
-                {/* Pricing */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-                  <div>
-                    <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
-                      Price *
-                    </label>
-                    <input
-                      type="number"
-                      value={packageForm.price}
-                      onChange={(e) => setPackageForm({ ...packageForm, price: e.target.value })}
-                      placeholder="0"
-                      min="0"
-                      step="0.01"
-                      style={{
-                        width: '100%',
-                        padding: '12px 14px',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '8px',
-                        fontSize: '14px'
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
-                      Sale Price
-                    </label>
-                    <input
-                      type="number"
-                      value={packageForm.salePrice}
-                      onChange={(e) => setPackageForm({ ...packageForm, salePrice: e.target.value })}
-                      placeholder="Optional"
-                      min="0"
-                      step="0.01"
-                      style={{
-                        width: '100%',
-                        padding: '12px 14px',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '8px',
-                        fontSize: '14px'
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
-                      Price Type
-                    </label>
-                    <select
-                      value={packageForm.priceType}
-                      onChange={(e) => setPackageForm({ ...packageForm, priceType: e.target.value })}
-                      style={{
-                        width: '100%',
-                        padding: '12px 14px',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '8px',
-                        fontSize: '14px'
-                      }}
-                    >
-                      <option value="time_based">Time-based (Hourly)</option>
-                      <option value="fixed_price">Fixed Price</option>
-                      <option value="per_attendee">Per Attendee</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Dynamic Pricing Fields based on Price Type - matching service modal */}
+                {/* Dynamic Pricing Fields based on Price Type */}
                 {packageForm.priceType === 'time_based' && (
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
                     <div>
@@ -1505,6 +1456,74 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
                     </div>
                   </div>
                 )}
+
+                {/* Description - After pricing fields */}
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                    Description
+                  </label>
+                  <textarea
+                    value={packageForm.description}
+                    onChange={(e) => setPackageForm({ ...packageForm, description: e.target.value })}
+                    placeholder="Describe what's included in this package..."
+                    rows={3}
+                    style={{
+                      width: '100%',
+                      padding: '12px 14px',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      resize: 'vertical'
+                    }}
+                  />
+                </div>
+
+                {/* Original Price / Sale Price - At the end */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                      Original Price ($)
+                    </label>
+                    <input
+                      type="number"
+                      value={packageForm.price}
+                      onChange={(e) => setPackageForm({ ...packageForm, price: e.target.value })}
+                      placeholder="Regular price"
+                      min="0"
+                      step="0.01"
+                      style={{
+                        width: '100%',
+                        padding: '12px 14px',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '8px',
+                        fontSize: '14px'
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                      Sale Price ($)
+                    </label>
+                    <input
+                      type="number"
+                      value={packageForm.salePrice}
+                      onChange={(e) => setPackageForm({ ...packageForm, salePrice: e.target.value })}
+                      placeholder="Discounted price"
+                      min="0"
+                      step="0.01"
+                      style={{
+                        width: '100%',
+                        padding: '12px 14px',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '8px',
+                        fontSize: '14px'
+                      }}
+                    />
+                  </div>
+                </div>
+                <p style={{ fontSize: '12px', color: '#6b7280', marginBottom: '16px', marginTop: '-8px' }}>
+                  If both prices are set, the sale price will be shown with the original price crossed out.
+                </p>
 
                 {/* Included Services */}
                 <div style={{ marginBottom: '16px' }}>

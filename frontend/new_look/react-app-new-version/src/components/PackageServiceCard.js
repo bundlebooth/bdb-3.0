@@ -174,6 +174,14 @@ export const ServiceCard = ({
                   } else if (pricingModel === 'fixed_price' || pricingModel === 'fixed') {
                     return <span className="psc-tag"><i className="fas fa-tag" style={{ marginRight: '4px' }}></i>Fixed</span>;
                   } else if (pricingModel === 'per_attendee' || pricingModel === 'per_person') {
+                    // Show attendee range instead of "Per Person" if min/max are set
+                    if (minAttendees && maxAttendees) {
+                      return <span className="psc-tag"><i className="fas fa-users" style={{ marginRight: '4px' }}></i>{minAttendees}-{maxAttendees}</span>;
+                    } else if (minAttendees) {
+                      return <span className="psc-tag"><i className="fas fa-users" style={{ marginRight: '4px' }}></i>Min {minAttendees}</span>;
+                    } else if (maxAttendees) {
+                      return <span className="psc-tag"><i className="fas fa-users" style={{ marginRight: '4px' }}></i>Max {maxAttendees}</span>;
+                    }
                     return <span className="psc-tag"><i className="fas fa-users" style={{ marginRight: '4px' }}></i>Per Person</span>;
                   }
                   return null;
