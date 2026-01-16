@@ -4289,15 +4289,14 @@ router.patch('/:id/services/:predefinedServiceId', async (req, res) => {
   try {
     const vendorProfileId = parseVendorProfileId(req.params.id);
     const predefinedServiceId = parseInt(req.params.predefinedServiceId);
-    const { salePrice, pricingModel, baseDurationMinutes, baseRate, overtimeRatePerHour, fixedPrice, perPersonPrice, minimumAttendees, maximumAttendees, description, imageURL } = req.body;
+    const { pricingModel, baseDurationMinutes, baseRate, overtimeRatePerHour, fixedPrice, perPersonPrice, minimumAttendees, maximumAttendees, description, imageURL } = req.body;
     
     const pool = await poolPromise;
     
-    // Update vendors.Services table (the main services table with all pricing fields)
+    // Update vendors.Services table - only columns that exist in the table
     const updateRequest = new sql.Request(pool);
     updateRequest.input('VendorProfileID', sql.Int, vendorProfileId);
     updateRequest.input('LinkedPredefinedServiceID', sql.Int, predefinedServiceId);
-    updateRequest.input('SalePrice', sql.Decimal(10, 2), salePrice != null && salePrice !== '' ? parseFloat(salePrice) : null);
     updateRequest.input('PricingModel', sql.NVarChar(50), pricingModel || null);
     updateRequest.input('BaseDurationMinutes', sql.Int, baseDurationMinutes != null ? parseInt(baseDurationMinutes) : null);
     updateRequest.input('BaseRate', sql.Decimal(10, 2), baseRate != null && baseRate !== '' ? parseFloat(baseRate) : null);
@@ -4309,11 +4308,10 @@ router.patch('/:id/services/:predefinedServiceId', async (req, res) => {
     updateRequest.input('Description', sql.NVarChar(sql.MAX), description || null);
     updateRequest.input('ImageURL', sql.NVarChar(500), imageURL || null);
     
-    // Update vendors.Services table - removed OriginalPrice as column doesn't exist
+    // Update vendors.Services table - removed SalePrice and OriginalPrice as columns don't exist
     await updateRequest.query(`
       UPDATE vendors.Services 
       SET 
-        SalePrice = @SalePrice,
         PricingModel = COALESCE(@PricingModel, PricingModel),
         BaseDurationMinutes = COALESCE(@BaseDurationMinutes, BaseDurationMinutes),
         DurationMinutes = COALESCE(@BaseDurationMinutes, DurationMinutes),
