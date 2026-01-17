@@ -418,6 +418,8 @@ router.post('/social-login', async (req, res) => {
       isAdmin: user.IsAdmin || false,
       isNewUser: user.IsNewUser || false,  // Return whether this is a new user
       vendorProfileId: user.VendorProfileID || null,
+      authProvider: authProvider,  // Return the auth provider (google, facebook, etc.)
+      profilePicture: avatar || user.ProfileImageURL || null,
       token
     });
 

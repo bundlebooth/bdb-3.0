@@ -80,7 +80,7 @@
 
 .progress-bar {
   height: 100%;
-  background: #4F86E8;
+  background: #222222;
   transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   border-radius: 0 3px 3px 0;
   min-width: 0;
@@ -722,6 +722,30 @@
   border-color: #222222;
 }
 
+/* Skip button responsive text */
+.btn-skip .skip-short {
+  display: none;
+}
+
+.btn-skip .skip-full {
+  display: inline;
+}
+
+@media (max-width: 480px) {
+  .btn-skip .skip-short {
+    display: inline;
+  }
+  
+  .btn-skip .skip-full {
+    display: none;
+  }
+  
+  .btn-skip {
+    min-width: auto;
+    padding: 0.65rem 1rem;
+  }
+}
+
 /* Info Banner */
 .step-info-banner {
   background-color: #f0f7ff;
@@ -1058,8 +1082,7 @@
 
 /* Account/Auth Step Styles */
 .account-step {
-  max-width: 500px;
-  margin: 0 auto;
+  width: 100%;
 }
 
 .welcome-card {
@@ -2171,11 +2194,11 @@ body:not(:has(.enhanced-search-container.expanded)) .pac-container {
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 1rem;
-  background-color: #f0f9ff;
-  border: 1px solid #3b82f6;
+  background-color: #f3f4f6;
+  border: 1px solid #e5e7eb;
   border-radius: 20px;
   font-size: 0.9rem;
-  color: #1e40af;
+  color: #374151;
   margin: 0.25rem;
 }
 
@@ -2198,7 +2221,7 @@ body:not(:has(.enhanced-search-container.expanded)) .pac-container {
 /* Add Button for Service Areas */
 .location-step .btn-add-area {
   padding: 0.875rem 1.5rem;
-  background-color: #6366f1;
+  background-color: #222222;
   color: white;
   border: none;
   border-radius: 8px;
@@ -2212,7 +2235,7 @@ body:not(:has(.enhanced-search-container.expanded)) .pac-container {
 }
 
 .location-step .btn-add-area:hover {
-  background-color: #4f46e5;
+  background-color: #000000;
 }
 
 /* Empty State for Service Areas */

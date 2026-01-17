@@ -71,6 +71,7 @@ const BecomeVendorPage = () => {
   const [featuresLoadedFromDB, setFeaturesLoadedFromDB] = useState(false); // Track if features were loaded from database
   const [initialDataLoaded, setInitialDataLoaded] = useState(false); // Prevent re-fetching after save
   const [profileStatus, setProfileStatus] = useState('draft'); // 'draft', 'pending_review', 'approved', 'rejected'
+  const [showSuccessModal, setShowSuccessModal] = useState(false); // Success modal after Go Live
   
   // Form data state
   const [formData, setFormData] = useState({
@@ -212,7 +213,7 @@ const BecomeVendorPage = () => {
     },
     {
       id: 'contact',
-      title: 'How can clients reach you?',
+      title: 'How can we reach you?',
       subtitle: 'Provide your contact information',
       component: ContactStep,
       required: true
@@ -245,8 +246,7 @@ const BecomeVendorPage = () => {
       title: 'When are you available?',
       subtitle: 'Set your business hours',
       component: BusinessHoursStep,
-      required: false,
-      skippable: true
+      required: true
     },
     {
       id: 'questionnaire',
@@ -261,8 +261,7 @@ const BecomeVendorPage = () => {
       title: 'Add photos to showcase your work',
       subtitle: 'You can add more photos after you publish your listing',
       component: GalleryStep,
-      required: false,
-      skippable: true
+      required: true
     },
     {
       id: 'social-media',
@@ -285,8 +284,7 @@ const BecomeVendorPage = () => {
       title: 'Connect Stripe for Payments',
       subtitle: 'Set up payment processing to accept online payments',
       component: StripeStep,
-      required: false,
-      skippable: true
+      required: false // Temporarily disabled for testing
     },
     {
       id: 'google-reviews',
@@ -610,8 +608,12 @@ const BecomeVendorPage = () => {
             });
             if (featuresRes.ok) {
               const featuresData = await featuresRes.json();
-              const featureIds = featuresData.selectedFeatures?.map(f => f.FeatureID) || [];
-              updatedFormData.selectedFeatures = featureIds;
+              // Store feature objects with names for display in ReviewStep
+              const featureObjects = featuresData.selectedFeatures?.map(f => ({
+                id: f.FeatureID,
+                name: f.FeatureName || f.Name || `Feature ${f.FeatureID}`
+              })) || [];
+              updatedFormData.selectedFeatures = featureObjects;
               setFeaturesLoadedFromDB(true); // Mark that we've loaded features from DB
             } else {
               setFeaturesLoadedFromDB(true); // Still mark as loaded even if empty
@@ -929,44 +931,55 @@ const BecomeVendorPage = () => {
       case 'account':
         return !!currentUser;
       case 'categories':
-        // Must have a primary category selected AND saved
+        // MANDATORY: Must have a primary category selected
         return !!(formData.primaryCategory && formData.primaryCategory.trim());
       case 'business-details':
-        // Must have both business name AND display name filled in (required fields)
+        // MANDATORY: Must have business name AND display name (required fields)
         const hasBusinessName = formData.businessName && formData.businessName.trim().length > 0;
         const hasDisplayName = formData.displayName && formData.displayName.trim().length > 0;
         return !!(hasBusinessName && hasDisplayName);
       case 'contact':
-        // Must have business phone filled in (required field)
-        return !!(formData.businessPhone && formData.businessPhone.trim().length > 0);
+        // MANDATORY: Must have business phone AND email filled in
+        const hasPhone = formData.businessPhone && formData.businessPhone.trim().length > 0;
+        const hasEmail = formData.email && formData.email.trim().length > 0;
+        return !!(hasPhone && hasEmail);
       case 'location':
-        // Must have city, province, and at least one service area
+        // MANDATORY: Must have city, province, and at least one service area
         const hasCity = formData.city && formData.city.trim().length > 0;
         const hasProvince = formData.province && formData.province.trim().length > 0;
         const hasServiceAreas = formData.serviceAreas && formData.serviceAreas.length > 0;
         return !!(hasCity && hasProvince && hasServiceAreas);
       case 'services':
+        // Optional - at least one service
         return formData.selectedServices && formData.selectedServices.length > 0;
       case 'business-hours':
+        // MANDATORY: Must have at least one day with availability set
         return formData.businessHours && Object.values(formData.businessHours).some(h => h.isAvailable);
       case 'questionnaire':
-        // If features haven't been loaded from DB yet, don't show as incomplete
-        // This prevents the step from showing as incomplete during initial load
+        // Optional - features
         if (!featuresLoadedFromDB && isExistingVendor) return true;
         return formData.selectedFeatures && formData.selectedFeatures.length > 0;
       case 'gallery':
-        return formData.photoURLs && formData.photoURLs.length > 0;
+        // MANDATORY: Must have at least 5 photos uploaded
+        return formData.photoURLs && formData.photoURLs.length >= 5;
       case 'social-media':
-        // Optional step - at least one social media link
+        // Optional - at least one social media link
         return !!(formData.facebook || formData.instagram || formData.twitter || formData.linkedin);
       case 'filters':
+        // Optional - badges
         return formData.selectedFilters && formData.selectedFilters.length > 0;
       case 'stripe':
+        // MANDATORY: Must have Stripe connected
         return !!formData.stripeConnected;
       case 'google-reviews':
+        // Optional - Google reviews
         return !!(formData.googlePlaceId && formData.googlePlaceId.trim().length > 0);
       case 'policies':
+        // Optional - FAQs
         return !!(formData.faqs && formData.faqs.length > 0);
+      case 'cancellation-policy':
+        // Optional - cancellation policy
+        return !!(formData.cancellationPolicy);
       default:
         return false;
     }
@@ -1311,11 +1324,8 @@ const BecomeVendorPage = () => {
       const result = await response.json();
       setProfileStatus('pending_review');
       
-      showBanner('Your profile has been submitted for review! Our team will review it shortly.', 'success');
-      
-      setTimeout(() => {
-        navigate('/');
-      }, 2000);
+      // Show success modal with confetti instead of banner
+      setShowSuccessModal(true);
 
     } catch (error) {
       console.error('Error submitting for review:', error);
@@ -1344,19 +1354,6 @@ const BecomeVendorPage = () => {
             <img src="/images/logo.png" alt="PlanBeau" style={{ height: '50px', width: 'auto' }} />
           </div>
           <div className="header-actions">
-            {isExistingVendor && (
-              <span style={{ 
-                marginRight: '1rem', 
-                color: '#10b981', 
-                fontWeight: '600',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem'
-              }}>
-                <i className="fas fa-check-circle"></i>
-                Editing Profile
-              </span>
-            )}
             <button className="btn-text" onClick={() => navigate('/')}>
               Exit
             </button>
@@ -1387,10 +1384,10 @@ const BecomeVendorPage = () => {
           /* Show pending review message only if NOT navigating via URL step param */
           <div style={{ padding: '3rem 1rem', maxWidth: '700px', margin: '0 auto' }}>
             <div style={{ 
-              background: 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)', 
+              background: 'linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%)', 
               borderRadius: '16px', 
               padding: '2.5rem',
-              border: '2px solid #3b82f6',
+              border: '2px solid #222222',
               textAlign: 'center'
             }}>
               <div style={{ 
@@ -1400,15 +1397,15 @@ const BecomeVendorPage = () => {
                 width: '80px',
                 height: '80px',
                 borderRadius: '50%',
-                background: '#3b82f6',
+                background: '#222222',
                 marginBottom: '1.5rem'
               }}>
                 <i className="fas fa-hourglass-half" style={{ fontSize: '2rem', color: 'white' }}></i>
               </div>
-              <h2 style={{ fontSize: '1.75rem', marginBottom: '1rem', color: '#1e40af', fontWeight: '700' }}>
+              <h2 style={{ fontSize: '1.75rem', marginBottom: '1rem', color: '#111827', fontWeight: '700' }}>
                 Profile Already Submitted
               </h2>
-              <p style={{ color: '#1e3a8a', fontSize: '1.1rem', lineHeight: 1.7, marginBottom: '1.5rem' }}>
+              <p style={{ color: '#374151', fontSize: '1.1rem', lineHeight: 1.7, marginBottom: '1.5rem' }}>
                 Your vendor profile has already been submitted and is currently being reviewed by our support team. 
                 Please wait for a response before making any changes. This process typically takes <strong>1-2 business days</strong>.
               </p>
@@ -1440,7 +1437,7 @@ const BecomeVendorPage = () => {
                 alignItems: 'center',
                 gap: '0.5rem',
                 padding: '0.75rem 1.5rem',
-                background: '#3b82f6',
+                background: '#222222',
                 borderRadius: '8px',
                 color: 'white',
                 fontSize: '0.95rem',
@@ -1456,9 +1453,9 @@ const BecomeVendorPage = () => {
                   style={{
                     padding: '0.75rem 2rem',
                     background: 'white',
-                    border: '2px solid #3b82f6',
+                    border: '2px solid #222222',
                     borderRadius: '8px',
-                    color: '#3b82f6',
+                    color: '#222222',
                     fontSize: '1rem',
                     fontWeight: 600,
                     cursor: 'pointer'
@@ -1534,22 +1531,40 @@ const BecomeVendorPage = () => {
         ) : (
           <div className={`step-container ${isTransitioning ? 'fade-out' : ''}`} key={currentStep}>
             <div className="step-header">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
                 <h1 className="step-title">{steps[currentStep].title}</h1>
+                {/* Mandatory/Optional badge */}
+                {currentStep > 0 && currentStep < steps.length - 1 && (
+                  <span style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    padding: '0.35rem 0.75rem',
+                    background: steps[currentStep].required ? '#fef3c7' : '#f3f4f6',
+                    color: steps[currentStep].required ? '#92400e' : '#6b7280',
+                    borderRadius: '6px',
+                    fontSize: '0.75rem',
+                    fontWeight: '600',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.025em'
+                  }}>
+                    {steps[currentStep].required ? 'Required' : 'Optional'}
+                  </span>
+                )}
+                {/* Completed badge - only show if step has required fields filled */}
                 {isExistingVendor && currentStep > 0 && isStepCompleted(steps[currentStep].id) && (
                   <span style={{
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: '0.5rem',
-                    padding: '0.5rem 1rem',
+                    padding: '0.35rem 0.75rem',
                     background: '#10b981',
                     color: 'white',
-                    borderRadius: '20px',
-                    fontSize: '0.875rem',
+                    borderRadius: '6px',
+                    fontSize: '0.75rem',
                     fontWeight: '600'
                   }}>
-                    <i className="fas fa-check-circle"></i>
-                    Completed
+                    <i className="fas fa-check"></i>
+                    Complete
                   </span>
                 )}
               </div>
@@ -1639,15 +1654,20 @@ const BecomeVendorPage = () => {
                 onClick={handleNext}
                 disabled={loading}
               >
-                Skip for now
+                <span className="skip-full">Skip for now</span>
+                <span className="skip-short">Skip</span>
               </button>
             )}
             
             <button
               className="btn-next"
               onClick={currentStep === steps.length - 1 ? handleGoLive : handleNext}
-              disabled={loading || (currentStep === 0 && !currentUser) || (currentStep === steps.length - 1 && profileStatus === 'pending_review')}
-              style={currentStep === steps.length - 1 ? { background: profileStatus === 'pending_review' ? '#9ca3af' : '#10b981' } : {}}
+              disabled={loading || (currentStep === 0 && !currentUser) || (currentStep === steps.length - 1 && (profileStatus === 'pending_review' || !areMandatoryStepsComplete().allComplete))}
+              style={currentStep === steps.length - 1 ? { 
+                background: profileStatus === 'pending_review' ? '#9ca3af' : (!areMandatoryStepsComplete().allComplete ? '#9ca3af' : '#10b981'),
+                cursor: profileStatus === 'pending_review' || !areMandatoryStepsComplete().allComplete ? 'not-allowed' : 'pointer'
+              } : {}}
+              title={currentStep === steps.length - 1 && !areMandatoryStepsComplete().allComplete ? 'Complete all required steps to submit' : ''}
             >
               {loading ? (
                 <span className="spinner-small"></span>
@@ -1660,6 +1680,137 @@ const BecomeVendorPage = () => {
           </div>
         </div>
       </div>
+      )}
+
+      {/* Success Modal with Confetti - After Go Live Submission */}
+      {showSuccessModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.6)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10000,
+          padding: '1rem'
+        }}>
+          {/* Confetti Animation */}
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, overflow: 'hidden', pointerEvents: 'none' }}>
+            {[...Array(50)].map((_, i) => (
+              <div
+                key={i}
+                style={{
+                  position: 'absolute',
+                  width: `${Math.random() * 10 + 5}px`,
+                  height: `${Math.random() * 10 + 5}px`,
+                  background: ['#fbbf24', '#10b981', '#3b82f6', '#ef4444', '#8b5cf6', '#ec4899'][Math.floor(Math.random() * 6)],
+                  borderRadius: Math.random() > 0.5 ? '50%' : '0',
+                  left: `${Math.random() * 100}%`,
+                  top: '-20px',
+                  animation: `confetti-fall ${Math.random() * 3 + 2}s linear forwards`,
+                  animationDelay: `${Math.random() * 2}s`,
+                  transform: `rotate(${Math.random() * 360}deg)`
+                }}
+              />
+            ))}
+          </div>
+          <style>{`
+            @keyframes confetti-fall {
+              0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+              100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+            }
+          `}</style>
+
+          {/* Modal Content */}
+          <div style={{
+            background: 'white',
+            borderRadius: '16px',
+            padding: '2.5rem',
+            maxWidth: '480px',
+            width: '100%',
+            textAlign: 'center',
+            position: 'relative',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
+          }}>
+            <div style={{
+              width: '80px',
+              height: '80px',
+              borderRadius: '50%',
+              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 1.5rem',
+              boxShadow: '0 10px 25px -5px rgba(16, 185, 129, 0.4)'
+            }}>
+              <i className="fas fa-check" style={{ fontSize: '2.5rem', color: 'white' }}></i>
+            </div>
+
+            <h2 style={{ fontSize: '1.75rem', fontWeight: 700, color: '#111827', marginBottom: '0.75rem' }}>
+              Profile Submitted! 🎉
+            </h2>
+            <p style={{ color: '#6b7280', fontSize: '1rem', lineHeight: 1.6, marginBottom: '1.5rem' }}>
+              Your vendor profile has been submitted for review.
+            </p>
+
+            <div style={{
+              background: '#f9fafb',
+              borderRadius: '12px',
+              padding: '1.25rem',
+              marginBottom: '2rem',
+              textAlign: 'left'
+            }}>
+              <div style={{ fontWeight: 600, color: '#374151', marginBottom: '0.75rem', fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <i className="fas fa-clock" style={{ color: '#f59e0b' }}></i>
+                What happens next?
+              </div>
+              <ul style={{ margin: 0, padding: '0 0 0 1.25rem', color: '#6b7280', fontSize: '0.9rem', lineHeight: 1.8 }}>
+                <li>Our team will review your profile within <strong>1-2 business days</strong></li>
+                <li>You'll receive an email notification once approved</li>
+                <li>If changes are needed, we'll let you know what to update</li>
+                <li>Once approved, your profile will be live and visible to clients</li>
+              </ul>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <button
+                onClick={() => navigate('/?dashboard=vendor-business-profile')}
+                style={{
+                  width: '100%',
+                  padding: '0.875rem 1.5rem',
+                  background: '#222222',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '1rem',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                Go to Profile Management
+              </button>
+              <button
+                onClick={() => navigate('/vendors')}
+                style={{
+                  width: '100%',
+                  padding: '0.875rem 1.5rem',
+                  background: 'white',
+                  color: '#222222',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  fontSize: '1rem',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                Browse Vendors
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -1688,10 +1839,10 @@ function AccountStep({ currentUser, setFormData, formData, onAccountCreated, isE
         <div className="account-step">
           <div style={{ padding: '2rem 1rem', maxWidth: '700px', margin: '0 auto' }}>
             <div style={{ 
-              background: 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)', 
+              background: 'linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%)', 
               borderRadius: '16px', 
               padding: '2.5rem',
-              border: '2px solid #3b82f6',
+              border: '2px solid #222222',
               textAlign: 'center'
             }}>
               <div style={{ 
@@ -1701,15 +1852,15 @@ function AccountStep({ currentUser, setFormData, formData, onAccountCreated, isE
                 width: '80px',
                 height: '80px',
                 borderRadius: '50%',
-                background: '#3b82f6',
+                background: '#222222',
                 marginBottom: '1.5rem'
               }}>
                 <i className="fas fa-hourglass-half" style={{ fontSize: '2rem', color: 'white' }}></i>
               </div>
-              <h2 style={{ fontSize: '1.75rem', marginBottom: '1rem', color: '#1e40af', fontWeight: '700' }}>
+              <h2 style={{ fontSize: '1.75rem', marginBottom: '1rem', color: '#111827', fontWeight: '700' }}>
                 Profile Under Review
               </h2>
-              <p style={{ color: '#1e3a8a', fontSize: '1.1rem', lineHeight: 1.7, marginBottom: '1.5rem' }}>
+              <p style={{ color: '#374151', fontSize: '1.1rem', lineHeight: 1.7, marginBottom: '1.5rem' }}>
                 Your vendor profile has been submitted and is currently being reviewed by our support team. 
                 This process typically takes <strong>1-2 business days</strong>.
               </p>
@@ -1741,7 +1892,7 @@ function AccountStep({ currentUser, setFormData, formData, onAccountCreated, isE
                 alignItems: 'center',
                 gap: '0.5rem',
                 padding: '0.75rem 1.5rem',
-                background: '#3b82f6',
+                background: '#222222',
                 borderRadius: '8px',
                 color: 'white',
                 fontSize: '0.95rem',
@@ -1878,8 +2029,8 @@ function AccountStep({ currentUser, setFormData, formData, onAccountCreated, isE
 
     // Default: Show normal step progress for draft profiles
     return (
-      <div className="account-step">
-        <div style={{ padding: '2rem 1rem' }}>
+      <div className="account-step" style={{ width: '100%' }}>
+        <div style={{ width: '100%' }}>
 
           {/* Section Progress Indicators - Using shared SetupIncompleteBanner component */}
           {isVendorWithProfile && steps && (
@@ -1893,7 +2044,6 @@ function AccountStep({ currentUser, setFormData, formData, onAccountCreated, isE
                 }
               }}
               hideButtons={true}
-              maxWidth="900px"
               showAllSteps={true}
             />
           )}
@@ -2099,7 +2249,7 @@ function AccountStep({ currentUser, setFormData, formData, onAccountCreated, isE
                 style={{ 
                   width: '100%', 
                   padding: '14px',
-                  backgroundColor: '#5B68F4',
+                  backgroundColor: '#222222',
                   color: 'white',
                   border: 'none',
                   borderRadius: '8px',
@@ -2120,7 +2270,7 @@ function AccountStep({ currentUser, setFormData, formData, onAccountCreated, isE
                   style={{ 
                     background: 'none', 
                     border: 'none', 
-                    color: '#5B68F4', 
+                    color: '#222222', 
                     fontSize: '14px', 
                     cursor: 'pointer', 
                     padding: 0, 
@@ -2307,7 +2457,7 @@ function AccountStep({ currentUser, setFormData, formData, onAccountCreated, isE
                 style={{ 
                   width: '100%', 
                   padding: '14px',
-                  backgroundColor: '#5B68F4',
+                  backgroundColor: '#222222',
                   color: 'white',
                   border: 'none',
                   borderRadius: '8px',
@@ -2328,7 +2478,7 @@ function AccountStep({ currentUser, setFormData, formData, onAccountCreated, isE
                   style={{ 
                     background: 'none', 
                     border: 'none', 
-                    color: '#5B68F4', 
+                    color: '#222222', 
                     fontSize: '14px', 
                     cursor: 'pointer', 
                     padding: 0, 
@@ -2379,7 +2529,7 @@ function CategoriesStep({ formData, onInputChange, categories }) {
 
   return (
     <div className="categories-step">
-      <h3 style={{ marginBottom: '1.5rem', color: '#222', fontSize: '1.125rem', fontWeight: '600' }}>Primary Category *</h3>
+      <h3 style={{ marginBottom: '1.5rem', color: '#222', fontSize: '1.125rem', fontWeight: '600' }}>Primary Category <span style={{ color: '#ef4444' }}>*</span></h3>
       <div className="categories-grid">
         {categories.map(category => {
           const isSelected = formData.primaryCategory === category.id;
@@ -2420,7 +2570,7 @@ function CategoriesStep({ formData, onInputChange, categories }) {
         Additional Categories (Optional)
         {hasAdditionalSelected && (
           <span style={{
-            background: '#5B68F4',
+            background: '#222222',
             color: 'white',
             fontSize: '0.75rem',
             fontWeight: '600',
@@ -2601,7 +2751,7 @@ function BusinessDetailsStep({ formData, onInputChange }) {
       </div>
 
       <div className="form-group">
-        <label>Business Name *</label>
+        <label>Business Name <span style={{ color: '#ef4444' }}>*</span></label>
         <input
           type="text"
           value={formData.businessName}
@@ -2612,7 +2762,7 @@ function BusinessDetailsStep({ formData, onInputChange }) {
       </div>
 
       <div className="form-group">
-        <label>Display Name *</label>
+        <label>Display Name <span style={{ color: '#ef4444' }}>*</span></label>
         <input
           type="text"
           value={formData.displayName}
@@ -2685,7 +2835,7 @@ function ContactStep({ formData, onInputChange }) {
   return (
     <div className="contact-step">
       <div className="form-group">
-        <label>Business Phone *</label>
+        <label>Business Phone <span style={{ color: '#ef4444' }}>*</span></label>
         <input
           type="tel"
           value={formData.businessPhone}
@@ -2696,7 +2846,7 @@ function ContactStep({ formData, onInputChange }) {
       </div>
 
       <div className="form-group">
-        <label>Email</label>
+        <label>Email <span style={{ color: '#ef4444' }}>*</span></label>
         <input
           type="email"
           value={formData.email}
@@ -3009,7 +3159,7 @@ function LocationStep({ formData, onInputChange, setFormData, provinces, googleM
               onClick={handleAddServiceArea}
               style={{
                 padding: '0.875rem 1.5rem',
-                backgroundColor: '#6366f1',
+                backgroundColor: '#222222',
                 color: 'white',
                 border: 'none',
                 borderRadius: '8px',
@@ -3021,8 +3171,8 @@ function LocationStep({ formData, onInputChange, setFormData, provinces, googleM
                 gap: '0.5rem',
                 transition: 'background-color 0.2s'
               }}
-              onMouseOver={(e) => e.target.style.backgroundColor = '#4f46e5'}
-              onMouseOut={(e) => e.target.style.backgroundColor = '#6366f1'}
+              onMouseOver={(e) => e.target.style.backgroundColor = '#000000'}
+              onMouseOut={(e) => e.target.style.backgroundColor = '#222222'}
             >
               <i className="fas fa-plus"></i> Add
             </button>
@@ -3043,11 +3193,11 @@ function LocationStep({ formData, onInputChange, setFormData, provinces, googleM
                     alignItems: 'center',
                     gap: '0.5rem',
                     padding: '0.5rem 1rem',
-                    backgroundColor: '#f0f9ff',
-                    border: '1px solid #3b82f6',
+                    backgroundColor: '#f3f4f6',
+                    border: '1px solid #e5e7eb',
                     borderRadius: '20px',
                     fontSize: '0.9rem',
-                    color: '#1e40af'
+                    color: '#374151'
                   }}
                 >
                   <i className="fas fa-map-marker-alt" style={{ fontSize: '0.8rem' }}></i>
@@ -3395,7 +3545,11 @@ function ServicesStep({ formData, setFormData }) {
   );
 
   if (loading) {
-    return <div className="loading">Loading services...</div>;
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '40vh' }}>
+        <div className="spinner"></div>
+      </div>
+    );
   }
 
   return (
@@ -3945,7 +4099,7 @@ function ServicesStep({ formData, setFormData }) {
                             onMouseOut={(e) => { if (!isSelected) e.currentTarget.style.background = 'white'; }}
                           >
                             <span style={{ fontSize: '0.9rem', fontWeight: 500, color: '#222' }}>{svc.serviceName}</span>
-                            {isSelected && <i className="fas fa-check-circle" style={{ color: '#3b82f6', fontSize: '1rem' }}></i>}
+                            {isSelected && <i className="fas fa-check-circle" style={{ color: '#16a34a', fontSize: '1rem' }}></i>}
                           </div>
                         );
                       })}
@@ -4412,32 +4566,32 @@ function CancellationPolicyStep({ formData, setFormData }) {
       name: 'Flexible',
       description: 'Full refund up to 24 hours before the event',
       icon: 'fa-shield-alt',
-      color: '#065f46',
-      bg: '#d1fae5'
+      color: '#10b981',
+      bg: '#ecfdf5'
     },
     {
       id: 'moderate',
       name: 'Moderate',
       description: 'Full refund 7 days before, 50% refund 3 days before',
       icon: 'fa-shield-alt',
-      color: '#92400e',
-      bg: '#fef3c7'
+      color: '#f59e0b',
+      bg: '#fffbeb'
     },
     {
       id: 'strict',
       name: 'Strict',
       description: '50% refund 14 days before, no refund after',
       icon: 'fa-shield-alt',
-      color: '#991b1b',
-      bg: '#fee2e2'
+      color: '#ef4444',
+      bg: '#fef2f2'
     },
     {
       id: 'custom',
       name: 'Custom',
       description: 'Set your own cancellation terms',
       icon: 'fa-shield-alt',
-      color: '#3730a3',
-      bg: '#e0e7ff'
+      color: '#8b5cf6',
+      bg: '#f5f3ff'
     }
   ];
 
@@ -4531,8 +4685,8 @@ function CancellationPolicyStep({ formData, setFormData }) {
     <div className="cancellation-policy-step">
       {/* Info Box */}
       <div style={{
-        background: '#eff6ff',
-        border: '1px solid #bfdbfe',
+        background: '#f0fdf4',
+        border: '1px solid #bbf7d0',
         borderRadius: '12px',
         padding: '1rem 1.25rem',
         marginBottom: '1.5rem',
@@ -4540,22 +4694,21 @@ function CancellationPolicyStep({ formData, setFormData }) {
         alignItems: 'flex-start',
         gap: '0.75rem'
       }}>
-        <i className="fas fa-info-circle" style={{ color: '#3b82f6', marginTop: '0.15rem' }}></i>
+        <i className="fas fa-shield-alt" style={{ color: '#22c55e', marginTop: '0.15rem' }}></i>
         <div>
-          <strong style={{ color: '#1e40af' }}>Why set a cancellation policy?</strong>
-          <p style={{ margin: '0.5rem 0 0', color: '#1e40af', fontSize: '0.9rem' }}>
-            A clear cancellation policy protects your business while giving clients confidence when booking. 
-            It will be displayed on your profile and applied automatically when clients cancel.
+          <strong style={{ color: '#166534' }}>Protect your business</strong>
+          <p style={{ margin: '0.5rem 0 0', color: '#166534', fontSize: '0.9rem' }}>
+            A clear cancellation policy protects your business while giving clients confidence when booking.
           </p>
         </div>
       </div>
 
-      {/* Policy Type Selection */}
+      {/* Policy Type Selection - 2x2 Grid */}
       <div style={{ marginBottom: '2rem' }}>
         <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '1rem', color: '#1f2937' }}>
           Select Policy Type
         </h3>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
           {policyTypes.map(type => (
             <div
               key={type.id}
@@ -4711,74 +4864,6 @@ function CancellationPolicyStep({ formData, setFormData }) {
         </div>
       )}
 
-      {/* Policy Preview */}
-      <div style={{
-        background: 'white',
-        border: '1px solid #e5e7eb',
-        borderRadius: '12px',
-        padding: '1.5rem',
-        marginBottom: '1.5rem'
-      }}>
-        <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '1rem', color: '#1f2937', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <i className="fas fa-eye" style={{ color: '#5e72e4' }}></i>
-          Policy Preview
-        </h3>
-        <div style={{ background: '#f9fafb', borderRadius: '8px', padding: '1rem' }}>
-          <p style={{ margin: 0, color: '#374151', lineHeight: 1.6 }}>
-            {policy.policyType === 'flexible' && (
-              <>
-                <strong>Flexible Policy:</strong> Clients can cancel and receive a full refund up to 24 hours before the scheduled event. 
-                Cancellations made less than 24 hours before the event are non-refundable.
-              </>
-            )}
-            {policy.policyType === 'moderate' && (
-              <>
-                <strong>Moderate Policy:</strong> Full refund if cancelled 7+ days before the event. 
-                50% refund if cancelled 3-7 days before. No refund for cancellations within 3 days of the event.
-              </>
-            )}
-            {policy.policyType === 'strict' && (
-              <>
-                <strong>Strict Policy:</strong> 50% refund if cancelled 14+ days before the event. 
-                No refund for cancellations within 14 days of the event.
-              </>
-            )}
-            {policy.policyType === 'custom' && (
-              <>
-                <strong>Custom Policy:</strong> Full refund if cancelled {policy.fullRefundDays}+ days before the event.
-                {policy.partialRefundDays > 0 && policy.partialRefundPercent > 0 && (
-                  <> {policy.partialRefundPercent}% refund if cancelled {policy.partialRefundDays}-{policy.fullRefundDays} days before.</>
-                )}
-                {policy.noRefundDays > 0 && (
-                  <> No refund for cancellations within {policy.noRefundDays} days of the event.</>
-                )}
-                {policy.customTerms && (
-                  <><br /><br />{policy.customTerms}</>
-                )}
-              </>
-            )}
-          </p>
-        </div>
-      </div>
-
-      {/* Save Button */}
-      <div style={{ marginTop: '1.5rem' }}>
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={saving || !currentUser?.vendorProfileId}
-          className="btn btn-primary"
-          title={!currentUser?.vendorProfileId ? 'Complete previous steps first to save' : ''}
-        >
-          {saving ? 'Saving...' : 'Save Policy'}
-        </button>
-        {!currentUser?.vendorProfileId && (
-          <p style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: '#6b7280' }}>
-            <i className="fas fa-info-circle" style={{ marginRight: '0.5rem' }}></i>
-            Complete the previous steps first to save your cancellation policy. Your selection will be saved when you proceed.
-          </p>
-        )}
-      </div>
     </div>
   );
 }
@@ -4795,29 +4880,17 @@ function BusinessHoursStep({ formData, setFormData }) {
     { key: 'sunday', label: 'Sunday' }
   ];
 
-  // Common timezones
+  // Canadian timezones only
   const timezones = [
-    'America/New_York',
-    'America/Chicago',
-    'America/Denver',
-    'America/Los_Angeles',
-    'America/Anchorage',
-    'Pacific/Honolulu',
-    'America/Toronto',
-    'America/Vancouver',
-    'America/Edmonton',
-    'America/Winnipeg',
-    'America/Halifax',
-    'America/St_Johns',
-    'Europe/London',
-    'Europe/Paris',
-    'Europe/Berlin',
-    'Asia/Tokyo',
-    'Asia/Shanghai',
-    'Asia/Dubai',
-    'Australia/Sydney',
-    'Pacific/Auckland'
+    { value: 'America/St_Johns', label: 'Newfoundland (NST) GMT -3:30' },
+    { value: 'America/Halifax', label: 'Atlantic (AST) GMT -4:00' },
+    { value: 'America/Toronto', label: 'Eastern (EST) GMT -5:00' },
+    { value: 'America/Winnipeg', label: 'Central (CST) GMT -6:00' },
+    { value: 'America/Edmonton', label: 'Mountain (MST) GMT -7:00' },
+    { value: 'America/Vancouver', label: 'Pacific (PST) GMT -8:00' }
   ];
+
+  const [timeError, setTimeError] = useState(null);
 
   const handleHourChange = (day, field, value) => {
     setFormData(prev => {
@@ -4832,6 +4905,8 @@ function BusinessHoursStep({ formData, setFormData }) {
           const [hours, mins] = value.split(':').map(Number);
           const adjustedHours = hours + 1 > 23 ? 23 : hours + 1;
           const adjustedClose = `${String(adjustedHours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+          setTimeError({ day, message: 'Close time adjusted - overnight hours not supported' });
+          setTimeout(() => setTimeError(null), 3000);
           return {
             ...prev,
             businessHours: {
@@ -4844,12 +4919,15 @@ function BusinessHoursStep({ formData, setFormData }) {
             }
           };
         }
-        // If setting close time and it would be <= open time, don't allow it
+        // If setting close time and it would be <= open time, show error and don't allow it
         if (field === 'closeTime') {
+          setTimeError({ day, message: 'Close time must be after open time - overnight hours not supported' });
+          setTimeout(() => setTimeError(null), 3000);
           return prev; // Don't update, keep current value
         }
       }
       
+      setTimeError(null);
       return {
         ...prev,
         businessHours: {
@@ -4889,10 +4967,10 @@ function BusinessHoursStep({ formData, setFormData }) {
         <div style={{ marginBottom: '2rem', padding: '1.5rem', background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
             <i className="fas fa-info-circle" style={{ color: 'var(--primary)', fontSize: '1.25rem' }}></i>
-            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>Set Your Regular Hours</h3>
+            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>Set Your Regular Hours <span style={{ color: '#ef4444' }}>*</span></h3>
           </div>
           <p style={{ margin: 0, color: '#6b7280', fontSize: '0.9rem', lineHeight: 1.6 }}>
-            These hours will be displayed on your public profile. You can still accept bookings outside these hours by arrangement.
+            Set at least one day as available. These hours will be displayed on your public profile.
           </p>
         </div>
 
@@ -4911,13 +4989,19 @@ function BusinessHoursStep({ formData, setFormData }) {
               borderRadius: '8px',
               fontSize: '0.9rem',
               background: 'white',
-              cursor: 'pointer'
+              cursor: 'pointer',
+              appearance: 'none',
+              backgroundImage: 'url(\'data:image/svg+xml;charset=UTF-8,%3csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%23666%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3e%3cpolyline points=%276 9 12 15 18 9%27%3e%3c/polyline%3e%3c/svg%3e\')',
+              backgroundRepeat: 'no-repeat',
+              backgroundPosition: 'right 1rem center',
+              backgroundSize: '1.25rem',
+              paddingRight: '3rem'
             }}
           >
-            <option value="">Select timezone...</option>
+            <option value="" disabled>Select timezone...</option>
             {timezones.map(tz => (
-              <option key={tz} value={tz}>
-                {tz.replace(/_/g, ' ')}
+              <option key={tz.value} value={tz.value}>
+                {tz.label}
               </option>
             ))}
           </select>
@@ -4926,53 +5010,74 @@ function BusinessHoursStep({ formData, setFormData }) {
           </p>
         </div>
 
-        <div className="business-hours-list" style={{ display: 'grid', gap: '1rem' }}>
+        <div style={{ display: 'grid', gap: '0.75rem' }}>
           {daysOfWeek.map(day => (
             <div
               key={day.key}
-              className="business-hours-day-row"
               style={{
-                padding: '1rem',
+                display: 'grid',
+                gridTemplateColumns: '100px 1fr auto',
+                gap: '1rem',
+                alignItems: 'center',
+                padding: '0.875rem 1rem',
                 border: '1px solid #e5e7eb',
-                borderRadius: '12px',
-                background: formData.businessHours[day.key]?.isAvailable === false ? '#f9fafb' : 'white',
-                transition: 'all 0.2s'
+                borderRadius: '8px',
+                background: formData.businessHours[day.key]?.isAvailable === false ? '#f9fafb' : 'white'
               }}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: formData.businessHours[day.key]?.isAvailable !== false ? '0.75rem' : '0' }}>
-                <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{day.label}</div>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', userSelect: 'none' }}>
-                  <input
-                    type="checkbox"
-                    checked={formData.businessHours[day.key]?.isAvailable === false}
-                    onChange={() => handleToggleClosed(day.key)}
-                    style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-                  />
-                  <span style={{ fontSize: '0.85rem', fontWeight: 500, color: '#6b7280' }}>Closed</span>
-                </label>
-              </div>
+              <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{day.label}</div>
               
-              {formData.businessHours[day.key]?.isAvailable !== false && (
-                <div className="business-hours-times">
-                  <div className="time-field">
-                    <label>Open:</label>
-                    <input
-                      type="time"
-                      value={formData.businessHours[day.key]?.openTime || '09:00'}
-                      onChange={(e) => handleHourChange(day.key, 'openTime', e.target.value)}
-                    />
+              {formData.businessHours[day.key]?.isAvailable !== false ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                  <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                      <label style={{ fontSize: '0.8rem', color: '#6b7280' }}>Open:</label>
+                      <input
+                        type="time"
+                        value={formData.businessHours[day.key]?.openTime || '09:00'}
+                        onChange={(e) => handleHourChange(day.key, 'openTime', e.target.value)}
+                        max="22:59"
+                        style={{ padding: '0.4rem 0.5rem', border: '1px solid #e5e7eb', borderRadius: '6px', fontSize: '0.85rem' }}
+                      />
+                    </div>
+                    <span style={{ color: '#6b7280' }}>-</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                      <label style={{ fontSize: '0.8rem', color: '#6b7280' }}>Close:</label>
+                      <input
+                        type="time"
+                        value={formData.businessHours[day.key]?.closeTime || '17:00'}
+                        min={formData.businessHours[day.key]?.openTime || '09:00'}
+                        onChange={(e) => handleHourChange(day.key, 'closeTime', e.target.value)}
+                        style={{ 
+                          padding: '0.4rem 0.5rem', 
+                          border: timeError?.day === day.key ? '1px solid #ef4444' : '1px solid #e5e7eb', 
+                          borderRadius: '6px', 
+                          fontSize: '0.85rem',
+                          backgroundColor: timeError?.day === day.key ? '#fef2f2' : 'white'
+                        }}
+                      />
+                    </div>
                   </div>
-                  <span className="time-separator">-</span>
-                  <div className="time-field">
-                    <label>Close:</label>
-                    <input
-                      type="time"
-                      value={formData.businessHours[day.key]?.closeTime || '17:00'}
-                      onChange={(e) => handleHourChange(day.key, 'closeTime', e.target.value)}
-                    />
-                  </div>
+                  {timeError?.day === day.key && (
+                    <div style={{ fontSize: '0.75rem', color: '#ef4444', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                      <i className="fas fa-exclamation-circle"></i>
+                      {timeError.message}
+                    </div>
+                  )}
                 </div>
+              ) : (
+                <div style={{ color: '#9ca3af', fontStyle: 'italic', fontSize: '0.85rem' }}>Closed</div>
               )}
+
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', userSelect: 'none' }}>
+                <input
+                  type="checkbox"
+                  checked={formData.businessHours[day.key]?.isAvailable === false}
+                  onChange={() => handleToggleClosed(day.key)}
+                  style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                />
+                <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>Closed</span>
+              </label>
             </div>
           ))}
         </div>
@@ -5020,8 +5125,12 @@ function QuestionnaireStep({ formData, setFormData, currentUser, setFeaturesLoad
             selectionsData.selectedFeatures?.map(f => f.FeatureID) || []
           );
           setSelectedFeatureIds(selectedIds);
-          // Also update formData
-          setFormData(prev => ({ ...prev, selectedFeatures: Array.from(selectedIds) }));
+          // Store feature objects with names for display in ReviewStep
+          const selectedFeatureObjects = selectionsData.selectedFeatures?.map(f => ({
+            id: f.FeatureID,
+            name: f.FeatureName || f.Name || `Feature ${f.FeatureID}`
+          })) || [];
+          setFormData(prev => ({ ...prev, selectedFeatures: selectedFeatureObjects }));
           // Mark that features have been loaded from DB
           if (setFeaturesLoadedFromDB) setFeaturesLoadedFromDB(true);
         } else {
@@ -5038,7 +5147,7 @@ function QuestionnaireStep({ formData, setFormData, currentUser, setFeaturesLoad
     }
   };
 
-  const toggleFeatureSelection = (featureId) => {
+  const toggleFeatureSelection = (featureId, featureName) => {
     setSelectedFeatureIds(prev => {
       const newSet = new Set(prev);
       if (newSet.has(featureId)) {
@@ -5046,8 +5155,21 @@ function QuestionnaireStep({ formData, setFormData, currentUser, setFeaturesLoad
       } else {
         newSet.add(featureId);
       }
-      // Update formData as well
-      setFormData(prevData => ({ ...prevData, selectedFeatures: Array.from(newSet) }));
+      // Update formData with feature objects (id + name) for display in ReviewStep
+      setFormData(prevData => {
+        const currentFeatures = prevData.selectedFeatures || [];
+        if (newSet.has(featureId)) {
+          // Add feature object
+          const exists = currentFeatures.some(f => (typeof f === 'object' ? f.id : f) === featureId);
+          if (!exists) {
+            return { ...prevData, selectedFeatures: [...currentFeatures, { id: featureId, name: featureName }] };
+          }
+        } else {
+          // Remove feature
+          return { ...prevData, selectedFeatures: currentFeatures.filter(f => (typeof f === 'object' ? f.id : f) !== featureId) };
+        }
+        return prevData;
+      });
       return newSet;
     });
   };
@@ -5179,7 +5301,7 @@ function QuestionnaireStep({ formData, setFormData, currentUser, setFeaturesLoad
                       return (
                         <div key={feature.featureID} style={{ display: 'flex' }}>
                           <div
-                            onClick={() => toggleFeatureSelection(feature.featureID)}
+                            onClick={() => toggleFeatureSelection(feature.featureID, feature.featureName)}
                             style={{
                               padding: '1rem 1.25rem',
                               cursor: 'pointer',
@@ -5251,13 +5373,19 @@ function GalleryStep({ formData, setFormData, currentUser }) {
   const [dragOverIndex, setDragOverIndex] = useState(null);
   const [showAlbumModal, setShowAlbumModal] = useState(false);
   const [albumForm, setAlbumForm] = useState({ name: '', description: '', coverImageURL: '', isPublic: true });
+  const [albums, setAlbums] = useState([]);
+  const [selectedAlbum, setSelectedAlbum] = useState(null);
+  const [showAddPhotosModal, setShowAddPhotosModal] = useState(false);
+  const [albumPhotoUrl, setAlbumPhotoUrl] = useState('');
+  const [addingAlbumPhoto, setAddingAlbumPhoto] = useState(false);
   
   const MIN_PHOTOS = 5;
 
-  // Load existing photos
+  // Load existing photos and albums
   useEffect(() => {
     if (currentUser?.vendorProfileId) {
       loadPhotos();
+      loadAlbums();
     } else {
       // Initialize from formData if no vendorProfileId
       const existingPhotos = (formData.photoURLs || []).map((url, i) => ({
@@ -5270,6 +5398,50 @@ function GalleryStep({ formData, setFormData, currentUser }) {
       setLoading(false);
     }
   }, [currentUser?.vendorProfileId]);
+
+  const loadAlbums = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/vendor/${currentUser.vendorProfileId}/portfolio/albums`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setAlbums(data.albums || []);
+      }
+    } catch (error) {
+      console.error('Error loading albums:', error);
+    }
+  };
+
+  const handleAddPhotoToAlbum = async () => {
+    if (!albumPhotoUrl.trim() || !selectedAlbum) return;
+    
+    setAddingAlbumPhoto(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/vendor/${currentUser.vendorProfileId}/portfolio/albums/${selectedAlbum.AlbumID}/images`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ imageUrl: albumPhotoUrl.trim() })
+      });
+      
+      if (response.ok) {
+        showBanner('Photo added to album!', 'success');
+        setAlbumPhotoUrl('');
+        loadAlbums(); // Refresh albums to get updated image count
+      } else {
+        const data = await response.json();
+        showBanner(data.message || 'Failed to add photo', 'error');
+      }
+    } catch (error) {
+      console.error('Error adding photo to album:', error);
+      showBanner('Failed to add photo to album', 'error');
+    } finally {
+      setAddingAlbumPhoto(false);
+    }
+  };
 
   const loadPhotos = async () => {
     try {
@@ -5620,24 +5792,23 @@ function GalleryStep({ formData, setFormData, currentUser }) {
   return (
     <div className="gallery-step">
       <div style={{ maxWidth: '100%', width: '100%' }}>
-        {/* Minimum photos warning */}
-        {!hasEnoughPhotos && photos.length > 0 && (
-          <div style={{ 
-            marginBottom: '1.5rem', 
-            padding: '1rem', 
-            background: '#fef3c7', 
-            borderRadius: '8px', 
-            border: '1px solid #fcd34d',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.75rem'
-          }}>
-            <i className="fas fa-exclamation-triangle" style={{ color: '#d97706' }}></i>
-            <p style={{ margin: 0, color: '#92400e', fontSize: '0.9rem' }}>
-              You need at least {MIN_PHOTOS} photos to publish your listing. Add {photosNeeded} more photo{photosNeeded > 1 ? 's' : ''}.
-            </p>
-          </div>
-        )}
+        {/* Required photos notice */}
+        <div style={{ 
+          marginBottom: '1.5rem', 
+          padding: '1rem', 
+          background: photos.length >= MIN_PHOTOS ? '#f0fdf4' : '#fef3c7', 
+          borderRadius: '8px', 
+          border: `1px solid ${photos.length >= MIN_PHOTOS ? '#86efac' : '#fcd34d'}`,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.75rem'
+        }}>
+          <i className={`fas ${photos.length >= MIN_PHOTOS ? 'fa-check-circle' : 'fa-exclamation-triangle'}`} style={{ color: photos.length >= MIN_PHOTOS ? '#16a34a' : '#d97706' }}></i>
+          <p style={{ margin: 0, color: photos.length >= MIN_PHOTOS ? '#166534' : '#92400e', fontSize: '0.9rem' }}>
+            <strong>At least {MIN_PHOTOS} photos required <span style={{ color: '#ef4444' }}>*</span></strong>
+            {photos.length > 0 ? ` — ${photos.length}/${MIN_PHOTOS} photo${photos.length > 1 ? 's' : ''} uploaded` : ' — Upload photos to showcase your work'}
+          </p>
+        </div>
 
         {!currentUser?.vendorProfileId && (
           <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#e0f2fe', borderRadius: '8px', border: '1px solid #7dd3fc' }}>
@@ -5700,7 +5871,7 @@ function GalleryStep({ formData, setFormData, currentUser }) {
                     top: '12px',
                     left: '12px',
                     background: 'white',
-                    color: '#b45309',
+                    color: '#222',
                     padding: '6px 12px',
                     borderRadius: '6px',
                     fontSize: '13px',
@@ -5709,7 +5880,7 @@ function GalleryStep({ formData, setFormData, currentUser }) {
                   }}>
                     Cover Photo
                   </div>
-                  {/* Menu button */}
+                  {/* Delete button */}
                   <button
                     type="button"
                     onClick={(e) => {
@@ -5725,7 +5896,7 @@ function GalleryStep({ formData, setFormData, currentUser }) {
                       borderRadius: '50%',
                       border: 'none',
                       background: 'white',
-                      color: '#222',
+                      color: '#ef4444',
                       cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
@@ -5733,7 +5904,7 @@ function GalleryStep({ formData, setFormData, currentUser }) {
                       boxShadow: '0 2px 4px rgba(0,0,0,0.15)'
                     }}
                   >
-                    <i className="fas fa-ellipsis-h" style={{ fontSize: '14px' }}></i>
+                    <i className="fas fa-trash-alt" style={{ fontSize: '14px' }}></i>
                   </button>
                 </>
               ) : (
@@ -5777,14 +5948,18 @@ function GalleryStep({ formData, setFormData, currentUser }) {
                     transition: 'border-color 0.2s, opacity 0.2s'
                   }}
                 >
-                  <img src={photos[1].url} alt="Gallery 2" style={{ width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none' }} />
+                  <img src={photos[1].url} alt="Gallery 2" style={{ width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none' }} onLoad={(e) => e.target.style.opacity = 1} onError={(e) => e.target.style.opacity = 0.5} />
                   <button type="button" onClick={(e) => { e.stopPropagation(); handleDeletePhoto(photos[1].id, 1); }} className="photo-delete-btn" style={{ position: 'absolute', top: '8px', right: '8px', width: '28px', height: '28px', borderRadius: '50%', border: 'none', background: 'white', color: '#222', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.15)', opacity: 0, transition: 'opacity 0.2s' }}>
                     <i className="fas fa-times" style={{ fontSize: '12px' }}></i>
                   </button>
                 </div>
               ) : (
-                <div onClick={() => document.getElementById('photo-upload-input').click()} style={{ aspectRatio: '1', borderRadius: '8px', border: '1px solid #e5e7eb', background: '#f9f9f9', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-                  <i className="far fa-image" style={{ fontSize: '2rem', color: '#9ca3af' }}></i>
+                <div onClick={() => document.getElementById('photo-upload-input').click()} style={{ aspectRatio: '1', borderRadius: '8px', border: '1px dashed #d1d5db', background: '#f9f9f9', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', gap: '0.5rem' }}>
+                  {uploading ? (
+                    <div className="spinner" style={{ width: '24px', height: '24px' }}></div>
+                  ) : (
+                    <i className="far fa-image" style={{ fontSize: '1.75rem', color: '#9ca3af' }}></i>
+                  )}
                 </div>
               )}
 
@@ -5808,14 +5983,18 @@ function GalleryStep({ formData, setFormData, currentUser }) {
                     transition: 'border-color 0.2s, opacity 0.2s'
                   }}
                 >
-                  <img src={photos[2].url} alt="Gallery 3" style={{ width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none' }} />
+                  <img src={photos[2].url} alt="Gallery 3" style={{ width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none' }} onLoad={(e) => e.target.style.opacity = 1} onError={(e) => e.target.style.opacity = 0.5} />
                   <button type="button" onClick={(e) => { e.stopPropagation(); handleDeletePhoto(photos[2].id, 2); }} className="photo-delete-btn" style={{ position: 'absolute', top: '8px', right: '8px', width: '28px', height: '28px', borderRadius: '50%', border: 'none', background: 'white', color: '#222', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.15)', opacity: 0, transition: 'opacity 0.2s' }}>
                     <i className="fas fa-times" style={{ fontSize: '12px' }}></i>
                   </button>
                 </div>
               ) : (
-                <div onClick={() => document.getElementById('photo-upload-input').click()} style={{ aspectRatio: '1', borderRadius: '8px', border: '1px solid #e5e7eb', background: '#f9f9f9', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-                  <i className="far fa-image" style={{ fontSize: '2rem', color: '#9ca3af' }}></i>
+                <div onClick={() => document.getElementById('photo-upload-input').click()} style={{ aspectRatio: '1', borderRadius: '8px', border: '1px dashed #d1d5db', background: '#f9f9f9', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', gap: '0.5rem' }}>
+                  {uploading ? (
+                    <div className="spinner" style={{ width: '24px', height: '24px' }}></div>
+                  ) : (
+                    <i className="far fa-image" style={{ fontSize: '1.75rem', color: '#9ca3af' }}></i>
+                  )}
                 </div>
               )}
 
@@ -5839,14 +6018,18 @@ function GalleryStep({ formData, setFormData, currentUser }) {
                     transition: 'border-color 0.2s, opacity 0.2s'
                   }}
                 >
-                  <img src={photos[3].url} alt="Gallery 4" style={{ width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none' }} />
+                  <img src={photos[3].url} alt="Gallery 4" style={{ width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none' }} onLoad={(e) => e.target.style.opacity = 1} onError={(e) => e.target.style.opacity = 0.5} />
                   <button type="button" onClick={(e) => { e.stopPropagation(); handleDeletePhoto(photos[3].id, 3); }} className="photo-delete-btn" style={{ position: 'absolute', top: '8px', right: '8px', width: '28px', height: '28px', borderRadius: '50%', border: 'none', background: 'white', color: '#222', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.15)', opacity: 0, transition: 'opacity 0.2s' }}>
                     <i className="fas fa-times" style={{ fontSize: '12px' }}></i>
                   </button>
                 </div>
               ) : (
-                <div onClick={() => document.getElementById('photo-upload-input').click()} style={{ aspectRatio: '1', borderRadius: '8px', border: '1px solid #e5e7eb', background: '#f9f9f9', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-                  <i className="far fa-image" style={{ fontSize: '2rem', color: '#9ca3af' }}></i>
+                <div onClick={() => document.getElementById('photo-upload-input').click()} style={{ aspectRatio: '1', borderRadius: '8px', border: '1px dashed #d1d5db', background: '#f9f9f9', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', gap: '0.5rem' }}>
+                  {uploading ? (
+                    <div className="spinner" style={{ width: '24px', height: '24px' }}></div>
+                  ) : (
+                    <i className="far fa-image" style={{ fontSize: '1.75rem', color: '#9ca3af' }}></i>
+                  )}
                 </div>
               )}
 
@@ -5989,32 +6172,227 @@ function GalleryStep({ formData, setFormData, currentUser }) {
         {/* Photo Albums Section */}
         <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '2rem', marginTop: '2rem' }}>
           <h3 style={{ fontSize: '1.25rem', fontWeight: 600, color: '#222', margin: '0 0 1rem 0' }}>
-            Create your first album
+            {albums.length > 0 ? 'Your Albums' : 'Create your first album'}
           </h3>
           
-          {/* Empty album card - solid border, matching theme */}
-          <div 
-            onClick={() => setShowAlbumModal(true)}
-            style={{
-              aspectRatio: '16/9',
-              border: '1px solid #e5e7eb',
-              borderRadius: '12px',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              background: '#f9f9f9',
-              transition: 'border-color 0.2s, background 0.2s',
-              maxWidth: '400px'
-            }}
-            onMouseOver={(e) => { e.currentTarget.style.borderColor = '#222'; e.currentTarget.style.background = '#f5f5f5'; }}
-            onMouseOut={(e) => { e.currentTarget.style.borderColor = '#e5e7eb'; e.currentTarget.style.background = '#f9f9f9'; }}
-          >
-            <span style={{ fontWeight: 500, color: '#222', marginBottom: '4px' }}>Create album</span>
-            <span style={{ fontSize: '0.85rem', color: '#717171' }}>Organize your photos into collections</span>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '1rem' }}>
+            {/* Existing albums */}
+            {albums.map(album => (
+              <div 
+                key={album.AlbumID}
+                onClick={() => { setSelectedAlbum(album); setShowAddPhotosModal(true); }}
+                style={{
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '12px',
+                  overflow: 'hidden',
+                  cursor: 'pointer',
+                  background: 'white',
+                  transition: 'border-color 0.2s, box-shadow 0.2s'
+                }}
+                onMouseOver={(e) => { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)'; }}
+                onMouseOut={(e) => { e.currentTarget.style.borderColor = '#e5e7eb'; e.currentTarget.style.boxShadow = 'none'; }}
+              >
+                <div style={{ aspectRatio: '4/3', background: '#f9f9f9', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                  {album.CoverImageURL ? (
+                    <img src={album.CoverImageURL} alt={album.AlbumName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    <i className="far fa-image" style={{ fontSize: '2rem', color: '#d1d5db' }}></i>
+                  )}
+                </div>
+                <div style={{ padding: '0.75rem' }}>
+                  <div style={{ fontWeight: 600, fontSize: '0.9rem', color: '#222', marginBottom: '0.25rem' }}>{album.AlbumName}</div>
+                  <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>{album.ImageCount || 0} photos</div>
+                </div>
+              </div>
+            ))}
+            
+            {/* Create new album card */}
+            <div 
+              onClick={() => setShowAlbumModal(true)}
+              style={{
+                border: '1px dashed #d1d5db',
+                borderRadius: '12px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                background: '#f9f9f9',
+                transition: 'border-color 0.2s, background 0.2s',
+                minHeight: '180px'
+              }}
+              onMouseOver={(e) => { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.background = '#f5f5f5'; }}
+              onMouseOut={(e) => { e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.background = '#f9f9f9'; }}
+            >
+              <i className="fas fa-plus" style={{ fontSize: '1.5rem', color: '#6b7280', marginBottom: '0.5rem' }}></i>
+              <span style={{ fontWeight: 500, color: '#222', marginBottom: '4px' }}>Create album</span>
+              <span style={{ fontSize: '0.8rem', color: '#717171' }}>Organize photos</span>
+            </div>
           </div>
         </div>
+
+        {/* Add Photos to Album Modal */}
+        {showAddPhotosModal && selectedAlbum && (
+          <div 
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'rgba(0, 0, 0, 0.6)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 10000,
+              padding: '1rem'
+            }}
+            onClick={() => { setShowAddPhotosModal(false); setSelectedAlbum(null); }}
+          >
+            <div 
+              style={{
+                background: 'white',
+                borderRadius: '12px',
+                maxWidth: '500px',
+                width: '100%',
+                maxHeight: '90vh',
+                overflow: 'hidden',
+                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div style={{ padding: '16px 24px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600, color: '#222' }}>
+                  Add Photos to "{selectedAlbum.AlbumName}"
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => { setShowAddPhotosModal(false); setSelectedAlbum(null); }}
+                  style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', color: '#6b7280', padding: '4px' }}
+                >
+                  ✕
+                </button>
+              </div>
+              
+              <div style={{ padding: '24px' }}>
+                <p style={{ margin: '0 0 1rem', color: '#6b7280', fontSize: '0.9rem' }}>
+                  Add photos to this album by uploading or entering image URLs.
+                </p>
+                
+                {/* Upload button */}
+                <div style={{ marginBottom: '1rem' }}>
+                  <label 
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      padding: '10px 20px',
+                      background: 'var(--primary)',
+                      color: 'white',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontSize: '0.9rem',
+                      fontWeight: 500
+                    }}
+                  >
+                    <i className="fas fa-cloud-upload-alt"></i>
+                    Upload Photos
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      style={{ display: 'none' }}
+                      onChange={async (e) => {
+                        const files = Array.from(e.target.files);
+                        if (!files.length) return;
+                        
+                        setAddingAlbumPhoto(true);
+                        for (const file of files) {
+                          const formData = new FormData();
+                          formData.append('image', file);
+                          formData.append('folder', 'venuevue/albums');
+                          
+                          try {
+                            const uploadResponse = await fetch(`${API_BASE_URL}/upload/image`, {
+                              method: 'POST',
+                              headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+                              body: formData
+                            });
+                            const uploadData = await uploadResponse.json();
+                            if (uploadData.success && uploadData.url) {
+                              await fetch(`${API_BASE_URL}/vendor/${currentUser.vendorProfileId}/portfolio/albums/${selectedAlbum.AlbumID}/images`, {
+                                method: 'POST',
+                                headers: {
+                                  'Content-Type': 'application/json',
+                                  'Authorization': `Bearer ${localStorage.getItem('token')}`
+                                },
+                                body: JSON.stringify({ imageUrl: uploadData.url })
+                              });
+                            }
+                          } catch (error) {
+                            console.error('Upload error:', error);
+                          }
+                        }
+                        setAddingAlbumPhoto(false);
+                        showBanner(`${files.length} photo(s) added to album!`, 'success');
+                        loadAlbums();
+                      }}
+                    />
+                  </label>
+                </div>
+                
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+                  <div style={{ flex: 1, height: '1px', background: '#e5e7eb' }}></div>
+                  <span style={{ color: '#9ca3af', fontSize: '0.85rem' }}>or add by URL</span>
+                  <div style={{ flex: 1, height: '1px', background: '#e5e7eb' }}></div>
+                </div>
+                
+                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+                  <input
+                    type="url"
+                    value={albumPhotoUrl}
+                    onChange={(e) => setAlbumPhotoUrl(e.target.value)}
+                    placeholder="Paste image URL..."
+                    style={{ flex: 1, padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.9rem' }}
+                  />
+                  <button
+                    onClick={handleAddPhotoToAlbum}
+                    disabled={addingAlbumPhoto || !albumPhotoUrl.trim()}
+                    style={{
+                      padding: '0.75rem 1.25rem',
+                      background: '#222',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      cursor: addingAlbumPhoto || !albumPhotoUrl.trim() ? 'not-allowed' : 'pointer',
+                      opacity: addingAlbumPhoto || !albumPhotoUrl.trim() ? 0.5 : 1,
+                      fontWeight: 500
+                    }}
+                  >
+                    {addingAlbumPhoto ? 'Adding...' : 'Add'}
+                  </button>
+                </div>
+                
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <button
+                    onClick={() => { setShowAddPhotosModal(false); setSelectedAlbum(null); }}
+                    style={{
+                      padding: '0.6rem 1.25rem',
+                      background: 'white',
+                      color: '#374151',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontWeight: 500
+                    }}
+                  >
+                    Done
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Album Create Modal */}
         {showAlbumModal && (
@@ -6126,18 +6504,65 @@ function GalleryStep({ formData, setFormData, currentUser }) {
                         <i className="fas fa-image" style={{ fontSize: '2rem', color: '#d1d5db' }}></i>
                       )}
                     </div>
-                    {/* URL Input */}
+                    {/* Upload and URL Input */}
                     <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                        <label 
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            padding: '8px 16px',
+                            background: 'var(--primary)',
+                            color: 'white',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            fontSize: '0.85rem',
+                            fontWeight: 500
+                          }}
+                        >
+                          <i className="fas fa-cloud-upload-alt"></i>
+                          Upload
+                          <input
+                            type="file"
+                            accept="image/*"
+                            style={{ display: 'none' }}
+                            onChange={async (e) => {
+                              const file = e.target.files[0];
+                              if (!file) return;
+                              
+                              const formData = new FormData();
+                              formData.append('image', file);
+                              formData.append('folder', 'venuevue/albums');
+                              
+                              try {
+                                const response = await fetch(`${API_BASE_URL}/upload/image`, {
+                                  method: 'POST',
+                                  headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+                                  body: formData
+                                });
+                                const data = await response.json();
+                                if (data.success && data.url) {
+                                  setAlbumForm({ ...albumForm, coverImageURL: data.url });
+                                } else {
+                                  showBanner('Failed to upload image', 'error');
+                                }
+                              } catch (error) {
+                                console.error('Upload error:', error);
+                                showBanner('Failed to upload image', 'error');
+                              }
+                            }}
+                          />
+                        </label>
+                        <span style={{ alignSelf: 'center', color: '#6b7280', fontSize: '0.85rem' }}>or</span>
+                      </div>
                       <input
                         type="url"
                         value={albumForm.coverImageURL}
                         onChange={(e) => setAlbumForm({ ...albumForm, coverImageURL: e.target.value })}
                         placeholder="Paste image URL..."
-                        style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.9rem', marginBottom: '8px' }}
+                        style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.9rem' }}
                       />
-                      <p style={{ margin: 0, fontSize: '0.8rem', color: '#6b7280' }}>
-                        Paste a URL to an image, or select from your uploaded photos
-                      </p>
                     </div>
                   </div>
                 </div>
@@ -6194,6 +6619,7 @@ function GalleryStep({ formData, setFormData, currentUser }) {
                         showBanner('Album created successfully!', 'success');
                         setShowAlbumModal(false);
                         setAlbumForm({ name: '', description: '', coverImageURL: '', isPublic: true });
+                        loadAlbums(); // Refresh albums list
                       } else {
                         console.error('Album creation failed:', data);
                         showBanner(data.message || 'Failed to create album', 'error');
@@ -6327,9 +6753,8 @@ function SocialMediaStep({ formData, onInputChange, setFormData, currentUser }) 
 
   if (loading) {
     return (
-      <div style={{ textAlign: 'center', padding: '3rem' }}>
-        <div className="spinner" style={{ margin: '0 auto' }}></div>
-        <p style={{ marginTop: '1rem', color: '#6b7280' }}>Loading social media...</p>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '40vh' }}>
+        <div className="spinner"></div>
       </div>
     );
   }
@@ -6377,27 +6802,6 @@ function SocialMediaStep({ formData, onInputChange, setFormData, currentUser }) 
           ))}
         </div>
 
-        {currentUser?.vendorProfileId && (
-          <div style={{ marginTop: '2rem', textAlign: 'center' }}>
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              style={{
-                padding: '0.875rem 2rem',
-                backgroundColor: 'var(--primary)',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                fontSize: '1rem',
-                fontWeight: 600,
-                cursor: saving ? 'not-allowed' : 'pointer',
-                opacity: saving ? 0.7 : 1
-              }}
-            >
-              {saving ? 'Saving...' : 'Save Social Media'}
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );
@@ -6672,16 +7076,6 @@ function StripeStep({ formData, setFormData, currentUser }) {
   return (
     <div className="stripe-step">
       <div style={{ maxWidth: '100%', width: '100%' }}>
-        {/* Note - At Top */}
-        <div style={{ marginBottom: '1.5rem', padding: '1.5rem', background: '#fef3c7', borderRadius: '12px', border: '2px solid #fbbf24' }}>
-          <div style={{ display: 'flex', gap: '0.75rem' }}>
-            <i className="fas fa-info-circle" style={{ color: '#d97706', fontSize: '1.25rem', flexShrink: 0 }}></i>
-            <div style={{ fontSize: '0.9rem', color: '#78350f', lineHeight: 1.6 }}>
-              <strong>Note:</strong> You can skip this step for now and set up Stripe later from your dashboard. However, connecting Stripe is required to accept online payments from clients.
-            </div>
-          </div>
-        </div>
-
         <div style={{ marginBottom: '2rem', padding: '1.5rem', background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
             <i className="fab fa-stripe" style={{ color: '#635bff', fontSize: '1.5rem' }}></i>
@@ -6748,11 +7142,15 @@ function StripeStep({ formData, setFormData, currentUser }) {
                 style={{ 
                   display: 'inline-flex', 
                   alignItems: 'center', 
-                  gap: '0.75rem',
-                  padding: '0.875rem 1.5rem',
-                  fontSize: '1rem',
-                  background: 'var(--primary)',
+                  gap: '0.5rem',
+                  padding: '0.75rem 1.25rem',
+                  fontSize: '0.95rem',
+                  background: '#222222',
                   border: 'none',
+                  borderRadius: '8px',
+                  color: 'white',
+                  fontWeight: 600,
+                  cursor: (connecting || !currentUser?.vendorProfileId) ? 'not-allowed' : 'pointer',
                   opacity: (connecting || !currentUser?.vendorProfileId) ? 0.7 : 1
                 }}
               >
@@ -6987,16 +7385,6 @@ function GoogleReviewsStep({ formData, setFormData, currentUser }) {
   return (
     <div className="google-reviews-step">
       <div style={{ maxWidth: '100%', width: '100%' }}>
-        {/* Note - At Top */}
-        <div style={{ marginBottom: '1.5rem', padding: '1.5rem', background: '#fef3c7', borderRadius: '12px', border: '2px solid #fbbf24' }}>
-          <div style={{ display: 'flex', gap: '0.75rem' }}>
-            <i className="fas fa-info-circle" style={{ color: '#d97706', fontSize: '1.25rem', flexShrink: 0 }}></i>
-            <div style={{ fontSize: '0.9rem', color: '#78350f', lineHeight: 1.6 }}>
-              <strong>Note:</strong> You can skip this step for now and set up Google Reviews later from your dashboard. However, displaying reviews helps build trust and credibility with potential clients.
-            </div>
-          </div>
-        </div>
-
         <div style={{ marginBottom: '2rem', padding: '1.5rem', background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
             <svg width="24" height="24" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
@@ -7072,11 +7460,17 @@ function GoogleReviewsStep({ formData, setFormData, currentUser }) {
                 disabled={verifying || !googlePlaceId.trim()}
                 className="btn btn-primary"
                 style={{ 
-                  padding: '0.5rem 0.875rem',
-                  fontSize: '0.8rem',
-                  background: 'var(--primary)',
+                  padding: '0.5rem 1rem',
+                  fontSize: '0.85rem',
+                  background: '#222222',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontWeight: 500,
                   whiteSpace: 'nowrap',
-                  flexShrink: 0
+                  flexShrink: 0,
+                  cursor: (verifying || !googlePlaceId.trim()) ? 'not-allowed' : 'pointer',
+                  opacity: (verifying || !googlePlaceId.trim()) ? 0.6 : 1
                 }}
               >
                 {verifying ? 'Verifying...' : 'Verify'}
@@ -7495,117 +7889,7 @@ function PoliciesStep({ formData, onInputChange, setFormData, currentUser }) {
   return (
     <div className="policies-step">
       <div style={{ maxWidth: '100%', width: '100%' }}>
-        {/* Cancellation Policy Section */}
-        <div style={{ marginBottom: '2rem', padding: '1.5rem', background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
-            <i className="fas fa-calendar-times" style={{ color: 'var(--primary)', fontSize: '1.25rem' }}></i>
-            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>Cancellation Policy</h3>
-          </div>
-          <p style={{ margin: 0, color: '#6b7280', fontSize: '0.9rem', lineHeight: 1.6, marginBottom: '1rem' }}>
-            Set your cancellation and refund terms. This will be displayed on your profile and applied when clients cancel bookings.
-          </p>
-          
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem', marginBottom: '1rem' }}>
-            {policyTypes.map(type => (
-              <div
-                key={type.id}
-                onClick={() => handlePolicyTypeChange(type.id)}
-                style={{
-                  padding: '1rem',
-                  border: `2px solid ${cancellationPolicy.policyType === type.id ? type.color : '#e5e7eb'}`,
-                  borderRadius: '10px',
-                  cursor: 'pointer',
-                  background: cancellationPolicy.policyType === type.id ? `${type.color}10` : 'white',
-                  transition: 'all 0.2s'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
-                  <strong style={{ fontSize: '0.9rem', color: '#1f2937' }}>{type.name}</strong>
-                  {cancellationPolicy.policyType === type.id && (
-                    <i className="fas fa-check-circle" style={{ color: type.color }}></i>
-                  )}
-                </div>
-                <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280' }}>{type.description}</p>
-              </div>
-            ))}
-          </div>
-
-          {cancellationPolicy.policyType === 'custom' && (
-            <div style={{ background: 'white', borderRadius: '8px', padding: '1rem', marginBottom: '1rem', border: '1px solid #e5e7eb' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.75rem' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 500, marginBottom: '0.35rem', color: '#374151' }}>Full Refund Days</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="90"
-                    value={cancellationPolicy.fullRefundDays}
-                    onChange={(e) => setCancellationPolicy({ ...cancellationPolicy, fullRefundDays: parseInt(e.target.value) || 0 })}
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '0.9rem' }}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 500, marginBottom: '0.35rem', color: '#374151' }}>Partial Refund Days</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="90"
-                    value={cancellationPolicy.partialRefundDays}
-                    onChange={(e) => setCancellationPolicy({ ...cancellationPolicy, partialRefundDays: parseInt(e.target.value) || 0 })}
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '0.9rem' }}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 500, marginBottom: '0.35rem', color: '#374151' }}>Partial Refund %</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={cancellationPolicy.partialRefundPercent}
-                    onChange={(e) => setCancellationPolicy({ ...cancellationPolicy, partialRefundPercent: parseInt(e.target.value) || 0 })}
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '0.9rem' }}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 500, marginBottom: '0.35rem', color: '#374151' }}>No Refund Days</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="90"
-                    value={cancellationPolicy.noRefundDays}
-                    onChange={(e) => setCancellationPolicy({ ...cancellationPolicy, noRefundDays: parseInt(e.target.value) || 0 })}
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '0.9rem' }}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {currentUser?.vendorProfileId && (
-            <button
-              onClick={handleSaveCancellationPolicy}
-              disabled={savingPolicy}
-              style={{
-                padding: '0.6rem 1.25rem',
-                background: '#222',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: savingPolicy ? 'not-allowed' : 'pointer',
-                fontWeight: 500,
-                fontSize: '0.85rem',
-                opacity: savingPolicy ? 0.7 : 1,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem'
-              }}
-            >
-              {savingPolicy ? <><i className="fas fa-spinner fa-spin"></i> Saving...</> : <><i className="fas fa-save"></i> Save Policy</>}
-            </button>
-          )}
-        </div>
-
-        {/* FAQs Section */}
+        {/* FAQs Section Header */}
         <div style={{ marginBottom: '2rem', padding: '1.5rem', background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
             <i className="fas fa-question-circle" style={{ color: 'var(--primary)', fontSize: '1.25rem' }}></i>
@@ -7819,25 +8103,71 @@ function PoliciesStep({ formData, onInputChange, setFormData, currentUser }) {
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontWeight: 500, marginBottom: '0.5rem', fontSize: '0.875rem', color: '#374151' }}>
-                    Answer
-                  </label>
-                  <textarea
-                    placeholder="Provide a detailed answer..."
-                    value={newFaq.answers[0] || ''}
-                    onChange={(e) => setNewFaq({ ...newFaq, answers: [e.target.value] })}
-                    rows={3}
-                    style={{
-                      width: '100%',
-                      padding: '0.75rem 1rem',
-                      border: '1px solid #e5e7eb',
-                      borderRadius: '8px',
-                      fontSize: '0.9rem',
-                      resize: 'vertical',
-                      fontFamily: 'inherit',
-                      boxSizing: 'border-box'
-                    }}
-                  />
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                    <label style={{ fontWeight: 500, fontSize: '0.875rem', color: '#374151' }}>
+                      Answer{newFaq.answers.length > 1 ? 's' : ''}
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setNewFaq({ ...newFaq, answers: [...newFaq.answers, ''] })}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--primary)',
+                        cursor: 'pointer',
+                        fontSize: '0.85rem',
+                        fontWeight: 500,
+                        padding: '0.25rem 0.5rem'
+                      }}
+                    >
+                      <i className="fas fa-plus"></i> Add answer
+                    </button>
+                  </div>
+                  <div style={{ display: 'grid', gap: '0.5rem' }}>
+                    {newFaq.answers.map((answer, ansIdx) => (
+                      <div key={ansIdx} style={{ display: 'flex', gap: '0.5rem' }}>
+                        <textarea
+                          placeholder="Provide a detailed answer..."
+                          value={answer}
+                          onChange={(e) => {
+                            const updatedAnswers = [...newFaq.answers];
+                            updatedAnswers[ansIdx] = e.target.value;
+                            setNewFaq({ ...newFaq, answers: updatedAnswers });
+                          }}
+                          rows={2}
+                          style={{
+                            flex: 1,
+                            padding: '0.75rem 1rem',
+                            border: '1px solid #e5e7eb',
+                            borderRadius: '8px',
+                            fontSize: '0.9rem',
+                            resize: 'vertical',
+                            fontFamily: 'inherit',
+                            boxSizing: 'border-box'
+                          }}
+                        />
+                        {newFaq.answers.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updatedAnswers = newFaq.answers.filter((_, i) => i !== ansIdx);
+                              setNewFaq({ ...newFaq, answers: updatedAnswers });
+                            }}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              color: '#ef4444',
+                              cursor: 'pointer',
+                              padding: '0.5rem',
+                              alignSelf: 'flex-start'
+                            }}
+                          >
+                            <i className="fas fa-times"></i>
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
                 <button
                   onClick={handleAddFaq}
@@ -7877,17 +8207,23 @@ function PoliciesStep({ formData, onInputChange, setFormData, currentUser }) {
 }
 
 // Review Step - Full Implementation
-function ReviewStep({ formData, categories, profileStatus }) {
+function ReviewStep({ formData, categories, profileStatus, steps, isStepCompleted, filterOptions }) {
   const getCategoryName = (categoryId) => {
     const category = categories.find(c => c.id === categoryId);
     return category ? category.name : categoryId;
+  };
+
+  // Helper to get badge label from filter ID
+  const getBadgeLabel = (filterId) => {
+    const filter = filterOptions?.find(f => f.id === filterId);
+    return filter ? filter.label : filterId.replace('filter-', '').replace(/-/g, ' ');
   };
 
   const allCategories = [formData.primaryCategory, ...(formData.additionalCategories || [])].filter(Boolean);
   
   // Format service areas for display
   const formatServiceAreas = () => {
-    if (!formData.serviceAreas || formData.serviceAreas.length === 0) return 'Not specified';
+    if (!formData.serviceAreas || formData.serviceAreas.length === 0) return null;
     return formData.serviceAreas.map(area => {
       if (typeof area === 'string') return area;
       const city = area.city || area.name || '';
@@ -7898,13 +8234,49 @@ function ReviewStep({ formData, categories, profileStatus }) {
 
   // Format business hours for display
   const formatBusinessHours = () => {
-    if (!formData.businessHours) return 'Not set';
+    if (!formData.businessHours) return null;
     const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
     const openDays = days.filter(day => formData.businessHours[day]?.isAvailable !== false);
     if (openDays.length === 0) return 'All days closed';
     if (openDays.length === 7) return 'Open all week';
     return `Open ${openDays.length} days/week`;
   };
+
+  // Helper to render status badge
+  const StatusBadge = ({ isRequired, isComplete }) => (
+    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+      <span style={{
+        padding: '0.25rem 0.5rem',
+        background: isRequired ? '#fef3c7' : '#f3f4f6',
+        color: isRequired ? '#92400e' : '#6b7280',
+        borderRadius: '4px',
+        fontSize: '0.7rem',
+        fontWeight: '600',
+        textTransform: 'uppercase'
+      }}>
+        {isRequired ? 'Required' : 'Optional'}
+      </span>
+      {isComplete ? (
+        <span style={{ color: '#10b981', fontSize: '0.85rem' }}>
+          <i className="fas fa-check-circle"></i>
+        </span>
+      ) : isRequired ? (
+        <span style={{ color: '#ef4444', fontSize: '0.85rem' }}>
+          <i className="fas fa-exclamation-circle"></i>
+        </span>
+      ) : null}
+    </div>
+  );
+
+  // Helper to render a field row
+  const FieldRow = ({ label, value, isProvided }) => (
+    <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: '0.5rem' }}>
+      <span style={{ color: '#6b7280' }}>{label}:</span>
+      <span style={{ color: isProvided ? '#111827' : '#9ca3af' }}>
+        {isProvided ? value : 'Not provided'}
+      </span>
+    </div>
+  );
 
   // Count services
   const servicesCount = (formData.selectedServices || []).length;
@@ -7917,14 +8289,14 @@ function ReviewStep({ formData, categories, profileStatus }) {
       <div style={{ maxWidth: '100%', width: '100%' }}>
         {/* Pending Review Notice */}
         {profileStatus === 'pending_review' && (
-          <div style={{ marginBottom: '1.5rem', padding: '1.5rem', background: '#dbeafe', borderRadius: '12px', border: '2px solid #3b82f6' }}>
+          <div style={{ marginBottom: '1.5rem', padding: '1.5rem', background: '#f3f4f6', borderRadius: '12px', border: '2px solid #222222' }}>
             <div style={{ display: 'flex', gap: '0.75rem' }}>
-              <i className="fas fa-hourglass-half" style={{ color: '#2563eb', fontSize: '1.5rem', flexShrink: 0 }}></i>
+              <i className="fas fa-hourglass-half" style={{ color: '#222222', fontSize: '1.5rem', flexShrink: 0 }}></i>
               <div>
-                <h4 style={{ margin: '0 0 0.5rem', fontSize: '1rem', fontWeight: 600, color: '#1e40af' }}>
+                <h4 style={{ margin: '0 0 0.5rem', fontSize: '1rem', fontWeight: 600, color: '#111827' }}>
                   Profile Under Review
                 </h4>
-                <p style={{ margin: 0, fontSize: '0.9rem', color: '#1e3a8a', lineHeight: 1.6 }}>
+                <p style={{ margin: 0, fontSize: '0.9rem', color: '#374151', lineHeight: 1.6 }}>
                   Your profile has been submitted and is currently under review by our team. This typically takes 1-2 business days. 
                   You'll receive an email notification once your profile is approved or if any changes are requested. 
                   You can still make edits from your dashboard while waiting.
@@ -7934,186 +8306,330 @@ function ReviewStep({ formData, categories, profileStatus }) {
           </div>
         )}
 
-        {/* Approval Notice - Only show if not pending */}
-        {profileStatus !== 'pending_review' && (
-          <div style={{ marginBottom: '1.5rem', padding: '1.5rem', background: '#fef3c7', borderRadius: '12px', border: '2px solid #f59e0b' }}>
-            <div style={{ display: 'flex', gap: '0.75rem' }}>
-              <i className="fas fa-clock" style={{ color: '#d97706', fontSize: '1.5rem', flexShrink: 0 }}></i>
-              <div>
-                <h4 style={{ margin: '0 0 0.5rem', fontSize: '1rem', fontWeight: 600, color: '#92400e' }}>
-                  Profile Approval Required
-                </h4>
-                <p style={{ margin: 0, fontSize: '0.9rem', color: '#78350f', lineHeight: 1.6 }}>
-                  After submitting your profile, our support team will review your information. This typically takes 1-2 business days. 
-                  You'll receive an email notification once your profile is approved and ready to go live. In the meantime, you can 
-                  access your dashboard to make any additional updates.
-                </p>
+
+
+        {/* Required Steps Section */}
+        <div style={{ marginBottom: '2rem' }}>
+          <h3 style={{ margin: '0 0 1rem', fontSize: '1.1rem', fontWeight: 600, color: '#111827', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span style={{ padding: '0.25rem 0.5rem', background: '#fef3c7', color: '#92400e', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase' }}>Required</span>
+            Mandatory Information
+          </h3>
+          <div style={{ display: 'grid', gap: '1rem' }}>
+            {/* Categories - Required */}
+            <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '1.25rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600, color: '#111827' }}>Categories</h4>
+                <StatusBadge isRequired={true} isComplete={allCategories.length > 0} />
+              </div>
+              <FieldRow label="Primary" value={getCategoryName(formData.primaryCategory)} isProvided={!!formData.primaryCategory} />
+              {formData.additionalCategories?.length > 0 && (
+                <div style={{ marginTop: '0.5rem' }}>
+                  <FieldRow label="Additional" value={formData.additionalCategories.map(getCategoryName).join(', ')} isProvided={true} />
+                </div>
+              )}
+            </div>
+
+            {/* Business Details - Required */}
+            <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '1.25rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600, color: '#111827' }}>Business Details</h4>
+                <StatusBadge isRequired={true} isComplete={!!(formData.businessName && formData.displayName)} />
+              </div>
+              <div style={{ display: 'grid', gap: '0.5rem', fontSize: '0.9rem' }}>
+                <FieldRow label="Business Name" value={formData.businessName} isProvided={!!formData.businessName} />
+                <FieldRow label="Display Name" value={formData.displayName} isProvided={!!formData.displayName} />
+                <FieldRow label="Description" value={formData.businessDescription ? (formData.businessDescription.length > 150 ? formData.businessDescription.substring(0, 150) + '...' : formData.businessDescription) : null} isProvided={!!formData.businessDescription} />
+                <FieldRow label="Years in Business" value={formData.yearsInBusiness} isProvided={!!formData.yearsInBusiness} />
               </div>
             </div>
-          </div>
-        )}
 
-        {/* Submit Info - Only show if not pending */}
-        {profileStatus !== 'pending_review' && (
-          <div style={{ marginBottom: '2rem', padding: '1.25rem', background: '#f0fdf4', borderRadius: '12px', border: '1px solid #86efac' }}>
-            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-              <i className="fas fa-info-circle" style={{ color: '#16a34a', fontSize: '1.25rem', flexShrink: 0 }}></i>
-              <p style={{ margin: 0, fontSize: '0.9rem', color: '#166534', lineHeight: 1.5 }}>
-                Click <strong>"Go Live"</strong> to submit your profile for review. You can edit your information anytime from your dashboard.
-              </p>
-            </div>
-          </div>
-        )}
-
-        <div style={{ display: 'grid', gap: '1.5rem' }}>
-          {/* Business Information */}
-          <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '1.5rem' }}>
-            <h4 style={{ margin: '0 0 1.25rem', fontSize: '1rem', fontWeight: 600, color: '#111827' }}>
-              Business Information
-            </h4>
-            <div style={{ display: 'grid', gap: '0.75rem', fontSize: '0.95rem' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: '0.5rem' }}>
-                <span style={{ color: '#6b7280' }}>Business Name:</span>
-                <span style={{ color: formData.businessName ? '#111827' : '#9ca3af' }}>{formData.businessName || 'Not provided'}</span>
+            {/* Contact - Required */}
+            <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '1.25rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600, color: '#111827' }}>Contact Information</h4>
+                <StatusBadge isRequired={true} isComplete={!!(formData.businessPhone && formData.email)} />
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: '0.5rem' }}>
-                <span style={{ color: '#6b7280' }}>Display Name:</span>
-                <span style={{ color: formData.displayName ? '#111827' : '#9ca3af' }}>{formData.displayName || 'Not provided'}</span>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: '0.5rem' }}>
-                <span style={{ color: '#6b7280' }}>Categories:</span>
-                <span style={{ color: allCategories.length > 0 ? '#111827' : '#9ca3af' }}>{allCategories.map(getCategoryName).join(', ') || 'Not selected'}</span>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: '0.5rem' }}>
-                <span style={{ color: '#6b7280' }}>Description:</span>
-                <span style={{ color: formData.businessDescription ? '#111827' : '#9ca3af', lineHeight: 1.5 }}>
-                  {formData.businessDescription ? (formData.businessDescription.length > 200 ? formData.businessDescription.substring(0, 200) + '...' : formData.businessDescription) : 'Not provided'}
-                </span>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: '0.5rem' }}>
-                <span style={{ color: '#6b7280' }}>Years in Business:</span>
-                <span style={{ color: formData.yearsInBusiness ? '#111827' : '#9ca3af' }}>{formData.yearsInBusiness || 'Not provided'}</span>
+              <div style={{ display: 'grid', gap: '0.5rem', fontSize: '0.9rem' }}>
+                <FieldRow label="Phone" value={formData.businessPhone} isProvided={!!formData.businessPhone} />
+                <FieldRow label="Email" value={formData.email} isProvided={!!formData.email} />
+                <FieldRow label="Website" value={formData.website} isProvided={!!formData.website} />
               </div>
             </div>
-          </div>
 
-          {/* Contact Information */}
-          <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '1.5rem' }}>
-            <h4 style={{ margin: '0 0 1.25rem', fontSize: '1rem', fontWeight: 600, color: '#111827' }}>
-              Contact Information
-            </h4>
-            <div style={{ display: 'grid', gap: '0.75rem', fontSize: '0.95rem' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: '0.5rem' }}>
-                <span style={{ color: '#6b7280' }}>Email:</span>
-                <span style={{ color: formData.email ? '#111827' : '#9ca3af' }}>{formData.email || 'Not provided'}</span>
+            {/* Location - Required */}
+            <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '1.25rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600, color: '#111827' }}>Location</h4>
+                <StatusBadge isRequired={true} isComplete={!!(formData.city && formData.province && formData.serviceAreas?.length > 0)} />
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: '0.5rem' }}>
-                <span style={{ color: '#6b7280' }}>Phone:</span>
-                <span style={{ color: formData.businessPhone ? '#111827' : '#9ca3af' }}>{formData.businessPhone || 'Not provided'}</span>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: '0.5rem' }}>
-                <span style={{ color: '#6b7280' }}>Website:</span>
-                <span style={{ color: formData.website ? '#111827' : '#9ca3af' }}>{formData.website || 'Not provided'}</span>
+              <div style={{ display: 'grid', gap: '0.5rem', fontSize: '0.9rem' }}>
+                <FieldRow label="City" value={formData.city} isProvided={!!formData.city} />
+                <FieldRow label="Province" value={formData.province} isProvided={!!formData.province} />
+                <FieldRow label="Service Areas" value={formatServiceAreas()} isProvided={!!formatServiceAreas()} />
+                <FieldRow label="Address" value={formData.address} isProvided={!!formData.address} />
               </div>
             </div>
-          </div>
 
-          {/* Location */}
-          <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '1.5rem' }}>
-            <h4 style={{ margin: '0 0 1.25rem', fontSize: '1rem', fontWeight: 600, color: '#111827' }}>
-              Location
-            </h4>
-            <div style={{ display: 'grid', gap: '0.75rem', fontSize: '0.95rem' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: '0.5rem' }}>
-                <span style={{ color: '#6b7280' }}>Address:</span>
-                <span style={{ color: formData.address ? '#111827' : '#9ca3af' }}>{formData.address || 'Not provided'}</span>
+            {/* Business Hours - Required */}
+            <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '1.25rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600, color: '#111827' }}>Business Hours</h4>
+                <StatusBadge isRequired={true} isComplete={!!formatBusinessHours()} />
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: '0.5rem' }}>
-                <span style={{ color: '#6b7280' }}>City:</span>
-                <span style={{ color: formData.city ? '#111827' : '#9ca3af' }}>{formData.city || 'Not provided'}</span>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: '0.5rem' }}>
-                <span style={{ color: '#6b7280' }}>Province:</span>
-                <span style={{ color: formData.province ? '#111827' : '#9ca3af' }}>{formData.province || 'Not provided'}</span>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: '0.5rem' }}>
-                <span style={{ color: '#6b7280' }}>Postal Code:</span>
-                <span style={{ color: formData.postalCode ? '#111827' : '#9ca3af' }}>{formData.postalCode || 'Not provided'}</span>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: '0.5rem' }}>
-                <span style={{ color: '#6b7280' }}>Service Areas:</span>
-                <span style={{ color: formData.serviceAreas?.length > 0 ? '#111827' : '#9ca3af' }}>{formatServiceAreas()}</span>
-              </div>
+              {formData.businessHours ? (
+                <div style={{ display: 'grid', gap: '0.25rem', fontSize: '0.85rem' }}>
+                  {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map(day => {
+                    const hours = formData.businessHours[day];
+                    return (
+                      <div key={day} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.25rem 0', borderBottom: '1px solid #f3f4f6' }}>
+                        <span style={{ color: '#6b7280', textTransform: 'capitalize' }}>{day}</span>
+                        <span style={{ color: hours?.isAvailable ? '#111827' : '#9ca3af' }}>
+                          {hours?.isAvailable ? `${hours.openTime || '9:00 AM'} - ${hours.closeTime || '5:00 PM'}` : 'Closed'}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <span style={{ fontSize: '0.9rem', color: '#9ca3af' }}>Not set</span>
+              )}
             </div>
-          </div>
 
-          {/* Services & Availability */}
-          <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '1.5rem' }}>
-            <h4 style={{ margin: '0 0 1.25rem', fontSize: '1rem', fontWeight: 600, color: '#111827' }}>
-              Services & Availability
-            </h4>
-            <div style={{ display: 'grid', gap: '0.75rem', fontSize: '0.95rem' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: '0.5rem' }}>
-                <span style={{ color: '#6b7280' }}>Services:</span>
-                <span style={{ color: servicesCount > 0 ? '#111827' : '#9ca3af' }}>
-                  {servicesCount > 0 ? `${servicesCount} service${servicesCount > 1 ? 's' : ''} configured` : 'No services added'}
-                </span>
+            {/* Photos - Required (5 minimum) */}
+            <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '1.25rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600, color: '#111827' }}>Photos</h4>
+                <StatusBadge isRequired={true} isComplete={(formData.photoURLs || []).length >= 5} />
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: '0.5rem' }}>
-                <span style={{ color: '#6b7280' }}>Business Hours:</span>
-                <span style={{ color: '#111827' }}>{formatBusinessHours()}</span>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: '0.5rem' }}>
-                <span style={{ color: '#6b7280' }}>Timezone:</span>
-                <span style={{ color: formData.timezone ? '#111827' : '#9ca3af' }}>{formData.timezone || 'Not set'}</span>
-              </div>
+              {(formData.photoURLs || []).length > 0 ? (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))', gap: '0.5rem' }}>
+                  {(formData.photoURLs || []).slice(0, 8).map((photo, idx) => (
+                    <div key={idx} style={{ aspectRatio: '1', borderRadius: '8px', overflow: 'hidden', border: '1px solid #e5e7eb' }}>
+                      <img src={typeof photo === 'string' ? photo : photo.url} alt={`Photo ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    </div>
+                  ))}
+                  {(formData.photoURLs || []).length > 8 && (
+                    <div style={{ aspectRatio: '1', borderRadius: '8px', background: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem', color: '#6b7280' }}>
+                      +{(formData.photoURLs || []).length - 8} more
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <span style={{ fontSize: '0.9rem', color: '#9ca3af' }}>No photos uploaded</span>
+              )}
             </div>
-          </div>
 
-          {/* Profile Enhancements */}
-          <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '1.5rem' }}>
-            <h4 style={{ margin: '0 0 1.25rem', fontSize: '1rem', fontWeight: 600, color: '#111827' }}>
-              Profile Enhancements
-            </h4>
-            <div style={{ display: 'grid', gap: '0.75rem', fontSize: '0.95rem' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: '0.5rem' }}>
-                <span style={{ color: '#6b7280' }}>Photos:</span>
-                <span style={{ color: (formData.photoURLs || []).length > 0 ? '#111827' : '#9ca3af' }}>
-                  {(formData.photoURLs || []).length > 0 ? `${(formData.photoURLs || []).length} photos uploaded` : 'No photos uploaded'}
-                </span>
+            {/* Stripe - Required */}
+            <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '1.25rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600, color: '#111827' }}>Stripe Payments</h4>
+                <StatusBadge isRequired={true} isComplete={!!formData.stripeConnected} />
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: '0.5rem' }}>
-                <span style={{ color: '#6b7280' }}>Features:</span>
-                <span style={{ color: (formData.selectedFeatures || []).length > 0 ? '#111827' : '#9ca3af' }}>
-                  {(formData.selectedFeatures || []).length > 0 ? `${(formData.selectedFeatures || []).length} features selected` : 'No features selected'}
-                </span>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: '0.5rem' }}>
-                <span style={{ color: '#6b7280' }}>Social Links:</span>
-                <span style={{ color: socialLinksCount > 0 ? '#111827' : '#9ca3af' }}>
-                  {socialLinksCount > 0 ? `${socialLinksCount} platform${socialLinksCount > 1 ? 's' : ''} connected` : 'No social links added'}
-                </span>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: '0.5rem' }}>
-                <span style={{ color: '#6b7280' }}>Badges:</span>
-                <span style={{ color: (formData.selectedFilters || []).length > 0 ? '#111827' : '#9ca3af' }}>
-                  {(formData.selectedFilters || []).length > 0 ? `${(formData.selectedFilters || []).length} badge${(formData.selectedFilters || []).length > 1 ? 's' : ''} enabled` : 'No badges enabled'}
-                </span>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: '0.5rem' }}>
-                <span style={{ color: '#6b7280' }}>FAQs:</span>
-                <span style={{ color: (formData.faqs || []).length > 0 ? '#111827' : '#9ca3af' }}>
-                  {(formData.faqs || []).length > 0 ? `${(formData.faqs || []).length} question${(formData.faqs || []).length > 1 ? 's' : ''} added` : 'No FAQs added'}
-                </span>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: '0.5rem' }}>
-                <span style={{ color: '#6b7280' }}>Stripe:</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem' }}>
+                <i className="fab fa-stripe" style={{ fontSize: '1.5rem', color: formData.stripeConnected ? '#635bff' : '#9ca3af' }}></i>
                 <span style={{ color: formData.stripeConnected ? '#16a34a' : '#9ca3af' }}>
-                  {formData.stripeConnected ? 'Connected' : 'Not connected'}
+                  {formData.stripeConnected ? 'Connected and ready to accept payments' : 'Not connected - required to accept bookings'}
                 </span>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: '0.5rem' }}>
-                <span style={{ color: '#6b7280' }}>Google Reviews:</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Optional Steps Section */}
+        <div>
+          <h3 style={{ margin: '0 0 1rem', fontSize: '1.1rem', fontWeight: 600, color: '#111827', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span style={{ padding: '0.25rem 0.5rem', background: '#f3f4f6', color: '#6b7280', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase' }}>Optional</span>
+            Profile Enhancements
+          </h3>
+          <p style={{ margin: '0 0 1rem', fontSize: '0.85rem', color: '#6b7280' }}>
+            These sections help improve your profile visibility and client engagement. You can complete them anytime.
+          </p>
+          <div style={{ display: 'grid', gap: '1rem' }}>
+            {/* Services - Optional */}
+            <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '1.25rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600, color: '#111827' }}>Services</h4>
+                <StatusBadge isRequired={false} isComplete={servicesCount > 0} />
+              </div>
+              {servicesCount > 0 ? (
+                <div style={{ fontSize: '0.9rem' }}>
+                  <span style={{ color: '#111827' }}>{servicesCount} service{servicesCount > 1 ? 's' : ''} configured</span>
+                  {formData.selectedServices && formData.selectedServices.length > 0 && (
+                    <div style={{ marginTop: '0.5rem', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                      {formData.selectedServices.slice(0, 5).map((service, idx) => (
+                        <span key={idx} style={{ padding: '0.25rem 0.5rem', background: '#f3f4f6', borderRadius: '4px', fontSize: '0.8rem', color: '#374151' }}>
+                          {service.name || service.serviceName || `Service ${idx + 1}`}
+                        </span>
+                      ))}
+                      {formData.selectedServices.length > 5 && (
+                        <span style={{ padding: '0.25rem 0.5rem', background: '#e5e7eb', borderRadius: '4px', fontSize: '0.8rem', color: '#6b7280' }}>
+                          +{formData.selectedServices.length - 5} more
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <span style={{ fontSize: '0.9rem', color: '#9ca3af' }}>No services added</span>
+              )}
+            </div>
+
+            {/* Features - Optional */}
+            <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '1.25rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600, color: '#111827' }}>Features & Amenities</h4>
+                <StatusBadge isRequired={false} isComplete={(formData.selectedFeatures || []).length > 0} />
+              </div>
+              {(formData.selectedFeatures || []).length > 0 ? (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  {(formData.selectedFeatures || []).slice(0, 10).map((feature, idx) => {
+                    // Handle different feature formats: object with name, string, or number (ID)
+                    const featureName = typeof feature === 'object' && feature !== null 
+                      ? (feature.name || feature.featureName || feature.label || `Feature ${feature.id || idx + 1}`)
+                      : typeof feature === 'string' 
+                        ? feature 
+                        : `Feature ${idx + 1}`;
+                    return (
+                      <span key={idx} style={{ padding: '0.35rem 0.75rem', background: '#f3f4f6', borderRadius: '20px', fontSize: '0.8rem', color: '#374151', border: '1px solid #e5e7eb' }}>
+                        {featureName}
+                      </span>
+                    );
+                  })}
+                  {(formData.selectedFeatures || []).length > 10 && (
+                    <span style={{ padding: '0.35rem 0.75rem', background: '#f3f4f6', borderRadius: '20px', fontSize: '0.8rem', color: '#6b7280', border: '1px solid #e5e7eb' }}>
+                      +{(formData.selectedFeatures || []).length - 10} more
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <span style={{ fontSize: '0.9rem', color: '#9ca3af' }}>No features selected</span>
+              )}
+            </div>
+
+            {/* Social Media - Optional */}
+            <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '1.25rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600, color: '#111827' }}>Social Media</h4>
+                <StatusBadge isRequired={false} isComplete={socialLinksCount > 0} />
+              </div>
+              {socialLinksCount > 0 ? (
+                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                  {formData.facebook && (
+                    <a href={formData.facebook} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', fontSize: '0.9rem', color: '#374151' }}>
+                      <img src="https://upload.wikimedia.org/wikipedia/commons/5/51/Facebook_f_logo_%282019%29.svg" alt="Facebook" style={{ width: '20px', height: '20px' }} />
+                      <span>Facebook</span>
+                    </a>
+                  )}
+                  {formData.instagram && (
+                    <a href={formData.instagram} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', fontSize: '0.9rem', color: '#374151' }}>
+                      <img src="https://upload.wikimedia.org/wikipedia/commons/a/a5/Instagram_icon.png" alt="Instagram" style={{ width: '20px', height: '20px' }} />
+                      <span>Instagram</span>
+                    </a>
+                  )}
+                  {formData.twitter && (
+                    <a href={formData.twitter} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', fontSize: '0.9rem', color: '#374151' }}>
+                      <img src="https://upload.wikimedia.org/wikipedia/commons/c/ce/X_logo_2023.svg" alt="X" style={{ width: '18px', height: '18px' }} />
+                      <span>X</span>
+                    </a>
+                  )}
+                  {formData.linkedin && (
+                    <a href={formData.linkedin} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', fontSize: '0.9rem', color: '#374151' }}>
+                      <img src="https://upload.wikimedia.org/wikipedia/commons/c/ca/LinkedIn_logo_initials.png" alt="LinkedIn" style={{ width: '20px', height: '20px' }} />
+                      <span>LinkedIn</span>
+                    </a>
+                  )}
+                  {formData.youtube && (
+                    <a href={formData.youtube} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', fontSize: '0.9rem', color: '#374151' }}>
+                      <img src="https://upload.wikimedia.org/wikipedia/commons/4/42/YouTube_icon_%282013-2017%29.png" alt="YouTube" style={{ width: '20px', height: '20px' }} />
+                      <span>YouTube</span>
+                    </a>
+                  )}
+                  {formData.tiktok && (
+                    <a href={formData.tiktok} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', fontSize: '0.9rem', color: '#374151' }}>
+                      <img src="https://upload.wikimedia.org/wikipedia/en/a/a9/TikTok_logo.svg" alt="TikTok" style={{ width: '20px', height: '20px' }} />
+                      <span>TikTok</span>
+                    </a>
+                  )}
+                </div>
+              ) : (
+                <span style={{ fontSize: '0.9rem', color: '#9ca3af' }}>No social links added</span>
+              )}
+            </div>
+
+            {/* Badges - Optional */}
+            <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '1.25rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600, color: '#111827' }}>Special Badges</h4>
+                <StatusBadge isRequired={false} isComplete={(formData.selectedFilters || []).length > 0} />
+              </div>
+              {(formData.selectedFilters || []).length > 0 ? (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  {(formData.selectedFilters || []).map((filter, idx) => {
+                    const filterObj = filterOptions?.find(f => f.id === filter);
+                    return (
+                      <span key={idx} style={{ 
+                        padding: '0.35rem 0.75rem', 
+                        background: filterObj?.color ? `${filterObj.color}20` : '#fef3c7', 
+                        borderRadius: '20px', 
+                        fontSize: '0.8rem', 
+                        color: filterObj?.color || '#92400e',
+                        border: `1px solid ${filterObj?.color || '#fcd34d'}`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.35rem'
+                      }}>
+                        {filterObj?.icon && <i className={`fas ${filterObj.icon}`} style={{ fontSize: '0.7rem' }}></i>}
+                        {getBadgeLabel(filter)}
+                      </span>
+                    );
+                  })}
+                </div>
+              ) : (
+                <span style={{ fontSize: '0.9rem', color: '#9ca3af' }}>No badges enabled</span>
+              )}
+            </div>
+
+            {/* FAQs - Optional */}
+            <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '1.25rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600, color: '#111827' }}>FAQs</h4>
+                <StatusBadge isRequired={false} isComplete={(formData.faqs || []).length > 0} />
+              </div>
+              {(formData.faqs || []).length > 0 ? (
+                <div style={{ display: 'grid', gap: '0.75rem' }}>
+                  {(formData.faqs || []).slice(0, 3).map((faq, idx) => (
+                    <div key={idx} style={{ padding: '0.75rem', background: '#f9fafb', borderRadius: '8px' }}>
+                      <div style={{ fontWeight: 500, fontSize: '0.85rem', color: '#111827', marginBottom: '0.25rem' }}>
+                        <i className="fas fa-question-circle" style={{ marginRight: '0.5rem', color: 'var(--primary)' }}></i>
+                        {faq.question}
+                      </div>
+                      <div style={{ fontSize: '0.8rem', color: '#6b7280', paddingLeft: '1.5rem' }}>
+                        {faq.answer?.length > 100 ? faq.answer.substring(0, 100) + '...' : faq.answer}
+                      </div>
+                    </div>
+                  ))}
+                  {(formData.faqs || []).length > 3 && (
+                    <span style={{ fontSize: '0.85rem', color: '#6b7280' }}>+{(formData.faqs || []).length - 3} more FAQs</span>
+                  )}
+                </div>
+              ) : (
+                <span style={{ fontSize: '0.9rem', color: '#9ca3af' }}>No FAQs added</span>
+              )}
+            </div>
+
+            {/* Google Reviews - Optional */}
+            <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '1.25rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600, color: '#111827' }}>Google Reviews</h4>
+                <StatusBadge isRequired={false} isComplete={!!formData.googlePlaceId} />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem' }}>
+                <svg style={{ width: '20px', height: '20px' }} viewBox="0 0 24 24">
+                  <path fill={formData.googlePlaceId ? '#4285F4' : '#9ca3af'} d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                  <path fill={formData.googlePlaceId ? '#34A853' : '#9ca3af'} d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                  <path fill={formData.googlePlaceId ? '#FBBC05' : '#9ca3af'} d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                  <path fill={formData.googlePlaceId ? '#EA4335' : '#9ca3af'} d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                </svg>
                 <span style={{ color: formData.googlePlaceId ? '#16a34a' : '#9ca3af' }}>
                   {formData.googlePlaceId ? 'Connected' : 'Not connected'}
                 </span>

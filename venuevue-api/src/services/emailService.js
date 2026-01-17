@@ -594,12 +594,23 @@ async function notifyAdminOfVendorApplication(userId, vendorProfileId, businessD
     // Also send welcome email to the new vendor
     if (applicantEmail) {
       console.log(`[NotificationService] Sending welcome email to vendor: ${applicantEmail}`);
+      
+      // Calculate incomplete optional sections to suggest in the email
+      const incompleteSections = [];
+      if (!businessDetails.hasServices) incompleteSections.push('Services & Pricing');
+      if (!businessDetails.hasFeatures) incompleteSections.push('Features & Amenities');
+      if (!businessDetails.hasSocialMedia) incompleteSections.push('Social Media Links');
+      if (!businessDetails.hasFAQs) incompleteSections.push('Frequently Asked Questions');
+      if (!businessDetails.hasGoogleReviews) incompleteSections.push('Google Reviews Integration');
+      if (!businessDetails.hasBadges) incompleteSections.push('Special Badges');
+      
       await sendVendorWelcome(
         applicantEmail,
         applicantName,
         businessDetails.businessName || 'Your Business',
-        `${FRONTEND_URL}/become-a-vendor`,
-        userId
+        `${FRONTEND_URL}/dashboard`,
+        userId,
+        incompleteSections
       );
       console.log(`[NotificationService] Vendor welcome email sent successfully`);
     } else {

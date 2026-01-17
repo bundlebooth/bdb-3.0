@@ -73,7 +73,9 @@ export function AuthProvider({ children }) {
             userType: data.isVendor ? 'vendor' : 'client',
             isVendor: data.isVendor || false,
             isAdmin: data.isAdmin || false,
-            vendorProfileId: data.vendorProfileId
+            vendorProfileId: data.vendorProfileId,
+            authProvider: data.authProvider || 'email',
+            profilePicture: data.profilePicture || null
           };
           setCurrentUser(userData);
           window.currentUser = userData;
@@ -175,7 +177,9 @@ export function AuthProvider({ children }) {
         userType: data.isVendor ? 'vendor' : 'client',
         isVendor: data.isVendor || false,
         isAdmin: data.isAdmin || false,
-        vendorProfileId: data.vendorProfileId || null
+        vendorProfileId: data.vendorProfileId || null,
+        authProvider: data.authProvider || 'google',
+        profilePicture: data.profilePicture || decoded.picture || null
       };
       
       setCurrentUser(userData);

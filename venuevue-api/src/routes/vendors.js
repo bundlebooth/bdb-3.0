@@ -1790,11 +1790,36 @@ router.post('/onboarding', async (req, res) => {
       });
     }
 
-    // Use placeholder values for required DB fields if not provided
+    // Use empty string for required DB fields if not provided
     // This allows users to save progress at any step (e.g., just categories)
-    const effectiveBusinessName = businessName || 'Draft Profile';
-    const effectiveDisplayName = displayName || businessName || 'Draft Profile';
+    const effectiveBusinessName = businessName || '';
+    const effectiveDisplayName = displayName || businessName || '';
     const effectiveBusinessPhone = businessPhone || '';
+
+    // Handle profileLogo - if it's a base64 string, upload to Cloudinary first
+    let profileLogoUrl = null;
+    if (profileLogo) {
+      if (profileLogo.startsWith('data:image')) {
+        // It's a base64 image, upload to Cloudinary
+        try {
+          const uploadResult = await cloudinaryService.uploadImage(profileLogo, {
+            folder: 'venuevue/vendor-logos',
+            transformation: [
+              { width: 400, height: 400, crop: 'limit' },
+              { quality: 'auto' },
+              { fetch_format: 'auto' }
+            ]
+          });
+          profileLogoUrl = uploadResult.secure_url;
+        } catch (uploadError) {
+          console.error('Error uploading profile logo to Cloudinary:', uploadError);
+          // Continue without the logo rather than failing the whole request
+        }
+      } else if (profileLogo.startsWith('http')) {
+        // It's already a URL, use it directly
+        profileLogoUrl = profileLogo;
+      }
+    }
 
     const pool = await poolPromise;
     
@@ -1832,7 +1857,7 @@ router.post('/onboarding', async (req, res) => {
       updateRequest.input('Longitude', sql.Decimal(11, 8), longitude || null);
       updateRequest.input('Tagline', sql.NVarChar(255), tagline || null);
       updateRequest.input('PriceLevel', sql.NVarChar(20), priceRange || null);
-      updateRequest.input('ProfileLogo', sql.NVarChar(255), profileLogo || null);
+      updateRequest.input('ProfileLogo', sql.NVarChar(255), profileLogoUrl || null);
 
       await updateRequest.execute('vendors.sp_UpdateProfileExtended');
 
@@ -1869,7 +1894,7 @@ router.post('/onboarding', async (req, res) => {
       updateExtraRequest.input('Longitude', sql.Decimal(11, 8), longitude || null);
       updateExtraRequest.input('Tagline', sql.NVarChar(255), tagline || null);
       updateExtraRequest.input('PriceLevel', sql.NVarChar(20), priceRange || null);
-      updateExtraRequest.input('ProfileLogo', sql.NVarChar(255), profileLogo || null);
+      updateExtraRequest.input('ProfileLogo', sql.NVarChar(255), profileLogoUrl || null);
 
       await updateExtraRequest.execute('vendors.sp_UpdateExtraFields');
     }
@@ -2082,28 +2107,13 @@ router.post('/onboarding', async (req, res) => {
     updateUserRequest.input('UserID', sql.Int, parseInt(userId));
     await updateUserRequest.execute('vendors.sp_SetUserAsVendor');
 
-    // Send email notification to admin about new vendor application
-    try {
-      console.log(`[Onboarding] Sending email notification for userId: ${userId}, vendorProfileId: ${vendorProfileId}`);
-      await notifyAdminOfVendorApplication(
-        parseInt(userId),
-        vendorProfileId,
-        {
-          businessName: businessName,
-          businessEmail: email || null,
-          businessPhone: businessPhone,
-          category: primaryCategory || (categories && categories.length > 0 ? categories[0] : 'Not specified')
-        }
-      );
-      console.log(`[Onboarding] Email notification sent successfully`);
-    } catch (emailErr) {
-      console.error('[Onboarding] Failed to send vendor application notification:', emailErr.message);
-      // Don't fail the onboarding if email fails
-    }
+    // NOTE: Email notification is NOT sent here on save
+    // Email is only sent when vendor clicks "Go Live" via submit-for-review endpoint
+    // This prevents spam emails on every save action
 
     res.status(200).json({
       success: true,
-      message: 'Vendor onboarding completed successfully',
+      message: 'Vendor onboarding progress saved successfully',
       vendorProfileId: vendorProfileId
     });
 
@@ -6023,7 +6033,7 @@ router.post('/:vendorProfileId/submit-for-review', async (req, res) => {
     // Update profile status to pending_review
     await request.execute('vendors.sp_SubmitForReview');
     
-    // Get vendor details for email notification
+    // Get vendor details for email notification including optional section completion status
     try {
       const vendorRequest = new sql.Request(pool);
       vendorRequest.input('VendorProfileID', sql.Int, vendorProfileId);
@@ -6032,6 +6042,15 @@ router.post('/:vendorProfileId/submit-for-review', async (req, res) => {
       if (vendorResult.recordset.length > 0) {
         const vendor = vendorResult.recordset[0];
         console.log(`[SubmitForReview] Sending email notification for vendorProfileId: ${vendorProfileId}`);
+        
+        // Check optional sections completion for email suggestions
+        const hasServices = vendor.ServiceCount > 0 || vendor.HasServices;
+        const hasFeatures = vendor.FeatureCount > 0 || vendor.HasFeatures;
+        const hasSocialMedia = vendor.Facebook || vendor.Instagram || vendor.Twitter || vendor.LinkedIn;
+        const hasFAQs = vendor.FAQCount > 0 || vendor.HasFAQs;
+        const hasGoogleReviews = vendor.GooglePlaceId;
+        const hasBadges = vendor.BadgeCount > 0 || vendor.HasBadges;
+        
         await notifyAdminOfVendorApplication(
           vendor.UserID,
           parseInt(vendorProfileId),
@@ -6039,7 +6058,13 @@ router.post('/:vendorProfileId/submit-for-review', async (req, res) => {
             businessName: vendor.BusinessName,
             businessEmail: vendor.BusinessEmail || null,
             businessPhone: vendor.BusinessPhone,
-            category: vendor.PrimaryCategory || 'Not specified'
+            category: vendor.PrimaryCategory || 'Not specified',
+            hasServices,
+            hasFeatures,
+            hasSocialMedia,
+            hasFAQs,
+            hasGoogleReviews,
+            hasBadges
           }
         );
         console.log(`[SubmitForReview] Email notification sent successfully`);

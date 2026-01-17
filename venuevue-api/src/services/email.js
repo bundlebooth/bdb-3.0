@@ -535,10 +535,21 @@ async function sendVendorApplicationToAdmin(adminEmail, applicantName, businessN
 
 // Send welcome email to new vendor after application
 // BCC to admin so they know about new vendor applications
-async function sendVendorWelcome(vendorEmail, vendorName, businessName, dashboardUrl, userId = null) {
+// incompleteSections is an array of section names that are still incomplete
+async function sendVendorWelcome(vendorEmail, vendorName, businessName, dashboardUrl, userId = null, incompleteSections = []) {
   const adminEmail = process.env.ADMIN_EMAIL || 'admin@planbeau.com';
+  
+  // Format incomplete sections for email
+  let incompleteMessage = '';
+  if (incompleteSections && incompleteSections.length > 0) {
+    incompleteMessage = `<p style="margin-top: 20px; color: #92400e; background: #fef3c7; padding: 15px; border-radius: 8px;">
+      <strong>To improve your profile, please complete these optional sections:</strong><br/>
+      ${incompleteSections.map(s => `• ${s}`).join('<br/>')}
+    </p>`;
+  }
+  
   return sendTemplatedEmail('vendor_welcome', vendorEmail, vendorName, {
-    vendorName, businessName, dashboardUrl
+    vendorName, businessName, dashboardUrl, incompleteMessage
   }, userId, null, null, 'welcome', adminEmail);
 }
 

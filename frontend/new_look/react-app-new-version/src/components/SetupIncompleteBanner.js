@@ -37,7 +37,7 @@ function SetupIncompleteBanner({
   const [dismissed, setDismissed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [fetchedProfileStatus, setFetchedProfileStatus] = useState('draft');
-  const [completedCollapsed, setCompletedCollapsed] = useState(true);
+  const [completedCollapsed, setCompletedCollapsed] = useState(false);
   const [incompleteCollapsed, setIncompleteCollapsed] = useState(false);
   const fetchStartedRef = useRef(false);
 
@@ -376,7 +376,7 @@ function SetupIncompleteBanner({
 
   const handleContinue = () => {
     // Navigate directly to step-by-step process (skip landing page) for signed-in vendors
-    navigate('/become-a-vendor/setup?step=categories');
+    navigate('/become-a-vendor/setup?step=account');
   };
 
   const handleSectionClick = (stepKey) => {
@@ -498,8 +498,8 @@ function SetupIncompleteBanner({
   } else {
     // Steps incomplete
     bannerStyles = {
-      background: '#fffbeb',
-      border: '1px solid #fde68a',
+      background: isInlineMode ? 'transparent' : '#fffbeb',
+      border: isInlineMode ? 'none' : '1px solid #fde68a',
       iconColor: '#D97706',
       titleColor: '#92400e',
       textColor: '#92400e'
@@ -509,6 +509,153 @@ function SetupIncompleteBanner({
     bannerIcon = 'fa-triangle-exclamation';
   }
 
+  // For inline mode (BecomeVendorPage), use full width simple layout
+  // For API mode (main page), use the original card/tile layout
+  if (isInlineMode) {
+    return (
+      <div style={{ width: '100%' }}>
+        {/* Title and message - matching app aesthetics */}
+        <div style={{ marginBottom: '1.5rem' }}>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '0.5rem', 
+            marginBottom: '0.5rem',
+            color: '#111827',
+            fontSize: '1.1rem',
+            fontWeight: 600
+          }}>
+            <i className={`fas ${bannerIcon}`} style={{ color: '#f59e0b' }}></i>
+            {bannerTitle}
+          </div>
+          <p style={{ 
+            margin: 0, 
+            color: '#6b7280', 
+            fontSize: '0.95rem',
+            lineHeight: 1.5
+          }}>
+            {bannerMessage}
+          </p>
+        </div>
+
+        {/* Incomplete Steps Section */}
+        {incompleteSteps.length > 0 && (
+          <div style={{ marginBottom: '2rem' }}>
+            <div 
+              style={{ 
+                fontWeight: 600, 
+                color: '#7c2d12', 
+                marginBottom: '1rem', 
+                fontSize: '1rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                cursor: 'pointer'
+              }}
+              onClick={() => setIncompleteCollapsed(!incompleteCollapsed)}
+            >
+              Incomplete ({incompleteSteps.length}/{totalSteps})
+              <i 
+                className={`fas fa-chevron-${incompleteCollapsed ? 'down' : 'up'}`} 
+                style={{ fontSize: '12px', color: '#7c2d12' }}
+              ></i>
+            </div>
+            {!incompleteCollapsed && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
+                {incompleteSteps.map((step) => {
+                  const stepKey = step.key || step;
+                  return (
+                    <span
+                      key={stepKey}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        background: 'rgba(239, 68, 68, 0.12)',
+                        color: '#111827',
+                        border: '1px solid #ef4444',
+                        borderRadius: '999px',
+                        padding: '0.625rem 1.25rem',
+                        fontSize: '0.95rem',
+                        fontWeight: 500,
+                        whiteSpace: 'nowrap',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease'
+                      }}
+                      onClick={() => handleStepClick(stepKey)}
+                      title={`Click to complete: ${step.label || stepKey}`}
+                    >
+                      <i className="fas fa-times-circle" style={{ color: '#ef4444', fontSize: '0.9rem' }}></i>
+                      {step.label || stepKey}
+                    </span>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Completed Steps Section */}
+        {completedSteps.length > 0 && (
+          <div>
+            <div 
+              style={{ 
+                fontWeight: 600, 
+                color: '#166534', 
+                marginBottom: '1rem', 
+                fontSize: '1rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                cursor: 'pointer'
+              }}
+              onClick={() => setCompletedCollapsed(!completedCollapsed)}
+            >
+              Completed ({completedSteps.length}/{totalSteps})
+              <i 
+                className={`fas fa-chevron-${completedCollapsed ? 'down' : 'up'}`} 
+                style={{ fontSize: '12px', color: '#166534' }}
+              ></i>
+            </div>
+            {!completedCollapsed && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
+                {completedSteps.map((step) => {
+                  const stepKey = step.key || step;
+                  return (
+                    <span
+                      key={stepKey}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        background: 'rgba(16, 185, 129, 0.12)',
+                        color: '#111827',
+                        border: '1px solid #10b981',
+                        borderRadius: '999px',
+                        padding: '0.625rem 1.25rem',
+                        fontSize: '0.95rem',
+                        fontWeight: 500,
+                        whiteSpace: 'nowrap',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease'
+                      }}
+                      onClick={() => handleStepClick(stepKey)}
+                      title={`Review: ${step.label || stepKey}`}
+                    >
+                      <i className="fas fa-check-circle" style={{ color: '#10b981', fontSize: '0.9rem' }}></i>
+                      {step.label || stepKey}
+                    </span>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // API mode (main page) - original card/tile layout
   return (
     <div style={{
       display: 'flex',
@@ -518,57 +665,20 @@ function SetupIncompleteBanner({
       background: bannerStyles.background,
       border: bannerStyles.border,
       borderRadius: '8px',
-      margin: '1rem auto',
-      ...(maxWidth && { maxWidth })
+      marginBottom: '1rem'
     }}>
       <div style={{ fontSize: '20px', lineHeight: 1, color: bannerStyles.iconColor }}>
         <i className={`fas ${bannerIcon}`}></i>
       </div>
       <div style={{ flex: 1 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap', alignItems: 'center', marginBottom: '8px' }}>
-          <div>
-            <div style={{ fontWeight: 700, color: bannerStyles.titleColor, marginBottom: '4px' }}>{bannerTitle}</div>
-            <div style={{ fontSize: '.9rem', color: bannerStyles.textColor }}>
-              {bannerMessage}
-            </div>
-          </div>
-          {!hideButtons && !isAllComplete && (
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-              <button 
-                onClick={handleContinue}
-                style={{
-                  background: '#5e72e4',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  padding: '8px 16px',
-                  fontSize: '.9rem',
-                  fontWeight: '600',
-                  cursor: 'pointer'
-                }}
-              >
-                Complete Profile
-              </button>
-              <button 
-                onClick={handleDismiss}
-                style={{
-                  background: 'transparent',
-                  color: '#1f2937',
-                  border: 'none',
-                  padding: '8px 16px',
-                  fontSize: '.9rem',
-                  fontWeight: '500',
-                  cursor: 'pointer'
-                }}
-              >
-                Dismiss
-              </button>
-            </div>
-          )}
+        <div style={{ fontWeight: 700, color: bannerStyles.titleColor, marginBottom: '4px' }}>{bannerTitle}</div>
+        <div style={{ fontSize: '.9rem', color: bannerStyles.textColor, marginBottom: '12px' }}>
+          {bannerMessage}
         </div>
-        
+
+        {/* Incomplete Steps Section */}
         {incompleteSteps.length > 0 && (
-          <div style={{ marginTop: '8px' }}>
+          <div style={{ marginBottom: '12px' }}>
             <div 
               style={{ 
                 fontWeight: 600, 
@@ -620,58 +730,82 @@ function SetupIncompleteBanner({
             )}
           </div>
         )}
-        
-        <div style={{ marginTop: '10px' }}>
-          <div 
-            style={{ 
-              fontWeight: 600, 
-              color: '#166534', 
-              marginBottom: '6px', 
-              fontSize: '.9rem',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              cursor: 'pointer'
-            }}
-            onClick={() => setCompletedCollapsed(!completedCollapsed)}
-          >
-            Completed ({completedSteps.length}/{totalSteps})
-            <i 
-              className={`fas fa-chevron-${completedCollapsed ? 'down' : 'up'}`} 
-              style={{ fontSize: '10px', color: '#166534' }}
-            ></i>
-          </div>
-          {!completedCollapsed && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-              {completedSteps.map((step) => {
-                const stepKey = step.key || step;
-                return (
-                  <span
-                    key={stepKey}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      background: 'rgba(16, 185, 129, 0.12)',
-                      color: '#111827',
-                      border: '1px solid #10b981',
-                      borderRadius: '999px',
-                      padding: '6px 12px',
-                      fontSize: '12px',
-                      whiteSpace: 'nowrap',
-                      cursor: 'pointer'
-                    }}
-                    onClick={() => handleStepClick(stepKey)}
-                    title={`Review: ${step.label || stepKey}`}
-                  >
-                    <i className="fas fa-check-circle" style={{ color: '#10b981' }}></i>
-                    {step.label || stepKey}
-                  </span>
-                );
-              })}
+
+        {/* Completed Steps Section */}
+        {completedSteps.length > 0 && (
+          <div style={{ marginTop: '10px' }}>
+            <div 
+              style={{ 
+                fontWeight: 600, 
+                color: '#166534', 
+                marginBottom: '6px', 
+                fontSize: '.9rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                cursor: 'pointer'
+              }}
+              onClick={() => setCompletedCollapsed(!completedCollapsed)}
+            >
+              Completed ({completedSteps.length}/{totalSteps})
+              <i 
+                className={`fas fa-chevron-${completedCollapsed ? 'down' : 'up'}`} 
+                style={{ fontSize: '10px', color: '#166534' }}
+              ></i>
             </div>
-          )}
-        </div>
+            {!completedCollapsed && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                {completedSteps.map((step) => {
+                  const stepKey = step.key || step;
+                  return (
+                    <span
+                      key={stepKey}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        background: 'rgba(16, 185, 129, 0.12)',
+                        color: '#111827',
+                        border: '1px solid #10b981',
+                        borderRadius: '999px',
+                        padding: '6px 12px',
+                        fontSize: '12px',
+                        whiteSpace: 'nowrap',
+                        cursor: 'pointer'
+                      }}
+                      onClick={() => handleStepClick(stepKey)}
+                      title={`Review: ${step.label || stepKey}`}
+                    >
+                      <i className="fas fa-check-circle" style={{ color: '#10b981' }}></i>
+                      {step.label || stepKey}
+                    </span>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Complete Profile Button - only show if not all complete and buttons not hidden */}
+        {!hideButtons && !isAllComplete && (
+          <div style={{ marginTop: '16px' }}>
+            <button 
+              onClick={handleContinue}
+              style={{
+                background: '#222222',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                padding: '8px 16px',
+                fontSize: '.9rem',
+                fontWeight: '600',
+                cursor: 'pointer'
+              }}
+            >
+              Complete Profile
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
