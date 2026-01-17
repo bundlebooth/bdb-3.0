@@ -5788,59 +5788,74 @@ router.get('/:id/images', async (req, res) => {
   }
 });
 
-// Upload vendor images
-router.post('/:id/images', upload.array('images', 10), async (req, res) => {
+// Upload vendor images - EXACT COPY of working service-image/upload logic
+router.post('/:id/images', upload.single('image'), async (req, res) => {
   try {
+    // Ensure response is always JSON
+    res.setHeader('Content-Type', 'application/json');
+    
     const vendorProfileId = parseVendorProfileId(req.params.id);
-    const pool = await poolPromise;
     
-    if (!req.files || req.files.length === 0) {
-      return res.status(400).json({ success: false, message: 'No files uploaded' });
+    if (!req.file) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'No image file provided' 
+      });
     }
-    
-    const uploadedImages = [];
+
+    // Check if Cloudinary is configured
+    if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+      return res.status(500).json({
+        success: false,
+        message: 'Cloudinary is not configured. Please contact the administrator.'
+      });
+    }
+
+    // Upload to Cloudinary - EXACT same as service-image/upload
+    const result = await cloudinaryService.uploadImage(req.file.path, {
+      folder: 'venuevue/vendor-images',
+      transformation: [
+        { width: 800, height: 600, crop: 'limit' },
+        { quality: 'auto' },
+        { fetch_format: 'auto' }
+      ]
+    });
+
+    // Insert into database
+    const pool = await poolPromise;
     
     // Get max display order
     const orderRequest = new sql.Request(pool);
     orderRequest.input('VendorProfileID', sql.Int, vendorProfileId);
     const orderResult = await orderRequest.execute('vendors.sp_GetNextImageOrder');
-    let nextOrder = orderResult.recordset[0].NextOrder;
+    const nextOrder = orderResult.recordset[0].NextOrder;
     
-    for (const file of req.files) {
-      try {
-        // Upload to Cloudinary
-        const result = await cloudinary.uploader.upload(file.path, {
-          folder: 'vendor-images',
-          transformation: [{ width: 1200, height: 1200, crop: 'limit' }]
-        });
-        
-        // Insert into database
-        const insertRequest = new sql.Request(pool);
-        insertRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-        insertRequest.input('ImageURL', sql.NVarChar(500), result.secure_url);
-        insertRequest.input('DisplayOrder', sql.Int, nextOrder);
-        
-        const insertResult = await insertRequest.execute('vendors.sp_InsertImageWithOutput');
-        
-        uploadedImages.push({
-          id: insertResult.recordset[0].ImageID,
-          url: result.secure_url
-        });
-        
-        nextOrder++;
-      } catch (uploadError) {
-        console.error('Error uploading image:', uploadError);
-      }
-    }
+    const insertRequest = new sql.Request(pool);
+    insertRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+    insertRequest.input('ImageURL', sql.NVarChar(500), result.secure_url);
+    insertRequest.input('DisplayOrder', sql.Int, nextOrder);
     
-    res.json({ 
-      success: true, 
-      message: `${uploadedImages.length} image(s) uploaded successfully`,
-      images: uploadedImages
+    const insertResult = await insertRequest.execute('vendors.sp_InsertImageWithOutput');
+
+    res.json({
+      success: true,
+      imageUrl: result.secure_url,
+      publicId: result.public_id,
+      id: insertResult.recordset[0].ImageID,
+      url: result.secure_url,
+      images: [{ id: insertResult.recordset[0].ImageID, url: result.secure_url }]
     });
   } catch (error) {
-    console.error('Error uploading images:', error);
-    res.status(500).json({ success: false, message: 'Failed to upload images', error: error.message });
+    console.error('Vendor image upload error:', error);
+    // Ensure we always return JSON even on error
+    if (!res.headersSent) {
+      res.setHeader('Content-Type', 'application/json');
+      res.status(500).json({ 
+        success: false, 
+        message: 'Failed to upload vendor image',
+        error: error.message 
+      });
+    }
   }
 });
 
@@ -5938,10 +5953,14 @@ router.post('/:id/logo', upload.single('logo'), async (req, res) => {
       return res.status(400).json({ success: false, message: 'No file uploaded' });
     }
     
-    // Upload to Cloudinary
-    const result = await cloudinary.uploader.upload(req.file.path, {
-      folder: 'vendor-logos',
-      transformation: [{ width: 500, height: 500, crop: 'limit' }]
+    // Upload to Cloudinary using cloudinaryService (same as working service-image/upload)
+    const result = await cloudinaryService.uploadImage(req.file.path, {
+      folder: 'venuevue/vendor-logos',
+      transformation: [
+        { width: 500, height: 500, crop: 'limit' },
+        { quality: 'auto' },
+        { fetch_format: 'auto' }
+      ]
     });
     
     // Update vendor profile with logo URL

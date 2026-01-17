@@ -77,23 +77,44 @@ function GalleryMediaPanel({ onBack, vendorProfileId }) {
 
     try {
       setUploading(true);
-      const formData = new FormData();
-      files.forEach(file => formData.append('images', file));
+      
+      // Upload files one at a time using service-image/upload endpoint (WORKING endpoint)
+      for (const file of files) {
+        const formDataUpload = new FormData();
+        formDataUpload.append('image', file);
 
-      const response = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/images`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: formData
-      });
+        // Use the WORKING service-image/upload endpoint, then save URL to vendor images
+        const uploadResponse = await fetch(`${API_BASE_URL}/vendors/service-image/upload`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: formDataUpload
+        });
 
-      if (response.ok) {
-        showBanner('Photos uploaded successfully!', 'success');
-        loadPhotos();
-      } else {
-        throw new Error('Upload failed');
+        if (!uploadResponse.ok) {
+          throw new Error('Upload failed');
+        }
+        
+        const uploadData = await uploadResponse.json();
+        
+        // Now save the uploaded image URL to vendor images
+        const saveResponse = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/images/url`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({ url: uploadData.imageUrl })
+        });
+
+        if (!saveResponse.ok) {
+          throw new Error('Failed to save image');
+        }
       }
+      
+      showBanner('Photos uploaded successfully!', 'success');
+      loadPhotos();
     } catch (error) {
       console.error('Error uploading:', error);
       showBanner('Failed to upload photos', 'error');
