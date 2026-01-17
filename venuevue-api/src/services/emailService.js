@@ -560,17 +560,33 @@ async function notifyAdminOfVendorApplication(userId, vendorProfileId, businessD
     
     const pool = await poolPromise;
     
-    // Get applicant details
-    const result = await pool.request()
-      .input('UserID', sql.Int, userId)
-      .execute('email.sp_GetUserForVendorApplication');
-    
+    // Get applicant details - use direct query as fallback if stored procedure doesn't exist
     let applicantName = 'New Applicant';
     let applicantEmail = '';
     
-    if (result.recordset.length > 0) {
-      applicantName = result.recordset[0].Name || 'New Applicant';
-      applicantEmail = result.recordset[0].Email || '';
+    try {
+      const result = await pool.request()
+        .input('UserID', sql.Int, userId)
+        .execute('email.sp_GetUserForVendorApplication');
+      
+      if (result.recordset.length > 0) {
+        applicantName = result.recordset[0].Name || 'New Applicant';
+        applicantEmail = result.recordset[0].Email || '';
+      }
+    } catch (spError) {
+      console.log(`[NotificationService] Stored procedure not found, using direct query. Error: ${spError.message}`);
+      // Fallback to direct query
+      const result = await pool.request()
+        .input('UserID', sql.Int, userId)
+        .query('SELECT Name, Email FROM users.Users WHERE UserID = @UserID');
+      
+      if (result.recordset.length > 0) {
+        applicantName = result.recordset[0].Name || 'New Applicant';
+        applicantEmail = result.recordset[0].Email || '';
+      }
+    }
+    
+    if (applicantEmail) {
       console.log(`[NotificationService] Found applicant: ${applicantName} (${applicantEmail})`);
     } else {
       console.log(`[NotificationService] No user found for userId: ${userId}`);

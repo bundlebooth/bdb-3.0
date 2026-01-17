@@ -71,6 +71,7 @@ const BecomeVendorPage = () => {
   const [featuresLoadedFromDB, setFeaturesLoadedFromDB] = useState(false); // Track if features were loaded from database
   const [initialDataLoaded, setInitialDataLoaded] = useState(false); // Prevent re-fetching after save
   const [profileStatus, setProfileStatus] = useState('draft'); // 'draft', 'pending_review', 'approved', 'rejected'
+  const [rejectionReason, setRejectionReason] = useState(''); // Reason for rejection if profile was rejected
   const [showSuccessModal, setShowSuccessModal] = useState(false); // Success modal after Go Live
   
   // Form data state
@@ -392,6 +393,10 @@ const BecomeVendorPage = () => {
           // Load profile status for review workflow
           if (profile.ProfileStatus) {
             setProfileStatus(profile.ProfileStatus);
+          }
+          // Load rejection reason if profile was rejected
+          if (profile.RejectionReason) {
+            setRejectionReason(profile.RejectionReason);
           }
           const categories = result.data.categories || [];
           const services = result.data.services || [];
@@ -1594,6 +1599,7 @@ const BecomeVendorPage = () => {
                 setCurrentStep={setCurrentStep}
                 setFeaturesLoadedFromDB={setFeaturesLoadedFromDB}
                 profileStatus={profileStatus}
+                rejectionReason={rejectionReason}
               />
             </div>
           </div>
@@ -1819,7 +1825,7 @@ const BecomeVendorPage = () => {
 // STEP COMPONENTS BELOW
 // Due to file size, I'll add these as inline components
 
-function AccountStep({ currentUser, setFormData, formData, onAccountCreated, isExistingVendor, steps, isStepCompleted, setCurrentStep, profileStatus }) {
+function AccountStep({ currentUser, setFormData, formData, onAccountCreated, isExistingVendor, steps, isStepCompleted, setCurrentStep, profileStatus, rejectionReason }) {
   const [mode, setMode] = useState('signup'); // 'signup' or 'login'
   const [accountData, setAccountData] = useState({
     name: '',
@@ -1836,71 +1842,87 @@ function AccountStep({ currentUser, setFormData, formData, onAccountCreated, isE
     // Show pending review message if profile is submitted
     if (profileStatus === 'pending_review') {
       return (
-        <div className="account-step">
-          <div style={{ padding: '2rem 1rem', maxWidth: '700px', margin: '0 auto' }}>
-            <div style={{ 
-              background: 'linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%)', 
-              borderRadius: '16px', 
-              padding: '2.5rem',
-              border: '2px solid #222222',
-              textAlign: 'center'
-            }}>
+        <div className="account-step" style={{ width: '100%' }}>
+          <div style={{ width: '100%' }}>
+            {/* Title and message - matching incomplete profile banner layout */}
+            <div style={{ marginBottom: '1.5rem' }}>
               <div style={{ 
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '80px',
-                height: '80px',
-                borderRadius: '50%',
-                background: '#222222',
-                marginBottom: '1.5rem'
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '0.5rem', 
+                marginBottom: '0.5rem',
+                color: '#111827',
+                fontSize: '1.1rem',
+                fontWeight: 600
               }}>
-                <i className="fas fa-hourglass-half" style={{ fontSize: '2rem', color: 'white' }}></i>
-              </div>
-              <h2 style={{ fontSize: '1.75rem', marginBottom: '1rem', color: '#111827', fontWeight: '700' }}>
+                <i className="fas fa-hourglass-half" style={{ color: '#6b7280' }}></i>
                 Profile Under Review
-              </h2>
-              <p style={{ color: '#374151', fontSize: '1.1rem', lineHeight: 1.7, marginBottom: '1.5rem' }}>
+              </div>
+              <p style={{ 
+                margin: 0, 
+                color: '#6b7280', 
+                fontSize: '0.95rem',
+                lineHeight: 1.5
+              }}>
                 Your vendor profile has been submitted and is currently being reviewed by our support team. 
                 This process typically takes <strong>1-2 business days</strong>.
               </p>
+            </div>
+
+            {/* What happens next section */}
+            <div style={{ marginBottom: '2rem' }}>
               <div style={{ 
-                background: 'white', 
-                borderRadius: '12px', 
-                padding: '1.25rem',
-                marginBottom: '1.5rem'
+                fontWeight: 600, 
+                color: '#374151', 
+                marginBottom: '1rem', 
+                fontSize: '1rem'
               }}>
-                <h4 style={{ margin: '0 0 0.75rem', color: '#1f2937', fontSize: '1rem', fontWeight: 600 }}>
-                  What happens next?
-                </h4>
-                <ul style={{ 
-                  margin: 0, 
-                  padding: '0 0 0 1.25rem', 
-                  textAlign: 'left',
-                  color: '#4b5563',
-                  fontSize: '0.95rem',
-                  lineHeight: 1.8
-                }}>
-                  <li>Our team will review your business information</li>
-                  <li>You'll receive an email notification once approved</li>
-                  <li>If changes are needed, we'll let you know what to update</li>
-                  <li>Once approved, your profile will be live and visible to clients</li>
-                </ul>
+                What happens next?
               </div>
-              <div style={{ 
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                padding: '0.75rem 1.5rem',
-                background: '#222222',
-                borderRadius: '8px',
-                color: 'white',
-                fontSize: '0.95rem',
-                fontWeight: 500
-              }}>
-                <i className="fas fa-clock"></i>
-                <span>Status: Pending Review</span>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
+                {[
+                  'Our team will review your business information',
+                  "You'll receive an email notification once approved",
+                  "If changes are needed, we'll let you know what to update",
+                  'Once approved, your profile will be live and visible to clients'
+                ].map((item, index) => (
+                  <span
+                    key={index}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      background: 'rgba(107, 114, 128, 0.08)',
+                      color: '#374151',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '999px',
+                      padding: '0.625rem 1.25rem',
+                      fontSize: '0.95rem',
+                      fontWeight: 500,
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    <i className="fas fa-circle" style={{ color: '#6b7280', fontSize: '0.4rem' }}></i>
+                    {item}
+                  </span>
+                ))}
               </div>
+            </div>
+
+            {/* Status badge */}
+            <div style={{ 
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              padding: '0.75rem 1.5rem',
+              background: '#222222',
+              borderRadius: '8px',
+              color: 'white',
+              fontSize: '0.95rem',
+              fontWeight: 500
+            }}>
+              <i className="fas fa-clock"></i>
+              <span>Status: Pending Review</span>
             </div>
           </div>
         </div>
@@ -1960,67 +1982,90 @@ function AccountStep({ currentUser, setFormData, formData, onAccountCreated, isE
     // Show rejected message if profile needs changes
     if (profileStatus === 'rejected') {
       return (
-        <div className="account-step">
-          <div style={{ padding: '2rem 1rem', maxWidth: '700px', margin: '0 auto' }}>
-            <div style={{ 
-              background: 'linear-gradient(135deg, #fef2f2 0%, #fecaca 100%)', 
-              borderRadius: '16px', 
-              padding: '2.5rem',
-              border: '2px solid #ef4444',
-              textAlign: 'center'
-            }}>
+        <div className="account-step" style={{ width: '100%' }}>
+          <div style={{ width: '100%' }}>
+            {/* Title and message - matching incomplete profile banner layout */}
+            <div style={{ marginBottom: '1.5rem' }}>
               <div style={{ 
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '80px',
-                height: '80px',
-                borderRadius: '50%',
-                background: '#ef4444',
-                marginBottom: '1.5rem'
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '0.5rem', 
+                marginBottom: '0.5rem',
+                color: '#991b1b',
+                fontSize: '1.1rem',
+                fontWeight: 600
               }}>
-                <i className="fas fa-exclamation-circle" style={{ fontSize: '2rem', color: 'white' }}></i>
-              </div>
-              <h2 style={{ fontSize: '1.75rem', marginBottom: '1rem', color: '#991b1b', fontWeight: '700' }}>
+                <i className="fas fa-exclamation-circle" style={{ color: '#ef4444' }}></i>
                 Changes Requested
-              </h2>
-              <p style={{ color: '#b91c1c', fontSize: '1.1rem', lineHeight: 1.7, marginBottom: '1.5rem' }}>
-                Our team has reviewed your profile and requested some changes. 
-                Please review the feedback and update your profile accordingly.
-              </p>
-              <div style={{ 
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                padding: '0.75rem 1.5rem',
-                background: '#ef4444',
-                borderRadius: '8px',
-                color: 'white',
-                fontSize: '0.95rem',
-                fontWeight: 500
-              }}>
-                <i className="fas fa-edit"></i>
-                <span>Status: Changes Requested</span>
               </div>
+              <p style={{ 
+                margin: 0, 
+                color: '#6b7280', 
+                fontSize: '0.95rem',
+                lineHeight: 1.5
+              }}>
+                Our team has reviewed your profile and requested some changes. 
+                Please review the feedback below and update your profile accordingly.
+              </p>
+            </div>
+
+            {/* Rejection Reason Section */}
+            {rejectionReason && (
+              <div style={{ marginBottom: '2rem' }}>
+                <div style={{ 
+                  fontWeight: 600, 
+                  color: '#991b1b', 
+                  marginBottom: '1rem', 
+                  fontSize: '1rem'
+                }}>
+                  <i className="fas fa-comment-alt" style={{ marginRight: '0.5rem' }}></i>
+                  Feedback from our team:
+                </div>
+                <div style={{ 
+                  background: 'rgba(239, 68, 68, 0.08)',
+                  border: '1px solid #ef4444',
+                  borderRadius: '12px',
+                  padding: '1.25rem',
+                  color: '#991b1b',
+                  fontSize: '0.95rem',
+                  lineHeight: 1.7
+                }}>
+                  {rejectionReason}
+                </div>
+              </div>
+            )}
+
+            {/* Status badge */}
+            <div style={{ 
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              padding: '0.75rem 1.5rem',
+              background: '#ef4444',
+              borderRadius: '8px',
+              color: 'white',
+              fontSize: '0.95rem',
+              fontWeight: 500,
+              marginBottom: '2rem'
+            }}>
+              <i className="fas fa-edit"></i>
+              <span>Status: Changes Requested</span>
             </div>
             
             {/* Show steps so they can make changes */}
             {isVendorWithProfile && steps && (
-              <div style={{ marginTop: '2rem' }}>
-                <SetupIncompleteBanner
-                  steps={steps}
-                  isStepCompleted={isStepCompleted}
-                  onStepClick={(stepKey) => {
-                    const stepIndex = steps.findIndex(s => s.id === stepKey);
-                    if (stepIndex !== -1) {
-                      setCurrentStep(stepIndex);
-                    }
-                  }}
-                  hideButtons={true}
-                  maxWidth="900px"
-                  showAllSteps={true}
-                />
-              </div>
+              <SetupIncompleteBanner
+                steps={steps}
+                isStepCompleted={isStepCompleted}
+                onStepClick={(stepKey) => {
+                  const stepIndex = steps.findIndex(s => s.id === stepKey);
+                  if (stepIndex !== -1) {
+                    setCurrentStep(stepIndex);
+                  }
+                }}
+                hideButtons={true}
+                showAllSteps={true}
+              />
             )}
           </div>
         </div>
