@@ -5249,6 +5249,8 @@ function GalleryStep({ formData, setFormData, currentUser }) {
   const [urlInput, setUrlInput] = useState('');
   const [draggedIndex, setDraggedIndex] = useState(null);
   const [dragOverIndex, setDragOverIndex] = useState(null);
+  const [showAlbumModal, setShowAlbumModal] = useState(false);
+  const [albumForm, setAlbumForm] = useState({ name: '', description: '', coverImageURL: '', isPublic: true });
   
   const MIN_PHOTOS = 5;
 
@@ -5523,7 +5525,7 @@ function GalleryStep({ formData, setFormData, currentUser }) {
     showBanner('Cover photo updated!', 'success');
   };
 
-  // Save photo order to API
+  // Save photo order to API - same as GalleryMediaPanel
   const savePhotoOrder = async (orderedPhotos) => {
     if (!currentUser?.vendorProfileId) return;
     
@@ -5532,11 +5534,11 @@ function GalleryStep({ formData, setFormData, currentUser }) {
         .filter(p => p.id && !String(p.id).startsWith('local-'))
         .map((p, idx) => ({
           imageId: p.id,
-          sortOrder: idx
+          displayOrder: idx + 1
         }));
       
       if (orderData.length > 0) {
-        await fetch(`${API_BASE_URL}/vendors/${currentUser.vendorProfileId}/images/reorder`, {
+        const response = await fetch(`${API_BASE_URL}/vendors/${currentUser.vendorProfileId}/images/reorder`, {
           method: 'PUT',
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -5544,6 +5546,10 @@ function GalleryStep({ formData, setFormData, currentUser }) {
           },
           body: JSON.stringify({ images: orderData })
         });
+        
+        if (response.ok) {
+          showBanner('Photos reordered!', 'success');
+        }
       }
     } catch (error) {
       console.error('Error saving photo order:', error);
@@ -5576,7 +5582,7 @@ function GalleryStep({ formData, setFormData, currentUser }) {
     e.preventDefault();
   };
 
-  const handleDrop = (e, dropIndex) => {
+  const handleDrop = async (e, dropIndex) => {
     e.preventDefault();
     
     if (draggedIndex === null || draggedIndex === dropIndex) {
@@ -5601,15 +5607,11 @@ function GalleryStep({ formData, setFormData, currentUser }) {
       photoURLs: updatedPhotos.map(p => p.url)
     }));
     
-    // Save order to API
-    savePhotoOrder(updatedPhotos);
-    
     setDraggedIndex(null);
     setDragOverIndex(null);
     
-    if (dropIndex === 0 || draggedIndex === 0) {
-      showBanner('Cover photo updated!', 'success');
-    }
+    // Save order to API (this will show the success banner)
+    await savePhotoOrder(updatedPhotos);
   };
 
   const photosNeeded = Math.max(0, MIN_PHOTOS - photos.length);
@@ -5618,43 +5620,6 @@ function GalleryStep({ formData, setFormData, currentUser }) {
   return (
     <div className="gallery-step">
       <div style={{ maxWidth: '100%', width: '100%' }}>
-        {/* Header with title and Add more button */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
-          <h2 style={{ margin: 0, fontSize: '1.75rem', fontWeight: 600, color: '#222' }}>
-            {photos.length >= MIN_PHOTOS ? 'Your listing looks great!' : 'Add some photos of your work'}
-          </h2>
-          {photos.length > 0 && (
-            <button
-              type="button"
-              onClick={() => document.getElementById('photo-upload-input').click()}
-              disabled={uploading}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                padding: '0.625rem 1rem',
-                background: 'white',
-                border: '1px solid #222',
-                borderRadius: '8px',
-                fontSize: '0.875rem',
-                fontWeight: 500,
-                cursor: 'pointer',
-                whiteSpace: 'nowrap'
-              }}
-            >
-              <i className="fas fa-plus"></i> Add more
-            </button>
-          )}
-        </div>
-        
-        {/* Subtitle */}
-        <p style={{ margin: '0 0 1.5rem', color: '#717171', fontSize: '1rem' }}>
-          {photos.length >= MIN_PHOTOS 
-            ? 'Rearrange by dragging.' 
-            : `Upload at least ${MIN_PHOTOS} photos. ${photosNeeded > 0 ? `You need ${photosNeeded} more.` : ''}`
-          }
-        </p>
-
         {/* Minimum photos warning */}
         {!hasEnoughPhotos && photos.length > 0 && (
           <div style={{ 
@@ -5683,6 +5648,13 @@ function GalleryStep({ formData, setFormData, currentUser }) {
           </div>
         )}
 
+        {/* Rearrange hint */}
+        {photos.length > 1 && (
+          <p style={{ color: '#717171', fontSize: '0.9rem', marginBottom: '1rem', fontStyle: 'italic' }}>
+            Rearrange by dragging.
+          </p>
+        )}
+
         {/* Loading State */}
         {loading && (
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '200px' }}>
@@ -5690,236 +5662,256 @@ function GalleryStep({ formData, setFormData, currentUser }) {
           </div>
         )}
 
-        {/* Photo Grid - Airbnb style with drag and drop */}
+        {/* Photo Grid - Layout like image 2 with cover photo large and 2x2 grid below */}
         {!loading && (
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
-            gap: '1rem',
-            marginBottom: '1.5rem'
-          }}>
-            {photos.map((photo, index) => (
-              <div
-                key={photo.id || index}
-                draggable
-                onDragStart={(e) => handleDragStart(e, index)}
-                onDragEnd={handleDragEnd}
-                onDragOver={(e) => handleDragOver(e, index)}
-                onDragLeave={handleDragLeave}
-                onDrop={(e) => handleDrop(e, index)}
-                style={{
-                  position: 'relative',
-                  aspectRatio: index === 0 ? '16/10' : '1',
-                  gridColumn: index === 0 ? 'span 2' : 'span 1',
-                  gridRow: index === 0 ? 'span 2' : 'span 1',
-                  borderRadius: '12px',
-                  overflow: 'hidden',
-                  background: '#f3f4f6',
-                  border: dragOverIndex === index ? '2px dashed #5e72e4' : (photo.isPrimary ? '3px solid #5e72e4' : '1px solid #e5e7eb'),
-                  cursor: 'grab',
-                  transition: 'transform 0.2s, border 0.2s',
-                  transform: dragOverIndex === index ? 'scale(1.02)' : 'scale(1)'
-                }}
-              >
-                <img
-                  src={photo.url}
-                  alt={`Gallery ${index + 1}`}
-                  style={{ 
-                    width: '100%', 
-                    height: '100%', 
-                    objectFit: 'cover',
-                    pointerEvents: 'none'
-                  }}
-                  onError={(e) => {
-                    e.target.style.display = 'none';
-                  }}
-                />
-                
-                {/* Cover badge */}
-                {index === 0 && (
+          <>
+            {/* Cover Photo - Large at top */}
+            <div 
+              draggable={photos.length > 0}
+              onDragStart={(e) => photos.length > 0 && handleDragStart(e, 0)}
+              onDragEnd={handleDragEnd}
+              onDragOver={(e) => handleDragOver(e, 0)}
+              onDragLeave={handleDragLeave}
+              onDrop={(e) => handleDrop(e, 0)}
+              onClick={() => photos.length === 0 ? document.getElementById('photo-upload-input').click() : null}
+              style={{
+                position: 'relative',
+                width: '100%',
+                aspectRatio: '16/9',
+                borderRadius: '12px',
+                overflow: 'hidden',
+                marginBottom: '8px',
+                background: photos.length > 0 ? 'transparent' : '#f9f9f9',
+                border: dragOverIndex === 0 ? '2px solid #222' : '1px solid #e5e7eb',
+                cursor: photos.length === 0 ? 'pointer' : 'grab',
+                opacity: draggedIndex === 0 ? 0.5 : 1
+              }}
+            >
+              {photos.length > 0 ? (
+                <>
+                  <img
+                    src={photos[0].url}
+                    alt="Cover"
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none' }}
+                  />
+                  {/* Cover Photo badge */}
                   <div style={{
                     position: 'absolute',
                     top: '12px',
                     left: '12px',
                     background: 'white',
-                    color: '#222',
+                    color: '#b45309',
                     padding: '6px 12px',
                     borderRadius: '6px',
                     fontSize: '13px',
                     fontWeight: 600,
                     boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
                   }}>
-                    Cover
+                    Cover Photo
                   </div>
-                )}
-                
-                {/* Action buttons overlay */}
-                <div style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  background: 'rgba(0,0,0,0)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between',
-                  padding: '8px',
-                  opacity: 0,
-                  transition: 'opacity 0.2s, background 0.2s'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.opacity = '1';
-                  e.currentTarget.style.background = 'rgba(0,0,0,0.3)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.opacity = '0';
-                  e.currentTarget.style.background = 'rgba(0,0,0,0)';
-                }}
-                >
-                  {/* Top right - menu button */}
-                  <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                    <div style={{ position: 'relative' }}>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const menu = e.currentTarget.nextElementSibling;
-                          menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
-                        }}
-                        style={{
-                          background: 'white',
-                          border: 'none',
-                          borderRadius: '50%',
-                          width: '32px',
-                          height: '32px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          cursor: 'pointer',
-                          boxShadow: '0 2px 4px rgba(0,0,0,0.15)'
-                        }}
-                      >
-                        <i className="fas fa-ellipsis-h" style={{ fontSize: '14px', color: '#222' }}></i>
-                      </button>
-                      
-                      {/* Dropdown menu */}
-                      <div style={{
-                        display: 'none',
-                        position: 'absolute',
-                        top: '100%',
-                        right: 0,
-                        marginTop: '4px',
-                        background: 'white',
-                        borderRadius: '8px',
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                        overflow: 'hidden',
-                        minWidth: '140px',
-                        zIndex: 10
-                      }}>
-                        {index !== 0 && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleSetAsCover(photo.id, index);
-                              e.currentTarget.parentElement.style.display = 'none';
-                            }}
-                            style={{
-                              display: 'block',
-                              width: '100%',
-                              padding: '12px 16px',
-                              background: 'none',
-                              border: 'none',
-                              textAlign: 'left',
-                              fontSize: '14px',
-                              cursor: 'pointer',
-                              color: '#222'
-                            }}
-                            onMouseEnter={(e) => e.currentTarget.style.background = '#f7f7f7'}
-                            onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
-                          >
-                            <i className="fas fa-star" style={{ marginRight: '8px' }}></i>
-                            Make cover
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeletePhoto(photo.id, index);
-                            e.currentTarget.parentElement.style.display = 'none';
-                          }}
-                          style={{
-                            display: 'block',
-                            width: '100%',
-                            padding: '12px 16px',
-                            background: 'none',
-                            border: 'none',
-                            textAlign: 'left',
-                            fontSize: '14px',
-                            cursor: 'pointer',
-                            color: '#c13515'
-                          }}
-                          onMouseEnter={(e) => e.currentTarget.style.background = '#f7f7f7'}
-                          onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
-                        >
-                          <i className="fas fa-trash-alt" style={{ marginRight: '8px' }}></i>
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Bottom - drag indicator */}
-                  <div style={{ display: 'flex', justifyContent: 'center' }}>
-                    <div style={{
+                  {/* Menu button */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeletePhoto(photos[0].id, 0);
+                    }}
+                    style={{
+                      position: 'absolute',
+                      top: '12px',
+                      right: '12px',
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: '50%',
+                      border: 'none',
                       background: 'white',
-                      padding: '4px 12px',
-                      borderRadius: '4px',
-                      fontSize: '12px',
                       color: '#222',
+                      cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '4px'
-                    }}>
-                      <i className="fas fa-grip-vertical"></i>
-                      Drag to reorder
-                    </div>
-                  </div>
+                      justifyContent: 'center',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.15)'
+                    }}
+                  >
+                    <i className="fas fa-ellipsis-h" style={{ fontSize: '14px' }}></i>
+                  </button>
+                </>
+              ) : (
+                <div style={{ 
+                  width: '100%', 
+                  height: '100%', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  flexDirection: 'column'
+                }}>
+                  <i className="far fa-image" style={{ fontSize: '2.5rem', color: '#9ca3af', marginBottom: '8px' }}></i>
                 </div>
-              </div>
-            ))}
-            
-            {/* Add more placeholder card */}
-            <div
-              onClick={() => document.getElementById('photo-upload-input').click()}
-              style={{
-                aspectRatio: '1',
-                borderRadius: '12px',
-                border: '2px dashed #b0b0b0',
-                background: '#f7f7f7',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                transition: 'border-color 0.2s, background 0.2s'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = '#222';
-                e.currentTarget.style.background = '#f0f0f0';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = '#b0b0b0';
-                e.currentTarget.style.background = '#f7f7f7';
-              }}
-            >
-              <i className="fas fa-image" style={{ fontSize: '24px', color: '#717171', marginBottom: '8px' }}></i>
-              <span style={{ fontSize: '14px', color: '#717171' }}>Add more</span>
+              )}
             </div>
-          </div>
+
+            {/* Grid of smaller photos - 2x2 grid */}
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(2, 1fr)', 
+              gap: '8px', 
+              marginBottom: '1.5rem' 
+            }} id="vendor-photos-grid">
+              {/* Slot 1 (index 1) */}
+              {photos.length > 1 ? (
+                <div
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, 1)}
+                  onDragEnd={handleDragEnd}
+                  onDragOver={(e) => handleDragOver(e, 1)}
+                  onDragLeave={handleDragLeave}
+                  onDrop={(e) => handleDrop(e, 1)}
+                  style={{
+                    position: 'relative',
+                    aspectRatio: '1',
+                    borderRadius: '8px',
+                    overflow: 'hidden',
+                    cursor: 'grab',
+                    border: dragOverIndex === 1 ? '2px solid #222' : '1px solid #e5e7eb',
+                    opacity: draggedIndex === 1 ? 0.5 : 1,
+                    transition: 'border-color 0.2s, opacity 0.2s'
+                  }}
+                >
+                  <img src={photos[1].url} alt="Gallery 2" style={{ width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none' }} />
+                  <button type="button" onClick={(e) => { e.stopPropagation(); handleDeletePhoto(photos[1].id, 1); }} className="photo-delete-btn" style={{ position: 'absolute', top: '8px', right: '8px', width: '28px', height: '28px', borderRadius: '50%', border: 'none', background: 'white', color: '#222', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.15)', opacity: 0, transition: 'opacity 0.2s' }}>
+                    <i className="fas fa-times" style={{ fontSize: '12px' }}></i>
+                  </button>
+                </div>
+              ) : (
+                <div onClick={() => document.getElementById('photo-upload-input').click()} style={{ aspectRatio: '1', borderRadius: '8px', border: '1px solid #e5e7eb', background: '#f9f9f9', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                  <i className="far fa-image" style={{ fontSize: '2rem', color: '#9ca3af' }}></i>
+                </div>
+              )}
+
+              {/* Slot 2 (index 2) */}
+              {photos.length > 2 ? (
+                <div
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, 2)}
+                  onDragEnd={handleDragEnd}
+                  onDragOver={(e) => handleDragOver(e, 2)}
+                  onDragLeave={handleDragLeave}
+                  onDrop={(e) => handleDrop(e, 2)}
+                  style={{
+                    position: 'relative',
+                    aspectRatio: '1',
+                    borderRadius: '8px',
+                    overflow: 'hidden',
+                    cursor: 'grab',
+                    border: dragOverIndex === 2 ? '2px solid #222' : '1px solid #e5e7eb',
+                    opacity: draggedIndex === 2 ? 0.5 : 1,
+                    transition: 'border-color 0.2s, opacity 0.2s'
+                  }}
+                >
+                  <img src={photos[2].url} alt="Gallery 3" style={{ width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none' }} />
+                  <button type="button" onClick={(e) => { e.stopPropagation(); handleDeletePhoto(photos[2].id, 2); }} className="photo-delete-btn" style={{ position: 'absolute', top: '8px', right: '8px', width: '28px', height: '28px', borderRadius: '50%', border: 'none', background: 'white', color: '#222', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.15)', opacity: 0, transition: 'opacity 0.2s' }}>
+                    <i className="fas fa-times" style={{ fontSize: '12px' }}></i>
+                  </button>
+                </div>
+              ) : (
+                <div onClick={() => document.getElementById('photo-upload-input').click()} style={{ aspectRatio: '1', borderRadius: '8px', border: '1px solid #e5e7eb', background: '#f9f9f9', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                  <i className="far fa-image" style={{ fontSize: '2rem', color: '#9ca3af' }}></i>
+                </div>
+              )}
+
+              {/* Slot 3 (index 3) */}
+              {photos.length > 3 ? (
+                <div
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, 3)}
+                  onDragEnd={handleDragEnd}
+                  onDragOver={(e) => handleDragOver(e, 3)}
+                  onDragLeave={handleDragLeave}
+                  onDrop={(e) => handleDrop(e, 3)}
+                  style={{
+                    position: 'relative',
+                    aspectRatio: '1',
+                    borderRadius: '8px',
+                    overflow: 'hidden',
+                    cursor: 'grab',
+                    border: dragOverIndex === 3 ? '2px solid #222' : '1px solid #e5e7eb',
+                    opacity: draggedIndex === 3 ? 0.5 : 1,
+                    transition: 'border-color 0.2s, opacity 0.2s'
+                  }}
+                >
+                  <img src={photos[3].url} alt="Gallery 4" style={{ width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none' }} />
+                  <button type="button" onClick={(e) => { e.stopPropagation(); handleDeletePhoto(photos[3].id, 3); }} className="photo-delete-btn" style={{ position: 'absolute', top: '8px', right: '8px', width: '28px', height: '28px', borderRadius: '50%', border: 'none', background: 'white', color: '#222', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.15)', opacity: 0, transition: 'opacity 0.2s' }}>
+                    <i className="fas fa-times" style={{ fontSize: '12px' }}></i>
+                  </button>
+                </div>
+              ) : (
+                <div onClick={() => document.getElementById('photo-upload-input').click()} style={{ aspectRatio: '1', borderRadius: '8px', border: '1px solid #e5e7eb', background: '#f9f9f9', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                  <i className="far fa-image" style={{ fontSize: '2rem', color: '#9ca3af' }}></i>
+                </div>
+              )}
+
+              {/* Slot 4 - "Add more" card */}
+              <div 
+                onClick={() => document.getElementById('photo-upload-input').click()}
+                style={{
+                  aspectRatio: '1',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  background: '#f9f9f9',
+                  transition: 'border-color 0.2s'
+                }}
+                onMouseOver={(e) => e.currentTarget.style.borderColor = '#222'}
+                onMouseOut={(e) => e.currentTarget.style.borderColor = '#e5e7eb'}
+              >
+                <i className="fas fa-plus" style={{ fontSize: '1.25rem', color: '#6b7280', marginBottom: '4px' }}></i>
+                <span style={{ fontSize: '0.8rem', color: '#6b7280', fontWeight: 500 }}>Add more</span>
+              </div>
+
+              {/* Additional photos beyond slot 4 */}
+              {photos.slice(4).map((photo, idx) => {
+                const index = idx + 4;
+                return (
+                  <div
+                    key={photo.id || index}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, index)}
+                    onDragEnd={handleDragEnd}
+                    onDragOver={(e) => handleDragOver(e, index)}
+                    onDragLeave={handleDragLeave}
+                    onDrop={(e) => handleDrop(e, index)}
+                    style={{
+                      position: 'relative',
+                      aspectRatio: '1',
+                      borderRadius: '8px',
+                      overflow: 'hidden',
+                      cursor: 'grab',
+                      border: dragOverIndex === index ? '2px solid #222' : '1px solid #e5e7eb',
+                      opacity: draggedIndex === index ? 0.5 : 1,
+                      transition: 'border-color 0.2s, opacity 0.2s'
+                    }}
+                  >
+                    <img src={photo.url} alt={`Gallery ${index + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none' }} />
+                    <button type="button" onClick={(e) => { e.stopPropagation(); handleDeletePhoto(photo.id, index); }} className="photo-delete-btn" style={{ position: 'absolute', top: '8px', right: '8px', width: '28px', height: '28px', borderRadius: '50%', border: 'none', background: 'white', color: '#222', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.15)', opacity: 0, transition: 'opacity 0.2s' }}>
+                      <i className="fas fa-times" style={{ fontSize: '12px' }}></i>
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </>
         )}
+
+        {/* Show delete buttons on hover - CSS */}
+        <style>{`
+          #vendor-photos-grid > div:hover .photo-delete-btn {
+            opacity: 1 !important;
+          }
+        `}</style>
 
         {/* Hidden file input */}
         <input
@@ -5931,76 +5923,20 @@ function GalleryStep({ formData, setFormData, currentUser }) {
           style={{ display: 'none' }}
         />
 
-        {/* Upload area for empty state */}
-        {!loading && photos.length === 0 && (
-          <div
-            onClick={() => document.getElementById('photo-upload-input').click()}
-            style={{
-              padding: '4rem 2rem',
-              background: '#f7f7f7',
-              borderRadius: '12px',
-              border: '2px dashed #b0b0b0',
-              textAlign: 'center',
-              cursor: 'pointer',
-              transition: 'border-color 0.2s'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.borderColor = '#222'}
-            onMouseLeave={(e) => e.currentTarget.style.borderColor = '#b0b0b0'}
-          >
-            <i className="fas fa-cloud-upload-alt" style={{ fontSize: '3rem', color: '#717171', marginBottom: '1rem' }}></i>
-            <p style={{ margin: '0 0 0.5rem', fontSize: '1.125rem', fontWeight: 500, color: '#222' }}>
-              Drag your photos here
-            </p>
-            <p style={{ margin: 0, color: '#717171', fontSize: '0.9rem' }}>
-              Choose at least {MIN_PHOTOS} photos
-            </p>
-            <button
-              type="button"
-              disabled={uploading}
-              style={{
-                marginTop: '1.5rem',
-                padding: '0.75rem 1.5rem',
-                background: 'white',
-                border: '1px solid #222',
-                borderRadius: '8px',
-                fontSize: '1rem',
-                fontWeight: 500,
-                cursor: 'pointer'
-              }}
-            >
-              {uploading ? 'Uploading...' : 'Upload from your device'}
-            </button>
-          </div>
-        )}
-
-        {/* URL Input - collapsible */}
-        <details style={{ marginTop: '1.5rem' }}>
-          <summary style={{ 
-            cursor: 'pointer', 
-            fontSize: '0.9rem', 
-            color: '#717171',
-            padding: '0.5rem 0'
-          }}>
-            Or add image by URL
-          </summary>
-          <div style={{ 
-            display: 'flex', 
-            gap: '0.75rem', 
-            marginTop: '0.75rem',
-            padding: '1rem',
-            background: '#f7f7f7',
-            borderRadius: '8px'
-          }}>
+        {/* URL Input section - same as GalleryMediaPanel */}
+        <div style={{ marginTop: '1rem', display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '0.5rem', alignItems: 'end' }}>
+          <div style={{ margin: 0 }}>
+            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '4px', color: '#222' }}>Add Image by URL</label>
             <input
               type="url"
-              placeholder="https://example.com/image.jpg"
+              placeholder="https://..."
               value={urlInput}
               onChange={(e) => setUrlInput(e.target.value)}
               style={{
-                flex: 1,
-                padding: '0.75rem 1rem',
+                width: '100%',
+                padding: '0.625rem 0.75rem',
                 border: '1px solid #e5e7eb',
-                borderRadius: '8px',
+                borderRadius: '6px',
                 fontSize: '0.9rem'
               }}
               onKeyPress={(e) => {
@@ -6010,17 +5946,37 @@ function GalleryStep({ formData, setFormData, currentUser }) {
                 }
               }}
             />
-            <button
-              type="button"
+          </div>
+          <div style={{ margin: 0 }}>
+            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '4px', color: '#222' }}>Caption (optional)</label>
+            <input
+              type="text"
+              placeholder=""
+              style={{
+                width: '100%',
+                padding: '0.625rem 0.75rem',
+                border: '1px solid #e5e7eb',
+                borderRadius: '6px',
+                fontSize: '0.9rem'
+              }}
+            />
+          </div>
+          <div style={{ margin: 0, display: 'flex', gap: '0.5rem', alignItems: 'center', paddingBottom: '2px' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.875rem', color: '#222' }}>
+              <input type="checkbox" />
+              Primary
+            </label>
+            <button 
+              type="button" 
               onClick={handleAddPhotoByUrl}
               disabled={uploading}
               style={{
-                padding: '0.75rem 1.25rem',
+                padding: '0.625rem 1rem',
                 background: '#222',
                 color: 'white',
                 border: 'none',
-                borderRadius: '8px',
-                fontSize: '0.9rem',
+                borderRadius: '6px',
+                fontSize: '0.875rem',
                 fontWeight: 500,
                 cursor: 'pointer'
               }}
@@ -6028,7 +5984,242 @@ function GalleryStep({ formData, setFormData, currentUser }) {
               Add
             </button>
           </div>
-        </details>
+        </div>
+
+        {/* Photo Albums Section */}
+        <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '2rem', marginTop: '2rem' }}>
+          <h3 style={{ fontSize: '1.25rem', fontWeight: 600, color: '#222', margin: '0 0 1rem 0' }}>
+            Create your first album
+          </h3>
+          
+          {/* Empty album card - solid border, matching theme */}
+          <div 
+            onClick={() => setShowAlbumModal(true)}
+            style={{
+              aspectRatio: '16/9',
+              border: '1px solid #e5e7eb',
+              borderRadius: '12px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              background: '#f9f9f9',
+              transition: 'border-color 0.2s, background 0.2s',
+              maxWidth: '400px'
+            }}
+            onMouseOver={(e) => { e.currentTarget.style.borderColor = '#222'; e.currentTarget.style.background = '#f5f5f5'; }}
+            onMouseOut={(e) => { e.currentTarget.style.borderColor = '#e5e7eb'; e.currentTarget.style.background = '#f9f9f9'; }}
+          >
+            <span style={{ fontWeight: 500, color: '#222', marginBottom: '4px' }}>Create album</span>
+            <span style={{ fontSize: '0.85rem', color: '#717171' }}>Organize your photos into collections</span>
+          </div>
+        </div>
+
+        {/* Album Create Modal */}
+        {showAlbumModal && (
+          <div 
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'rgba(0, 0, 0, 0.6)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 10000,
+              padding: '1rem'
+            }}
+            onClick={() => setShowAlbumModal(false)}
+          >
+            <div 
+              style={{
+                background: 'white',
+                borderRadius: '12px',
+                maxWidth: '600px',
+                width: '100%',
+                maxHeight: '90vh',
+                overflow: 'hidden',
+                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Header */}
+              <div style={{ padding: '16px 24px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600, color: '#222' }}>
+                  Create Album
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setShowAlbumModal(false)}
+                  style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', color: '#6b7280', padding: '4px' }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div style={{ padding: '24px', overflowY: 'auto', maxHeight: 'calc(90vh - 140px)' }}>
+                {/* Album Details Section */}
+                <div style={{ marginBottom: '24px' }}>
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '6px', color: '#222' }}>Album Name *</label>
+                    <input
+                      type="text"
+                      value={albumForm.name}
+                      onChange={(e) => setAlbumForm({ ...albumForm, name: e.target.value })}
+                      placeholder="e.g., Weddings 2024"
+                      style={{ width: '100%', padding: '12px 14px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.95rem' }}
+                    />
+                  </div>
+
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '6px', color: '#222' }}>Description</label>
+                    <textarea
+                      value={albumForm.description}
+                      onChange={(e) => setAlbumForm({ ...albumForm, description: e.target.value })}
+                      placeholder="Brief description of this album"
+                      rows="3"
+                      style={{ width: '100%', padding: '12px 14px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.95rem', resize: 'vertical' }}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+                    <input
+                      type="checkbox"
+                      id="album-public-setup"
+                      checked={albumForm.isPublic}
+                      onChange={(e) => setAlbumForm({ ...albumForm, isPublic: e.target.checked })}
+                      style={{ width: '18px', height: '18px', accentColor: '#222' }}
+                    />
+                    <label htmlFor="album-public-setup" style={{ margin: 0, fontSize: '0.9rem', color: '#374151' }}>Make album public (visible to clients)</label>
+                  </div>
+                </div>
+
+                {/* Cover Image Section */}
+                <div style={{ marginBottom: '24px', paddingTop: '16px', borderTop: '1px solid #e5e7eb' }}>
+                  <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '12px', color: '#222' }}>Cover Image</label>
+                  <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
+                    {/* Cover Preview */}
+                    <div style={{ 
+                      width: '120px', 
+                      height: '120px', 
+                      borderRadius: '8px', 
+                      border: '1px solid #e5e7eb',
+                      overflow: 'hidden',
+                      background: '#f9fafb',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0
+                    }}>
+                      {albumForm.coverImageURL ? (
+                        <img 
+                          src={albumForm.coverImageURL} 
+                          alt="Cover preview" 
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          onError={(e) => { e.target.style.display = 'none'; }}
+                        />
+                      ) : (
+                        <i className="fas fa-image" style={{ fontSize: '2rem', color: '#d1d5db' }}></i>
+                      )}
+                    </div>
+                    {/* URL Input */}
+                    <div style={{ flex: 1 }}>
+                      <input
+                        type="url"
+                        value={albumForm.coverImageURL}
+                        onChange={(e) => setAlbumForm({ ...albumForm, coverImageURL: e.target.value })}
+                        placeholder="Paste image URL..."
+                        style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.9rem', marginBottom: '8px' }}
+                      />
+                      <p style={{ margin: 0, fontSize: '0.8rem', color: '#6b7280' }}>
+                        Paste a URL to an image, or select from your uploaded photos
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div style={{ padding: '16px 24px', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowAlbumModal(false)}
+                  style={{
+                    padding: '10px 24px',
+                    background: 'white',
+                    color: '#222',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '8px',
+                    fontSize: '0.95rem',
+                    fontWeight: 500,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!albumForm.name.trim()) {
+                      showBanner('Please enter an album name', 'error');
+                      return;
+                    }
+                    if (!currentUser?.vendorProfileId) {
+                      showBanner('Albums will be saved when you complete your profile setup.', 'info');
+                      setShowAlbumModal(false);
+                      return;
+                    }
+                    try {
+                      const albumData = {
+                        albumId: null,
+                        albumName: albumForm.name.trim(),
+                        albumDescription: albumForm.description.trim(),
+                        coverImageURL: albumForm.coverImageURL.trim() || null,
+                        isPublic: albumForm.isPublic
+                      };
+                      const response = await fetch(`${API_BASE_URL}/vendor/${currentUser.vendorProfileId}/portfolio/albums/upsert`, {
+                        method: 'POST',
+                        headers: {
+                          'Content-Type': 'application/json',
+                          'Authorization': `Bearer ${localStorage.getItem('token')}`
+                        },
+                        body: JSON.stringify(albumData)
+                      });
+                      const data = await response.json();
+                      if (response.ok && data.success) {
+                        showBanner('Album created successfully!', 'success');
+                        setShowAlbumModal(false);
+                        setAlbumForm({ name: '', description: '', coverImageURL: '', isPublic: true });
+                      } else {
+                        console.error('Album creation failed:', data);
+                        showBanner(data.message || 'Failed to create album', 'error');
+                      }
+                    } catch (error) {
+                      console.error('Error creating album:', error);
+                      showBanner('Failed to create album. Please try again.', 'error');
+                    }
+                  }}
+                  style={{
+                    padding: '10px 24px',
+                    background: '#222',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '0.95rem',
+                    fontWeight: 500,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Create Album
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

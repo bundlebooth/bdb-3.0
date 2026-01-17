@@ -522,11 +522,11 @@ function GalleryMediaPanel({ onBack, vendorProfileId }) {
                     background: 'white',
                     transition: 'border-color 0.2s, background 0.2s'
                   }}
-                  onMouseOver={(e) => { e.currentTarget.style.borderColor = '#5e72e4'; e.currentTarget.style.background = '#f8faff'; }}
+                  onMouseOver={(e) => { e.currentTarget.style.borderColor = '#222'; e.currentTarget.style.background = '#fafafa'; }}
                   onMouseOut={(e) => { e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.background = 'white'; }}
                 >
-                  <i className="fas fa-plus" style={{ fontSize: '1.25rem', color: '#5e72e4', marginBottom: '4px' }}></i>
-                  <span style={{ fontSize: '0.8rem', color: '#5e72e4', fontWeight: 500 }}>Add photo</span>
+                  <i className="fas fa-plus" style={{ fontSize: '1.25rem', color: '#222', marginBottom: '4px' }}></i>
+                  <span style={{ fontSize: '0.8rem', color: '#222', fontWeight: 500 }}>Add photo</span>
                 </div>
               </>
             )}
@@ -774,7 +774,7 @@ function GalleryMediaPanel({ onBack, vendorProfileId }) {
                   onMouseOver={(e) => e.currentTarget.style.borderColor = '#222'}
                   onMouseOut={(e) => e.currentTarget.style.borderColor = '#b0b0b0'}
                 >
-                  <span style={{ fontSize: '0.85rem', color: '#3b82f6', fontWeight: 500 }}>Add more</span>
+                  <span style={{ fontSize: '0.85rem', color: '#222', fontWeight: 500 }}>Add more</span>
                 </div>
               </div>
             )}
@@ -933,7 +933,7 @@ function GalleryMediaPanel({ onBack, vendorProfileId }) {
                       showBanner('Photo upload for albums coming soon!', 'info');
                     }}
                     >
-                      <i className="fas fa-cloud-upload-alt" style={{ fontSize: '2rem', color: '#5e72e4', marginBottom: '8px' }}></i>
+                      <i className="fas fa-cloud-upload-alt" style={{ fontSize: '2rem', color: '#222', marginBottom: '8px' }}></i>
                       <p style={{ margin: '0 0 4px 0', fontWeight: 500, color: '#222' }}>Add photos to this album</p>
                       <p style={{ margin: 0, fontSize: '0.85rem', color: '#6b7280' }}>Click to upload or drag and drop</p>
                     </div>
@@ -947,7 +947,7 @@ function GalleryMediaPanel({ onBack, vendorProfileId }) {
                   onClick={handleSaveAlbum}
                   style={{
                     padding: '10px 24px',
-                    background: '#5e72e4',
+                    background: '#222',
                     color: 'white',
                     border: 'none',
                     borderRadius: '8px',
