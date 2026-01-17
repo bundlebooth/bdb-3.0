@@ -398,7 +398,7 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
         {/* User menu button - hamburger + avatar like dashboard - hidden on mobile via CSS */}
         <div
           className="user-menu-button"
-          onClick={() => currentUser ? setSidebarOpen(true) : onProfileClick()}
+          onClick={() => currentUser ? setSidebarOpen(true) : (onProfileClick && onProfileClick())}
           style={{
             display: 'flex',
             alignItems: 'center',

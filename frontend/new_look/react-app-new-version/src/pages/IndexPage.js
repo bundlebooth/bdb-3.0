@@ -990,7 +990,8 @@ function IndexPage() {
         <div className="content-wrapper" style={{ display: 'flex', width: '100%', flex: 1, overflow: 'visible' }}>
           <main className="main-content" style={{ width: mapActive ? '65%' : '100%', overflowY: 'auto', overflowX: 'visible', transition: 'width 0.3s ease' }}>
           
-          {currentUser?.vendorProfileId && (
+          {/* Only show setup banner for users who are vendors with a vendor profile */}
+          {currentUser?.isVendor && currentUser?.vendorProfileId && (
             <>
               <SetupIncompleteBanner 
                 onContinueSetup={() => navigate('/dashboard?section=vendor-settings')}

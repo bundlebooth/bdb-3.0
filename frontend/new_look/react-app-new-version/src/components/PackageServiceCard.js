@@ -460,6 +460,7 @@ export const PackageCard = ({
 };
 
 // Packages/Services Toggle Tabs Component
+// Services tab is shown first (leftmost), then Packages
 export const PackageServiceTabs = ({ 
   activeTab, 
   onTabChange, 
@@ -470,21 +471,21 @@ export const PackageServiceTabs = ({
     <div className="psc-tabs">
       <button
         type="button"
-        className={`psc-tab ${activeTab === 'packages' ? 'active' : ''}`}
-        onClick={() => onTabChange('packages')}
-      >
-        <i className="fas fa-box"></i>
-        Packages
-        {packagesCount > 0 && <span className="psc-tab-count">{packagesCount}</span>}
-      </button>
-      <button
-        type="button"
         className={`psc-tab ${activeTab === 'services' ? 'active' : ''}`}
         onClick={() => onTabChange('services')}
       >
         <i className="fas fa-concierge-bell"></i>
         Services
         {servicesCount > 0 && <span className="psc-tab-count">{servicesCount}</span>}
+      </button>
+      <button
+        type="button"
+        className={`psc-tab ${activeTab === 'packages' ? 'active' : ''}`}
+        onClick={() => onTabChange('packages')}
+      >
+        <i className="fas fa-box"></i>
+        Packages
+        {packagesCount > 0 && <span className="psc-tab-count">{packagesCount}</span>}
       </button>
     </div>
   );

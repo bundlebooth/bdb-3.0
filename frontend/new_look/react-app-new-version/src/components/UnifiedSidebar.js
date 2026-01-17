@@ -272,41 +272,54 @@ function UnifiedSidebar({ isOpen, onClose }) {
         </div>
         
         {/* Account section with toggle */}
-        {hasVendorProfile && (
-          <div className="unified-sidebar-section">
-            <div className="unified-sidebar-section-title">ACCOUNT</div>
-            <div 
-              className="unified-sidebar-toggle-item"
-              onClick={handleToggleViewMode}
-            >
-              <div className="unified-sidebar-toggle-label">
-                <i className="fas fa-exchange-alt"></i>
-                <span>Switch to {isVendorMode ? 'Client' : 'Vendor'}</span>
+        <div className="unified-sidebar-section">
+          <div className="unified-sidebar-section-title">ACCOUNT</div>
+          {hasVendorProfile ? (
+            /* User has vendor profile - show toggle between modes */
+            <>
+              <div 
+                className="unified-sidebar-toggle-item"
+                onClick={handleToggleViewMode}
+              >
+                <div className="unified-sidebar-toggle-label">
+                  <i className="fas fa-exchange-alt"></i>
+                  <span>Switch to {isVendorMode ? 'Client' : 'Vendor'}</span>
+                </div>
+                <div className={`unified-sidebar-toggle ${isVendorMode ? 'active' : ''}`}>
+                  <div className="unified-sidebar-toggle-knob" />
+                </div>
               </div>
-              <div className={`unified-sidebar-toggle ${isVendorMode ? 'active' : ''}`}>
-                <div className="unified-sidebar-toggle-knob" />
-              </div>
-            </div>
-            
-            {/* Profile Setup Status */}
+              
+              {/* Profile Setup Status - only for vendors */}
+              <button 
+                className="unified-sidebar-item"
+                onClick={() => handleNavigate('/become-a-vendor/setup?step=account')}
+              >
+                <i className="fas fa-user-check"></i>
+                <span>Profile Setup</span>
+                {!profileStatus ? (
+                  <div className="spinner" style={{ width: '16px', height: '16px', marginLeft: 'auto', borderWidth: '2px' }}></div>
+                ) : (
+                  <span className={`unified-sidebar-status-badge ${profileStatus}`}>
+                    {profileStatus === 'live' && 'Live'}
+                    {profileStatus === 'submitted' && 'Pending'}
+                    {profileStatus === 'incomplete' && 'Incomplete'}
+                  </span>
+                )}
+              </button>
+            </>
+          ) : (
+            /* Client-only user - show option to become a vendor */
             <button 
               className="unified-sidebar-item"
-              onClick={() => handleNavigate('/become-a-vendor/setup?step=account')}
+              onClick={() => handleNavigate('/become-a-vendor')}
             >
-              <i className="fas fa-user-check"></i>
-              <span>Profile Setup</span>
-              {!profileStatus ? (
-                <div className="spinner" style={{ width: '16px', height: '16px', marginLeft: 'auto', borderWidth: '2px' }}></div>
-              ) : (
-                <span className={`unified-sidebar-status-badge ${profileStatus}`}>
-                  {profileStatus === 'live' && 'Live'}
-                  {profileStatus === 'submitted' && 'Pending'}
-                  {profileStatus === 'incomplete' && 'Incomplete'}
-                </span>
-              )}
+              <i className="fas fa-store"></i>
+              <span>Become a Vendor</span>
+              <i className="fas fa-arrow-right" style={{ marginLeft: 'auto', fontSize: '12px', color: '#9CA3AF' }}></i>
             </button>
-          </div>
-        )}
+          )}
+        </div>
         
         {/* Actions section */}
         <div className="unified-sidebar-section">

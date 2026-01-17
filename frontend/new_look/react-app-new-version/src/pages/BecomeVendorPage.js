@@ -921,6 +921,7 @@ const BecomeVendorPage = () => {
   };
 
   // Check if a step is completed based on form data
+  // Only returns true if the step has been saved successfully with valid data
   const isStepCompleted = (stepId) => {
     if (!isExistingVendor) return false;
 
@@ -928,32 +929,42 @@ const BecomeVendorPage = () => {
       case 'account':
         return !!currentUser;
       case 'categories':
-        return !!formData.primaryCategory;
+        // Must have a primary category selected AND saved
+        return !!(formData.primaryCategory && formData.primaryCategory.trim());
       case 'business-details':
-        return !!(formData.businessName && formData.displayName);
+        // Must have both business name AND display name filled in (required fields)
+        const hasBusinessName = formData.businessName && formData.businessName.trim().length > 0;
+        const hasDisplayName = formData.displayName && formData.displayName.trim().length > 0;
+        return !!(hasBusinessName && hasDisplayName);
       case 'contact':
-        return !!formData.businessPhone;
+        // Must have business phone filled in (required field)
+        return !!(formData.businessPhone && formData.businessPhone.trim().length > 0);
       case 'location':
-        return !!(formData.city && formData.province && formData.serviceAreas.length > 0);
+        // Must have city, province, and at least one service area
+        const hasCity = formData.city && formData.city.trim().length > 0;
+        const hasProvince = formData.province && formData.province.trim().length > 0;
+        const hasServiceAreas = formData.serviceAreas && formData.serviceAreas.length > 0;
+        return !!(hasCity && hasProvince && hasServiceAreas);
       case 'services':
-        return formData.selectedServices.length > 0;
+        return formData.selectedServices && formData.selectedServices.length > 0;
       case 'business-hours':
-        return Object.values(formData.businessHours).some(h => h.isAvailable);
+        return formData.businessHours && Object.values(formData.businessHours).some(h => h.isAvailable);
       case 'questionnaire':
         // If features haven't been loaded from DB yet, don't show as incomplete
         // This prevents the step from showing as incomplete during initial load
         if (!featuresLoadedFromDB && isExistingVendor) return true;
-        return formData.selectedFeatures.length > 0;
+        return formData.selectedFeatures && formData.selectedFeatures.length > 0;
       case 'gallery':
-        return formData.photoURLs.length > 0;
+        return formData.photoURLs && formData.photoURLs.length > 0;
       case 'social-media':
+        // Optional step - at least one social media link
         return !!(formData.facebook || formData.instagram || formData.twitter || formData.linkedin);
       case 'filters':
-        return formData.selectedFilters.length > 0;
+        return formData.selectedFilters && formData.selectedFilters.length > 0;
       case 'stripe':
         return !!formData.stripeConnected;
       case 'google-reviews':
-        return !!formData.googlePlaceId;
+        return !!(formData.googlePlaceId && formData.googlePlaceId.trim().length > 0);
       case 'policies':
         return !!(formData.faqs && formData.faqs.length > 0);
       default:
@@ -1243,6 +1254,16 @@ const BecomeVendorPage = () => {
     }
   };
 
+  // Check if all mandatory steps are complete
+  const areMandatoryStepsComplete = () => {
+    const mandatorySteps = steps.filter(step => step.required);
+    const incompleteSteps = mandatorySteps.filter(step => !isStepCompleted(step.id));
+    return {
+      allComplete: incompleteSteps.length === 0,
+      incompleteSteps: incompleteSteps.map(s => s.title)
+    };
+  };
+
   // Handle Go Live - Submit profile for admin review
   const handleGoLive = async () => {
     try {
@@ -1250,6 +1271,16 @@ const BecomeVendorPage = () => {
 
       if (!currentUser || !currentUser.vendorProfileId) {
         showBanner('Please complete your profile first', 'error');
+        return;
+      }
+
+      // Check if all mandatory steps are complete before allowing submission
+      const { allComplete, incompleteSteps } = areMandatoryStepsComplete();
+      if (!allComplete) {
+        const stepNames = incompleteSteps.slice(0, 3).join(', ');
+        const moreCount = incompleteSteps.length > 3 ? ` and ${incompleteSteps.length - 3} more` : '';
+        showBanner(`Please complete all required steps before submitting: ${stepNames}${moreCount}`, 'error');
+        setLoading(false);
         return;
       }
 
@@ -2325,6 +2356,8 @@ function AccountStep({ currentUser, setFormData, formData, onAccountCreated, isE
 }
 
 function CategoriesStep({ formData, onInputChange, categories }) {
+  const [additionalExpanded, setAdditionalExpanded] = useState(false);
+  
   const handlePrimaryChange = (categoryId) => {
     onInputChange('primaryCategory', categoryId);
     const newAdditional = formData.additionalCategories.filter(c => c !== categoryId);
@@ -2340,6 +2373,9 @@ function CategoriesStep({ formData, onInputChange, categories }) {
     
     onInputChange('additionalCategories', newAdditional);
   };
+
+  // Auto-expand if user has already selected additional categories
+  const hasAdditionalSelected = formData.additionalCategories && formData.additionalCategories.length > 0;
 
   return (
     <div className="categories-step">
@@ -2366,30 +2402,65 @@ function CategoriesStep({ formData, onInputChange, categories }) {
         })}
       </div>
 
-      <h3 style={{ marginTop: '2.5rem', marginBottom: '1.5rem', color: '#222', fontSize: '1.125rem', fontWeight: '600' }}>Additional Categories (Optional)</h3>
-      <div className="categories-grid">
-        {categories
-          .filter(c => c.id !== formData.primaryCategory)
-          .map(category => {
-            const isSelected = formData.additionalCategories.includes(category.id);
-            return (
-              <div
-                key={category.id}
-                className={`category-card ${isSelected ? 'selected' : ''}`}
-                onClick={() => handleAdditionalToggle(category.id)}
-              >
-                <div className="category-icon">{category.icon}</div>
-                <div className="category-card-content">
-                  <h4 className="category-name">{category.name}</h4>
-                  <p className="category-description">{category.description}</p>
+      {/* Collapsible Additional Categories Section - just header, no container */}
+      <h3 
+        onClick={() => setAdditionalExpanded(!additionalExpanded)}
+        style={{ 
+          marginTop: '2.5rem', 
+          marginBottom: '1.5rem', 
+          color: '#222', 
+          fontSize: '1.125rem', 
+          fontWeight: '600',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.75rem'
+        }}
+      >
+        Additional Categories (Optional)
+        {hasAdditionalSelected && (
+          <span style={{
+            background: '#5B68F4',
+            color: 'white',
+            fontSize: '0.75rem',
+            fontWeight: '600',
+            padding: '2px 8px',
+            borderRadius: '12px'
+          }}>
+            {formData.additionalCategories.length} selected
+          </span>
+        )}
+        <i 
+          className={`fas fa-chevron-${additionalExpanded || hasAdditionalSelected ? 'up' : 'down'}`}
+          style={{ color: '#6b7280', fontSize: '0.875rem', marginLeft: 'auto' }}
+        ></i>
+      </h3>
+      
+      {(additionalExpanded || hasAdditionalSelected) && (
+        <div className="categories-grid">
+          {categories
+            .filter(c => c.id !== formData.primaryCategory)
+            .map(category => {
+              const isSelected = formData.additionalCategories.includes(category.id);
+              return (
+                <div
+                  key={category.id}
+                  className={`category-card ${isSelected ? 'selected' : ''}`}
+                  onClick={() => handleAdditionalToggle(category.id)}
+                >
+                  <div className="category-icon">{category.icon}</div>
+                  <div className="category-card-content">
+                    <h4 className="category-name">{category.name}</h4>
+                    <p className="category-description">{category.description}</p>
+                  </div>
+                  {isSelected && (
+                    <i className="fas fa-check-circle" style={{ fontSize: '1.5rem', color: '#222222' }}></i>
+                  )}
                 </div>
-                {isSelected && (
-                  <i className="fas fa-check-circle" style={{ fontSize: '1.5rem', color: '#222222' }}></i>
-                )}
-              </div>
-            );
-          })}
-      </div>
+              );
+            })}
+        </div>
+      )}
     </div>
   );
 }
@@ -2398,16 +2469,80 @@ function CategoriesStep({ formData, onInputChange, categories }) {
 
 function BusinessDetailsStep({ formData, onInputChange }) {
   const [logoPreview, setLogoPreview] = useState(formData.profileLogo || '');
+  const [uploadingLogo, setUploadingLogo] = useState(false);
 
-  const handleLogoUpload = (e) => {
+  // Compress image to reduce size and prevent "request entity too large" error
+  const compressImage = (file, maxWidth = 400, maxHeight = 400, quality = 0.8) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let { width, height } = img;
+          
+          // Calculate new dimensions while maintaining aspect ratio
+          if (width > height) {
+            if (width > maxWidth) {
+              height = Math.round((height * maxWidth) / width);
+              width = maxWidth;
+            }
+          } else {
+            if (height > maxHeight) {
+              width = Math.round((width * maxHeight) / height);
+              height = maxHeight;
+            }
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          
+          // Convert to base64 with compression
+          const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+          resolve(compressedDataUrl);
+        };
+        img.onerror = reject;
+        img.src = e.target.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleLogoUpload = async (e) => {
     const file = e.target.files[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setLogoPreview(reader.result);
-        onInputChange('profileLogo', reader.result);
-      };
-      reader.readAsDataURL(file);
+      // Check file size - if over 500KB, compress it
+      const maxSizeKB = 500;
+      const fileSizeKB = file.size / 1024;
+      
+      setUploadingLogo(true);
+      try {
+        let imageData;
+        if (fileSizeKB > maxSizeKB) {
+          // Compress the image
+          imageData = await compressImage(file, 400, 400, 0.7);
+        } else {
+          // Still compress slightly for consistency
+          imageData = await compressImage(file, 600, 600, 0.85);
+        }
+        setLogoPreview(imageData);
+        onInputChange('profileLogo', imageData);
+      } catch (error) {
+        console.error('Error processing image:', error);
+        // Fallback to original method if compression fails
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setLogoPreview(reader.result);
+          onInputChange('profileLogo', reader.result);
+        };
+        reader.readAsDataURL(file);
+      } finally {
+        setUploadingLogo(false);
+      }
     }
   };
 
@@ -2428,7 +2563,7 @@ function BusinessDetailsStep({ formData, onInputChange }) {
               Upload your business logo (JPG, PNG, or GIF)
             </p>
           </div>
-          {logoPreview && (
+          {(logoPreview || uploadingLogo) && (
             <div style={{ 
               width: '100px', 
               height: '100px', 
@@ -2438,13 +2573,28 @@ function BusinessDetailsStep({ formData, onInputChange }) {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              background: '#f9fafb'
+              background: '#f9fafb',
+              position: 'relative'
             }}>
-              <img 
-                src={logoPreview} 
-                alt="Logo preview" 
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-              />
+              {uploadingLogo ? (
+                <div style={{ 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  alignItems: 'center', 
+                  gap: '4px',
+                  color: '#6b7280',
+                  fontSize: '12px'
+                }}>
+                  <i className="fas fa-spinner fa-spin" style={{ fontSize: '20px' }}></i>
+                  <span>Processing...</span>
+                </div>
+              ) : (
+                <img 
+                  src={logoPreview} 
+                  alt="Logo preview" 
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+              )}
             </div>
           )}
         </div>
@@ -2977,6 +3127,23 @@ function ServicesStep({ formData, setFormData }) {
     };
   }, [showModal, showEditModal]);
 
+  // Map frontend category IDs to database category names
+  const categoryToDbMapping = {
+    'venue': ['Wedding', 'Event Planning'], // Venues serve weddings and events
+    'photo': ['Photography'],
+    'music': ['Music & Entertainment'],
+    'catering': ['Catering'],
+    'entertainment': ['Music & Entertainment', 'Event Planning'],
+    'experiences': ['Event Planning'],
+    'florist': ['Wedding'], // Florists are often wedding-related
+    'beauty': ['Wedding'], // Beauty services often wedding-related
+    'stationery': ['Wedding'],
+    'rentals': ['Event Planning'],
+    'transport': ['Wedding', 'Event Planning'],
+    'officiant': ['Wedding'],
+    'planner': ['Event Planning', 'Wedding']
+  };
+
   const loadServices = async () => {
     try {
       setLoading(true);
@@ -2998,12 +3165,22 @@ function ServicesStep({ formData, setFormData }) {
         const servicesByCategory = data.servicesByCategory || {};
         
         const filteredServices = [];
-        allCategories.forEach(category => {
-          if (servicesByCategory[category]) {
-            servicesByCategory[category].forEach(service => {
-              filteredServices.push({ ...service, category });
-            });
-          }
+        const addedServiceIds = new Set(); // Prevent duplicates
+        
+        allCategories.forEach(frontendCategory => {
+          // Get the database category names that map to this frontend category
+          const dbCategories = categoryToDbMapping[frontendCategory] || [frontendCategory];
+          
+          dbCategories.forEach(dbCategory => {
+            if (servicesByCategory[dbCategory]) {
+              servicesByCategory[dbCategory].forEach(service => {
+                if (!addedServiceIds.has(service.id)) {
+                  addedServiceIds.add(service.id);
+                  filteredServices.push({ ...service, category: frontendCategory });
+                }
+              });
+            }
+          });
         });
         
         setAvailableServices(filteredServices);

@@ -96,8 +96,15 @@ function SetupIncompleteBanner({
    */
   const fetchVendorData = async () => {
     try {
-      // Check if user is a vendor first
+      // Check if user is a vendor first - BOTH conditions must be true
+      // This prevents showing the banner for client-only users
       if (!currentUser.isVendor || !currentUser.vendorProfileId) {
+        setLoading(false);
+        return;
+      }
+      
+      // Double-check: if isVendor is false, don't show banner regardless of vendorProfileId
+      if (currentUser.isVendor === false) {
         setLoading(false);
         return;
       }
