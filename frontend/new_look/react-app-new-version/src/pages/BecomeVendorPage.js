@@ -974,8 +974,8 @@ const BecomeVendorPage = () => {
         // Optional - badges
         return formData.selectedFilters && formData.selectedFilters.length > 0;
       case 'stripe':
-        // MANDATORY: Must have Stripe connected
-        return !!formData.stripeConnected;
+        // OPTIONAL (temporarily bypassed): Stripe connection not required for submission
+        return true;
       case 'google-reviews':
         // Optional - Google reviews
         return !!(formData.googlePlaceId && formData.googlePlaceId.trim().length > 0);
@@ -985,6 +985,9 @@ const BecomeVendorPage = () => {
       case 'cancellation-policy':
         // Optional - cancellation policy
         return !!(formData.cancellationPolicy);
+      case 'review':
+        // Review step is always complete (it's just a summary view)
+        return true;
       default:
         return false;
     }
@@ -1984,7 +1987,7 @@ function AccountStep({ currentUser, setFormData, formData, onAccountCreated, isE
       return (
         <div className="account-step" style={{ width: '100%' }}>
           <div style={{ width: '100%' }}>
-            {/* Title and message - matching incomplete profile banner layout */}
+            {/* Title and message */}
             <div style={{ marginBottom: '1.5rem' }}>
               <div style={{ 
                 display: 'flex', 
@@ -2009,7 +2012,7 @@ function AccountStep({ currentUser, setFormData, formData, onAccountCreated, isE
               </p>
             </div>
 
-            {/* Rejection Reason Section */}
+            {/* Rejection Reason Section - Only show if there's an actual rejection reason */}
             {rejectionReason && (
               <div style={{ marginBottom: '2rem' }}>
                 <div style={{ 
@@ -2033,39 +2036,6 @@ function AccountStep({ currentUser, setFormData, formData, onAccountCreated, isE
                   {rejectionReason}
                 </div>
               </div>
-            )}
-
-            {/* Status badge */}
-            <div style={{ 
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              padding: '0.75rem 1.5rem',
-              background: '#ef4444',
-              borderRadius: '8px',
-              color: 'white',
-              fontSize: '0.95rem',
-              fontWeight: 500,
-              marginBottom: '2rem'
-            }}>
-              <i className="fas fa-edit"></i>
-              <span>Status: Changes Requested</span>
-            </div>
-            
-            {/* Show steps so they can make changes */}
-            {isVendorWithProfile && steps && (
-              <SetupIncompleteBanner
-                steps={steps}
-                isStepCompleted={isStepCompleted}
-                onStepClick={(stepKey) => {
-                  const stepIndex = steps.findIndex(s => s.id === stepKey);
-                  if (stepIndex !== -1) {
-                    setCurrentStep(stepIndex);
-                  }
-                }}
-                hideButtons={true}
-                showAllSteps={true}
-              />
             )}
           </div>
         </div>
@@ -4702,7 +4672,6 @@ function CancellationPolicyStep({ formData, setFormData }) {
     }
     setSaving(true);
     try {
-      console.log('Saving cancellation policy:', policy);
       const response = await fetch(`${API_BASE_URL}/payments/vendor/${currentUser.vendorProfileId}/cancellation-policy`, {
         method: 'POST',
         headers: {
@@ -4712,7 +4681,6 @@ function CancellationPolicyStep({ formData, setFormData }) {
         body: JSON.stringify(policy)
       });
       const data = await response.json();
-      console.log('Save response:', data);
       if (response.ok && data.success) {
         showBanner('Cancellation policy saved!', 'success');
       } else {

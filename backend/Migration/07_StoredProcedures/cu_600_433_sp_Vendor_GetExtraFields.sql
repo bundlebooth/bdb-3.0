@@ -18,7 +18,7 @@ AS
 BEGIN
     SET NOCOUNT ON;
     
-    SELECT StripeAccountID, GooglePlaceId, ProfileStatus, IsPremium,
+    SELECT StripeAccountID, GooglePlaceId, ProfileStatus, RejectionReason, IsPremium,
            IsEcoFriendly, IsAwardWinning, IsLastMinute, IsCertified, IsInsured
     FROM vendors.VendorProfiles
     WHERE VendorProfileID = @VendorProfileID;

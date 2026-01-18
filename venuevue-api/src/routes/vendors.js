@@ -2411,6 +2411,10 @@ router.get('/profile', async (req, res) => {
         profileData.profile.IsLastMinute = extraFields.IsLastMinute;
         profileData.profile.IsCertified = extraFields.IsCertified;
         profileData.profile.IsInsured = extraFields.IsInsured;
+        // Get RejectionReason if profile was rejected
+        if (extraFields.RejectionReason) {
+          profileData.profile.RejectionReason = extraFields.RejectionReason;
+        }
         
         // Build selectedFilters array from boolean fields and Filters string
         // This matches the format used in BecomeVendorPage
@@ -2439,10 +2443,28 @@ router.get('/profile', async (req, res) => {
         const statusResult = await statusRequest.execute('vendors.sp_GetProfileStatus');
         if (statusResult.recordset.length > 0) {
           profileData.profile.ProfileStatus = statusResult.recordset[0].ProfileStatus || 'draft';
+          // Also get RejectionReason if profile was rejected
+          if (statusResult.recordset[0].RejectionReason) {
+            profileData.profile.RejectionReason = statusResult.recordset[0].RejectionReason;
+          }
         }
       } catch (statusError) {
         console.warn('ProfileStatus query failed:', statusError.message);
         profileData.profile.ProfileStatus = 'draft';
+      }
+    }
+    
+    // If ProfileStatus exists but RejectionReason doesn't, fetch it separately for rejected profiles
+    if (profileData.profile.ProfileStatus === 'rejected' && !profileData.profile.RejectionReason) {
+      try {
+        const statusRequest = new sql.Request(pool);
+        statusRequest.input('VendorProfileID', sql.Int, user.VendorProfileID);
+        const statusResult = await statusRequest.execute('vendors.sp_GetProfileStatus');
+        if (statusResult.recordset.length > 0 && statusResult.recordset[0].RejectionReason) {
+          profileData.profile.RejectionReason = statusResult.recordset[0].RejectionReason;
+        }
+      } catch (statusError) {
+        console.warn('RejectionReason query failed:', statusError.message);
       }
     }
 
@@ -6033,23 +6055,109 @@ router.post('/:vendorProfileId/submit-for-review', async (req, res) => {
     // Update profile status to pending_review
     await request.execute('vendors.sp_SubmitForReview');
     
-    // Get vendor details for email notification including optional section completion status
+    // Get vendor details for email notification using SAME logic as SetupIncompleteBanner
     try {
+      // Query completion status matching SetupIncompleteBanner's isStepCompleted logic exactly
+      const completionQuery = `
+        SELECT 
+          vp.UserID,
+          vp.BusinessName,
+          vp.BusinessEmail,
+          vp.BusinessPhone,
+          vp.DisplayName,
+          vp.City,
+          vp.State,
+          vp.GooglePlaceId,
+          vp.CancellationPolicy,
+          vp.DepositRequirements,
+          vp.PaymentTerms,
+          (SELECT TOP 1 Category FROM vendors.VendorCategories WHERE VendorProfileID = @VendorProfileID AND IsPrimary = 1) AS PrimaryCategory,
+          (SELECT COUNT(*) FROM vendors.VendorSelectedServices WHERE VendorProfileID = @VendorProfileID) AS ServiceCount,
+          (SELECT COUNT(*) FROM vendors.VendorFeatures WHERE VendorProfileID = @VendorProfileID) AS FeatureCount,
+          (SELECT COUNT(*) FROM vendors.VendorSocialMedia WHERE VendorProfileID = @VendorProfileID AND URL IS NOT NULL AND URL != '') AS SocialMediaCount,
+          (SELECT COUNT(*) FROM vendors.VendorFAQs WHERE VendorProfileID = @VendorProfileID) AS FAQCount,
+          (SELECT COUNT(*) FROM vendors.VendorServiceAreas WHERE VendorProfileID = @VendorProfileID) AS ServiceAreaCount,
+          (SELECT COUNT(*) FROM vendors.VendorImages WHERE VendorProfileID = @VendorProfileID) AS ImageCount,
+          (SELECT COUNT(*) FROM vendors.VendorBusinessHours WHERE VendorProfileID = @VendorProfileID AND IsAvailable = 1) AS AvailableDaysCount,
+          CASE WHEN vp.IsPremium = 1 OR vp.IsEcoFriendly = 1 OR vp.IsAwardWinning = 1 OR vp.IsCertified = 1 OR vp.IsInsured = 1 THEN 1 ELSE 0 END AS HasBadges
+        FROM vendors.VendorProfiles vp
+        WHERE vp.VendorProfileID = @VendorProfileID
+      `;
+      
       const vendorRequest = new sql.Request(pool);
       vendorRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-      const vendorResult = await vendorRequest.execute('vendors.sp_GetProfileDetails');
+      const vendorResult = await vendorRequest.query(completionQuery);
       
       if (vendorResult.recordset.length > 0) {
         const vendor = vendorResult.recordset[0];
         console.log(`[SubmitForReview] Sending email notification for vendorProfileId: ${vendorProfileId}`);
         
-        // Check optional sections completion for email suggestions
-        const hasServices = vendor.ServiceCount > 0 || vendor.HasServices;
-        const hasFeatures = vendor.FeatureCount > 0 || vendor.HasFeatures;
-        const hasSocialMedia = vendor.Facebook || vendor.Instagram || vendor.Twitter || vendor.LinkedIn;
-        const hasFAQs = vendor.FAQCount > 0 || vendor.HasFAQs;
-        const hasGoogleReviews = vendor.GooglePlaceId;
-        const hasBadges = vendor.BadgeCount > 0 || vendor.HasBadges;
+        // Use EXACT SAME logic as SetupIncompleteBanner's isStepCompleted function
+        // Step definitions from SetupIncompleteBanner.js lines 49-63
+        const incompleteSections = [];
+        
+        // categories - "What services do you offer?" - return !!formData.primaryCategory
+        if (!vendor.PrimaryCategory) {
+          incompleteSections.push('What services do you offer?');
+        }
+        
+        // business-details - "Tell us about your business" - return !!(formData.businessName && formData.displayName)
+        if (!vendor.BusinessName || !vendor.DisplayName) {
+          incompleteSections.push('Tell us about your business');
+        }
+        
+        // contact - "How can clients reach you?" - return !!formData.businessPhone
+        if (!vendor.BusinessPhone) {
+          incompleteSections.push('How can clients reach you?');
+        }
+        
+        // location - "Where are you located?" - return !!(formData.city && formData.province && formData.serviceAreas.length > 0)
+        if (!vendor.City || !vendor.State || vendor.ServiceAreaCount === 0) {
+          incompleteSections.push('Where are you located?');
+        }
+        
+        // services - "What services do you provide?" - return formData.selectedServices.length > 0
+        if (vendor.ServiceCount === 0) {
+          incompleteSections.push('What services do you provide?');
+        }
+        
+        // business-hours - "When are you available?" - return Object.values(formData.businessHours).some(h => h.isAvailable)
+        if (vendor.AvailableDaysCount === 0) {
+          incompleteSections.push('When are you available?');
+        }
+        
+        // questionnaire (features) - "Tell guests what your place has to offer" - return formData.selectedFeatures.length > 0
+        if (vendor.FeatureCount === 0) {
+          incompleteSections.push('Tell guests what your place has to offer');
+        }
+        
+        // gallery - "Add photos to showcase your work" - return formData.photoURLs.length > 0
+        if (vendor.ImageCount === 0) {
+          incompleteSections.push('Add photos to showcase your work');
+        }
+        
+        // social-media - "Connect your social profiles" - return !!(formData.facebook || formData.instagram || formData.twitter || formData.linkedin)
+        if (vendor.SocialMediaCount === 0) {
+          incompleteSections.push('Connect your social profiles');
+        }
+        
+        // filters - "Enable special badges for your profile" - return formData.selectedFilters.length > 0
+        if (vendor.HasBadges === 0) {
+          incompleteSections.push('Enable special badges for your profile');
+        }
+        
+        // stripe - "Connect Stripe for Payments" - OPTIONAL (temporarily bypassed) - always true
+        // google-reviews - "Connect Google Reviews" - return !!formData.googlePlaceId
+        if (!vendor.GooglePlaceId) {
+          incompleteSections.push('Connect Google Reviews');
+        }
+        
+        // policies - "Set your policies and answer common questions" - return !!(formData.cancellationPolicy || formData.depositRequirements || formData.paymentTerms || (formData.faqs && formData.faqs.length > 0))
+        if (!vendor.CancellationPolicy && !vendor.DepositRequirements && !vendor.PaymentTerms && vendor.FAQCount === 0) {
+          incompleteSections.push('Set your policies and answer common questions');
+        }
+        
+        console.log(`[SubmitForReview] Incomplete sections (${incompleteSections.length}): ${incompleteSections.join(', ') || 'None'}`);
         
         await notifyAdminOfVendorApplication(
           vendor.UserID,
@@ -6059,12 +6167,8 @@ router.post('/:vendorProfileId/submit-for-review', async (req, res) => {
             businessEmail: vendor.BusinessEmail || null,
             businessPhone: vendor.BusinessPhone,
             category: vendor.PrimaryCategory || 'Not specified',
-            hasServices,
-            hasFeatures,
-            hasSocialMedia,
-            hasFAQs,
-            hasGoogleReviews,
-            hasBadges
+            // Pass the actual incomplete sections list instead of boolean flags
+            incompleteSectionsList: incompleteSections
           }
         );
         console.log(`[SubmitForReview] Email notification sent successfully`);

@@ -355,14 +355,17 @@ function SetupIncompleteBanner({
         // BecomeVendorPage line 751: return formData.selectedFilters.length > 0;
         return formData.selectedFilters.length > 0;
       case 'stripe':
-        // BecomeVendorPage line 753: return !!formData.stripeConnected;
-        return !!formData.stripeConnected;
+        // OPTIONAL (temporarily bypassed): Stripe connection not required for submission
+        return true;
       case 'google-reviews':
         // BecomeVendorPage line 755: return !!formData.googlePlaceId;
         return !!formData.googlePlaceId;
       case 'policies':
         // BecomeVendorPage line 757: return !!(formData.cancellationPolicy || formData.depositPercentage || formData.paymentTerms || (formData.faqs && formData.faqs.length > 0));
         return !!(formData.cancellationPolicy || formData.depositPercentage || formData.paymentTerms || (formData.faqs && formData.faqs.length > 0));
+      case 'review':
+        // Review step is always complete (it's just a summary view)
+        return true;
       default:
         return false;
     }

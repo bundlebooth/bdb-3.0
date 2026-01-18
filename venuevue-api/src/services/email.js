@@ -539,13 +539,10 @@ async function sendVendorApplicationToAdmin(adminEmail, applicantName, businessN
 async function sendVendorWelcome(vendorEmail, vendorName, businessName, dashboardUrl, userId = null, incompleteSections = []) {
   const adminEmail = process.env.ADMIN_EMAIL || 'admin@planbeau.com';
   
-  // Format incomplete sections for email
+  // Format incomplete sections for email - clean white background with subtle styling
   let incompleteMessage = '';
   if (incompleteSections && incompleteSections.length > 0) {
-    incompleteMessage = `<p style="margin-top: 20px; color: #92400e; background: #fef3c7; padding: 15px; border-radius: 8px;">
-      <strong>To improve your profile, please complete these optional sections:</strong><br/>
-      ${incompleteSections.map(s => `• ${s}`).join('<br/>')}
-    </p>`;
+    incompleteMessage = `<div style="background:#f8f9fa;padding:20px;border-radius:8px;border:1px solid #e9ecef;margin:20px 0 0 0"><p style="color:#495057;margin:0 0 12px;font-weight:600;font-size:14px">To complete your profile:</p>${incompleteSections.map(s => `<p style="color:#6c757d;margin:4px 0;font-size:14px">• ${s}</p>`).join('')}</div>`;
   }
   
   return sendTemplatedEmail('vendor_welcome', vendorEmail, vendorName, {
@@ -587,6 +584,22 @@ async function sendVendorRejected(vendorEmail, vendorName, businessName, rejecti
   }, userId, null, null, 'vendor', adminEmail);
 }
 
+// Send welcome email to new client after registration
+async function sendClientWelcome(clientEmail, clientName, searchUrl, dashboardUrl, userId = null) {
+  const adminEmail = process.env.ADMIN_EMAIL || 'admin@planbeau.com';
+  return sendTemplatedEmail('client_welcome', clientEmail, clientName, {
+    clientName, searchUrl, dashboardUrl
+  }, userId, null, null, 'welcome', adminEmail);
+}
+
+// Send welcome email to existing client who becomes a vendor
+async function sendClientToVendorWelcome(vendorEmail, vendorName, businessName, dashboardUrl, userId = null) {
+  const adminEmail = process.env.ADMIN_EMAIL || 'admin@planbeau.com';
+  return sendTemplatedEmail('client_to_vendor', vendorEmail, vendorName, {
+    vendorName, businessName, dashboardUrl
+  }, userId, null, null, 'welcome', adminEmail);
+}
+
 module.exports = {
   sendEmail,
   sendTemplatedEmail,
@@ -605,5 +618,7 @@ module.exports = {
   sendBookingConfirmedToClient,
   sendBookingConfirmedToVendor,
   sendVendorApproved,
-  sendVendorRejected
+  sendVendorRejected,
+  sendClientWelcome,
+  sendClientToVendorWelcome
 };

@@ -20,7 +20,9 @@ const {
   sendBookingConfirmedToClient,
   sendBookingConfirmedToVendor,
   sendVendorApproved,
-  sendVendorRejected
+  sendVendorRejected,
+  sendClientWelcome,
+  sendClientToVendorWelcome
 } = require('./email');
 const { generateInvoicePDF, formatInvoiceData } = require('./invoiceService');
 const pushService = require('./pushNotificationService');
@@ -611,14 +613,11 @@ async function notifyAdminOfVendorApplication(userId, vendorProfileId, businessD
     if (applicantEmail) {
       console.log(`[NotificationService] Sending welcome email to vendor: ${applicantEmail}`);
       
-      // Calculate incomplete optional sections to suggest in the email
-      const incompleteSections = [];
-      if (!businessDetails.hasServices) incompleteSections.push('Services & Pricing');
-      if (!businessDetails.hasFeatures) incompleteSections.push('Features & Amenities');
-      if (!businessDetails.hasSocialMedia) incompleteSections.push('Social Media Links');
-      if (!businessDetails.hasFAQs) incompleteSections.push('Frequently Asked Questions');
-      if (!businessDetails.hasGoogleReviews) incompleteSections.push('Google Reviews Integration');
-      if (!businessDetails.hasBadges) incompleteSections.push('Special Badges');
+      // Use the pre-calculated incomplete sections list if provided (from submit-for-review)
+      // This matches the exact same logic as SetupIncompleteBanner on the main page
+      const incompleteSections = businessDetails.incompleteSectionsList || [];
+      
+      console.log(`[NotificationService] Incomplete sections for email: ${incompleteSections.join(', ') || 'None'}`);
       
       await sendVendorWelcome(
         applicantEmail,
@@ -804,6 +803,61 @@ async function notifyVendorOfRejection(vendorProfileId, rejectionReason) {
   }
 }
 
+/**
+ * Send welcome email to new client after registration
+ * @param {number} userId - The user ID
+ */
+async function notifyClientOfRegistration(userId) {
+  try {
+    const pool = await poolPromise;
+    
+    const result = await pool.request()
+      .input('UserID', sql.Int, userId)
+      .query('SELECT Name, Email FROM users.Users WHERE UserID = @UserID');
+    
+    if (result.recordset.length === 0) return;
+    const data = result.recordset[0];
+    
+    await sendClientWelcome(
+      data.Email,
+      data.Name || 'there',
+      `${FRONTEND_URL}/search`,
+      `${FRONTEND_URL}/dashboard`,
+      userId
+    );
+  } catch (error) {
+    console.error('[NotificationService] Failed to send client welcome email:', error.message);
+  }
+}
+
+/**
+ * Send welcome email to existing client who becomes a vendor
+ * @param {number} userId - The user ID
+ * @param {string} businessName - The business name
+ */
+async function notifyClientToVendor(userId, businessName) {
+  try {
+    const pool = await poolPromise;
+    
+    const result = await pool.request()
+      .input('UserID', sql.Int, userId)
+      .query('SELECT Name, Email FROM users.Users WHERE UserID = @UserID');
+    
+    if (result.recordset.length === 0) return;
+    const data = result.recordset[0];
+    
+    await sendClientToVendorWelcome(
+      data.Email,
+      data.Name || 'there',
+      businessName || 'Your Business',
+      `${FRONTEND_URL}/become-a-vendor`,
+      userId
+    );
+  } catch (error) {
+    console.error('[NotificationService] Failed to send client-to-vendor welcome email:', error.message);
+  }
+}
+
 module.exports = {
   notifyVendorOfNewRequest,
   notifyClientOfApproval,
@@ -815,5 +869,7 @@ module.exports = {
   notifyAdminOfVendorApplication,
   notifyOfBookingConfirmation,
   notifyVendorOfApproval,
-  notifyVendorOfRejection
+  notifyVendorOfRejection,
+  notifyClientOfRegistration,
+  notifyClientToVendor
 };
