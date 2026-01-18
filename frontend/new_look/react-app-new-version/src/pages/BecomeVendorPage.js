@@ -1558,21 +1558,16 @@ const BecomeVendorPage = () => {
                     {steps[currentStep].required ? 'Required' : 'Optional'}
                   </span>
                 )}
-                {/* Completed badge - only show if step has required fields filled */}
+                {/* Completed badge - only show green checkmark circle */}
                 {isExistingVendor && currentStep > 0 && isStepCompleted(steps[currentStep].id) && (
                   <span style={{
                     display: 'inline-flex',
                     alignItems: 'center',
-                    gap: '0.5rem',
-                    padding: '0.35rem 0.75rem',
-                    background: '#10b981',
-                    color: 'white',
-                    borderRadius: '6px',
-                    fontSize: '0.75rem',
-                    fontWeight: '600'
+                    justifyContent: 'center',
+                    color: '#10b981',
+                    fontSize: '1.1rem'
                   }}>
-                    <i className="fas fa-check"></i>
-                    Complete
+                    <i className="fas fa-check-circle"></i>
                   </span>
                 )}
               </div>
@@ -1842,23 +1837,23 @@ function AccountStep({ currentUser, setFormData, formData, onAccountCreated, isE
   const isVendorWithProfile = isExistingVendor || (currentUser?.isVendor && currentUser?.vendorProfileId);
 
   if (currentUser) {
-    // Show pending review message if profile is submitted
+    // Show pending review message if profile is submitted - matching rejected style (image 9)
     if (profileStatus === 'pending_review') {
       return (
         <div className="account-step" style={{ width: '100%' }}>
           <div style={{ width: '100%' }}>
-            {/* Title and message - matching incomplete profile banner layout */}
+            {/* Title and message - blue theme matching rejected style */}
             <div style={{ marginBottom: '1.5rem' }}>
               <div style={{ 
                 display: 'flex', 
                 alignItems: 'center', 
                 gap: '0.5rem', 
                 marginBottom: '0.5rem',
-                color: '#111827',
+                color: '#1e40af',
                 fontSize: '1.1rem',
                 fontWeight: 600
               }}>
-                <i className="fas fa-hourglass-half" style={{ color: '#6b7280' }}></i>
+                <i className="fas fa-clock" style={{ color: '#3b82f6' }}></i>
                 Profile Under Review
               </div>
               <p style={{ 
@@ -1868,114 +1863,42 @@ function AccountStep({ currentUser, setFormData, formData, onAccountCreated, isE
                 lineHeight: 1.5
               }}>
                 Your vendor profile has been submitted and is currently being reviewed by our support team. 
-                This process typically takes <strong>1-2 business days</strong>.
+                This process typically takes <strong>1-2 business days</strong>. You'll receive an email notification once your profile is approved or if any changes are requested.
               </p>
-            </div>
-
-            {/* What happens next section */}
-            <div style={{ marginBottom: '2rem' }}>
-              <div style={{ 
-                fontWeight: 600, 
-                color: '#374151', 
-                marginBottom: '1rem', 
-                fontSize: '1rem'
-              }}>
-                What happens next?
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
-                {[
-                  'Our team will review your business information',
-                  "You'll receive an email notification once approved",
-                  "If changes are needed, we'll let you know what to update",
-                  'Once approved, your profile will be live and visible to clients'
-                ].map((item, index) => (
-                  <span
-                    key={index}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '0.5rem',
-                      background: 'rgba(107, 114, 128, 0.08)',
-                      color: '#374151',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '999px',
-                      padding: '0.625rem 1.25rem',
-                      fontSize: '0.95rem',
-                      fontWeight: 500,
-                      whiteSpace: 'nowrap'
-                    }}
-                  >
-                    <i className="fas fa-circle" style={{ color: '#6b7280', fontSize: '0.4rem' }}></i>
-                    {item}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            {/* Status badge */}
-            <div style={{ 
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              padding: '0.75rem 1.5rem',
-              background: '#222222',
-              borderRadius: '8px',
-              color: 'white',
-              fontSize: '0.95rem',
-              fontWeight: 500
-            }}>
-              <i className="fas fa-clock"></i>
-              <span>Status: Pending Review</span>
             </div>
           </div>
         </div>
       );
     }
 
-    // Show approved message if profile is approved
+    // Show approved message if profile is approved - matching rejected/pending style
     if (profileStatus === 'approved') {
       return (
-        <div className="account-step">
-          <div style={{ padding: '2rem 1rem', maxWidth: '700px', margin: '0 auto' }}>
-            <div style={{ 
-              background: 'linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)', 
-              borderRadius: '16px', 
-              padding: '2.5rem',
-              textAlign: 'center'
-            }}>
+        <div className="account-step" style={{ width: '100%' }}>
+          <div style={{ width: '100%' }}>
+            {/* Title and message - green theme matching other status styles */}
+            <div style={{ marginBottom: '1.5rem' }}>
               <div style={{ 
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '80px',
-                height: '80px',
-                borderRadius: '50%',
-                background: '#10b981',
-                marginBottom: '1.5rem'
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '0.5rem', 
+                marginBottom: '0.5rem',
+                color: '#166534',
+                fontSize: '1.1rem',
+                fontWeight: 600
               }}>
-                <i className="fas fa-check-circle" style={{ fontSize: '2rem', color: 'white' }}></i>
+                <i className="fas fa-check-circle" style={{ color: '#10b981' }}></i>
+                Profile Approved
               </div>
-              <h2 style={{ fontSize: '1.75rem', marginBottom: '1rem', color: '#166534', fontWeight: '700' }}>
-                Profile Approved!
-              </h2>
-              <p style={{ color: '#15803d', fontSize: '1.1rem', lineHeight: 1.7, marginBottom: '1.5rem' }}>
+              <p style={{ 
+                margin: 0, 
+                color: '#6b7280', 
+                fontSize: '0.95rem',
+                lineHeight: 1.5
+              }}>
                 Congratulations! Your vendor profile has been approved and is now live. 
                 Clients can find and book your services.
               </p>
-              <div style={{ 
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                padding: '0.75rem 1.5rem',
-                background: '#10b981',
-                borderRadius: '8px',
-                color: 'white',
-                fontSize: '0.95rem',
-                fontWeight: 500
-              }}>
-                <i className="fas fa-check"></i>
-                <span>Status: Approved & Live</span>
-              </div>
             </div>
           </div>
         </div>
@@ -4698,10 +4621,6 @@ function CancellationPolicyStep({ formData, setFormData }) {
     <div className="cancellation-policy-step">
       {/* Info Box */}
       <div style={{
-        background: '#f0fdf4',
-        border: '1px solid #bbf7d0',
-        borderRadius: '12px',
-        padding: '1rem 1.25rem',
         marginBottom: '1.5rem',
         display: 'flex',
         alignItems: 'flex-start',
@@ -4710,7 +4629,7 @@ function CancellationPolicyStep({ formData, setFormData }) {
         <i className="fas fa-shield-alt" style={{ color: '#22c55e', marginTop: '0.15rem' }}></i>
         <div>
           <strong style={{ color: '#166534' }}>Protect your business</strong>
-          <p style={{ margin: '0.5rem 0 0', color: '#166534', fontSize: '0.9rem' }}>
+          <p style={{ margin: '0.5rem 0 0', color: '#6b7280', fontSize: '0.9rem' }}>
             A clear cancellation policy protects your business while giving clients confidence when booking.
           </p>
         </div>
@@ -4727,8 +4646,8 @@ function CancellationPolicyStep({ formData, setFormData }) {
               key={type.id}
               onClick={() => handlePolicyTypeChange(type.id)}
               style={{
-                padding: '1.25rem',
-                border: `2px solid ${policy.policyType === type.id ? type.color : '#e5e7eb'}`,
+                padding: '1rem',
+                border: `1px solid ${policy.policyType === type.id ? type.color : '#e5e7eb'}`,
                 borderRadius: '12px',
                 cursor: 'pointer',
                 background: policy.policyType === type.id ? `${type.color}10` : 'white',
@@ -4748,9 +4667,6 @@ function CancellationPolicyStep({ formData, setFormData }) {
                   <i className={`fas ${type.icon}`} style={{ color: type.color }}></i>
                 </div>
                 <strong style={{ color: '#1f2937' }}>{type.name}</strong>
-                {policy.policyType === type.id && (
-                  <i className="fas fa-check-circle" style={{ color: type.color, marginLeft: 'auto' }}></i>
-                )}
               </div>
               <p style={{ margin: 0, fontSize: '0.85rem', color: '#6b7280' }}>{type.description}</p>
             </div>
@@ -5304,11 +5220,11 @@ function QuestionnaireStep({ formData, setFormData, currentUser, setFeaturesLoad
               if (!category.features || category.features.length === 0) return null;
               
               return (
-                <div key={category.categoryName} style={{ background: 'white', borderRadius: '16px', padding: '2rem 0' }}>
-                  <h3 style={{ margin: '0 0 1.5rem 0', padding: '0 2rem', fontSize: '1.25rem', fontWeight: 600, color: '#1f2937' }}>
+                <div key={category.categoryName} style={{ background: 'white', borderRadius: '16px', padding: '0' }}>
+                  <h3 style={{ margin: '0 0 1.5rem 0', fontSize: '1.25rem', fontWeight: 600, color: '#1f2937' }}>
                     {category.categoryName}
                   </h3>
-                  <div className="features-grid-3col" style={{ padding: '0 2rem' }}>
+                  <div className="features-grid-3col">
                     {category.features.map(feature => {
                       const isSelected = selectedFeatureIds.has(feature.featureID);
                       return (
@@ -5323,8 +5239,8 @@ function QuestionnaireStep({ formData, setFormData, currentUser, setFeaturesLoad
                               alignItems: 'center',
                               gap: '0.875rem',
                               borderRadius: '10px',
-                              border: isSelected ? '2px solid var(--primary)' : '1px solid #e5e7eb',
-                              background: isSelected ? '#f0f9ff' : 'white',
+                              border: isSelected ? '2px solid #222222' : '1px solid #e5e7eb',
+                              background: isSelected ? '#f9fafb' : 'white',
                               boxShadow: isSelected ? '0 1px 3px rgba(0, 123, 255, 0.1)' : 'none',
                               width: '100%'
                             }}
@@ -5807,18 +5723,10 @@ function GalleryStep({ formData, setFormData, currentUser }) {
       <div style={{ maxWidth: '100%', width: '100%' }}>
         {/* Required photos notice */}
         <div style={{ 
-          marginBottom: '1.5rem', 
-          padding: '1rem', 
-          background: photos.length >= MIN_PHOTOS ? '#f0fdf4' : '#fef3c7', 
-          borderRadius: '8px', 
-          border: `1px solid ${photos.length >= MIN_PHOTOS ? '#86efac' : '#fcd34d'}`,
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.75rem'
+          marginBottom: '1.5rem'
         }}>
-          <i className={`fas ${photos.length >= MIN_PHOTOS ? 'fa-check-circle' : 'fa-exclamation-triangle'}`} style={{ color: photos.length >= MIN_PHOTOS ? '#16a34a' : '#d97706' }}></i>
-          <p style={{ margin: 0, color: photos.length >= MIN_PHOTOS ? '#166534' : '#92400e', fontSize: '0.9rem' }}>
-            <strong>At least {MIN_PHOTOS} photos required <span style={{ color: '#ef4444' }}>*</span></strong>
+          <p style={{ margin: 0, color: '#6b7280', fontSize: '0.9rem' }}>
+            <strong style={{ color: '#374151' }}>At least {MIN_PHOTOS} photos required <span style={{ color: '#ef4444' }}>*</span></strong>
             {photos.length > 0 ? ` — ${photos.length}/${MIN_PHOTOS} photo${photos.length > 1 ? 's' : ''} uploaded` : ' — Upload photos to showcase your work'}
           </p>
         </div>
@@ -5917,7 +5825,7 @@ function GalleryStep({ formData, setFormData, currentUser }) {
                       boxShadow: '0 2px 4px rgba(0,0,0,0.15)'
                     }}
                   >
-                    <i className="fas fa-trash-alt" style={{ fontSize: '14px' }}></i>
+                    <i className="fas fa-times" style={{ fontSize: '14px' }}></i>
                   </button>
                 </>
               ) : (
@@ -8300,27 +8208,6 @@ function ReviewStep({ formData, categories, profileStatus, steps, isStepComplete
   return (
     <div className="review-step">
       <div style={{ maxWidth: '100%', width: '100%' }}>
-        {/* Pending Review Notice */}
-        {profileStatus === 'pending_review' && (
-          <div style={{ marginBottom: '1.5rem', padding: '1.5rem', background: '#f3f4f6', borderRadius: '12px', border: '2px solid #222222' }}>
-            <div style={{ display: 'flex', gap: '0.75rem' }}>
-              <i className="fas fa-hourglass-half" style={{ color: '#222222', fontSize: '1.5rem', flexShrink: 0 }}></i>
-              <div>
-                <h4 style={{ margin: '0 0 0.5rem', fontSize: '1rem', fontWeight: 600, color: '#111827' }}>
-                  Profile Under Review
-                </h4>
-                <p style={{ margin: 0, fontSize: '0.9rem', color: '#374151', lineHeight: 1.6 }}>
-                  Your profile has been submitted and is currently under review by our team. This typically takes 1-2 business days. 
-                  You'll receive an email notification once your profile is approved or if any changes are requested. 
-                  You can still make edits from your dashboard while waiting.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-
-
         {/* Required Steps Section */}
         <div style={{ marginBottom: '2rem' }}>
           <h3 style={{ margin: '0 0 1rem', fontSize: '1.1rem', fontWeight: 600, color: '#111827', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
