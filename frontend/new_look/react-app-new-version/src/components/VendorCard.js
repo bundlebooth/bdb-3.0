@@ -2,7 +2,7 @@ import React, { memo } from 'react';
 import { getCategoryIconHtml, mapTypeToCategory, formatLocationShort } from '../utils/helpers';
 import { buildVendorProfileUrl } from '../utils/urlHelpers';
 
-const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavorite, onView, onHighlight, showViewCount, showResponseTime, showAnalyticsBadge, analyticsBadgeType, onlineStatus }) {
+const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavorite, onView, onHighlight, showViewCount, showResponseTime, showAnalyticsBadge, analyticsBadgeType, onlineStatus, showBio = false }) {
   const [isHovered, setIsHovered] = React.useState(false);
   const [currentImageIndex, setCurrentImageIndex] = React.useState(0);
   const vendorId = vendor.VendorProfileID || vendor.id;
@@ -114,6 +114,11 @@ const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavori
                          vendor.Category || vendor.category || '';
   const categoryKey = mapTypeToCategory(primaryCategory);
   const categoryIconHtml = getCategoryIconHtml(categoryKey);
+  
+  // Bio/Description - truncate to ~100 chars for card display
+  const rawBio = vendor.Bio || vendor.bio || vendor.Description || vendor.description || 
+                 vendor.AboutUs || vendor.aboutUs || vendor.Summary || vendor.summary || '';
+  const bioText = rawBio.length > 100 ? rawBio.substring(0, 100).trim() + '...' : rawBio;
 
   const handleCardClick = () => {
     // Build professional URL with slug and tracking parameters
@@ -496,6 +501,34 @@ const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavori
             }`} style={{ fontSize: '11px' }}></i>
             <span>{vendor.analyticsBadge}</span>
           </div>
+        )}
+        
+        {/* Line 5: Bio/Description snippet - Only on browse pages, with divider */}
+        {showBio && bioText && (
+          <>
+            <div style={{ 
+              width: '100%', 
+              height: '1px', 
+              backgroundColor: '#e5e7eb', 
+              marginTop: '8px',
+              marginBottom: '8px'
+            }} />
+            <p 
+              className="vendor-card-bio"
+              style={{ 
+                fontSize: '13px',
+                color: '#717171',
+                lineHeight: '18px',
+                margin: 0,
+                overflow: 'hidden',
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+                textOverflow: 'ellipsis'
+              }}>
+              {bioText}
+            </p>
+          </>
         )}
       </div>
     </div>

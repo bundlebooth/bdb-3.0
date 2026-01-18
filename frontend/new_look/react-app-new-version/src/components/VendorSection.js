@@ -194,39 +194,54 @@ function VendorSection({
             <button 
               className="vendor-section-show-all"
               onClick={() => {
-                // Build browse URL based on section type
-                let browseUrl = '/browse/';
-                
-                // Determine the discovery type from title
+                // Determine the discovery type from title or sectionType
                 const titleLower = title.toLowerCase();
                 let discoveryType = sectionType;
                 
                 if (!discoveryType) {
                   if (titleLower.includes('trending')) discoveryType = 'trending';
                   else if (titleLower.includes('top rated') || titleLower.includes('rated')) discoveryType = 'top-rated';
-                  else if (titleLower.includes('responsive')) discoveryType = 'most-responsive';
+                  else if (titleLower.includes('responsive') || titleLower.includes('quick')) discoveryType = 'most-responsive';
                   else if (titleLower.includes('reviewed') || titleLower.includes('review')) discoveryType = 'recently-reviewed';
                   else if (titleLower.includes('near') || titleLower.includes('nearby')) discoveryType = 'nearby';
                   else if (titleLower.includes('premium')) discoveryType = 'premium';
                   else if (titleLower.includes('booked') || titleLower.includes('popular')) discoveryType = 'popular';
                   else if (titleLower.includes('new') || titleLower.includes('added')) discoveryType = 'new';
                   else if (titleLower.includes('recommended')) discoveryType = 'recommended';
+                  else if (titleLower.includes('budget') || titleLower.includes('affordable')) discoveryType = 'budget-friendly';
                 }
                 
-                // Build URL: /browse/city/category or /browse/discovery-type
-                if (cityFilter) {
+                // Build URL with discovery type as primary, city/category as query params
+                let browseUrl = '/browse/';
+                const queryParams = new URLSearchParams();
+                
+                if (discoveryType) {
+                  // Discovery-focused URL: /browse/trending?city=Toronto&category=photo
+                  browseUrl += discoveryType;
+                  if (cityFilter) {
+                    queryParams.set('city', cityFilter);
+                  }
+                  if (categoryFilter && categoryFilter !== 'all') {
+                    queryParams.set('category', categoryFilter);
+                  }
+                } else if (cityFilter) {
+                  // City-focused URL: /browse/Toronto
                   browseUrl += encodeURIComponent(cityFilter);
                   if (categoryFilter && categoryFilter !== 'all') {
                     browseUrl += '/' + categoryFilter;
                   }
                 } else if (categoryFilter && categoryFilter !== 'all') {
+                  // Category-only URL: /browse/photo
                   browseUrl += categoryFilter;
-                } else if (discoveryType) {
-                  browseUrl += discoveryType;
                 } else {
                   // Fallback: show modal for unknown types
                   setShowModal(true);
                   return;
+                }
+                
+                // Append query params if any
+                if (queryParams.toString()) {
+                  browseUrl += '?' + queryParams.toString();
                 }
                 
                 navigate(browseUrl);
