@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../../context/AuthContext';
-import { API_BASE_URL, GOOGLE_MAPS_API_KEY } from '../../../config';
+import { GOOGLE_MAPS_API_KEY, API_BASE_URL } from '../../../config';
 import { showBanner } from '../../../utils/helpers';
+import { apiGet, apiPut } from '../../../utils/api';
 
 // Load Google Maps API dynamically
 const loadGoogleMapsAPI = () => {

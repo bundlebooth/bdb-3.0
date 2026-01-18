@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { API_BASE_URL } from '../../config';
 import { showBanner } from '../../utils/helpers';
+import { apiGet, apiPost, apiDelete } from '../../utils/api';
+import { API_BASE_URL } from '../../config';
+import UniversalModal from '../UniversalModal';
+import { LoadingState, EmptyState } from '../common/AdminComponents';
+import { ActionButtonGroup, ActionButton as IconActionButton, EditButton, DeleteButton } from '../common/UIComponents';
 
 const CategoriesPanel = () => {
   const [categories, setCategories] = useState([]);
@@ -17,12 +21,7 @@ const CategoriesPanel = () => {
   const fetchCategories = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/admin/categories`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
+      const response = await apiGet('/admin/categories');
       if (response.ok) {
         const data = await response.json();
         setCategories(data.categories || []);
@@ -38,15 +37,7 @@ const CategoriesPanel = () => {
   const handleToggleVisibility = async (categoryId, currentVisibility) => {
     setActionLoading(`visibility-${categoryId}`);
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/categories/${categoryId}/visibility`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ visible: !currentVisibility })
-      });
-
+      const response = await apiPost(`/admin/categories/${categoryId}/visibility`, { visible: !currentVisibility });
       if (response.ok) {
         showBanner(`Category ${currentVisibility ? 'hidden' : 'now visible'}`, 'success');
         // Update local state immediately for better UX
@@ -76,12 +67,7 @@ const CategoriesPanel = () => {
 
     setActionLoading(`delete-${categoryId}`);
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/categories/${categoryId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await apiDelete(`/admin/categories/${categoryId}`);
 
       if (response.ok) {
         showBanner('Category deleted successfully', 'success');
@@ -214,33 +200,11 @@ const CategoriesPanel = () => {
                     </button>
                   </td>
                   <td>
-                    <div className="action-buttons" style={{ display: 'flex', gap: '0.25rem', flexWrap: 'nowrap' }}>
-                      <button
-                        className="action-btn edit"
-                        onClick={() => { setSelectedCategory(category); setModalType('edit'); }}
-                        title="Edit Category"
-                        style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem' }}
-                      >
-                        <i className="fas fa-pen"></i>
-                      </button>
-                      <button
-                        className="action-btn services"
-                        onClick={() => { setSelectedCategory(category); setModalType('services'); }}
-                        title="Manage Services"
-                        style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem', background: '#ede9fe', color: '#7c3aed' }}
-                      >
-                        <i className="fas fa-list"></i>
-                      </button>
-                      <button
-                        className="action-btn delete"
-                        onClick={() => handleDeleteCategory(category.CategoryID, category.CategoryName)}
-                        title="Delete Category"
-                        disabled={actionLoading === `delete-${category.CategoryID}`}
-                        style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem', opacity: actionLoading === `delete-${category.CategoryID}` ? 0.5 : 1 }}
-                      >
-                        <i className={`fas ${actionLoading === `delete-${category.CategoryID}` ? 'fa-spinner fa-spin' : 'fa-trash-alt'}`}></i>
-                      </button>
-                    </div>
+                    <ActionButtonGroup>
+                      <EditButton onClick={() => { setSelectedCategory(category); setModalType('edit'); }} />
+                      <IconActionButton action="services" onClick={() => { setSelectedCategory(category); setModalType('services'); }} title="Services" />
+                      <DeleteButton onClick={() => handleDeleteCategory(category.CategoryID, category.CategoryName)} disabled={actionLoading === `delete-${category.CategoryID}`} />
+                    </ActionButtonGroup>
                   </td>
                 </tr>
               ))}
@@ -370,77 +334,50 @@ const CategoryModal = ({ category, onClose, onSave }) => {
   ];
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>{category ? 'Edit Category' : 'Add Category'}</h2>
-          <button className="modal-close" onClick={onClose}>
-            
-          </button>
-        </div>
-        <div className="modal-body">
-          <div className="form-group">
-            <label>Category Name</label>
-            <input
-              type="text"
-              value={formData.CategoryName}
-              onChange={e => setFormData({ ...formData, CategoryName: e.target.value })}
-              placeholder="e.g., Catering, Photography"
-            />
-          </div>
-          <div className="form-group">
-            <label>Description</label>
-            <textarea
-              value={formData.Description}
-              onChange={e => setFormData({ ...formData, Description: e.target.value })}
-              placeholder="Brief description of this category..."
-              rows={3}
-            />
-          </div>
-          <div className="form-row">
-            <div className="form-group">
-              <label>Icon</label>
-              <div className="icon-picker">
-                {iconOptions.map(icon => (
-                  <button
-                    key={icon}
-                    type="button"
-                    className={`icon-option ${formData.Icon === icon ? 'selected' : ''}`}
-                    onClick={() => setFormData({ ...formData, Icon: icon })}
-                  >
-                    <i className={icon}></i>
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="form-group">
-              <label>Color</label>
-              <input
-                type="color"
-                value={formData.Color}
-                onChange={e => setFormData({ ...formData, Color: e.target.value })}
-              />
-            </div>
-          </div>
-          <div className="form-group">
-            <label className="checkbox-label">
-              <input
-                type="checkbox"
-                checked={formData.IsVisible}
-                onChange={e => setFormData({ ...formData, IsVisible: e.target.checked })}
-              />
-              Visible to users
-            </label>
+    <UniversalModal
+      isOpen={true}
+      onClose={onClose}
+      title={category ? 'Edit Category' : 'Add Category'}
+      size="medium"
+      primaryAction={{
+        label: saving ? 'Saving...' : (category ? 'Update' : 'Create'),
+        onClick: handleSave,
+        loading: saving,
+        disabled: !formData.CategoryName.trim()
+      }}
+      secondaryAction={{ label: 'Cancel', onClick: onClose }}
+    >
+      <div className="form-group">
+        <label>Category Name</label>
+        <input type="text" value={formData.CategoryName} onChange={e => setFormData({ ...formData, CategoryName: e.target.value })} placeholder="e.g., Catering, Photography" />
+      </div>
+      <div className="form-group">
+        <label>Description</label>
+        <textarea value={formData.Description} onChange={e => setFormData({ ...formData, Description: e.target.value })} placeholder="Brief description of this category..." rows={3} />
+      </div>
+      <div className="form-row">
+        <div className="form-group">
+          <label>Icon</label>
+          <div className="icon-picker" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+            {iconOptions.map(icon => (
+              <button key={icon} type="button" className={`icon-option ${formData.Icon === icon ? 'selected' : ''}`} onClick={() => setFormData({ ...formData, Icon: icon })} style={{ width: '36px', height: '36px', border: formData.Icon === icon ? '2px solid #222' : '1px solid #e5e7eb', borderRadius: '6px', background: 'white', cursor: 'pointer' }}>
+                <i className={icon}></i>
+              </button>
+            ))}
           </div>
         </div>
-        <div className="modal-footer">
-          <button className="btn-secondary" onClick={onClose}>Cancel</button>
-          <button className="btn-primary" onClick={handleSave} disabled={saving || !formData.CategoryName.trim()}>
-            {saving ? 'Saving...' : (category ? 'Update' : 'Create')}
-          </button>
+        <div className="form-group">
+          <label>Color</label>
+          <input type="color" value={formData.Color} onChange={e => setFormData({ ...formData, Color: e.target.value })} />
         </div>
       </div>
-    </div>
+      <div className="form-group">
+        <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <input type="checkbox" checked={formData.IsVisible} onChange={e => setFormData({ ...formData, IsVisible: e.target.checked })} />
+          Visible to users
+        </label>
+      </div>
+    </UniversalModal>
   );
 };
 
@@ -456,11 +393,7 @@ const ServicesModal = ({ category, onClose }) => {
 
   const fetchServices = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/categories/${category.CategoryID}/services`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await apiGet(`/admin/categories/${category.CategoryID}/services`);
 
       if (response.ok) {
         const data = await response.json();
@@ -477,14 +410,7 @@ const ServicesModal = ({ category, onClose }) => {
     if (!newService.name.trim()) return;
 
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/categories/${category.CategoryID}/services`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(newService)
-      });
+      const response = await apiPost(`/admin/categories/${category.CategoryID}/services`, newService);
 
       if (response.ok) {
         showBanner('Service template added', 'success');
@@ -498,12 +424,7 @@ const ServicesModal = ({ category, onClose }) => {
 
   const handleDeleteService = async (serviceId) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/services/${serviceId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await apiDelete(`/admin/services/${serviceId}`);
 
       if (response.ok) {
         showBanner('Service deleted', 'success');
@@ -515,86 +436,55 @@ const ServicesModal = ({ category, onClose }) => {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content large" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>Service Templates: {category.CategoryName}</h2>
-          <button className="modal-close" onClick={onClose}>
-            
-          </button>
-        </div>
-        <div className="modal-body">
-          <div className="add-service-form">
-            <h4>Add Service Template</h4>
-            <div className="form-row">
-              <input
-                type="text"
-                placeholder="Service Name"
-                value={newService.name}
-                onChange={e => setNewService({ ...newService, name: e.target.value })}
-              />
-              <input
-                type="text"
-                placeholder="Description"
-                value={newService.description}
-                onChange={e => setNewService({ ...newService, description: e.target.value })}
-              />
-              <input
-                type="number"
-                placeholder="Default Price"
-                value={newService.defaultPrice}
-                onChange={e => setNewService({ ...newService, defaultPrice: e.target.value })}
-              />
-              <button className="btn-primary" onClick={handleAddService}>
-                <i className="fas fa-plus"></i> Add
-              </button>
-            </div>
-          </div>
-
-          <div className="services-list">
-            <h4>Existing Service Templates</h4>
-            {loading ? (
-              <div className="loading-state small">
-                <div className="spinner"></div>
-              </div>
-            ) : services.length === 0 ? (
-              <p className="no-data">No service templates defined</p>
-            ) : (
-              <table className="data-table compact">
-                <thead>
-                  <tr>
-                    <th>Service Name</th>
-                    <th>Description</th>
-                    <th>Default Price</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {services.map(service => (
-                    <tr key={service.ServiceID}>
-                      <td>{service.ServiceName}</td>
-                      <td>{service.Description || '-'}</td>
-                      <td>${service.DefaultPrice || '0'}</td>
-                      <td>
-                        <button
-                          className="action-btn delete"
-                          onClick={() => handleDeleteService(service.ServiceID)}
-                        >
-                          <i className="fas fa-trash-alt"></i>
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-        </div>
-        <div className="modal-footer">
-          <button className="btn-secondary" onClick={onClose}>Close</button>
+    <UniversalModal
+      isOpen={true}
+      onClose={onClose}
+      title={`Service Templates: ${category.CategoryName}`}
+      size="large"
+      footer={<button className="um-btn um-btn-secondary" onClick={onClose}>Close</button>}
+    >
+      <div className="add-service-form" style={{ marginBottom: '24px', padding: '16px', background: '#f9fafb', borderRadius: '8px' }}>
+        <h4 style={{ margin: '0 0 12px' }}>Add Service Template</h4>
+        <div className="form-row" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <input type="text" placeholder="Service Name" value={newService.name} onChange={e => setNewService({ ...newService, name: e.target.value })} style={{ flex: 1, minWidth: '150px' }} />
+          <input type="text" placeholder="Description" value={newService.description} onChange={e => setNewService({ ...newService, description: e.target.value })} style={{ flex: 2, minWidth: '200px' }} />
+          <input type="number" placeholder="Default Price" value={newService.defaultPrice} onChange={e => setNewService({ ...newService, defaultPrice: e.target.value })} style={{ width: '120px' }} />
+          <button className="um-btn um-btn-primary" onClick={handleAddService}><i className="fas fa-plus"></i> Add</button>
         </div>
       </div>
-    </div>
+
+      <div className="services-list">
+        <h4 style={{ margin: '0 0 12px' }}>Existing Service Templates</h4>
+        {loading ? (
+          <div className="loading-state"><div className="spinner"></div></div>
+        ) : services.length === 0 ? (
+          <p style={{ color: '#6b7280' }}>No service templates defined</p>
+        ) : (
+          <table className="data-table compact" style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
+                <th style={{ textAlign: 'left', padding: '8px' }}>Service Name</th>
+                <th style={{ textAlign: 'left', padding: '8px' }}>Description</th>
+                <th style={{ textAlign: 'left', padding: '8px' }}>Default Price</th>
+                <th style={{ textAlign: 'center', padding: '8px' }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {services.map(service => (
+                <tr key={service.ServiceID} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                  <td style={{ padding: '8px' }}>{service.ServiceName}</td>
+                  <td style={{ padding: '8px' }}>{service.Description || '-'}</td>
+                  <td style={{ padding: '8px' }}>${service.DefaultPrice || '0'}</td>
+                  <td style={{ padding: '8px', textAlign: 'center' }}>
+                    <DeleteButton onClick={() => handleDeleteService(service.ServiceID)} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </UniversalModal>
   );
 };
 

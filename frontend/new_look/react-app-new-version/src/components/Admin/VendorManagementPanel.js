@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { API_BASE_URL } from '../../config';
 import { showBanner } from '../../utils/helpers';
+import { apiGet, apiPost, apiPut } from '../../utils/api';
+import UniversalModal, { FormModal } from '../UniversalModal';
+import { LoadingState, EmptyState, StatusBadge } from '../common/AdminComponents';
+import { ActionButtonGroup, ActionButton as IconActionButton, ViewButton, EditButton } from '../common/UIComponents';
 
 const VendorManagementPanel = () => {
   const [vendors, setVendors] = useState([]);
@@ -21,15 +24,7 @@ const VendorManagementPanel = () => {
   const fetchVendors = async () => {
     try {
       setLoading(true);
-      const response = await fetch(
-        `${API_BASE_URL}/admin/vendors?status=${filter}&page=${pagination.page}&limit=${pagination.limit}&search=${searchTerm}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        }
-      );
-
+      const response = await apiGet(`/admin/vendors?status=${filter}&page=${pagination.page}&limit=${pagination.limit}&search=${searchTerm}`);
       if (response.ok) {
         const data = await response.json();
         setVendors(data.vendors || []);
@@ -46,14 +41,7 @@ const VendorManagementPanel = () => {
   const handleApprove = async (vendorId) => {
     try {
       setActionLoading(true);
-      const response = await fetch(`${API_BASE_URL}/admin/vendors/${vendorId}/approve`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
+      const response = await apiPost(`/admin/vendors/${vendorId}/approve`);
       if (response.ok) {
         showBanner('Vendor approved and now visible on platform!', 'success');
         fetchVendors();
@@ -70,14 +58,7 @@ const VendorManagementPanel = () => {
   const handleReject = async (vendorId, reason) => {
     try {
       setActionLoading(true);
-      const response = await fetch(`${API_BASE_URL}/admin/vendors/${vendorId}/reject`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ reason: reason })
-      });
+      const response = await apiPost(`/admin/vendors/${vendorId}/reject`, { reason });
 
       if (response.ok) {
         showBanner('Vendor rejected and hidden from platform', 'success');
@@ -94,18 +75,9 @@ const VendorManagementPanel = () => {
 
   const handleSuspend = async (vendorId) => {
     if (!window.confirm('Are you sure you want to suspend this vendor? They will be hidden from the platform.')) return;
-    
     try {
       setActionLoading(true);
-      const response = await fetch(`${API_BASE_URL}/admin/vendors/${vendorId}/suspend`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ reason: 'Suspended by admin' })
-      });
-
+      const response = await apiPost(`/admin/vendors/${vendorId}/suspend`, { reason: 'Suspended by admin' });
       if (response.ok) {
         showBanner('Vendor suspended and hidden from platform', 'success');
         fetchVendors();
@@ -120,15 +92,7 @@ const VendorManagementPanel = () => {
   const handleToggleVisibility = async (vendorId, currentVisibility) => {
     try {
       setActionLoading(true);
-      const response = await fetch(`${API_BASE_URL}/admin/vendors/${vendorId}/visibility`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ visible: !currentVisibility })
-      });
-
+      const response = await apiPost(`/admin/vendors/${vendorId}/visibility`, { visible: !currentVisibility });
       if (response.ok) {
         const data = await response.json();
         showBanner(data.message || `Vendor ${currentVisibility ? 'hidden from' : 'now visible on'} platform`, 'success');
@@ -170,14 +134,7 @@ const VendorManagementPanel = () => {
     try {
       setBulkActionLoading(true);
       const promises = Array.from(selectedVendors).map(vendorId =>
-        fetch(`${API_BASE_URL}/admin/vendors/${vendorId}/visibility`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          },
-          body: JSON.stringify({ visible: true })
-        })
+        apiPost(`/admin/vendors/${vendorId}/visibility`, { visible: true })
       );
       await Promise.all(promises);
       showBanner(`${selectedVendors.size} vendor(s) are now visible`, 'success');
@@ -200,14 +157,7 @@ const VendorManagementPanel = () => {
     try {
       setBulkActionLoading(true);
       const promises = Array.from(selectedVendors).map(vendorId =>
-        fetch(`${API_BASE_URL}/admin/vendors/${vendorId}/visibility`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          },
-          body: JSON.stringify({ visible: false })
-        })
+        apiPost(`/admin/vendors/${vendorId}/visibility`, { visible: false })
       );
       await Promise.all(promises);
       showBanner(`${selectedVendors.size} vendor(s) are now hidden`, 'success');
@@ -230,13 +180,7 @@ const VendorManagementPanel = () => {
     try {
       setBulkActionLoading(true);
       const promises = Array.from(selectedVendors).map(vendorId =>
-        fetch(`${API_BASE_URL}/admin/vendors/${vendorId}/approve`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        })
+        apiPost(`/admin/vendors/${vendorId}/approve`, {})
       );
       await Promise.all(promises);
       showBanner(`${selectedVendors.size} vendor(s) approved and visible`, 'success');
@@ -253,14 +197,7 @@ const VendorManagementPanel = () => {
     if (!window.confirm(`Send password reset email to ${email}?`)) return;
     
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/users/reset-password`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ email })
-      });
+      const response = await apiPost('/admin/users/reset-password', { email });
 
       if (response.ok) {
         showBanner('Password reset email sent', 'success');
@@ -453,70 +390,21 @@ const VendorManagementPanel = () => {
                     </div>
                   </td>
                   <td>
-                    <div className="action-buttons" style={{ display: 'flex', flexDirection: 'row', gap: '0.25rem', flexWrap: 'nowrap' }}>
-                      <button
-                        className="action-btn view"
-                        title="View Details"
-                        onClick={() => { setSelectedVendor(vendor); setModalType('view'); }}
-                        style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem' }}
-                      >
-                        <i className="fas fa-eye"></i>
-                      </button>
-                      <button
-                        className="action-btn edit"
-                        title="Edit Vendor"
-                        onClick={() => { setSelectedVendor(vendor); setModalType('edit'); }}
-                        style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem' }}
-                      >
-                        <i className="fas fa-pen"></i>
-                      </button>
+                    <ActionButtonGroup>
+                      <ViewButton onClick={() => { setSelectedVendor(vendor); setModalType('view'); }} />
+                      <EditButton onClick={() => { setSelectedVendor(vendor); setModalType('edit'); }} />
                       {vendor.ProfileStatus === 'Pending' && (
                         <>
-                          <button
-                            className="action-btn approve"
-                            title="Approve"
-                            onClick={() => handleApprove(vendor.VendorProfileID)}
-                            style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem' }}
-                          >
-                            <i className="fas fa-check"></i>
-                          </button>
-                          <button
-                            className="action-btn reject"
-                            title="Reject"
-                            onClick={() => { setSelectedVendor(vendor); setModalType('reject'); }}
-                            style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem' }}
-                          >
-                            <i className="fas fa-times"></i>
-                          </button>
+                          <IconActionButton action="approve" onClick={() => handleApprove(vendor.VendorProfileID)} />
+                          <IconActionButton action="reject" onClick={() => { setSelectedVendor(vendor); setModalType('reject'); }} />
                         </>
                       )}
                       {vendor.ProfileStatus === 'Approved' && (
-                        <button
-                          className="action-btn suspend"
-                          title="Suspend"
-                          onClick={() => handleSuspend(vendor.VendorProfileID)}
-                          style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem' }}
-                        >
-                          <i className="fas fa-ban"></i>
-                        </button>
+                        <IconActionButton action="suspend" onClick={() => handleSuspend(vendor.VendorProfileID)} />
                       )}
-                      <button
-                        className="action-btn analytics"
-                        title="View Analytics"
-                        onClick={() => { setSelectedVendor(vendor); setModalType('analytics'); }}
-                        style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem' }}
-                      >
-                        <i className="fas fa-chart-line"></i>
-                      </button>
-                      <button
-                        className="action-btn password"
-                        title="Reset Password"
-                        onClick={() => handleResetPassword(vendor.VendorProfileID, vendor.OwnerEmail)}
-                        style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem' }}
-                      >
-                        <i className="fas fa-key"></i>
-                      </button>
-                    </div>
+                      <IconActionButton action="analytics" onClick={() => { setSelectedVendor(vendor); setModalType('analytics'); }} />
+                      <IconActionButton action="password" onClick={() => handleResetPassword(vendor.VendorProfileID, vendor.OwnerEmail)} />
+                    </ActionButtonGroup>
                   </td>
                 </tr>
               ))}
@@ -585,15 +473,27 @@ const VendorManagementPanel = () => {
 // Vendor View Modal
 const VendorViewModal = ({ vendor, onClose, onApprove, onReject, actionLoading }) => {
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content large" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>Vendor Details: {vendor.BusinessName}</h2>
-          <button className="modal-close" onClick={onClose}>
-            
-          </button>
-        </div>
-        <div className="modal-body">
+    <UniversalModal
+      isOpen={true}
+      onClose={onClose}
+      title={`Vendor Details: ${vendor.BusinessName}`}
+      size="large"
+      footer={
+        <>
+          {vendor.ProfileStatus === 'Pending' && (
+            <>
+              <button className="um-btn" style={{ background: '#10b981', color: 'white' }} onClick={onApprove} disabled={actionLoading}>
+                <i className="fas fa-check"></i> Approve
+              </button>
+              <button className="um-btn" style={{ background: '#ef4444', color: 'white' }} onClick={onReject} disabled={actionLoading}>
+                Reject
+              </button>
+            </>
+          )}
+          <button className="um-btn um-btn-secondary" onClick={onClose}>Close</button>
+        </>
+      }
+    >
           <div className="vendor-detail-grid">
             <div className="detail-section">
               <h3>Business Information</h3>
@@ -670,22 +570,7 @@ const VendorViewModal = ({ vendor, onClose, onApprove, onReject, actionLoading }
               </div>
             </div>
           </div>
-        </div>
-        <div className="modal-footer">
-          {vendor.ProfileStatus === 'Pending' && (
-            <>
-              <button className="btn-success" onClick={onApprove} disabled={actionLoading}>
-                <i className="fas fa-check"></i> Approve
-              </button>
-              <button className="btn-danger" onClick={onReject} disabled={actionLoading}>
-                 Reject
-              </button>
-            </>
-          )}
-          <button className="btn-secondary" onClick={onClose}>Close</button>
-        </div>
-      </div>
-    </div>
+    </UniversalModal>
   );
 };
 
@@ -705,14 +590,7 @@ const VendorEditModal = ({ vendor, onClose, onSave }) => {
   const handleSave = async () => {
     try {
       setSaving(true);
-      const response = await fetch(`${API_BASE_URL}/admin/vendors/${vendor.VendorProfileID}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(formData)
-      });
+      const response = await apiPut(`/admin/vendors/${vendor.VendorProfileID}`, formData);
 
       if (response.ok) {
         showBanner('Vendor updated successfully', 'success');
@@ -726,84 +604,47 @@ const VendorEditModal = ({ vendor, onClose, onSave }) => {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>Edit Vendor: {vendor.BusinessName}</h2>
-          <button className="modal-close" onClick={onClose}>
-            
-          </button>
+    <FormModal
+      isOpen={true}
+      onClose={onClose}
+      title={`Edit Vendor: ${vendor.BusinessName}`}
+      onSave={handleSave}
+      saving={saving}
+      saveLabel="Save Changes"
+    >
+      <div className="form-group">
+        <label>Business Name</label>
+        <input type="text" value={formData.BusinessName} onChange={e => setFormData({ ...formData, BusinessName: e.target.value })} />
+      </div>
+      <div className="form-group">
+        <label>Display Name</label>
+        <input type="text" value={formData.DisplayName} onChange={e => setFormData({ ...formData, DisplayName: e.target.value })} />
+      </div>
+      <div className="form-group">
+        <label>Description</label>
+        <textarea value={formData.BusinessDescription} onChange={e => setFormData({ ...formData, BusinessDescription: e.target.value })} rows={4} />
+      </div>
+      <div className="form-row">
+        <div className="form-group">
+          <label>Phone</label>
+          <input type="text" value={formData.BusinessPhone} onChange={e => setFormData({ ...formData, BusinessPhone: e.target.value })} />
         </div>
-        <div className="modal-body">
-          <div className="form-group">
-            <label>Business Name</label>
-            <input
-              type="text"
-              value={formData.BusinessName}
-              onChange={e => setFormData({ ...formData, BusinessName: e.target.value })}
-            />
-          </div>
-          <div className="form-group">
-            <label>Display Name</label>
-            <input
-              type="text"
-              value={formData.DisplayName}
-              onChange={e => setFormData({ ...formData, DisplayName: e.target.value })}
-            />
-          </div>
-          <div className="form-group">
-            <label>Description</label>
-            <textarea
-              value={formData.BusinessDescription}
-              onChange={e => setFormData({ ...formData, BusinessDescription: e.target.value })}
-              rows={4}
-            />
-          </div>
-          <div className="form-row">
-            <div className="form-group">
-              <label>Phone</label>
-              <input
-                type="text"
-                value={formData.BusinessPhone}
-                onChange={e => setFormData({ ...formData, BusinessPhone: e.target.value })}
-              />
-            </div>
-            <div className="form-group">
-              <label>Website</label>
-              <input
-                type="text"
-                value={formData.Website}
-                onChange={e => setFormData({ ...formData, Website: e.target.value })}
-              />
-            </div>
-          </div>
-          <div className="form-row">
-            <div className="form-group">
-              <label>City</label>
-              <input
-                type="text"
-                value={formData.City}
-                onChange={e => setFormData({ ...formData, City: e.target.value })}
-              />
-            </div>
-            <div className="form-group">
-              <label>Province/State</label>
-              <input
-                type="text"
-                value={formData.State}
-                onChange={e => setFormData({ ...formData, State: e.target.value })}
-              />
-            </div>
-          </div>
-        </div>
-        <div className="modal-footer">
-          <button className="btn-secondary" onClick={onClose}>Cancel</button>
-          <button className="btn-primary" onClick={handleSave} disabled={saving}>
-            {saving ? 'Saving...' : 'Save Changes'}
-          </button>
+        <div className="form-group">
+          <label>Website</label>
+          <input type="text" value={formData.Website} onChange={e => setFormData({ ...formData, Website: e.target.value })} />
         </div>
       </div>
-    </div>
+      <div className="form-row">
+        <div className="form-group">
+          <label>City</label>
+          <input type="text" value={formData.City} onChange={e => setFormData({ ...formData, City: e.target.value })} />
+        </div>
+        <div className="form-group">
+          <label>Province/State</label>
+          <input type="text" value={formData.State} onChange={e => setFormData({ ...formData, State: e.target.value })} />
+        </div>
+      </div>
+    </FormModal>
   );
 };
 
@@ -812,37 +653,35 @@ const RejectModal = ({ vendor, onClose, onReject, actionLoading }) => {
   const [reason, setReason] = useState('');
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>Reject Vendor: {vendor.BusinessName}</h2>
-          <button className="modal-close" onClick={onClose}>
-            
-          </button>
-        </div>
-        <div className="modal-body">
-          <div className="form-group">
-            <label>Rejection Reason (will be sent to vendor)</label>
-            <textarea
-              value={reason}
-              onChange={e => setReason(e.target.value)}
-              placeholder="Please provide a clear reason for rejection..."
-              rows={4}
-            />
-          </div>
-        </div>
-        <div className="modal-footer">
-          <button className="btn-secondary" onClick={onClose}>Cancel</button>
+    <UniversalModal
+      isOpen={true}
+      onClose={onClose}
+      title={`Reject Vendor: ${vendor.BusinessName}`}
+      size="medium"
+      footer={
+        <>
+          <button className="um-btn um-btn-secondary" onClick={onClose}>Cancel</button>
           <button
-            className="btn-danger"
+            className="um-btn um-btn-primary"
+            style={{ background: '#ef4444' }}
             onClick={() => onReject(reason)}
             disabled={actionLoading || !reason.trim()}
           >
             {actionLoading ? 'Rejecting...' : 'Confirm Rejection'}
           </button>
-        </div>
+        </>
+      }
+    >
+      <div className="form-group">
+        <label>Rejection Reason (will be sent to vendor)</label>
+        <textarea
+          value={reason}
+          onChange={e => setReason(e.target.value)}
+          placeholder="Please provide a clear reason for rejection..."
+          rows={4}
+        />
       </div>
-    </div>
+    </UniversalModal>
   );
 };
 
@@ -857,11 +696,7 @@ const VendorAnalyticsModal = ({ vendor, onClose }) => {
 
   const fetchAnalytics = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/vendors/${vendor.VendorProfileID}/analytics`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await apiGet(`/admin/vendors/${vendor.VendorProfileID}/analytics`);
 
       if (response.ok) {
         const data = await response.json();
@@ -875,50 +710,43 @@ const VendorAnalyticsModal = ({ vendor, onClose }) => {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content large" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>Analytics: {vendor.BusinessName}</h2>
-          <button className="modal-close" onClick={onClose}>
-            
-          </button>
+    <UniversalModal
+      isOpen={true}
+      onClose={onClose}
+      title={`Analytics: ${vendor.BusinessName}`}
+      size="large"
+      footer={<button className="um-btn um-btn-secondary" onClick={onClose}>Close</button>}
+    >
+      {loading ? (
+        <div className="loading-state">
+          <div className="spinner"></div>
+          <p>Loading analytics...</p>
         </div>
-        <div className="modal-body">
-          {loading ? (
-            <div className="loading-state">
-              <div className="spinner"></div>
-              <p>Loading analytics...</p>
-            </div>
-          ) : (
-            <div className="analytics-grid">
-              <div className="analytics-card">
-                <div className="analytics-icon"><i className="fas fa-eye"></i></div>
-                <div className="analytics-value">{analytics?.profileViews || 0}</div>
-                <div className="analytics-label">Profile Views</div>
-              </div>
-              <div className="analytics-card">
-                <div className="analytics-icon"><i className="fas fa-calendar-check"></i></div>
-                <div className="analytics-value">{analytics?.totalBookings || 0}</div>
-                <div className="analytics-label">Total Bookings</div>
-              </div>
-              <div className="analytics-card">
-                <div className="analytics-icon"><i className="fas fa-star"></i></div>
-                <div className="analytics-value">{analytics?.averageRating?.toFixed(1) || 'N/A'}</div>
-                <div className="analytics-label">Average Rating</div>
-              </div>
-              <div className="analytics-card">
-                <div className="analytics-icon"><i className="fas fa-dollar-sign"></i></div>
-                <div className="analytics-value">${analytics?.totalRevenue?.toLocaleString() || 0}</div>
-                <div className="analytics-label">Total Revenue</div>
-              </div>
-            </div>
-          )}
+      ) : (
+        <div className="analytics-grid">
+          <div className="analytics-card">
+            <div className="analytics-icon"><i className="fas fa-eye"></i></div>
+            <div className="analytics-value">{analytics?.profileViews || 0}</div>
+            <div className="analytics-label">Profile Views</div>
+          </div>
+          <div className="analytics-card">
+            <div className="analytics-icon"><i className="fas fa-calendar-check"></i></div>
+            <div className="analytics-value">{analytics?.totalBookings || 0}</div>
+            <div className="analytics-label">Total Bookings</div>
+          </div>
+          <div className="analytics-card">
+            <div className="analytics-icon"><i className="fas fa-star"></i></div>
+            <div className="analytics-value">{analytics?.averageRating?.toFixed(1) || 'N/A'}</div>
+            <div className="analytics-label">Average Rating</div>
+          </div>
+          <div className="analytics-card">
+            <div className="analytics-icon"><i className="fas fa-dollar-sign"></i></div>
+            <div className="analytics-value">${analytics?.totalRevenue?.toLocaleString() || 0}</div>
+            <div className="analytics-label">Total Revenue</div>
+          </div>
         </div>
-        <div className="modal-footer">
-          <button className="btn-secondary" onClick={onClose}>Close</button>
-        </div>
-      </div>
-    </div>
+      )}
+    </UniversalModal>
   );
 };
 

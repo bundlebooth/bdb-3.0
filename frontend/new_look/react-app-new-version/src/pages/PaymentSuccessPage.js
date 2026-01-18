@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
+import { apiGet, apiPost } from '../utils/api';
 import { PageLayout } from '../components/PageWrapper';
 import { buildInvoiceUrl } from '../utils/urlHelpers';
+import { formatCurrency, formatDateLong } from '../utils/helpers';
 import './PaymentSuccessPage.css';
 
 function PaymentSuccessPage() {
@@ -81,22 +83,7 @@ function PaymentSuccessPage() {
     verifyPayment();
   }, [sessionId, bookingId, currentUser]);
 
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-CA', {
-      style: 'currency',
-      currency: 'CAD'
-    }).format(amount || 0);
-  };
-
-  const formatDate = (dateStr) => {
-    if (!dateStr) return '';
-    return new Date(dateStr).toLocaleDateString('en-CA', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  };
+  const formatDate = formatDateLong;
 
   if (status === 'verifying') {
     return (

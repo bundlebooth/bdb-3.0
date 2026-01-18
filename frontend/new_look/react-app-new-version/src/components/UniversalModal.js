@@ -158,4 +158,154 @@ export const ConfirmationModal = ({
   );
 };
 
+/**
+ * Detail Modal - For viewing details with sections
+ */
+export const DetailModal = ({
+  isOpen,
+  onClose,
+  title,
+  children,
+  size = 'large',
+  actions
+}) => {
+  return (
+    <UniversalModal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={title}
+      size={size}
+      footer={
+        <div className="um-footer-actions">
+          {actions}
+          <button type="button" className="um-btn um-btn-secondary" onClick={onClose}>
+            Close
+          </button>
+        </div>
+      }
+    >
+      {children}
+    </UniversalModal>
+  );
+};
+
+/**
+ * Form Modal - For forms with save/cancel actions
+ */
+export const FormModal = ({
+  isOpen,
+  onClose,
+  title,
+  children,
+  onSave,
+  saving = false,
+  saveLabel = 'Save',
+  cancelLabel = 'Cancel',
+  size = 'medium',
+  disabled = false
+}) => {
+  return (
+    <UniversalModal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={title}
+      size={size}
+      primaryAction={{
+        label: saving ? 'Saving...' : saveLabel,
+        onClick: onSave,
+        loading: saving,
+        disabled: disabled || saving
+      }}
+      secondaryAction={{ label: cancelLabel, onClick: onClose }}
+    >
+      {children}
+    </UniversalModal>
+  );
+};
+
+/**
+ * Delete Confirmation Modal - Preset for delete confirmations
+ */
+export const DeleteModal = ({
+  isOpen,
+  onClose,
+  title = 'Confirm Delete',
+  itemName,
+  onConfirm,
+  loading = false
+}) => {
+  return (
+    <UniversalModal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={title}
+      size="small"
+      primaryAction={{
+        label: loading ? 'Deleting...' : 'Delete',
+        onClick: onConfirm,
+        loading
+      }}
+      secondaryAction={{ label: 'Cancel', onClick: onClose }}
+    >
+      <div className="um-confirmation-content">
+        <div className="um-confirmation-icon" style={{ background: '#fee2e2' }}>
+          <i className="fas fa-trash-alt" style={{ color: '#ef4444', fontSize: '28px' }}></i>
+        </div>
+        <p className="um-confirmation-message">
+          Are you sure you want to delete {itemName ? <strong>{itemName}</strong> : 'this item'}? 
+          This action cannot be undone.
+        </p>
+      </div>
+    </UniversalModal>
+  );
+};
+
+/**
+ * Alert Modal - For showing alerts/info
+ */
+export const AlertModal = ({
+  isOpen,
+  onClose,
+  title,
+  message,
+  variant = 'info',
+  buttonLabel = 'OK'
+}) => {
+  const variantIcons = {
+    warning: <i className="fas fa-exclamation-triangle" style={{ color: '#f59e0b', fontSize: '28px' }}></i>,
+    danger: <i className="fas fa-exclamation-circle" style={{ color: '#ef4444', fontSize: '28px' }}></i>,
+    success: <i className="fas fa-check-circle" style={{ color: '#10b981', fontSize: '28px' }}></i>,
+    info: <i className="fas fa-info-circle" style={{ color: '#3b82f6', fontSize: '28px' }}></i>
+  };
+
+  const variantColors = {
+    warning: '#fef3c7',
+    danger: '#fee2e2',
+    success: '#d1fae5',
+    info: '#dbeafe'
+  };
+
+  return (
+    <UniversalModal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={title}
+      size="small"
+      primaryAction={{ label: buttonLabel, onClick: onClose }}
+      secondaryAction={false}
+      footerCentered
+    >
+      <div className="um-confirmation-content">
+        <div 
+          className="um-confirmation-icon"
+          style={{ background: variantColors[variant] }}
+        >
+          {variantIcons[variant]}
+        </div>
+        <p className="um-confirmation-message">{message}</p>
+      </div>
+    </UniversalModal>
+  );
+};
+
 export default UniversalModal;

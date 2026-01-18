@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { API_BASE_URL } from '../../../config';
 import { showBanner } from '../../../utils/helpers';
+import { apiGet, apiPost } from '../../../utils/api';
+import { API_BASE_URL } from '../../../config';
 
 function VendorQuestionnairePanel({ onBack, vendorProfileId }) {
   const [loading, setLoading] = useState(true);
@@ -27,9 +28,7 @@ function VendorQuestionnairePanel({ onBack, vendorProfileId }) {
     try {
       setLoading(true);
       // Load vendor profile to get categories
-      const profileRes = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
+      const profileRes = await apiGet(`/vendors/${vendorProfileId}`);
       
       if (profileRes.ok) {
         const result = await profileRes.json();

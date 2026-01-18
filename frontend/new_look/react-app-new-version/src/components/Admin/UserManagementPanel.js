@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { API_BASE_URL } from '../../config';
 import { showBanner } from '../../utils/helpers';
+import { apiGet, apiPost, apiPut } from '../../utils/api';
+import UniversalModal, { FormModal } from '../UniversalModal';
+import { LoadingState, EmptyState, FilterBar, Pagination, StatusBadge, ActionButton } from '../common/AdminComponents';
+import { ActionButtonGroup, ActionButton as IconActionButton, ViewButton, EditButton } from '../common/UIComponents';
 
 const UserManagementPanel = () => {
   const [users, setUsers] = useState([]);
@@ -20,15 +23,7 @@ const UserManagementPanel = () => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await fetch(
-        `${API_BASE_URL}/admin/users?status=${filter}&page=${pagination.page}&limit=${pagination.limit}&search=${searchTerm}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        }
-      );
-
+      const response = await apiGet(`/admin/users?status=${filter}&page=${pagination.page}&limit=${pagination.limit}&search=${searchTerm}`);
       if (response.ok) {
         const data = await response.json();
         setUsers(data.users || []);
@@ -44,15 +39,8 @@ const UserManagementPanel = () => {
 
   const handleDeactivate = async (userId) => {
     if (!window.confirm('Are you sure you want to deactivate this user?')) return;
-
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/users/${userId}/toggle-status`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
+      const response = await apiPost(`/admin/users/${userId}/toggle-status`);
       if (response.ok) {
         showBanner('User deactivated', 'success');
         fetchUsers();
@@ -64,13 +52,7 @@ const UserManagementPanel = () => {
 
   const handleReactivate = async (userId) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/users/${userId}/toggle-status`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
+      const response = await apiPost(`/admin/users/${userId}/toggle-status`);
       if (response.ok) {
         showBanner('User reactivated', 'success');
         fetchUsers();
@@ -82,17 +64,8 @@ const UserManagementPanel = () => {
 
   const handleResetPassword = async (email) => {
     if (!window.confirm(`Send password reset email to ${email}?`)) return;
-
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/users/reset-password`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ email })
-      });
-
+      const response = await apiPost('/admin/users/reset-password', { email });
       if (response.ok) {
         showBanner('Password reset email sent', 'success');
       }
@@ -148,12 +121,7 @@ const UserManagementPanel = () => {
     try {
       setBulkActionLoading(true);
       const promises = Array.from(selectedUsers).map(userId =>
-        fetch(`${API_BASE_URL}/admin/users/${userId}/activate`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        })
+        apiPost(`/admin/users/${userId}/activate`)
       );
       await Promise.all(promises);
       showBanner(`${selectedUsers.size} user(s) activated`, 'success');
@@ -176,12 +144,7 @@ const UserManagementPanel = () => {
     try {
       setBulkActionLoading(true);
       const promises = Array.from(selectedUsers).map(userId =>
-        fetch(`${API_BASE_URL}/admin/users/${userId}/deactivate`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        })
+        apiPost(`/admin/users/${userId}/deactivate`)
       );
       await Promise.all(promises);
       showBanner(`${selectedUsers.size} user(s) deactivated`, 'success');
@@ -312,59 +275,17 @@ const UserManagementPanel = () => {
                   <td>{new Date(user.CreatedAt).toLocaleDateString()}</td>
                   <td>{user.LastLoginAt ? new Date(user.LastLoginAt).toLocaleDateString() : 'Never'}</td>
                   <td>
-                    <div className="action-buttons" style={{ display: 'flex', flexDirection: 'row', gap: '0.25rem', flexWrap: 'nowrap' }}>
-                      <button
-                        className="action-btn view"
-                        title="View Details"
-                        onClick={() => { setSelectedUser(user); setModalType('view'); }}
-                        style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem' }}
-                      >
-                        <i className="fas fa-eye"></i>
-                      </button>
-                      <button
-                        className="action-btn edit"
-                        title="Edit User"
-                        onClick={() => { setSelectedUser(user); setModalType('edit'); }}
-                        style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem' }}
-                      >
-                        <i className="fas fa-pen"></i>
-                      </button>
-                      <button
-                        className="action-btn activity"
-                        title="View Activity"
-                        onClick={() => { setSelectedUser(user); setModalType('activity'); }}
-                        style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem' }}
-                      >
-                        <i className="fas fa-history"></i>
-                      </button>
-                      <button
-                        className="action-btn password"
-                        title="Reset Password"
-                        onClick={() => handleResetPassword(user.Email)}
-                        style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem' }}
-                      >
-                        <i className="fas fa-key"></i>
-                      </button>
+                    <ActionButtonGroup>
+                      <ViewButton onClick={() => { setSelectedUser(user); setModalType('view'); }} />
+                      <EditButton onClick={() => { setSelectedUser(user); setModalType('edit'); }} />
+                      <IconActionButton action="activity" onClick={() => { setSelectedUser(user); setModalType('activity'); }} />
+                      <IconActionButton action="password" onClick={() => handleResetPassword(user.Email)} />
                       {user.IsActive !== false ? (
-                        <button
-                          className="action-btn suspend"
-                          title="Deactivate"
-                          onClick={() => handleDeactivate(user.UserID)}
-                          style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem' }}
-                        >
-                          <i className="fas fa-user-slash"></i>
-                        </button>
+                        <IconActionButton action="suspend" onClick={() => handleDeactivate(user.UserID)} title="Deactivate" />
                       ) : (
-                        <button
-                          className="action-btn approve"
-                          title="Reactivate"
-                          onClick={() => handleReactivate(user.UserID)}
-                          style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem' }}
-                        >
-                          <i className="fas fa-user-check"></i>
-                        </button>
+                        <IconActionButton action="activate" onClick={() => handleReactivate(user.UserID)} />
                       )}
-                    </div>
+                    </ActionButtonGroup>
                   </td>
                 </tr>
               ))}
@@ -421,56 +342,31 @@ const UserManagementPanel = () => {
 // User View Modal
 const UserViewModal = ({ user, onClose }) => {
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>User Details</h2>
-          <button className="modal-close" onClick={onClose}>
-            
-          </button>
+    <UniversalModal
+      isOpen={true}
+      onClose={onClose}
+      title="User Details"
+      size="medium"
+      footer={<button className="um-btn um-btn-secondary" onClick={onClose}>Close</button>}
+    >
+      <div className="user-profile-header" style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
+        <div className="user-avatar large" style={{ width: '56px', height: '56px', borderRadius: '50%', background: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', fontWeight: '600' }}>
+          {user.FirstName?.[0]}{user.LastName?.[0]}
         </div>
-        <div className="modal-body">
-          <div className="user-profile-header">
-            <div className="user-avatar large">
-              {user.FirstName?.[0]}{user.LastName?.[0]}
-            </div>
-            <div>
-              <h3>{user.FirstName} {user.LastName}</h3>
-              <p>{user.Email}</p>
-            </div>
-          </div>
-          <div className="detail-section">
-            <div className="detail-row">
-              <label>User ID:</label>
-              <span>{user.UserID}</span>
-            </div>
-            <div className="detail-row">
-              <label>Account Type:</label>
-              <span>{user.IsAdmin ? 'Admin' : user.IsVendor ? 'Vendor' : 'Client'}</span>
-            </div>
-            <div className="detail-row">
-              <label>Status:</label>
-              <span>{user.IsActive !== false ? 'Active' : 'Inactive'}</span>
-            </div>
-            <div className="detail-row">
-              <label>Registered:</label>
-              <span>{new Date(user.CreatedAt).toLocaleString()}</span>
-            </div>
-            <div className="detail-row">
-              <label>Last Login:</label>
-              <span>{user.LastLoginAt ? new Date(user.LastLoginAt).toLocaleString() : 'Never'}</span>
-            </div>
-            <div className="detail-row">
-              <label>Phone:</label>
-              <span>{user.Phone || 'N/A'}</span>
-            </div>
-          </div>
-        </div>
-        <div className="modal-footer">
-          <button className="btn-secondary" onClick={onClose}>Close</button>
+        <div>
+          <h3 style={{ margin: 0 }}>{user.FirstName} {user.LastName}</h3>
+          <p style={{ margin: '4px 0 0', color: '#6b7280' }}>{user.Email}</p>
         </div>
       </div>
-    </div>
+      <div className="detail-section">
+        <div className="detail-row"><label>User ID:</label><span>{user.UserID}</span></div>
+        <div className="detail-row"><label>Account Type:</label><span>{user.IsAdmin ? 'Admin' : user.IsVendor ? 'Vendor' : 'Client'}</span></div>
+        <div className="detail-row"><label>Status:</label><span>{user.IsActive !== false ? 'Active' : 'Inactive'}</span></div>
+        <div className="detail-row"><label>Registered:</label><span>{new Date(user.CreatedAt).toLocaleString()}</span></div>
+        <div className="detail-row"><label>Last Login:</label><span>{user.LastLoginAt ? new Date(user.LastLoginAt).toLocaleString() : 'Never'}</span></div>
+        <div className="detail-row"><label>Phone:</label><span>{user.Phone || 'N/A'}</span></div>
+      </div>
+    </UniversalModal>
   );
 };
 
@@ -487,14 +383,7 @@ const UserEditModal = ({ user, onClose, onSave }) => {
   const handleSave = async () => {
     try {
       setSaving(true);
-      const response = await fetch(`${API_BASE_URL}/admin/users/${user.UserID}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(formData)
-      });
+      const response = await apiPut(`/admin/users/${user.UserID}`, formData);
 
       if (response.ok) {
         showBanner('User updated successfully', 'success');
@@ -508,58 +397,33 @@ const UserEditModal = ({ user, onClose, onSave }) => {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>Edit User</h2>
-          <button className="modal-close" onClick={onClose}>
-            
-          </button>
+    <FormModal
+      isOpen={true}
+      onClose={onClose}
+      title="Edit User"
+      onSave={handleSave}
+      saving={saving}
+      saveLabel="Save Changes"
+    >
+      <div className="form-row">
+        <div className="form-group">
+          <label>First Name</label>
+          <input type="text" value={formData.FirstName} onChange={e => setFormData({ ...formData, FirstName: e.target.value })} />
         </div>
-        <div className="modal-body">
-          <div className="form-row">
-            <div className="form-group">
-              <label>First Name</label>
-              <input
-                type="text"
-                value={formData.FirstName}
-                onChange={e => setFormData({ ...formData, FirstName: e.target.value })}
-              />
-            </div>
-            <div className="form-group">
-              <label>Last Name</label>
-              <input
-                type="text"
-                value={formData.LastName}
-                onChange={e => setFormData({ ...formData, LastName: e.target.value })}
-              />
-            </div>
-          </div>
-          <div className="form-group">
-            <label>Email</label>
-            <input
-              type="email"
-              value={formData.Email}
-              onChange={e => setFormData({ ...formData, Email: e.target.value })}
-            />
-          </div>
-          <div className="form-group">
-            <label>Phone</label>
-            <input
-              type="text"
-              value={formData.Phone}
-              onChange={e => setFormData({ ...formData, Phone: e.target.value })}
-            />
-          </div>
-        </div>
-        <div className="modal-footer">
-          <button className="btn-secondary" onClick={onClose}>Cancel</button>
-          <button className="btn-primary" onClick={handleSave} disabled={saving}>
-            {saving ? 'Saving...' : 'Save Changes'}
-          </button>
+        <div className="form-group">
+          <label>Last Name</label>
+          <input type="text" value={formData.LastName} onChange={e => setFormData({ ...formData, LastName: e.target.value })} />
         </div>
       </div>
-    </div>
+      <div className="form-group">
+        <label>Email</label>
+        <input type="email" value={formData.Email} onChange={e => setFormData({ ...formData, Email: e.target.value })} />
+      </div>
+      <div className="form-group">
+        <label>Phone</label>
+        <input type="text" value={formData.Phone} onChange={e => setFormData({ ...formData, Phone: e.target.value })} />
+      </div>
+    </FormModal>
   );
 };
 
@@ -574,11 +438,7 @@ const UserActivityModal = ({ user, onClose }) => {
 
   const fetchActivities = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/users/${user.UserID}/activity`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await apiGet(`/admin/users/${user.UserID}/activity`);
 
       if (response.ok) {
         const data = await response.json();
@@ -604,48 +464,41 @@ const UserActivityModal = ({ user, onClose }) => {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content large" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>Activity Log: {user.FirstName} {user.LastName}</h2>
-          <button className="modal-close" onClick={onClose}>
-            
-          </button>
+    <UniversalModal
+      isOpen={true}
+      onClose={onClose}
+      title={`Activity Log: ${user.FirstName} ${user.LastName}`}
+      size="large"
+      footer={<button className="um-btn um-btn-secondary" onClick={onClose}>Close</button>}
+    >
+      {loading ? (
+        <div className="loading-state">
+          <div className="spinner"></div>
+          <p>Loading activity...</p>
         </div>
-        <div className="modal-body">
-          {loading ? (
-            <div className="loading-state">
-              <div className="spinner"></div>
-              <p>Loading activity...</p>
-            </div>
-          ) : activities.length === 0 ? (
-            <div className="empty-state small">
-              <i className="fas fa-history"></i>
-              <p>No activity recorded</p>
-            </div>
-          ) : (
-            <div className="activity-timeline">
-              {activities.map((activity, index) => (
-                <div key={index} className="timeline-item">
-                  <div className="timeline-icon">
-                    <i className={`fas ${getActivityIcon(activity.type)}`}></i>
-                  </div>
-                  <div className="timeline-content">
-                    <p>{activity.description}</p>
-                    <span className="timeline-time">
-                      {new Date(activity.timestamp).toLocaleString()}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+      ) : activities.length === 0 ? (
+        <div className="empty-state small" style={{ textAlign: 'center', padding: '40px' }}>
+          <i className="fas fa-history" style={{ fontSize: '32px', color: '#d1d5db', marginBottom: '12px' }}></i>
+          <p style={{ color: '#6b7280' }}>No activity recorded</p>
         </div>
-        <div className="modal-footer">
-          <button className="btn-secondary" onClick={onClose}>Close</button>
+      ) : (
+        <div className="activity-timeline">
+          {activities.map((activity, index) => (
+            <div key={index} className="timeline-item" style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
+              <div className="timeline-icon" style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <i className={`fas ${getActivityIcon(activity.type)}`}></i>
+              </div>
+              <div className="timeline-content">
+                <p style={{ margin: 0 }}>{activity.description}</p>
+                <span className="timeline-time" style={{ fontSize: '12px', color: '#9ca3af' }}>
+                  {new Date(activity.timestamp).toLocaleString()}
+                </span>
+              </div>
+            </div>
+          ))}
         </div>
-      </div>
-    </div>
+      )}
+    </UniversalModal>
   );
 };
 

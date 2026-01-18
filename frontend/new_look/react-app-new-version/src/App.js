@@ -48,7 +48,7 @@ function HomeRoute() {
     return (
       <div id="app-loading-overlay">
         <div className="loading-logo">
-          <img src="/images/logo.png" alt="PlanBeau" style={{ height: '160px', width: 'auto' }} />
+          <img src="/images/logo.png" alt="Planbeau" style={{ height: '160px', width: 'auto' }} />
         </div>
         <div className="loading-spinner"></div>
       </div>
@@ -75,7 +75,7 @@ function App() {
     return (
       <div id="app-loading-overlay">
         <div className="loading-logo">
-          <img src="/images/logo.png" alt="PlanBeau" style={{ height: '160px', width: 'auto' }} />
+          <img src="/images/logo.png" alt="Planbeau" style={{ height: '160px', width: 'auto' }} />
         </div>
         <div className="loading-spinner"></div>
       </div>

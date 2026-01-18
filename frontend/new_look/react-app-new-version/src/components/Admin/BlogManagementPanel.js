@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { showBanner, formatDate } from '../../utils/helpers';
+import { apiGet, apiPost, apiPut, apiDelete } from '../../utils/api';
 import { API_BASE_URL } from '../../config';
-import { showBanner } from '../../utils/helpers';
+import { LoadingState, EmptyState, StatusBadge } from '../common/AdminComponents';
+import { ActionButtonGroup, ActionButton as IconActionButton, ViewButton, EditButton, DeleteButton } from '../common/UIComponents';
 
 const BlogManagementPanel = () => {
   const [blogs, setBlogs] = useState([]);
@@ -20,16 +23,10 @@ const BlogManagementPanel = () => {
   const fetchBlogs = async () => {
     try {
       setLoading(true);
-      let url = `${API_BASE_URL}/admin/blogs?page=${pagination.page}&limit=${pagination.limit}`;
+      let url = `/admin/blogs?page=${pagination.page}&limit=${pagination.limit}`;
       if (filter !== 'all') url += `&status=${filter}`;
       if (searchTerm) url += `&search=${encodeURIComponent(searchTerm)}`;
-
-      const response = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
+      const response = await apiGet(url);
       if (response.ok) {
         const data = await response.json();
         setBlogs(data.blogs || []);
@@ -45,11 +42,7 @@ const BlogManagementPanel = () => {
 
   const fetchCategories = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/blog-categories`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await apiGet('/admin/blog-categories');
       if (response.ok) {
         const data = await response.json();
         setCategories(data.categories || []);
@@ -63,12 +56,7 @@ const BlogManagementPanel = () => {
     if (!window.confirm('Are you sure you want to delete this blog post?')) return;
 
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/blogs/${blogId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await apiDelete(`/admin/blogs/${blogId}`);
 
       if (response.ok) {
         showBanner('Blog post deleted', 'success');
@@ -81,12 +69,7 @@ const BlogManagementPanel = () => {
 
   const handlePublish = async (blogId) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/blogs/${blogId}/publish`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await apiPost(`/admin/blogs/${blogId}/publish`, {});
 
       if (response.ok) {
         showBanner('Blog post published', 'success');
@@ -99,12 +82,7 @@ const BlogManagementPanel = () => {
 
   const handleUnpublish = async (blogId) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/blogs/${blogId}/unpublish`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await apiPost(`/admin/blogs/${blogId}/unpublish`, {});
 
       if (response.ok) {
         showBanner('Blog post unpublished', 'success');
@@ -117,14 +95,7 @@ const BlogManagementPanel = () => {
 
   const handleToggleFeatured = async (blogId, currentFeatured) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/blogs/${blogId}/feature`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ featured: !currentFeatured })
-      });
+      const response = await apiPost(`/admin/blogs/${blogId}/feature`, { featured: !currentFeatured });
 
       if (response.ok) {
         showBanner(currentFeatured ? 'Blog unfeatured' : 'Blog featured', 'success');
@@ -133,15 +104,6 @@ const BlogManagementPanel = () => {
     } catch (error) {
       showBanner('Failed to update featured status', 'error');
     }
-  };
-
-  const formatDate = (dateString) => {
-    if (!dateString) return 'Not published';
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    });
   };
 
   const getStatusBadge = (status) => {
@@ -277,46 +239,16 @@ const BlogManagementPanel = () => {
                   <td>{blog.ViewCount || 0}</td>
                   <td>{formatDate(blog.PublishedAt)}</td>
                   <td>
-                    <div className="action-buttons">
-                      <button
-                        className="action-btn view"
-                        onClick={() => window.open(`/blog/${blog.Slug}`, '_blank')}
-                        title="Preview"
-                      >
-                        <i className="fas fa-external-link-alt"></i>
-                      </button>
-                      <button
-                        className="action-btn edit"
-                        onClick={() => { setSelectedBlog(blog); setModalType('edit'); }}
-                        title="Edit"
-                      >
-                        <i className="fas fa-pen"></i>
-                      </button>
+                    <ActionButtonGroup>
+                      <ViewButton onClick={() => window.open(`/blog/${blog.Slug}`, '_blank')} title="Preview" />
+                      <EditButton onClick={() => { setSelectedBlog(blog); setModalType('edit'); }} />
                       {blog.Status === 'draft' ? (
-                        <button
-                          className="action-btn publish"
-                          onClick={() => handlePublish(blog.BlogID)}
-                          title="Publish"
-                        >
-                          <i className="fas fa-paper-plane"></i>
-                        </button>
+                        <IconActionButton action="approve" onClick={() => handlePublish(blog.BlogID)} title="Publish" />
                       ) : blog.Status === 'published' ? (
-                        <button
-                          className="action-btn unpublish"
-                          onClick={() => handleUnpublish(blog.BlogID)}
-                          title="Unpublish"
-                        >
-                          <i className="fas fa-eye-slash"></i>
-                        </button>
+                        <IconActionButton action="suspend" onClick={() => handleUnpublish(blog.BlogID)} title="Unpublish" />
                       ) : null}
-                      <button
-                        className="action-btn delete"
-                        onClick={() => handleDelete(blog.BlogID)}
-                        title="Delete"
-                      >
-                        <i className="fas fa-trash-alt"></i>
-                      </button>
-                    </div>
+                      <DeleteButton onClick={() => handleDelete(blog.BlogID)} />
+                    </ActionButtonGroup>
                   </td>
                 </tr>
               ))}
@@ -445,7 +377,7 @@ const BlogEditorModal = ({ blog, categories, onClose, onSave }) => {
     featuredImageUrl: blog?.FeaturedImageURL || '',
     category: blog?.Category || 'General',
     tags: blog?.Tags || '',
-    author: blog?.Author || 'PlanBeau Team',
+    author: blog?.Author || 'Planbeau Team',
     authorImageUrl: blog?.AuthorImageURL || '',
     status: blog?.Status || 'draft',
     isFeatured: blog?.IsFeatured || false

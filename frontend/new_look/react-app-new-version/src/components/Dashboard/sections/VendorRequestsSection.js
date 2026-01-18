@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../../context/AuthContext';
-import { API_BASE_URL } from '../../../config';
+import { apiGet, apiPost } from '../../../utils/api';
 import { showBanner } from '../../../utils/banners';
 import { buildInvoiceUrl } from '../../../utils/urlHelpers';
 import { getBookingStatusConfig, isEventPast } from '../../../utils/bookingStatus';
@@ -47,9 +47,7 @@ function VendorRequestsSection() {
     }
     
     try {
-      const response = await fetch(`${API_BASE_URL}/vendors/profile?userId=${currentUser.id}`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
+      const response = await apiGet(`/vendors/profile?userId=${currentUser.id}`);
       if (response.ok) {
         const data = await response.json();
         setVendorProfileId(data.vendorProfileId);
@@ -70,9 +68,7 @@ function VendorRequestsSection() {
     
     try {
       setLoading(true);
-      const resp = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/bookings/all`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
+      const resp = await apiGet(`/vendor/${vendorProfileId}/bookings/all`);
       
       if (!resp.ok) {
         const errorData = await resp.json().catch(() => ({ message: 'Unknown error' }));
@@ -163,14 +159,7 @@ function VendorRequestsSection() {
   const handleApproveRequest = async (bookingId) => {
     setProcessingAction(`approve-${bookingId}`);
     try {
-      const response = await fetch(`${API_BASE_URL}/bookings/requests/${bookingId}/approve`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ vendorProfileId })
-      });
+      const response = await apiPost(`/bookings/requests/${bookingId}/approve`, { vendorProfileId });
       
       if (response.ok) {
         // Update the booking status locally without full reload
@@ -193,14 +182,7 @@ function VendorRequestsSection() {
   const handleDeclineRequest = async (bookingId) => {
     setProcessingAction(`decline-${bookingId}`);
     try {
-      const response = await fetch(`${API_BASE_URL}/bookings/requests/${bookingId}/decline`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ vendorProfileId })
-      });
+      const response = await apiPost(`/bookings/requests/${bookingId}/decline`, { vendorProfileId });
       
       if (response.ok) {
         // Update the booking status locally without full reload
@@ -243,14 +225,7 @@ function VendorRequestsSection() {
     
     setCancelling(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/bookings/${bookingId}/vendor-cancel`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ reason: cancelReason, vendorProfileId })
-      });
+      const response = await apiPost(`/bookings/${bookingId}/vendor-cancel`, { reason: cancelReason, vendorProfileId });
 
       if (response.ok) {
         const data = await response.json();
@@ -279,9 +254,7 @@ function VendorRequestsSection() {
       }
       
       const bookingId = booking.bookingPublicId || booking.BookingID;
-      const response = await fetch(`${API_BASE_URL}/invoices/booking/${bookingId}?userId=${currentUser.id}`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
+      const response = await apiGet(`/invoices/booking/${bookingId}?userId=${currentUser.id}`);
       
       if (response.ok) {
         const data = await response.json();
@@ -305,19 +278,12 @@ function VendorRequestsSection() {
     // If no conversation exists, create one first
     if (!booking.ConversationID) {
       try {
-        const response = await fetch(`${API_BASE_URL}/messages/conversations`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            userId: currentUser.id,
-            vendorProfileId: vendorProfileId,
-            clientUserId: booking.ClientUserID,
-            subject: `Booking: ${booking.EventName || booking.ServiceName || 'Service Request'}`,
-            bookingId: booking.BookingID || booking.RequestID
-          })
+        const response = await apiPost('/messages/conversations', {
+          userId: currentUser.id,
+          vendorProfileId: vendorProfileId,
+          clientUserId: booking.ClientUserID,
+          subject: `Booking: ${booking.EventName || booking.ServiceName || 'Service Request'}`,
+          bookingId: booking.BookingID || booking.RequestID
         });
         
         if (!response.ok) {

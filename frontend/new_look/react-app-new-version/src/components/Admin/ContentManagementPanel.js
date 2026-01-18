@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { API_BASE_URL } from '../../config';
 import { showBanner } from '../../utils/helpers';
+import { apiGet, apiPost, apiDelete } from '../../utils/api';
+import { API_BASE_URL } from '../../config';
+import UniversalModal from '../UniversalModal';
+import { LoadingState, EmptyState } from '../common/AdminComponents';
+import { ActionButtonGroup, ActionButton as IconActionButton, ViewButton, EditButton, DeleteButton } from '../common/UIComponents';
 
 const ContentManagementPanel = () => {
   const [activeTab, setActiveTab] = useState('banners'); // banners, pages, announcements
@@ -16,12 +20,7 @@ const ContentManagementPanel = () => {
   const fetchContent = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/admin/content/${activeTab}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
+      const response = await apiGet(`/admin/content/${activeTab}`);
       if (response.ok) {
         const data = await response.json();
         setContent(data.items || []);
@@ -36,15 +35,8 @@ const ContentManagementPanel = () => {
 
   const handleDelete = async (itemId) => {
     if (!window.confirm('Are you sure you want to delete this item?')) return;
-
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/content/${activeTab}/${itemId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
+      const response = await apiDelete(`/admin/content/${activeTab}/${itemId}`);
       if (response.ok) {
         showBanner('Item deleted', 'success');
         fetchContent();
@@ -56,14 +48,7 @@ const ContentManagementPanel = () => {
 
   const handleToggleActive = async (itemId, currentStatus) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/content/${activeTab}/${itemId}/toggle`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ active: !currentStatus })
-      });
+      const response = await apiPost(`/admin/content/${activeTab}/${itemId}/toggle`, { active: !currentStatus });
 
       if (response.ok) {
         showBanner(`Item ${currentStatus ? 'deactivated' : 'activated'}`, 'success');
@@ -214,20 +199,11 @@ const BannersGrid = ({ banners, onEdit, onDelete, onToggle }) => {
               </span>
               <span className="banner-position">Position: {banner.Position || 1}</span>
             </div>
-            <div className="banner-actions">
-              <button className="action-btn edit" onClick={() => onEdit(banner)}>
-                <i className="fas fa-pen"></i>
-              </button>
-              <button
-                className={`action-btn ${banner.IsActive ? 'deactivate' : 'activate'}`}
-                onClick={() => onToggle(banner.BannerID, banner.IsActive)}
-              >
-                <i className={`fas fa-${banner.IsActive ? 'eye-slash' : 'eye'}`}></i>
-              </button>
-              <button className="action-btn delete" onClick={() => onDelete(banner.BannerID)}>
-                <i className="fas fa-trash-alt"></i>
-              </button>
-            </div>
+            <ActionButtonGroup>
+              <EditButton onClick={() => onEdit(banner)} />
+              <IconActionButton action={banner.IsActive ? 'view' : 'activate'} onClick={() => onToggle(banner.BannerID, banner.IsActive)} title={banner.IsActive ? 'Hide' : 'Show'} />
+              <DeleteButton onClick={() => onDelete(banner.BannerID)} />
+            </ActionButtonGroup>
           </div>
         </div>
       ))}
@@ -254,17 +230,11 @@ const PagesTable = ({ pages, onEdit, onDelete }) => {
             <td><code>/{page.Slug}</code></td>
             <td>{new Date(page.UpdatedAt).toLocaleDateString()}</td>
             <td>
-              <div className="action-buttons">
-                <button className="action-btn view" onClick={() => window.open(`/${page.Slug}`, '_blank')}>
-                  <i className="fas fa-external-link-alt"></i>
-                </button>
-                <button className="action-btn edit" onClick={() => onEdit(page)}>
-                  <i className="fas fa-pen"></i>
-                </button>
-                <button className="action-btn delete" onClick={() => onDelete(page.PageID)}>
-                  <i className="fas fa-trash-alt"></i>
-                </button>
-              </div>
+              <ActionButtonGroup>
+                <ViewButton onClick={() => window.open(`/${page.Slug}`, '_blank')} title="Open" />
+                <EditButton onClick={() => onEdit(page)} />
+                <DeleteButton onClick={() => onDelete(page.PageID)} />
+              </ActionButtonGroup>
             </td>
           </tr>
         ))}
@@ -304,20 +274,11 @@ const AnnouncementsTable = ({ announcements, onEdit, onDelete, onToggle }) => {
               </span>
             </td>
             <td>
-              <div className="action-buttons">
-                <button className="action-btn edit" onClick={() => onEdit(ann)}>
-                  <i className="fas fa-pen"></i>
-                </button>
-                <button
-                  className={`action-btn ${ann.IsActive ? 'deactivate' : 'activate'}`}
-                  onClick={() => onToggle(ann.AnnouncementID, ann.IsActive)}
-                >
-                  <i className={`fas fa-${ann.IsActive ? 'pause' : 'play'}`}></i>
-                </button>
-                <button className="action-btn delete" onClick={() => onDelete(ann.AnnouncementID)}>
-                  <i className="fas fa-trash-alt"></i>
-                </button>
-              </div>
+              <ActionButtonGroup>
+                <EditButton onClick={() => onEdit(ann)} />
+                <IconActionButton action={ann.IsActive ? 'suspend' : 'activate'} onClick={() => onToggle(ann.AnnouncementID, ann.IsActive)} title={ann.IsActive ? 'Pause' : 'Play'} />
+                <DeleteButton onClick={() => onDelete(ann.AnnouncementID)} />
+              </ActionButtonGroup>
             </td>
           </tr>
         ))}
@@ -338,14 +299,10 @@ const FAQTable = ({ faqs, onEdit, onDelete }) => {
               <h4>{faq.Question}</h4>
               <p>{faq.Answer?.substring(0, 150)}...</p>
             </div>
-            <div className="faq-actions">
-              <button className="action-btn edit" onClick={() => onEdit(faq)}>
-                <i className="fas fa-pen"></i>
-              </button>
-              <button className="action-btn delete" onClick={() => onDelete(faq.FAQID)}>
-                <i className="fas fa-trash-alt"></i>
-              </button>
-            </div>
+            <ActionButtonGroup>
+              <EditButton onClick={() => onEdit(faq)} />
+              <DeleteButton onClick={() => onDelete(faq.FAQID)} />
+            </ActionButtonGroup>
           </div>
         </div>
       ))}
@@ -598,25 +555,20 @@ const ContentModal = ({ type, item, onClose, onSave }) => {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content large" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>{item ? 'Edit' : 'Add'} {type.slice(0, -1)}</h2>
-          <button className="modal-close" onClick={onClose}>
-            
-          </button>
-        </div>
-        <div className="modal-body">
-          {renderFormFields()}
-        </div>
-        <div className="modal-footer">
-          <button className="btn-secondary" onClick={onClose}>Cancel</button>
-          <button className="btn-primary" onClick={handleSave} disabled={saving}>
-            {saving ? 'Saving...' : (item ? 'Update' : 'Create')}
-          </button>
-        </div>
-      </div>
-    </div>
+    <UniversalModal
+      isOpen={true}
+      onClose={onClose}
+      title={`${item ? 'Edit' : 'Add'} ${type.slice(0, -1)}`}
+      size="large"
+      primaryAction={{
+        label: saving ? 'Saving...' : (item ? 'Update' : 'Create'),
+        onClick: handleSave,
+        loading: saving
+      }}
+      secondaryAction={{ label: 'Cancel', onClick: onClose }}
+    >
+      {renderFormFields()}
+    </UniversalModal>
   );
 };
 

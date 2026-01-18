@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { API_BASE_URL } from '../../config';
 import { showBanner } from '../../utils/helpers';
+import { apiGet, apiPost, apiPut } from '../../utils/api';
+import UniversalModal from '../UniversalModal';
+import { LoadingState, EmptyState } from '../common/AdminComponents';
 
 const NotificationsPanel = () => {
   const [activeTab, setActiveTab] = useState('templates'); // templates, send, automation
@@ -19,12 +21,7 @@ const NotificationsPanel = () => {
   const fetchTemplates = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/admin/notifications/templates`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
+      const response = await apiGet('/admin/notifications/templates');
       if (response.ok) {
         const data = await response.json();
         setTemplates(data.templates || []);
@@ -117,7 +114,7 @@ const TemplatesSection = ({ templates, loading, onEdit, onRefresh }) => {
     { id: 5, name: 'Payment Failed', category: 'payment', type: 'email', subject: 'Payment failed - Action required' },
     { id: 6, name: 'Vendor Approved', category: 'vendor', type: 'email', subject: 'Congratulations! Your profile is approved' },
     { id: 7, name: 'Vendor Rejected', category: 'vendor', type: 'email', subject: 'Profile review update' },
-    { id: 8, name: 'Welcome Email', category: 'user', type: 'email', subject: 'Welcome to PlanBeau!' },
+    { id: 8, name: 'Welcome Email', category: 'user', type: 'email', subject: 'Welcome to Planbeau!' },
     { id: 9, name: 'Password Reset', category: 'user', type: 'email', subject: 'Reset your password' },
     { id: 10, name: 'Review Request', category: 'review', type: 'email', subject: 'How was your experience?' }
   ];
@@ -196,18 +193,11 @@ const SendNotificationSection = () => {
 
     try {
       setSending(true);
-      const response = await fetch(`${API_BASE_URL}/admin/notifications/send`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          type: notificationType,
-          recipientType,
-          subject,
-          message
-        })
+      const response = await apiPost('/admin/notifications/send', {
+        type: notificationType,
+        recipientType,
+        subject,
+        message
       });
 
       if (response.ok) {
@@ -396,12 +386,10 @@ const AutomationSection = () => {
                 />
                 <span className="toggle-slider"></span>
               </label>
-              <button className="action-btn edit">
-                <i className="fas fa-pen"></i>
-              </button>
-              <button className="action-btn delete">
-                <i className="fas fa-trash-alt"></i>
-              </button>
+              <div className="action-btn-group">
+                <button className="action-btn edit" title="Edit"><i className="fas fa-pen"></i></button>
+                <button className="action-btn delete" title="Remove"><i className="fas fa-trash-alt"></i></button>
+              </div>
             </div>
           </div>
         ))}
@@ -423,14 +411,7 @@ const TemplateModal = ({ template, onClose, onSave, onPreview }) => {
   const handleSave = async () => {
     try {
       setSaving(true);
-      const response = await fetch(`${API_BASE_URL}/admin/notifications/templates/${template?.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(formData)
-      });
+      const response = await apiPut(`/admin/notifications/templates/${template?.id}`, formData);
 
       if (response.ok) {
         showBanner('Template updated', 'success');
@@ -445,27 +426,20 @@ const TemplateModal = ({ template, onClose, onSave, onPreview }) => {
 
   const handlePreview = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/notifications/preview`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          subject: formData.subject,
-          body: formData.body,
-          variables: {
-            user_name: 'John Doe',
-            vendor_name: 'Elite Catering Co.',
-            booking_date: 'December 15, 2024',
-            booking_time: '2:00 PM',
-            amount: '500.00',
-            booking_id: '12345',
-            service_name: 'Wedding Catering',
-            reset_link: 'https://planbeau.com/reset-password',
-            review_link: 'https://planbeau.com/leave-review'
-          }
-        })
+      const response = await apiPost('/admin/notifications/preview', {
+        subject: formData.subject,
+        body: formData.body,
+        variables: {
+          user_name: 'John Doe',
+          vendor_name: 'Elite Catering Co.',
+          booking_date: 'December 15, 2024',
+          booking_time: '2:00 PM',
+          amount: '500.00',
+          booking_id: '12345',
+          service_name: 'Wedding Catering',
+          reset_link: 'https://planbeau.com/reset-password',
+          review_link: 'https://planbeau.com/leave-review'
+        }
       });
 
       if (response.ok) {
@@ -478,100 +452,66 @@ const TemplateModal = ({ template, onClose, onSave, onPreview }) => {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content large" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>Edit Template: {template?.name}</h2>
-          <button className="modal-close" onClick={onClose}>
-            
-          </button>
-        </div>
-        <div className="modal-body">
-          <div className="form-group">
-            <label>Template Name</label>
-            <input
-              type="text"
-              value={formData.name}
-              onChange={e => setFormData({ ...formData, name: e.target.value })}
-            />
-          </div>
-          <div className="form-group">
-            <label>Subject Line</label>
-            <input
-              type="text"
-              value={formData.subject}
-              onChange={e => setFormData({ ...formData, subject: e.target.value })}
-            />
-          </div>
-          <div className="form-group">
-            <label>Email Body (HTML)</label>
-            <textarea
-              value={formData.body}
-              onChange={e => setFormData({ ...formData, body: e.target.value })}
-              rows={12}
-              placeholder="Enter HTML content..."
-            />
-          </div>
-          <div className="variables-help">
-            <h4>Available Variables:</h4>
-            <div className="variables-list">
-              <code>{'{{user_name}}'}</code>
-              <code>{'{{vendor_name}}'}</code>
-              <code>{'{{booking_date}}'}</code>
-              <code>{'{{booking_time}}'}</code>
-              <code>{'{{amount}}'}</code>
-              <code>{'{{service_name}}'}</code>
-            </div>
-          </div>
-        </div>
-        <div className="modal-footer">
-          <button className="btn-secondary" onClick={onClose}>Cancel</button>
-          <button className="btn-secondary" onClick={handlePreview}>
-            <i className="fas fa-eye"></i> Preview Email
-          </button>
-          <button className="btn-primary" onClick={handleSave} disabled={saving}>
-            {saving ? 'Saving...' : 'Save Template'}
-          </button>
+    <UniversalModal
+      isOpen={true}
+      onClose={onClose}
+      title={`Edit Template: ${template?.name}`}
+      size="large"
+      footer={
+        <>
+          <button className="um-btn um-btn-secondary" onClick={onClose}>Cancel</button>
+          <button className="um-btn um-btn-secondary" onClick={handlePreview}><i className="fas fa-eye"></i> Preview</button>
+          <button className="um-btn um-btn-primary" onClick={handleSave} disabled={saving}>{saving ? 'Saving...' : 'Save Template'}</button>
+        </>
+      }
+    >
+      <div className="form-group">
+        <label>Template Name</label>
+        <input type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
+      </div>
+      <div className="form-group">
+        <label>Subject Line</label>
+        <input type="text" value={formData.subject} onChange={e => setFormData({ ...formData, subject: e.target.value })} />
+      </div>
+      <div className="form-group">
+        <label>Email Body (HTML)</label>
+        <textarea value={formData.body} onChange={e => setFormData({ ...formData, body: e.target.value })} rows={12} placeholder="Enter HTML content..." />
+      </div>
+      <div className="variables-help" style={{ background: '#f9fafb', padding: '12px', borderRadius: '8px', marginTop: '16px' }}>
+        <h4 style={{ margin: '0 0 8px', fontSize: '13px' }}>Available Variables:</h4>
+        <div className="variables-list" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+          <code style={{ background: '#e5e7eb', padding: '4px 8px', borderRadius: '4px', fontSize: '12px' }}>{'{{user_name}}'}</code>
+          <code style={{ background: '#e5e7eb', padding: '4px 8px', borderRadius: '4px', fontSize: '12px' }}>{'{{vendor_name}}'}</code>
+          <code style={{ background: '#e5e7eb', padding: '4px 8px', borderRadius: '4px', fontSize: '12px' }}>{'{{booking_date}}'}</code>
+          <code style={{ background: '#e5e7eb', padding: '4px 8px', borderRadius: '4px', fontSize: '12px' }}>{'{{booking_time}}'}</code>
+          <code style={{ background: '#e5e7eb', padding: '4px 8px', borderRadius: '4px', fontSize: '12px' }}>{'{{amount}}'}</code>
+          <code style={{ background: '#e5e7eb', padding: '4px 8px', borderRadius: '4px', fontSize: '12px' }}>{'{{service_name}}'}</code>
         </div>
       </div>
-    </div>
+    </UniversalModal>
   );
 };
 
 // Email Preview Modal
 const EmailPreviewModal = ({ html, onClose }) => {
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content large" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2><i className="fas fa-envelope"></i> Email Preview</h2>
-          <button className="modal-close" onClick={onClose}>
-            
-          </button>
-        </div>
-        <div className="modal-body">
-          <div className="email-preview-container" style={{
-            border: '1px solid #ddd',
-            borderRadius: '8px',
-            padding: '20px',
-            background: '#fff',
-            maxHeight: '600px',
-            overflow: 'auto'
-          }}>
-            <div dangerouslySetInnerHTML={{ __html: html }} />
-          </div>
-          <div style={{ marginTop: '15px', padding: '10px', background: '#f8f9fa', borderRadius: '4px' }}>
-            <p style={{ margin: 0, fontSize: '14px', color: '#666' }}>
-              <i className="fas fa-info-circle"></i> This is a preview with sample data. 
-              Actual emails will use real user and booking information.
-            </p>
-          </div>
-        </div>
-        <div className="modal-footer">
-          <button className="btn-primary" onClick={onClose}>Close Preview</button>
-        </div>
+    <UniversalModal
+      isOpen={true}
+      onClose={onClose}
+      title="Email Preview"
+      size="large"
+      icon={<i className="fas fa-envelope" style={{ color: '#3b82f6' }}></i>}
+      footer={<button className="um-btn um-btn-primary" onClick={onClose}>Close Preview</button>}
+    >
+      <div className="email-preview-container" style={{ border: '1px solid #ddd', borderRadius: '8px', padding: '20px', background: '#fff', maxHeight: '500px', overflow: 'auto' }}>
+        <div dangerouslySetInnerHTML={{ __html: html }} />
       </div>
-    </div>
+      <div style={{ marginTop: '15px', padding: '10px', background: '#f8f9fa', borderRadius: '4px' }}>
+        <p style={{ margin: 0, fontSize: '14px', color: '#666' }}>
+          <i className="fas fa-info-circle"></i> This is a preview with sample data. Actual emails will use real user and booking information.
+        </p>
+      </div>
+    </UniversalModal>
   );
 };
 

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { API_BASE_URL } from '../../config';
 import { showBanner } from '../../utils/helpers';
+import { apiGet, apiPost, apiDelete } from '../../utils/api';
+import { LoadingState, EmptyState } from '../common/AdminComponents';
+import { ActionButtonGroup, ActionButton as IconActionButton, ViewButton } from '../common/UIComponents';
 
 const VendorBadgesPanel = () => {
   const [vendors, setVendors] = useState([]);
@@ -37,15 +39,7 @@ const VendorBadgesPanel = () => {
   const fetchVendors = async () => {
     try {
       setLoading(true);
-      const response = await fetch(
-        `${API_BASE_URL}/admin/vendors?status=approved&limit=100`,
-        {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        }
-      );
-
+      const response = await apiGet('/admin/vendors?status=approved&limit=100');
       if (response.ok) {
         const data = await response.json();
         setVendors(data.vendors || []);
@@ -60,11 +54,7 @@ const VendorBadgesPanel = () => {
 
   const fetchBadgeTypes = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/badges`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await apiGet('/admin/badges');
 
       if (response.ok) {
         const data = await response.json();
@@ -80,11 +70,7 @@ const VendorBadgesPanel = () => {
 
   const fetchVendorBadges = async (vendorId) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/vendors/${vendorId}/badges`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await apiGet(`/admin/vendors/${vendorId}/badges`);
 
       if (response.ok) {
         const data = await response.json();
@@ -109,14 +95,7 @@ const VendorBadgesPanel = () => {
 
     try {
       setActionLoading(true);
-      const response = await fetch(`${API_BASE_URL}/admin/vendors/${selectedVendor.VendorProfileID}/badges`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(assignForm)
-      });
+      const response = await apiPost(`/admin/vendors/${selectedVendor.VendorProfileID}/badges`, assignForm);
 
       if (response.ok) {
         showBanner('Badge assigned successfully!', 'success');
@@ -146,12 +125,7 @@ const VendorBadgesPanel = () => {
 
     try {
       setActionLoading(true);
-      const response = await fetch(`${API_BASE_URL}/admin/vendors/${selectedVendor.VendorProfileID}/badges/${badgeId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await apiDelete(`/admin/vendors/${selectedVendor.VendorProfileID}/badges/${badgeId}`);
 
       if (response.ok) {
         showBanner('Badge removed successfully!', 'success');
@@ -330,24 +304,10 @@ const VendorBadgesPanel = () => {
                     )}
                   </td>
                   <td>
-                    <div className="action-buttons" style={{ display: 'flex', gap: '0.25rem', flexWrap: 'nowrap' }}>
-                      <button
-                        className="action-btn view"
-                        onClick={() => handleSelectVendor(vendor)}
-                        title="View Badges"
-                        style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem' }}
-                      >
-                        <i className="fas fa-eye"></i>
-                      </button>
-                      <button
-                        className="action-btn edit"
-                        onClick={() => { handleSelectVendor(vendor); setShowAssignModal(true); }}
-                        title="Assign Badge"
-                        style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem', background: '#ede9fe', color: '#7c3aed' }}
-                      >
-                        <i className="fas fa-plus"></i>
-                      </button>
-                    </div>
+                    <ActionButtonGroup>
+                      <ViewButton onClick={() => handleSelectVendor(vendor)} title="View Badges" />
+                      <IconActionButton action="add" onClick={() => { handleSelectVendor(vendor); setShowAssignModal(true); }} title="Assign Badge" />
+                    </ActionButtonGroup>
                   </td>
                 </tr>
               ))}

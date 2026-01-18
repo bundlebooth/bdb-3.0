@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { API_BASE_URL } from '../../config';
-import { showBanner } from '../../utils/helpers';
+import { showBanner, formatDateTime } from '../../utils/helpers';
+import { apiGet, apiPost } from '../../utils/api';
+import UniversalModal from '../UniversalModal';
+import { LoadingState, EmptyState, StatusBadge } from '../common/AdminComponents';
 
 const VendorApprovalsPanel = () => {
   const [pendingProfiles, setPendingProfiles] = useState([]);
@@ -31,12 +33,7 @@ const VendorApprovalsPanel = () => {
   const fetchFullProfileDetails = async (vendorProfileId) => {
     try {
       setLoadingDetails(true);
-      const response = await fetch(`${API_BASE_URL}/admin/vendor-approvals/${vendorProfileId}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
+      const response = await apiGet(`/admin/vendor-approvals/${vendorProfileId}`);
       if (response.ok) {
         const data = await response.json();
         setFullProfileData(data.profile);
@@ -55,22 +52,14 @@ const VendorApprovalsPanel = () => {
   const fetchProfiles = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/admin/vendor-approvals?status=${filter}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await apiGet(`/admin/vendor-approvals?status=${filter}`);
 
       if (response.ok) {
         const data = await response.json();
         setPendingProfiles(data.profiles || []);
       } else {
         // Fallback to existing endpoint
-        const fallbackResponse = await fetch(`${API_BASE_URL}/vendors/admin/pending-reviews`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        });
+        const fallbackResponse = await apiGet('/vendors/admin/pending-reviews');
         if (fallbackResponse.ok) {
           const data = await fallbackResponse.json();
           setPendingProfiles(data.profiles || []);
@@ -87,14 +76,7 @@ const VendorApprovalsPanel = () => {
   const handleApprove = async (vendorProfileId) => {
     try {
       setActionLoading(true);
-      const response = await fetch(`${API_BASE_URL}/admin/vendors/${vendorProfileId}/approve`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ adminNotes })
-      });
+      const response = await apiPost(`/admin/vendors/${vendorProfileId}/approve`, { adminNotes });
 
       if (response.ok) {
         showBanner('Vendor approved and now visible on the platform!', 'success');
@@ -119,14 +101,7 @@ const VendorApprovalsPanel = () => {
 
     try {
       setActionLoading(true);
-      const response = await fetch(`${API_BASE_URL}/admin/vendors/${vendorProfileId}/reject`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ reason: rejectionReason, adminNotes })
-      });
+      const response = await apiPost(`/admin/vendors/${vendorProfileId}/reject`, { reason: rejectionReason, adminNotes });
 
       if (response.ok) {
         showBanner('Vendor rejected and hidden from platform.', 'success');
@@ -147,14 +122,7 @@ const VendorApprovalsPanel = () => {
   const handleToggleVisibility = async (vendorProfileId, currentVisibility) => {
     try {
       setActionLoading(true);
-      const response = await fetch(`${API_BASE_URL}/admin/vendors/${vendorProfileId}/visibility`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ visible: !currentVisibility })
-      });
+      const response = await apiPost(`/admin/vendors/${vendorProfileId}/visibility`, { visible: !currentVisibility });
 
       if (response.ok) {
         const data = await response.json();
@@ -177,14 +145,7 @@ const VendorApprovalsPanel = () => {
   const handleSuspend = async (vendorProfileId) => {
     try {
       setActionLoading(true);
-      const response = await fetch(`${API_BASE_URL}/admin/vendors/${vendorProfileId}/suspend`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ reason: adminNotes || 'Suspended by admin' })
-      });
+      const response = await apiPost(`/admin/vendors/${vendorProfileId}/suspend`, { reason: adminNotes || 'Suspended by admin' });
 
       if (response.ok) {
         showBanner('Vendor suspended and hidden from platform.', 'success');
@@ -201,23 +162,7 @@ const VendorApprovalsPanel = () => {
     }
   };
 
-  const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
-    try {
-      const date = new Date(dateString);
-      // Check if date is valid
-      if (isNaN(date.getTime())) return 'N/A';
-      return date.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    } catch {
-      return 'N/A';
-    }
-  };
+  const formatDate = formatDateTime;
 
   const getStatusBadge = (status) => {
     const statusMap = {
@@ -400,24 +345,24 @@ const VendorApprovalsPanel = () => {
 
       {/* Review Modal */}
       {selectedProfile && (
-        <div className="modal-overlay" onClick={() => setSelectedProfile(null)}>
-          <div className="modal-content review-modal large-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <div className="modal-header-content">
-                <h2>Review Vendor Application</h2>
-                <div className="vendor-quick-info">
-                  <span className="vendor-name">{selectedProfile.BusinessName}</span>
-                  {getStatusBadge(selectedProfile.ProfileStatus)}
-                  {getVisibilityBadge(fullProfileData?.IsVisible ?? selectedProfile.IsVisible)}
-                </div>
+        <UniversalModal
+          isOpen={true}
+          onClose={() => setSelectedProfile(null)}
+          title={
+            <div>
+              <span>Review Vendor Application</span>
+              <div style={{ display: 'flex', gap: '8px', marginTop: '4px', fontSize: '14px', fontWeight: 'normal' }}>
+                <span>{selectedProfile.BusinessName}</span>
+                {getStatusBadge(selectedProfile.ProfileStatus)}
+                {getVisibilityBadge(fullProfileData?.IsVisible ?? selectedProfile.IsVisible)}
               </div>
-              <button className="close-btn" onClick={() => setSelectedProfile(null)}>
-                
-              </button>
             </div>
-
-            {/* Tab Navigation */}
-            <div className="modal-tabs">
+          }
+          size="large"
+          footer={<button className="um-btn um-btn-secondary" onClick={() => setSelectedProfile(null)}>Close</button>}
+        >
+          {/* Tab Navigation */}
+          <div className="modal-tabs" style={{ display: 'flex', gap: '4px', marginBottom: '16px', borderBottom: '1px solid #e5e7eb', paddingBottom: '12px', flexWrap: 'wrap' }}>
               {[
                 { id: 'overview', label: 'Overview', icon: 'fa-info-circle' },
                 { id: 'services', label: 'Services', icon: 'fa-concierge-bell' },
@@ -946,16 +891,7 @@ const VendorApprovalsPanel = () => {
               )}
             </div>
 
-            <div className="modal-footer">
-              <button 
-                className="btn-secondary" 
-                onClick={() => setSelectedProfile(null)}
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
+        </UniversalModal>
       )}
     </div>
   );

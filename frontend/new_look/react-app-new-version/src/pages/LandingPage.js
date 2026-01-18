@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL, GOOGLE_MAPS_API_KEY } from '../config';
+import { apiGet, apiPost, apiDelete } from '../utils/api';
 import { PageLayout } from '../components/PageWrapper';
 import VendorSection from '../components/VendorSection';
 import VendorCard from '../components/VendorCard';
@@ -273,7 +274,7 @@ function LandingPage() {
       <header className={`landing-header ${isScrolled ? 'scrolled' : ''}`}>
         <div className="landing-header-content">
           <div className="landing-logo" onClick={() => navigate('/')}>
-            <img src="/images/logo.png" alt="PlanBeau" className="header-logo-img" />
+            <img src="/images/logo.png" alt="Planbeau" className="header-logo-img" />
           </div>
           <nav className="landing-nav">
             <a href="/become-a-vendor" className="nav-link">Become a Vendor</a>
@@ -463,7 +464,7 @@ function LandingPage() {
         </div>
       </section>
 
-      {/* 4. Value Card (Why PlanBeau - Benefits) */}
+      {/* 4. Value Card (Why Planbeau - Benefits) */}
       <section className="why-planhive-section">
         <div className="section-container">
           <div className="why-planhive-content">
@@ -713,7 +714,7 @@ function LandingPage() {
                       </div>
                     </div>
                   </div>
-                  <p>"Found our wedding photographer through PlanBeau. The process was so easy and the results were amazing!"</p>
+                  <p>"Found our wedding photographer through Planbeau. The process was so easy and the results were amazing!"</p>
                 </div>
               </div>
             </div>

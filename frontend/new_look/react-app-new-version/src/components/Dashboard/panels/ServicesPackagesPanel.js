@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { showBanner } from '../../../utils/helpers';
+import { apiGet, apiPost, apiPut, apiDelete, apiPostFormData } from '../../../utils/api';
 import { API_BASE_URL } from '../../../config';
 import SkeletonLoader from '../../SkeletonLoader';
 import { ServiceCard, PackageCard, PackageServiceTabs, PackageServiceEmpty, PackageServiceList } from '../../PackageServiceCard';
-import { showBanner } from '../../../utils/helpers';
+import UniversalModal from '../../UniversalModal';
 
 function ServicesPackagesPanel({ onBack, vendorProfileId }) {
   const [loading, setLoading] = useState(true);
@@ -66,10 +68,7 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
   // Load packages
   const loadPackages = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/packages`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
-      
+      const response = await apiGet(`/vendors/${vendorProfileId}/packages`);
       if (response.ok) {
         const data = await response.json();
         setPackages(data.packages || []);
@@ -184,14 +183,7 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
         maxAttendees: packageForm.maxAttendees ? parseInt(packageForm.maxAttendees) : null
       };
 
-      const response = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/packages`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(payload)
-      });
+      const response = await apiPost(`/vendors/${vendorProfileId}/packages`, payload);
 
       if (response.ok) {
         showBanner(editingPackage ? 'Package updated successfully!' : 'Package created successfully!', 'success');
@@ -216,10 +208,7 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
     if (!window.confirm('Are you sure you want to delete this package?')) return;
 
     try {
-      const response = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/packages/${packageId}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
+      const response = await apiDelete(`/vendors/${vendorProfileId}/packages/${packageId}`);
 
       if (response.ok) {
         showBanner('Package deleted successfully!', 'success');
@@ -287,9 +276,7 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
       // First, fetch vendor's selected categories
       let vendorCategories = [];
       try {
-        const categoriesResponse = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/categories`, {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        });
+        const categoriesResponse = await apiGet(`/vendors/${vendorProfileId}/categories`);
         if (categoriesResponse.ok) {
           const catData = await categoriesResponse.json();
           vendorCategories = (catData.categories || []).map(c => c.CategoryName || c.name || c);
@@ -299,9 +286,7 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
       }
       
       // Fetch available predefined services (all categories)
-      const servicesResponse = await fetch(`${API_BASE_URL}/vendors/predefined-services`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
+      const servicesResponse = await apiGet('/vendors/predefined-services');
       
       if (servicesResponse.ok) {
         const servicesData = await servicesResponse.json();
@@ -325,9 +310,7 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
         setAvailableServices(allServices);
         
         // Fetch vendor's selected services
-        const vendorServicesResponse = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/selected-services`, {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        });
+        const vendorServicesResponse = await apiGet(`/vendors/${vendorProfileId}/selected-services`);
         
         if (vendorServicesResponse.ok) {
           const vendorData = await vendorServicesResponse.json();
@@ -435,11 +418,7 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
       const formData = new FormData();
       formData.append('image', file);
 
-      const response = await fetch(`${API_BASE_URL}/vendors/service-image/upload`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
-        body: formData
-      });
+      const response = await apiPostFormData('/vendors/service-image/upload', formData);
 
       if (response.ok) {
         const data = await response.json();
@@ -479,14 +458,7 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
       };
 
       // Use PATCH for existing, or PATCH for new (the endpoint handles both via upsert)
-      const response = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/services/${predefinedServiceId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(payload)
-      });
+      const response = await apiPut(`/vendors/${vendorProfileId}/services/${predefinedServiceId}`, payload);
 
       if (response.ok) {
         showBanner(isExistingService ? 'Service updated successfully!' : 'Service added successfully!', 'success');
@@ -563,14 +535,7 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
         }))
       };
       
-      const response = await fetch(`${API_BASE_URL}/vendors/setup/step3-services`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(payload)
-      });
+      const response = await apiPost('/vendors/setup/step3-services', payload);
       
       if (response.ok) {
         showBanner('Services saved successfully!', 'success');
@@ -820,53 +785,16 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
         )}
 
         {/* Edit Service Modal */}
-        {editingService && (
-          <div 
-            style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              background: 'rgba(0, 0, 0, 0.5)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              zIndex: 10000,
-              padding: '20px'
-            }}
-            onClick={() => setEditingService(null)}
-          >
-            <div 
-              style={{
-                background: 'white',
-                borderRadius: '12px',
-                maxWidth: '600px',
-                width: '100%',
-                maxHeight: '90vh',
-                overflow: 'hidden',
-                display: 'flex',
-                flexDirection: 'column'
-              }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Modal Header */}
-              <div style={{ padding: '20px 24px', borderBottom: '1px solid #e5e7eb' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>{editingService.name}</h3>
-                  <button
-                    onClick={() => setEditingService(null)}
-                    style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#6b7280', padding: '4px 8px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}
-                    onMouseOver={(e) => { e.currentTarget.style.background = '#f3f4f6'; e.currentTarget.style.color = '#111827'; }}
-                    onMouseOut={(e) => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = '#6b7280'; }}
-                  >
-                    ×
-                  </button>
-                </div>
-              </div>
-
-              {/* Modal Body */}
-              <div style={{ padding: '24px', overflowY: 'auto' }}>
+        <UniversalModal
+          isOpen={!!editingService}
+          onClose={() => setEditingService(null)}
+          title={editingService?.name || 'Edit Service'}
+          size="large"
+          primaryAction={{ label: 'Save Changes', onClick: handleSaveEdit }}
+          secondaryAction={{ label: 'Cancel', onClick: () => setEditingService(null) }}
+        >
+          {editingService && (
+            <div>
                 {/* Service Image Upload */}
                 <div style={{ marginBottom: '24px' }}>
                   <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
@@ -1219,99 +1147,20 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
                     </p>
                   </div>
                 )}
-              </div>
-
-              {/* Modal Footer */}
-              <div style={{ padding: '16px 24px', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
-                <button
-                  onClick={() => setEditingService(null)}
-                  style={{
-                    padding: '10px 20px',
-                    border: 'none',
-                    background: 'transparent',
-                    color: '#222',
-                    borderRadius: '6px',
-                    fontWeight: 500,
-                    cursor: 'pointer',
-                    fontSize: '14px'
-                  }}
-                  onMouseOver={(e) => e.currentTarget.style.background = '#f3f4f6'}
-                  onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSaveEdit}
-                  style={{
-                    padding: '10px 20px',
-                    border: 'none',
-                    background: '#222',
-                    color: 'white',
-                    borderRadius: '6px',
-                    fontWeight: 500,
-                    cursor: 'pointer',
-                    fontSize: '14px'
-                  }}
-                  onMouseOver={(e) => e.currentTarget.style.background = '#000'}
-                  onMouseOut={(e) => e.currentTarget.style.background = '#222'}
-                >
-                  Save Changes
-                </button>
-              </div>
             </div>
-          </div>
-        )}
+          )}
+        </UniversalModal>
 
         {/* Package Modal */}
-        {showPackageModal && (
-          <div 
-            style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              background: 'rgba(0, 0, 0, 0.5)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              zIndex: 10000,
-              padding: '20px'
-            }}
-            onClick={() => setShowPackageModal(false)}
-          >
-            <div 
-              style={{
-                background: 'white',
-                borderRadius: '12px',
-                maxWidth: '700px',
-                width: '100%',
-                maxHeight: '90vh',
-                overflow: 'hidden',
-                display: 'flex',
-                flexDirection: 'column'
-              }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Modal Header */}
-              <div style={{ padding: '20px 24px', borderBottom: '1px solid #e5e7eb' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>
-                    {editingPackage ? 'Edit Package' : 'Create Package'}
-                  </h3>
-                  <button
-                    onClick={() => setShowPackageModal(false)}
-                    style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#6b7280', padding: '4px 8px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}
-                    onMouseOver={(e) => { e.currentTarget.style.background = '#f3f4f6'; e.currentTarget.style.color = '#111827'; }}
-                    onMouseOut={(e) => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = '#6b7280'; }}
-                  >
-                    ×
-                  </button>
-                </div>
-              </div>
-
-              {/* Modal Body */}
-              <div style={{ padding: '24px', overflowY: 'auto', flex: 1 }}>
+        <UniversalModal
+          isOpen={showPackageModal}
+          onClose={() => setShowPackageModal(false)}
+          title={editingPackage ? 'Edit Package' : 'Create Package'}
+          size="large"
+          primaryAction={{ label: editingPackage ? 'Update Package' : 'Create Package', onClick: handleSavePackage }}
+          secondaryAction={{ label: 'Cancel', onClick: () => setShowPackageModal(false) }}
+        >
+          <div>
                 {/* Package Image */}
                 <div style={{ marginBottom: '24px' }}>
                   <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
@@ -1686,50 +1535,8 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
                     }}
                   />
                 </div>
-              </div>
-
-              {/* Modal Footer */}
-              <div style={{ padding: '16px 24px', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
-                <button
-                  onClick={() => setShowPackageModal(false)}
-                  style={{
-                    padding: '12px 24px',
-                    border: '1px solid #222',
-                    background: 'transparent',
-                    color: '#222',
-                    borderRadius: '8px',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    fontSize: '14px',
-                    transition: 'all 0.2s'
-                  }}
-                  onMouseOver={(e) => { e.currentTarget.style.background = '#f5f5f5'; }}
-                  onMouseOut={(e) => { e.currentTarget.style.background = 'transparent'; }}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSavePackage}
-                  style={{
-                    padding: '12px 24px',
-                    border: 'none',
-                    background: '#222',
-                    color: 'white',
-                    borderRadius: '8px',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    fontSize: '14px',
-                    transition: 'all 0.2s'
-                  }}
-                  onMouseOver={(e) => { e.currentTarget.style.background = '#000'; }}
-                  onMouseOut={(e) => { e.currentTarget.style.background = '#222'; }}
-                >
-                  {editingPackage ? 'Update Package' : 'Create Package'}
-                </button>
-              </div>
-            </div>
           </div>
-        )}
+        </UniversalModal>
 
       </div>
     </div>

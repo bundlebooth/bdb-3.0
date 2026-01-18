@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
+import { apiGet, apiPost, apiDelete } from '../utils/api';
 import { PageLayout } from '../components/PageWrapper';
 import Header from '../components/Header';
 import FilterModal from '../components/FilterModal';
@@ -17,6 +18,7 @@ import AnnouncementDisplay from '../components/AnnouncementDisplay';
 import Footer from '../components/Footer';
 import MobileBottomNav from '../components/MobileBottomNav';
 import { showBanner } from '../utils/helpers';
+import { EditButton } from '../components/common/UIComponents';
 
 function IndexPage() {
   const navigate = useNavigate();
@@ -102,9 +104,7 @@ function IndexPage() {
   const loadFavorites = useCallback(async () => {
     if (!currentUser?.id) return;
     try {
-      const response = await fetch(`${API_BASE_URL}/favorites/user/${currentUser.id}`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
+      const response = await apiGet(`/favorites/user/${currentUser.id}`);
       if (response.ok) {
         const data = await response.json();
         setFavorites(data.favorites || []);
@@ -791,14 +791,7 @@ function IndexPage() {
       return;
     }
     try {
-      const response = await fetch(`${API_BASE_URL}/favorites/toggle`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ userId: currentUser.id, vendorProfileId: vendorId })
-      });
+      const response = await apiPost('/favorites/toggle', { userId: currentUser.id, vendorProfileId: vendorId });
       if (!response.ok) throw new Error('Failed to toggle favorite');
       const result = await response.json();
       const isFavorite = result.IsFavorite;
@@ -1006,7 +999,7 @@ function IndexPage() {
                 ) : (
                   <>
                     <span>Vendors {detectedCity || filters.location ? 'Near ' + (detectedCity || filters.location) : 'Near You'}</span>
-                    <button
+                    <EditButton
                       onClick={() => {
                         // Scroll to top and dispatch event to expand search bar
                         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1015,20 +1008,8 @@ function IndexPage() {
                           window.dispatchEvent(new CustomEvent('expandSearchBar', { detail: { field: 'location' } }));
                         }, 300);
                       }}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        cursor: 'pointer',
-                        padding: '4px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        color: '#222222',
-                        fontSize: '16px'
-                      }}
                       title="Change location"
-                    >
-                      <i className="fas fa-pen"></i>
-                    </button>
+                    />
                   </>
                 )}
               </h1>

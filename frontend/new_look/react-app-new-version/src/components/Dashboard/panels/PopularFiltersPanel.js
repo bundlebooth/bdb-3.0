@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { API_BASE_URL } from '../../../config';
 import { showBanner } from '../../../utils/helpers';
+import { apiGet, apiPut } from '../../../utils/api';
+import { API_BASE_URL } from '../../../config';
 import '../../../styles/dashboard.css';
 
 function PopularFiltersPanel({ onBack, vendorProfileId }) {

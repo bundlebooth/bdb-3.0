@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { API_BASE_URL } from '../../config';
 import { showBanner } from '../../utils/helpers';
+import { apiGet, apiPost, apiPut, apiDelete } from '../../utils/api';
+import { API_BASE_URL } from '../../config';
+import UniversalModal from '../UniversalModal';
+import { LoadingState, EmptyState } from '../common/AdminComponents';
 
 const EmailManagementPanel = () => {
   const [templates, setTemplates] = useState([]);
@@ -28,11 +31,7 @@ const EmailManagementPanel = () => {
 
   const fetchHeaderFooter = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/emails/header-footer`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await apiGet('/admin/emails/header-footer');
       if (response.ok) {
         const data = await response.json();
         setHeaderFooter({
@@ -51,14 +50,14 @@ const EmailManagementPanel = () => {
 
   const getDefaultHeader = () => {
     return `<div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; border-radius: 12px 12px 0 0;">
-  <img src="{{logo_url}}" alt="PlanBeau" style="height: 40px; margin-bottom: 10px;" />
-  <h1 style="color: white; margin: 0; font-size: 24px;">PlanBeau</h1>
+  <img src="{{logo_url}}" alt="Planbeau" style="height: 40px; margin-bottom: 10px;" />
+  <h1 style="color: white; margin: 0; font-size: 24px;">Planbeau</h1>
 </div>`;
   };
 
   const getDefaultFooter = () => {
     return `<div style="background: #f9fafb; padding: 20px; text-align: center; border-radius: 0 0 12px 12px; border: 1px solid #e5e7eb; border-top: none;">
-  <p style="margin: 0 0 10px 0; color: #6b7280; font-size: 14px;">© 2024 PlanBeau. All rights reserved.</p>
+  <p style="margin: 0 0 10px 0; color: #6b7280; font-size: 14px;">© 2024 Planbeau. All rights reserved.</p>
   <p style="margin: 0; color: #9ca3af; font-size: 12px;">
     <a href="{{unsubscribe_url}}" style="color: #5e72e4;">Unsubscribe</a> | 
     <a href="{{privacy_url}}" style="color: #5e72e4;">Privacy Policy</a>
@@ -68,14 +67,7 @@ const EmailManagementPanel = () => {
 
   const saveHeaderFooter = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/emails/header-footer`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(headerFooter)
-      });
+      const response = await apiPost('/admin/emails/header-footer', headerFooter);
       if (response.ok) {
         showBanner('Header and footer saved successfully', 'success');
       } else {
@@ -94,18 +86,11 @@ const EmailManagementPanel = () => {
     
     setSendingTest(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/emails/send-test`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          to: testEmail.to,
-          subject: testEmail.subject,
-          body: testEmail.body || '<p>This is a test email from PlanBeau admin panel.</p>',
-          templateKey: testEmail.template
-        })
+      const response = await apiPost('/admin/emails/send-test', {
+        to: testEmail.to,
+        subject: testEmail.subject,
+        body: testEmail.body || '<p>This is a test email from Planbeau admin panel.</p>',
+        templateKey: testEmail.template
       });
       
       if (response.ok) {
@@ -126,11 +111,7 @@ const EmailManagementPanel = () => {
     try {
       setLoading(true);
       // Use the existing notifications/templates endpoint which uses admin.sp_GetEmailTemplates
-      const response = await fetch(`${API_BASE_URL}/admin/notifications/templates`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await apiGet('/admin/notifications/templates');
 
       if (response.ok) {
         const data = await response.json();
@@ -147,11 +128,7 @@ const EmailManagementPanel = () => {
   const fetchEmailLogs = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/admin/notifications/logs?page=1&limit=50`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await apiGet('/admin/notifications/logs?page=1&limit=50');
       if (response.ok) {
         const data = await response.json();
         setEmailLogs(data.logs || []);
@@ -167,12 +144,7 @@ const EmailManagementPanel = () => {
     if (!window.confirm('Are you sure you want to delete this email template?')) return;
 
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/emails/${templateId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await apiDelete(`/admin/emails/${templateId}`);
 
       if (response.ok) {
         showBanner('Email template deleted', 'success');
@@ -188,14 +160,7 @@ const EmailManagementPanel = () => {
     if (!email) return;
 
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/emails/${templateId}/send-test`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ recipientEmail: email })
-      });
+      const response = await apiPost(`/admin/emails/${templateId}/send-test`, { recipientEmail: email });
 
       if (response.ok) {
         showBanner('Test email sent', 'success');
@@ -443,7 +408,7 @@ const EmailManagementPanel = () => {
                           fontSize: '13px'
                         }}
                       >
-                        <i className="fas fa-edit"></i> Edit
+                        <i className="fas fa-pen"></i> Edit
                       </button>
                     </div>
                   </div>
@@ -889,7 +854,7 @@ const EmailEditorModal = ({ template, categories, onClose, onSave }) => {
 </head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
   <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; border-radius: 12px 12px 0 0;">
-    <h1 style="color: white; margin: 0; font-size: 24px;">PlanBeau</h1>
+    <h1 style="color: white; margin: 0; font-size: 24px;">Planbeau</h1>
   </div>
   
   <div style="background: white; padding: 30px; border: 1px solid #e5e7eb; border-top: none;">
@@ -906,7 +871,7 @@ const EmailEditorModal = ({ template, categories, onClose, onSave }) => {
   
   <div style="background: #f9fafb; padding: 20px; text-align: center; border-radius: 0 0 12px 12px; border: 1px solid #e5e7eb; border-top: none;">
     <p style="margin: 0; color: #6b7280; font-size: 14px;">
-      © 2024 PlanBeau. All rights reserved.
+      © 2024 Planbeau. All rights reserved.
     </p>
   </div>
 </body>
@@ -971,58 +936,24 @@ const EmailEditorModal = ({ template, categories, onClose, onSave }) => {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose} style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      background: 'rgba(0,0,0,0.5)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 1000
-    }}>
-      <div className="modal-content email-editor-modal" onClick={e => e.stopPropagation()} style={{
-        background: 'white',
-        borderRadius: '12px',
-        width: '90%',
-        maxWidth: '1000px',
-        maxHeight: '90vh',
-        overflow: 'hidden',
-        display: 'flex',
-        flexDirection: 'column'
-      }}>
-        <div className="modal-header" style={{
-          padding: '16px 24px',
-          borderBottom: '1px solid #e5e7eb',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
-        }}>
-          <h2 style={{ margin: 0, fontSize: '18px' }}>{template ? 'Edit Email Template' : 'Create Email Template'}</h2>
-          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-            <button 
-              onClick={() => setPreviewMode(!previewMode)}
-              style={{
-                padding: '8px 16px',
-                background: previewMode ? '#5e72e4' : '#f3f4f6',
-                color: previewMode ? 'white' : '#374151',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '13px'
-              }}
-            >
-              <i className={`fas fa-${previewMode ? 'edit' : 'eye'}`}></i> {previewMode ? 'Edit' : 'Preview'}
-            </button>
-            <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px', color: '#6b7280' }}>
-              <i className="fas fa-times"></i>
-            </button>
-          </div>
-        </div>
-
-        <div className="modal-body" style={{ flex: 1, overflow: 'auto', padding: '24px' }}>
+    <UniversalModal
+      isOpen={true}
+      onClose={onClose}
+      title={template ? 'Edit Email Template' : 'Create Email Template'}
+      size="large"
+      footer={
+        <>
+          <button className="um-btn um-btn-secondary" onClick={() => setPreviewMode(!previewMode)}>
+            <i className={`fas fa-${previewMode ? 'edit' : 'eye'}`}></i> {previewMode ? 'Edit' : 'Preview'}
+          </button>
+          <button className="um-btn um-btn-secondary" onClick={onClose}>Cancel</button>
+          <button className="um-btn um-btn-primary" onClick={handleSave} disabled={saving}>
+            {saving ? 'Saving...' : (template ? 'Update Template' : 'Create Template')}
+          </button>
+        </>
+      }
+    >
+      <div style={{ minHeight: '400px' }}>
           {previewMode ? (
             <div style={{ background: '#f9fafb', padding: '20px', borderRadius: '8px' }}>
               <div style={{ marginBottom: '16px', padding: '12px', background: 'white', borderRadius: '6px', border: '1px solid #e5e7eb' }}>
@@ -1134,48 +1065,8 @@ const EmailEditorModal = ({ template, categories, onClose, onSave }) => {
               </div>
             </div>
           )}
-        </div>
-
-        <div className="modal-footer" style={{
-          padding: '16px 24px',
-          borderTop: '1px solid #e5e7eb',
-          display: 'flex',
-          justifyContent: 'flex-end',
-          gap: '12px'
-        }}>
-          <button 
-            onClick={onClose}
-            style={{
-              padding: '10px 20px',
-              background: '#f3f4f6',
-              color: '#374151',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '14px'
-            }}
-          >
-            Cancel
-          </button>
-          <button 
-            onClick={handleSave}
-            disabled={saving}
-            style={{
-              padding: '10px 20px',
-              background: '#5e72e4',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              opacity: saving ? 0.7 : 1
-            }}
-          >
-            {saving ? 'Saving...' : (template ? 'Update Template' : 'Create Template')}
-          </button>
-        </div>
       </div>
-    </div>
+    </UniversalModal>
   );
 };
 

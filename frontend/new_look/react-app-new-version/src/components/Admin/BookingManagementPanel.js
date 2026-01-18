@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { API_BASE_URL } from '../../config';
-import { showBanner } from '../../utils/helpers';
+import { showBanner, formatCurrency } from '../../utils/helpers';
+import { apiGet, apiPost, apiPut } from '../../utils/api';
+import UniversalModal, { FormModal, ConfirmationModal } from '../UniversalModal';
+import { LoadingState, EmptyState, StatusBadge } from '../common/AdminComponents';
+import { ActionButtonGroup, ActionButton as IconActionButton, ViewButton, EditButton } from '../common/UIComponents';
 
 const BookingManagementPanel = () => {
   const [bookings, setBookings] = useState([]);
@@ -19,16 +22,10 @@ const BookingManagementPanel = () => {
   const fetchBookings = async () => {
     try {
       setLoading(true);
-      let url = `${API_BASE_URL}/admin/bookings?status=${filter}&page=${pagination.page}&limit=${pagination.limit}&search=${searchTerm}`;
+      let url = `/admin/bookings?status=${filter}&page=${pagination.page}&limit=${pagination.limit}&search=${searchTerm}`;
       if (dateRange.start) url += `&startDate=${dateRange.start}`;
       if (dateRange.end) url += `&endDate=${dateRange.end}`;
-
-      const response = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
+      const response = await apiGet(url);
       if (response.ok) {
         const data = await response.json();
         setBookings(data.bookings || []);
@@ -44,18 +41,11 @@ const BookingManagementPanel = () => {
 
   const handleCancelBooking = async (bookingId, reason, cancelledBy = 'admin', processRefund = true, refundPercent = null) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/bookings/${bookingId}/cancel`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ 
-          reason,
-          cancelledBy,
-          processRefund,
-          refundPercent
-        })
+      const response = await apiPost(`/admin/bookings/${bookingId}/cancel`, { 
+        reason,
+        cancelledBy,
+        processRefund,
+        refundPercent
       });
 
       if (response.ok) {
@@ -76,11 +66,7 @@ const BookingManagementPanel = () => {
 
   const handleExportCSV = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/bookings/export?status=${filter}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await apiGet(`/admin/bookings/export?status=${filter}`);
 
       if (response.ok) {
         const blob = await response.blob();
@@ -227,49 +213,19 @@ const BookingManagementPanel = () => {
                   </td>
                   <td>{getStatusBadge(booking.Status)}</td>
                   <td>
-                    <div className="action-buttons">
-                      <button
-                        className="action-btn view"
-                        title="View Details"
-                        onClick={() => { setSelectedBooking(booking); setModalType('view'); }}
-                      >
-                        <i className="fas fa-eye"></i>
-                      </button>
-                      <button
-                        className="action-btn edit"
-                        title="Edit Booking"
-                        onClick={() => { setSelectedBooking(booking); setModalType('edit'); }}
-                      >
-                        <i className="fas fa-pen"></i>
-                      </button>
+                    <ActionButtonGroup>
+                      <ViewButton onClick={() => { setSelectedBooking(booking); setModalType('view'); }} />
+                      <EditButton onClick={() => { setSelectedBooking(booking); setModalType('edit'); }} />
                       {booking.Status !== 'Cancelled' && booking.Status !== 'Completed' && (
-                        <button
-                          className="action-btn reject"
-                          title="Cancel Booking"
-                          onClick={() => { setSelectedBooking(booking); setModalType('cancel'); }}
-                        >
-                          <i className="fas fa-times"></i>
-                        </button>
+                        <IconActionButton action="reject" onClick={() => { setSelectedBooking(booking); setModalType('cancel'); }} title="Cancel" />
                       )}
                       {(booking.Status === 'Completed' || booking.Status === 'Cancelled') && (
-                        <button
-                          className="action-btn refund"
-                          title="Issue Refund"
-                          onClick={() => { setSelectedBooking(booking); setModalType('refund'); }}
-                        >
-                          <i className="fas fa-undo"></i>
-                        </button>
+                        <IconActionButton action="refund" onClick={() => { setSelectedBooking(booking); setModalType('refund'); }} />
                       )}
                       {booking.Status === 'Disputed' && (
-                        <button
-                          className="action-btn dispute"
-                          title="Resolve Dispute"
-                          onClick={() => { setSelectedBooking(booking); setModalType('dispute'); }}
-                        >
-                          <i className="fas fa-gavel"></i>
-                        </button>
+                        <IconActionButton action="approve" onClick={() => { setSelectedBooking(booking); setModalType('dispute'); }} title="Resolve" />
                       )}
-                    </div>
+                    </ActionButtonGroup>
                   </td>
                 </tr>
               ))}
@@ -345,15 +301,16 @@ const BookingManagementPanel = () => {
 // Booking View Modal
 const BookingViewModal = ({ booking, onClose }) => {
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content large" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>Booking #{booking.BookingID}</h2>
-          <button className="modal-close" onClick={onClose}>
-            
-          </button>
-        </div>
-        <div className="modal-body">
+    <UniversalModal
+      isOpen={true}
+      onClose={onClose}
+      title={`Booking #${booking.BookingID}`}
+      size="large"
+      showFooter={true}
+      footer={
+        <button className="um-btn um-btn-secondary" onClick={onClose}>Close</button>
+      }
+    >
           <div className="booking-detail-grid">
             <div className="detail-section">
               <h3>Booking Information</h3>
@@ -430,12 +387,7 @@ const BookingViewModal = ({ booking, onClose }) => {
               <p>{booking.Notes}</p>
             </div>
           )}
-        </div>
-        <div className="modal-footer">
-          <button className="btn-secondary" onClick={onClose}>Close</button>
-        </div>
-      </div>
-    </div>
+    </UniversalModal>
   );
 };
 
@@ -454,14 +406,7 @@ const BookingEditModal = ({ booking, onClose, onSave }) => {
   const handleSave = async () => {
     try {
       setSaving(true);
-      const response = await fetch(`${API_BASE_URL}/admin/bookings/${booking.BookingID}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(formData)
-      });
+      const response = await apiPut(`/admin/bookings/${booking.BookingID}`, formData);
 
       if (response.ok) {
         showBanner('Booking updated successfully', 'success');
@@ -475,80 +420,71 @@ const BookingEditModal = ({ booking, onClose, onSave }) => {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>Edit Booking #{booking.BookingID}</h2>
-          <button className="modal-close" onClick={onClose}>
-            
-          </button>
+    <FormModal
+      isOpen={true}
+      onClose={onClose}
+      title={`Edit Booking #${booking.BookingID}`}
+      onSave={handleSave}
+      saving={saving}
+      saveLabel="Save Changes"
+    >
+      <div className="form-group">
+        <label>Date</label>
+        <input
+          type="date"
+          value={formData.BookingDate}
+          onChange={e => setFormData({ ...formData, BookingDate: e.target.value })}
+        />
+      </div>
+      <div className="form-row">
+        <div className="form-group">
+          <label>Start Time</label>
+          <input
+            type="time"
+            value={formData.StartTime}
+            onChange={e => setFormData({ ...formData, StartTime: e.target.value })}
+          />
         </div>
-        <div className="modal-body">
-          <div className="form-group">
-            <label>Date</label>
-            <input
-              type="date"
-              value={formData.BookingDate}
-              onChange={e => setFormData({ ...formData, BookingDate: e.target.value })}
-            />
-          </div>
-          <div className="form-row">
-            <div className="form-group">
-              <label>Start Time</label>
-              <input
-                type="time"
-                value={formData.StartTime}
-                onChange={e => setFormData({ ...formData, StartTime: e.target.value })}
-              />
-            </div>
-            <div className="form-group">
-              <label>End Time</label>
-              <input
-                type="time"
-                value={formData.EndTime}
-                onChange={e => setFormData({ ...formData, EndTime: e.target.value })}
-              />
-            </div>
-          </div>
-          <div className="form-row">
-            <div className="form-group">
-              <label>Total Amount ($)</label>
-              <input
-                type="number"
-                value={formData.TotalAmount}
-                onChange={e => setFormData({ ...formData, TotalAmount: parseFloat(e.target.value) })}
-              />
-            </div>
-            <div className="form-group">
-              <label>Status</label>
-              <select
-                value={formData.Status}
-                onChange={e => setFormData({ ...formData, Status: e.target.value })}
-              >
-                <option value="Pending">Pending</option>
-                <option value="Confirmed">Confirmed</option>
-                <option value="Completed">Completed</option>
-                <option value="Cancelled">Cancelled</option>
-              </select>
-            </div>
-          </div>
-          <div className="form-group">
-            <label>Notes</label>
-            <textarea
-              value={formData.Notes}
-              onChange={e => setFormData({ ...formData, Notes: e.target.value })}
-              rows={3}
-            />
-          </div>
-        </div>
-        <div className="modal-footer">
-          <button className="btn-secondary" onClick={onClose}>Cancel</button>
-          <button className="btn-primary" onClick={handleSave} disabled={saving}>
-            {saving ? 'Saving...' : 'Save Changes'}
-          </button>
+        <div className="form-group">
+          <label>End Time</label>
+          <input
+            type="time"
+            value={formData.EndTime}
+            onChange={e => setFormData({ ...formData, EndTime: e.target.value })}
+          />
         </div>
       </div>
-    </div>
+      <div className="form-row">
+        <div className="form-group">
+          <label>Total Amount ($)</label>
+          <input
+            type="number"
+            value={formData.TotalAmount}
+            onChange={e => setFormData({ ...formData, TotalAmount: parseFloat(e.target.value) })}
+          />
+        </div>
+        <div className="form-group">
+          <label>Status</label>
+          <select
+            value={formData.Status}
+            onChange={e => setFormData({ ...formData, Status: e.target.value })}
+          >
+            <option value="Pending">Pending</option>
+            <option value="Confirmed">Confirmed</option>
+            <option value="Completed">Completed</option>
+            <option value="Cancelled">Cancelled</option>
+          </select>
+        </div>
+      </div>
+      <div className="form-group">
+        <label>Notes</label>
+        <textarea
+          value={formData.Notes}
+          onChange={e => setFormData({ ...formData, Notes: e.target.value })}
+          rows={3}
+        />
+      </div>
+    </FormModal>
   );
 };
 
@@ -571,121 +507,92 @@ const CancelBookingModal = ({ booking, onClose, onCancel }) => {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>Cancel Booking #{booking.BookingID}</h2>
-          <button className="modal-close" onClick={onClose}>
-            <i className="fas fa-times"></i>
-          </button>
-        </div>
-        <div className="modal-body">
-          <div className="warning-box">
-            <i className="fas fa-exclamation-triangle"></i>
-            <p>This action will cancel the booking and notify both the client and vendor.</p>
-          </div>
-          
-          <div className="form-group">
-            <label>Cancelled By</label>
-            <select value={cancelledBy} onChange={e => setCancelledBy(e.target.value)}>
-              <option value="admin">Admin</option>
-              <option value="client">Client Request</option>
-              <option value="vendor">Vendor Request</option>
-            </select>
-          </div>
-
-          <div className="form-group">
-            <label>Cancellation Reason</label>
-            <textarea
-              value={reason}
-              onChange={e => setReason(e.target.value)}
-              placeholder="Please provide a reason for cancellation..."
-              rows={3}
-            />
-          </div>
-
-          <div className="form-group">
-            <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <input
-                type="checkbox"
-                checked={processRefund}
-                onChange={e => setProcessRefund(e.target.checked)}
-              />
-              Process Stripe Refund (excludes platform fee)
-            </label>
-          </div>
-
-          {processRefund && (
-            <div className="form-group" style={{ background: '#f8f9fa', padding: '16px', borderRadius: '8px' }}>
-              <label style={{ marginBottom: '12px', display: 'block' }}>Refund Amount</label>
-              <div className="radio-group" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <input
-                    type="radio"
-                    value="policy"
-                    checked={refundType === 'policy'}
-                    onChange={() => setRefundType('policy')}
-                  />
-                  Use Vendor's Cancellation Policy
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <input
-                    type="radio"
-                    value="full"
-                    checked={refundType === 'full'}
-                    onChange={() => setRefundType('full')}
-                  />
-                  Full Refund (100%)
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <input
-                    type="radio"
-                    value="partial"
-                    checked={refundType === 'partial'}
-                    onChange={() => setRefundType('partial')}
-                  />
-                  Custom Partial Refund
-                  {refundType === 'partial' && (
-                    <input
-                      type="number"
-                      value={customRefundPercent}
-                      onChange={e => setCustomRefundPercent(Math.min(100, Math.max(0, parseInt(e.target.value) || 0)))}
-                      min={0}
-                      max={100}
-                      style={{ width: '60px', marginLeft: '8px' }}
-                    />
-                  )}
-                  {refundType === 'partial' && <span>%</span>}
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <input
-                    type="radio"
-                    value="none"
-                    checked={refundType === 'none'}
-                    onChange={() => setRefundType('none')}
-                  />
-                  No Refund (0%)
-                </label>
-              </div>
-              <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '12px', marginBottom: 0 }}>
-                <i className="fas fa-info-circle" style={{ marginRight: '6px' }}></i>
-                Platform fee is never refunded and goes to PlanBeau.
-              </p>
-            </div>
-          )}
-        </div>
-        <div className="modal-footer">
-          <button className="btn-secondary" onClick={onClose}>Keep Booking</button>
+    <UniversalModal
+      isOpen={true}
+      onClose={onClose}
+      title={`Cancel Booking #${booking.BookingID}`}
+      size="medium"
+      footer={
+        <>
+          <button className="um-btn um-btn-secondary" onClick={onClose}>Keep Booking</button>
           <button
-            className="btn-danger"
+            className="um-btn um-btn-primary"
+            style={{ background: '#ef4444' }}
             onClick={handleCancel}
             disabled={!reason.trim()}
           >
             Cancel Booking
           </button>
-        </div>
+        </>
+      }
+    >
+      <div className="warning-box" style={{ background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: '8px', padding: '12px 16px', display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: '16px' }}>
+        <i className="fas fa-exclamation-triangle" style={{ color: '#f59e0b' }}></i>
+        <p style={{ margin: 0, fontSize: '14px', color: '#92400e' }}>This action will cancel the booking and notify both the client and vendor.</p>
       </div>
-    </div>
+      
+      <div className="form-group">
+        <label>Cancelled By</label>
+        <select value={cancelledBy} onChange={e => setCancelledBy(e.target.value)}>
+          <option value="admin">Admin</option>
+          <option value="client">Client Request</option>
+          <option value="vendor">Vendor Request</option>
+        </select>
+      </div>
+
+      <div className="form-group">
+        <label>Cancellation Reason</label>
+        <textarea
+          value={reason}
+          onChange={e => setReason(e.target.value)}
+          placeholder="Please provide a reason for cancellation..."
+          rows={3}
+        />
+      </div>
+
+      <div className="form-group">
+        <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <input
+            type="checkbox"
+            checked={processRefund}
+            onChange={e => setProcessRefund(e.target.checked)}
+          />
+          Process Stripe Refund (excludes platform fee)
+        </label>
+      </div>
+
+      {processRefund && (
+        <div className="form-group" style={{ background: '#f8f9fa', padding: '16px', borderRadius: '8px' }}>
+          <label style={{ marginBottom: '12px', display: 'block' }}>Refund Amount</label>
+          <div className="radio-group" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <input type="radio" value="policy" checked={refundType === 'policy'} onChange={() => setRefundType('policy')} />
+              Use Vendor's Cancellation Policy
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <input type="radio" value="full" checked={refundType === 'full'} onChange={() => setRefundType('full')} />
+              Full Refund (100%)
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <input type="radio" value="partial" checked={refundType === 'partial'} onChange={() => setRefundType('partial')} />
+              Custom Partial Refund
+              {refundType === 'partial' && (
+                <input type="number" value={customRefundPercent} onChange={e => setCustomRefundPercent(Math.min(100, Math.max(0, parseInt(e.target.value) || 0)))} min={0} max={100} style={{ width: '60px', marginLeft: '8px' }} />
+              )}
+              {refundType === 'partial' && <span>%</span>}
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <input type="radio" value="none" checked={refundType === 'none'} onChange={() => setRefundType('none')} />
+              No Refund (0%)
+            </label>
+          </div>
+          <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '12px', marginBottom: 0 }}>
+            <i className="fas fa-info-circle" style={{ marginRight: '6px' }}></i>
+            Platform fee is never refunded and goes to Planbeau.
+          </p>
+        </div>
+      )}
+    </UniversalModal>
   );
 };
 
@@ -699,16 +606,9 @@ const RefundModal = ({ booking, onClose, onRefund }) => {
   const handleRefund = async () => {
     try {
       setProcessing(true);
-      const response = await fetch(`${API_BASE_URL}/admin/bookings/${booking.BookingID}/refund`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          amount: refundType === 'full' ? booking.TotalAmount : refundAmount,
-          reason
-        })
+      const response = await apiPost(`/admin/bookings/${booking.BookingID}/refund`, {
+        amount: refundType === 'full' ? booking.TotalAmount : refundAmount,
+        reason
       });
 
       if (response.ok) {
@@ -723,76 +623,47 @@ const RefundModal = ({ booking, onClose, onRefund }) => {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>Issue Refund - Booking #{booking.BookingID}</h2>
-          <button className="modal-close" onClick={onClose}>
-            
-          </button>
-        </div>
-        <div className="modal-body">
-          <div className="info-box">
-            <p><strong>Original Amount:</strong> ${booking.TotalAmount?.toFixed(2)}</p>
-            <p><strong>Payment Method:</strong> {booking.PaymentMethod || 'Stripe'}</p>
-          </div>
-          <div className="form-group">
-            <label>Refund Type</label>
-            <div className="radio-group">
-              <label>
-                <input
-                  type="radio"
-                  value="full"
-                  checked={refundType === 'full'}
-                  onChange={() => setRefundType('full')}
-                />
-                Full Refund (${booking.TotalAmount?.toFixed(2)})
-              </label>
-              <label>
-                <input
-                  type="radio"
-                  value="partial"
-                  checked={refundType === 'partial'}
-                  onChange={() => setRefundType('partial')}
-                />
-                Partial Refund
-              </label>
-            </div>
-          </div>
-          {refundType === 'partial' && (
-            <div className="form-group">
-              <label>Refund Amount ($)</label>
-              <input
-                type="number"
-                value={refundAmount}
-                onChange={e => setRefundAmount(parseFloat(e.target.value))}
-                max={booking.TotalAmount}
-                min={0}
-              />
-            </div>
-          )}
-          <div className="form-group">
-            <label>Reason for Refund</label>
-            <textarea
-              value={reason}
-              onChange={e => setReason(e.target.value)}
-              placeholder="Please provide a reason..."
-              rows={3}
-            />
-          </div>
-        </div>
-        <div className="modal-footer">
-          <button className="btn-secondary" onClick={onClose}>Cancel</button>
-          <button
-            className="btn-primary"
-            onClick={handleRefund}
-            disabled={processing || !reason.trim()}
-          >
-            {processing ? 'Processing...' : 'Process Refund'}
-          </button>
+    <UniversalModal
+      isOpen={true}
+      onClose={onClose}
+      title={`Issue Refund - Booking #${booking.BookingID}`}
+      size="medium"
+      primaryAction={{
+        label: processing ? 'Processing...' : 'Process Refund',
+        onClick: handleRefund,
+        loading: processing,
+        disabled: !reason.trim()
+      }}
+      secondaryAction={{ label: 'Cancel', onClick: onClose }}
+    >
+      <div className="info-box" style={{ background: '#f3f4f6', padding: '12px 16px', borderRadius: '8px', marginBottom: '16px' }}>
+        <p style={{ margin: '0 0 4px' }}><strong>Original Amount:</strong> ${booking.TotalAmount?.toFixed(2)}</p>
+        <p style={{ margin: 0 }}><strong>Payment Method:</strong> {booking.PaymentMethod || 'Stripe'}</p>
+      </div>
+      <div className="form-group">
+        <label>Refund Type</label>
+        <div className="radio-group" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <input type="radio" value="full" checked={refundType === 'full'} onChange={() => setRefundType('full')} />
+            Full Refund (${booking.TotalAmount?.toFixed(2)})
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <input type="radio" value="partial" checked={refundType === 'partial'} onChange={() => setRefundType('partial')} />
+            Partial Refund
+          </label>
         </div>
       </div>
-    </div>
+      {refundType === 'partial' && (
+        <div className="form-group">
+          <label>Refund Amount ($)</label>
+          <input type="number" value={refundAmount} onChange={e => setRefundAmount(parseFloat(e.target.value))} max={booking.TotalAmount} min={0} />
+        </div>
+      )}
+      <div className="form-group">
+        <label>Reason for Refund</label>
+        <textarea value={reason} onChange={e => setReason(e.target.value)} placeholder="Please provide a reason..." rows={3} />
+      </div>
+    </UniversalModal>
   );
 };
 
@@ -805,14 +676,7 @@ const DisputeModal = ({ booking, onClose, onResolve }) => {
   const handleResolve = async () => {
     try {
       setProcessing(true);
-      const response = await fetch(`${API_BASE_URL}/admin/bookings/${booking.BookingID}/resolve-dispute`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ resolution, action })
-      });
+      const response = await apiPost(`/admin/bookings/${booking.BookingID}/resolve-dispute`, { resolution, action });
 
       if (response.ok) {
         showBanner('Dispute resolved', 'success');
@@ -826,46 +690,38 @@ const DisputeModal = ({ booking, onClose, onResolve }) => {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>Resolve Dispute - Booking #{booking.BookingID}</h2>
-          <button className="modal-close" onClick={onClose}>
-            
-          </button>
-        </div>
-        <div className="modal-body">
-          <div className="form-group">
-            <label>Resolution Action</label>
-            <select value={action} onChange={e => setAction(e.target.value)}>
-              <option value="refund_client">Full Refund to Client</option>
-              <option value="partial_refund">Partial Refund to Client</option>
-              <option value="favor_vendor">Rule in Favor of Vendor</option>
-              <option value="split">Split Resolution</option>
-            </select>
-          </div>
-          <div className="form-group">
-            <label>Resolution Notes</label>
-            <textarea
-              value={resolution}
-              onChange={e => setResolution(e.target.value)}
-              placeholder="Describe the resolution and reasoning..."
-              rows={4}
-            />
-          </div>
-        </div>
-        <div className="modal-footer">
-          <button className="btn-secondary" onClick={onClose}>Cancel</button>
-          <button
-            className="btn-primary"
-            onClick={handleResolve}
-            disabled={processing || !resolution.trim()}
-          >
-            {processing ? 'Resolving...' : 'Resolve Dispute'}
-          </button>
-        </div>
+    <UniversalModal
+      isOpen={true}
+      onClose={onClose}
+      title={`Resolve Dispute - Booking #${booking.BookingID}`}
+      size="medium"
+      primaryAction={{
+        label: processing ? 'Resolving...' : 'Resolve Dispute',
+        onClick: handleResolve,
+        loading: processing,
+        disabled: !resolution.trim()
+      }}
+      secondaryAction={{ label: 'Cancel', onClick: onClose }}
+    >
+      <div className="form-group">
+        <label>Resolution Action</label>
+        <select value={action} onChange={e => setAction(e.target.value)}>
+          <option value="refund_client">Full Refund to Client</option>
+          <option value="partial_refund">Partial Refund to Client</option>
+          <option value="favor_vendor">Rule in Favor of Vendor</option>
+          <option value="split">Split Resolution</option>
+        </select>
       </div>
-    </div>
+      <div className="form-group">
+        <label>Resolution Notes</label>
+        <textarea
+          value={resolution}
+          onChange={e => setResolution(e.target.value)}
+          placeholder="Describe the resolution and reasoning..."
+          rows={4}
+        />
+      </div>
+    </UniversalModal>
   );
 };
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { API_BASE_URL } from '../../../config';
+import { apiGet, apiPost } from '../../../utils/api';
 import { useUserOnlineStatus } from '../../../hooks/useOnlineStatus';
 
 function VendorMessagesSection({ onSectionChange }) {

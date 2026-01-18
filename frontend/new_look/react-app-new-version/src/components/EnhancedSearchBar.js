@@ -96,9 +96,10 @@ const EnhancedSearchBar = ({ onSearch, isScrolled }) => {
         setShowLocationDropdown(true);
         // Focus the location input after a short delay
         setTimeout(() => {
-          if (locationRef.current) {
-            locationRef.current.focus();
-            locationRef.current.select();
+          const locationInput = document.getElementById('location-input');
+          if (locationInput) {
+            locationInput.focus();
+            locationInput.select();
           }
         }, 100);
       }

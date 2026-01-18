@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { API_BASE_URL } from '../../config';
 import { showBanner } from '../../utils/helpers';
+import { apiGet, apiPost } from '../../utils/api';
+import { API_BASE_URL } from '../../config';
+import UniversalModal from '../UniversalModal';
+import { LoadingState, EmptyState } from '../common/AdminComponents';
 
 const SupportToolsPanel = () => {
   const [activeTab, setActiveTab] = useState('impersonate'); // impersonate, tickets, notes
@@ -19,25 +22,14 @@ const SupportToolsPanel = () => {
 
   const handleSearch = async () => {
     if (!searchTerm.trim()) return;
-
     try {
       setSearching(true);
-      const response = await fetch(`${API_BASE_URL}/admin/support/search?q=${encodeURIComponent(searchTerm)}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
+      const response = await apiGet(`/admin/support/search?q=${encodeURIComponent(searchTerm)}`);
       if (response.ok) {
         const data = await response.json();
         setSearchResults(data.results || []);
       } else {
-        // Mock results
-        setSearchResults([
-          { type: 'user', id: 1, name: 'John Doe', email: 'john@example.com', accountType: 'Client' },
-          { type: 'vendor', id: 2, name: 'Elite Catering', email: 'info@elitecatering.com', accountType: 'Vendor' },
-          { type: 'user', id: 3, name: 'Jane Smith', email: 'jane@example.com', accountType: 'Client' }
-        ]);
+        setSearchResults([]);
       }
     } catch (error) {
       console.error('Error searching:', error);
@@ -52,14 +44,7 @@ const SupportToolsPanel = () => {
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/support/impersonate`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ userId, userType })
-      });
+      const response = await apiPost('/admin/support/impersonate', { userId, userType });
 
       if (response.ok) {
         const data = await response.json();
@@ -78,11 +63,7 @@ const SupportToolsPanel = () => {
   const fetchTickets = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/admin/support/tickets`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await apiGet('/admin/support/tickets');
 
       if (response.ok) {
         const data = await response.json();
@@ -296,11 +277,7 @@ const InternalNotesSection = () => {
 
   const fetchNotes = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/support/notes`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await apiGet('/admin/support/notes');
 
       if (response.ok) {
         const data = await response.json();
@@ -326,14 +303,7 @@ const InternalNotesSection = () => {
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/support/notes`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(newNote)
-      });
+      const response = await apiPost('/admin/support/notes', newNote);
 
       if (response.ok) {
         showBanner('Note added', 'success');
@@ -461,113 +431,80 @@ const TicketModal = ({ ticket, onClose, onSave }) => {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content large" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>{ticket?.isNew ? 'Create Support Ticket' : `Ticket #${ticket.id}`}</h2>
-          <button className="modal-close" onClick={onClose}>
-            
-          </button>
+    <UniversalModal
+      isOpen={true}
+      onClose={onClose}
+      title={ticket?.isNew ? 'Create Support Ticket' : `Ticket #${ticket.id}`}
+      size="large"
+      primaryAction={{
+        label: saving ? 'Saving...' : (ticket?.isNew ? 'Create Ticket' : 'Update Ticket'),
+        onClick: handleSave,
+        loading: saving
+      }}
+      secondaryAction={{ label: 'Cancel', onClick: onClose }}
+    >
+      <div className="form-row">
+        <div className="form-group">
+          <label>Subject</label>
+          <input type="text" value={formData.subject} onChange={e => setFormData({ ...formData, subject: e.target.value })} />
         </div>
-        <div className="modal-body">
-          <div className="form-row">
-            <div className="form-group">
-              <label>Subject</label>
-              <input
-                type="text"
-                value={formData.subject}
-                onChange={e => setFormData({ ...formData, subject: e.target.value })}
-              />
-            </div>
-            <div className="form-group">
-              <label>User Email</label>
-              <input
-                type="text"
-                value={formData.user}
-                onChange={e => setFormData({ ...formData, user: e.target.value })}
-              />
-            </div>
-          </div>
-          <div className="form-row">
-            <div className="form-group">
-              <label>Priority</label>
-              <select
-                value={formData.priority}
-                onChange={e => setFormData({ ...formData, priority: e.target.value })}
-              >
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-              </select>
-            </div>
-            <div className="form-group">
-              <label>Status</label>
-              <select
-                value={formData.status}
-                onChange={e => setFormData({ ...formData, status: e.target.value })}
-              >
-                <option value="open">Open</option>
-                <option value="in_progress">In Progress</option>
-                <option value="resolved">Resolved</option>
-                <option value="closed">Closed</option>
-              </select>
-            </div>
-          </div>
-          <div className="form-group">
-            <label>Description</label>
-            <textarea
-              value={formData.description}
-              onChange={e => setFormData({ ...formData, description: e.target.value })}
-              rows={4}
-            />
-          </div>
-          {!ticket?.isNew && (
-            <div className="form-group">
-              <label>Response</label>
-              <textarea
-                value={formData.response}
-                onChange={e => setFormData({ ...formData, response: e.target.value })}
-                placeholder="Add a response to this ticket..."
-                rows={4}
-              />
-            </div>
-          )}
-          <div className="form-group">
-            <label>Attachments</label>
-            <div className="file-upload">
-              <input
-                type="file"
-                multiple
-                onChange={handleFileUpload}
-                id="ticket-attachments"
-              />
-              <label htmlFor="ticket-attachments" className="file-upload-label">
-                <i className="fas fa-paperclip"></i> Add Files
-              </label>
-            </div>
-            {attachments.length > 0 && (
-              <div className="attachments-list">
-                {attachments.map((file, index) => (
-                  <div key={index} className="attachment-item">
-                    <i className="fas fa-file"></i>
-                    <span>{file.name}</span>
-                    <button onClick={() => setAttachments(attachments.filter((_, i) => i !== index))}>
-                      
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-        <div className="modal-footer">
-          <button className="btn-secondary" onClick={onClose}>Cancel</button>
-          <button className="btn-primary" onClick={handleSave} disabled={saving}>
-            {saving ? 'Saving...' : (ticket?.isNew ? 'Create Ticket' : 'Update Ticket')}
-          </button>
+        <div className="form-group">
+          <label>User Email</label>
+          <input type="text" value={formData.user} onChange={e => setFormData({ ...formData, user: e.target.value })} />
         </div>
       </div>
-    </div>
+      <div className="form-row">
+        <div className="form-group">
+          <label>Priority</label>
+          <select value={formData.priority} onChange={e => setFormData({ ...formData, priority: e.target.value })}>
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+          </select>
+        </div>
+        <div className="form-group">
+          <label>Status</label>
+          <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })}>
+            <option value="open">Open</option>
+            <option value="in_progress">In Progress</option>
+            <option value="resolved">Resolved</option>
+            <option value="closed">Closed</option>
+          </select>
+        </div>
+      </div>
+      <div className="form-group">
+        <label>Description</label>
+        <textarea value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} rows={4} />
+      </div>
+      {!ticket?.isNew && (
+        <div className="form-group">
+          <label>Response</label>
+          <textarea value={formData.response} onChange={e => setFormData({ ...formData, response: e.target.value })} placeholder="Add a response to this ticket..." rows={4} />
+        </div>
+      )}
+      <div className="form-group">
+        <label>Attachments</label>
+        <div className="file-upload">
+          <input type="file" multiple onChange={handleFileUpload} id="ticket-attachments" style={{ display: 'none' }} />
+          <label htmlFor="ticket-attachments" className="file-upload-label" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '8px 16px', background: '#f3f4f6', borderRadius: '6px', cursor: 'pointer' }}>
+            <i className="fas fa-paperclip"></i> Add Files
+          </label>
+        </div>
+        {attachments.length > 0 && (
+          <div className="attachments-list" style={{ marginTop: '8px', display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+            {attachments.map((file, index) => (
+              <div key={index} className="attachment-item" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 8px', background: '#f3f4f6', borderRadius: '4px' }}>
+                <i className="fas fa-file"></i>
+                <span>{file.name}</span>
+                <button onClick={() => setAttachments(attachments.filter((_, i) => i !== index))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444' }}>
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </UniversalModal>
   );
 };
 

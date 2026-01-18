@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { API_BASE_URL } from '../../../config';
 import { showBanner } from '../../../utils/helpers';
+import { apiGet, apiPost, apiPut, apiDelete, apiPostFormData } from '../../../utils/api';
+import { API_BASE_URL } from '../../../config';
+import { DeleteButton } from '../../common/UIComponents';
 
 function GalleryMediaPanel({ onBack, vendorProfileId }) {
   const [loading, setLoading] = useState(true);
@@ -28,13 +30,9 @@ function GalleryMediaPanel({ onBack, vendorProfileId }) {
       setLoading(true);
       
       // Load images
-      const photosResponse = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/images`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
-      
+      const photosResponse = await apiGet(`/vendors/${vendorProfileId}/images`);
       if (photosResponse.ok) {
         const photosData = await photosResponse.json();
-        // Response is an array of images
         const images = Array.isArray(photosData) ? photosData : [];
         setPhotos(images.map(img => ({
           id: img.id || img.ImageID,
@@ -47,10 +45,7 @@ function GalleryMediaPanel({ onBack, vendorProfileId }) {
       }
       
       // Load albums
-      const albumsResponse = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/portfolio/albums`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
-      
+      const albumsResponse = await apiGet(`/vendor/${vendorProfileId}/portfolio/albums`);
       if (albumsResponse.ok) {
         const albumsData = await albumsResponse.json();
         const albums = albumsData.albums || [];
@@ -479,32 +474,19 @@ function GalleryMediaPanel({ onBack, vendorProfileId }) {
                       </div>
                     )}
                     {/* Delete button - top right */}
-                    <button
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); handleDeletePhoto(photo.id); }}
-                      style={{
+                    <DeleteButton
+                      onClick={() => handleDeletePhoto(photo.id)}
+                      className="photo-delete-btn"
+                      style={{ 
                         position: 'absolute',
-                        top: '8px',
-                        right: '8px',
-                        width: '28px',
-                        height: '28px',
-                        borderRadius: '50%',
-                        border: 'none',
-                        background: 'white',
-                        color: '#222',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
+                        top: '8px', 
+                        right: '8px', 
                         opacity: 0,
-                        transition: 'opacity 0.2s'
+                        background: 'rgba(255,255,255,0.95)'
                       }}
                       onMouseOver={(e) => e.currentTarget.style.opacity = 1}
-                      className="photo-delete-btn"
-                    >
-                      <i className="fas fa-times" style={{ fontSize: '12px' }}></i>
-                    </button>
+                      title="Remove"
+                    />
                   </div>
                 ))}
                 {/* Add more card at the end - dashed border style */}

@@ -1,9 +1,9 @@
-// PlanBeau Service Worker for Push Notifications
+// Planbeau Service Worker for Push Notifications
 
 self.addEventListener('push', function(event) {
   console.log('[Service Worker] Push received:', event);
   
-  let data = { title: 'PlanBeau', body: 'You have a new notification' };
+  let data = { title: 'Planbeau', body: 'You have a new notification' };
   
   if (event.data) {
     try {
@@ -32,7 +32,7 @@ self.addEventListener('push', function(event) {
   };
   
   event.waitUntil(
-    self.registration.showNotification(data.title || 'PlanBeau', options)
+    self.registration.showNotification(data.title || 'Planbeau', options)
   );
 });
 

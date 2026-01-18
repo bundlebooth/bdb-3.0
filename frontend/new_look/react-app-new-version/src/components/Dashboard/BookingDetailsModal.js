@@ -1,9 +1,10 @@
 import React from 'react';
+import UniversalModal from '../UniversalModal';
 import { getBookingStatusConfig, formatTimeValue } from '../../utils/bookingStatus';
-import { COLORS, MODAL_STYLES, BUTTON_STYLES, TYPOGRAPHY, getStatusBadgeStyle } from '../../utils/uiConstants';
+import './BookingDetailsModal.css';
 
 function BookingDetailsModal({ isOpen, onClose, booking, isVendorView = false }) {
-  if (!isOpen || !booking) return null;
+  if (!booking) return null;
 
   // Parse event date
   const eventDate = booking.EventDate ? new Date(booking.EventDate) : null;
@@ -47,153 +48,86 @@ function BookingDetailsModal({ isOpen, onClose, booking, isVendorView = false })
 
   // Use shared status config - isVendorView is passed as prop
   const statusCfg = getBookingStatusConfig(booking, isVendorView);
-
   const s = (booking._status || booking.Status || 'pending').toString().toLowerCase();
 
-  return (
-    <div 
-      style={MODAL_STYLES.overlay}
-      onClick={onClose}
-    >
-      <div 
-        style={MODAL_STYLES.container}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div style={MODAL_STYLES.header}>
-          <h2 style={MODAL_STYLES.title}>Booking Details</h2>
-          <button 
-            onClick={onClose}
-            style={MODAL_STYLES.closeButton}
-            onMouseOver={(e) => {
-              e.currentTarget.style.background = COLORS.bgGray;
-              e.currentTarget.style.color = COLORS.textPrimary;
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.background = 'none';
-              e.currentTarget.style.color = COLORS.textSecondary;
-            }}
-          >
-            ×
-          </button>
-        </div>
-
-        {/* Content */}
-        <div style={MODAL_STYLES.content}>
-          {/* Status Badge */}
-          <div style={{ marginBottom: '20px' }}>
-            <span style={getStatusBadgeStyle(statusCfg.color, statusCfg.bg, statusCfg.borderStyle)}>
-              <i className={`fas ${statusCfg.icon}`} style={{ fontSize: '11px' }}></i>
-              {statusCfg.label}
-            </span>
-            {s === 'declined' && booking.DeclineReason && (
-              <div style={{ marginTop: '8px', fontSize: TYPOGRAPHY.fontSize.sm, color: COLORS.error }}>
-                Reason: {booking.DeclineReason}
-              </div>
-            )}
-          </div>
-
-          {/* Details List - Clean style matching app */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {/* Event Name */}
-            {(booking.EventName || booking.ServiceName) && (
-              <div>
-                <div style={{ fontSize: TYPOGRAPHY.fontSize.xs, color: COLORS.textSecondary, fontWeight: TYPOGRAPHY.fontWeight.medium, textTransform: 'uppercase', marginBottom: '4px' }}>Event Name</div>
-                <div style={{ fontSize: TYPOGRAPHY.fontSize.base, color: COLORS.textPrimary, fontWeight: TYPOGRAPHY.fontWeight.medium }}>{booking.EventName || booking.ServiceName}</div>
-              </div>
-            )}
-
-            {/* Event Type */}
-            {booking.EventType && (
-              <div>
-                <div style={{ fontSize: TYPOGRAPHY.fontSize.xs, color: COLORS.textSecondary, fontWeight: TYPOGRAPHY.fontWeight.medium, textTransform: 'uppercase', marginBottom: '4px' }}>Event Type</div>
-                <div style={{ fontSize: TYPOGRAPHY.fontSize.base, color: COLORS.textPrimary, fontWeight: TYPOGRAPHY.fontWeight.medium }}>{booking.EventType}</div>
-              </div>
-            )}
-
-            {/* Service */}
-            {booking.ServiceName && booking.EventName && (
-              <div>
-                <div style={{ fontSize: TYPOGRAPHY.fontSize.xs, color: COLORS.textSecondary, fontWeight: TYPOGRAPHY.fontWeight.medium, textTransform: 'uppercase', marginBottom: '4px' }}>Service</div>
-                <div style={{ fontSize: TYPOGRAPHY.fontSize.base, color: COLORS.textPrimary, fontWeight: TYPOGRAPHY.fontWeight.medium }}>{booking.ServiceName}</div>
-              </div>
-            )}
-
-            {/* Client/Vendor Name */}
-            {(booking.ClientName || booking.VendorName) && (
-              <div>
-                <div style={{ fontSize: TYPOGRAPHY.fontSize.xs, color: COLORS.textSecondary, fontWeight: TYPOGRAPHY.fontWeight.medium, textTransform: 'uppercase', marginBottom: '4px' }}>
-                  {booking.ClientName ? 'Client' : 'Vendor'}
-                </div>
-                <div style={{ fontSize: TYPOGRAPHY.fontSize.base, color: COLORS.textPrimary, fontWeight: TYPOGRAPHY.fontWeight.medium }}>{booking.ClientName || booking.VendorName}</div>
-              </div>
-            )}
-
-            {/* Attendees */}
-            {booking.AttendeeCount && (
-              <div>
-                <div style={{ fontSize: TYPOGRAPHY.fontSize.xs, color: COLORS.textSecondary, fontWeight: TYPOGRAPHY.fontWeight.medium, textTransform: 'uppercase', marginBottom: '4px' }}>Attendees</div>
-                <div style={{ fontSize: TYPOGRAPHY.fontSize.base, color: COLORS.textPrimary, fontWeight: TYPOGRAPHY.fontWeight.medium }}>{booking.AttendeeCount} people</div>
-              </div>
-            )}
-
-            {/* Location */}
-            {booking.Location && (
-              <div>
-                <div style={{ fontSize: TYPOGRAPHY.fontSize.xs, color: COLORS.textSecondary, fontWeight: TYPOGRAPHY.fontWeight.medium, textTransform: 'uppercase', marginBottom: '4px' }}>Location</div>
-                <div style={{ fontSize: TYPOGRAPHY.fontSize.base, color: COLORS.textPrimary, fontWeight: TYPOGRAPHY.fontWeight.medium }}>{booking.Location}</div>
-              </div>
-            )}
-
-            {/* Date */}
-            <div>
-              <div style={{ fontSize: TYPOGRAPHY.fontSize.xs, color: COLORS.textSecondary, fontWeight: TYPOGRAPHY.fontWeight.medium, textTransform: 'uppercase', marginBottom: '4px' }}>Date</div>
-              <div style={{ fontSize: TYPOGRAPHY.fontSize.base, color: COLORS.textPrimary, fontWeight: TYPOGRAPHY.fontWeight.medium }}>{formattedDate}</div>
-            </div>
-
-            {/* Time */}
-            <div>
-              <div style={{ fontSize: TYPOGRAPHY.fontSize.xs, color: COLORS.textSecondary, fontWeight: TYPOGRAPHY.fontWeight.medium, textTransform: 'uppercase', marginBottom: '4px' }}>Time</div>
-              <div style={{ fontSize: TYPOGRAPHY.fontSize.base, color: COLORS.textPrimary, fontWeight: TYPOGRAPHY.fontWeight.medium }}>{timeDisplay}</div>
-            </div>
-
-            {/* Total Amount */}
-            {booking.TotalAmount != null && booking.TotalAmount !== '' && Number(booking.TotalAmount) > 0 && (
-              <div>
-                <div style={{ fontSize: TYPOGRAPHY.fontSize.xs, color: COLORS.textSecondary, fontWeight: TYPOGRAPHY.fontWeight.medium, textTransform: 'uppercase', marginBottom: '4px' }}>Total Amount</div>
-                <div style={{ fontSize: TYPOGRAPHY.fontSize.base, color: COLORS.price, fontWeight: TYPOGRAPHY.fontWeight.semibold }}>${Number(booking.TotalAmount).toLocaleString()}</div>
-              </div>
-            )}
-
-            {/* Requested On */}
-            <div>
-              <div style={{ fontSize: TYPOGRAPHY.fontSize.xs, color: COLORS.textSecondary, fontWeight: TYPOGRAPHY.fontWeight.medium, textTransform: 'uppercase', marginBottom: '4px' }}>Requested On</div>
-              <div style={{ fontSize: TYPOGRAPHY.fontSize.base, color: COLORS.textPrimary, fontWeight: TYPOGRAPHY.fontWeight.medium }}>{formattedRequestedDate}</div>
-            </div>
-
-            {/* Special Requests */}
-            {booking.SpecialRequests && (
-              <div>
-                <div style={{ fontSize: TYPOGRAPHY.fontSize.xs, color: COLORS.textSecondary, fontWeight: TYPOGRAPHY.fontWeight.medium, textTransform: 'uppercase', marginBottom: '4px' }}>Special Requests</div>
-                <div style={{ fontSize: TYPOGRAPHY.fontSize.base, color: COLORS.textSecondary, fontWeight: TYPOGRAPHY.fontWeight.normal, lineHeight: TYPOGRAPHY.lineHeight.normal }}>{booking.SpecialRequests}</div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div style={{ ...MODAL_STYLES.footer, justifyContent: 'center' }}>
-          <button 
-            onClick={onClose}
-            style={BUTTON_STYLES.primary}
-            onMouseOver={(e) => e.currentTarget.style.background = COLORS.primaryHover}
-            onMouseOut={(e) => e.currentTarget.style.background = COLORS.primary}
-          >
-            Close
-          </button>
-        </div>
-      </div>
+  // Detail row component for consistency
+  const DetailRow = ({ label, value, highlight = false }) => (
+    <div className="bdm-detail-row">
+      <div className="bdm-detail-label">{label}</div>
+      <div className={`bdm-detail-value ${highlight ? 'highlight' : ''}`}>{value}</div>
     </div>
+  );
+
+  return (
+    <UniversalModal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Booking Details"
+      size="medium"
+      primaryAction={{ label: 'Close', onClick: onClose }}
+      secondaryAction={false}
+      footerCentered
+    >
+      {/* Status Badge */}
+      <div className="bdm-status-section">
+        <span className={`bdm-status-badge bdm-status-${statusCfg.color}`}>
+          <i className={`fas ${statusCfg.icon}`}></i>
+          {statusCfg.label}
+        </span>
+        {s === 'declined' && booking.DeclineReason && (
+          <div className="bdm-decline-reason">
+            Reason: {booking.DeclineReason}
+          </div>
+        )}
+      </div>
+
+      {/* Details List */}
+      <div className="bdm-details-list">
+        {(booking.EventName || booking.ServiceName) && (
+          <DetailRow label="Event Name" value={booking.EventName || booking.ServiceName} />
+        )}
+        
+        {booking.EventType && (
+          <DetailRow label="Event Type" value={booking.EventType} />
+        )}
+        
+        {booking.ServiceName && booking.EventName && (
+          <DetailRow label="Service" value={booking.ServiceName} />
+        )}
+        
+        {(booking.ClientName || booking.VendorName) && (
+          <DetailRow 
+            label={booking.ClientName ? 'Client' : 'Vendor'} 
+            value={booking.ClientName || booking.VendorName} 
+          />
+        )}
+        
+        {booking.AttendeeCount && (
+          <DetailRow label="Attendees" value={`${booking.AttendeeCount} people`} />
+        )}
+        
+        {booking.Location && (
+          <DetailRow label="Location" value={booking.Location} />
+        )}
+        
+        <DetailRow label="Date" value={formattedDate} />
+        <DetailRow label="Time" value={timeDisplay} />
+        
+        {booking.TotalAmount != null && booking.TotalAmount !== '' && Number(booking.TotalAmount) > 0 && (
+          <DetailRow 
+            label="Total Amount" 
+            value={`$${Number(booking.TotalAmount).toLocaleString()}`} 
+            highlight 
+          />
+        )}
+        
+        <DetailRow label="Requested On" value={formattedRequestedDate} />
+        
+        {booking.SpecialRequests && (
+          <DetailRow label="Special Requests" value={booking.SpecialRequests} />
+        )}
+      </div>
+    </UniversalModal>
   );
 }
 

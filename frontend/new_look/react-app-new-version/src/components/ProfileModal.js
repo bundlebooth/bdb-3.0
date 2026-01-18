@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { API_BASE_URL } from '../config';
 import { showBanner } from '../utils/helpers';
+import { apiGet, apiPost } from '../utils/api';
+import UniversalModal from './UniversalModal';
 
 function ProfileModal({ isOpen, onClose }) {
   const { currentUser, handleGoogleLogin, logout, setCurrentUser } = useAuth();
@@ -64,7 +65,7 @@ function ProfileModal({ isOpen, onClose }) {
       }
 
       // Check if user already exists in our system
-      const checkResponse = await fetch(`${API_BASE_URL}/users/check-email?email=${encodeURIComponent(decoded.email)}`);
+      const checkResponse = await apiGet(`/users/check-email?email=${encodeURIComponent(decoded.email)}`);
       const checkData = await checkResponse.json();
 
       if (checkData.exists) {
@@ -106,16 +107,12 @@ function ProfileModal({ isOpen, onClose }) {
       }
 
       // Call social-login with account type
-      const response = await fetch(`${API_BASE_URL}/users/social-login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: decoded.email,
-          name: decoded.name,
-          authProvider: 'google',
-          avatar: decoded.picture,
-          accountType: googleAccountType
-        })
+      const response = await apiPost('/users/social-login', {
+        email: decoded.email,
+        name: decoded.name,
+        authProvider: 'google',
+        avatar: decoded.picture,
+        accountType: googleAccountType
       });
 
       if (!response.ok) {
@@ -234,11 +231,7 @@ function ProfileModal({ isOpen, onClose }) {
 
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/users/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: loginEmail, password: loginPassword })
-      });
+      const response = await apiPost('/users/login', { email: loginEmail, password: loginPassword });
 
       if (!response.ok) {
         const error = await response.json();
@@ -306,15 +299,11 @@ function ProfileModal({ isOpen, onClose }) {
 
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/users/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: signupName,
-          email: signupEmail,
-          password: signupPassword,
-          accountType: accountType
-        })
+      const response = await apiPost('/users/register', {
+        name: signupName,
+        email: signupEmail,
+        password: signupPassword,
+        accountType: accountType
       });
 
       if (!response.ok) {
@@ -378,11 +367,7 @@ function ProfileModal({ isOpen, onClose }) {
 
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/auth/verify-2fa`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: twofaEmail, code })
-      });
+      const response = await apiPost('/auth/verify-2fa', { email: twofaEmail, code });
 
       if (!response.ok) {
         throw new Error('Invalid verification code');
@@ -426,11 +411,7 @@ function ProfileModal({ isOpen, onClose }) {
 
   const handleResend2FA = async () => {
     try {
-      await fetch(`${API_BASE_URL}/auth/resend-2fa`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: twofaEmail })
-      });
+      await apiPost('/auth/resend-2fa', { email: twofaEmail });
       showBanner('Verification code resent', 'success');
     } catch (error) {
       showBanner('Failed to resend code', 'error');
@@ -465,57 +446,24 @@ function ProfileModal({ isOpen, onClose }) {
     window.dispatchEvent(new CustomEvent('openDashboard'));
   };
 
-  if (!isOpen) return null;
+  const getModalTitle = () => {
+    if (view === 'login') return 'Welcome to Planbeau';
+    if (view === 'signup') return 'Create Account';
+    if (view === 'twofa') return 'Verify Your Account';
+    if (view === 'googleAccountType') return 'Choose Account Type';
+    if (view === 'loggedIn') return 'My Account';
+    return 'Account';
+  };
 
   return (
-    <div className="modal profile-modal" id="profile-modal" style={{ display: 'flex' }} onClick={onClose}>
-      <div className="modal-content profile-modal-content" style={{ 
-        maxWidth: '440px',
-        borderRadius: '16px',
-        padding: '0',
-        boxShadow: '0 10px 40px rgba(0,0,0,0.15)'
-      }} onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header" style={{
-          padding: '24px 24px 16px 24px',
-          borderBottom: '1px solid #E5E7EB',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
-        }}>
-          <h3 id="profile-modal-title" style={{
-            fontSize: '24px',
-            fontWeight: '600',
-            color: '#1F2937',
-            margin: 0
-          }}>
-            {view === 'login' && 'Welcome to PlanBeau'}
-            {view === 'signup' && 'Create Account'}
-            {view === 'twofa' && 'Verify Your Account'}
-            {view === 'googleAccountType' && 'Choose Account Type'}
-            {view === 'loggedIn' && 'My Account'}
-          </h3>
-          <button 
-            onClick={onClose}
-            className="modal-close-btn"
-            style={{
-              background: '#f3f4f6',
-              border: 'none',
-              fontSize: '20px',
-              color: '#6b7280',
-              cursor: 'pointer',
-              padding: '0',
-              lineHeight: '1',
-              width: '36px',
-              height: '36px',
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-          >×</button>
-        </div>
-        
-        <div className="modal-body" style={{ padding: '24px' }}>
+    <UniversalModal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={getModalTitle()}
+      size="small"
+      showFooter={false}
+    >
+      <div>
           {/* Login Form */}
           {view === 'login' && (
             <form id="login-form" onSubmit={handleLogin}>
@@ -820,7 +768,7 @@ function ProfileModal({ isOpen, onClose }) {
                   margin: 0,
                   fontWeight: '500'
                 }}>
-                  Welcome! Choose how you'd like to use PlanBeau
+                  Welcome! Choose how you'd like to use Planbeau
                 </p>
               </div>
 
@@ -985,9 +933,8 @@ function ProfileModal({ isOpen, onClose }) {
               </button>
             </div>
           )}
-        </div>
       </div>
-    </div>
+    </UniversalModal>
   );
 }
 

@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { API_BASE_URL, GOOGLE_MAPS_API_KEY } from '../config';
+import { GOOGLE_MAPS_API_KEY } from '../config';
+import { apiGet, apiPost } from '../utils/api';
 import { PageLayout } from '../components/PageWrapper';
 import Header from '../components/Header';
 import SkeletonLoader from '../components/SkeletonLoader';
@@ -14,6 +15,7 @@ import Breadcrumb from '../components/Breadcrumb';
 import BookingCalendar from '../components/BookingCalendar';
 import SharedDateTimePicker from '../components/SharedDateTimePicker';
 import { extractVendorIdFromSlug, parseQueryParams, trackPageView } from '../utils/urlHelpers';
+import { formatDateWithWeekday } from '../utils/helpers';
 import { getProvinceFromLocation, getTaxInfoForProvince, PROVINCE_TAX_RATES } from '../utils/taxCalculations';
 import '../styles/BookingPage.css';
 import '../components/Calendar.css';
@@ -107,7 +109,7 @@ function BookingPage() {
   // Load commission settings from API
   const loadCommissionSettings = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/public/commission-info`);
+      const response = await apiGet('/public/commission-info');
       if (response.ok) {
         const data = await response.json();
         if (data.success && data.commissionInfo) {
@@ -124,7 +126,7 @@ function BookingPage() {
   // Load province tax rates
   const loadProvinceTaxRates = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/payments/tax-rates`);
+      const response = await apiGet('/payments/tax-rates');
       if (response.ok) {
         const data = await response.json();
         if (data.success && data.provinces) {
@@ -160,7 +162,7 @@ function BookingPage() {
   // Load vendor data
   const loadVendorData = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/vendors/${vendorId}`);
+      const response = await apiGet(`/vendors/${vendorId}`);
       
       if (!response.ok) {
         throw new Error(`Failed to load vendor data: ${response.status} ${response.statusText}`);
@@ -193,7 +195,7 @@ function BookingPage() {
   // Load vendor availability (business hours and exceptions)
   const loadVendorAvailability = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/vendors/${vendorId}/availability`);
+      const response = await apiGet(`/vendors/${vendorId}/availability`);
       if (response.ok) {
         const data = await response.json();
         setVendorAvailability(data);
@@ -206,7 +208,7 @@ function BookingPage() {
   // Load cancellation policy
   const loadCancellationPolicy = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/payments/vendor/${vendorId}/cancellation-policy`);
+      const response = await apiGet(`/payments/vendor/${vendorId}/cancellation-policy`);
       if (response.ok) {
         const data = await response.json();
         setCancellationPolicy(data.policy);
@@ -258,7 +260,7 @@ function BookingPage() {
   const loadVendorServices = useCallback(async () => {
     setLoadingServices(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/vendors/${vendorId}/selected-services`);
+      const response = await apiGet(`/vendors/${vendorId}/selected-services`);
       
       if (!response.ok) {
         throw new Error('Failed to load services');
@@ -278,7 +280,7 @@ function BookingPage() {
   const loadVendorPackages = useCallback(async () => {
     setLoadingPackages(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/vendors/${vendorId}/packages`);
+      const response = await apiGet(`/vendors/${vendorId}/packages`);
       
       if (!response.ok) {
         throw new Error('Failed to load packages');
@@ -757,14 +759,7 @@ function BookingPage() {
         timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
       };
 
-      const response = await fetch(`${API_BASE_URL}/bookings/requests/send`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(requestData)
-      });
+      const response = await apiPost('/bookings/requests/send', requestData);
 
       const result = await response.json();
 
@@ -791,27 +786,7 @@ function BookingPage() {
     return `${displayHour}:${minutes} ${ampm}`;
   };
 
-  // Format date for display
-  const formatDate = (dateString) => {
-    if (!dateString) return '';
-    try {
-      // Parse date components to avoid timezone issues
-      const parts = dateString.split('-');
-      if (parts.length !== 3) return dateString;
-      const [year, month, day] = parts.map(Number);
-      if (isNaN(year) || isNaN(month) || isNaN(day)) return dateString;
-      const dateObj = new Date(year, month - 1, day);
-      if (isNaN(dateObj.getTime())) return dateString;
-      return dateObj.toLocaleDateString('en-US', { 
-        weekday: 'short', 
-        year: 'numeric', 
-        month: 'short', 
-        day: 'numeric' 
-      });
-    } catch {
-      return dateString;
-    }
-  };
+  const formatDate = formatDateWithWeekday;
 
   // Get timezone info from vendor data
   const getVendorTimezoneInfo = () => {

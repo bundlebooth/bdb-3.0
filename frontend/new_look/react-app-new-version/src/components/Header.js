@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, memo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { API_BASE_URL } from '../config';
+import { apiGet } from '../utils/api';
 import NotificationDropdown from './NotificationDropdown';
 import EnhancedSearchBar from './EnhancedSearchBar';
 import WhatsNewSidebar from './WhatsNewSidebar';
@@ -94,9 +94,7 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
 
     const checkProfileStatus = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/vendor/${currentUser.id}/setup-status`, {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        });
+        const response = await apiGet(`/vendor/${currentUser.id}/setup-status`);
         
         if (response.ok) {
           const data = await response.json();
@@ -135,9 +133,7 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
     
     const checkVendorProfile = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/vendors/profile?userId=${currentUser.id}`, {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        });
+        const response = await apiGet(`/vendors/profile?userId=${currentUser.id}`);
         if (response.ok) {
           const data = await response.json();
           setHasVendorProfile(!!data.vendorProfileId);
@@ -163,18 +159,14 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
     const loadBadges = async () => {
       try {
         // Load favorites count
-        const favResponse = await fetch(`${API_BASE_URL}/favorites/user/${currentUser.id}`, {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        });
+        const favResponse = await apiGet(`/favorites/user/${currentUser.id}`);
         if (favResponse.ok) {
           const favData = await favResponse.json();
           setFavoritesBadge(Array.isArray(favData.favorites) ? favData.favorites.length : 0);
         }
 
         // Load unread messages count
-        const msgResponse = await fetch(`${API_BASE_URL}/messages/unread-count/${currentUser.id}`, {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        });
+        const msgResponse = await apiGet(`/messages/unread-count/${currentUser.id}`);
         if (msgResponse.ok) {
           const msgData = await msgResponse.json();
           setMessagesBadge(msgData.unreadCount || 0);
@@ -186,9 +178,7 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
         // If API returns 0, also try fetching all notifications and counting unread
         if (notifCount === 0) {
           try {
-            const notifResponse = await fetch(`${API_BASE_URL}/notifications/user/${currentUser.id}`, {
-              headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-            });
+            const notifResponse = await apiGet(`/notifications/user/${currentUser.id}`);
             if (notifResponse.ok) {
               const notifData = await notifResponse.json();
               const notifications = notifData.notifications || [];
@@ -217,7 +207,7 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
   useEffect(() => {
     const loadAnnouncementCount = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/public/announcements/all`);
+        const response = await apiGet('/public/announcements/all');
         if (response.ok) {
           const data = await response.json();
           const dismissed = JSON.parse(localStorage.getItem('dismissedAnnouncements') || '[]');
@@ -270,7 +260,7 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
       <div className="header-inner page-wrapper" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
       <div className="header-left" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
         <div className="logo" style={{ cursor: 'pointer', marginRight: '8px' }} onClick={() => window.location.href = '/'}>
-          <img src="/images/logo.png" alt="PlanBeau" className="header-logo-img" />
+          <img src="/images/logo.png" alt="Planbeau" className="header-logo-img" />
         </div>
         
       </div>

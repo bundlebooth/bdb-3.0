@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { API_BASE_URL } from '../../config';
 import { showBanner } from '../../utils/helpers';
+import { apiGet, apiPost } from '../../utils/api';
+import { LoadingState, EmptyState } from '../common/AdminComponents';
 
 // Content moderation patterns
 const MODERATION_PATTERNS = {
@@ -48,14 +49,7 @@ const ChatOversightPanel = () => {
   const fetchConversations = async () => {
     try {
       setLoading(true);
-      const response = await fetch(
-        `${API_BASE_URL}/admin/chats?filter=${filter}&page=${pagination.page}&limit=${pagination.limit}&search=${searchTerm}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        }
-      );
+      const response = await apiGet(`/admin/chats?filter=${filter}&page=${pagination.page}&limit=${pagination.limit}&search=${searchTerm}`);
 
       if (response.ok) {
         const data = await response.json();
@@ -73,11 +67,7 @@ const ChatOversightPanel = () => {
   const fetchMessages = async (conversationId) => {
     try {
       setMessagesLoading(true);
-      const response = await fetch(`${API_BASE_URL}/admin/chats/${conversationId}/messages`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await apiGet(`/admin/chats/${conversationId}/messages`);
 
       if (response.ok) {
         const data = await response.json();
@@ -97,14 +87,7 @@ const ChatOversightPanel = () => {
 
   const handleFlagMessage = async (messageId, reason) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/chats/messages/${messageId}/flag`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ reason })
-      });
+      const response = await apiPost(`/admin/chats/messages/${messageId}/flag`, { reason });
 
       if (response.ok) {
         showBanner('Message flagged', 'success');
@@ -119,14 +102,7 @@ const ChatOversightPanel = () => {
     if (!adminNote.trim()) return;
 
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/chats/${selectedConversation.ConversationID}/notes`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ note: adminNote })
-      });
+      const response = await apiPost(`/admin/chats/${selectedConversation.ConversationID}/notes`, { note: adminNote });
 
       if (response.ok) {
         showBanner('Note added', 'success');
@@ -142,14 +118,7 @@ const ChatOversightPanel = () => {
     if (!systemMessage.trim()) return;
 
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/chats/${selectedConversation.ConversationID}/system-message`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ message: systemMessage })
-      });
+      const response = await apiPost(`/admin/chats/${selectedConversation.ConversationID}/system-message`, { message: systemMessage });
 
       if (response.ok) {
         showBanner('System message sent', 'success');
@@ -163,14 +132,7 @@ const ChatOversightPanel = () => {
 
   const handleFlagConversation = async (conversationId, reason) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/chats/${conversationId}/flag`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ reason: reason || 'Manual flag by admin' })
-      });
+      const response = await apiPost(`/admin/chats/${conversationId}/flag`, { reason: reason || 'Manual flag by admin' });
 
       if (response.ok) {
         showBanner('Conversation flagged', 'success');
@@ -185,16 +147,9 @@ const ChatOversightPanel = () => {
     if (!showFlagModal || !selectedFlagReason) return;
     
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/chats/messages/${showFlagModal}/flag`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ 
-          reason: selectedFlagReason,
-          note: customFlagNote 
-        })
+      const response = await apiPost(`/admin/chats/messages/${showFlagModal}/flag`, { 
+        reason: selectedFlagReason,
+        note: customFlagNote 
       });
 
       if (response.ok) {
@@ -496,7 +451,7 @@ const ChatOversightPanel = () => {
                               opacity: 0.8
                             }}>
                               <span style={{ fontWeight: '600' }}>
-                                {isSystem ? '🛡️ PlanBeau Support' 
+                                {isSystem ? '🛡️ Planbeau Support' 
                                  : isAdminNote ? '📝 Admin Note (Internal)' 
                                  : msg.SenderName}
                               </span>
@@ -638,7 +593,7 @@ const ChatOversightPanel = () => {
                         type="text"
                         value={systemMessage}
                         onChange={(e) => setSystemMessage(e.target.value)}
-                        placeholder="Message from PlanBeau Support..."
+                        placeholder="Message from Planbeau Support..."
                         style={{ 
                           flex: 1,
                           padding: '10px 12px',

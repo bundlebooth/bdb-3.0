@@ -1,5 +1,6 @@
 import React from 'react';
 import './PackageServiceCard.css';
+import { ActionButtonGroup, EditButton, DeleteButton } from './common/UIComponents';
 
 /**
  * Universal Package/Service Card Component
@@ -238,26 +239,10 @@ export const ServiceCard = ({
                 </div>
               )}
               {showActions && (
-                <div className="psc-action-buttons">
-                  {onEdit && (
-                    <button 
-                      type="button" 
-                      className="psc-btn-edit"
-                      onClick={(e) => { e.stopPropagation(); onEdit(service); }}
-                    >
-                      Edit
-                    </button>
-                  )}
-                  {onDelete && (
-                    <button 
-                      type="button" 
-                      className="psc-btn-delete"
-                      onClick={(e) => { e.stopPropagation(); onDelete(service); }}
-                    >
-                      Delete
-                    </button>
-                  )}
-                </div>
+                <ActionButtonGroup>
+                  {onEdit && <EditButton onClick={(e) => { e.stopPropagation(); onEdit(service); }} />}
+                  {onDelete && <DeleteButton onClick={(e) => { e.stopPropagation(); onDelete(service); }} title="Remove" />}
+                </ActionButtonGroup>
               )}
             </div>
           </div>
@@ -430,26 +415,10 @@ export const PackageCard = ({
                 </div>
               )}
               {showActions && (
-                <div className="psc-action-buttons">
-                  {onEdit && (
-                    <button 
-                      type="button" 
-                      className="psc-btn-edit"
-                      onClick={(e) => { e.stopPropagation(); onEdit(pkg); }}
-                    >
-                      Edit
-                    </button>
-                  )}
-                  {onDelete && (
-                    <button 
-                      type="button" 
-                      className="psc-btn-delete"
-                      onClick={(e) => { e.stopPropagation(); onDelete(pkg); }}
-                    >
-                      Delete
-                    </button>
-                  )}
-                </div>
+                <ActionButtonGroup>
+                  {onEdit && <EditButton onClick={(e) => { e.stopPropagation(); onEdit(pkg); }} />}
+                  {onDelete && <DeleteButton onClick={(e) => { e.stopPropagation(); onDelete(pkg); }} title="Remove" />}
+                </ActionButtonGroup>
               )}
             </div>
           </div>

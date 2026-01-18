@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../../context/AuthContext';
-import { API_BASE_URL } from '../../../config';
+import { apiGet, apiPost } from '../../../utils/api';
 import { showBanner } from '../../../utils/banners';
 
 function ClientReviewsSection() {
@@ -33,16 +33,12 @@ function ClientReviewsSection() {
       setLoading(true);
       
       // Load submitted reviews
-      const reviewsResp = await fetch(`${API_BASE_URL}/users/${currentUser.id}/reviews`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
+      const reviewsResp = await apiGet(`/users/${currentUser.id}/reviews`);
       const reviewsData = reviewsResp.ok ? await reviewsResp.json() : [];
       setReviews(Array.isArray(reviewsData) ? reviewsData : []);
       
       // Load all bookings to find past ones that can be reviewed
-      const bookingsResp = await fetch(`${API_BASE_URL}/users/${currentUser.id}/bookings/all`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
+      const bookingsResp = await apiGet(`/users/${currentUser.id}/bookings/all`);
       const bookingsData = bookingsResp.ok ? await bookingsResp.json() : [];
       
       // Filter for past, paid bookings that haven't been reviewed
@@ -92,26 +88,19 @@ function ClientReviewsSection() {
     
     setSubmitting(true);
     try {
-      const resp = await fetch(`${API_BASE_URL}/vendors/reviews/submit`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          userId: currentUser.id,
-          vendorProfileId: selectedBooking.VendorProfileID,
-          bookingId: selectedBooking.BookingID,
-          rating: reviewForm.rating,
-          title: reviewForm.title,
-          comment: reviewForm.comment,
-          qualityRating: reviewForm.qualityRating,
-          communicationRating: reviewForm.communicationRating,
-          valueRating: reviewForm.valueRating,
-          punctualityRating: reviewForm.punctualityRating,
-          professionalismRating: reviewForm.professionalismRating,
-          wouldRecommend: reviewForm.wouldRecommend
-        })
+      const resp = await apiPost('/vendors/reviews/submit', {
+        userId: currentUser.id,
+        vendorProfileId: selectedBooking.VendorProfileID,
+        bookingId: selectedBooking.BookingID,
+        rating: reviewForm.rating,
+        title: reviewForm.title,
+        comment: reviewForm.comment,
+        qualityRating: reviewForm.qualityRating,
+        communicationRating: reviewForm.communicationRating,
+        valueRating: reviewForm.valueRating,
+        punctualityRating: reviewForm.punctualityRating,
+        professionalismRating: reviewForm.professionalismRating,
+        wouldRecommend: reviewForm.wouldRecommend
       });
       
       const data = await resp.json();

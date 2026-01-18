@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../../context/AuthContext';
-import { API_BASE_URL } from '../../../config';
+import { apiGet } from '../../../utils/api';
 
 function VendorReviewsSection() {
   const { currentUser } = useAuth();
@@ -26,9 +26,7 @@ function VendorReviewsSection() {
   const getVendorProfileId = async () => {
     if (!currentUser?.id) return;
     try {
-      const response = await fetch(`${API_BASE_URL}/vendors/profile?userId=${currentUser.id}`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
+      const response = await apiGet(`/vendors/profile?userId=${currentUser.id}`);
       if (response.ok) {
         const data = await response.json();
         setVendorProfileId(data.vendorProfileId);
@@ -41,9 +39,7 @@ function VendorReviewsSection() {
   const loadVendorProfile = useCallback(async () => {
     if (!vendorProfileId) return;
     try {
-      const response = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
+      const response = await apiGet(`/vendors/${vendorProfileId}`);
       if (response.ok) {
         const data = await response.json();
         const placeId = data.data?.profile?.GooglePlaceId;
@@ -61,9 +57,7 @@ function VendorReviewsSection() {
     if (!placeId) return;
     try {
       setGoogleReviewsLoading(true);
-      const response = await fetch(`${API_BASE_URL}/vendors/google-reviews/${placeId}`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
+      const response = await apiGet(`/vendors/google-reviews/${placeId}`);
       if (response.ok) {
         const data = await response.json();
         setGoogleReviews(data.data);
@@ -81,9 +75,7 @@ function VendorReviewsSection() {
     try {
       setLoading(true);
       // Use the endpoint that returns full review data with survey ratings
-      const response = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/reviews`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
+      const response = await apiGet(`/vendors/${vendorProfileId}/reviews`);
       
       if (!response.ok) throw new Error('Failed to fetch vendor reviews');
       const data = await response.json();

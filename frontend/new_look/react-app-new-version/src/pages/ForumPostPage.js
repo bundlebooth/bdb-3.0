@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
+import { apiGet, apiPost, apiDelete } from '../utils/api';
 import { PageLayout, ContentWrapper } from '../components/PageWrapper';
 import Header from '../components/Header';
 import Footer from '../components/Footer';

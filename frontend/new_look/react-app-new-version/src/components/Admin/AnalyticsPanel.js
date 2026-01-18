@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { API_BASE_URL } from '../../config';
 import { showBanner } from '../../utils/helpers';
+import { apiGet } from '../../utils/api';
+import { LoadingState } from '../common/AdminComponents';
 
 const AnalyticsPanel = () => {
   const [activeTab, setActiveTab] = useState('overview'); // overview, vendors, bookings, revenue
@@ -15,17 +16,11 @@ const AnalyticsPanel = () => {
   const fetchAnalytics = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/admin/analytics?range=${dateRange}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
+      const response = await apiGet(`/admin/analytics?range=${dateRange}`);
       if (response.ok) {
         const data = await response.json();
         setStats(data);
       } else {
-        // Use mock data for display
         setStats(getMockData());
       }
     } catch (error) {
@@ -71,11 +66,7 @@ const AnalyticsPanel = () => {
 
   const handleExport = async (type) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/analytics/export?type=${type}&range=${dateRange}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await apiGet(`/admin/analytics/export?type=${type}&range=${dateRange}`);
 
       if (response.ok) {
         const blob = await response.blob();

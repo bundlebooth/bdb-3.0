@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
+import { apiGet, apiPost, apiDelete } from '../utils/api';
 import { PageLayout } from '../components/PageWrapper';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
@@ -301,7 +302,7 @@ function ForumPage() {
             background: 'white'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <img src="/images/logo.png" alt="PlanBeau" style={{ height: '28px' }} />
+              <img src="/images/logo.png" alt="Planbeau" style={{ height: '28px' }} />
               <span style={{ fontSize: '16px', fontWeight: '600', color: '#1f2937' }}>Categories</span>
             </div>
           </div>

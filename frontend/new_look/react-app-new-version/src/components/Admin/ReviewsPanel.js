@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { API_BASE_URL } from '../../config';
 import { showBanner } from '../../utils/helpers';
+import { apiGet, apiPost, apiDelete } from '../../utils/api';
+import UniversalModal, { FormModal } from '../UniversalModal';
+import { LoadingState, EmptyState, StatusBadge } from '../common/AdminComponents';
+import { ActionButtonGroup, ActionButton as IconActionButton, ViewButton, EditButton, DeleteButton } from '../common/UIComponents';
 
 const ReviewsPanel = () => {
   const [reviews, setReviews] = useState([]);
@@ -21,22 +24,13 @@ const ReviewsPanel = () => {
   const fetchReviews = async () => {
     try {
       setLoading(true);
-      const response = await fetch(
-        `${API_BASE_URL}/admin/reviews?filter=${filter}&page=${pagination.page}&limit=${pagination.limit}&search=${searchTerm}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        }
-      );
-
+      const response = await apiGet(`/admin/reviews?filter=${filter}&page=${pagination.page}&limit=${pagination.limit}&search=${searchTerm}`);
       if (response.ok) {
         const data = await response.json();
         setReviews(data.reviews || []);
         setPagination(prev => ({ ...prev, total: data.total || 0 }));
       } else {
         console.error('Failed to fetch reviews:', response.status);
-        // Try to show some mock data for testing if API fails
         setReviews([]);
       }
     } catch (error) {
@@ -49,11 +43,7 @@ const ReviewsPanel = () => {
 
   const fetchStats = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/reviews/stats`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await apiGet('/admin/reviews/stats');
       if (response.ok) {
         const data = await response.json();
         setStats(data);
@@ -65,15 +55,8 @@ const ReviewsPanel = () => {
 
   const handleDeleteReview = async (reviewId) => {
     if (!window.confirm('Are you sure you want to delete this review? This action cannot be undone.')) return;
-
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/reviews/${reviewId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
+      const response = await apiDelete(`/admin/reviews/${reviewId}`);
       if (response.ok) {
         showBanner('Review deleted', 'success');
         fetchReviews();
@@ -85,15 +68,7 @@ const ReviewsPanel = () => {
 
   const handleFlagReview = async (reviewId, reason) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/reviews/${reviewId}/flag`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ flagged: true, reason })
-      });
-
+      const response = await apiPost(`/admin/reviews/${reviewId}/flag`, { flagged: true, reason });
       if (response.ok) {
         showBanner('Review flagged', 'success');
         fetchReviews();
@@ -107,13 +82,7 @@ const ReviewsPanel = () => {
 
   const handleUnflagReview = async (reviewId) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/reviews/${reviewId}/unflag`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
+      const response = await apiPost(`/admin/reviews/${reviewId}/unflag`);
       if (response.ok) {
         showBanner('Review unflagged', 'success');
         fetchReviews();
@@ -357,51 +326,16 @@ const ReviewsPanel = () => {
                     )}
                   </td>
                   <td>
-                    <div className="action-buttons" style={{ display: 'flex', gap: '0.25rem', flexWrap: 'nowrap' }}>
-                      <button
-                        className="action-btn view"
-                        onClick={() => { setSelectedReview(review); setModalType('view'); }}
-                        title="View Details"
-                        style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem' }}
-                      >
-                        <i className="fas fa-eye"></i>
-                      </button>
-                      <button
-                        className="action-btn edit"
-                        onClick={() => { setSelectedReview(review); setModalType('edit'); }}
-                        title="Add Note"
-                        style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem' }}
-                      >
-                        <i className="fas fa-sticky-note"></i>
-                      </button>
+                    <ActionButtonGroup>
+                      <ViewButton onClick={() => { setSelectedReview(review); setModalType('view'); }} />
+                      <EditButton onClick={() => { setSelectedReview(review); setModalType('edit'); }} title="Add Note" />
                       {review.IsFlagged ? (
-                        <button
-                          className="action-btn approve"
-                          onClick={() => handleUnflagReview(review.ReviewID)}
-                          title="Unflag"
-                          style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem' }}
-                        >
-                          <i className="fas fa-check"></i>
-                        </button>
+                        <IconActionButton action="approve" onClick={() => handleUnflagReview(review.ReviewID)} title="Unflag" />
                       ) : (
-                        <button
-                          className="action-btn flag"
-                          onClick={() => { setSelectedReview(review); setModalType('flag'); }}
-                          title="Flag Review"
-                          style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem', background: '#fef3c7', color: '#d97706' }}
-                        >
-                          <i className="fas fa-flag"></i>
-                        </button>
+                        <IconActionButton action="flag" onClick={() => { setSelectedReview(review); setModalType('flag'); }} />
                       )}
-                      <button
-                        className="action-btn delete"
-                        onClick={() => handleDeleteReview(review.ReviewID)}
-                        title="Delete"
-                        style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem' }}
-                      >
-                        <i className="fas fa-trash-alt"></i>
-                      </button>
-                    </div>
+                      <DeleteButton onClick={() => handleDeleteReview(review.ReviewID)} title="Remove" />
+                    </ActionButtonGroup>
                   </td>
                 </tr>
               ))}
@@ -463,55 +397,48 @@ const ReviewsPanel = () => {
 // Review View Modal
 const ReviewViewModal = ({ review, onClose }) => {
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>Review Details</h2>
-          <button className="modal-close" onClick={onClose}>
-            
-          </button>
+    <UniversalModal
+      isOpen={true}
+      onClose={onClose}
+      title="Review Details"
+      size="medium"
+      footer={<button className="um-btn um-btn-secondary" onClick={onClose}>Close</button>}
+    >
+      <div className="detail-section">
+        <div className="detail-row">
+          <label>Reviewer:</label>
+          <span>{review.ReviewerName} ({review.ReviewerEmail})</span>
         </div>
-        <div className="modal-body">
-          <div className="detail-section">
-            <div className="detail-row">
-              <label>Reviewer:</label>
-              <span>{review.ReviewerName} ({review.ReviewerEmail})</span>
-            </div>
-            <div className="detail-row">
-              <label>Vendor:</label>
-              <span>{review.VendorName}</span>
-            </div>
-            <div className="detail-row">
-              <label>Rating:</label>
-              <span>{review.Rating}/5</span>
-            </div>
-            <div className="detail-row">
-              <label>Date:</label>
-              <span>{new Date(review.CreatedAt).toLocaleString()}</span>
-            </div>
-            {review.BookingID && (
-              <div className="detail-row">
-                <label>Booking:</label>
-                <span>#{review.BookingID}</span>
-              </div>
-            )}
+        <div className="detail-row">
+          <label>Vendor:</label>
+          <span>{review.VendorName}</span>
+        </div>
+        <div className="detail-row">
+          <label>Rating:</label>
+          <span>{review.Rating}/5</span>
+        </div>
+        <div className="detail-row">
+          <label>Date:</label>
+          <span>{new Date(review.CreatedAt).toLocaleString()}</span>
+        </div>
+        {review.BookingID && (
+          <div className="detail-row">
+            <label>Booking:</label>
+            <span>#{review.BookingID}</span>
           </div>
-          <div className="detail-section">
-            <label>Review Text:</label>
-            <p className="review-text-full">{review.ReviewText}</p>
-          </div>
-          {review.VendorResponse && (
-            <div className="detail-section">
-              <label>Vendor Response:</label>
-              <p className="vendor-response">{review.VendorResponse}</p>
-            </div>
-          )}
-        </div>
-        <div className="modal-footer">
-          <button className="btn-secondary" onClick={onClose}>Close</button>
-        </div>
+        )}
       </div>
-    </div>
+      <div className="detail-section">
+        <label>Review Text:</label>
+        <p className="review-text-full">{review.ReviewText}</p>
+      </div>
+      {review.VendorResponse && (
+        <div className="detail-section">
+          <label>Vendor Response:</label>
+          <p className="vendor-response">{review.VendorResponse}</p>
+        </div>
+      )}
+    </UniversalModal>
   );
 };
 
@@ -523,14 +450,7 @@ const AddNoteModal = ({ review, onClose, onSave }) => {
   const handleSave = async () => {
     try {
       setSaving(true);
-      const response = await fetch(`${API_BASE_URL}/admin/reviews/${review.ReviewID}/note`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ note })
-      });
+      const response = await apiPost(`/admin/reviews/${review.ReviewID}/note`, { note });
 
       if (response.ok) {
         showBanner('Note saved', 'success');
@@ -544,33 +464,19 @@ const AddNoteModal = ({ review, onClose, onSave }) => {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>Admin Note</h2>
-          <button className="modal-close" onClick={onClose}>
-            
-          </button>
-        </div>
-        <div className="modal-body">
-          <div className="form-group">
-            <label>Add internal note for this review</label>
-            <textarea
-              value={note}
-              onChange={e => setNote(e.target.value)}
-              placeholder="Enter admin notes..."
-              rows={4}
-            />
-          </div>
-        </div>
-        <div className="modal-footer">
-          <button className="btn-secondary" onClick={onClose}>Cancel</button>
-          <button className="btn-primary" onClick={handleSave} disabled={saving}>
-            {saving ? 'Saving...' : 'Save Note'}
-          </button>
-        </div>
+    <FormModal
+      isOpen={true}
+      onClose={onClose}
+      title="Admin Note"
+      onSave={handleSave}
+      saving={saving}
+      saveLabel="Save Note"
+    >
+      <div className="form-group">
+        <label>Add internal note for this review</label>
+        <textarea value={note} onChange={e => setNote(e.target.value)} placeholder="Enter admin notes..." rows={4} />
       </div>
-    </div>
+    </FormModal>
   );
 };
 
@@ -587,55 +493,38 @@ const FlagReviewModal = ({ review, onClose, onFlag }) => {
   ];
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>Flag Review</h2>
-          <button className="modal-close" onClick={onClose}>
-            
-          </button>
-        </div>
-        <div className="modal-body">
-          <div className="form-group">
-            <label>Select reason for flagging</label>
-            <div className="reason-options">
-              {flagReasons.map(r => (
-                <label key={r} className="radio-option">
-                  <input
-                    type="radio"
-                    name="flagReason"
-                    value={r}
-                    checked={reason === r}
-                    onChange={() => setReason(r)}
-                  />
-                  {r}
-                </label>
-              ))}
-            </div>
-          </div>
-          {reason === 'Other' && (
-            <div className="form-group">
-              <label>Specify reason</label>
-              <textarea
-                placeholder="Enter specific reason..."
-                rows={3}
-                onChange={e => setReason(e.target.value)}
-              />
-            </div>
-          )}
-        </div>
-        <div className="modal-footer">
-          <button className="btn-secondary" onClick={onClose}>Cancel</button>
-          <button
-            className="btn-warning"
-            onClick={() => onFlag(reason)}
-            disabled={!reason}
-          >
+    <UniversalModal
+      isOpen={true}
+      onClose={onClose}
+      title="Flag Review"
+      size="medium"
+      footer={
+        <>
+          <button className="um-btn um-btn-secondary" onClick={onClose}>Cancel</button>
+          <button className="um-btn" style={{ background: '#f59e0b', color: 'white' }} onClick={() => onFlag(reason)} disabled={!reason}>
             Flag Review
           </button>
+        </>
+      }
+    >
+      <div className="form-group">
+        <label>Select reason for flagging</label>
+        <div className="reason-options" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
+          {flagReasons.map(r => (
+            <label key={r} className="radio-option" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <input type="radio" name="flagReason" value={r} checked={reason === r} onChange={() => setReason(r)} />
+              {r}
+            </label>
+          ))}
         </div>
       </div>
-    </div>
+      {reason === 'Other' && (
+        <div className="form-group">
+          <label>Specify reason</label>
+          <textarea placeholder="Enter specific reason..." rows={3} onChange={e => setReason(e.target.value)} />
+        </div>
+      )}
+    </UniversalModal>
   );
 };
 
@@ -655,11 +544,7 @@ const GoogleReviewsSection = () => {
   const fetchVendorsWithGoogle = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/admin/vendors?page=1&limit=100`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await apiGet('/admin/vendors?page=1&limit=100');
       if (response.ok) {
         const data = await response.json();
         setVendors(data.vendors || []);
@@ -678,14 +563,7 @@ const GoogleReviewsSection = () => {
     }
     
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/vendors/${vendorId}/google-place`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ googlePlaceId: placeId })
-      });
+      const response = await apiPost(`/admin/vendors/${vendorId}/google-place`, { googlePlaceId: placeId });
 
       if (response.ok) {
         showBanner('Google Place linked successfully', 'success');
@@ -707,11 +585,7 @@ const GoogleReviewsSection = () => {
     }
     
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/vendors/${vendorId}/google-reviews`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await apiGet(`/admin/vendors/${vendorId}/google-reviews`);
       if (response.ok) {
         const data = await response.json();
         setGoogleReviews(data.reviews || []);

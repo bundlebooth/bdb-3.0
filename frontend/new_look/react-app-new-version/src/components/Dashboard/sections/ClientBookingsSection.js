@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { showBanner } from '../../../utils/banners';
-import { API_BASE_URL } from '../../../config';
+import { apiGet, apiPost } from '../../../utils/api';
 import { buildInvoiceUrl } from '../../../utils/urlHelpers';
 import { getBookingStatusConfig } from '../../../utils/bookingStatus';
 import BookingDetailsModal from '../BookingDetailsModal';
@@ -26,9 +26,7 @@ function ClientBookingsSection({ onPayNow, onOpenChat }) {
     
     try {
       setLoading(true);
-      const resp = await fetch(`${API_BASE_URL}/users/${currentUser.id}/bookings/all`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
+      const resp = await apiGet(`/users/${currentUser.id}/bookings/all`);
       
       if (!resp.ok) throw new Error('Failed to fetch bookings');
       const data = await resp.json();
@@ -139,9 +137,7 @@ function ClientBookingsSection({ onPayNow, onOpenChat }) {
       
       // Use public ID from booking if available, otherwise use internal ID
       const bookingId = booking.bookingPublicId || booking.BookingID;
-      const response = await fetch(`${API_BASE_URL}/invoices/booking/${bookingId}?userId=${currentUser.id}`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
+      const response = await apiGet(`/invoices/booking/${bookingId}?userId=${currentUser.id}`);
       
       if (response.ok) {
         const data = await response.json();
@@ -177,9 +173,7 @@ function ClientBookingsSection({ onPayNow, onOpenChat }) {
     
     // Fetch refund preview
     try {
-      const response = await fetch(`${API_BASE_URL}/bookings/${bookingId}/cancel-preview`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
+      const response = await apiGet(`/bookings/${bookingId}/cancel-preview`);
       if (response.ok) {
         const data = await response.json();
         setRefundPreview(data);
@@ -200,14 +194,7 @@ function ClientBookingsSection({ onPayNow, onOpenChat }) {
     
     setCancelling(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/bookings/${bookingId}/client-cancel`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ reason: cancelReason })
-      });
+      const response = await apiPost(`/bookings/${bookingId}/client-cancel`, { reason: cancelReason });
 
       if (response.ok) {
         const data = await response.json();
@@ -236,18 +223,11 @@ function ClientBookingsSection({ onPayNow, onOpenChat }) {
     // If no conversation exists, create one first
     if (!booking.ConversationID) {
       try {
-        const response = await fetch(`${API_BASE_URL}/messages/conversations`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            userId: currentUser.id,
-            vendorProfileId: booking.VendorProfileID,
-            subject: `Booking: ${booking.EventName || booking.ServiceName || 'Service Request'}`,
-            bookingId: booking.BookingID || booking.RequestID
-          })
+        const response = await apiPost('/messages/conversations', {
+          userId: currentUser.id,
+          vendorProfileId: booking.VendorProfileID,
+          subject: `Booking: ${booking.EventName || booking.ServiceName || 'Service Request'}`,
+          bookingId: booking.BookingID || booking.RequestID
         });
         
         if (!response.ok) {

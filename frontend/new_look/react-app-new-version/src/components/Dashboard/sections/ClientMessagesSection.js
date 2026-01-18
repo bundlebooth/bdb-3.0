@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import { API_BASE_URL } from '../../../config';
+import { apiGet, apiPost } from '../../../utils/api';
 import { useVendorOnlineStatus } from '../../../hooks/useOnlineStatus';
 import { buildVendorProfileUrl } from '../../../utils/urlHelpers';
 

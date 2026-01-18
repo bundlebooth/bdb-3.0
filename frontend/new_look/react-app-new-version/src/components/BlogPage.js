@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
+import { formatDateFormal } from '../utils/helpers';
 import { PageLayout, ContentWrapper } from './PageWrapper';
 import Header from './Header';
 import Footer from './Footer';
@@ -91,15 +92,7 @@ const BlogPage = () => {
     }
   };
 
-  const formatDate = (dateString) => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      month: 'long', 
-      day: 'numeric', 
-      year: 'numeric' 
-    });
-  };
+  const formatDate = formatDateFormal;
 
   const handleSlideChange = (direction) => {
     if (direction === 'prev') {
@@ -164,7 +157,7 @@ const BlogPage = () => {
       {/* Hero Section */}
       <section className="blog-hero">
         <div className="hero-content">
-          <h1>PlanBeau Blog</h1>
+          <h1>Planbeau Blog</h1>
           <p>Find inspiration for any event imaginable</p>
         </div>
 
@@ -368,15 +361,7 @@ const SingleBlogPost = ({ slug, navigate }) => {
     }
   };
 
-  const formatDate = (dateString) => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      month: 'long', 
-      day: 'numeric', 
-      year: 'numeric' 
-    });
-  };
+  const formatDate = formatDateFormal;
 
   if (loading) {
     return (

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { GOOGLE_MAPS_API_KEY } from '../config';
+import UniversalModal from './UniversalModal';
 import './LocationSearchModal.css';
 
 const LocationSearchModal = ({ isOpen, onClose, onApply, initialLocation, initialRadius }) => {
@@ -275,84 +276,72 @@ const LocationSearchModal = ({ isOpen, onClose, onApply, initialLocation, initia
     onClose();
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="location-modal-overlay" onClick={onClose}>
-      <div className="location-modal" onClick={e => e.stopPropagation()}>
-        <div className="location-modal-header">
-          <h2>Change location</h2>
-          <button className="close-btn" onClick={onClose}>
-            <i className="fas fa-times"></i>
-          </button>
+    <UniversalModal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Change location"
+      size="medium"
+      primaryAction={{ label: 'Apply', onClick: handleApply }}
+      secondaryAction={false}
+    >
+      <p className="modal-subtitle">Search by city, neighborhood or ZIP code.</p>
+
+      {/* Location Input */}
+      <div className="location-input-group">
+        <div className="input-icon">
+          <i className="fas fa-map-marker-alt"></i>
         </div>
-
-        <div className="location-modal-body">
-          <p className="modal-subtitle">Search by city, neighborhood or ZIP code.</p>
-
-          {/* Location Input */}
-          <div className="location-input-group">
-            <div className="input-icon">
-              <i className="fas fa-map-marker-alt"></i>
-            </div>
-            <div className="input-content">
-              <label>Location</label>
-              <input
-                ref={inputRef}
-                type="text"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                placeholder="Enter a location"
-              />
-            </div>
-          </div>
-
-          {/* Radius Selector */}
-          <div className="radius-selector">
-            <div className="input-icon">
-              <i className="fas fa-expand-arrows-alt"></i>
-            </div>
-            <div className="input-content">
-              <label>Radius</label>
-              <select 
-                value={radius} 
-                onChange={(e) => setRadius(Number(e.target.value))}
-              >
-                {radiusOptions.map(opt => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="select-arrow">
-              <i className="fas fa-chevron-down"></i>
-            </div>
-          </div>
-
-          {/* Map Container */}
-          <div className="map-container">
-            <div ref={mapRef} className="map"></div>
-            <button 
-              className="current-location-btn"
-              onClick={handleCurrentLocation}
-              title="Use my current location"
-            >
-              <i className="fas fa-location-arrow"></i>
-            </button>
-            <button className="map-info-btn" title="Map information">
-              <i className="fas fa-info-circle"></i>
-            </button>
-          </div>
-        </div>
-
-        <div className="location-modal-footer">
-          <button className="apply-btn" onClick={handleApply}>
-            Apply
-          </button>
+        <div className="input-content">
+          <label>Location</label>
+          <input
+            ref={inputRef}
+            type="text"
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+            placeholder="Enter a location"
+          />
         </div>
       </div>
-    </div>
+
+      {/* Radius Selector */}
+      <div className="radius-selector">
+        <div className="input-icon">
+          <i className="fas fa-expand-arrows-alt"></i>
+        </div>
+        <div className="input-content">
+          <label>Radius</label>
+          <select 
+            value={radius} 
+            onChange={(e) => setRadius(Number(e.target.value))}
+          >
+            {radiusOptions.map(opt => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="select-arrow">
+          <i className="fas fa-chevron-down"></i>
+        </div>
+      </div>
+
+      {/* Map Container */}
+      <div className="map-container">
+        <div ref={mapRef} className="map"></div>
+        <button 
+          className="current-location-btn"
+          onClick={handleCurrentLocation}
+          title="Use my current location"
+        >
+          <i className="fas fa-location-arrow"></i>
+        </button>
+        <button className="map-info-btn" title="Map information">
+          <i className="fas fa-info-circle"></i>
+        </button>
+      </div>
+    </UniversalModal>
   );
 };
 

@@ -1,85 +1,149 @@
 // ============================================================
-// ENVIRONMENT CONFIGURATION
+// CENTRALIZED ENVIRONMENT CONFIGURATION
 // ============================================================
 // 
-// To switch between environments, change USE_PRODUCTION_API:
-//   - false = Use localhost (development)
-//   - true  = Use production API (Render)
+// All environment variables should be defined in .env file and
+// accessed through this config.js file. This ensures:
+//   1. Single source of truth for all configuration
+//   2. Easy switching between development and production
+//   3. Proper handling of environment variables for Render/Netlify
 //
-// You can also override via localStorage in browser console:
-//   localStorage.setItem('USE_PRODUCTION_API', 'true')  // Use production
-//   localStorage.setItem('USE_PRODUCTION_API', 'false') // Use localhost
-//   localStorage.removeItem('USE_PRODUCTION_API')       // Use default
+// For production deployment (Render/Netlify):
+//   - Set REACT_APP_API_URL in environment variables
+//   - Set REACT_APP_GOOGLE_MAPS_API_KEY in environment variables
+//   - Set REACT_APP_GOOGLE_CLIENT_ID in environment variables
+//   - Set REACT_APP_STRIPE_PUBLIC_KEY in environment variables
+//
+// For local development:
+//   - Create .env file with the variables above
+//   - Or use localStorage override (see below)
 //
 // ============================================================
 
-// Default setting (change this to switch environments easily)
-const DEFAULT_USE_PRODUCTION = false;
+// ============================================================
+// API CONFIGURATION
+// ============================================================
 
-// Check localStorage override first, then use default
+// Production and local API URLs
+const PRODUCTION_API_URL = process.env.REACT_APP_API_URL || 'https://bdb-3-0-venuevue-api.onrender.com/api';
+const LOCAL_API_URL = 'http://localhost:5000/api';
+
+// Determine if we should use production API
 const getApiMode = () => {
+  // Check localStorage override first (for development testing)
   if (typeof window !== 'undefined') {
     const override = localStorage.getItem('USE_PRODUCTION_API');
     if (override !== null) {
       return override === 'true';
     }
   }
-  // In production build, always use production API
+  // In production build (NODE_ENV=production), always use production API
   if (process.env.NODE_ENV === 'production') {
     return true;
   }
-  return DEFAULT_USE_PRODUCTION;
+  // Default to local for development
+  return false;
 };
 
 const USE_PRODUCTION_API = getApiMode();
 
-// API URLs
-const PRODUCTION_API_URL = 'https://bdb-3-0-venuevue-api.onrender.com/api';
-const LOCAL_API_URL = 'http://localhost:5000/api';
-
+// Main API URL export - use this throughout the app
 export const API_BASE_URL = USE_PRODUCTION_API ? PRODUCTION_API_URL : LOCAL_API_URL;
-
-// Export environment info for display
-export const ENV_CONFIG = {
-  isProduction: USE_PRODUCTION_API,
-  apiUrl: API_BASE_URL,
-  mode: USE_PRODUCTION_API ? 'Production' : 'Development (localhost)'
-};
 
 // Derive Socket base URL from API origin
 let SOCKET_BASE_URL = '';
 try {
-    const apiUrl = new URL(API_BASE_URL);
-    SOCKET_BASE_URL = apiUrl.origin;
+  const apiUrl = new URL(API_BASE_URL);
+  SOCKET_BASE_URL = apiUrl.origin;
 } catch (_) {
-    SOCKET_BASE_URL = 'https://bdb-3-0-venuevue-api.onrender.com';
+  SOCKET_BASE_URL = 'https://bdb-3-0-venuevue-api.onrender.com';
 }
-
 export { SOCKET_BASE_URL };
 
-// Helper function to switch environments (call from browser console)
+// ============================================================
+// GOOGLE CONFIGURATION
+// ============================================================
+
+// Google Maps API Key - from .env or fallback
+export const GOOGLE_MAPS_API_KEY = process.env.REACT_APP_GOOGLE_MAPS_API_KEY || 'AIzaSyCPhhp2rAt1VTrIzjgagJXZPZ_nc7K_BVo';
+
+// Google OAuth Client ID - from .env
+export const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID || '';
+
+// Set global for Google Maps callback
 if (typeof window !== 'undefined') {
+  window.GOOGLE_MAPS_API_KEY = GOOGLE_MAPS_API_KEY;
+}
+
+// ============================================================
+// STRIPE CONFIGURATION
+// ============================================================
+
+// Stripe Public Key - from .env
+export const STRIPE_PUBLIC_KEY = process.env.REACT_APP_STRIPE_PUBLIC_KEY || '';
+
+// ============================================================
+// APP CONFIGURATION
+// ============================================================
+
+// App name and branding
+export const APP_NAME = 'Planbeau';
+export const APP_TAGLINE = 'Find and book the perfect vendors for your events';
+export const SUPPORT_EMAIL = 'support@planbeau.com';
+
+// App URLs
+export const APP_URL = process.env.REACT_APP_URL || 'https://www.planbeau.com';
+
+// ============================================================
+// ENVIRONMENT INFO EXPORT
+// ============================================================
+
+export const ENV_CONFIG = {
+  isProduction: USE_PRODUCTION_API,
+  apiUrl: API_BASE_URL,
+  socketUrl: SOCKET_BASE_URL,
+  mode: USE_PRODUCTION_API ? 'Production' : 'Development (localhost)',
+  nodeEnv: process.env.NODE_ENV,
+  appName: APP_NAME,
+  appUrl: APP_URL
+};
+
+// ============================================================
+// DEVELOPMENT HELPERS (browser console)
+// ============================================================
+
+if (typeof window !== 'undefined') {
+  // Switch to production API
   window.switchToProduction = () => {
     localStorage.setItem('USE_PRODUCTION_API', 'true');
     window.location.reload();
   };
+  
+  // Switch to localhost API
   window.switchToLocalhost = () => {
     localStorage.setItem('USE_PRODUCTION_API', 'false');
     window.location.reload();
   };
+  
+  // Reset to default API mode
   window.resetApiMode = () => {
     localStorage.removeItem('USE_PRODUCTION_API');
     window.location.reload();
   };
-  window.getCurrentApiMode = () => {
-    return { url: API_BASE_URL, isProduction: USE_PRODUCTION_API };
+  
+  // Get current API configuration
+  window.getCurrentApiMode = () => ENV_CONFIG;
+  
+  // Log current config (useful for debugging)
+  window.logConfig = () => {
+    console.log('=== Planbeau Configuration ===');
+    console.log('API URL:', API_BASE_URL);
+    console.log('Socket URL:', SOCKET_BASE_URL);
+    console.log('Environment:', ENV_CONFIG.mode);
+    console.log('Node ENV:', process.env.NODE_ENV);
+    console.log('Google Maps Key:', GOOGLE_MAPS_API_KEY ? '✓ Set' : '✗ Not set');
+    console.log('Google Client ID:', GOOGLE_CLIENT_ID ? '✓ Set' : '✗ Not set');
+    console.log('Stripe Key:', STRIPE_PUBLIC_KEY ? '✓ Set' : '✗ Not set');
+    return ENV_CONFIG;
   };
-}
-
-// Google Maps API Key - REQUIRED for map functionality
-export const GOOGLE_MAPS_API_KEY = 'AIzaSyCPhhp2rAt1VTrIzjgagJXZPZ_nc7K_BVo';
-
-// Set global for Google Maps callback
-if (typeof window !== 'undefined') {
-    window.GOOGLE_MAPS_API_KEY = GOOGLE_MAPS_API_KEY;
 }

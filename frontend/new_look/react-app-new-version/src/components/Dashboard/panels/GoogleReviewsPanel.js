@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { API_BASE_URL } from '../../../config';
 import { showBanner } from '../../../utils/helpers';
+import { apiGet, apiPost, apiPut } from '../../../utils/api';
+import { API_BASE_URL } from '../../../config';
 
 function GoogleReviewsPanel({ onBack, vendorProfileId }) {
   const [loading, setLoading] = useState(true);
@@ -24,9 +25,7 @@ function GoogleReviewsPanel({ onBack, vendorProfileId }) {
   const loadGoogleReviewsSettings = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/google-reviews-settings`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
+      const response = await apiGet(`/vendors/${vendorProfileId}/google-reviews-settings`);
       
       if (response.ok) {
         const data = await response.json();

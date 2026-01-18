@@ -1,4 +1,4 @@
-# robots.txt for PlanBeau
+# robots.txt for Planbeau
 User-agent: *
 Allow: /
 

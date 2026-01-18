@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
-import { API_BASE_URL } from '../../../config';
+import { apiGet, apiPost } from '../../../utils/api';
+import { formatCurrency } from '../../../utils/helpers';
 import { getProvinceFromLocation, getTaxInfoForProvince } from '../../../utils/taxCalculations';
 
 // Checkout Form Component
@@ -34,9 +35,7 @@ function CheckoutForm({ onSuccess, onCancel, clientProvince, total }) {
         // Verify payment and create booking record on backend
         console.log('[Payment] Payment succeeded, verifying with backend...', paymentIntent.id);
         try {
-          const verifyResponse = await fetch(`${API_BASE_URL}/payments/verify-intent?paymentIntentId=${paymentIntent.id}`, {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-          });
+          const verifyResponse = await apiGet(`/payments/verify-intent?paymentIntentId=${paymentIntent.id}`);
           const verifyData = await verifyResponse.json();
           console.log('[Payment] Verify response:', verifyData);
           if (!verifyResponse.ok) {
@@ -57,13 +56,6 @@ function CheckoutForm({ onSuccess, onCancel, clientProvince, total }) {
   };
 
   const taxInfo = getTaxInfoForProvince(clientProvince);
-
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-CA', {
-      style: 'currency',
-      currency: 'CAD'
-    }).format(amount || 0);
-  };
 
   return (
     <form onSubmit={handleSubmit}>
@@ -194,21 +186,14 @@ function ClientPaymentSection({ booking, onBack, onPaymentSuccess }) {
         setClientProvince(province);
 
         // Create payment intent with province for tax calculation
-        const response = await fetch(`${API_BASE_URL}/payments/payment-intent`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          },
-          body: JSON.stringify({
-            bookingId: booking.BookingID || null,
-            requestId: booking.RequestID || null,
-            vendorProfileId: booking.VendorProfileID,
-            amount: booking.TotalAmount,
-            currency: 'cad',
-            description: `Payment for ${booking.ServiceName || 'Booking'} with ${booking.VendorName || 'Vendor'}`,
-            clientProvince: province
-          })
+        const response = await apiPost('/payments/payment-intent', {
+          bookingId: booking.BookingID || null,
+          requestId: booking.RequestID || null,
+          vendorProfileId: booking.VendorProfileID,
+          amount: booking.TotalAmount,
+          currency: 'cad',
+          description: `Payment for ${booking.ServiceName || 'Booking'} with ${booking.VendorName || 'Vendor'}`,
+          clientProvince: province
         });
 
         const data = await response.json();
@@ -225,7 +210,7 @@ function ClientPaymentSection({ booking, onBack, onPaymentSuccess }) {
           setBreakdown(data.breakdown);
         }
 
-        const configRes = await fetch(`${API_BASE_URL}/payments/config`);
+        const configRes = await apiGet('/payments/config');
         const configData = await configRes.json();
 
         if (!configData.publishableKey) {
@@ -249,13 +234,6 @@ function ClientPaymentSection({ booking, onBack, onPaymentSuccess }) {
 
   const handleSuccess = (paymentIntent) => {
     onPaymentSuccess?.(paymentIntent);
-  };
-
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-CA', {
-      style: 'currency',
-      currency: 'CAD'
-    }).format(amount || 0);
   };
 
   if (!booking) {

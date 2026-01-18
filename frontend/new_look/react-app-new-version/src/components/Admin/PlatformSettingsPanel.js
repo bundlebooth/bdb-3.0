@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { API_BASE_URL } from '../../config';
 import { showBanner } from '../../utils/helpers';
+import { apiGet, apiPost, apiPut } from '../../utils/api';
+import { LoadingState } from '../common/AdminComponents';
 
 const PlatformSettingsPanel = () => {
   const [activeTab, setActiveTab] = useState('general'); // general, appearance, api, restrictions, fees
@@ -23,11 +24,7 @@ const PlatformSettingsPanel = () => {
 
   const fetchCommissionSettings = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/commission-settings`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await apiGet('/admin/commission-settings');
       if (response.ok) {
         const data = await response.json();
         if (data.settings && Array.isArray(data.settings)) {
@@ -53,14 +50,7 @@ const PlatformSettingsPanel = () => {
   const saveCommissionSettings = async () => {
     try {
       setSavingCommission(true);
-      const response = await fetch(`${API_BASE_URL}/admin/commission-settings`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(commissionSettings)
-      });
+      const response = await apiPut('/admin/commission-settings', commissionSettings);
       if (response.ok) {
         showBanner('Commission settings saved successfully', 'success');
       } else {
@@ -76,11 +66,7 @@ const PlatformSettingsPanel = () => {
   const fetchSettings = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/admin/settings`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await apiGet('/admin/settings');
 
       if (response.ok) {
         const data = await response.json();
@@ -97,7 +83,7 @@ const PlatformSettingsPanel = () => {
   };
 
   const getDefaultSettings = () => ({
-    platformName: 'PlanBeau',
+    platformName: 'Planbeau',
     tagline: 'Find and book the perfect vendors for your events',
     supportEmail: 'support@planbeau.com',
     supportPhone: '',
@@ -120,14 +106,7 @@ const PlatformSettingsPanel = () => {
   const handleSave = async () => {
     try {
       setSaving(true);
-      const response = await fetch(`${API_BASE_URL}/admin/settings`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(settings)
-      });
+      const response = await apiPut('/admin/settings', settings);
 
       if (response.ok) {
         showBanner('Settings saved successfully', 'success');
@@ -148,14 +127,7 @@ const PlatformSettingsPanel = () => {
     setSettings({ ...settings, maintenanceMode: newValue });
     
     try {
-      await fetch(`${API_BASE_URL}/admin/settings/maintenance`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ enabled: newValue })
-      });
+      await apiPost('/admin/settings/maintenance', { enabled: newValue });
       showBanner(`Maintenance mode ${newValue ? 'enabled' : 'disabled'}`, 'success');
     } catch (error) {
       showBanner('Failed to update maintenance mode', 'error');

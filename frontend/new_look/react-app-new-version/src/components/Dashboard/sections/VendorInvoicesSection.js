@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
-import { API_BASE_URL } from '../../../config';
+import { apiGet } from '../../../utils/api';
 import { buildInvoiceUrl } from '../../../utils/urlHelpers';
+import { formatDate, normalizeString } from '../../../utils/helpers';
 
 function VendorInvoicesSection() {
   const navigate = useNavigate();
@@ -53,9 +54,7 @@ function VendorInvoicesSection() {
   const getVendorProfileId = async () => {
     if (!currentUser?.id) return;
     try {
-      const response = await fetch(`${API_BASE_URL}/vendors/profile?userId=${currentUser.id}`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
+      const response = await apiGet(`/vendors/profile?userId=${currentUser.id}`);
       if (response.ok) {
         const data = await response.json();
         setVendorProfileId(data.vendorProfileId);
@@ -71,18 +70,14 @@ function VendorInvoicesSection() {
     try {
       setLoading(true);
       // Primary: fetch invoices directly
-      const resp1 = await fetch(`${API_BASE_URL}/invoices/vendor/${vendorProfileId}`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
+      const resp1 = await apiGet(`/invoices/vendor/${vendorProfileId}`);
       
       if (resp1.ok) {
         const data = await resp1.json();
         setInvoices(Array.isArray(data?.invoices) ? data.invoices : []);
       } else {
         // Fallback: legacy bookings-based list
-        const resp = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/bookings/all`, {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        });
+        const resp = await apiGet(`/vendor/${vendorProfileId}/bookings/all`);
         if (resp.ok) {
           const bookings = await resp.json();
           const accepted = (Array.isArray(bookings) ? bookings : []).filter(b => {
@@ -102,18 +97,7 @@ function VendorInvoicesSection() {
     }
   }, [vendorProfileId]);
 
-  const normalize = (v) => (v || '').toString().toLowerCase();
-  
-  const formatDate = (d) => {
-    if (!d) return '—';
-    try {
-      const dt = new Date(d);
-      if (isNaN(dt.getTime())) return '—';
-      return dt.toLocaleDateString([], { month: 'short', day: '2-digit', year: 'numeric' });
-    } catch {
-      return '—';
-    }
-  };
+  const normalize = normalizeString;
 
   const getFilteredAndSorted = () => {
     let arr = invoices.slice();

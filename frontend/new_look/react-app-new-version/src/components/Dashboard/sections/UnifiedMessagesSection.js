@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../../context/AuthContext';
+import { apiGet, apiPost } from '../../../utils/api';
 import { API_BASE_URL } from '../../../config';
 import { useUserOnlineStatus, useVendorOnlineStatus } from '../../../hooks/useOnlineStatus';
 import BookingDetailsModal from '../BookingDetailsModal';
@@ -195,17 +196,10 @@ function UnifiedMessagesSection({ onSectionChange }) {
           window.dispatchEvent(new CustomEvent('messageSent'));
         }, 300);
       } else {
-        const response = await fetch(`${API_BASE_URL}/messages`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          },
-          body: JSON.stringify({
-            conversationId: selectedConversation.id,
-            senderId: senderId,
-            content: gifUrl
-          })
+        const response = await apiPost('/messages', {
+          conversationId: selectedConversation.id,
+          senderId: senderId,
+          content: gifUrl
         });
         
         if (response.ok) {
@@ -247,9 +241,7 @@ function UnifiedMessagesSection({ onSectionChange }) {
       }
       
       try {
-        const response = await fetch(`${API_BASE_URL}/vendors/profile?userId=${currentUser.id}`, {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        });
+        const response = await apiGet(`/vendors/profile?userId=${currentUser.id}`);
         if (response.ok) {
           const data = await response.json();
           setVendorProfileId(data.vendorProfileId);
@@ -353,9 +345,7 @@ function UnifiedMessagesSection({ onSectionChange }) {
     
     try {
       // Always use userId - the API requires a UserID, not VendorProfileID
-      const response = await fetch(`${API_BASE_URL}/messages/conversation/${conversationId}?userId=${currentUser?.id}`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
+      const response = await apiGet(`/messages/conversation/${conversationId}?userId=${currentUser?.id}`);
       
       if (!response.ok) throw new Error('Failed to load messages');
       
@@ -428,14 +418,10 @@ function UnifiedMessagesSection({ onSectionChange }) {
         // Fetch bookings to find one associated with this conversation
         let bookings = [];
         if (convType === 'vendor' && vendorProfileId) {
-          const resp = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/bookings/all`, {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-          });
+          const resp = await apiGet(`/vendor/${vendorProfileId}/bookings/all`);
           if (resp.ok) bookings = await resp.json();
         } else if (currentUser?.id) {
-          const resp = await fetch(`${API_BASE_URL}/users/${currentUser.id}/bookings/all`, {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-          });
+          const resp = await apiGet(`/users/${currentUser.id}/bookings/all`);
           if (resp.ok) bookings = await resp.json();
         }
         
@@ -570,17 +556,10 @@ function UnifiedMessagesSection({ onSectionChange }) {
           window.dispatchEvent(new CustomEvent('messageSent'));
         }, 300);
       } else {
-        const response = await fetch(`${API_BASE_URL}/messages`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          },
-          body: JSON.stringify({
-            conversationId: selectedConversation.id,
-            senderId: senderId,
-            content: newMessage.trim()
-          })
+        const response = await apiPost('/messages', {
+          conversationId: selectedConversation.id,
+          senderId: senderId,
+          content: newMessage.trim()
         });
         
         if (response.ok) {
@@ -1140,17 +1119,10 @@ function UnifiedMessagesSection({ onSectionChange }) {
                         window.dispatchEvent(new CustomEvent('messageSent'));
                       }, 300);
                     } else {
-                      const response = await fetch(`${API_BASE_URL}/messages`, {
-                        method: 'POST',
-                        headers: {
-                          'Content-Type': 'application/json',
-                          'Authorization': `Bearer ${localStorage.getItem('token')}`
-                        },
-                        body: JSON.stringify({
-                          conversationId: selectedConversation.id,
-                          senderId: senderId,
-                          content: reply
-                        })
+                      const response = await apiPost('/messages', {
+                        conversationId: selectedConversation.id,
+                        senderId: senderId,
+                        content: reply
                       });
                       
                       if (response.ok) {

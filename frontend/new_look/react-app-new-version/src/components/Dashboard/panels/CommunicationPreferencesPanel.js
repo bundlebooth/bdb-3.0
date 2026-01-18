@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../context/AuthContext';
-import { API_BASE_URL } from '../../../config';
 import { showBanner } from '../../../utils/helpers';
+import { apiGet, apiPut } from '../../../utils/api';
+import { API_BASE_URL } from '../../../config';
 import pushService from '../../../services/pushNotificationService';
 
 function CommunicationPreferencesPanel({ onBack }) {
@@ -101,7 +102,7 @@ function CommunicationPreferencesPanel({ onBack }) {
 
   const handleTestPush = async () => {
     const success = await pushService.showLocalNotification('Test Notification', {
-      body: 'This is a test push notification from PlanBeau!',
+      body: 'This is a test push notification from Planbeau!',
       tag: 'test'
     });
     if (!success) {

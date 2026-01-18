@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { API_BASE_URL } from '../config';
+import { apiGet, apiPost } from '../utils/api';
 
 const UnsubscribePage = () => {
   const { token } = useParams();
@@ -62,7 +63,7 @@ const UnsubscribePage = () => {
     return (
       <div style={styles.container}>
         <div style={styles.card}>
-          <img src="/images/logo.png" alt="PlanBeau" style={styles.logo} />
+          <img src="/images/logo.png" alt="Planbeau" style={styles.logo} />
           <div style={styles.spinner}></div>
           <h2 style={styles.title}>Processing...</h2>
           <p style={styles.text}>Please wait while we update your preferences.</p>
@@ -75,7 +76,7 @@ const UnsubscribePage = () => {
     return (
       <div style={styles.container}>
         <div style={styles.card}>
-          <img src="/images/logo.png" alt="PlanBeau" style={styles.logo} />
+          <img src="/images/logo.png" alt="Planbeau" style={styles.logo} />
           <div style={styles.iconError}>
             <svg width="40" height="40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
@@ -96,7 +97,7 @@ const UnsubscribePage = () => {
   return (
     <div style={styles.container}>
       <div style={styles.card}>
-        <img src="/images/logo.png" alt="PlanBeau" style={styles.logo} />
+        <img src="/images/logo.png" alt="Planbeau" style={styles.logo} />
         <div style={styles.iconSuccess}>
           <svg width="40" height="40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />

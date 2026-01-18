@@ -19,7 +19,7 @@ function Footer() {
       <div className="vv-wrap">
         <div className="vv-brand">
           <div className="vv-logo" onClick={() => handleNavigate('/')} style={{ cursor: 'pointer' }}>
-            <img src="/images/logo.png" alt="PlanBeau" style={{ height: '80px', width: 'auto' }} />
+            <img src="/images/logo.png" alt="Planbeau" style={{ height: '80px', width: 'auto' }} />
           </div>
           <div className="vv-tagline">Get the app and plan on the go</div>
           <div className="vv-badges">
@@ -32,7 +32,7 @@ function Footer() {
               <span>App Store</span>
             </a>
           </div>
-          <div style={{ color: 'var(--text-light)', fontSize: '0.9rem' }}>© 2025 PlanBeau. All rights reserved.</div>
+          <div style={{ color: 'var(--text-light)', fontSize: '0.9rem' }}>© 2025 Planbeau. All rights reserved.</div>
         </div>
 
         <div className="vv-col">

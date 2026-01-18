@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
+import { apiGet } from '../utils/api';
 import { PageLayout } from '../components/PageWrapper';
 import Header from '../components/Header';
 import { decodeInvoiceId, decodeBookingId, isPublicId } from '../utils/hashIds';
+import { formatCurrency, formatDateFormal } from '../utils/helpers';
 import './InvoicePage.css';
 
 function InvoicePage() {
@@ -72,28 +74,7 @@ function InvoicePage() {
     window.print();
   };
 
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-CA', {
-      style: 'currency',
-      currency: 'CAD'
-    }).format(amount || 0);
-  };
-
-  const formatDate = (dateStr) => {
-    if (!dateStr) return '';
-    try {
-      const date = new Date(dateStr);
-      // Check if date is valid
-      if (isNaN(date.getTime())) return '';
-      return date.toLocaleDateString('en-CA', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      });
-    } catch {
-      return '';
-    }
-  };
+  const formatDate = formatDateFormal;
 
   if (loading) {
     return (

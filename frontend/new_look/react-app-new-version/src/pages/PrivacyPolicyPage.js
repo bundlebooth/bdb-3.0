@@ -23,7 +23,7 @@ function PrivacyPolicyPage() {
               1. Introduction
             </h2>
             <p style={{ color: '#4b5563', lineHeight: '1.7', marginBottom: '1rem' }}>
-              PlanBeau ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy 
+              Planbeau ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy 
               explains how we collect, use, disclose, and safeguard your information when you use our platform.
             </p>
           </section>

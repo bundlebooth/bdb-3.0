@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { apiGet, apiPost } from '../utils/api';
 import { API_BASE_URL } from '../config';
 import { PageLayout } from '../components/PageWrapper';
-import { showBanner } from '../utils/helpers';
+import { showBanner, formatDateTime } from '../utils/helpers';
+import UniversalModal from '../components/UniversalModal';
 import './AdminReviewPage.css';
 
 const AdminReviewPage = () => {
@@ -116,16 +118,7 @@ const AdminReviewPage = () => {
     }
   };
 
-  const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
+  const formatDate = formatDateTime;
 
   // Show loading while auth is checking or data is loading
   if (authLoading || loading) {
@@ -145,7 +138,7 @@ const AdminReviewPage = () => {
       <header className="admin-header">
         <div className="header-content">
           <div className="logo" onClick={() => navigate('/')} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-            <img src="/images/logo.png" alt="PlanBeau" style={{ height: '140px', width: 'auto' }} />
+            <img src="/images/logo.png" alt="Planbeau" style={{ height: '140px', width: 'auto' }} />
           </div>
           <h1>Admin: Vendor Profile Reviews</h1>
           <button className="btn-back" onClick={() => navigate('/')}>
@@ -248,50 +241,40 @@ const AdminReviewPage = () => {
       </main>
 
       {/* Rejection Modal */}
-      {selectedProfile && (
-        <div className="modal-overlay" onClick={() => setSelectedProfile(null)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>Reject Profile: {selectedProfile.BusinessName}</h2>
-              <button className="modal-close" onClick={() => setSelectedProfile(null)}>
-                <i className="fas fa-times"></i>
-              </button>
-            </div>
-            <div className="modal-body">
-              <div className="form-group">
-                <label>Rejection Reason (Required)</label>
-                <textarea
-                  value={rejectionReason}
-                  onChange={(e) => setRejectionReason(e.target.value)}
-                  placeholder="Please provide a clear reason for rejection. This will be shown to the vendor."
-                  rows={4}
-                />
-              </div>
-              <div className="form-group">
-                <label>Admin Notes (Optional, internal only)</label>
-                <textarea
-                  value={adminNotes}
-                  onChange={(e) => setAdminNotes(e.target.value)}
-                  placeholder="Internal notes for admin reference..."
-                  rows={2}
-                />
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button className="btn-cancel" onClick={() => setSelectedProfile(null)}>
-                Cancel
-              </button>
-              <button 
-                className="btn-reject-confirm"
-                onClick={() => handleReject(selectedProfile.VendorProfileID)}
-                disabled={actionLoading || !rejectionReason.trim()}
-              >
-                {actionLoading ? 'Rejecting...' : 'Confirm Rejection'}
-              </button>
-            </div>
-          </div>
+      <UniversalModal
+        isOpen={!!selectedProfile}
+        onClose={() => setSelectedProfile(null)}
+        title={`Reject Profile: ${selectedProfile?.BusinessName || ''}`}
+        size="medium"
+        primaryAction={{
+          label: actionLoading ? 'Rejecting...' : 'Confirm Rejection',
+          onClick: () => handleReject(selectedProfile?.VendorProfileID),
+          loading: actionLoading,
+          disabled: !rejectionReason.trim()
+        }}
+        secondaryAction={{ label: 'Cancel', onClick: () => setSelectedProfile(null) }}
+      >
+        <div className="um-form-group">
+          <label className="um-form-label">Rejection Reason (Required)</label>
+          <textarea
+            className="um-form-textarea"
+            value={rejectionReason}
+            onChange={(e) => setRejectionReason(e.target.value)}
+            placeholder="Please provide a clear reason for rejection. This will be shown to the vendor."
+            rows={4}
+          />
         </div>
-      )}
+        <div className="um-form-group">
+          <label className="um-form-label">Admin Notes (Optional, internal only)</label>
+          <textarea
+            className="um-form-textarea"
+            value={adminNotes}
+            onChange={(e) => setAdminNotes(e.target.value)}
+            placeholder="Internal notes for admin reference..."
+            rows={2}
+          />
+        </div>
+      </UniversalModal>
       </div>
     </PageLayout>
   );

@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
-import { API_BASE_URL } from '../../../config';
+import { apiGet } from '../../../utils/api';
 import { buildInvoiceUrl } from '../../../utils/urlHelpers';
+import { formatDate, normalizeString } from '../../../utils/helpers';
 
 function ClientInvoicesSection() {
   const navigate = useNavigate();
@@ -49,18 +50,14 @@ function ClientInvoicesSection() {
     try {
       setLoading(true);
       // Primary: fetch invoices directly
-      const resp1 = await fetch(`${API_BASE_URL}/invoices/user/${currentUser.id}`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
+      const resp1 = await apiGet(`/invoices/user/${currentUser.id}`);
       
       if (resp1.ok) {
         const data = await resp1.json();
         setInvoices(Array.isArray(data?.invoices) ? data.invoices : []);
       } else {
         // Fallback: legacy bookings-based list
-        const resp = await fetch(`${API_BASE_URL}/users/${currentUser.id}/bookings/all`, {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        });
+        const resp = await apiGet(`/users/${currentUser.id}/bookings/all`);
         if (resp.ok) {
           const bookings = await resp.json();
           const accepted = (Array.isArray(bookings) ? bookings : []).filter(b => {
@@ -84,18 +81,7 @@ function ClientInvoicesSection() {
     loadInvoices();
   }, [loadInvoices]);
 
-  const normalize = (v) => (v || '').toString().toLowerCase();
-  
-  const formatDate = (d) => {
-    if (!d) return '—';
-    try {
-      const dt = new Date(d);
-      if (isNaN(dt.getTime())) return '—';
-      return dt.toLocaleDateString([], { month: 'short', day: '2-digit', year: 'numeric' });
-    } catch {
-      return '—';
-    }
-  };
+  const normalize = normalizeString;
 
   const getFilteredAndSorted = () => {
     let arr = invoices.slice();

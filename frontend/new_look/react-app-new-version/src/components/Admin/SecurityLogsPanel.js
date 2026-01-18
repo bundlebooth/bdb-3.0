@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { API_BASE_URL } from '../../config';
 import { showBanner } from '../../utils/helpers';
+import { apiGet, apiPost } from '../../utils/api';
+import { LoadingState, EmptyState } from '../common/AdminComponents';
 
 const SecurityLogsPanel = () => {
   const [activeTab, setActiveTab] = useState('login'); // login, admin, flagged, 2fa
@@ -35,15 +36,7 @@ const SecurityLogsPanel = () => {
     try {
       setLoading(true);
       const statusFilter = filter === 'success' ? 'success' : filter === 'failed' ? 'failed' : '';
-      const response = await fetch(
-        `${API_BASE_URL}/admin/security/logs?type=${activeTab}&status=${statusFilter}&page=${pagination.page}&limit=${pagination.limit}&search=${searchTerm}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        }
-      );
-
+      const response = await apiGet(`/admin/security/logs?type=${activeTab}&status=${statusFilter}&page=${pagination.page}&limit=${pagination.limit}&search=${searchTerm}`);
       if (response.ok) {
         const data = await response.json();
         // Transform the data to match expected format
@@ -79,9 +72,7 @@ const SecurityLogsPanel = () => {
   const fetch2FASettings = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/admin/security/2fa-settings`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
+      const response = await apiGet('/admin/security/2fa-settings');
       if (response.ok) {
         const data = await response.json();
         if (data.settings) {
@@ -97,9 +88,7 @@ const SecurityLogsPanel = () => {
 
   const fetchAdminList = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/security/admin-2fa-status`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
+      const response = await apiGet('/admin/security/admin-2fa-status');
       if (response.ok) {
         const data = await response.json();
         setAdminList(data.admins || []);
@@ -112,9 +101,7 @@ const SecurityLogsPanel = () => {
   const fetchFlaggedItems = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/admin/security/flagged-items`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
+      const response = await apiGet('/admin/security/flagged-items');
       if (response.ok) {
         const data = await response.json();
         setFlaggedItems(data.items || []);
@@ -135,14 +122,7 @@ const SecurityLogsPanel = () => {
   const save2FASettings = async () => {
     try {
       setSaving(true);
-      const response = await fetch(`${API_BASE_URL}/admin/security/2fa-settings`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(twoFASettings)
-      });
+      const response = await apiPost('/admin/security/2fa-settings', twoFASettings);
       if (response.ok) {
         showBanner('Security settings saved successfully', 'success');
       } else {
@@ -158,10 +138,7 @@ const SecurityLogsPanel = () => {
 
   const reset2FA = async (userId) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/security/reset-2fa/${userId}`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
+      const response = await apiPost(`/admin/security/reset-2fa/${userId}`, {});
       if (response.ok) {
         showBanner('2FA reset successfully', 'success');
         fetchAdminList();

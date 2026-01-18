@@ -23,7 +23,7 @@ function TermsOfServicePage() {
               1. Acceptance of Terms
             </h2>
             <p style={{ color: '#4b5563', lineHeight: '1.7', marginBottom: '1rem' }}>
-              By accessing or using PlanBeau ("the Platform"), you agree to be bound by these Terms of Service. 
+              By accessing or using Planbeau ("the Platform"), you agree to be bound by these Terms of Service. 
               If you do not agree to these terms, please do not use our services.
             </p>
           </section>
@@ -33,7 +33,7 @@ function TermsOfServicePage() {
               2. Description of Service
             </h2>
             <p style={{ color: '#4b5563', lineHeight: '1.7', marginBottom: '1rem' }}>
-              PlanBeau is a platform that connects event planners and clients with vendors who provide 
+              Planbeau is a platform that connects event planners and clients with vendors who provide 
               event-related services. We facilitate the discovery, communication, and booking process 
               between clients and vendors.
             </p>
@@ -90,7 +90,7 @@ function TermsOfServicePage() {
               6. Payments and Fees
             </h2>
             <p style={{ color: '#4b5563', lineHeight: '1.7', marginBottom: '1rem' }}>
-              Payment terms are established between clients and vendors. PlanBeau may charge service fees 
+              Payment terms are established between clients and vendors. Planbeau may charge service fees 
               for facilitating transactions. All fees will be clearly disclosed before any transaction is completed.
             </p>
           </section>
@@ -111,7 +111,7 @@ function TermsOfServicePage() {
             </h2>
             <p style={{ color: '#4b5563', lineHeight: '1.7', marginBottom: '1rem' }}>
               All content on the Platform, including logos, designs, and software, is the property of 
-              PlanBeau or its licensors. Users may not copy, modify, or distribute this content without permission.
+              Planbeau or its licensors. Users may not copy, modify, or distribute this content without permission.
             </p>
           </section>
 
@@ -120,7 +120,7 @@ function TermsOfServicePage() {
               9. Limitation of Liability
             </h2>
             <p style={{ color: '#4b5563', lineHeight: '1.7', marginBottom: '1rem' }}>
-              PlanBeau acts as a platform connecting clients and vendors. We are not responsible for the 
+              Planbeau acts as a platform connecting clients and vendors. We are not responsible for the 
               quality of services provided by vendors or disputes between users. Our liability is limited 
               to the maximum extent permitted by law.
             </p>

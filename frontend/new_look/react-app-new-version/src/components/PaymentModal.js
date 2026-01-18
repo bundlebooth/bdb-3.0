@@ -7,8 +7,9 @@ import {
   useElements
 } from '@stripe/react-stripe-js';
 import { API_BASE_URL } from '../config';
-import { showBanner } from '../utils/helpers';
+import { showBanner, formatCurrency } from '../utils/helpers';
 import { getProvinceFromLocation, getTaxInfoForProvince, PROVINCE_TAX_RATES } from '../utils/taxCalculations';
+import UniversalModal from './UniversalModal';
 import './PaymentModal.css';
 
 // Checkout Form Component (inside Elements provider)
@@ -218,13 +219,6 @@ function PaymentModal({ isOpen, onClose, booking, onPaymentSuccess }) {
     onClose();
   };
 
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-CA', {
-      style: 'currency',
-      currency: 'CAD'
-    }).format(amount || 0);
-  };
-
   if (!isOpen) return null;
 
   const taxInfo = getTaxInfoForProvince(clientProvince);
@@ -237,18 +231,15 @@ function PaymentModal({ isOpen, onClose, booking, onPaymentSuccess }) {
   const total = breakdown?.total || (subtotal + taxAmount + platformFee + processingFee);
 
   return (
-    <div className="payment-modal-overlay" onClick={onClose}>
-      <div className="payment-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="payment-modal-header">
-          <h2>
-            <i className="fas fa-credit-card"></i>
-            Complete Payment
-          </h2>
-          <span className="close-btn" onClick={onClose}>&times;</span>
-        </div>
-
-        <div className="payment-modal-body">
-          <div className="payment-modal-inner">
+    <UniversalModal
+      isOpen={true}
+      onClose={onClose}
+      title="Complete Payment"
+      icon={<i className="fas fa-credit-card" style={{ marginRight: '8px' }}></i>}
+      size="medium"
+      showFooter={false}
+    >
+      <div className="payment-modal-inner">
           {/* Vendor Header */}
           <div className="payment-vendor-header">
             <div className="vendor-logo">
@@ -445,7 +436,7 @@ function PaymentModal({ isOpen, onClose, booking, onPaymentSuccess }) {
           </div>
         </div>
       </div>
-    </div>
+    </UniversalModal>
   );
 }
 

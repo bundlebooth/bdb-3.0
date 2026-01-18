@@ -129,7 +129,7 @@ const BecomeVendorLanding = () => {
     {
       step: 1,
       title: 'Create Your Vendor Profile',
-      subtitle: 'Set up your business on PlanBeau for free',
+      subtitle: 'Set up your business on Planbeau for free',
       description: 'Sign up and complete your vendor profile. Add your business name, select your service categories, upload photos of your work, and set your pricing.',
       features: ['Choose from 13+ vendor categories', 'Add unlimited portfolio photos', 'Set your service areas', 'Define your business hours']
     },
@@ -155,7 +155,7 @@ const BecomeVendorLanding = () => {
       <header className={`vendor-landing-header ${isScrolled ? 'scrolled' : ''}`}>
         <div className="vendor-landing-header-content">
           <div className="vendor-landing-logo" onClick={() => navigate('/')}>
-            <img src="/images/logo.png" alt="PlanBeau" className="header-logo-img" />
+            <img src="/images/logo.png" alt="Planbeau" className="header-logo-img" />
           </div>
           <nav className="vendor-landing-nav">
             <a href="/explore" className="nav-link">Browse Vendors</a>
@@ -169,8 +169,8 @@ const BecomeVendorLanding = () => {
       {/* Hero Section - Half Width Image with Overlay Text */}
       <section className="vendor-hero-split">
         <div className="vendor-hero-text animate-on-scroll fade-up">
-          <span className="hero-label">Join PlanBeau Today</span>
-          <h1>Grow Your Event Business with PlanBeau</h1>
+          <span className="hero-label">Join Planbeau Today</span>
+          <h1>Grow Your Event Business with Planbeau</h1>
           <p className="hero-subtitle">
             Connect with thousands of event planners looking for vendors like you. 
             Create your free profile and start receiving booking requests today.
@@ -211,17 +211,17 @@ const BecomeVendorLanding = () => {
         </div>
       </section>
 
-      {/* Why PlanBeau Section - Image 2 Style with Overlapping Card */}
+      {/* Why Planbeau Section - Image 2 Style with Overlapping Card */}
       <section className="why-vendor-section">
         <div className="section-container">
           <div className="why-vendor-content">
             <div className="why-vendor-card animate-on-scroll fade-up">
-              <h2>Why Vendors Choose PlanBeau</h2>
+              <h2>Why Vendors Choose Planbeau</h2>
               <div className="why-item">
                 <div className="why-icon"><Shield size={24} /></div>
                 <div className="why-text">
                   <h3>Verified Clients</h3>
-                  <p>All clients on PlanBeau are <span className="highlight">verified</span> before they can book. Focus on what you do best while we handle the vetting.</p>
+                  <p>All clients on Planbeau are <span className="highlight">verified</span> before they can book. Focus on what you do best while we handle the vetting.</p>
                 </div>
               </div>
               <div className="why-item">
@@ -556,7 +556,7 @@ const BecomeVendorLanding = () => {
             <div className="testimonial-text">
               <span className="testimonial-label">Vendor Success Story</span>
               <blockquote>
-                "Since joining PlanBeau, I've doubled my bookings. The platform makes it so easy to showcase my work and connect with clients who are actually ready to book."
+                "Since joining Planbeau, I've doubled my bookings. The platform makes it so easy to showcase my work and connect with clients who are actually ready to book."
               </blockquote>
               <div className="testimonial-author">
                 <span className="author-name">Marcus Chen</span>
@@ -570,7 +570,7 @@ const BecomeVendorLanding = () => {
       {/* Benefits Grid Section */}
       <section className="vendor-benefits-section animate-on-scroll fade-up">
         <div className="section-container">
-          <h2>Why Vendors Love PlanBeau</h2>
+          <h2>Why Vendors Love Planbeau</h2>
           <div className="benefits-grid">
             <div className="benefit-card">
               <div className="benefit-icon"><TrendingUp size={28} /></div>
@@ -600,7 +600,7 @@ const BecomeVendorLanding = () => {
       <section className="vendor-cta-section animate-on-scroll fade-up">
         <div className="section-container">
           <h2>Ready to Grow Your Business?</h2>
-          <p>Join hundreds of vendors already thriving on PlanBeau</p>
+          <p>Join hundreds of vendors already thriving on Planbeau</p>
           <button className="cta-btn-large" onClick={handleGetStarted}>
             Create Your Free Vendor Profile
           </button>

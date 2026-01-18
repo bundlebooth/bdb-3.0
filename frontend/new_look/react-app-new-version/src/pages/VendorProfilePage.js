@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { apiGet, apiPost } from '../utils/api';
 import { API_BASE_URL } from '../config';
 import { PageLayout, ContentWrapper } from '../components/PageWrapper';
 import Header from '../components/Header';
@@ -93,7 +94,7 @@ function VendorProfilePage() {
     try {
       setLoading(true);
       const userId = currentUser?.id || '';
-      const response = await fetch(`${API_BASE_URL}/vendors/${vendorId}?userId=${userId}`);
+      const response = await apiGet(`/vendors/${vendorId}?userId=${userId}`);
       
       if (!response.ok) {
         throw new Error('Failed to load vendor profile');
@@ -130,7 +131,7 @@ function VendorProfilePage() {
       }
       
       // Update page title
-      document.title = `${vendorDetails.profile.BusinessName || vendorDetails.profile.DisplayName} - PlanBeau`;
+      document.title = `${vendorDetails.profile.BusinessName || vendorDetails.profile.DisplayName} - Planbeau`;
       
       // Track page view with URL parameters
       const queryParams = parseQueryParams(location.search);
@@ -151,7 +152,7 @@ function VendorProfilePage() {
   // Load vendor features (questionnaire)
   const loadVendorFeatures = useCallback(async (vendorProfileId) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/vendors/features/vendor/${vendorProfileId}`);
+      const response = await apiGet(`/vendors/features/vendor/${vendorProfileId}`);
       if (response.ok) {
         const data = await response.json();
         setVendorFeatures(data.selectedFeatures || []);
@@ -164,7 +165,7 @@ function VendorProfilePage() {
   // Load portfolio albums
   const loadPortfolioAlbums = useCallback(async (vendorProfileId) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/portfolio/albums/public`);
+      const response = await apiGet(`/vendor/${vendorProfileId}/portfolio/albums/public`);
       if (response.ok) {
         const data = await response.json();
         setPortfolioAlbums(data.albums || []);
@@ -177,7 +178,7 @@ function VendorProfilePage() {
   // Load vendor badges
   const loadVendorBadges = useCallback(async (vendorProfileId) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/badges`);
+      const response = await apiGet(`/vendors/${vendorProfileId}/badges`);
       if (response.ok) {
         const data = await response.json();
         setVendorBadges(data.badges || []);
@@ -190,7 +191,7 @@ function VendorProfilePage() {
   // Load vendor packages
   const loadVendorPackages = useCallback(async (vendorProfileId) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/packages`);
+      const response = await apiGet(`/vendors/${vendorProfileId}/packages`);
       if (response.ok) {
         const data = await response.json();
         setPackages(data.packages || []);
@@ -203,7 +204,7 @@ function VendorProfilePage() {
   // Load cancellation policy
   const loadCancellationPolicy = useCallback(async (vendorProfileId) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/payments/vendor/${vendorProfileId}/cancellation-policy`);
+      const response = await apiGet(`/payments/vendor/${vendorProfileId}/cancellation-policy`);
       if (response.ok) {
         const data = await response.json();
         setCancellationPolicy(data.policy);
@@ -220,10 +221,10 @@ function VendorProfilePage() {
       setSelectedAlbum(album);
       setAlbumViewerOpen(true);
       
-      const url = `${API_BASE_URL}/vendor/${vendor?.profile?.VendorProfileID}/portfolio/albums/${album.AlbumID}/images/public`;
+      const url = `/vendor/${vendor?.profile?.VendorProfileID}/portfolio/albums/${album.AlbumID}/images/public`;
       console.log('Loading album images from:', url);
       
-      const response = await fetch(url);
+      const response = await apiGet(url);
       const data = await response.json();
       console.log('Album images response:', data);
       
@@ -244,7 +245,7 @@ function VendorProfilePage() {
   // Load reviews with survey ratings (separate call to get full review data)
   const loadReviewsWithSurvey = useCallback(async (vendorProfileId) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/reviews`);
+      const response = await apiGet(`/vendors/${vendorProfileId}/reviews`);
       if (response.ok) {
         const data = await response.json();
         if (data.success && data.reviews) {
@@ -262,7 +263,7 @@ function VendorProfilePage() {
     try {
       setGoogleReviewsLoading(true);
       
-      const response = await fetch(`${API_BASE_URL}/vendors/google-reviews/${googlePlaceId}`);
+      const response = await apiGet(`/vendors/google-reviews/${googlePlaceId}`);
       if (response.ok) {
         const data = await response.json();
         setGoogleReviews(data.data);
@@ -296,8 +297,8 @@ function VendorProfilePage() {
       const latitude = vendorData.profile?.Latitude;
       const longitude = vendorData.profile?.Longitude;
       if (latitude && longitude) {
-        const nearbyResponse = await fetch(
-          `${API_BASE_URL}/vendors?latitude=${latitude}&longitude=${longitude}&radiusMiles=25&pageSize=8&sortBy=nearest`
+        const nearbyResponse = await apiGet(
+          `/vendors?latitude=${latitude}&longitude=${longitude}&radiusMiles=25&pageSize=8&sortBy=nearest`
         );
         if (nearbyResponse.ok) {
           const nearbyData = await nearbyResponse.json();
@@ -307,7 +308,7 @@ function VendorProfilePage() {
       }
 
       // Load popular vendors
-      const popularResponse = await fetch(`${API_BASE_URL}/vendors?pageSize=8&sortBy=rating`);
+      const popularResponse = await apiGet('/vendors?pageSize=8&sortBy=rating');
       if (popularResponse.ok) {
         const popularData = await popularResponse.json();
         const popular = (popularData.data || []).filter(v => v.VendorProfileID !== vendorId);
@@ -322,9 +323,7 @@ function VendorProfilePage() {
   const loadFavorites = useCallback(async () => {
     if (!currentUser?.id) return;
     try {
-      const response = await fetch(`${API_BASE_URL}/favorites/user/${currentUser.id}`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
+      const response = await apiGet(`/favorites/user/${currentUser.id}`);
       if (response.ok) {
         const data = await response.json();
         setFavorites(data.favorites || []);
@@ -357,16 +356,10 @@ function VendorProfilePage() {
       // Track the profile view
       const trackView = async () => {
         try {
-          await fetch(`${API_BASE_URL}/analytics/track-view`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              vendorId: vendorId,
-              referrerUrl: document.referrer || window.location.href,
-              sessionId: sessionId
-            })
+          await apiPost('/analytics/track-view', {
+            vendorId: vendorId,
+            referrerUrl: document.referrer || window.location.href,
+            sessionId: sessionId
           });
         } catch (error) {
           // Silently fail - view tracking is not critical
@@ -390,16 +383,9 @@ function VendorProfilePage() {
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/favorites/toggle`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          userId: currentUser.id,
-          vendorProfileId: vendorId
-        })
+      const response = await apiPost('/favorites/toggle', {
+        userId: currentUser.id,
+        vendorProfileId: vendorId
       });
 
       if (!response.ok) throw new Error('Failed to toggle favorite');
@@ -424,16 +410,9 @@ function VendorProfilePage() {
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/favorites/toggle`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          userId: currentUser.id,
-          vendorProfileId: recommendationVendorId
-        })
+      const response = await apiPost('/favorites/toggle', {
+        userId: currentUser.id,
+        vendorProfileId: recommendationVendorId
       });
 
       if (!response.ok) throw new Error('Failed to toggle favorite');
@@ -465,7 +444,7 @@ function VendorProfilePage() {
       try {
         await navigator.share({
           title: vendorName,
-          text: `Check out ${vendorName} on PlanBeau!`,
+          text: `Check out ${vendorName} on Planbeau!`,
           url: url
         });
       } catch (error) {
@@ -516,17 +495,10 @@ function VendorProfilePage() {
     
     try {
       // Create or get existing conversation with this vendor
-      const response = await fetch(`${API_BASE_URL}/messages/conversations`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          userId: currentUser.id,
-          vendorProfileId: vendorId,
-          subject: `Inquiry about ${profile?.BusinessName || 'your services'}`
-        })
+      const response = await apiPost('/messages/conversations', {
+        userId: currentUser.id,
+        vendorProfileId: vendorId,
+        subject: `Inquiry about ${profile?.BusinessName || 'your services'}`
       });
       
       if (response.ok) {
@@ -1116,10 +1088,10 @@ function VendorProfilePage() {
                       color: style.iconColor
                     }}></i>
                   )}
-                  {/* PlanBeau favicon logo - positioned at bottom right of icon circle */}
+                  {/* Planbeau favicon logo - positioned at bottom right of icon circle */}
                   <img 
                     src="/planbeau_fav_icon.png" 
-                    alt="PlanBeau"
+                    alt="Planbeau"
                     style={{ 
                       position: 'absolute',
                       bottom: '-2px',
@@ -1647,7 +1619,7 @@ function VendorProfilePage() {
               fontWeight: showGoogleReviews ? 400 : 600,
               transition: 'all 0.2s'
             }}>
-              PlanBeau
+              Planbeau
             </span>
             
             <div 
@@ -1689,7 +1661,7 @@ function VendorProfilePage() {
           </div>
         </div>
 
-        {/* Average Survey Ratings - Only show for PlanBeau reviews */}
+        {/* Average Survey Ratings - Only show for Planbeau reviews */}
         {!showGoogleReviews && reviews && reviews.length > 0 && (() => {
           // Calculate averages for each survey category
           const surveyCategories = [

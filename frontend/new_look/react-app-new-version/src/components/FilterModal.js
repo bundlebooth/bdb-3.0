@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import UniversalModal from './UniversalModal';
 
 function FilterModal({ isOpen, onClose, filters, onFilterChange, userLocation, onApply, vendorCount = 0 }) {
   const locationInputRef = useRef(null);
@@ -128,72 +129,15 @@ function FilterModal({ isOpen, onClose, filters, onFilterChange, userLocation, o
     setActiveTags(newTags);
   };
 
-  if (!isOpen) return null;
-
   return (
-    <>
-      {/* Backdrop */}
-      <div 
-        className="filter-modal-backdrop"
-        onClick={onClose}
-        style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          zIndex: 9998,
-          animation: 'fadeIn 0.2s ease-in-out'
-        }}
-      />
-      
-      {/* Modal */}
-      <div 
-        className="filter-modal"
-        style={{
-          position: 'fixed',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          backgroundColor: 'white',
-          borderRadius: '16px',
-          width: '90%',
-          maxWidth: '600px',
-          maxHeight: '90vh',
-          overflow: 'hidden',
-          zIndex: 9999,
-          boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
-          animation: 'slideUp 0.3s ease-out',
-          display: 'flex',
-          flexDirection: 'column'
-        }}
-      >
-        {/* Header */}
-        <div style={{
-          padding: '1.5rem',
-          borderBottom: '1px solid #e5e7eb',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          position: 'relative'
-        }}>
-          <h2 style={{ 
-            fontSize: '1.25rem', 
-            fontWeight: 600, 
-            margin: 0,
-            color: '#111827'
-          }}>
-            Filters
-          </h2>
-        </div>
-
-        {/* Content */}
-        <div style={{
-          padding: '1.5rem',
-          overflowY: 'auto',
-          flex: 1
-        }}>
+    <UniversalModal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Filters"
+      size="medium"
+      showFooter={false}
+    >
+      <div className="filter-modal-content">
           {/* Location */}
           <div style={{ marginBottom: '2rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
@@ -508,7 +452,6 @@ function FilterModal({ isOpen, onClose, filters, onFilterChange, userLocation, o
             Show {vendorCount} listing{vendorCount !== 1 ? 's' : ''}
           </button>
         </div>
-      </div>
 
       <style>{`
         @keyframes fadeIn {
@@ -569,7 +512,7 @@ function FilterModal({ isOpen, onClose, filters, onFilterChange, userLocation, o
           background: #9ca3af;
         }
       `}</style>
-    </>
+    </UniversalModal>
   );
 }
 

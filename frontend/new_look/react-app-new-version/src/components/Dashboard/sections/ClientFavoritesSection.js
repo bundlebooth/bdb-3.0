@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
-import { API_BASE_URL } from '../../../config';
+import { apiGet, apiPost } from '../../../utils/api';
 import { buildVendorProfileUrl } from '../../../utils/urlHelpers';
 
 function ClientFavoritesSection() {
@@ -16,9 +16,7 @@ function ClientFavoritesSection() {
     
     try {
       setLoading(true);
-      const resp = await fetch(`${API_BASE_URL}/favorites/user/${currentUser.id}`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
+      const resp = await apiGet(`/favorites/user/${currentUser.id}`);
       
       if (!resp.ok) throw new Error('Failed to fetch favorites');
       const favs = await resp.json();
@@ -45,14 +43,7 @@ function ClientFavoritesSection() {
 
   const handleUnfavorite = useCallback(async (vendorId) => {
     try {
-      const resp = await fetch(`${API_BASE_URL}/users/favorites/toggle`, {
-        method: 'POST',
-        headers: { 
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ userId: currentUser.id, vendorProfileId: vendorId })
-      });
+      const resp = await apiPost('/users/favorites/toggle', { userId: currentUser.id, vendorProfileId: vendorId });
       if (resp.ok) {
         loadFavorites();
       }
@@ -65,17 +56,10 @@ function ClientFavoritesSection() {
     const vendorId = vendor.VendorProfileID || vendor.id;
     try {
       // Create or get conversation with vendor
-      const resp = await fetch(`${API_BASE_URL}/messages/conversations`, {
-        method: 'POST',
-        headers: { 
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ 
-          userId: currentUser.id, 
-          vendorProfileId: vendorId,
-          subject: 'New Inquiry'
-        })
+      const resp = await apiPost('/messages/conversations', { 
+        userId: currentUser.id, 
+        vendorProfileId: vendorId,
+        subject: 'New Inquiry'
       });
       
       if (resp.ok) {

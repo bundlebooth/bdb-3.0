@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { API_BASE_URL } from '../../config';
-import { showBanner } from '../../utils/helpers';
+import { showBanner, formatCurrency } from '../../utils/helpers';
+import { apiGet, apiPost } from '../../utils/api';
+import UniversalModal from '../UniversalModal';
+import { LoadingState, EmptyState, StatusBadge } from '../common/AdminComponents';
+import { ActionButtonGroup, ActionButton as IconActionButton, ViewButton } from '../common/UIComponents';
 
 const PaymentsPanel = () => {
   const [transactions, setTransactions] = useState([]);
@@ -36,15 +39,7 @@ const PaymentsPanel = () => {
 
   const fetchPayoutsData = async () => {
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/admin/payments/payouts?filter=${filter}&page=${pagination.page}&limit=${pagination.limit}&search=${searchTerm}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        }
-      );
-
+      const response = await apiGet(`/admin/payments/payouts?filter=${filter}&page=${pagination.page}&limit=${pagination.limit}&search=${searchTerm}`);
       if (response.ok) {
         const data = await response.json();
         setPayouts(data.payouts || []);
@@ -57,15 +52,7 @@ const PaymentsPanel = () => {
   const fetchTransactions = async () => {
     try {
       setLoading(true);
-      const response = await fetch(
-        `${API_BASE_URL}/admin/payments/transactions?filter=${filter}&page=${pagination.page}&limit=${pagination.limit}&search=${searchTerm}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        }
-      );
-
+      const response = await apiGet(`/admin/payments/transactions?filter=${filter}&page=${pagination.page}&limit=${pagination.limit}&search=${searchTerm}`);
       if (response.ok) {
         const data = await response.json();
         setTransactions(data.transactions || []);
@@ -82,15 +69,7 @@ const PaymentsPanel = () => {
     try {
       setLoading(true);
       const endpoint = activeTab === 'transactions' ? 'transactions' : 'payouts';
-      const response = await fetch(
-        `${API_BASE_URL}/admin/payments/${endpoint}?filter=${filter}&page=${pagination.page}&limit=${pagination.limit}&search=${searchTerm}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        }
-      );
-
+      const response = await apiGet(`/admin/payments/${endpoint}?filter=${filter}&page=${pagination.page}&limit=${pagination.limit}&search=${searchTerm}`);
       if (response.ok) {
         const data = await response.json();
         if (activeTab === 'transactions') {
@@ -110,12 +89,7 @@ const PaymentsPanel = () => {
 
   const fetchStats = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/payments/stats`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
+      const response = await apiGet('/admin/payments/stats');
       if (response.ok) {
         const data = await response.json();
         setStats({
@@ -136,12 +110,7 @@ const PaymentsPanel = () => {
 
   const fetchVendorBalances = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/payments/vendor-balances`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
+      const response = await apiGet('/admin/payments/vendor-balances');
       if (response.ok) {
         const data = await response.json();
         setVendorBalances(data.balances || []);
@@ -153,12 +122,7 @@ const PaymentsPanel = () => {
 
   const checkStripeConnection = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/payments/stripe-status`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
+      const response = await apiGet('/admin/payments/stripe-status');
       if (response.ok) {
         const data = await response.json();
         setStripeConnected(data.connected || false);
@@ -175,15 +139,7 @@ const PaymentsPanel = () => {
 
   const handleManualPayout = async (vendorId, amount) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/payments/manual-payout`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ vendorId, amount })
-      });
-
+      const response = await apiPost('/admin/payments/manual-payout', { vendorId, amount });
       if (response.ok) {
         showBanner('Payout initiated', 'success');
         fetchData();
@@ -197,15 +153,7 @@ const PaymentsPanel = () => {
 
   const handleRefund = async (transactionId, amount, reason) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/payments/refund`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ transactionId, amount, reason })
-      });
-
+      const response = await apiPost('/admin/payments/refund', { transactionId, amount, reason });
       if (response.ok) {
         showBanner('Refund processed', 'success');
         fetchData();
@@ -231,14 +179,6 @@ const PaymentsPanel = () => {
         <i className={`fas ${config.icon}`}></i> {status}
       </span>
     );
-  };
-
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2
-    }).format(amount || 0);
   };
 
   return (
@@ -496,22 +436,12 @@ const PaymentsPanel = () => {
                   <td>${tx.PlatformFee?.toFixed(2)}</td>
                   <td>{getStatusBadge(tx.Status)}</td>
                   <td>
-                    <div className="action-buttons">
-                      <button
-                        className="action-btn view"
-                        onClick={() => { setSelectedItem(tx); setModalType('view-transaction'); }}
-                      >
-                        <i className="fas fa-eye"></i>
-                      </button>
+                    <ActionButtonGroup>
+                      <ViewButton onClick={() => { setSelectedItem(tx); setModalType('view-transaction'); }} />
                       {tx.Status === 'Completed' && (
-                        <button
-                          className="action-btn refund"
-                          onClick={() => { setSelectedItem(tx); setModalType('refund'); }}
-                        >
-                          <i className="fas fa-undo"></i>
-                        </button>
+                        <IconActionButton action="refund" onClick={() => { setSelectedItem(tx); setModalType('refund'); }} />
                       )}
-                    </div>
+                    </ActionButtonGroup>
                   </td>
                 </tr>
               ))}
@@ -540,14 +470,9 @@ const PaymentsPanel = () => {
                   <td>{payout.Method || 'Stripe'}</td>
                   <td>{getStatusBadge(payout.Status)}</td>
                   <td>
-                    <div className="action-buttons">
-                      <button
-                        className="action-btn view"
-                        onClick={() => { setSelectedItem(payout); setModalType('view-payout'); }}
-                      >
-                        <i className="fas fa-eye"></i>
-                      </button>
-                    </div>
+                    <ActionButtonGroup>
+                      <ViewButton onClick={() => { setSelectedItem(payout); setModalType('view-payout'); }} />
+                    </ActionButtonGroup>
                   </td>
                 </tr>
               ))}
@@ -636,11 +561,7 @@ const VendorBalancesTable = () => {
 
   const fetchBalances = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/payments/vendor-balances`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await apiGet('/admin/payments/vendor-balances');
 
       if (response.ok) {
         const data = await response.json();
@@ -716,76 +637,47 @@ const RefundModal = ({ transaction, onClose, onRefund }) => {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>Process Refund</h2>
-          <button className="modal-close" onClick={onClose}>
-            
-          </button>
-        </div>
-        <div className="modal-body">
-          <div className="info-box">
-            <p><strong>Transaction:</strong> {transaction.TransactionID}</p>
-            <p><strong>Original Amount:</strong> ${transaction.Amount?.toFixed(2)}</p>
-          </div>
-          <div className="form-group">
-            <label>Refund Type</label>
-            <div className="radio-group">
-              <label>
-                <input
-                  type="radio"
-                  value="full"
-                  checked={refundType === 'full'}
-                  onChange={() => setRefundType('full')}
-                />
-                Full Refund (${transaction.Amount?.toFixed(2)})
-              </label>
-              <label>
-                <input
-                  type="radio"
-                  value="partial"
-                  checked={refundType === 'partial'}
-                  onChange={() => setRefundType('partial')}
-                />
-                Partial Refund
-              </label>
-            </div>
-          </div>
-          {refundType === 'partial' && (
-            <div className="form-group">
-              <label>Refund Amount ($)</label>
-              <input
-                type="number"
-                value={amount}
-                onChange={e => setAmount(parseFloat(e.target.value))}
-                max={transaction.Amount}
-                min={0}
-              />
-            </div>
-          )}
-          <div className="form-group">
-            <label>Reason</label>
-            <textarea
-              value={reason}
-              onChange={e => setReason(e.target.value)}
-              placeholder="Reason for refund..."
-              rows={3}
-            />
-          </div>
-        </div>
-        <div className="modal-footer">
-          <button className="btn-secondary" onClick={onClose}>Cancel</button>
-          <button
-            className="btn-primary"
-            onClick={handleSubmit}
-            disabled={processing || !reason.trim()}
-          >
-            {processing ? 'Processing...' : 'Process Refund'}
-          </button>
+    <UniversalModal
+      isOpen={true}
+      onClose={onClose}
+      title="Process Refund"
+      size="medium"
+      primaryAction={{
+        label: processing ? 'Processing...' : 'Process Refund',
+        onClick: handleSubmit,
+        loading: processing,
+        disabled: !reason.trim()
+      }}
+      secondaryAction={{ label: 'Cancel', onClick: onClose }}
+    >
+      <div className="info-box" style={{ background: '#f3f4f6', padding: '12px 16px', borderRadius: '8px', marginBottom: '16px' }}>
+        <p style={{ margin: '0 0 4px' }}><strong>Transaction:</strong> {transaction.TransactionID}</p>
+        <p style={{ margin: 0 }}><strong>Original Amount:</strong> ${transaction.Amount?.toFixed(2)}</p>
+      </div>
+      <div className="form-group">
+        <label>Refund Type</label>
+        <div className="radio-group" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <input type="radio" value="full" checked={refundType === 'full'} onChange={() => setRefundType('full')} />
+            Full Refund (${transaction.Amount?.toFixed(2)})
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <input type="radio" value="partial" checked={refundType === 'partial'} onChange={() => setRefundType('partial')} />
+            Partial Refund
+          </label>
         </div>
       </div>
-    </div>
+      {refundType === 'partial' && (
+        <div className="form-group">
+          <label>Refund Amount ($)</label>
+          <input type="number" value={amount} onChange={e => setAmount(parseFloat(e.target.value))} max={transaction.Amount} min={0} />
+        </div>
+      )}
+      <div className="form-group">
+        <label>Reason</label>
+        <textarea value={reason} onChange={e => setReason(e.target.value)} placeholder="Reason for refund..." rows={3} />
+      </div>
+    </UniversalModal>
   );
 };
 
@@ -802,114 +694,88 @@ const ManualPayoutModal = ({ onClose, onPayout }) => {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>Manual Payout</h2>
-          <button className="modal-close" onClick={onClose}>
-            
-          </button>
-        </div>
-        <div className="modal-body">
-          <div className="form-group">
-            <label>Vendor ID</label>
-            <input
-              type="text"
-              value={vendorId}
-              onChange={e => setVendorId(e.target.value)}
-              placeholder="Enter vendor ID"
-            />
-          </div>
-          <div className="form-group">
-            <label>Amount ($)</label>
-            <input
-              type="number"
-              value={amount}
-              onChange={e => setAmount(e.target.value)}
-              placeholder="Enter amount"
-              min={0}
-            />
-          </div>
-        </div>
-        <div className="modal-footer">
-          <button className="btn-secondary" onClick={onClose}>Cancel</button>
-          <button
-            className="btn-primary"
-            onClick={handleSubmit}
-            disabled={processing || !vendorId || !amount}
-          >
-            {processing ? 'Processing...' : 'Send Payout'}
-          </button>
-        </div>
+    <UniversalModal
+      isOpen={true}
+      onClose={onClose}
+      title="Manual Payout"
+      size="medium"
+      primaryAction={{
+        label: processing ? 'Processing...' : 'Send Payout',
+        onClick: handleSubmit,
+        loading: processing,
+        disabled: !vendorId || !amount
+      }}
+      secondaryAction={{ label: 'Cancel', onClick: onClose }}
+    >
+      <div className="form-group">
+        <label>Vendor ID</label>
+        <input type="text" value={vendorId} onChange={e => setVendorId(e.target.value)} placeholder="Enter vendor ID" />
       </div>
-    </div>
+      <div className="form-group">
+        <label>Amount ($)</label>
+        <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="Enter amount" min={0} />
+      </div>
+    </UniversalModal>
   );
 };
 
 // Transaction View Modal
 const TransactionViewModal = ({ transaction, onClose }) => {
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>Transaction Details</h2>
-          <button className="modal-close" onClick={onClose}>
-            
-          </button>
+    <UniversalModal
+      isOpen={true}
+      onClose={onClose}
+      title="Transaction Details"
+      size="medium"
+      footer={<button className="um-btn um-btn-secondary" onClick={onClose}>Close</button>}
+    >
+      <div className="detail-section">
+        <div className="detail-row">
+          <label>Transaction ID:</label>
+          <code>{transaction.TransactionID}</code>
         </div>
-        <div className="modal-body">
-          <div className="detail-section">
-            <div className="detail-row">
-              <label>Transaction ID:</label>
-              <code>{transaction.TransactionID}</code>
-            </div>
-            <div className="detail-row">
-              <label>Stripe ID:</label>
-              <code>{transaction.StripePaymentID || 'N/A'}</code>
-            </div>
-            <div className="detail-row">
-              <label>Date:</label>
-              <span>{new Date(transaction.CreatedAt).toLocaleString()}</span>
-            </div>
-            <div className="detail-row">
-              <label>Status:</label>
-              <span>{transaction.Status}</span>
-            </div>
-          </div>
-          <div className="detail-section">
-            <div className="detail-row">
-              <label>Client:</label>
-              <span>{transaction.ClientName} ({transaction.ClientEmail})</span>
-            </div>
-            <div className="detail-row">
-              <label>Vendor:</label>
-              <span>{transaction.VendorName}</span>
-            </div>
-            <div className="detail-row">
-              <label>Booking:</label>
-              <span>#{transaction.BookingID}</span>
-            </div>
-          </div>
-          <div className="detail-section">
-            <div className="detail-row">
-              <label>Amount:</label>
-              <strong>${transaction.Amount?.toFixed(2)}</strong>
-            </div>
-            <div className="detail-row">
-              <label>Platform Fee:</label>
-              <span>${transaction.PlatformFee?.toFixed(2)}</span>
-            </div>
-            <div className="detail-row">
-              <label>Vendor Payout:</label>
-              <span>${(transaction.Amount - transaction.PlatformFee)?.toFixed(2)}</span>
-            </div>
-          </div>
+        <div className="detail-row">
+          <label>Stripe ID:</label>
+          <code>{transaction.StripePaymentID || 'N/A'}</code>
         </div>
-        <div className="modal-footer">
-          <button className="btn-secondary" onClick={onClose}>Close</button>
+        <div className="detail-row">
+          <label>Date:</label>
+          <span>{new Date(transaction.CreatedAt).toLocaleString()}</span>
+        </div>
+        <div className="detail-row">
+          <label>Status:</label>
+          <span>{transaction.Status}</span>
         </div>
       </div>
-    </div>
+      <div className="detail-section">
+        <div className="detail-row">
+          <label>Client:</label>
+          <span>{transaction.ClientName} ({transaction.ClientEmail})</span>
+        </div>
+        <div className="detail-row">
+          <label>Vendor:</label>
+          <span>{transaction.VendorName}</span>
+        </div>
+        <div className="detail-row">
+          <label>Booking:</label>
+          <span>#{transaction.BookingID}</span>
+        </div>
+      </div>
+      <div className="detail-section">
+        <div className="detail-row">
+          <label>Amount:</label>
+          <strong>${transaction.Amount?.toFixed(2)}</strong>
+        </div>
+        <div className="detail-row">
+          <label>Platform Fee:</label>
+          <span>${transaction.PlatformFee?.toFixed(2)}</span>
+        </div>
+        <div className="detail-row">
+          <label>Vendor Payout:</label>
+          <span>${(transaction.Amount - transaction.PlatformFee)?.toFixed(2)}</span>
+        </div>
+      </div>
+    </UniversalModal>
   );
 };
 

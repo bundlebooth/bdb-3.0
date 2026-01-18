@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { API_BASE_URL } from '../../config';
 import { showBanner } from '../../utils/helpers';
+import { apiGet } from '../../utils/api';
+import { LoadingState } from '../common/AdminComponents';
 
 const LocationMapPanel = () => {
   const [vendors, setVendors] = useState([]);
@@ -110,13 +111,9 @@ const LocationMapPanel = () => {
     try {
       setLoading(true);
       
-      const vendorsResponse = await fetch(`${API_BASE_URL}/admin/vendors?page=1&limit=500`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
+      const vendorsResponse = await apiGet('/admin/vendors?page=1&limit=500');
       
-      const usersResponse = await fetch(`${API_BASE_URL}/admin/users?page=1&limit=500`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
+      const usersResponse = await apiGet('/admin/users?page=1&limit=500');
 
       let vendorData = [];
       let userData = [];

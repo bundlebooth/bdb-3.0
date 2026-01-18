@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { API_BASE_URL, GOOGLE_MAPS_API_KEY } from '../config';
+import { GOOGLE_MAPS_API_KEY, API_BASE_URL } from '../config';
+import { apiGet, apiPost } from '../utils/api';
 import { PageLayout } from '../components/PageWrapper';
 import Header from '../components/Header';
 import CategoriesNav from '../components/CategoriesNav';
@@ -547,9 +548,7 @@ function BrowsePage() {
   const loadFavorites = useCallback(async () => {
     if (!currentUser?.id) return;
     try {
-      const response = await fetch(`${API_BASE_URL}/favorites/user/${currentUser.id}`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
+      const response = await apiGet(`/favorites/user/${currentUser.id}`);
       if (response.ok) {
         const data = await response.json();
         setFavorites(data.favorites || []);
@@ -822,14 +821,7 @@ function BrowsePage() {
       return;
     }
     try {
-      const response = await fetch(`${API_BASE_URL}/favorites/toggle`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ userId: currentUser.id, vendorProfileId: vendorId })
-      });
+      const response = await apiPost('/favorites/toggle', { userId: currentUser.id, vendorProfileId: vendorId });
       if (!response.ok) throw new Error('Failed to toggle favorite');
       const result = await response.json();
       if (result.IsFavorite) {

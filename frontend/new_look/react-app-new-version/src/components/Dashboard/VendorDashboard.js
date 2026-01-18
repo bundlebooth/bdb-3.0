@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { API_BASE_URL } from '../../config';
+import { apiGet } from '../../utils/api';
 import { useNotifications } from '../../hooks/useNotifications';
 import DashboardSidebar from './DashboardSidebar';
 import VendorDashboardSection from './sections/VendorDashboardSection';

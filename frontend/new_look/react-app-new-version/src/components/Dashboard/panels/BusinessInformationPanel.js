@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../context/AuthContext';
-import { API_BASE_URL } from '../../../config';
 import { showBanner } from '../../../utils/helpers';
+import { apiGet, apiPut, apiPostFormData } from '../../../utils/api';
+import { API_BASE_URL } from '../../../config';
 
 function BusinessInformationPanel({ onBack, vendorProfileId }) {
   const { currentUser } = useAuth();

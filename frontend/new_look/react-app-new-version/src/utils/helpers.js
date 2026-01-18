@@ -2,7 +2,7 @@
 
 // Update page title with notification count
 export function updatePageTitle(notificationCount) {
-  const baseTitle = 'PlanBeau - Event Booking Platform';
+  const baseTitle = 'Planbeau - Event Booking Platform';
   if (notificationCount > 0) {
     document.title = `(${notificationCount}) ${baseTitle}`;
   } else {
@@ -140,9 +140,117 @@ export function formatTimeAgo(dateString) {
   }
 }
 
-// Format money
+// Format money (simple format)
 export function formatMoney(amount) {
   return `$${Number(amount || 0).toFixed(2)}`;
+}
+
+// Format currency using Intl.NumberFormat (Canadian dollars)
+export function formatCurrency(amount) {
+  return new Intl.NumberFormat('en-CA', {
+    style: 'currency',
+    currency: 'CAD'
+  }).format(amount || 0);
+}
+
+// Format date with time (for timestamps like "Jan 14, 2026, 7:20 PM")
+export function formatDateTime(dateInput) {
+  if (!dateInput) return 'N/A';
+  try {
+    let date;
+    if (dateInput instanceof Date) {
+      date = dateInput;
+    } else if (typeof dateInput === 'string') {
+      date = new Date(dateInput.replace(' ', 'T'));
+    } else if (typeof dateInput === 'object' && dateInput !== null) {
+      date = new Date(dateInput);
+    } else {
+      date = new Date(dateInput);
+    }
+    
+    if (!date || isNaN(date.getTime())) return 'N/A';
+    
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric', 
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit'
+    });
+  } catch {
+    return 'N/A';
+  }
+}
+
+// Format date for display (long format: "Monday, January 14, 2026")
+export function formatDateLong(dateStr) {
+  if (!dateStr) return '';
+  try {
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return '';
+    return date.toLocaleDateString('en-CA', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  } catch {
+    return '';
+  }
+}
+
+// Format date for invoices/formal documents (e.g., "January 14, 2026")
+export function formatDateFormal(dateStr) {
+  if (!dateStr) return '';
+  try {
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return '';
+    return date.toLocaleDateString('en-CA', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  } catch {
+    return '';
+  }
+}
+
+// Format date for member since (e.g., "January 2026")
+export function formatMonthYear(dateString) {
+  if (!dateString) return 'Recently';
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return 'Recently';
+    return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  } catch {
+    return 'Recently';
+  }
+}
+
+// Format date with weekday short (e.g., "Sat, Jan 14, 2026")
+export function formatDateWithWeekday(dateString) {
+  if (!dateString) return '';
+  try {
+    const parts = dateString.split('-');
+    if (parts.length !== 3) return dateString;
+    const [year, month, day] = parts.map(Number);
+    if (isNaN(year) || isNaN(month) || isNaN(day)) return dateString;
+    const dateObj = new Date(year, month - 1, day);
+    if (isNaN(dateObj.getTime())) return dateString;
+    return dateObj.toLocaleDateString('en-US', { 
+      weekday: 'short', 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric' 
+    });
+  } catch {
+    return dateString;
+  }
+}
+
+// Normalize string for search/comparison
+export function normalizeString(value) {
+  return (value || '').toString().toLowerCase().trim();
 }
 
 // Canadian province abbreviations

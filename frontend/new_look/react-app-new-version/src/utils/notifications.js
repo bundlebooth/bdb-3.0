@@ -47,7 +47,7 @@ function updateFaviconWithNotification(hasNotifications) {
 
 // Update page title with notification count
 export function updatePageTitle(notificationCount) {
-  const baseTitle = 'PlanBeau - Event Booking Platform';
+  const baseTitle = 'Planbeau - Event Booking Platform';
   if (notificationCount > 0) {
     document.title = `(${notificationCount}) ${baseTitle}`;
   } else {

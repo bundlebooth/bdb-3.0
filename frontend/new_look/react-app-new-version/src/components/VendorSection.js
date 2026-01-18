@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import VendorCard from './VendorCard';
+import UniversalModal from './UniversalModal';
 import { useVendorOnlineStatus } from '../hooks/useOnlineStatus';
 import '../styles/VendorSection.css';
 
@@ -322,67 +323,53 @@ function VendorSection({
       </div>
 
       {/* Modal for showing all vendors */}
-      {showModal && (
-        <div className="vendor-section-modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="vendor-section-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="vendor-section-modal-header">
-              <h2>
-                <span className="vendor-section-icon" style={{ backgroundColor: `${iconConfig.color}15`, color: iconConfig.color }}>
-                  <i className={`fas ${iconConfig.icon}`}></i>
-                </span>
-                {title}
-              </h2>
-              <button 
-                className="vendor-section-modal-close modal-close-btn"
-                onClick={() => setShowModal(false)}
-                aria-label="Close modal"
-              >
-                ×
-              </button>
+      <UniversalModal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        title={title}
+        size="large"
+        showFooter={false}
+        icon={<span className="vendor-section-icon" style={{ backgroundColor: `${iconConfig.color}15`, color: iconConfig.color }}><i className={`fas ${iconConfig.icon}`}></i></span>}
+      >
+        <div className="vendor-section-modal-grid">
+          {vendors && vendors.length > 0 ? (
+            vendors.map((vendor) => {
+              const vendorId = vendor.vendorProfileId || vendor.VendorProfileID || vendor.id;
+              if (!vendorId) {
+                console.warn('Vendor missing ID:', vendor);
+                return null;
+              }
+              return (
+                <VendorCard
+                  key={vendorId}
+                  vendor={vendor}
+                  isFavorite={favorites.includes(vendorId)}
+                  onToggleFavorite={onToggleFavorite}
+                  onView={(id) => {
+                    setShowModal(false);
+                    onViewVendor(id);
+                  }}
+                  onHighlight={onHighlightVendor}
+                  showAnalyticsBadge={showAnalyticsBadge}
+                  analyticsBadgeType={analyticsBadgeType}
+                  onlineStatus={onlineStatuses[vendorId]}
+                />
+              );
+            })
+          ) : (
+            <div style={{
+              gridColumn: '1 / -1',
+              textAlign: 'center',
+              padding: '3rem',
+              color: '#6b7280'
+            }}>
+              <i className="fas fa-search" style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.3 }}></i>
+              <div style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>No vendors found</div>
+              <div style={{ fontSize: '0.9rem' }}>Try adjusting your filters or check back later</div>
             </div>
-            <div className="vendor-section-modal-content">
-              <div className="vendor-section-modal-grid">
-                {vendors && vendors.length > 0 ? (
-                  vendors.map((vendor) => {
-                    const vendorId = vendor.vendorProfileId || vendor.VendorProfileID || vendor.id;
-                    if (!vendorId) {
-                      console.warn('Vendor missing ID:', vendor);
-                      return null;
-                    }
-                    return (
-                      <VendorCard
-                        key={vendorId}
-                        vendor={vendor}
-                        isFavorite={favorites.includes(vendorId)}
-                        onToggleFavorite={onToggleFavorite}
-                        onView={(id) => {
-                          setShowModal(false);
-                          onViewVendor(id);
-                        }}
-                        onHighlight={onHighlightVendor}
-                        showAnalyticsBadge={showAnalyticsBadge}
-                        analyticsBadgeType={analyticsBadgeType}
-                        onlineStatus={onlineStatuses[vendorId]}
-                      />
-                    );
-                  })
-                ) : (
-                  <div style={{
-                    gridColumn: '1 / -1',
-                    textAlign: 'center',
-                    padding: '3rem',
-                    color: '#6b7280'
-                  }}>
-                    <i className="fas fa-search" style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.3 }}></i>
-                    <div style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>No vendors found</div>
-                    <div style={{ fontSize: '0.9rem' }}>Try adjusting your filters or check back later</div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+          )}
         </div>
-      )}
+      </UniversalModal>
     </>
   );
 }

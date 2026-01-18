@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../context/AuthContext';
+import { showBanner, formatDateTime } from '../../../utils/helpers';
+import { apiGet, apiDelete } from '../../../utils/api';
 import { API_BASE_URL } from '../../../config';
-import { showBanner } from '../../../utils/helpers';
 
 function SecurityPanel({ onBack }) {
   const { currentUser, logout } = useAuth();
@@ -23,20 +24,14 @@ function SecurityPanel({ onBack }) {
       setLoading(true);
       
       // Load active sessions
-      const sessionsResp = await fetch(`${API_BASE_URL}/users/${currentUser.id}/sessions`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
-      
+      const sessionsResp = await apiGet(`/users/${currentUser.id}/sessions`);
       if (sessionsResp.ok) {
         const data = await sessionsResp.json();
         setSessions(data.sessions || []);
       }
       
       // Load 2FA status
-      const securityResp = await fetch(`${API_BASE_URL}/users/${currentUser.id}/security`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
-      
+      const securityResp = await apiGet(`/users/${currentUser.id}/security`);
       if (securityResp.ok) {
         const data = await securityResp.json();
         setTwoFactorEnabled(data.twoFactorEnabled || false);
@@ -50,11 +45,7 @@ function SecurityPanel({ onBack }) {
 
   const handleRevokeSession = async (sessionId) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/users/${currentUser.id}/sessions/${sessionId}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
-      
+      const response = await apiDelete(`/users/${currentUser.id}/sessions/${sessionId}`);
       if (response.ok) {
         setSessions(prev => prev.filter(s => s.id !== sessionId));
         showBanner('Session revoked successfully', 'success');
@@ -151,17 +142,7 @@ function SecurityPanel({ onBack }) {
     }
   };
 
-  const formatDate = (dateStr) => {
-    if (!dateStr) return 'Unknown';
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
+  const formatDate = formatDateTime;
 
   if (loading) {
     return (

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { API_BASE_URL } from '../config';
+import { apiGet } from '../utils/api';
 import { PageLayout } from '../components/PageWrapper';
 import Header from '../components/Header';
 import { useNotifications } from '../hooks/useNotifications';
@@ -169,9 +169,7 @@ function DashboardPage() {
         
         // Get pending bookings count based on view mode
         if (showVendorView && currentUser?.vendorProfileId) {
-          const bookingsResp = await fetch(`${API_BASE_URL}/vendor/${currentUser.vendorProfileId}/bookings/all`, {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-          });
+          const bookingsResp = await apiGet(`/vendor/${currentUser.vendorProfileId}/bookings/all`);
           if (bookingsResp.ok) {
             const bookings = await bookingsResp.json();
             pendingBookings = (bookings || []).filter(b => 
@@ -179,9 +177,7 @@ function DashboardPage() {
             ).length;
           }
         } else {
-          const bookingsResp = await fetch(`${API_BASE_URL}/users/${currentUser.id}/bookings/all`, {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-          });
+          const bookingsResp = await apiGet(`/users/${currentUser.id}/bookings/all`);
           if (bookingsResp.ok) {
             const bookings = await bookingsResp.json();
             pendingBookings = (bookings || []).filter(b => 
@@ -189,9 +185,7 @@ function DashboardPage() {
             ).length;
             
             // Calculate pending reviews (past paid bookings not yet reviewed)
-            const reviewsResp = await fetch(`${API_BASE_URL}/users/${currentUser.id}/reviews`, {
-              headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-            });
+            const reviewsResp = await apiGet(`/users/${currentUser.id}/reviews`);
             const reviewsData = reviewsResp.ok ? await reviewsResp.json() : [];
             const reviewedBookingIds = new Set((Array.isArray(reviewsData) ? reviewsData : []).map(r => r.BookingID));
             const now = new Date();
@@ -209,9 +203,7 @@ function DashboardPage() {
         // Get unread messages count from both client and vendor conversations
         // Client conversations
         try {
-          const clientMsgResp = await fetch(`${API_BASE_URL}/messages/conversations/user/${currentUser.id}`, {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-          });
+          const clientMsgResp = await apiGet(`/messages/conversations/user/${currentUser.id}`);
           if (clientMsgResp.ok) {
             const data = await clientMsgResp.json();
             const convs = data.conversations || data || [];
@@ -226,9 +218,7 @@ function DashboardPage() {
         // Vendor conversations (if vendor)
         if (currentUser?.vendorProfileId) {
           try {
-            const vendorMsgResp = await fetch(`${API_BASE_URL}/messages/conversations/vendor/${currentUser.vendorProfileId}`, {
-              headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-            });
+            const vendorMsgResp = await apiGet(`/messages/conversations/vendor/${currentUser.vendorProfileId}`);
             if (vendorMsgResp.ok) {
               const data = await vendorMsgResp.json();
               const convs = data.conversations || data || [];
@@ -279,9 +269,7 @@ function DashboardPage() {
     
     const fetchVendorLogo = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/vendors/profile?userId=${currentUser.id}`, {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        });
+        const response = await apiGet(`/vendors/profile?userId=${currentUser.id}`);
         if (response.ok) {
           const data = await response.json();
           const logoUrl = data.logoUrl || data.LogoURL || data.data?.profile?.LogoURL || data.data?.profile?.logoUrl;
@@ -304,18 +292,14 @@ function DashboardPage() {
     try {
       setLoading(true);
       
-      const response = await fetch(`${API_BASE_URL}/users/${currentUser.id}/dashboard`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
+      const response = await apiGet(`/users/${currentUser.id}/dashboard`);
       
       if (!response.ok) throw new Error('Failed to fetch dashboard data');
       const dashData = await response.json();
       
       let favoritesCount = 0;
       try {
-        const favResp = await fetch(`${API_BASE_URL}/favorites/user/${currentUser.id}`, {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        });
+        const favResp = await apiGet(`/favorites/user/${currentUser.id}`);
         if (favResp.ok) {
           const favs = await favResp.json();
           favoritesCount = Array.isArray(favs) ? favs.length : (favs?.length || 0);
@@ -326,9 +310,7 @@ function DashboardPage() {
       
       let pendingRequests = 0;
       try {
-        const reqResp = await fetch(`${API_BASE_URL}/bookings/requests/${currentUser.id}`, {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        });
+        const reqResp = await apiGet(`/bookings/requests/${currentUser.id}`);
         if (reqResp.ok) {
           const reqData = await reqResp.json();
           const reqs = reqData.requests || [];
@@ -361,9 +343,7 @@ function DashboardPage() {
     
     try {
       // Note: The vendor dashboard API expects UserID, not VendorProfileID
-      const response = await fetch(`${API_BASE_URL}/vendor/${currentUser.id}/dashboard`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
+      const response = await apiGet(`/vendor/${currentUser.id}/dashboard`);
       
       if (response.ok) {
         const data = await response.json();

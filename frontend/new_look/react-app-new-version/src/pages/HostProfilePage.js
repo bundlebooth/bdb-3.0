@@ -2,12 +2,13 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
+import { apiGet } from '../utils/api';
 import { PageLayout } from '../components/PageWrapper';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import VendorCard from '../components/VendorCard';
 import ProfileModal from '../components/ProfileModal';
-import { showBanner } from '../utils/helpers';
+import { showBanner, formatMonthYear } from '../utils/helpers';
 import './HostProfilePage.css';
 
 function HostProfilePage() {
@@ -70,7 +71,7 @@ function HostProfilePage() {
         category: vendorData.profile?.PrimaryCategory || vendorData.profile?.CategoryName
       }]);
 
-      document.title = `${hostInfo.name} - Host Profile | PlanBeau`;
+      document.title = `${hostInfo.name} - Host Profile | Planbeau`;
     } catch (error) {
       console.error('Error loading host profile:', error);
       showBanner('Failed to load host profile', 'error');
@@ -83,12 +84,7 @@ function HostProfilePage() {
     loadHostProfile();
   }, [loadHostProfile]);
 
-  // Format date
-  const formatDate = (dateString) => {
-    if (!dateString) return 'Recently';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-  };
+  const formatDate = formatMonthYear;
 
   // Pagination for reviews
   const totalPages = Math.ceil(reviews.length / reviewsPerPage);

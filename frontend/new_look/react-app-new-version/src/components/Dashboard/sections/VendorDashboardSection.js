@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { API_BASE_URL } from '../../../config';
+import { apiGet } from '../../../utils/api';
 import { useAuth } from '../../../context/AuthContext';
 
 function VendorDashboardSection({ data, loading, onSectionChange }) {
@@ -23,9 +23,7 @@ function VendorDashboardSection({ data, loading, onSectionChange }) {
       try {
         setLoadingBookings(true);
         // Fetch all bookings to calculate accurate KPIs
-        const bookingsResp = await fetch(`${API_BASE_URL}/vendor/${currentUser.vendorProfileId}/bookings/all`, {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        });
+        const bookingsResp = await apiGet(`/vendor/${currentUser.vendorProfileId}/bookings/all`);
         
         if (bookingsResp.ok) {
           const bookings = await bookingsResp.json();
@@ -53,9 +51,7 @@ function VendorDashboardSection({ data, loading, onSectionChange }) {
         }
         
         // Fetch unread messages count
-        const msgResp = await fetch(`${API_BASE_URL}/messages/conversations/vendor/${currentUser.vendorProfileId}`, {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        });
+        const msgResp = await apiGet(`/messages/conversations/vendor/${currentUser.vendorProfileId}`);
         
         if (msgResp.ok) {
           const msgData = await msgResp.json();
@@ -91,9 +87,7 @@ function VendorDashboardSection({ data, loading, onSectionChange }) {
       if (!currentUser?.vendorProfileId) return;
       setLoadingMessages(true);
       try {
-        const resp = await fetch(`${API_BASE_URL}/messages/conversations/vendor/${currentUser.vendorProfileId}`, {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        });
+        const resp = await apiGet(`/messages/conversations/vendor/${currentUser.vendorProfileId}`);
         if (resp.ok) {
           const msgData = await resp.json();
           const conversations = (msgData.conversations || []).map(conv => ({

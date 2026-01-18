@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../../context/AuthContext';
-import { API_BASE_URL } from '../../../config';
+import { apiGet } from '../../../utils/api';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler } from 'chart.js';
 import { Line, Bar, Doughnut } from 'react-chartjs-2';
 
@@ -50,9 +50,7 @@ function VendorAnalyticsSection() {
         return;
       }
       
-      const response = await fetch(`${API_BASE_URL}/vendors/profile?userId=${currentUser.id}`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
+      const response = await apiGet(`/vendors/profile?userId=${currentUser.id}`);
       if (response.ok) {
         const data = await response.json();
         setVendorProfileId(data.vendorProfileId);
@@ -72,9 +70,7 @@ function VendorAnalyticsSection() {
       const daysBack = daysMap[dateRange] || 30;
       
       // Use the new dashboard endpoint that returns everything from stored procedure
-      const response = await fetch(`${API_BASE_URL}/analytics/vendor/${vendorProfileId}/dashboard?daysBack=${daysBack}`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
+      const response = await apiGet(`/analytics/vendor/${vendorProfileId}/dashboard?daysBack=${daysBack}`);
       
       if (response.ok) {
         const data = await response.json();
@@ -254,9 +250,7 @@ function VendorAnalyticsSection() {
       }
       
       // Fetch bookings
-      const bookingsResponse = await fetch(`${API_BASE_URL}/bookings/vendor/${vendorProfileId}`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
+      const bookingsResponse = await apiGet(`/bookings/vendor/${vendorProfileId}`);
       
       let allBookings = [];
       if (bookingsResponse.ok) {
@@ -315,9 +309,7 @@ function VendorAnalyticsSection() {
       // Fetch favorites count
       let favoriteCount = 0;
       try {
-        const favResponse = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/favorites/count`, {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        });
+        const favResponse = await apiGet(`/vendors/${vendorProfileId}/favorites/count`);
         if (favResponse.ok) {
           const favData = await favResponse.json();
           favoriteCount = favData.count || 0;
@@ -328,9 +320,7 @@ function VendorAnalyticsSection() {
       let reviewCount = 0;
       let avgRating = 0;
       try {
-        const reviewResponse = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/reviews`, {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        });
+        const reviewResponse = await apiGet(`/vendors/${vendorProfileId}/reviews`);
         if (reviewResponse.ok) {
           const reviewData = await reviewResponse.json();
           const reviews = reviewData.reviews || [];

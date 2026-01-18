@@ -13,24 +13,24 @@ function HelpCentrePage() {
       icon: 'fa-star',
       articleCount: 15,
       articles: [
-        { id: 1, title: "PlanBeau's Health & Safety Measures" },
+        { id: 1, title: "Planbeau's Health & Safety Measures" },
         { id: 2, title: "What is the cancellation and refund policy for clients and vendors?" }
       ],
       sections: [
         {
           title: 'For Vendors',
           articles: [
-            { id: 3, title: "How does PlanBeau Referral Program work?" },
+            { id: 3, title: "How does Planbeau Referral Program work?" },
             { id: 4, title: "Instant Book" },
             { id: 5, title: "Calendar Sync" },
-            { id: 6, title: "Why you should always keep your bookings on PlanBeau" },
+            { id: 6, title: "Why you should always keep your bookings on Planbeau" },
             { id: 7, title: "How do I send a custom rate?" },
             { id: 8, title: "Tips for navigating your first booking" },
-            { id: 9, title: "How much commission does PlanBeau take?" },
+            { id: 9, title: "How much commission does Planbeau take?" },
             { id: 10, title: "What is a site rep? How do I go about requesting one?" },
             { id: 11, title: "How is my payout calculated?" },
             { id: 12, title: "A client wants to add more hours to a booking. How do I do that?" },
-            { id: 13, title: "Understanding and Customizing Activity Types on PlanBeau" }
+            { id: 13, title: "Understanding and Customizing Activity Types on Planbeau" }
           ]
         },
         {
@@ -161,7 +161,7 @@ function HelpCentrePage() {
               {collection.title}
             </h1>
             <p style={{ color: '#666', fontSize: '0.9rem' }}>
-              By PlanBeau Support Team · {collection.articleCount} articles
+              By Planbeau Support Team · {collection.articleCount} articles
             </p>
           </div>
 
@@ -269,7 +269,7 @@ function HelpCentrePage() {
           fontWeight: '500',
           marginBottom: '2rem'
         }}>
-          Advice and answers from the PlanBeau Team
+          Advice and answers from the Planbeau Team
         </h2>
         
         {/* Search Bar */}
@@ -357,7 +357,7 @@ function HelpCentrePage() {
                 {collection.title}
               </h3>
               <p style={{ color: '#999', fontSize: '0.85rem', margin: 0 }}>
-                By PlanBeau Support · {collection.articleCount} articles
+                By Planbeau Support · {collection.articleCount} articles
               </p>
             </div>
           </div>

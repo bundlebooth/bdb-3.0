@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { API_BASE_URL } from '../../../config';
 import { showBanner } from '../../../utils/helpers';
+import { apiGet, apiPost } from '../../../utils/api';
+import { API_BASE_URL } from '../../../config';
 
 function StripeSetupPanel({ onBack, vendorProfileId }) {
   const [loading, setLoading] = useState(true);
@@ -23,9 +24,7 @@ function StripeSetupPanel({ onBack, vendorProfileId }) {
   const loadStripeStatus = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/payments/connect/status/${vendorProfileId}`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
+      const response = await apiGet(`/payments/connect/status/${vendorProfileId}`);
       
       if (response.ok) {
         const data = await response.json();

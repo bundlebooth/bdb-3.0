@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { API_BASE_URL } from '../../../config';
 import { showBanner } from '../../../utils/helpers';
+import { apiGet, apiPost, apiPut, apiDelete } from '../../../utils/api';
+import { API_BASE_URL } from '../../../config';
+import { DeleteButton } from '../../common/UIComponents';
 
 function FAQsPanel({ onBack, vendorProfileId }) {
   const [loading, setLoading] = useState(true);
@@ -24,9 +26,7 @@ function FAQsPanel({ onBack, vendorProfileId }) {
   const loadFAQs = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/faqs`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
+      const response = await apiGet(`/vendors/${vendorProfileId}/faqs`);
       
       if (response.ok) {
         const data = await response.json();
@@ -163,14 +163,7 @@ function FAQsPanel({ onBack, vendorProfileId }) {
                         {faq.question}
                       </h4>
                     </div>
-                    <button
-                      type="button"
-                      className="action-btn action-btn-delete"
-                      onClick={() => handleDeleteFAQ(faq.id || index)}
-                      title="Delete FAQ"
-                    >
-                      <i className="fas fa-trash-alt"></i>
-                    </button>
+                    <DeleteButton onClick={() => handleDeleteFAQ(faq.id || index)} title="Remove" />
                   </div>
                   <div style={{ display: 'flex', gap: '0.75rem', paddingLeft: '2.5rem' }}>
                     <p style={{ margin: 0, color: 'var(--text-light)', lineHeight: 1.6 }}>

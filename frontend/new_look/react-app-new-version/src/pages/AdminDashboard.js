@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL, ENV_CONFIG } from '../config';
+import { apiGet } from '../utils/api';
 import { PageLayout } from '../components/PageWrapper';
 import { showBanner } from '../utils/helpers';
 import './AdminDashboard.css';
@@ -186,7 +187,7 @@ const AdminDashboard = () => {
       <aside className="admin-sidebar">
         <div className="sidebar-header">
           <div className="logo" onClick={() => navigate('/')}>
-            <img src="/images/logo.png" alt="PlanBeau" />
+            <img src="/images/logo.png" alt="Planbeau" />
             {!sidebarCollapsed && <span>Admin</span>}
           </div>
           <button 
@@ -985,7 +986,7 @@ const CommissionSettingsPanel = () => {
           <div style={{ marginTop: '20px', padding: '16px', background: '#fff3cd', borderRadius: '8px', fontSize: '13px', color: '#856404' }}>
             <strong>How it works (like Giggster):</strong>
             <ul style={{ margin: '8px 0 0 16px', paddingLeft: '0' }}>
-              <li>PlanBeau takes a {settings.find(s => s.SettingKey === 'platform_commission_rate')?.SettingValue || '15'}% commission from the host's payout</li>
+              <li>Planbeau takes a {settings.find(s => s.SettingKey === 'platform_commission_rate')?.SettingValue || '15'}% commission from the host's payout</li>
               <li>Customers pay a {settings.find(s => s.SettingKey === 'renter_processing_fee_rate')?.SettingValue || '5'}% processing fee</li>
               <li>These fees cover platform development, support, and fraud prevention</li>
             </ul>
