@@ -2387,95 +2387,31 @@ router.get('/profile', async (req, res) => {
       console.warn('Setup progress query failed, using defaults:', progressError.message);
     }
 
-    // Fetch StripeAccountID, GooglePlaceID, ProfileStatus, and filter fields directly (not in stored procedure)
-    let stripeAccountId = null;
-    let googlePlaceId = null;
-    let profileStatus = 'draft';
+    // Extract extra fields from profile data (now included in vw_VendorDetails view)
+    // No separate SP call needed - all fields come from sp_GetProfileDetails
+    const profile = profileData.profile;
+    let stripeAccountId = profile.StripeAccountID || null;
+    let googlePlaceId = profile.GooglePlaceId || null;
+    let profileStatus = profile.ProfileStatus || 'draft';
     let selectedFilters = [];
-    try {
-      const extraFieldsRequest = new sql.Request(pool);
-      extraFieldsRequest.input('VendorProfileID', sql.Int, user.VendorProfileID);
-      const extraFieldsResult = await extraFieldsRequest.execute('vendors.sp_GetExtraFields');
-      if (extraFieldsResult.recordset.length > 0) {
-        const extraFields = extraFieldsResult.recordset[0];
-        stripeAccountId = extraFields.StripeAccountID;
-        googlePlaceId = extraFields.GooglePlaceID;
-        profileStatus = extraFields.ProfileStatus || 'draft';
-        profileData.profile.StripeAccountID = stripeAccountId;
-        profileData.profile.GooglePlaceID = googlePlaceId;
-        profileData.profile.ProfileStatus = profileStatus;
-        profileData.profile.IsPremium = extraFields.IsPremium;
-        profileData.profile.IsFeatured = extraFields.IsFeatured;
-        profileData.profile.IsEcoFriendly = extraFields.IsEcoFriendly;
-        profileData.profile.IsAwardWinning = extraFields.IsAwardWinning;
-        profileData.profile.IsLastMinute = extraFields.IsLastMinute;
-        profileData.profile.IsCertified = extraFields.IsCertified;
-        profileData.profile.IsInsured = extraFields.IsInsured;
-        // Get RejectionReason if profile was rejected
-        if (extraFields.RejectionReason) {
-          profileData.profile.RejectionReason = extraFields.RejectionReason;
-        }
-        // Get timestamps for status display - convert to ISO string for frontend
-        if (extraFields.SubmittedForReviewAt) {
-          const submitted = new Date(extraFields.SubmittedForReviewAt);
-          profileData.profile.SubmittedForReviewAt = !isNaN(submitted.getTime()) ? submitted.toISOString() : null;
-        }
-        if (extraFields.ReviewedAt) {
-          const reviewed = new Date(extraFields.ReviewedAt);
-          profileData.profile.ReviewedAt = !isNaN(reviewed.getTime()) ? reviewed.toISOString() : null;
-        }
-        
-        // Build selectedFilters array from boolean fields and Filters string
-        // This matches the format used in BecomeVendorPage
-        if (extraFields.Filters) {
-          selectedFilters = extraFields.Filters.split(',').filter(f => f.trim());
-        } else {
-          // Fall back to building from boolean fields
-          if (extraFields.IsPremium || extraFields.IsFeatured) selectedFilters.push('filter-premium');
-          if (extraFields.IsEcoFriendly) selectedFilters.push('filter-eco-friendly');
-          if (extraFields.IsAwardWinning) selectedFilters.push('filter-award-winning');
-          if (extraFields.IsLastMinute) selectedFilters.push('filter-last-minute');
-          if (extraFields.IsCertified) selectedFilters.push('filter-certified');
-          if (extraFields.IsInsured) selectedFilters.push('filter-insured');
-        }
-        
-      }
-    } catch (extraFieldsError) {
-      console.error('Extra fields query failed:', extraFieldsError.message);
+    
+    // Convert timestamps to ISO string for frontend
+    if (profile.SubmittedForReviewAt) {
+      const submitted = new Date(profile.SubmittedForReviewAt);
+      profileData.profile.SubmittedForReviewAt = !isNaN(submitted.getTime()) ? submitted.toISOString() : null;
+    }
+    if (profile.ReviewedAt) {
+      const reviewed = new Date(profile.ReviewedAt);
+      profileData.profile.ReviewedAt = !isNaN(reviewed.getTime()) ? reviewed.toISOString() : null;
     }
     
-    // Fallback: If ProfileStatus wasn't in extra fields, use stored procedure
-    if (!profileData.profile.ProfileStatus) {
-      try {
-        const statusRequest = new sql.Request(pool);
-        statusRequest.input('VendorProfileID', sql.Int, user.VendorProfileID);
-        const statusResult = await statusRequest.execute('vendors.sp_GetProfileStatus');
-        if (statusResult.recordset.length > 0) {
-          profileData.profile.ProfileStatus = statusResult.recordset[0].ProfileStatus || 'draft';
-          // Also get RejectionReason if profile was rejected
-          if (statusResult.recordset[0].RejectionReason) {
-            profileData.profile.RejectionReason = statusResult.recordset[0].RejectionReason;
-          }
-        }
-      } catch (statusError) {
-        console.warn('ProfileStatus query failed:', statusError.message);
-        profileData.profile.ProfileStatus = 'draft';
-      }
-    }
-    
-    // If ProfileStatus exists but RejectionReason doesn't, fetch it separately for rejected profiles
-    if (profileData.profile.ProfileStatus === 'rejected' && !profileData.profile.RejectionReason) {
-      try {
-        const statusRequest = new sql.Request(pool);
-        statusRequest.input('VendorProfileID', sql.Int, user.VendorProfileID);
-        const statusResult = await statusRequest.execute('vendors.sp_GetProfileStatus');
-        if (statusResult.recordset.length > 0 && statusResult.recordset[0].RejectionReason) {
-          profileData.profile.RejectionReason = statusResult.recordset[0].RejectionReason;
-        }
-      } catch (statusError) {
-        console.warn('RejectionReason query failed:', statusError.message);
-      }
-    }
+    // Build selectedFilters array from boolean fields
+    if (profile.IsPremium) selectedFilters.push('filter-premium');
+    if (profile.IsEcoFriendly) selectedFilters.push('filter-eco-friendly');
+    if (profile.IsAwardWinning) selectedFilters.push('filter-award-winning');
+    if (profile.IsLastMinute) selectedFilters.push('filter-last-minute');
+    if (profile.IsCertified) selectedFilters.push('filter-certified');
+    if (profile.IsInsured) selectedFilters.push('filter-insured');
 
     // Return successful response with vendor profile data
     res.json({
