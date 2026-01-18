@@ -2415,6 +2415,15 @@ router.get('/profile', async (req, res) => {
         if (extraFields.RejectionReason) {
           profileData.profile.RejectionReason = extraFields.RejectionReason;
         }
+        // Get timestamps for status display - convert to ISO string for frontend
+        if (extraFields.SubmittedForReviewAt) {
+          const submitted = new Date(extraFields.SubmittedForReviewAt);
+          profileData.profile.SubmittedForReviewAt = !isNaN(submitted.getTime()) ? submitted.toISOString() : null;
+        }
+        if (extraFields.ReviewedAt) {
+          const reviewed = new Date(extraFields.ReviewedAt);
+          profileData.profile.ReviewedAt = !isNaN(reviewed.getTime()) ? reviewed.toISOString() : null;
+        }
         
         // Build selectedFilters array from boolean fields and Filters string
         // This matches the format used in BecomeVendorPage

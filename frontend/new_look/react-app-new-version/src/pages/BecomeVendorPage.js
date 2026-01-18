@@ -72,6 +72,8 @@ const BecomeVendorPage = () => {
   const [initialDataLoaded, setInitialDataLoaded] = useState(false); // Prevent re-fetching after save
   const [profileStatus, setProfileStatus] = useState('draft'); // 'draft', 'pending_review', 'approved', 'rejected'
   const [rejectionReason, setRejectionReason] = useState(''); // Reason for rejection if profile was rejected
+  const [submittedAt, setSubmittedAt] = useState(null); // Timestamp when vendor submitted for review
+  const [reviewedAt, setReviewedAt] = useState(null); // Timestamp when support reviewed
   const [showSuccessModal, setShowSuccessModal] = useState(false); // Success modal after Go Live
   
   // Form data state
@@ -397,6 +399,13 @@ const BecomeVendorPage = () => {
           // Load rejection reason if profile was rejected
           if (profile.RejectionReason) {
             setRejectionReason(profile.RejectionReason);
+          }
+          // Load timestamps for status display
+          if (profile.SubmittedForReviewAt) {
+            setSubmittedAt(profile.SubmittedForReviewAt);
+          }
+          if (profile.ReviewedAt) {
+            setReviewedAt(profile.ReviewedAt);
           }
           const categories = result.data.categories || [];
           const services = result.data.services || [];
@@ -1598,6 +1607,8 @@ const BecomeVendorPage = () => {
                 setFeaturesLoadedFromDB={setFeaturesLoadedFromDB}
                 profileStatus={profileStatus}
                 rejectionReason={rejectionReason}
+                submittedAt={submittedAt}
+                reviewedAt={reviewedAt}
               />
             </div>
           </div>
@@ -1823,7 +1834,7 @@ const BecomeVendorPage = () => {
 // STEP COMPONENTS BELOW
 // Due to file size, I'll add these as inline components
 
-function AccountStep({ currentUser, setFormData, formData, onAccountCreated, isExistingVendor, steps, isStepCompleted, setCurrentStep, profileStatus, rejectionReason }) {
+function AccountStep({ currentUser, setFormData, formData, onAccountCreated, isExistingVendor, steps, isStepCompleted, setCurrentStep, profileStatus, rejectionReason, submittedAt, reviewedAt }) {
   const [mode, setMode] = useState('signup'); // 'signup' or 'login'
   const [accountData, setAccountData] = useState({
     name: '',
@@ -1837,69 +1848,119 @@ function AccountStep({ currentUser, setFormData, formData, onAccountCreated, isE
   const isVendorWithProfile = isExistingVendor || (currentUser?.isVendor && currentUser?.vendorProfileId);
 
   if (currentUser) {
-    // Show pending review message if profile is submitted - matching rejected style (image 9)
+    // Helper to format date - handles SQL Server datetime format
+    const formatDate = (dateInput) => {
+      if (!dateInput) return null;
+      try {
+        let date;
+        // If it's already a Date object
+        if (dateInput instanceof Date) {
+          date = dateInput;
+        } 
+        // If it's a string, try to parse it
+        else if (typeof dateInput === 'string') {
+          // SQL Server format: "2026-01-14T19:20:32.760Z" or "2026-01-14 19:20:32.760"
+          date = new Date(dateInput.replace(' ', 'T'));
+        }
+        // If it's an object with a date property (some ORMs return this)
+        else if (typeof dateInput === 'object' && dateInput !== null) {
+          date = new Date(dateInput);
+        }
+        else {
+          date = new Date(dateInput);
+        }
+        
+        if (!date || isNaN(date.getTime())) return null;
+        
+        return date.toLocaleDateString('en-US', { 
+          month: 'short', 
+          day: 'numeric', 
+          year: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit'
+        });
+      } catch (e) {
+        console.error('Date parsing error:', e, dateInput);
+        return null;
+      }
+    };
+
+    // Show pending review message if profile is submitted
     if (profileStatus === 'pending_review') {
       return (
         <div className="account-step" style={{ width: '100%' }}>
-          <div style={{ width: '100%' }}>
-            {/* Title and message - blue theme matching rejected style */}
-            <div style={{ marginBottom: '1.5rem' }}>
-              <div style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '0.5rem', 
-                marginBottom: '0.5rem',
-                color: '#1e40af',
-                fontSize: '1.1rem',
-                fontWeight: 600
-              }}>
-                <i className="fas fa-clock" style={{ color: '#3b82f6' }}></i>
-                Profile Under Review
-              </div>
-              <p style={{ 
-                margin: 0, 
-                color: '#6b7280', 
-                fontSize: '0.95rem',
-                lineHeight: 1.5
-              }}>
-                Your vendor profile has been submitted and is currently being reviewed by our support team. 
-                This process typically takes <strong>1-2 business days</strong>. You'll receive an email notification once your profile is approved or if any changes are requested.
-              </p>
-            </div>
+          {/* Icon */}
+          <div style={{
+            width: '56px',
+            height: '56px',
+            borderRadius: '50%',
+            background: '#dbeafe',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: '1rem'
+          }}>
+            <i className="fas fa-clock" style={{ color: '#3b82f6', fontSize: '1.5rem' }}></i>
           </div>
+          
+          {/* Title */}
+          <h3 style={{ margin: '0 0 0.5rem', color: '#1e40af', fontSize: '1.25rem', fontWeight: 600 }}>
+            Profile Under Review
+          </h3>
+          
+          {/* Description */}
+          <p style={{ margin: '0 0 1.5rem', color: '#6b7280', fontSize: '0.95rem', lineHeight: 1.6 }}>
+            Your vendor profile has been submitted and is currently being reviewed by our support team. 
+            This process typically takes <strong>1-2 business days</strong>. You'll receive an email when your profile is reviewed.
+          </p>
+          
+          {/* Timestamps at bottom */}
+          {formatDate(submittedAt) && (
+            <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>
+              Submitted: <strong style={{ color: '#1e40af' }}>{formatDate(submittedAt)}</strong>
+            </div>
+          )}
         </div>
       );
     }
 
-    // Show approved message if profile is approved - matching rejected/pending style
+    // Show approved message if profile is approved
     if (profileStatus === 'approved') {
       return (
         <div className="account-step" style={{ width: '100%' }}>
-          <div style={{ width: '100%' }}>
-            {/* Title and message - green theme matching other status styles */}
-            <div style={{ marginBottom: '1.5rem' }}>
-              <div style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '0.5rem', 
-                marginBottom: '0.5rem',
-                color: '#166534',
-                fontSize: '1.1rem',
-                fontWeight: 600
-              }}>
-                <i className="fas fa-check-circle" style={{ color: '#10b981' }}></i>
-                Profile Approved
-              </div>
-              <p style={{ 
-                margin: 0, 
-                color: '#6b7280', 
-                fontSize: '0.95rem',
-                lineHeight: 1.5
-              }}>
-                Congratulations! Your vendor profile has been approved and is now live. 
-                Clients can find and book your services.
-              </p>
-            </div>
+          {/* Icon */}
+          <div style={{
+            width: '56px',
+            height: '56px',
+            borderRadius: '50%',
+            background: '#dcfce7',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: '1rem'
+          }}>
+            <i className="fas fa-check" style={{ color: '#10b981', fontSize: '1.5rem' }}></i>
+          </div>
+          
+          {/* Title */}
+          <h3 style={{ margin: '0 0 0.5rem', color: '#166534', fontSize: '1.25rem', fontWeight: 600 }}>
+            Profile Approved
+          </h3>
+          
+          {/* Description */}
+          <p style={{ margin: '0 0 1.5rem', color: '#6b7280', fontSize: '0.95rem', lineHeight: 1.6 }}>
+            Congratulations! Your vendor profile has been approved and is now live. 
+            Clients can find and book your services.
+          </p>
+          
+          {/* Timestamps at bottom */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.85rem', color: '#6b7280' }}>
+            {formatDate(submittedAt) && (
+              <div>Submitted: <strong style={{ color: '#166534' }}>{formatDate(submittedAt)}</strong></div>
+            )}
+            {formatDate(reviewedAt) && (
+              <div>Approved: <strong style={{ color: '#166534' }}>{formatDate(reviewedAt)}</strong></div>
+            )}
           </div>
         </div>
       );
@@ -1909,56 +1970,50 @@ function AccountStep({ currentUser, setFormData, formData, onAccountCreated, isE
     if (profileStatus === 'rejected') {
       return (
         <div className="account-step" style={{ width: '100%' }}>
-          <div style={{ width: '100%' }}>
-            {/* Title and message */}
-            <div style={{ marginBottom: '1.5rem' }}>
-              <div style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '0.5rem', 
-                marginBottom: '0.5rem',
-                color: '#991b1b',
-                fontSize: '1.1rem',
-                fontWeight: 600
-              }}>
-                <i className="fas fa-exclamation-circle" style={{ color: '#ef4444' }}></i>
-                Changes Requested
-              </div>
-              <p style={{ 
-                margin: 0, 
-                color: '#6b7280', 
-                fontSize: '0.95rem',
-                lineHeight: 1.5
-              }}>
-                Our team has reviewed your profile and requested some changes. 
-                Please review the feedback below and update your profile accordingly.
-              </p>
-            </div>
+          {/* Icon */}
+          <div style={{
+            width: '56px',
+            height: '56px',
+            borderRadius: '50%',
+            background: '#fee2e2',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: '1rem'
+          }}>
+            <i className="fas fa-times" style={{ color: '#ef4444', fontSize: '1.5rem' }}></i>
+          </div>
+          
+          {/* Title */}
+          <h3 style={{ margin: '0 0 0.5rem', color: '#991b1b', fontSize: '1.25rem', fontWeight: 600 }}>
+            Changes Requested
+          </h3>
+          
+          {/* Description */}
+          <p style={{ margin: '0 0 1.5rem', color: '#6b7280', fontSize: '0.95rem', lineHeight: 1.6 }}>
+            Our team has reviewed your profile and requested some changes. 
+            Please review the feedback below and update your profile accordingly.
+          </p>
 
-            {/* Rejection Reason Section - Only show if there's an actual rejection reason */}
-            {rejectionReason && (
-              <div style={{ marginBottom: '2rem' }}>
-                <div style={{ 
-                  fontWeight: 600, 
-                  color: '#991b1b', 
-                  marginBottom: '1rem', 
-                  fontSize: '1rem'
-                }}>
-                  <i className="fas fa-comment-alt" style={{ marginRight: '0.5rem' }}></i>
-                  Feedback from our team:
-                </div>
-                <div style={{ 
-                  background: 'rgba(239, 68, 68, 0.08)',
-                  border: '1px solid #ef4444',
-                  borderRadius: '12px',
-                  padding: '1.25rem',
-                  color: '#991b1b',
-                  fontSize: '0.95rem',
-                  lineHeight: 1.7
-                }}>
-                  {rejectionReason}
-                </div>
+          {/* Rejection Reason Section */}
+          {rejectionReason && (
+            <div style={{ marginBottom: '1.5rem' }}>
+              <div style={{ fontWeight: 600, color: '#991b1b', marginBottom: '0.5rem', fontSize: '0.95rem' }}>
+                Feedback from our team:
               </div>
+              <div style={{ color: '#6b7280', fontSize: '0.95rem', lineHeight: 1.6 }}>
+                {rejectionReason}
+              </div>
+            </div>
+          )}
+          
+          {/* Timestamps at bottom */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.85rem', color: '#6b7280' }}>
+            {formatDate(submittedAt) && (
+              <div>Submitted: <strong style={{ color: '#991b1b' }}>{formatDate(submittedAt)}</strong></div>
+            )}
+            {formatDate(reviewedAt) && (
+              <div>Reviewed: <strong style={{ color: '#991b1b' }}>{formatDate(reviewedAt)}</strong></div>
             )}
           </div>
         </div>

@@ -19,7 +19,8 @@ BEGIN
     SET NOCOUNT ON;
     
     SELECT StripeAccountID, GooglePlaceId, ProfileStatus, RejectionReason, IsPremium,
-           IsEcoFriendly, IsAwardWinning, IsLastMinute, IsCertified, IsInsured
+           IsEcoFriendly, IsAwardWinning, IsLastMinute, IsCertified, IsInsured,
+           SubmittedForReviewAt, ReviewedAt
     FROM vendors.VendorProfiles
     WHERE VendorProfileID = @VendorProfileID;
 END
