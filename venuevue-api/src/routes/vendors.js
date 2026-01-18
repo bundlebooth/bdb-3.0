@@ -6055,38 +6055,11 @@ router.post('/:vendorProfileId/submit-for-review', async (req, res) => {
     // Update profile status to pending_review
     await request.execute('vendors.sp_SubmitForReview');
     
-    // Get vendor details for email notification using SAME logic as SetupIncompleteBanner
+    // Get vendor details for email notification using stored procedure
     try {
-      // Query completion status matching SetupIncompleteBanner's isStepCompleted logic exactly
-      const completionQuery = `
-        SELECT 
-          vp.UserID,
-          vp.BusinessName,
-          vp.BusinessEmail,
-          vp.BusinessPhone,
-          vp.DisplayName,
-          vp.City,
-          vp.State,
-          vp.GooglePlaceId,
-          vp.CancellationPolicy,
-          vp.DepositRequirements,
-          vp.PaymentTerms,
-          (SELECT TOP 1 Category FROM vendors.VendorCategories WHERE VendorProfileID = @VendorProfileID AND IsPrimary = 1) AS PrimaryCategory,
-          (SELECT COUNT(*) FROM vendors.VendorSelectedServices WHERE VendorProfileID = @VendorProfileID) AS ServiceCount,
-          (SELECT COUNT(*) FROM vendors.VendorFeatures WHERE VendorProfileID = @VendorProfileID) AS FeatureCount,
-          (SELECT COUNT(*) FROM vendors.VendorSocialMedia WHERE VendorProfileID = @VendorProfileID AND URL IS NOT NULL AND URL != '') AS SocialMediaCount,
-          (SELECT COUNT(*) FROM vendors.VendorFAQs WHERE VendorProfileID = @VendorProfileID) AS FAQCount,
-          (SELECT COUNT(*) FROM vendors.VendorServiceAreas WHERE VendorProfileID = @VendorProfileID) AS ServiceAreaCount,
-          (SELECT COUNT(*) FROM vendors.VendorImages WHERE VendorProfileID = @VendorProfileID) AS ImageCount,
-          (SELECT COUNT(*) FROM vendors.VendorBusinessHours WHERE VendorProfileID = @VendorProfileID AND IsAvailable = 1) AS AvailableDaysCount,
-          CASE WHEN vp.IsPremium = 1 OR vp.IsEcoFriendly = 1 OR vp.IsAwardWinning = 1 OR vp.IsCertified = 1 OR vp.IsInsured = 1 THEN 1 ELSE 0 END AS HasBadges
-        FROM vendors.VendorProfiles vp
-        WHERE vp.VendorProfileID = @VendorProfileID
-      `;
-      
       const vendorRequest = new sql.Request(pool);
       vendorRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-      const vendorResult = await vendorRequest.query(completionQuery);
+      const vendorResult = await vendorRequest.execute('vendors.sp_GetVendorCompletionStatus');
       
       if (vendorResult.recordset.length > 0) {
         const vendor = vendorResult.recordset[0];
