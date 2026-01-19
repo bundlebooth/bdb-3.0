@@ -22,9 +22,11 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem 2rem;
-  max-width: 1400px;
+  padding: 1rem 80px;
+  max-width: var(--page-max-width, 2000px);
   margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .become-vendor-header .logo {

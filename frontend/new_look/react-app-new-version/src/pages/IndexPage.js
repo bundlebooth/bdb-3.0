@@ -19,6 +19,7 @@ import Footer from '../components/Footer';
 import MobileBottomNav from '../components/MobileBottomNav';
 import { showBanner } from '../utils/helpers';
 import { EditButton } from '../components/common/UIComponents';
+import LocationSearchModal from '../components/LocationSearchModal';
 
 function IndexPage() {
   const navigate = useNavigate();
@@ -46,6 +47,7 @@ function IndexPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [sortBy, setSortBy] = useState('recommended');
   const [mobileMapOpen, setMobileMapOpen] = useState(false); // Mobile fullscreen map
+  const [locationModalOpen, setLocationModalOpen] = useState(false); // Location search modal
 
   // Prevent background scrolling when mobile map overlay is open
   useEffect(() => {
@@ -973,6 +975,26 @@ function IndexPage() {
         userLocation={userLocation}
         vendorCount={serverTotalCount}
       />
+      <LocationSearchModal
+        isOpen={locationModalOpen}
+        onClose={() => setLocationModalOpen(false)}
+        onApply={(locationData) => {
+          setLocationModalOpen(false);
+          if (locationData.location) {
+            // Update filters with new location
+            handleFilterChange({ location: locationData.location });
+            // Update user location coordinates if provided
+            if (locationData.coordinates) {
+              setUserLocation({
+                latitude: locationData.coordinates.lat,
+                longitude: locationData.coordinates.lng
+              });
+            }
+          }
+        }}
+        initialLocation={detectedCity || filters.location || ''}
+        initialRadius={filters.radius || 50}
+      />
       {/* Category Navigation - pill style buttons with page-wrapper for alignment */}
       <div style={{ width: '100%', backgroundColor: 'white', borderBottom: '1px solid #e5e7eb', padding: '12px 0' }}>
         <div className="page-wrapper">
@@ -1004,14 +1026,7 @@ function IndexPage() {
                   <>
                     <span>Vendors {detectedCity || filters.location ? 'Near ' + (detectedCity || filters.location) : 'Near You'}</span>
                     <EditButton
-                      onClick={() => {
-                        // Scroll to top and dispatch event to expand search bar
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
-                        setTimeout(() => {
-                          // Dispatch custom event to expand search bar and focus location
-                          window.dispatchEvent(new CustomEvent('expandSearchBar', { detail: { field: 'location' } }));
-                        }, 300);
-                      }}
+                      onClick={() => setLocationModalOpen(true)}
                       title="Change location"
                     />
                   </>
