@@ -219,12 +219,15 @@ function UnifiedMessagesSection({ onSectionChange }) {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const scrollToBottom = () => {
+  const scrollToBottom = useCallback((instant = false) => {
     // Scroll within the messages container only, not the whole page
     if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      messagesEndRef.current.scrollIntoView({ 
+        behavior: instant ? 'instant' : 'smooth', 
+        block: 'end' 
+      });
     }
-  };
+  }, []);
 
   // Get vendor profile ID if user is a vendor
   useEffect(() => {
@@ -351,12 +354,14 @@ function UnifiedMessagesSection({ onSectionChange }) {
       
       const data = await response.json();
       setMessages(data.messages || []);
-      setTimeout(scrollToBottom, 100);
+      // Scroll to bottom after messages are loaded - use instant for initial load, then smooth after delay
+      setTimeout(() => scrollToBottom(true), 50);
+      setTimeout(() => scrollToBottom(false), 300);
     } catch (error) {
       console.error('Error loading messages:', error);
       setMessages([]);
     }
-  }, [currentUser?.id]);
+  }, [currentUser?.id, scrollToBottom]);
 
   useEffect(() => {
     loadConversations();
@@ -510,6 +515,13 @@ function UnifiedMessagesSection({ onSectionChange }) {
       }
     }
   }, [selectedConversation, loadMessages, isMobile]);
+
+  // Scroll to bottom when messages change (new messages arrive)
+  useEffect(() => {
+    if (messages.length > 0) {
+      setTimeout(() => scrollToBottom(false), 100);
+    }
+  }, [messages.length, scrollToBottom]);
   
   // Handle selecting a conversation
   const handleSelectConversation = (conv) => {

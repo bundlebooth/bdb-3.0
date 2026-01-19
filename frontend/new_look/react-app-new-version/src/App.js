@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import ScrollToTop from './components/ScrollToTop';
 import IndexPage from './pages/IndexPage';
 import LandingPage from './pages/LandingPage';
 import VendorProfilePage from './pages/VendorProfilePage';
@@ -85,6 +86,7 @@ function App() {
   return (
     <AuthProvider>
       <Router>
+        <ScrollToTop />
         <Routes>
           <Route path="/" element={<HomeRoute />} />
           <Route path="/explore" element={<IndexPage />} />
