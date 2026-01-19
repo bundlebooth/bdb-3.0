@@ -13,7 +13,7 @@
     --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
     --radius: 12px;
     /* Airbnb-style centered container - wider layout like Airbnb */
-    --page-max-width: 1760px;
+    --page-max-width: 2000px;
     --page-padding-x: 24px;
 }
 
@@ -125,7 +125,7 @@ body.overlay-open {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 1rem var(--page-padding-x);
+    padding: 1rem 0 !important;
     background-color: white;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
     border-bottom: 1px solid var(--border);
@@ -571,7 +571,7 @@ body.overlay-open {
 
 /* Main Content */
 .main-content {
-    padding: 2rem var(--page-padding-x);
+    padding: 0;
     background-color: white;
     width: 100%;
     box-sizing: border-box;
@@ -584,6 +584,15 @@ body.overlay-open {
     margin-right: auto;
     width: 100%;
     box-sizing: border-box;
+    padding-left: 80px;
+    padding-right: 80px;
+}
+
+/* Full width variant - no max-width constraint */
+.page-wrapper--fullWidth {
+    max-width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
 }
 
 .profile-content {
@@ -718,7 +727,7 @@ body.overlay-open {
    Fixed-width cards with navigation arrows
    ============================================= */
 
-/* Desktop: Hide overflow and CENTER cards like Airbnb */
+/* Desktop: Hide overflow and LEFT-ALIGN cards to match header/nav */
 @media (min-width: 769px) {
     .vendor-section-scroll-container {
         overflow: hidden !important;
@@ -728,7 +737,7 @@ body.overlay-open {
     .vendor-section-carousel {
         display: flex !important;
         gap: 16px !important;
-        justify-content: center !important;
+        justify-content: flex-start !important;
         flex-wrap: nowrap !important;
         width: 100% !important;
     }
@@ -886,12 +895,14 @@ body.overlay-open {
     display: none !important;
 }
 
-/* Map container inside sidebar - full height, no gaps */
+/* Map container inside sidebar - full height, with Airbnb-style curved edges */
 .map-sidebar-content {
     height: 100%;
     width: 100%;
     overflow: hidden;
     display: none;
+    padding: 16px 16px 16px 0;
+    box-sizing: border-box;
 }
 
 .app-container.map-active .map-sidebar-content {
@@ -899,16 +910,24 @@ body.overlay-open {
     height: calc(100vh - 64px);
 }
 
+/* Inner map wrapper for rounded corners */
+.map-sidebar-content > div {
+    border-radius: 16px;
+    overflow: hidden;
+    height: 100%;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
 
-/* Map view container - always visible */
+
+/* Map view container - always visible with rounded corners */
 #map-view {
     display: block !important; /* Always visible */
     width: 100%;
     height: 100%;
-    border-radius: 0; /* No border radius for full-screen map */
+    border-radius: 16px; /* Airbnb-style rounded corners */
     overflow: hidden;
     border: none; /* No border for seamless look */
-    box-shadow: none; /* No shadow for fixed map */
+    box-shadow: none; /* Shadow handled by parent */
     background-color: #e5e3df; /* Google Maps default background */
 }
 
@@ -8208,6 +8227,11 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
         --page-padding-x: 1rem;
     }
     
+    .page-wrapper {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+    
     /* Allow horizontal scroll for carousels - removed overflow-x: hidden */
     body {
         max-width: 100vw !important;
@@ -8560,6 +8584,11 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
     /* Responsive page padding for tablet */
     :root {
         --page-padding-x: 40px;
+    }
+    
+    .page-wrapper {
+        padding-left: 40px;
+        padding-right: 40px;
     }
     
     .app-container {
@@ -11877,55 +11906,6 @@ html, body {
     }
 }
 
-/* ============================================
-   INLINE CATEGORIES NAV - Pill Style Buttons
-   ============================================ */
-.inline-categories-nav {
-    padding: 0.5rem 0;
-    background: white;
-    border-bottom: 1px solid #e5e7eb;
-    width: 100%;
-    box-sizing: border-box;
-}
-
-.inline-categories-nav .page-wrapper {
-    width: 100%;
-}
-
-
-.inline-categories-scroll {
-    display: flex;
-    justify-content: flex-start;
-    gap: 0.5rem;
-    overflow-x: auto;
-    padding-bottom: 0.25rem;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-}
-
-.inline-categories-scroll::-webkit-scrollbar {
-    display: none;
-}
-
-/* Mobile responsive for inline categories */
-@media (max-width: 768px) {
-    .inline-categories-nav {
-        padding: 0.5rem var(--page-padding-x);
-        margin: 0;
-        position: sticky;
-        top: 45px;
-        z-index: 90;
-    }
-    
-    .inline-categories-scroll {
-        gap: 0.375rem;
-    }
-    
-    .inline-categories-scroll button {
-        padding: 0.35rem 0.75rem !important;
-        font-size: 0.75rem !important;
-    }
-}
 
 /* Map sidebar - ensure full height with no gaps */
 .map-sidebar {

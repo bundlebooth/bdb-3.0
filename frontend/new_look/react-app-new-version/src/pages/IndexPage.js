@@ -6,7 +6,7 @@ import { apiGet, apiPost, apiDelete } from '../utils/api';
 import { PageLayout } from '../components/PageWrapper';
 import Header from '../components/Header';
 import FilterModal from '../components/FilterModal';
-import CategoriesNav from '../components/CategoriesNav';
+import CategoryPills from '../components/CategoryPills';
 import VendorGrid from '../components/VendorGrid';
 import VendorSection from '../components/VendorSection';
 import VendorSectionSkeleton from '../components/VendorSectionSkeleton';
@@ -973,16 +973,20 @@ function IndexPage() {
         userLocation={userLocation}
         vendorCount={serverTotalCount}
       />
-      {/* Category Navigation - pill style buttons - OUTSIDE main-content to avoid padding */}
-      <CategoriesNav 
-        activeCategory={currentCategory} 
-        onCategoryChange={handleCategoryChange} 
-        loading={loading} 
-      />
-      <div className={`app-container sidebar-collapsed page-wrapper ${mapActive ? 'map-active' : ''}`} id="app-container" style={{ display: 'flex', flexDirection: 'column', width: '100%', overflow: 'visible' }}>
+      {/* Category Navigation - pill style buttons with page-wrapper for alignment */}
+      <div style={{ width: '100%', backgroundColor: 'white', borderBottom: '1px solid #e5e7eb', padding: '12px 0' }}>
+        <div className="page-wrapper">
+          <CategoryPills 
+            activeCategory={currentCategory} 
+            onCategoryChange={handleCategoryChange} 
+            loading={loading} 
+          />
+        </div>
+      </div>
+      <div className="page-wrapper" style={{ paddingTop: 0, paddingBottom: 0 }}>
+      <div className={`app-container sidebar-collapsed ${mapActive ? 'map-active' : ''}`} id="app-container" style={{ display: 'flex', flexDirection: 'column', width: '100%', overflow: 'visible' }}>
         <div className="content-wrapper" style={{ display: 'flex', width: '100%', flex: 1, overflow: 'visible' }}>
-          <main className="main-content" style={{ width: mapActive ? '65%' : '100%', overflowY: 'auto', overflowX: 'visible', transition: 'width 0.3s ease' }}>
-          
+          <main className="main-content" style={{ width: mapActive ? '65%' : '100%', overflowY: 'auto', overflowX: 'visible', transition: 'width 0.3s ease', padding: '2rem 1.5rem 2rem 0' }}>
           {/* Only show setup banner for users who are vendors with a vendor profile */}
           {currentUser?.isVendor && currentUser?.vendorProfileId && (
             <>
@@ -1196,18 +1200,19 @@ function IndexPage() {
               )}
             </div>
           )}
-        </main>
-        <aside className="map-sidebar" style={{ 
-          display: mapActive ? 'block' : 'none',
-          width: mapActive ? '35%' : '0',
-          height: 'calc(100vh - 64px)',
-          position: 'sticky',
-          top: '64px',
-          borderLeft: mapActive ? '1px solid #e5e7eb' : 'none',
-          transition: 'width 0.3s ease, border 0.3s ease',
-          overflow: 'hidden',
-          alignSelf: 'flex-start'
-        }}>
+          </main>
+          <aside className="map-sidebar" style={{ 
+            display: mapActive ? 'block' : 'none',
+            width: mapActive ? '35%' : '0',
+            height: 'calc(100vh - 64px)',
+            position: 'sticky',
+            top: '64px',
+            borderLeft: 'none',
+            transition: 'width 0.3s ease',
+            overflow: 'hidden',
+            alignSelf: 'flex-start',
+            background: 'transparent'
+          }}>
           <div className="map-sidebar-content">
             <MapView 
               vendors={filteredVendors} 
@@ -1218,8 +1223,9 @@ function IndexPage() {
               onMapBoundsChange={handleMapBoundsChange}
             />
           </div>
-        </aside>
+          </aside>
         </div>
+      </div>
       </div>
       
       {/* Mobile Map Button - Floating - Only show when no modals are open */}

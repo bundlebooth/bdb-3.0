@@ -5,7 +5,7 @@ import { GOOGLE_MAPS_API_KEY, API_BASE_URL } from '../config';
 import { apiGet, apiPost } from '../utils/api';
 import { PageLayout } from '../components/PageWrapper';
 import Header from '../components/Header';
-import CategoriesNav from '../components/CategoriesNav';
+import CategoryPills from '../components/CategoryPills';
 import VendorCard from '../components/VendorCard';
 import VendorGrid from '../components/VendorGrid';
 import VendorSection from '../components/VendorSection';
@@ -1003,7 +1003,7 @@ function BrowsePage() {
 
         {/* Categories Navigation - Only show if no hero */}
         {!heroContent && (
-          <CategoriesNav 
+          <CategoryPills 
             activeCategory={categoryFilter || 'all'} 
             onCategoryChange={handleCategoryChange} 
             loading={loading}
