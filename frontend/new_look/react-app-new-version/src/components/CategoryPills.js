@@ -21,7 +21,7 @@ const categories = [
   { key: 'stationery', icon: <Mail size={16} />, label: 'Stationery', color: '#8b5cf6' }
 ];
 
-function CategoryPills({ activeCategory, onCategoryChange, loading = false }) {
+function CategoriesNav({ activeCategory, onCategoryChange, loading = false }) {
   const scrollRef = useRef(null);
 
   useEffect(() => {
@@ -100,4 +100,4 @@ function CategoryPills({ activeCategory, onCategoryChange, loading = false }) {
   );
 }
 
-export default CategoryPills;
+export default CategoriesNav;

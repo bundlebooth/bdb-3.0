@@ -6,7 +6,7 @@ import { apiGet, apiPost, apiDelete } from '../utils/api';
 import { PageLayout } from '../components/PageWrapper';
 import Header from '../components/Header';
 import FilterModal from '../components/FilterModal';
-import CategoryPills from '../components/CategoryPills';
+import CategoriesNav from '../components/CategoryPills';
 import VendorGrid from '../components/VendorGrid';
 import VendorSection from '../components/VendorSection';
 import VendorSectionSkeleton from '../components/VendorSectionSkeleton';
@@ -976,7 +976,7 @@ function IndexPage() {
       {/* Category Navigation - pill style buttons with page-wrapper for alignment */}
       <div style={{ width: '100%', backgroundColor: 'white', borderBottom: '1px solid #e5e7eb', padding: '12px 0' }}>
         <div className="page-wrapper">
-          <CategoryPills 
+          <CategoriesNav 
             activeCategory={currentCategory} 
             onCategoryChange={handleCategoryChange} 
             loading={loading} 
