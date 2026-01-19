@@ -43,6 +43,71 @@ BEGIN
 END
 ELSE
 BEGIN
-    PRINT 'Table [admin].[EmailTemplates] already contains data. Skipping.';
+    PRINT 'Table [admin].[EmailTemplates] already contains data. Adding new templates if missing...';
+    
+    -- Add event_reminder template
+    IF NOT EXISTS (SELECT 1 FROM [admin].[EmailTemplates] WHERE [TemplateKey] = 'event_reminder')
+    BEGIN
+        DECLARE @EventReminderBodyID INT;
+        SELECT @EventReminderBodyID = ComponentID FROM [admin].[EmailTemplateComponents] WHERE [ComponentName] = 'Event Reminder';
+        IF @EventReminderBodyID IS NOT NULL
+        BEGIN
+            INSERT [admin].[EmailTemplates] ([TemplateKey], [TemplateName], [HeaderComponentID], [BodyComponentID], [FooterComponentID], [Subject], [Category], [AvailableVariables], [IsActive], [CreatedAt], [UpdatedAt])
+            VALUES (N'event_reminder', N'Event Reminder', 1, @EventReminderBodyID, 2, N'Reminder: Your {{serviceName}} is in {{daysUntilEvent}}!', N'booking', N'["recipientName","daysUntilEvent","serviceName","eventDate","eventTime","location","otherPartyLabel","otherPartyName","frontendUrl","platformName","logoUrl"]', 1, GETDATE(), GETDATE());
+            PRINT 'Added event_reminder template';
+        END
+    END
+
+    -- Add booking_action_reminder template
+    IF NOT EXISTS (SELECT 1 FROM [admin].[EmailTemplates] WHERE [TemplateKey] = 'booking_action_reminder')
+    BEGIN
+        DECLARE @ActionReminderBodyID INT;
+        SELECT @ActionReminderBodyID = ComponentID FROM [admin].[EmailTemplateComponents] WHERE [ComponentName] = 'Booking Action Reminder';
+        IF @ActionReminderBodyID IS NOT NULL
+        BEGIN
+            INSERT [admin].[EmailTemplates] ([TemplateKey], [TemplateName], [HeaderComponentID], [BodyComponentID], [FooterComponentID], [Subject], [Category], [AvailableVariables], [IsActive], [CreatedAt], [UpdatedAt])
+            VALUES (N'booking_action_reminder', N'Booking Action Reminder', 1, @ActionReminderBodyID, 2, N'{{actionSubject}} - {{serviceName}}', N'booking', N'["recipientName","actionSubject","actionMessage","serviceName","eventDate","otherPartyLabel","otherPartyName","actionUrl","actionButtonText","frontendUrl","platformName","logoUrl"]', 1, GETDATE(), GETDATE());
+            PRINT 'Added booking_action_reminder template';
+        END
+    END
+
+    -- Add analytics_summary template
+    IF NOT EXISTS (SELECT 1 FROM [admin].[EmailTemplates] WHERE [TemplateKey] = 'analytics_summary')
+    BEGIN
+        DECLARE @AnalyticsBodyID INT;
+        SELECT @AnalyticsBodyID = ComponentID FROM [admin].[EmailTemplateComponents] WHERE [ComponentName] = 'Analytics Summary';
+        IF @AnalyticsBodyID IS NOT NULL
+        BEGIN
+            INSERT [admin].[EmailTemplates] ([TemplateKey], [TemplateName], [HeaderComponentID], [BodyComponentID], [FooterComponentID], [Subject], [Category], [AvailableVariables], [IsActive], [CreatedAt], [UpdatedAt])
+            VALUES (N'analytics_summary', N'Analytics Summary', 1, @AnalyticsBodyID, 2, N'Your {{summaryPeriod}} Analytics Summary', N'vendor', N'["recipientName","summaryPeriod","periodRange","profileViews","viewsChange","bookings","bookingsChange","revenue","revenueChange","conversionRate","frontendUrl","platformName","logoUrl"]', 1, GETDATE(), GETDATE());
+            PRINT 'Added analytics_summary template';
+        END
+    END
+
+    -- Add account_suspended template
+    IF NOT EXISTS (SELECT 1 FROM [admin].[EmailTemplates] WHERE [TemplateKey] = 'account_suspended')
+    BEGIN
+        DECLARE @SuspendedBodyID INT;
+        SELECT @SuspendedBodyID = ComponentID FROM [admin].[EmailTemplateComponents] WHERE [ComponentName] = 'Account Suspended';
+        IF @SuspendedBodyID IS NOT NULL
+        BEGIN
+            INSERT [admin].[EmailTemplates] ([TemplateKey], [TemplateName], [HeaderComponentID], [BodyComponentID], [FooterComponentID], [Subject], [Category], [AvailableVariables], [IsActive], [CreatedAt], [UpdatedAt])
+            VALUES (N'account_suspended', N'Account Suspended', 1, @SuspendedBodyID, 2, N'Your {{platformName}} Account Has Been Suspended', N'system', N'["recipientName","suspensionReason","platformName","logoUrl"]', 1, GETDATE(), GETDATE());
+            PRINT 'Added account_suspended template';
+        END
+    END
+
+    -- Add account_reactivated template
+    IF NOT EXISTS (SELECT 1 FROM [admin].[EmailTemplates] WHERE [TemplateKey] = 'account_reactivated')
+    BEGIN
+        DECLARE @ReactivatedBodyID INT;
+        SELECT @ReactivatedBodyID = ComponentID FROM [admin].[EmailTemplateComponents] WHERE [ComponentName] = 'Account Reactivated';
+        IF @ReactivatedBodyID IS NOT NULL
+        BEGIN
+            INSERT [admin].[EmailTemplates] ([TemplateKey], [TemplateName], [HeaderComponentID], [BodyComponentID], [FooterComponentID], [Subject], [Category], [AvailableVariables], [IsActive], [CreatedAt], [UpdatedAt])
+            VALUES (N'account_reactivated', N'Account Reactivated', 1, @ReactivatedBodyID, 2, N'Your {{platformName}} Account Has Been Reactivated', N'system', N'["recipientName","frontendUrl","platformName","logoUrl"]', 1, GETDATE(), GETDATE());
+            PRINT 'Added account_reactivated template';
+        END
+    END
 END
 GO

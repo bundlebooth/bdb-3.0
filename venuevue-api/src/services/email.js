@@ -443,20 +443,28 @@ async function sendTwoFactorCode(email, code, userName = 'User', userId = null) 
   return sendTemplatedEmail('auth_2fa', email, userName, { code, userName }, userId, null, null, '2fa', adminEmail);
 }
 
-async function sendBookingRequestToVendor(vendorEmail, vendorName, clientName, serviceName, eventDate, location, total, dashboardUrl, vendorUserId = null, bookingId = null, eventTime = null, requestedAt = null, timezone = null) {
+async function sendBookingRequestToVendor(vendorEmail, vendorName, clientName, serviceName, eventDate, location, total, dashboardUrl, vendorUserId = null, bookingId = null, eventTime = null, requestedAt = null, timezone = null, clientProfilePic = null) {
   const adminEmail = process.env.ADMIN_EMAIL || 'admin@planbeau.com';
   const requestedAtFormatted = requestedAt || new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
   const timezoneDisplay = timezone || 'Local Time';
+  const clientInitial = clientName ? clientName.charAt(0).toUpperCase() : 'C';
+  const clientAvatarHtml = clientProfilePic 
+    ? `<img src="${clientProfilePic}" alt="${clientName}" style="width:48px;height:48px;border-radius:50%;object-fit:cover">`
+    : `<div style="width:48px;height:48px;background-color:#222222;border-radius:50%;text-align:center;line-height:48px;color:#ffffff;font-weight:600;font-size:18px">${clientInitial}</div>`;
   return sendTemplatedEmail('booking_request_vendor', vendorEmail, vendorName, {
-    vendorName, clientName, serviceName, eventDate, eventTime: eventTime ? `${eventTime} (${timezoneDisplay})` : 'TBD', location: location || 'TBD', total, dashboardUrl, requestedAt: requestedAtFormatted, timezone: timezoneDisplay
+    vendorName, clientName, serviceName, eventDate, eventTime: eventTime ? `${eventTime} (${timezoneDisplay})` : 'TBD', location: location || 'TBD', budget: total, dashboardUrl, requestedAt: requestedAtFormatted, timezone: timezoneDisplay, clientAvatarHtml
   }, vendorUserId, bookingId, null, 'bookingUpdates', adminEmail);
 }
 
-async function sendBookingAcceptedToClient(clientEmail, clientName, vendorName, serviceName, dashboardUrl, userId = null, bookingId = null, eventDate = null, eventTime = null, location = null, amount = null, timezone = null) {
+async function sendBookingAcceptedToClient(clientEmail, clientName, vendorName, serviceName, dashboardUrl, userId = null, bookingId = null, eventDate = null, eventTime = null, location = null, amount = null, timezone = null, vendorProfilePic = null) {
   const adminEmail = process.env.ADMIN_EMAIL || 'admin@planbeau.com';
   const timezoneDisplay = timezone || 'Local Time';
+  const vendorInitial = vendorName ? vendorName.charAt(0).toUpperCase() : 'V';
+  const vendorAvatarHtml = vendorProfilePic 
+    ? `<img src="${vendorProfilePic}" alt="${vendorName}" style="width:48px;height:48px;border-radius:50%;object-fit:cover">`
+    : `<div style="width:48px;height:48px;background-color:#222222;border-radius:50%;text-align:center;line-height:48px;color:#ffffff;font-weight:600;font-size:18px">${vendorInitial}</div>`;
   return sendTemplatedEmail('booking_accepted_client', clientEmail, clientName, {
-    clientName, vendorName, serviceName, dashboardUrl, eventDate: eventDate || 'TBD', eventTime: eventTime ? `${eventTime} (${timezoneDisplay})` : 'TBD', location: location || 'TBD', amount: amount || 'TBD', timezone: timezoneDisplay
+    clientName, vendorName, serviceName, dashboardUrl, bookingId, eventDate: eventDate || 'TBD', eventTime: eventTime ? `${eventTime} (${timezoneDisplay})` : 'TBD', location: location || 'TBD', amount: amount || 'TBD', timezone: timezoneDisplay, vendorAvatarHtml
   }, userId, bookingId, null, 'bookingUpdates', adminEmail);
 }
 
@@ -600,6 +608,45 @@ async function sendClientToVendorWelcome(vendorEmail, vendorName, businessName, 
   }, userId, null, null, 'welcome', adminEmail);
 }
 
+// Send event reminder email (for upcoming bookings)
+async function sendEventReminder(recipientEmail, recipientName, daysUntilEvent, serviceName, eventDate, eventTime, location, otherPartyLabel, otherPartyName, userId = null, bookingId = null) {
+  const adminEmail = process.env.ADMIN_EMAIL || 'admin@planbeau.com';
+  return sendTemplatedEmail('event_reminder', recipientEmail, recipientName, {
+    recipientName, daysUntilEvent, serviceName, eventDate, eventTime: eventTime || 'TBD', location: location || 'TBD', otherPartyLabel, otherPartyName
+  }, userId, bookingId, null, 'bookingReminders', adminEmail);
+}
+
+// Send booking action reminder (for pending approvals, payments, etc)
+async function sendBookingActionReminder(recipientEmail, recipientName, actionMessage, actionSubject, serviceName, eventDate, otherPartyLabel, otherPartyName, actionUrl, actionButtonText, userId = null, bookingId = null) {
+  const adminEmail = process.env.ADMIN_EMAIL || 'admin@planbeau.com';
+  return sendTemplatedEmail('booking_action_reminder', recipientEmail, recipientName, {
+    recipientName, actionMessage, actionSubject, serviceName, eventDate, otherPartyLabel, otherPartyName, actionUrl, actionButtonText
+  }, userId, bookingId, null, 'bookingReminders', adminEmail);
+}
+
+// Send analytics summary email to vendor
+async function sendAnalyticsSummary(vendorEmail, vendorName, periodLabel, periodRange, profileViews, profileViewsChange, totalBookings, bookingsChange, totalRevenue, revenueChange, conversionRate, userId = null) {
+  const adminEmail = process.env.ADMIN_EMAIL || 'admin@planbeau.com';
+  return sendTemplatedEmail('analytics_summary', vendorEmail, vendorName, {
+    vendorName, periodLabel, periodRange, profileViews, profileViewsChange, totalBookings, bookingsChange, totalRevenue, revenueChange, conversionRate
+  }, userId, null, null, 'promotions', adminEmail);
+}
+
+// Send account suspended notification
+async function sendAccountSuspended(userEmail, userName, suspensionReason, userId = null) {
+  return sendTemplatedEmail('account_suspended', userEmail, userName, {
+    userName, suspensionReason
+  }, userId, null, null, 'admin', null);
+}
+
+// Send account reactivated notification
+async function sendAccountReactivated(userEmail, userName, userId = null) {
+  const adminEmail = process.env.ADMIN_EMAIL || 'admin@planbeau.com';
+  return sendTemplatedEmail('account_reactivated', userEmail, userName, {
+    userName
+  }, userId, null, null, 'admin', adminEmail);
+}
+
 module.exports = {
   sendEmail,
   sendTemplatedEmail,
@@ -620,5 +667,10 @@ module.exports = {
   sendVendorApproved,
   sendVendorRejected,
   sendClientWelcome,
-  sendClientToVendorWelcome
+  sendClientToVendorWelcome,
+  sendEventReminder,
+  sendBookingActionReminder,
+  sendAnalyticsSummary,
+  sendAccountSuspended,
+  sendAccountReactivated
 };

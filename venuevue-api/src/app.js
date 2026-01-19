@@ -121,9 +121,13 @@ app.use((err, req, res, next) => {
 // Initialize Socket.IO handlers
 handleSocketIO(io);
 
+// Initialize Email Scheduler for automated reminders
+const { startEmailScheduler } = require('./services/emailSchedulerService');
+startEmailScheduler();
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
 
 module.exports = app;

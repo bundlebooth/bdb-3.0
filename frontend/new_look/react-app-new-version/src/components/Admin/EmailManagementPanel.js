@@ -13,10 +13,14 @@ const EmailManagementPanel = () => {
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [modalType, setModalType] = useState(null);
   const [emailLogs, setEmailLogs] = useState([]);
-  const [activeTab, setActiveTab] = useState('templates'); // templates, logs, settings, test
+  const [activeTab, setActiveTab] = useState('templates');
   const [headerFooter, setHeaderFooter] = useState({ header: '', footer: '' });
   const [testEmail, setTestEmail] = useState({ to: '', template: '', subject: '', body: '' });
   const [sendingTest, setSendingTest] = useState(false);
+  const [queueItems, setQueueItems] = useState([]);
+  const [queueStats, setQueueStats] = useState([]);
+  const [queueFilter, setQueueFilter] = useState('all');
+  const [processingQueue, setProcessingQueue] = useState(false);
   const categories = ['booking', 'payment', 'vendor', 'user', 'review', 'system'];
 
   useEffect(() => {
@@ -26,8 +30,11 @@ const EmailManagementPanel = () => {
       fetchEmailLogs();
     } else if (activeTab === 'settings') {
       fetchHeaderFooter();
+    } else if (activeTab === 'queue') {
+      fetchQueueItems();
+      fetchQueueStats();
     }
-  }, [activeTab, filter]);
+  }, [activeTab, filter, queueFilter]);
 
   const fetchHeaderFooter = async () => {
     try {
@@ -140,6 +147,69 @@ const EmailManagementPanel = () => {
     }
   };
 
+  const fetchQueueItems = async () => {
+    try {
+      setLoading(true);
+      const statusParam = queueFilter !== 'all' ? `?status=${queueFilter}` : '';
+      const response = await apiGet(`/admin/email-queue${statusParam}`);
+      if (response.ok) {
+        const data = await response.json();
+        setQueueItems(data.items || []);
+      }
+    } catch (error) {
+      console.error('Error fetching queue items:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchQueueStats = async () => {
+    try {
+      const response = await apiGet('/admin/email-queue/stats');
+      if (response.ok) {
+        const data = await response.json();
+        setQueueStats(data.stats || []);
+      }
+    } catch (error) {
+      console.error('Error fetching queue stats:', error);
+    }
+  };
+
+  const handleCancelQueuedEmail = async (queueId) => {
+    const reason = prompt('Enter cancellation reason (optional):');
+    try {
+      const response = await apiPost(`/admin/email-queue/${queueId}/cancel`, { reason });
+      if (response.ok) {
+        showBanner('Email cancelled successfully', 'success');
+        fetchQueueItems();
+        fetchQueueStats();
+      } else {
+        showBanner('Failed to cancel email', 'error');
+      }
+    } catch (error) {
+      showBanner('Failed to cancel email', 'error');
+    }
+  };
+
+  const handleProcessQueue = async () => {
+    setProcessingQueue(true);
+    try {
+      const response = await apiPost('/admin/email-queue/process');
+      if (response.ok) {
+        const data = await response.json();
+        showBanner(data.message || 'Queue processed', 'success');
+        fetchQueueItems();
+        fetchQueueStats();
+      } else {
+        showBanner('Failed to process queue', 'error');
+      }
+    } catch (error) {
+      showBanner('Failed to process queue', 'error');
+    } finally {
+      setProcessingQueue(false);
+    }
+  };
+
   const handleDelete = async (templateId) => {
     if (!window.confirm('Are you sure you want to delete this email template?')) return;
 
@@ -237,6 +307,7 @@ const EmailManagementPanel = () => {
       <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', borderBottom: '1px solid #e5e7eb', paddingBottom: '8px' }}>
         {[
           { key: 'templates', label: 'Email Templates', icon: 'fa-file-alt' },
+          { key: 'queue', label: 'Email Queue', icon: 'fa-clock' },
           { key: 'logs', label: 'Email Logs', icon: 'fa-history' },
           { key: 'settings', label: 'Header & Footer', icon: 'fa-cog' },
           { key: 'test', label: 'Send Test Email', icon: 'fa-paper-plane' }
@@ -512,6 +583,148 @@ const EmailManagementPanel = () => {
                           >
                             <i className="fas fa-eye"></i> Preview
                           </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Email Queue Tab */}
+      {activeTab === 'queue' && (
+        <div className="email-queue">
+          {/* Queue Stats */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '12px', marginBottom: '20px' }}>
+            {['pending', 'processing', 'sent', 'failed', 'cancelled'].map(status => {
+              const stat = queueStats.find(s => s.Status === status);
+              const count = stat?.Count || 0;
+              const colors = {
+                pending: { bg: '#fef3c7', color: '#d97706' },
+                processing: { bg: '#dbeafe', color: '#2563eb' },
+                sent: { bg: '#d1fae5', color: '#059669' },
+                failed: { bg: '#fee2e2', color: '#dc2626' },
+                cancelled: { bg: '#f3f4f6', color: '#6b7280' }
+              };
+              return (
+                <div key={status} style={{ background: 'white', borderRadius: '8px', padding: '16px', border: '1px solid #e5e7eb' }}>
+                  <div style={{ fontSize: '24px', fontWeight: '700', color: colors[status].color }}>{count}</div>
+                  <div style={{ fontSize: '13px', color: '#6b7280', textTransform: 'capitalize' }}>{status}</div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Queue Toolbar */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              {['all', 'pending', 'processing', 'sent', 'failed', 'cancelled'].map(status => (
+                <button
+                  key={status}
+                  onClick={() => setQueueFilter(status)}
+                  style={{
+                    padding: '6px 12px',
+                    background: queueFilter === status ? '#5e72e4' : 'white',
+                    color: queueFilter === status ? 'white' : '#374151',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '13px',
+                    textTransform: 'capitalize'
+                  }}
+                >
+                  {status}
+                </button>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button onClick={fetchQueueItems} style={{ padding: '8px 16px', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: '6px', cursor: 'pointer' }}>
+                <i className="fas fa-sync-alt"></i> Refresh
+              </button>
+              <button
+                onClick={handleProcessQueue}
+                disabled={processingQueue}
+                style={{
+                  padding: '8px 16px',
+                  background: processingQueue ? '#9ca3af' : '#5e72e4',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: processingQueue ? 'not-allowed' : 'pointer'
+                }}
+              >
+                <i className={`fas ${processingQueue ? 'fa-spinner fa-spin' : 'fa-play'}`}></i> Process Queue
+              </button>
+            </div>
+          </div>
+
+          {/* Queue Table */}
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: '40px' }}><div className="spinner"></div><p>Loading queue...</p></div>
+          ) : queueItems.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '40px', background: 'white', borderRadius: '12px' }}>
+              <i className="fas fa-inbox" style={{ fontSize: '48px', color: '#9ca3af', marginBottom: '16px', display: 'block' }}></i>
+              <h3>No emails in queue</h3>
+              <p style={{ color: '#6b7280' }}>Scheduled emails will appear here</p>
+            </div>
+          ) : (
+            <div style={{ background: 'white', borderRadius: '12px', overflow: 'hidden', border: '1px solid #e5e7eb' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ background: '#f9fafb' }}>
+                    <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '13px', fontWeight: '600' }}>Recipient</th>
+                    <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '13px', fontWeight: '600' }}>Template</th>
+                    <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '13px', fontWeight: '600' }}>Scheduled</th>
+                    <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '13px', fontWeight: '600' }}>Status</th>
+                    <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '13px', fontWeight: '600' }}>Attempts</th>
+                    <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '13px', fontWeight: '600' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {queueItems.map((item, idx) => {
+                    const statusColors = {
+                      pending: { bg: '#fef3c7', color: '#d97706' },
+                      processing: { bg: '#dbeafe', color: '#2563eb' },
+                      sent: { bg: '#d1fae5', color: '#059669' },
+                      failed: { bg: '#fee2e2', color: '#dc2626' },
+                      cancelled: { bg: '#f3f4f6', color: '#6b7280' }
+                    };
+                    const sc = statusColors[item.Status] || statusColors.pending;
+                    return (
+                      <tr key={item.QueueID || idx} style={{ borderTop: '1px solid #e5e7eb' }}>
+                        <td style={{ padding: '12px 16px', fontSize: '14px' }}>
+                          <div>{item.RecipientEmail}</div>
+                          {item.RecipientName && <div style={{ fontSize: '12px', color: '#6b7280' }}>{item.RecipientName}</div>}
+                        </td>
+                        <td style={{ padding: '12px 16px' }}>
+                          <code style={{ background: '#f3f4f6', padding: '2px 6px', borderRadius: '4px', fontSize: '12px' }}>{item.TemplateKey}</code>
+                        </td>
+                        <td style={{ padding: '12px 16px', fontSize: '13px', color: '#6b7280' }}>
+                          {item.ScheduledAt ? new Date(item.ScheduledAt).toLocaleString() : '-'}
+                        </td>
+                        <td style={{ padding: '12px 16px' }}>
+                          <span style={{ padding: '4px 8px', borderRadius: '4px', fontSize: '12px', background: sc.bg, color: sc.color, textTransform: 'capitalize' }}>
+                            {item.Status}
+                          </span>
+                        </td>
+                        <td style={{ padding: '12px 16px', fontSize: '14px' }}>{item.AttemptCount || 0}</td>
+                        <td style={{ padding: '12px 16px' }}>
+                          {item.Status === 'pending' && (
+                            <button
+                              onClick={() => handleCancelQueuedEmail(item.QueueID)}
+                              style={{ padding: '4px 8px', background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}
+                            >
+                              <i className="fas fa-times"></i> Cancel
+                            </button>
+                          )}
+                          {item.Status === 'failed' && item.ErrorMessage && (
+                            <span title={item.ErrorMessage} style={{ color: '#dc2626', fontSize: '12px', cursor: 'help' }}>
+                              <i className="fas fa-exclamation-circle"></i> Error
+                            </span>
+                          )}
                         </td>
                       </tr>
                     );

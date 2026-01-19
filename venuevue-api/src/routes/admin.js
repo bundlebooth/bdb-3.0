@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { poolPromise, sql } = require('../config/db');
 const { authenticateToken, requireAdmin } = require('../middlewares/auth');
-const { sendEmail } = require('../services/email');
+const { sendEmail, sendAccountSuspended, sendAccountReactivated } = require('../services/email');
 
 // Helper to get pool
 const getPool = async () => await poolPromise;
@@ -143,56 +143,8 @@ router.get('/recent-activity', async (req, res) => {
       
       return res.json({ activity });
     } catch (spError) {
-      console.log('Stored procedure not found, using direct query for activity');
-      
-      // Direct query fallback
-      const query = `
-        -- Recent vendor registrations
-        SELECT TOP 5
-          'vendor_registration' as type,
-          'New vendor registration: ' + vp.BusinessName as description,
-          vp.CreatedAt as timestamp,
-          '#10b981' as color,
-          'fa-store' as icon
-        FROM dbo.VendorProfiles vp
-        ORDER BY vp.CreatedAt DESC;
-        
-        -- Recent bookings
-        SELECT TOP 5
-          'booking' as type,
-          'New booking confirmed: #BK-' + CAST(b.BookingID as VARCHAR) as description,
-          b.CreatedAt as timestamp,
-          '#3b82f6' as color,
-          'fa-calendar-check' as icon
-        FROM dbo.Bookings b
-        ORDER BY b.CreatedAt DESC;
-        
-        -- Recent reviews
-        SELECT TOP 5
-          'review' as type,
-          'New review submitted (' + CAST(r.Rating as VARCHAR) + ' stars)' as description,
-          r.CreatedAt as timestamp,
-          '#f59e0b' as color,
-          'fa-star' as icon
-        FROM dbo.Reviews r
-        ORDER BY r.CreatedAt DESC;
-      `;
-      
-      const result = await pool.request().query(query);
-      
-      const vendors = result.recordsets[0] || [];
-      const bookings = result.recordsets[1] || [];
-      const reviews = result.recordsets[2] || [];
-      
-      const activity = [...vendors, ...bookings, ...reviews]
-        .map(item => ({
-          ...item,
-          timestamp: item.timestamp ? new Date(item.timestamp).toISOString() : null
-        }))
-        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-        .slice(0, 10);
-      
-      return res.json({ activity });
+      console.error('Stored procedure admin.sp_GetRecentActivity not found:', spError.message);
+      return res.json({ activity: [] });
     }
   } catch (error) {
     console.error('Error fetching recent activity:', error);
@@ -435,12 +387,19 @@ router.post('/vendors/:id/reject', async (req, res) => {
 });
 
 // POST /admin/vendors/:id/suspend - Suspend vendor
-// Sets IsVisible = 0 to hide vendor from main grid
+// Sets IsVisible = 0 to hide vendor from main grid and sends notification email
 router.post('/vendors/:id/suspend', async (req, res) => {
   try {
     const { id } = req.params;
     const { reason } = req.body;
     const pool = await getPool();
+    
+    // Get vendor info for email using stored procedure
+    const vendorResult = await pool.request()
+      .input('VendorProfileID', sql.Int, id)
+      .execute('admin.sp_GetVendorInfoForEmail');
+    
+    const vendor = vendorResult.recordset[0];
     
     const request = pool.request();
     request.input('VendorProfileID', sql.Int, id);
@@ -448,10 +407,64 @@ router.post('/vendors/:id/suspend', async (req, res) => {
     
     await request.execute('admin.sp_SuspendVendor');
     
+    // Send suspension email notification
+    if (vendor && vendor.Email) {
+      try {
+        await sendAccountSuspended(
+          vendor.Email,
+          vendor.FirstName || vendor.BusinessName,
+          reason || 'Violation of platform terms of service',
+          vendor.UserID
+        );
+        console.log(`📧 Sent suspension email to vendor ${id}`);
+      } catch (emailErr) {
+        console.error('Failed to send suspension email:', emailErr.message);
+      }
+    }
+    
     res.json({ success: true, message: 'Vendor suspended and hidden from platform' });
   } catch (error) {
     console.error('Error suspending vendor:', error);
     res.status(500).json({ error: 'Failed to suspend vendor' });
+  }
+});
+
+// POST /admin/vendors/:id/reactivate - Reactivate a suspended vendor
+router.post('/vendors/:id/reactivate', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pool = await getPool();
+    
+    // Get vendor info for email using stored procedure
+    const vendorResult = await pool.request()
+      .input('VendorProfileID', sql.Int, id)
+      .execute('admin.sp_GetVendorInfoForEmail');
+    
+    const vendor = vendorResult.recordset[0];
+    
+    // Reactivate vendor using stored procedure
+    await pool.request()
+      .input('VendorProfileID', sql.Int, id)
+      .execute('admin.sp_ReactivateVendor');
+    
+    // Send reactivation email notification
+    if (vendor && vendor.Email) {
+      try {
+        await sendAccountReactivated(
+          vendor.Email,
+          vendor.FirstName || vendor.BusinessName,
+          vendor.UserID
+        );
+        console.log(`📧 Sent reactivation email to vendor ${id}`);
+      } catch (emailErr) {
+        console.error('Failed to send reactivation email:', emailErr.message);
+      }
+    }
+    
+    res.json({ success: true, message: 'Vendor reactivated and visible on platform' });
+  } catch (error) {
+    console.error('Error reactivating vendor:', error);
+    res.status(500).json({ error: 'Failed to reactivate vendor' });
   }
 });
 
@@ -838,15 +851,7 @@ router.get('/reviews/stats', async (req, res) => {
   try {
     const pool = await getPool();
     
-    const query = `
-      SELECT 
-        COUNT(*) as total,
-        SUM(CASE WHEN IsFlagged = 1 THEN 1 ELSE 0 END) as flagged,
-        AVG(CAST(Rating as FLOAT)) as avgRating
-      FROM dbo.Reviews
-    `;
-    
-    const result = await pool.request().query(query);
+    const result = await pool.request().execute('admin.sp_GetReviewStats');
     const stats = result.recordset[0] || { total: 0, flagged: 0, avgRating: 0 };
     
     res.json({
@@ -1242,28 +1247,11 @@ router.post('/chats/:id/system-message', async (req, res) => {
     const { message } = req.body;
     const pool = await getPool();
     
-    // Try stored procedure first, fallback to direct insert
-    try {
-      const request = pool.request();
-      request.input('ConversationID', sql.Int, id);
-      request.input('Message', sql.NVarChar(sql.MAX), message);
-      
-      await request.execute('admin.sp_SendSystemMessage');
-    } catch (spError) {
-      console.log('Stored procedure not found, using direct insert for system message');
-      
-      // Direct insert fallback - insert as a system message
-      const insertQuery = `
-        INSERT INTO dbo.Messages (ConversationID, SenderID, SenderType, Content, MessageType, CreatedAt)
-        VALUES (@ConversationID, 0, 'system', @Message, 'system', GETDATE())
-      `;
-      
-      const request = pool.request();
-      request.input('ConversationID', sql.Int, id);
-      request.input('Message', sql.NVarChar(sql.MAX), message);
-      
-      await request.query(insertQuery);
-    }
+    const request = pool.request();
+    request.input('ConversationID', sql.Int, id);
+    request.input('Message', sql.NVarChar(sql.MAX), message);
+    
+    await request.execute('admin.sp_SendSystemMessage');
     
     res.json({ success: true, message: 'System message sent' });
   } catch (error) {
@@ -1279,28 +1267,11 @@ router.post('/chats/:id/notes', async (req, res) => {
     const { note } = req.body;
     const pool = await getPool();
     
-    // Try stored procedure first, fallback to direct insert
-    try {
-      const request = pool.request();
-      request.input('ConversationID', sql.Int, id);
-      request.input('Note', sql.NVarChar(sql.MAX), note);
-      
-      await request.execute('admin.sp_AddChatNote');
-    } catch (spError) {
-      console.log('Stored procedure not found, using direct insert for admin note');
-      
-      // Direct insert fallback - insert as an admin note message
-      const insertQuery = `
-        INSERT INTO dbo.Messages (ConversationID, SenderID, SenderType, Content, MessageType, CreatedAt)
-        VALUES (@ConversationID, 0, 'admin', @Note, 'admin_note', GETDATE())
-      `;
-      
-      const request = pool.request();
-      request.input('ConversationID', sql.Int, id);
-      request.input('Note', sql.NVarChar(sql.MAX), note);
-      
-      await request.query(insertQuery);
-    }
+    const request = pool.request();
+    request.input('ConversationID', sql.Int, id);
+    request.input('Note', sql.NVarChar(sql.MAX), note);
+    
+    await request.execute('admin.sp_AddChatNote');
     
     res.json({ success: true, message: 'Note added' });
   } catch (error) {
@@ -3079,6 +3050,76 @@ router.delete('/vendors/:id/badges/:badgeId', async (req, res) => {
   } catch (error) {
     console.error('Error removing badge:', error);
     res.status(500).json({ success: false, message: 'Failed to remove badge' });
+  }
+});
+
+// =============================================
+// EMAIL QUEUE MANAGEMENT
+// =============================================
+
+const { getQueueStats, getQueueItems, cancelQueuedEmail, processEmailQueue } = require('../services/emailSchedulerService');
+
+// GET /admin/email-queue/stats - Get queue statistics
+router.get('/email-queue/stats', async (req, res) => {
+  try {
+    const stats = await getQueueStats();
+    res.json({ success: true, stats });
+  } catch (error) {
+    console.error('Error fetching email queue stats:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch queue stats' });
+  }
+});
+
+// GET /admin/email-queue - Get queue items with pagination
+router.get('/email-queue', async (req, res) => {
+  try {
+    const { status, page = 1, pageSize = 50 } = req.query;
+    const result = await getQueueItems(status || null, parseInt(page), parseInt(pageSize));
+    res.json({ 
+      success: true, 
+      items: result.items, 
+      total: result.total,
+      page: parseInt(page),
+      pageSize: parseInt(pageSize)
+    });
+  } catch (error) {
+    console.error('Error fetching email queue:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch queue items' });
+  }
+});
+
+// POST /admin/email-queue/:id/cancel - Cancel a queued email
+router.post('/email-queue/:id/cancel', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+    const userId = req.user?.userId;
+    
+    const success = await cancelQueuedEmail(parseInt(id), userId, reason);
+    
+    if (success) {
+      res.json({ success: true, message: 'Email cancelled successfully' });
+    } else {
+      res.status(400).json({ success: false, message: 'Could not cancel email. It may have already been sent or cancelled.' });
+    }
+  } catch (error) {
+    console.error('Error cancelling queued email:', error);
+    res.status(500).json({ success: false, message: 'Failed to cancel email' });
+  }
+});
+
+// POST /admin/email-queue/process - Manually trigger queue processing
+router.post('/email-queue/process', async (req, res) => {
+  try {
+    const result = await processEmailQueue();
+    res.json({ 
+      success: true, 
+      message: `Processed ${result.processed} emails: ${result.sent} sent, ${result.failed} failed`,
+      ...result
+    });
+  } catch (error) {
+    console.error('Error processing email queue:', error);
+    res.status(500).json({ success: false, message: 'Failed to process queue' });
   }
 });
 
