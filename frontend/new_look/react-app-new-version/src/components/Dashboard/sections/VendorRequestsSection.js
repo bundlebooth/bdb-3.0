@@ -428,61 +428,33 @@ function VendorRequestsSection() {
               </div>
             )}
           </div>
-          <div className="actions-row" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <div className="actions-row">
             {isPendingRequest && (
               <>
                 <span 
+                  className={`booking-action-btn booking-action-btn-primary ${processingAction ? 'disabled' : ''}`}
                   onClick={() => !processingAction && handleApproveRequest(booking.BookingID)}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '6px',
-                    padding: '7px 18px',
-                    background: processingAction === `approve-${booking.BookingID}` ? '#059669' : '#10b981',
-                    color: 'white',
-                    borderRadius: '6px',
-                    fontSize: '13px',
-                    fontWeight: 500,
-                    cursor: processingAction ? 'not-allowed' : 'pointer',
-                    whiteSpace: 'nowrap',
-                    opacity: processingAction && processingAction !== `approve-${booking.BookingID}` ? 0.6 : 1,
-                    minWidth: '90px'
-                  }}
+                  style={{ opacity: processingAction && processingAction !== `approve-${booking.BookingID}` ? 0.6 : 1 }}
                 >
                   {processingAction === `approve-${booking.BookingID}` ? (
-                    <i className="fas fa-spinner fa-spin" style={{ fontSize: '12px' }}></i>
+                    <i className="fas fa-spinner fa-spin"></i>
                   ) : (
                     <>
-                      <i className="fas fa-check" style={{ fontSize: '10px' }}></i>
+                      <i className="fas fa-check"></i>
                       Approve
                     </>
                   )}
                 </span>
                 <span 
+                  className={`booking-action-btn booking-action-btn-danger ${processingAction ? 'disabled' : ''}`}
                   onClick={() => !processingAction && handleDeclineRequest(booking.BookingID)}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '6px',
-                    padding: '7px 18px',
-                    background: processingAction === `decline-${booking.BookingID}` ? '#dc2626' : '#ef4444',
-                    color: 'white',
-                    borderRadius: '6px',
-                    fontSize: '13px',
-                    fontWeight: 500,
-                    cursor: processingAction ? 'not-allowed' : 'pointer',
-                    whiteSpace: 'nowrap',
-                    opacity: processingAction && processingAction !== `decline-${booking.BookingID}` ? 0.6 : 1,
-                    minWidth: '85px'
-                  }}
+                  style={{ opacity: processingAction && processingAction !== `decline-${booking.BookingID}` ? 0.6 : 1 }}
                 >
                   {processingAction === `decline-${booking.BookingID}` ? (
-                    <i className="fas fa-spinner fa-spin" style={{ fontSize: '12px' }}></i>
+                    <i className="fas fa-spinner fa-spin"></i>
                   ) : (
                     <>
-                      <i className="fas fa-times" style={{ fontSize: '10px' }}></i>
+                      <i className="fas fa-times"></i>
                       Decline
                     </>
                   )}
@@ -490,23 +462,11 @@ function VendorRequestsSection() {
               </>
             )}
             <span 
-              onClick={() => handleShowDetails(booking)} 
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '7px 18px',
-                borderRadius: '6px',
-                fontSize: '13px',
-                fontWeight: 500,
-                background: 'white',
-                color: '#374151',
-                border: '1px solid #d1d5db',
-                cursor: 'pointer',
-                whiteSpace: 'nowrap'
-              }}
+              className="booking-action-btn booking-action-btn-secondary"
+              onClick={() => handleShowDetails(booking)}
             >
-              More info
+              <i className="fas fa-info-circle"></i>
+              Details
             </span>
             {/* Three-dot action menu */}
             <div style={{ position: 'relative' }}>
@@ -558,24 +518,10 @@ function VendorRequestsSection() {
              !isEventPast(booking) && 
              !['cancelled', 'cancelled_by_client', 'cancelled_by_vendor', 'completed'].includes(s) && (
               <span 
+                className="booking-action-btn booking-action-btn-danger"
                 onClick={() => handleCancelBooking(booking)}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '6px',
-                  padding: '7px 14px',
-                  background: 'white',
-                  color: '#ef4444',
-                  borderRadius: '6px',
-                  fontSize: '13px',
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                  whiteSpace: 'nowrap',
-                  border: '1px solid #fecaca'
-                }}
               >
-                <i className="fas fa-times" style={{ fontSize: '10px' }}></i>
+                <i className="fas fa-times"></i>
                 Cancel
               </span>
             )}

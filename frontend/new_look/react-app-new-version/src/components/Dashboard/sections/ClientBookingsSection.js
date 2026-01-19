@@ -360,26 +360,13 @@ function ClientBookingsSection({ onPayNow, onOpenChat }) {
               </div>
             )}
           </div>
-          <div className="actions-row" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <div className="actions-row">
             {(s === 'confirmed' || s === 'accepted' || s === 'approved') && !isPaid && (
               <span 
+                className="booking-action-btn booking-action-btn-primary"
                 onClick={() => handlePayNow(booking)}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '6px',
-                  padding: '7px 18px',
-                  background: '#10b981',
-                  color: 'white',
-                  borderRadius: '6px',
-                  fontSize: '13px',
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                  whiteSpace: 'nowrap'
-                }}
               >
-                <i className="fas fa-check" style={{ fontSize: '10px' }}></i>
+                <i className="fas fa-credit-card"></i>
                 {isDepositOnly ? 'Pay Balance' : 'Pay Now'}
               </span>
             )}
@@ -388,45 +375,19 @@ function ClientBookingsSection({ onPayNow, onOpenChat }) {
              !isEventPast(booking) && 
              !['cancelled', 'cancelled_by_client', 'cancelled_by_vendor', 'completed'].includes(s) && (
               <span 
+                className="booking-action-btn booking-action-btn-danger"
                 onClick={() => handleCancelBooking(booking)}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '6px',
-                  padding: '7px 14px',
-                  background: 'white',
-                  color: '#ef4444',
-                  borderRadius: '6px',
-                  fontSize: '13px',
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                  whiteSpace: 'nowrap',
-                  border: '1px solid #fecaca'
-                }}
               >
-                <i className="fas fa-times" style={{ fontSize: '10px' }}></i>
+                <i className="fas fa-times"></i>
                 Cancel
               </span>
             )}
             <span 
-              onClick={() => handleShowDetails(booking)} 
-              style={{ 
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '7px 18px', 
-                borderRadius: '6px', 
-                fontSize: '13px', 
-                fontWeight: 500, 
-                background: 'white', 
-                color: '#374151', 
-                border: '1px solid #d1d5db', 
-                cursor: 'pointer',
-                whiteSpace: 'nowrap'
-              }}
+              className="booking-action-btn booking-action-btn-secondary"
+              onClick={() => handleShowDetails(booking)}
             >
-              More info
+              <i className="fas fa-info-circle"></i>
+              Details
             </span>
             {/* Three-dot action menu */}
             <div style={{ position: 'relative' }}>

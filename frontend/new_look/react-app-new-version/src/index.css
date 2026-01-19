@@ -2998,6 +2998,67 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
     align-items: center;
     gap: 6px;
 }
+
+/* Booking Action Buttons - Base styles (matching universal .btn) */
+.booking-action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s ease;
+    border: 1px solid;
+}
+
+.booking-action-btn i {
+    font-size: 11px;
+}
+
+/* Primary button - Pay Now (success green) */
+.booking-action-btn-primary {
+    background: #10b981;
+    color: #ffffff;
+    border-color: #10b981;
+}
+
+.booking-action-btn-primary:hover {
+    background: #059669;
+    border-color: #059669;
+}
+
+/* Danger button - Cancel (outline red) */
+.booking-action-btn-danger {
+    background: transparent;
+    color: #ef4444;
+    border-color: #ef4444;
+}
+
+.booking-action-btn-danger:hover {
+    background: rgba(239, 68, 68, 0.08);
+}
+
+/* Secondary button - Details/More info (outline gray) */
+.booking-action-btn-secondary {
+    background: transparent;
+    color: #374151;
+    border-color: #e5e7eb;
+}
+
+.booking-action-btn-secondary:hover {
+    background: #f3f4f6;
+}
+
+/* Disabled state for buttons */
+.booking-action-btn.disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
 .request-status-badge .dot-new {
     display: inline-block;
     width: 6px;
@@ -10126,146 +10187,178 @@ html, body {
     }
 }
 
-/* Booking Items Mobile - Clean horizontal layout */
+/* Booking Items Mobile - Clean Uber-inspired card layout */
 @media (max-width: 768px) {
     .booking-item,
     .request-item {
         display: flex !important;
-        flex-direction: row !important;
-        flex-wrap: wrap !important;
-        align-items: flex-start !important;
-        gap: 8px !important;
-        padding: 12px !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 0 !important;
+        padding: 16px !important;
         position: relative !important;
+        border-radius: 12px !important;
+        border: 1px solid #e5e7eb !important;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+        margin-bottom: 12px !important;
     }
     
-    /* Date section - compact on left with border */
+    /* Top row: Date + Info side by side */
     .booking-item > .booking-date-section,
     .request-item > .date-badge {
-        display: flex !important;
-        flex-direction: column !important;
-        align-items: center !important;
-        justify-content: center !important;
-        min-width: 42px !important;
-        max-width: 42px !important;
-        padding-right: 10px !important;
-        margin-right: 2px !important;
-        border-right: 1px solid #e5e7eb !important;
-        flex-shrink: 0 !important;
+        display: none !important;
     }
     
-    .booking-item .booking-month {
-        font-size: 10px !important;
-        text-transform: uppercase !important;
-        color: #6b7280 !important;
-        font-weight: 600 !important;
-    }
-    
-    .booking-item .booking-day {
-        font-size: 20px !important;
-        font-weight: 700 !important;
-        line-height: 1.1 !important;
-        color: #111827 !important;
-    }
-    
-    .booking-item .booking-weekday {
-        font-size: 10px !important;
-        color: #6b7280 !important;
-    }
-    
-    /* Info section takes remaining space */
+    /* Info section - full width, clean layout */
     .booking-item .booking-info,
     .request-item .request-info {
         flex: 1 !important;
         min-width: 0 !important;
+        max-width: 100% !important;
         display: flex !important;
         flex-direction: column !important;
-        gap: 1px !important;
+        gap: 4px !important;
+        padding-right: 110px !important;
+        overflow: hidden !important;
     }
     
     .booking-item .booking-client-name {
-        font-size: 13px !important;
+        font-size: 15px !important;
         font-weight: 600 !important;
         color: #111827 !important;
+        line-height: 1.3 !important;
     }
     
     .booking-item .booking-service-row,
     .booking-item .booking-service {
-        font-size: 11px !important;
-        color: #4F86E8 !important;
+        font-size: 13px !important;
+        color: #6b7280 !important;
+        font-weight: 400 !important;
     }
     
     .booking-item .booking-location-row,
     .booking-item .booking-date-row,
     .booking-item .booking-time-row,
     .booking-item .booking-price-row {
-        font-size: 11px !important;
+        font-size: 13px !important;
         display: flex !important;
         align-items: center !important;
-        gap: 4px !important;
-        color: #6b7280 !important;
+        gap: 6px !important;
+        color: #374151 !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        white-space: nowrap !important;
+        max-width: 100% !important;
+    }
+    
+    .booking-item .booking-location-row span,
+    .booking-item .booking-date-row span,
+    .booking-item .booking-time-row span {
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        white-space: nowrap !important;
     }
     
     .booking-item .booking-location-row i,
     .booking-item .booking-date-row i,
     .booking-item .booking-time-row i,
     .booking-item .booking-price-row i {
-        font-size: 10px !important;
+        font-size: 11px !important;
+        color: #9ca3af !important;
+        width: 14px !important;
     }
     
-    /* Actions column - status stays top right, buttons wrap to new row */
+    /* Actions container - clean bottom section */
     .booking-item .booking-actions,
     .request-item .request-actions {
         display: flex !important;
         flex-direction: column !important;
-        align-items: flex-start !important;
-        gap: 8px !important;
+        align-items: stretch !important;
+        gap: 12px !important;
         width: 100% !important;
-        padding-top: 8px !important;
-        padding-left: 52px !important;
+        padding-top: 12px !important;
+        padding-left: 0 !important;
+        margin-top: 12px !important;
+        border-top: 1px solid #f3f4f6 !important;
     }
     
     /* Status badge - position absolute at top right */
     .booking-item .status-col {
         position: absolute !important;
-        top: 12px !important;
-        right: 12px !important;
+        top: 16px !important;
+        right: 16px !important;
         margin: 0 !important;
     }
     
     .booking-item .request-status-badge {
-        padding: 4px 10px !important;
-        font-size: 10px !important;
+        padding: 5px 10px !important;
+        font-size: 11px !important;
         white-space: nowrap !important;
+        border-radius: 20px !important;
+        font-weight: 500 !important;
     }
     
-    /* Actions row - horizontal buttons */
+    /* Actions row - uniform pill buttons like Uber */
     .booking-item .actions-row {
         display: flex !important;
         flex-direction: row !important;
-        flex-wrap: wrap !important;
+        flex-wrap: nowrap !important;
+        gap: 8px !important;
+        width: 100% !important;
+    }
+    
+    /* Mobile booking action buttons - matching universal .btn */
+    .booking-action-btn {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
         gap: 6px !important;
+        padding: 8px 12px !important;
+        font-size: 13px !important;
+        font-weight: 500 !important;
+        border-radius: 8px !important;
+        cursor: pointer !important;
+        white-space: nowrap !important;
+        flex: 1 1 auto !important;
+        min-width: 0 !important;
+        transition: all 0.15s ease !important;
     }
     
-    .booking-item .booking-actions button:not(.btn-pay-now),
-    .request-item .request-actions button:not(.btn-pay-now),
-    .booking-item .actions-row button:not(.btn-pay-now) {
-        padding: 6px 16px !important;
+    .booking-action-btn i {
         font-size: 11px !important;
-        flex: 0 0 auto !important;
-        min-width: 80px !important;
     }
     
-    /* Hide three-dot menu on mobile to save space */
-    .booking-item .actions-row > div[style*="position: relative"] {
-        display: none !important;
+    /* Pay Now button - success green (solid) */
+    .booking-action-btn-primary {
+        background: #10b981 !important;
+        color: #ffffff !important;
+        border: 1px solid #10b981 !important;
     }
     
-    /* Three-dot menu button stays small */
-    .booking-item .actions-row > div[style*="position: relative"] button {
-        flex: 0 !important;
-        min-width: auto !important;
-        padding: 4px 8px !important;
+    .booking-action-btn-primary:active {
+        background: #059669 !important;
+    }
+    
+    /* Cancel button - outline red */
+    .booking-action-btn-danger {
+        background: transparent !important;
+        color: #ef4444 !important;
+        border: 1px solid #ef4444 !important;
+    }
+    
+    .booking-action-btn-danger:active {
+        background: rgba(239, 68, 68, 0.08) !important;
+    }
+    
+    /* Details button - outline gray */
+    .booking-action-btn-secondary {
+        background: transparent !important;
+        color: #374151 !important;
+        border: 1px solid #e5e7eb !important;
+    }
+    
+    .booking-action-btn-secondary:active {
+        background: #f3f4f6 !important;
     }
     
     /* Hide three-dot menu on mobile */
@@ -10276,8 +10369,10 @@ html, body {
     /* Expanded details full width */
     .booking-item .request-details {
         grid-template-columns: 1fr !important;
-        padding: 12px !important;
+        padding: 12px 0 !important;
         width: 100% !important;
+        margin-top: 12px !important;
+        border-top: 1px solid #f3f4f6 !important;
     }
     
     /* When expanded, allow wrapping */
