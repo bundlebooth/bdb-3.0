@@ -317,10 +317,10 @@ function VendorInvoicesSection() {
                           onClick={() => handleViewInvoice(b)}
                           style={{ 
                             padding: '8px 16px', 
-                            background: '#5e72e4', 
+                            background: '#111827', 
                             color: 'white', 
                             border: 'none', 
-                            borderRadius: '6px', 
+                            borderRadius: '8px', 
                             cursor: 'pointer', 
                             fontSize: '13px',
                             fontWeight: 500,

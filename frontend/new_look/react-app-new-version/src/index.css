@@ -2908,6 +2908,8 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
     display: flex;
     flex-direction: column;
     gap: 2px; /* reduced from 4px */
+    min-width: 0;
+    overflow: hidden;
 }
 
 .booking-time-row {
@@ -2915,12 +2917,14 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
     align-items: center;
     gap: 6px;
     margin-bottom: 2px;
+    white-space: nowrap;
 }
 
 .booking-time {
     font-size: 14px;
     color: #374151;
     font-weight: 500;
+    white-space: nowrap;
 }
 
 .booking-client {
@@ -4759,6 +4763,35 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
 #vendor-recent-bookings.dashboard-fixed-list {
     max-height: 360px;
     overflow-y: auto;
+}
+
+/* Dashboard booking cards - ensure proper layout in narrower container */
+#upcoming-bookings .booking-item,
+#vendor-recent-bookings .booking-item {
+    flex-wrap: wrap;
+}
+
+#upcoming-bookings .booking-item .booking-info,
+#vendor-recent-bookings .booking-item .booking-info {
+    flex: 1 1 auto;
+    min-width: 150px;
+}
+
+#upcoming-bookings .booking-item .booking-actions,
+#vendor-recent-bookings .booking-item .booking-actions {
+    flex-shrink: 0;
+    margin-left: auto;
+}
+
+#upcoming-bookings .booking-item .booking-time,
+#vendor-recent-bookings .booking-item .booking-time {
+    white-space: nowrap;
+}
+
+#upcoming-bookings .booking-item .actions-row,
+#vendor-recent-bookings .booking-item .actions-row {
+    flex-wrap: wrap;
+    gap: 4px;
 }
 
 .dashboard-card-title-row { display:flex; align-items:center; justify-content: space-between; margin-bottom: 1rem; }
@@ -10196,6 +10229,8 @@ html, body {
         align-items: stretch !important;
         gap: 0 !important;
         padding: 16px !important;
+        padding-left: 16px !important;
+        margin-left: 0 !important;
         position: relative !important;
         border-radius: 12px !important;
         border: 1px solid #e5e7eb !important;
@@ -10207,6 +10242,11 @@ html, body {
     .booking-item > .booking-date-section,
     .request-item > .date-badge {
         display: none !important;
+        width: 0 !important;
+        min-width: 0 !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        border: none !important;
     }
     
     /* Info section - full width, clean layout */
@@ -10215,11 +10255,24 @@ html, body {
         flex: 1 !important;
         min-width: 0 !important;
         max-width: 100% !important;
+        width: 100% !important;
         display: flex !important;
         flex-direction: column !important;
         gap: 4px !important;
-        padding-right: 110px !important;
+        padding-right: 0 !important;
+        padding-left: 0 !important;
+        margin-left: 0 !important;
         overflow: hidden !important;
+    }
+    
+    .booking-item .booking-client,
+    .booking-item .booking-service-row,
+    .booking-item .booking-location-row,
+    .booking-item .booking-date-row,
+    .booking-item .booking-time-row,
+    .booking-item .booking-price-row {
+        margin-left: 0 !important;
+        padding-left: 0 !important;
     }
     
     .booking-item .booking-client-name {
@@ -10378,6 +10431,151 @@ html, body {
     /* When expanded, allow wrapping */
     .booking-item.has-details {
         flex-wrap: wrap !important;
+    }
+}
+
+/* Dashboard Mobile - Hide calendar on mobile */
+@media (max-width: 768px) {
+    .calendar-tile,
+    #client-mini-calendar,
+    #vendor-mini-calendar {
+        display: none !important;
+    }
+    
+    /* Make KPI grid full width when calendar hidden */
+    .stats-top-grid {
+        display: block !important;
+    }
+    
+    .stats-top-grid .kpi-grid.two-col {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 12px !important;
+        width: 100% !important;
+    }
+}
+
+/* Invoices Table Mobile - Horizontal scroll with single row per record */
+@media (max-width: 768px) {
+    #invoices-section .dashboard-card {
+        padding: 0 !important;
+        overflow: hidden !important;
+        border-radius: 12px !important;
+    }
+    
+    /* Scrollable table container */
+    #invoices-section .dashboard-card > div[style*="overflow"] {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        max-width: 100% !important;
+    }
+    
+    /* Force table layout */
+    #invoices-section table {
+        display: table !important;
+        min-width: 850px !important;
+        width: 100% !important;
+        border-collapse: collapse !important;
+        table-layout: auto !important;
+    }
+    
+    #invoices-section thead {
+        display: table-header-group !important;
+        background: #fafafa !important;
+    }
+    
+    #invoices-section tbody {
+        display: table-row-group !important;
+    }
+    
+    #invoices-section tr {
+        display: table-row !important;
+    }
+    
+    #invoices-section th,
+    #invoices-section td {
+        display: table-cell !important;
+    }
+    
+    #invoices-section th {
+        padding: 14px 16px !important;
+        font-size: 11px !important;
+        font-weight: 600 !important;
+        color: #6b7280 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
+        white-space: nowrap !important;
+        border-bottom: 1px solid #e5e7eb !important;
+        background: #fafafa !important;
+    }
+    
+    #invoices-section td {
+        padding: 16px !important;
+        font-size: 14px !important;
+        border-bottom: 1px solid #f3f4f6 !important;
+        white-space: nowrap !important;
+        vertical-align: middle !important;
+    }
+    
+    #invoices-section tbody tr:hover {
+        background: #f9fafb !important;
+    }
+    
+    /* Invoice number column - blue link style */
+    #invoices-section td:first-child {
+        color: #5e72e4 !important;
+        font-weight: 500 !important;
+    }
+    
+    /* Vendor name column - blue link style */
+    #invoices-section td:nth-child(3) {
+        color: #5e72e4 !important;
+        font-weight: 500 !important;
+    }
+    
+    /* Amount column - bold */
+    #invoices-section td:nth-child(6) {
+        font-weight: 600 !important;
+    }
+}
+
+/* Favorites Page - Smaller vendor cards on mobile */
+@media (max-width: 768px) {
+    /* Favorites grid - 2 columns on mobile */
+    #favorites-section .dashboard-card > div[style*="grid-template-columns"] {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 12px !important;
+    }
+    
+    /* Make image container smaller (not full square) */
+    #favorites-section .dashboard-card > div[style*="grid-template-columns"] > div > div[style*="padding-top: 100%"] {
+        padding-top: 75% !important;
+    }
+    
+    /* Smaller text for card content */
+    #favorites-section .dashboard-card > div[style*="grid-template-columns"] > div > div[style*="padding: 10px"] {
+        padding: 8px 0 4px 0 !important;
+    }
+    
+    #favorites-section .dashboard-card > div[style*="grid-template-columns"] > div > div[style*="padding: 10px"] > div:first-child {
+        font-size: 13px !important;
+    }
+    
+    #favorites-section .dashboard-card > div[style*="grid-template-columns"] > div > div[style*="padding: 10px"] > div:nth-child(2),
+    #favorites-section .dashboard-card > div[style*="grid-template-columns"] > div > div[style*="padding: 10px"] > div:nth-child(3) {
+        font-size: 11px !important;
+    }
+    
+    /* Header stats - stack on mobile */
+    #favorites-section .dashboard-card > div[style*="justify-content: space-between"] {
+        flex-direction: column !important;
+        gap: 16px !important;
+        align-items: flex-start !important;
+    }
+    
+    #favorites-section .dashboard-card > div[style*="justify-content: space-between"] > div[style*="display: flex"][style*="gap: 24px"] {
+        width: 100% !important;
+        justify-content: space-between !important;
     }
 }
 
