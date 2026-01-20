@@ -4392,9 +4392,9 @@
 
 .landing-hero {
   background: #ffffff;
-  padding: 20px 0 180px;
+  padding: 20px 0 280px;
   position: relative;
-  min-height: 600px;
+  min-height: 650px;
   overflow: hidden;
 }
 
@@ -4421,7 +4421,7 @@
 .landing-hero-content {
   position: relative;
   z-index: 2;
-  padding-top: 30px;
+  padding-top: 60px;
 }
 
 .landing-hero-content .landing-hero-badge,
@@ -4478,7 +4478,7 @@
 .landing-search-field {
   display: flex;
   align-items: center;
-  padding: 12px 16px;
+  padding: 16px 20px;
   flex: 1;
   min-width: 0;
 }
@@ -4509,7 +4509,7 @@
 .landing-search-select {
   border: none;
   background: transparent;
-  font-size: 14px;
+  font-size: 15px;
   color: #1f2937;
   padding: 0;
   width: 100%;
@@ -4538,12 +4538,12 @@
 }
 
 .landing-search-btn {
-  padding: 12px 24px;
+  padding: 14px 28px;
   background: #5B68F4;
   color: white;
   border: none;
   border-radius: 6px;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
   cursor: pointer;
   transition: background 0.2s;

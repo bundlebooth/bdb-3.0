@@ -766,7 +766,6 @@ function LandingPage() {
       {/* Footer */}
       <Footer />
       <MessagingWidget />
-      <ProfileModal isOpen={profileModalOpen} onClose={() => setProfileModalOpen(false)} />
       <MobileBottomNav 
         onOpenDashboard={(section) => {
           // LandingPage is for unauthenticated users, so just open profile modal
