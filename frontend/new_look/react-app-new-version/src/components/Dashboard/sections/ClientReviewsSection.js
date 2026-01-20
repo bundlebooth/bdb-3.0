@@ -3,7 +3,7 @@ import { useAuth } from '../../../context/AuthContext';
 import { apiGet, apiPost } from '../../../utils/api';
 import { showBanner } from '../../../utils/banners';
 
-function ClientReviewsSection() {
+function ClientReviewsSection({ deepLinkBookingId, onDeepLinkHandled }) {
   const { currentUser } = useAuth();
   const [reviews, setReviews] = useState([]);
   const [pastBookings, setPastBookings] = useState([]);
@@ -66,6 +66,28 @@ function ClientReviewsSection() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Handle deep link - auto-open review modal when deepLinkBookingId is provided
+  useEffect(() => {
+    if (deepLinkBookingId && pastBookings.length > 0 && !loading) {
+      // Find the booking by ID
+      const booking = pastBookings.find(b => 
+        String(b.BookingID) === String(deepLinkBookingId) || 
+        String(b.RequestID) === String(deepLinkBookingId) ||
+        String(b.bookingPublicId) === String(deepLinkBookingId)
+      );
+      
+      if (booking) {
+        // Auto-open the review modal for this booking
+        openReviewModal(booking);
+      }
+      
+      // Clear the deep link after handling
+      if (onDeepLinkHandled) {
+        onDeepLinkHandled();
+      }
+    }
+  }, [deepLinkBookingId, pastBookings, loading, onDeepLinkHandled]);
 
   const openReviewModal = (booking) => {
     setSelectedBooking(booking);
@@ -151,92 +173,115 @@ function ClientReviewsSection() {
 
   const renderPendingBooking = (booking) => {
     const itemId = booking.RequestID || booking.BookingID;
+    const eventDate = booking.EventDate ? new Date(booking.EventDate) : null;
+    const monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const dateMonth = eventDate ? monthNames[eventDate.getMonth()] : '';
+    const dateDay = eventDate ? eventDate.getDate() : '';
+    const dateDayName = eventDate ? dayNames[eventDate.getDay()] : '';
+    const vendorInitial = (booking.VendorName || 'V').charAt(0).toUpperCase();
+    const vendorLogo = booking.VendorLogo || booking.VendorLogoUrl || booking.LogoUrl;
     
     return (
       <div key={itemId} style={{
-        padding: '16px 20px',
-        background: 'white',
-        borderRadius: '10px',
-        border: '1px solid #e2e8f0',
-        marginBottom: '12px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '16px'
+        background: '#fff',
+        border: '1px solid #e5e5e5',
+        borderRadius: '6px',
+        marginBottom: '8px',
+        overflow: 'hidden'
       }}>
-        {/* Vendor Logo/Image */}
-        <div style={{
-          width: '48px',
-          height: '48px',
-          borderRadius: '50%',
-          overflow: 'hidden',
-          background: '#e2e8f0',
-          flexShrink: 0
-        }}>
-          <img 
-            src={booking.VendorLogo || 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png'}
-            alt={booking.VendorName}
-            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-            onError={(e) => { e.target.src = 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png'; }}
-          />
+        <div style={{ display: 'flex', alignItems: 'center', padding: '12px 16px' }}>
+          {/* Date Block */}
+          <div style={{ 
+            width: '50px', 
+            textAlign: 'center', 
+            marginRight: '16px',
+            flexShrink: 0
+          }}>
+            <div style={{ fontSize: '12px', color: '#6b7280', fontWeight: 500 }}>{dateMonth}</div>
+            <div style={{ fontSize: '24px', fontWeight: 700, color: '#1f2937', lineHeight: 1 }}>{dateDay}</div>
+            <div style={{ fontSize: '12px', color: '#9ca3af' }}>{dateDayName}</div>
+          </div>
+
+          {/* Vendor Logo */}
+          <div style={{ marginRight: '12px', flexShrink: 0 }}>
+            {vendorLogo ? (
+              <img 
+                src={vendorLogo}
+                alt={booking.VendorName}
+                style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #10b981' }}
+                onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
+              />
+            ) : null}
+            <div style={{ 
+              width: '40px', 
+              height: '40px', 
+              borderRadius: '50%', 
+              background: '#10b981', 
+              display: vendorLogo ? 'none' : 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              color: '#fff', 
+              fontSize: '16px', 
+              fontWeight: 600 
+            }}>
+              {vendorInitial}
+            </div>
+          </div>
+
+          {/* Booking Info */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: '15px', fontWeight: 600, color: '#10b981', marginBottom: '3px' }}>
+              {booking.VendorName || 'Vendor'}
+            </div>
+            <div style={{ fontSize: '14px', color: '#374151', marginBottom: '3px' }}>
+              {booking.ServiceName || 'Service'}
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', fontSize: '13px', color: '#6b7280' }}>
+              {booking.TotalAmount != null && (
+                <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <i className="fas fa-dollar-sign" style={{ fontSize: '11px' }}></i>
+                  ${Number(booking.TotalAmount).toLocaleString()} CAD
+                </span>
+              )}
+              {(booking.Location || booking.EventLocation) && (
+                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <i className="fas fa-map-marker-alt" style={{ fontSize: '11px' }}></i>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {booking.Location || booking.EventLocation}
+                  </span>
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Write Review Button */}
+          <button
+            onClick={() => openReviewModal(booking)}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              padding: '8px 16px',
+              background: '#5e72e4',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              fontSize: '13px',
+              fontWeight: 500,
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+              transition: 'all 0.2s',
+              flexShrink: 0
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = '#4c5fd7'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = '#5e72e4'; }}
+          >
+            <i className="fas fa-pen" style={{ fontSize: '11px' }}></i>
+            Write Review
+          </button>
         </div>
-        {/* Booking Info */}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 600, color: '#111827', fontSize: '15px', marginBottom: '2px' }}>
-            {booking.VendorName || 'Vendor'}
-          </div>
-          <div style={{ fontSize: '13px', color: '#6b7280', marginBottom: '4px' }}>
-            {booking.ServiceName || 'Service'}
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', fontSize: '13px', color: '#6b7280' }}>
-            {booking.EventDate && (
-              <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                <i className="fas fa-calendar-alt" style={{ fontSize: '12px' }}></i>
-                {new Date(booking.EventDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-              </span>
-            )}
-            {booking.TotalAmount != null && (
-              <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                <i className="fas fa-dollar-sign" style={{ fontSize: '12px' }}></i>
-                ${Number(booking.TotalAmount).toLocaleString()} CAD
-              </span>
-            )}
-            {(booking.Location || booking.EventLocation) && (
-              <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                <i className="fas fa-map-marker-alt" style={{ fontSize: '12px' }}></i>
-                {booking.Location || booking.EventLocation}
-              </span>
-            )}
-          </div>
-        </div>
-        {/* Write Review Button */}
-        <button
-          onClick={() => openReviewModal(booking)}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '5px',
-            padding: '6px 14px',
-            background: '#5e72e4',
-            color: 'white',
-            border: 'none',
-            borderRadius: '6px',
-            fontSize: '12px',
-            fontWeight: 500,
-            cursor: 'pointer',
-            whiteSpace: 'nowrap',
-            transition: 'all 0.2s',
-            flexShrink: 0,
-            width: 'auto',
-            minWidth: 'unset',
-            flex: 'none'
-          }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = '#4c5fd7'; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = '#5e72e4'; }}
-        >
-          <i className="fas fa-pen" style={{ fontSize: '10px' }}></i>
-          Write Review
-        </button>
       </div>
     );
   };

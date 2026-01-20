@@ -3123,4 +3123,422 @@ router.post('/email-queue/process', async (req, res) => {
   }
 });
 
+// ==================== FAQ CATEGORIES MANAGEMENT ====================
+
+// GET /admin/faq-categories - Get all FAQ categories
+router.get('/faq-categories', async (req, res) => {
+  try {
+    const pool = await getPool();
+    
+    const result = await pool.request().query(`
+      SELECT 
+        c.CategoryID,
+        c.Name,
+        c.Slug,
+        c.Description,
+        c.Icon,
+        c.DisplayOrder,
+        c.IsActive,
+        c.ParentCategoryID,
+        (SELECT COUNT(*) FROM [admin].[FAQs] f WHERE f.CategoryID = c.CategoryID) AS ArticleCount
+      FROM [admin].[FAQCategories] c
+      ORDER BY c.DisplayOrder, c.Name
+    `);
+    
+    res.json({ categories: result.recordset || [] });
+  } catch (error) {
+    console.error('Error fetching FAQ categories:', error);
+    res.status(500).json({ error: 'Failed to fetch FAQ categories' });
+  }
+});
+
+// POST /admin/faq-categories - Create new FAQ category
+router.post('/faq-categories', async (req, res) => {
+  try {
+    const { name, slug, description, icon, displayOrder, isActive } = req.body;
+    const pool = await getPool();
+    
+    const result = await pool.request()
+      .input('Name', sql.NVarChar(100), name)
+      .input('Slug', sql.NVarChar(100), slug || name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''))
+      .input('Description', sql.NVarChar(500), description || null)
+      .input('Icon', sql.NVarChar(50), icon || 'fa-folder')
+      .input('DisplayOrder', sql.Int, displayOrder || 0)
+      .input('IsActive', sql.Bit, isActive !== false)
+      .query(`
+        INSERT INTO [admin].[FAQCategories] (Name, Slug, Description, Icon, DisplayOrder, IsActive)
+        OUTPUT INSERTED.*
+        VALUES (@Name, @Slug, @Description, @Icon, @DisplayOrder, @IsActive)
+      `);
+    
+    res.json({ success: true, category: result.recordset[0] });
+  } catch (error) {
+    console.error('Error creating FAQ category:', error);
+    res.status(500).json({ error: 'Failed to create FAQ category' });
+  }
+});
+
+// PUT /admin/faq-categories/:id - Update FAQ category
+router.put('/faq-categories/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, slug, description, icon, displayOrder, isActive } = req.body;
+    const pool = await getPool();
+    
+    await pool.request()
+      .input('CategoryID', sql.Int, id)
+      .input('Name', sql.NVarChar(100), name)
+      .input('Slug', sql.NVarChar(100), slug)
+      .input('Description', sql.NVarChar(500), description || null)
+      .input('Icon', sql.NVarChar(50), icon)
+      .input('DisplayOrder', sql.Int, displayOrder)
+      .input('IsActive', sql.Bit, isActive)
+      .query(`
+        UPDATE [admin].[FAQCategories]
+        SET Name = @Name, Slug = @Slug, Description = @Description, Icon = @Icon, 
+            DisplayOrder = @DisplayOrder, IsActive = @IsActive, UpdatedAt = GETUTCDATE()
+        WHERE CategoryID = @CategoryID
+      `);
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error updating FAQ category:', error);
+    res.status(500).json({ error: 'Failed to update FAQ category' });
+  }
+});
+
+// DELETE /admin/faq-categories/:id - Delete FAQ category
+router.delete('/faq-categories/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pool = await getPool();
+    
+    // First update FAQs to remove category reference
+    await pool.request()
+      .input('CategoryID', sql.Int, id)
+      .query(`UPDATE [admin].[FAQs] SET CategoryID = NULL WHERE CategoryID = @CategoryID`);
+    
+    // Then delete the category
+    await pool.request()
+      .input('CategoryID', sql.Int, id)
+      .query(`DELETE FROM [admin].[FAQCategories] WHERE CategoryID = @CategoryID`);
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting FAQ category:', error);
+    res.status(500).json({ error: 'Failed to delete FAQ category' });
+  }
+});
+
+// ==================== ENHANCED FAQ MANAGEMENT ====================
+
+// GET /admin/faqs/all - Get all FAQs with category info
+router.get('/faqs/all', async (req, res) => {
+  try {
+    const pool = await getPool();
+    
+    const result = await pool.request().query(`
+      SELECT 
+        f.FAQID,
+        f.Question,
+        f.Answer,
+        f.Category,
+        f.CategoryID,
+        f.DisplayOrder,
+        f.IsActive,
+        f.ViewCount,
+        f.HelpfulCount,
+        f.NotHelpfulCount,
+        f.CreatedAt,
+        f.UpdatedAt,
+        c.Name AS CategoryName,
+        c.Slug AS CategorySlug
+      FROM [admin].[FAQs] f
+      LEFT JOIN [admin].[FAQCategories] c ON f.CategoryID = c.CategoryID
+      ORDER BY f.CategoryID, f.DisplayOrder, f.FAQID
+    `);
+    
+    res.json({ faqs: result.recordset || [] });
+  } catch (error) {
+    console.error('Error fetching all FAQs:', error);
+    res.status(500).json({ error: 'Failed to fetch FAQs' });
+  }
+});
+
+// POST /admin/faqs/create - Create new FAQ with category
+router.post('/faqs/create', async (req, res) => {
+  try {
+    const { question, answer, category, categoryId, displayOrder, isActive } = req.body;
+    const pool = await getPool();
+    
+    const result = await pool.request()
+      .input('Question', sql.NVarChar(500), question)
+      .input('Answer', sql.NVarChar(sql.MAX), answer)
+      .input('Category', sql.NVarChar(100), category || 'General')
+      .input('CategoryID', sql.Int, categoryId || null)
+      .input('DisplayOrder', sql.Int, displayOrder || 0)
+      .input('IsActive', sql.Bit, isActive !== false)
+      .query(`
+        INSERT INTO [admin].[FAQs] (Question, Answer, Category, CategoryID, DisplayOrder, IsActive)
+        OUTPUT INSERTED.*
+        VALUES (@Question, @Answer, @Category, @CategoryID, @DisplayOrder, @IsActive)
+      `);
+    
+    res.json({ success: true, faq: result.recordset[0] });
+  } catch (error) {
+    console.error('Error creating FAQ:', error);
+    res.status(500).json({ error: 'Failed to create FAQ' });
+  }
+});
+
+// PUT /admin/faqs/update/:id - Update FAQ with category
+router.put('/faqs/update/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { question, answer, category, categoryId, displayOrder, isActive } = req.body;
+    const pool = await getPool();
+    
+    await pool.request()
+      .input('FAQID', sql.Int, id)
+      .input('Question', sql.NVarChar(500), question)
+      .input('Answer', sql.NVarChar(sql.MAX), answer)
+      .input('Category', sql.NVarChar(100), category)
+      .input('CategoryID', sql.Int, categoryId || null)
+      .input('DisplayOrder', sql.Int, displayOrder)
+      .input('IsActive', sql.Bit, isActive)
+      .query(`
+        UPDATE [admin].[FAQs]
+        SET Question = @Question, Answer = @Answer, Category = @Category, CategoryID = @CategoryID,
+            DisplayOrder = @DisplayOrder, IsActive = @IsActive, UpdatedAt = GETUTCDATE()
+        WHERE FAQID = @FAQID
+      `);
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error updating FAQ:', error);
+    res.status(500).json({ error: 'Failed to update FAQ' });
+  }
+});
+
+// ==================== ARTICLES MANAGEMENT ====================
+
+// GET /admin/articles - Get all articles
+router.get('/articles', async (req, res) => {
+  try {
+    const pool = await getPool();
+    
+    const result = await pool.request().query(`
+      SELECT 
+        a.ArticleID,
+        a.Title,
+        a.Slug,
+        a.Summary,
+        a.Content,
+        a.CategoryID,
+        a.ArticleType,
+        a.FeaturedImage,
+        a.Author,
+        a.Tags,
+        a.DisplayOrder,
+        a.IsActive,
+        a.IsFeatured,
+        a.ViewCount,
+        a.HelpfulCount,
+        a.NotHelpfulCount,
+        a.PublishedAt,
+        a.CreatedAt,
+        a.UpdatedAt,
+        c.Name AS CategoryName
+      FROM [admin].[Articles] a
+      LEFT JOIN [admin].[FAQCategories] c ON a.CategoryID = c.CategoryID
+      ORDER BY a.IsFeatured DESC, a.DisplayOrder, a.CreatedAt DESC
+    `);
+    
+    res.json({ articles: result.recordset || [] });
+  } catch (error) {
+    console.error('Error fetching articles:', error);
+    res.status(500).json({ error: 'Failed to fetch articles' });
+  }
+});
+
+// POST /admin/articles - Create new article
+router.post('/articles', async (req, res) => {
+  try {
+    const { title, slug, summary, content, categoryId, articleType, featuredImage, author, tags, displayOrder, isActive, isFeatured } = req.body;
+    const pool = await getPool();
+    
+    const generatedSlug = slug || title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    
+    const result = await pool.request()
+      .input('Title', sql.NVarChar(255), title)
+      .input('Slug', sql.NVarChar(255), generatedSlug)
+      .input('Summary', sql.NVarChar(500), summary || null)
+      .input('Content', sql.NVarChar(sql.MAX), content)
+      .input('CategoryID', sql.Int, categoryId || null)
+      .input('ArticleType', sql.NVarChar(50), articleType || 'help')
+      .input('FeaturedImage', sql.NVarChar(500), featuredImage || null)
+      .input('Author', sql.NVarChar(100), author || 'Planbeau Team')
+      .input('Tags', sql.NVarChar(500), tags || null)
+      .input('DisplayOrder', sql.Int, displayOrder || 0)
+      .input('IsActive', sql.Bit, isActive !== false)
+      .input('IsFeatured', sql.Bit, isFeatured === true)
+      .input('PublishedAt', sql.DateTime2, isActive !== false ? new Date() : null)
+      .query(`
+        INSERT INTO [admin].[Articles] (Title, Slug, Summary, Content, CategoryID, ArticleType, FeaturedImage, Author, Tags, DisplayOrder, IsActive, IsFeatured, PublishedAt)
+        OUTPUT INSERTED.*
+        VALUES (@Title, @Slug, @Summary, @Content, @CategoryID, @ArticleType, @FeaturedImage, @Author, @Tags, @DisplayOrder, @IsActive, @IsFeatured, @PublishedAt)
+      `);
+    
+    res.json({ success: true, article: result.recordset[0] });
+  } catch (error) {
+    console.error('Error creating article:', error);
+    res.status(500).json({ error: 'Failed to create article' });
+  }
+});
+
+// PUT /admin/articles/:id - Update article
+router.put('/articles/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, slug, summary, content, categoryId, articleType, featuredImage, author, tags, displayOrder, isActive, isFeatured } = req.body;
+    const pool = await getPool();
+    
+    await pool.request()
+      .input('ArticleID', sql.Int, id)
+      .input('Title', sql.NVarChar(255), title)
+      .input('Slug', sql.NVarChar(255), slug)
+      .input('Summary', sql.NVarChar(500), summary || null)
+      .input('Content', sql.NVarChar(sql.MAX), content)
+      .input('CategoryID', sql.Int, categoryId || null)
+      .input('ArticleType', sql.NVarChar(50), articleType)
+      .input('FeaturedImage', sql.NVarChar(500), featuredImage || null)
+      .input('Author', sql.NVarChar(100), author)
+      .input('Tags', sql.NVarChar(500), tags || null)
+      .input('DisplayOrder', sql.Int, displayOrder)
+      .input('IsActive', sql.Bit, isActive)
+      .input('IsFeatured', sql.Bit, isFeatured)
+      .query(`
+        UPDATE [admin].[Articles]
+        SET Title = @Title, Slug = @Slug, Summary = @Summary, Content = @Content, CategoryID = @CategoryID,
+            ArticleType = @ArticleType, FeaturedImage = @FeaturedImage, Author = @Author, Tags = @Tags,
+            DisplayOrder = @DisplayOrder, IsActive = @IsActive, IsFeatured = @IsFeatured, UpdatedAt = GETUTCDATE()
+        WHERE ArticleID = @ArticleID
+      `);
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error updating article:', error);
+    res.status(500).json({ error: 'Failed to update article' });
+  }
+});
+
+// DELETE /admin/articles/:id - Delete article
+router.delete('/articles/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pool = await getPool();
+    
+    await pool.request()
+      .input('ArticleID', sql.Int, id)
+      .query(`DELETE FROM [admin].[Articles] WHERE ArticleID = @ArticleID`);
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting article:', error);
+    res.status(500).json({ error: 'Failed to delete article' });
+  }
+});
+
+// ==================== FAQ FEEDBACK STATISTICS ====================
+
+// GET /admin/faq-stats - Get FAQ feedback statistics for admin dashboard
+router.get('/faq-stats', async (req, res) => {
+  try {
+    const pool = await getPool();
+    
+    const result = await pool.request().query(`
+      SELECT 
+        f.FAQID,
+        f.Question,
+        f.Category,
+        ISNULL(f.ViewCount, 0) AS ViewCount,
+        ISNULL(f.HelpfulCount, 0) AS HelpfulCount,
+        ISNULL(f.NeutralCount, 0) AS NeutralCount,
+        ISNULL(f.NotHelpfulCount, 0) AS NotHelpfulCount,
+        ISNULL(f.HelpfulCount, 0) + ISNULL(f.NeutralCount, 0) + ISNULL(f.NotHelpfulCount, 0) AS TotalFeedback,
+        CASE 
+          WHEN (ISNULL(f.HelpfulCount, 0) + ISNULL(f.NeutralCount, 0) + ISNULL(f.NotHelpfulCount, 0)) > 0 
+          THEN CAST(ISNULL(f.HelpfulCount, 0) AS FLOAT) / (ISNULL(f.HelpfulCount, 0) + ISNULL(f.NeutralCount, 0) + ISNULL(f.NotHelpfulCount, 0)) * 100
+          ELSE 0 
+        END AS HelpfulPercentage
+      FROM [admin].[FAQs] f
+      WHERE f.IsActive = 1
+      ORDER BY f.ViewCount DESC, f.FAQID
+    `);
+    
+    // Calculate summary stats
+    const faqs = result.recordset || [];
+    const totalViews = faqs.reduce((sum, f) => sum + f.ViewCount, 0);
+    const totalFeedback = faqs.reduce((sum, f) => sum + f.TotalFeedback, 0);
+    const totalHelpful = faqs.reduce((sum, f) => sum + f.HelpfulCount, 0);
+    const totalNeutral = faqs.reduce((sum, f) => sum + f.NeutralCount, 0);
+    const totalNotHelpful = faqs.reduce((sum, f) => sum + f.NotHelpfulCount, 0);
+    
+    res.json({ 
+      faqs,
+      summary: {
+        totalFaqs: faqs.length,
+        totalViews,
+        totalFeedback,
+        totalHelpful,
+        totalNeutral,
+        totalNotHelpful,
+        overallHelpfulRate: totalFeedback > 0 ? ((totalHelpful / totalFeedback) * 100).toFixed(1) : 0
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching FAQ stats:', error);
+    res.status(500).json({ error: 'Failed to fetch FAQ statistics' });
+  }
+});
+
+// GET /admin/blog-stats - Get blog view statistics for admin dashboard
+router.get('/blog-stats', async (req, res) => {
+  try {
+    const pool = await getPool();
+    
+    const result = await pool.request().query(`
+      SELECT 
+        b.BlogID,
+        b.Title,
+        b.Slug,
+        b.Category,
+        b.Status,
+        b.IsFeatured,
+        ISNULL(b.ViewCount, 0) AS ViewCount,
+        b.PublishedAt,
+        b.CreatedAt
+      FROM [content].[Blogs] b
+      ORDER BY b.ViewCount DESC, b.CreatedAt DESC
+    `);
+    
+    const blogs = result.recordset || [];
+    const totalViews = blogs.reduce((sum, b) => sum + b.ViewCount, 0);
+    const publishedBlogs = blogs.filter(b => b.Status === 'published');
+    
+    res.json({ 
+      blogs,
+      summary: {
+        totalBlogs: blogs.length,
+        publishedBlogs: publishedBlogs.length,
+        totalViews,
+        featuredBlogs: blogs.filter(b => b.IsFeatured).length
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching blog stats:', error);
+    res.status(500).json({ error: 'Failed to fetch blog statistics' });
+  }
+});
+
 module.exports = router;

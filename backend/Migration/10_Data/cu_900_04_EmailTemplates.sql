@@ -109,5 +109,13 @@ BEGIN
             PRINT 'Added account_reactivated template';
         END
     END
+
+    -- Add client_to_vendor_welcome template (alias)
+    IF NOT EXISTS (SELECT 1 FROM [admin].[EmailTemplates] WHERE [TemplateKey] = 'client_to_vendor_welcome')
+    BEGIN
+        INSERT [admin].[EmailTemplates] ([TemplateKey], [TemplateName], [HeaderComponentID], [BodyComponentID], [FooterComponentID], [Subject], [Category], [AvailableVariables], [IsActive], [CreatedAt], [UpdatedAt])
+        VALUES (N'client_to_vendor_welcome', N'Client to Vendor Welcome', 1, 29, 2, N'Welcome to {{platformName}} as a Vendor, {{vendorName}}!', N'welcome', N'["vendorName","businessName","dashboardUrl","platformName","platformUrl","currentYear","logoUrl"]', 1, GETDATE(), GETDATE());
+        PRINT 'Added client_to_vendor_welcome template';
+    END
 END
 GO

@@ -26,6 +26,7 @@ BEGIN
 	[WhatsIncluded] [nvarchar](max) NULL,
 	[IsActive] [bit] NULL,
 	[DisplayOrder] [int] NULL,
+	[Duration] [decimal](5, 2) NULL,
 	[CreatedAt] [datetime] NULL,
 	[UpdatedAt] [datetime] NULL,
 PRIMARY KEY CLUSTERED 

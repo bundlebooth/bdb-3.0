@@ -32,7 +32,7 @@ BEGIN
         DeclinedReason, ExpiredAt, RefundAmount,
         StripePaymentIntentID, CreatedAt, UpdatedAt,
         EventLocation, EventName, EventType, TimeZone, GroupID,
-        ClientName, ClientEmail, ClientPhone, ClientPublicId,
+        ClientName, ClientEmail, ClientPhone, ClientProfilePic, ClientPublicId,
         VendorName, VendorEmail, VendorPhone, VendorLogo, VendorPublicId,
         ServiceName, ServiceCategory, ConversationID,
         StatusLabel, StatusCategory

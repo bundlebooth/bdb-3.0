@@ -1,377 +1,446 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import { PageLayout } from '../components/PageWrapper';
+import Header from '../components/Header';
+import { API_BASE_URL } from '../config';
+import './HelpCentrePage.css';
 
 function HelpCentrePage() {
+  const { categorySlug, articleId } = useParams();
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCollection, setSelectedCollection] = useState(null);
+  const [searchResults, setSearchResults] = useState([]);
+  const [showSearchResults, setShowSearchResults] = useState(false);
+  const [faqs, setFaqs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedArticle, setSelectedArticle] = useState(null);
+  const [feedbackGiven, setFeedbackGiven] = useState({});
 
-  const collections = [
-    { 
-      id: 'most-asked', 
-      title: 'Most Frequently Asked', 
-      icon: 'fa-star',
-      articleCount: 15,
-      articles: [
-        { id: 1, title: "Planbeau's Health & Safety Measures" },
-        { id: 2, title: "What is the cancellation and refund policy for clients and vendors?" }
-      ],
-      sections: [
-        {
-          title: 'For Vendors',
-          articles: [
-            { id: 3, title: "How does Planbeau Referral Program work?" },
-            { id: 4, title: "Instant Book" },
-            { id: 5, title: "Calendar Sync" },
-            { id: 6, title: "Why you should always keep your bookings on Planbeau" },
-            { id: 7, title: "How do I send a custom rate?" },
-            { id: 8, title: "Tips for navigating your first booking" },
-            { id: 9, title: "How much commission does Planbeau take?" },
-            { id: 10, title: "What is a site rep? How do I go about requesting one?" },
-            { id: 11, title: "How is my payout calculated?" },
-            { id: 12, title: "A client wants to add more hours to a booking. How do I do that?" },
-            { id: 13, title: "Understanding and Customizing Activity Types on Planbeau" }
-          ]
-        },
-        {
-          title: 'For Clients',
-          articles: [
-            { id: 14, title: "How do I modify an existing booking or change dates as a client?" },
-            { id: 15, title: "How do I change my project type from still to motion (or vice versa)?" }
-          ]
-        }
-      ]
-    },
-    { 
-      id: 'general', 
-      title: 'General', 
-      icon: 'fa-file-lines',
-      articleCount: 29,
-      articles: []
-    },
-    { 
-      id: 'booking-help', 
-      title: 'Help with Booking', 
-      icon: 'fa-calendar-days',
-      articleCount: 62,
-      articles: []
-    },
-    { 
-      id: 'for-vendors', 
-      title: 'For Vendors', 
-      icon: 'fa-briefcase',
-      articleCount: 48,
-      articles: []
-    },
-    { 
-      id: 'trust-safety', 
-      title: 'Trust & Safety', 
-      icon: 'fa-shield-halved',
-      articleCount: 4,
-      articles: []
-    }
+  // FAQ Categories matching Giggster style (Image 2)
+  const faqCategories = [
+    { name: 'Most Frequently Asked', slug: 'Getting Started', icon: 'fa-star' },
+    { name: 'General', slug: 'general', icon: 'fa-file-alt' },
+    { name: 'Help with Booking', slug: 'Booking', icon: 'fa-calendar-check' },
+    { name: 'For Vendors', slug: 'Vendors', icon: 'fa-briefcase' },
+    { name: 'For Clients', slug: 'Clients', icon: 'fa-users' },
+    { name: 'Payments & Billing', slug: 'Payments', icon: 'fa-credit-card' },
+    { name: 'Trust & Safety', slug: 'Trust & Safety', icon: 'fa-shield-alt' },
+    { name: 'Account & Profile', slug: 'Account', icon: 'fa-user-circle' },
+    { name: 'Reviews & Ratings', slug: 'Reviews', icon: 'fa-star' },
+    { name: 'Cancellations & Refunds', slug: 'Cancellations', icon: 'fa-undo' },
+    { name: 'Messages & Communication', slug: 'Messages', icon: 'fa-comments' },
+    { name: 'Technical Support', slug: 'Technical', icon: 'fa-cog' }
   ];
 
-  const handleBack = () => {
-    setSelectedCollection(null);
+  // Load FAQs
+  const loadFaqs = useCallback(async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/public/faqs`);
+      const data = await response.json();
+      setFaqs(data.faqs || []);
+    } catch (error) {
+      console.error('Error loading FAQs:', error);
+      setFaqs([]);
+    }
+  }, []);
+
+  // Search FAQs
+  const handleSearch = useCallback((term) => {
+    if (!term || term.length < 2) {
+      setShowSearchResults(false);
+      return;
+    }
+    const filtered = faqs.filter(faq => 
+      faq.Question.toLowerCase().includes(term.toLowerCase()) ||
+      faq.Answer.toLowerCase().includes(term.toLowerCase())
+    );
+    setSearchResults(filtered);
+    setShowSearchResults(true);
+  }, [faqs]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => handleSearch(searchTerm), 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm, handleSearch]);
+
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      await loadFaqs();
+      setLoading(false);
+    };
+    loadData();
+  }, [loadFaqs]);
+
+  // Track view when article is opened
+  const trackView = async (faqId) => {
+    try {
+      await fetch(`${API_BASE_URL}/public/faqs/${faqId}/view`, { method: 'POST' });
+    } catch (error) {
+      console.error('Error tracking view:', error);
+    }
   };
 
-  // Collection detail view - WHITE BACKGROUND like Giggster
-  if (selectedCollection) {
-    const collection = collections.find(c => c.id === selectedCollection);
+  const handleArticleClick = (faq) => {
+    setSelectedArticle(faq);
+    setFeedbackGiven({});
+    trackView(faq.FAQID);
+    navigate(`/help-centre/category/${faq.Category}/article/${faq.FAQID}`, { replace: false });
+  };
+
+  const handleCategoryClick = (category) => {
+    setSelectedArticle(null);
+    navigate(`/help-centre/category/${encodeURIComponent(category.slug)}`);
+  };
+
+  const handleBackToCategories = () => {
+    setSelectedArticle(null);
+    navigate('/help-centre');
+  };
+
+  const handleBackToCategory = () => {
+    setSelectedArticle(null);
+    if (categorySlug) {
+      navigate(`/help-centre/category/${categorySlug}`);
+    } else {
+      navigate('/help-centre');
+    }
+  };
+
+  // Submit emoji feedback: 'sad', 'neutral', 'happy'
+  const submitFeedback = async (faqId, rating) => {
+    if (feedbackGiven[faqId]) return;
+    try {
+      await fetch(`${API_BASE_URL}/public/faqs/${faqId}/feedback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rating })
+      });
+      setFeedbackGiven(prev => ({ ...prev, [faqId]: rating }));
+    } catch (error) {
+      console.error('Error submitting feedback:', error);
+    }
+  };
+
+  // Group FAQs by category
+  const groupedFaqs = faqs.reduce((acc, faq) => {
+    const cat = faq.Category || 'General';
+    if (!acc[cat]) acc[cat] = [];
+    acc[cat].push(faq);
+    return acc;
+  }, {});
+
+  // Get current category info
+  const currentCategory = categorySlug ? faqCategories.find(c => c.slug === categorySlug || c.slug === decodeURIComponent(categorySlug)) : null;
+  const filteredFaqs = categorySlug 
+    ? faqs.filter(faq => faq.Category === categorySlug || faq.Category === decodeURIComponent(categorySlug))
+    : faqs;
+
+  // Check if viewing article from URL
+  useEffect(() => {
+    if (articleId && faqs.length > 0) {
+      const article = faqs.find(f => f.FAQID === parseInt(articleId));
+      if (article) {
+        setSelectedArticle(article);
+        trackView(article.FAQID);
+      }
+    }
+  }, [articleId, faqs]);
+
+  // Article Detail View
+  if (selectedArticle) {
     return (
-      <div style={{ minHeight: '100vh', backgroundColor: '#fff' }}>
-        {/* Dark Header with Search */}
-        <div style={{ 
-          backgroundColor: '#1a1a1a',
-          padding: '1rem 0'
-        }}>
-          <div style={{ maxWidth: '700px', margin: '0 auto', padding: '0 1.5rem' }}>
-            <div style={{ 
-              position: 'relative',
-              backgroundColor: '#333',
-              borderRadius: '8px'
-            }}>
-              <i className="fas fa-search" style={{ 
-                position: 'absolute',
-                left: '1rem',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                color: '#888'
-              }}></i>
+      <PageLayout variant="fullWidth" pageClassName="help-centre-page">
+        <Header />
+        <div style={{ minHeight: '100vh', backgroundColor: '#fff', paddingTop: '1rem' }}>
+          {/* Breadcrumb Navigation */}
+          <div style={{ borderBottom: '1px solid #e5e7eb', padding: '1rem 0', backgroundColor: '#f9fafb' }}>
+            <div style={{ maxWidth: '800px', margin: '0 auto', padding: '0 1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <button 
+                onClick={handleBackToCategories} 
+                style={{ background: 'none', border: 'none', color: '#6366f1', cursor: 'pointer', fontSize: '0.9rem', padding: 0, display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+              >
+                <i className="fas fa-home" style={{ fontSize: '0.8rem' }}></i> Help Centre
+              </button>
+              <span style={{ color: '#9ca3af' }}>›</span>
+              <button 
+                onClick={handleBackToCategory} 
+                style={{ background: 'none', border: 'none', color: '#6366f1', cursor: 'pointer', fontSize: '0.9rem', padding: 0 }}
+              >
+                {currentCategory?.name || selectedArticle.Category}
+              </button>
+              <span style={{ color: '#9ca3af' }}>›</span>
+              <span style={{ color: '#6b7280', fontSize: '0.9rem' }}>{selectedArticle.Question?.substring(0, 50)}{selectedArticle.Question?.length > 50 ? '...' : ''}</span>
+            </div>
+          </div>
+
+          {/* Article Content */}
+          <div style={{ maxWidth: '800px', margin: '0 auto', padding: '2.5rem 1.5rem 4rem' }}>
+            <h1 style={{ color: '#111', fontSize: '2rem', fontWeight: '700', marginBottom: '1.5rem', lineHeight: '1.3' }}>
+              {selectedArticle.Question}
+            </h1>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '2.5rem', color: '#6b7280', fontSize: '0.9rem', paddingBottom: '1.5rem', borderBottom: '1px solid #e5e7eb' }}>
+              <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '0.8rem', fontWeight: '600' }}>PB</div>
+              <div>
+                <div style={{ color: '#111', fontWeight: '500' }}>Planbeau Team</div>
+                <div style={{ fontSize: '0.8rem' }}>Updated recently</div>
+              </div>
+            </div>
+
+            {/* Article Body */}
+            <div className="help-centre-article-body" dangerouslySetInnerHTML={{ __html: selectedArticle.Answer }} />
+
+            {/* Emoji Feedback Section */}
+            <div className="help-centre-feedback">
+              <p className="help-centre-feedback-question">Did this answer your question?</p>
+              {feedbackGiven[selectedArticle.FAQID] ? (
+                <div className="help-centre-feedback-thanks">
+                  <i className="fas fa-check-circle"></i> Thank you for your feedback!
+                </div>
+              ) : (
+                <div className="help-centre-feedback-emojis">
+                  <button 
+                    className="help-centre-feedback-emoji" 
+                    onClick={() => submitFeedback(selectedArticle.FAQID, 'sad')}
+                    title="No, this didn't help"
+                  >
+                    😞
+                  </button>
+                  <button 
+                    className="help-centre-feedback-emoji" 
+                    onClick={() => submitFeedback(selectedArticle.FAQID, 'neutral')}
+                    title="Somewhat helpful"
+                  >
+                    😐
+                  </button>
+                  <button 
+                    className="help-centre-feedback-emoji" 
+                    onClick={() => submitFeedback(selectedArticle.FAQID, 'happy')}
+                    title="Yes, this helped!"
+                  >
+                    😀
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Footer */}
+          <footer style={{ borderTop: '1px solid #e5e7eb', padding: '2rem 1.5rem', backgroundColor: '#f9fafb' }}>
+            <div style={{ maxWidth: '800px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+              <div>
+                <Link to="/" style={{ color: '#6366f1', fontWeight: '600', textDecoration: 'none', fontSize: '1.1rem' }}>Planbeau</Link>
+                <p style={{ color: '#6b7280', fontSize: '0.85rem', marginTop: '0.25rem' }}>Canada's Event Services Marketplace</p>
+              </div>
+              <div style={{ display: 'flex', gap: '1.5rem', fontSize: '0.9rem' }}>
+                <Link to="/help-centre" style={{ color: '#6b7280', textDecoration: 'none' }}>Help Centre</Link>
+                <Link to="/terms-of-service" style={{ color: '#6b7280', textDecoration: 'none' }}>Terms</Link>
+                <Link to="/privacy-policy" style={{ color: '#6b7280', textDecoration: 'none' }}>Privacy</Link>
+              </div>
+            </div>
+          </footer>
+        </div>
+      </PageLayout>
+    );
+  }
+
+  // Category Detail View - list of articles
+  if (categorySlug) {
+    return (
+      <PageLayout variant="fullWidth" pageClassName="help-centre-page">
+        <Header />
+        <div style={{ minHeight: '100vh', backgroundColor: '#fff', paddingTop: '1rem' }}>
+          {/* Breadcrumb Navigation */}
+          <div style={{ borderBottom: '1px solid #e5e7eb', padding: '1rem 0', backgroundColor: '#f9fafb' }}>
+            <div style={{ maxWidth: '800px', margin: '0 auto', padding: '0 1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <button 
+                onClick={handleBackToCategories} 
+                style={{ background: 'none', border: 'none', color: '#6366f1', cursor: 'pointer', fontSize: '0.9rem', padding: 0, display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+              >
+                <i className="fas fa-home" style={{ fontSize: '0.8rem' }}></i> Help Centre
+              </button>
+              <span style={{ color: '#9ca3af' }}>›</span>
+              <span style={{ color: '#6b7280', fontSize: '0.9rem' }}>{currentCategory?.name || decodeURIComponent(categorySlug)}</span>
+            </div>
+          </div>
+
+          {/* Category Header */}
+          <div style={{ maxWidth: '800px', margin: '0 auto', padding: '2.5rem 1.5rem 1.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+              <div style={{ width: '56px', height: '56px', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <i className={`fas ${currentCategory?.icon || 'fa-folder'}`} style={{ color: '#fff', fontSize: '1.5rem' }}></i>
+              </div>
+              <div>
+                <h1 style={{ color: '#111', fontSize: '1.75rem', fontWeight: '700', margin: 0 }}>{currentCategory?.name || decodeURIComponent(categorySlug)}</h1>
+                <p style={{ color: '#6b7280', fontSize: '0.9rem', margin: '0.25rem 0 0' }}>{filteredFaqs.length} articles in this collection</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Articles List */}
+          <div style={{ maxWidth: '800px', margin: '0 auto', padding: '0 1.5rem 3rem' }}>
+            {loading ? (
+              <div style={{ textAlign: 'center', padding: '3rem' }}>
+                <div className="spinner"></div>
+              </div>
+            ) : filteredFaqs.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '3rem', color: '#6b7280', backgroundColor: '#f9fafb', borderRadius: '12px' }}>
+                No articles found in this category.
+              </div>
+            ) : (
+              <div style={{ border: '1px solid #e5e7eb', borderRadius: '12px', overflow: 'hidden', backgroundColor: '#fff' }}>
+                {filteredFaqs.map((faq, index) => (
+                  <div 
+                    key={faq.FAQID} 
+                    onClick={() => handleArticleClick(faq)}
+                    style={{ 
+                      display: 'flex', 
+                      justifyContent: 'space-between', 
+                      alignItems: 'center', 
+                      padding: '1rem 1.25rem', 
+                      borderBottom: index < filteredFaqs.length - 1 ? '1px solid #e5e7eb' : 'none',
+                      cursor: 'pointer',
+                      transition: 'background 0.15s'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#fff'}
+                  >
+                    <span style={{ color: '#6366f1', fontSize: '0.95rem', fontWeight: '500' }}>{faq.Question}</span>
+                    <i className="fas fa-chevron-right" style={{ color: '#d1d5db', fontSize: '0.75rem' }}></i>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <footer style={{ borderTop: '1px solid #e5e7eb', padding: '2rem 1.5rem', backgroundColor: '#f9fafb' }}>
+            <div style={{ maxWidth: '800px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+              <div>
+                <Link to="/" style={{ color: '#6366f1', fontWeight: '600', textDecoration: 'none', fontSize: '1.1rem' }}>Planbeau</Link>
+                <p style={{ color: '#6b7280', fontSize: '0.85rem', marginTop: '0.25rem' }}>Canada's Event Services Marketplace</p>
+              </div>
+              <div style={{ display: 'flex', gap: '1.5rem', fontSize: '0.9rem' }}>
+                <Link to="/help-centre" style={{ color: '#6b7280', textDecoration: 'none' }}>Help Centre</Link>
+                <Link to="/terms-of-service" style={{ color: '#6b7280', textDecoration: 'none' }}>Terms</Link>
+                <Link to="/privacy-policy" style={{ color: '#6b7280', textDecoration: 'none' }}>Privacy</Link>
+              </div>
+            </div>
+          </footer>
+        </div>
+      </PageLayout>
+    );
+  }
+
+  // Main Help Centre View - category list
+  return (
+    <PageLayout variant="fullWidth" pageClassName="help-centre-page">
+      <Header />
+      <div style={{ minHeight: '100vh', backgroundColor: '#fff', paddingTop: '1rem' }}>
+        {/* Hero Section */}
+        <div style={{ background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)', padding: '3rem 1.5rem', textAlign: 'center' }}>
+          <h1 style={{ color: '#fff', fontSize: '2rem', fontWeight: '700', marginBottom: '0.75rem' }}>How can we help you?</h1>
+          <p style={{ color: 'rgba(255,255,255,0.9)', fontSize: '1.1rem', marginBottom: '2rem' }}>Search our knowledge base or browse categories below</p>
+          
+          {/* Search Bar */}
+          <div style={{ maxWidth: '600px', margin: '0 auto', position: 'relative' }}>
+            <div style={{ position: 'relative', backgroundColor: '#fff', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.15)' }}>
+              <i className="fas fa-search" style={{ position: 'absolute', left: '1.25rem', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af' }}></i>
               <input
                 type="text"
-                placeholder="Search for articles..."
+                placeholder="Search for help articles..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '0.875rem 1rem 0.875rem 2.75rem',
-                  border: 'none',
-                  borderRadius: '8px',
-                  fontSize: '0.95rem',
-                  outline: 'none',
-                  backgroundColor: '#333',
-                  color: 'white'
-                }}
+                style={{ width: '100%', padding: '1.25rem 1.25rem 1.25rem 3.5rem', border: 'none', borderRadius: '12px', fontSize: '1rem', outline: 'none' }}
               />
             </div>
+            
+            {/* Search Results Dropdown */}
+            {showSearchResults && searchResults.length > 0 && (
+              <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '0.5rem', background: '#fff', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.15)', maxHeight: '400px', overflow: 'auto', zIndex: 100, textAlign: 'left' }}>
+                {searchResults.map(faq => (
+                  <div 
+                    key={faq.FAQID} 
+                    onClick={() => { handleArticleClick(faq); setShowSearchResults(false); setSearchTerm(''); }}
+                    style={{ padding: '1rem 1.25rem', borderBottom: '1px solid #f3f4f6', cursor: 'pointer' }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#fff'}
+                  >
+                    <div style={{ color: '#111', fontWeight: '500', marginBottom: '0.25rem' }}>{faq.Question}</div>
+                    <div style={{ color: '#6b7280', fontSize: '0.85rem' }}>{faq.Category}</div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* White Content Area */}
-        <div style={{ maxWidth: '700px', margin: '0 auto', padding: '2rem 1.5rem' }}>
-          {/* Breadcrumb */}
-          <div style={{ marginBottom: '1.5rem' }}>
-            <button 
-              onClick={handleBack}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: '#666',
-                fontSize: '0.85rem',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                padding: 0
-              }}
-            >
-              <span style={{ color: '#5B68F4' }}>All Collections</span>
-              <span>›</span>
-              <span>{collection.title}</span>
-            </button>
-          </div>
-
-          {/* Collection Header */}
-          <div style={{ marginBottom: '2rem' }}>
-            <div style={{ 
-              width: '40px', 
-              height: '40px', 
-              border: '1px solid #e5e7eb',
-              borderRadius: '8px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginBottom: '1rem'
-            }}>
-              <i className={`fas ${collection.icon}`} style={{ color: '#666', fontSize: '1rem' }}></i>
+        {/* Categories List */}
+        <div style={{ maxWidth: '800px', margin: '0 auto', padding: '2.5rem 1.5rem 3rem' }}>
+          <h2 style={{ color: '#111', fontSize: '1.25rem', fontWeight: '600', marginBottom: '1.5rem' }}>Browse by Category</h2>
+          
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: '3rem' }}>
+              <div className="spinner"></div>
             </div>
-            <h1 style={{ color: '#111', fontSize: '1.75rem', fontWeight: '700', marginBottom: '0.75rem' }}>
-              {collection.title}
-            </h1>
-            <p style={{ color: '#666', fontSize: '0.9rem' }}>
-              By Planbeau Support Team · {collection.articleCount} articles
-            </p>
-          </div>
-
-          {/* Top Articles in bordered box */}
-          {collection.articles && collection.articles.length > 0 && (
-            <div style={{ 
-              border: '1px solid #e5e7eb', 
-              borderRadius: '12px',
-              marginBottom: '1.5rem',
-              overflow: 'hidden'
-            }}>
-              {collection.articles.map((article, idx) => (
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {faqCategories.filter(cat => groupedFaqs[cat.slug]?.length > 0).map(category => (
                 <div 
-                  key={article.id}
-                  style={{
-                    padding: '1rem 1.25rem',
-                    borderBottom: idx < collection.articles.length - 1 ? '1px solid #e5e7eb' : 'none',
+                  key={category.slug}
+                  onClick={() => handleCategoryClick(category)}
+                  style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '1rem', 
+                    padding: '1.25rem', 
+                    backgroundColor: '#fff', 
+                    border: '1px solid #e5e7eb', 
+                    borderRadius: '12px', 
                     cursor: 'pointer',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center'
+                    transition: 'all 0.2s'
                   }}
+                  onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)'; e.currentTarget.style.borderColor = '#d1d5db'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = '#e5e7eb'; }}
                 >
-                  <span style={{ color: '#5B68F4' }}>{article.title}</span>
-                  <i className="fas fa-chevron-right" style={{ color: '#ccc', fontSize: '0.75rem' }}></i>
+                  <div style={{ width: '48px', height: '48px', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <i className={`fas ${category.icon}`} style={{ color: '#fff', fontSize: '1.1rem' }}></i>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ color: '#6366f1', fontSize: '1rem', fontWeight: '600', marginBottom: '0.25rem' }}>{category.name}</div>
+                    <div style={{ color: '#6b7280', fontSize: '0.85rem' }}>{groupedFaqs[category.slug]?.length || 0} articles</div>
+                  </div>
+                  <i className="fas fa-chevron-right" style={{ color: '#d1d5db', fontSize: '0.85rem' }}></i>
                 </div>
               ))}
             </div>
           )}
-
-          {/* Sections with articles */}
-          {collection.sections && collection.sections.map((section, sectionIdx) => (
-            <div key={sectionIdx} style={{ 
-              border: '1px solid #e5e7eb', 
-              borderRadius: '12px',
-              marginBottom: '1.5rem',
-              overflow: 'hidden'
-            }}>
-              <div style={{ 
-                padding: '1rem 1.25rem', 
-                borderBottom: '1px solid #e5e7eb',
-                backgroundColor: '#fafafa'
-              }}>
-                <h2 style={{ color: '#111', fontSize: '1rem', fontWeight: '600', margin: 0 }}>
-                  {section.title}
-                </h2>
-              </div>
-              {section.articles.map((article, idx) => (
-                <div 
-                  key={article.id}
-                  style={{
-                    padding: '1rem 1.25rem',
-                    borderBottom: idx < section.articles.length - 1 ? '1px solid #e5e7eb' : 'none',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center'
-                  }}
-                >
-                  <span style={{ color: '#5B68F4' }}>{article.title}</span>
-                  <i className="fas fa-chevron-right" style={{ color: '#ccc', fontSize: '0.75rem' }}></i>
-                </div>
-              ))}
-            </div>
-          ))}
-
-          {/* Footer */}
-          <div style={{ 
-            marginTop: '3rem',
-            paddingTop: '2rem',
-            borderTop: '1px solid #e5e7eb',
-            textAlign: 'center'
-          }}>
-            <Link to="/" style={{ color: '#999', fontSize: '0.9rem', textDecoration: 'none' }}>
-              planbeau
-            </Link>
-          </div>
         </div>
-      </div>
-    );
-  }
 
-  // Main collections view - Dark header, white content like Giggster
-  return (
-    <PageLayout variant="fullWidth" pageClassName="help-centre-page">
-      {/* Dark Header */}
-      <div style={{ 
-        backgroundColor: '#1a1a1a',
-        padding: '2.5rem 1.5rem 3rem',
-        textAlign: 'center'
-      }}>
-        <Link to="/" style={{ textDecoration: 'none' }}>
-          <h1 style={{ 
-            color: '#5B68F4', 
-            fontSize: '1.5rem', 
-            fontWeight: '700',
-            marginBottom: '1.5rem'
-          }}>
-            planbeau
-          </h1>
-        </Link>
-        <h2 style={{ 
-          color: 'white', 
-          fontSize: '1.35rem', 
-          fontWeight: '500',
-          marginBottom: '2rem'
-        }}>
-          Advice and answers from the Planbeau Team
-        </h2>
-        
-        {/* Search Bar */}
-        <div style={{ maxWidth: '600px', margin: '0 auto' }}>
-          <div style={{ 
-            position: 'relative',
-            backgroundColor: '#333',
-            borderRadius: '8px'
-          }}>
-            <i className="fas fa-search" style={{ 
-              position: 'absolute',
-              left: '1rem',
-              top: '50%',
-              transform: 'translateY(-50%)',
-              color: '#888'
-            }}></i>
-            <input
-              type="text"
-              placeholder="Search for articles..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '0.875rem 1rem 0.875rem 2.75rem',
-                border: 'none',
-                borderRadius: '8px',
-                fontSize: '0.95rem',
-                outline: 'none',
-                backgroundColor: '#333',
-                color: 'white'
-              }}
-            />
-          </div>
+        {/* Contact Section */}
+        <div style={{ backgroundColor: '#f9fafb', padding: '3rem 1.5rem', textAlign: 'center', borderTop: '1px solid #e5e7eb' }}>
+          <h2 style={{ color: '#111', fontSize: '1.5rem', fontWeight: '600', marginBottom: '0.75rem' }}>Still need help?</h2>
+          <p style={{ color: '#6b7280', marginBottom: '1.5rem' }}>Our support team is here to assist you</p>
+          <a href="mailto:support@planbeau.com" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', color: '#fff', padding: '0.875rem 1.5rem', borderRadius: '8px', textDecoration: 'none', fontWeight: '500' }}>
+            <i className="fas fa-envelope"></i> Contact Support
+          </a>
         </div>
-      </div>
-
-      {/* White Content Area - Collections List */}
-      <div style={{ 
-        maxWidth: '700px', 
-        margin: '0 auto', 
-        padding: '2rem 1.5rem 3rem'
-      }}>
-        {collections.map(collection => (
-          <div 
-            key={collection.id}
-            onClick={() => setSelectedCollection(collection.id)}
-            style={{
-              backgroundColor: 'white',
-              border: '1px solid #e5e7eb',
-              borderRadius: '12px',
-              padding: '1.25rem 1.5rem',
-              marginBottom: '1rem',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '1rem',
-              transition: 'box-shadow 0.2s'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.boxShadow = 'none';
-            }}
-          >
-            <div style={{ 
-              width: '40px', 
-              height: '40px', 
-              border: '1px solid #e5e7eb',
-              borderRadius: '8px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0
-            }}>
-              <i className={`fas ${collection.icon}`} style={{ color: '#666', fontSize: '1rem' }}></i>
-            </div>
-            <div style={{ flex: 1 }}>
-              <h3 style={{ 
-                color: '#5B68F4', 
-                fontSize: '1rem', 
-                fontWeight: '600',
-                marginBottom: '0.25rem'
-              }}>
-                {collection.title}
-              </h3>
-              <p style={{ color: '#999', fontSize: '0.85rem', margin: 0 }}>
-                By Planbeau Support · {collection.articleCount} articles
-              </p>
-            </div>
-          </div>
-        ))}
 
         {/* Footer */}
-        <div style={{ 
-          marginTop: '4rem',
-          textAlign: 'center'
-        }}>
-          <Link to="/" style={{ color: '#ccc', fontSize: '0.9rem', textDecoration: 'none' }}>
-            planbeau
-          </Link>
-        </div>
+        <footer style={{ borderTop: '1px solid #e5e7eb', padding: '2rem 1.5rem', backgroundColor: '#fff' }}>
+          <div style={{ maxWidth: '800px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+            <div>
+              <Link to="/" style={{ color: '#6366f1', fontWeight: '600', textDecoration: 'none', fontSize: '1.1rem' }}>Planbeau</Link>
+              <p style={{ color: '#6b7280', fontSize: '0.85rem', marginTop: '0.25rem' }}>Canada's Event Services Marketplace</p>
+            </div>
+            <div style={{ display: 'flex', gap: '1.5rem', fontSize: '0.9rem' }}>
+              <Link to="/help-centre" style={{ color: '#6b7280', textDecoration: 'none' }}>Help Centre</Link>
+              <Link to="/terms-of-service" style={{ color: '#6b7280', textDecoration: 'none' }}>Terms</Link>
+              <Link to="/privacy-policy" style={{ color: '#6b7280', textDecoration: 'none' }}>Privacy</Link>
+            </div>
+          </div>
+        </footer>
       </div>
     </PageLayout>
   );

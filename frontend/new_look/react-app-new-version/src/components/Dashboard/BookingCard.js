@@ -1,0 +1,491 @@
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+
+/**
+ * Shared BookingCard component for displaying booking information
+ * Used in: ClientBookingsSection, VendorRequestsSection, Dashboard, Reviews
+ * 
+ * Props:
+ * - booking: The booking data object
+ * - isVendorView: Boolean - true if viewing as vendor (shows client info), false for client view (shows vendor info)
+ * - isExpanded: Boolean - whether the card is expanded
+ * - onToggleExpand: Function - callback when expand/collapse is clicked
+ * - showExpandable: Boolean - whether to show expandable details (default true)
+ * - compact: Boolean - whether to show compact version (for dashboard) (default false)
+ * - actions: Object - action handlers { onPayNow, onCancel, onApprove, onDecline, onMessage, onViewInvoice }
+ * - showActions: Boolean - whether to show action buttons (default true)
+ * - customActions: React node - custom action buttons to render instead of default
+ */
+
+// Status configuration helper
+const getDetailedStatus = (booking, isVendorView = false) => {
+  const s = (booking.Status || booking.UnifiedStatus || '').toLowerCase();
+  const isPaid = booking.FullAmountPaid === true || booking.FullAmountPaid === 1;
+  const isDepositPaid = booking.DepositPaid === true || booking.DepositPaid === 1;
+  const eventDate = booking.EventDate ? new Date(booking.EventDate) : null;
+  const isEventPast = eventDate && eventDate < new Date();
+
+  if (s === 'cancelled' || s === 'cancelled_by_client' || s === 'cancelled_by_vendor') {
+    return { label: 'Cancelled', color: '#ef4444', bg: '#fef2f2' };
+  }
+  if (s === 'declined') {
+    return { label: 'Declined', color: '#ef4444', bg: '#fef2f2' };
+  }
+  if (s === 'expired') {
+    return { label: 'Expired', color: '#6b7280', bg: '#f3f4f6' };
+  }
+  if (isEventPast && isPaid) {
+    return { label: 'Completed', color: '#10b981', bg: '#ecfdf5' };
+  }
+  if (isPaid) {
+    return { label: 'Confirmed & Paid', color: '#10b981', bg: '#ecfdf5' };
+  }
+  if (isDepositPaid && !isPaid) {
+    return { label: 'Deposit Paid', color: '#f59e0b', bg: '#fffbeb' };
+  }
+  if (s === 'confirmed' || s === 'approved' || s === 'accepted') {
+    return { label: 'Awaiting Payment', color: '#10b981', bg: '#ecfdf5' };
+  }
+  if (s === 'pending') {
+    return { label: isVendorView ? 'Pending Approval' : 'Awaiting Vendor Approval', color: '#f59e0b', bg: '#fffbeb' };
+  }
+  return { label: s || 'Unknown', color: '#6b7280', bg: '#f3f4f6' };
+};
+
+// Format time helper
+const formatTime = (timeValue) => {
+  if (!timeValue) return null;
+  if (typeof timeValue === 'string') {
+    if (timeValue.includes(':')) {
+      const [hours, minutes] = timeValue.split(':').map(Number);
+      const period = hours >= 12 ? 'PM' : 'AM';
+      const displayHours = hours % 12 || 12;
+      return `${displayHours}:${String(minutes).padStart(2, '0')} ${period}`;
+    }
+    return timeValue;
+  }
+  if (timeValue instanceof Date) {
+    return timeValue.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+  }
+  return null;
+};
+
+// Check if event is past
+const isEventPast = (booking) => {
+  const eventDate = booking.EventDate ? new Date(booking.EventDate) : null;
+  return eventDate && eventDate < new Date();
+};
+
+const BookingCard = ({
+  booking,
+  isVendorView = false,
+  isExpanded = false,
+  onToggleExpand,
+  showExpandable = true,
+  compact = false,
+  actions = {},
+  showActions = true,
+  customActions = null,
+  openActionMenu,
+  setOpenActionMenu
+}) => {
+  const navigate = useNavigate();
+  const [internalExpanded, setInternalExpanded] = useState(false);
+  const [internalMenuOpen, setInternalMenuOpen] = useState(false);
+
+  // Use internal state if external not provided
+  const expanded = onToggleExpand ? isExpanded : internalExpanded;
+  const toggleExpand = onToggleExpand || (() => setInternalExpanded(!internalExpanded));
+  const menuOpen = setOpenActionMenu ? openActionMenu : internalMenuOpen;
+  const setMenuOpen = setOpenActionMenu || setInternalMenuOpen;
+
+  // Parse booking data
+  const eventDate = booking.EventDate ? new Date(booking.EventDate) : null;
+  const s = (booking.Status || booking.UnifiedStatus || '').toLowerCase();
+  const isPaid = booking.FullAmountPaid === true || booking.FullAmountPaid === 1;
+  const isDepositOnly = (booking.DepositPaid === true || booking.DepositPaid === 1) && !isPaid;
+  const statusCfg = getDetailedStatus(booking, isVendorView);
+
+  // Get time string
+  let timeStr = '';
+  if (eventDate) {
+    if (booking.EventTime || booking.StartTime) {
+      const startFormatted = formatTime(booking.EventTime || booking.StartTime);
+      const endFormatted = formatTime(booking.EventEndTime || booking.EndTime);
+      timeStr = startFormatted && endFormatted 
+        ? `${startFormatted} - ${endFormatted}` 
+        : startFormatted || endFormatted;
+    }
+  }
+
+  // Item ID for menu tracking
+  const itemId = booking.RequestID || booking.BookingID;
+
+  // Profile info (vendor or client depending on view)
+  const profileName = isVendorView 
+    ? (booking.ClientName || 'Client')
+    : (booking.VendorName || 'Vendor');
+  const profileInitial = profileName.charAt(0).toUpperCase();
+  const profilePic = isVendorView
+    ? (booking.ClientProfilePic || booking.ClientProfilePicture || booking.profilePicture || booking.ClientAvatar)
+    : (booking.VendorLogoUrl || booking.LogoUrl || booking.logoUrl || booking.VendorProfilePic || booking.VendorLogo);
+  const profileId = isVendorView ? booking.UserID : booking.VendorProfileID;
+
+  // Location
+  const location = booking.Location || booking.EventLocation;
+
+  // Service name
+  const serviceName = booking.ServiceName || 'Service';
+
+  // Format date for compact display
+  const monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const dateMonth = eventDate ? monthNames[eventDate.getMonth()] : '';
+  const dateDay = eventDate ? eventDate.getDate() : '';
+  const dateDayName = eventDate ? dayNames[eventDate.getDay()] : '';
+
+  // Navigate to profile
+  const handleViewProfile = () => {
+    if (isVendorView) {
+      // For vendor view, could navigate to client profile if available
+    } else if (profileId) {
+      navigate(`/host/${profileId}`);
+    }
+  };
+
+  // Render profile avatar
+  const renderAvatar = (size = 32) => {
+    if (profilePic) {
+      return (
+        <img 
+          src={profilePic} 
+          alt={profileName}
+          style={{ width: `${size}px`, height: `${size}px`, borderRadius: '50%', objectFit: 'cover', border: '2px solid #10b981' }}
+        />
+      );
+    }
+    return (
+      <div style={{ 
+        width: `${size}px`, 
+        height: `${size}px`, 
+        borderRadius: '50%', 
+        background: '#10b981', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        color: '#fff', 
+        fontSize: `${size * 0.44}px`, 
+        fontWeight: 600 
+      }}>
+        {profileInitial}
+      </div>
+    );
+  };
+
+  // Render detail row
+  const renderDetailRow = (label, value, options = {}) => {
+    if (!value) return null;
+    const { isLast = false, underline = false, bold = false } = options;
+    return (
+      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '14px 18px', borderBottom: isLast ? 'none' : '1px solid #f3f4f6' }}>
+        <span style={{ fontSize: '14px', color: '#6b7280' }}>{label}</span>
+        <span style={{ 
+          fontSize: '14px', 
+          color: '#111', 
+          fontWeight: bold ? 600 : 500, 
+          textDecoration: underline ? 'underline' : 'none',
+          textAlign: 'right',
+          maxWidth: '60%'
+        }}>{value}</span>
+      </div>
+    );
+  };
+
+  // Compact card (for dashboard)
+  if (compact) {
+    return (
+      <div 
+        style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          padding: '12px 16px', 
+          background: '#fff', 
+          border: '1px solid #e5e5e5', 
+          borderRadius: '6px', 
+          marginBottom: '8px',
+          cursor: 'pointer'
+        }}
+        onClick={() => navigate(isVendorView ? '/dashboard/requests' : '/dashboard/bookings')}
+      >
+        {/* Date Block */}
+        <div style={{ 
+          width: '50px', 
+          textAlign: 'center', 
+          marginRight: '16px',
+          flexShrink: 0
+        }}>
+          <div style={{ fontSize: '12px', color: '#6b7280', fontWeight: 500 }}>{dateMonth}</div>
+          <div style={{ fontSize: '24px', fontWeight: 700, color: '#1f2937', lineHeight: 1 }}>{dateDay}</div>
+          <div style={{ fontSize: '12px', color: '#9ca3af' }}>{dateDayName}</div>
+        </div>
+
+        {/* Info */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: '15px', fontWeight: 600, color: '#10b981', marginBottom: '3px' }}>
+            {profileName}
+          </div>
+          <div style={{ fontSize: '14px', color: '#374151', marginBottom: '3px' }}>{serviceName}</div>
+          {location && (
+            <div style={{ fontSize: '13px', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <i className="fas fa-map-marker-alt" style={{ fontSize: '11px' }}></i>
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{location}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Status Badge */}
+        <div style={{ 
+          display: 'inline-flex', 
+          alignItems: 'center', 
+          padding: '4px 10px', 
+          borderRadius: '999px', 
+          fontSize: '12px', 
+          background: statusCfg.bg, 
+          color: statusCfg.color, 
+          border: `1px solid ${statusCfg.color}`,
+          marginRight: '10px',
+          flexShrink: 0
+        }}>
+          {statusCfg.label}
+        </div>
+
+        {/* Arrow */}
+        <div style={{ color: '#9ca3af', fontSize: '14px', flexShrink: 0 }}>
+          <i className="fas fa-chevron-right"></i>
+        </div>
+      </div>
+    );
+  }
+
+  // Full card with expandable details
+  return (
+    <div style={{ background: '#fff', border: '1px solid #e5e5e5', borderRadius: '6px', marginBottom: '8px', overflow: 'hidden' }}>
+      {/* Compact Header Row */}
+      <div 
+        style={{ display: 'flex', alignItems: 'center', padding: '12px 16px', cursor: showExpandable ? 'pointer' : 'default' }}
+        onClick={showExpandable ? toggleExpand : undefined}
+      >
+        {/* Date Block */}
+        <div style={{ 
+          width: '50px', 
+          textAlign: 'center', 
+          marginRight: '16px',
+          flexShrink: 0
+        }}>
+          <div style={{ fontSize: '12px', color: '#6b7280', fontWeight: 500 }}>{dateMonth}</div>
+          <div style={{ fontSize: '24px', fontWeight: 700, color: '#1f2937', lineHeight: 1 }}>{dateDay}</div>
+          <div style={{ fontSize: '12px', color: '#9ca3af' }}>{dateDayName}</div>
+        </div>
+
+        {/* Info */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div 
+            style={{ fontSize: '15px', fontWeight: 600, color: '#10b981', cursor: !isVendorView ? 'pointer' : 'default', marginBottom: '3px' }}
+            onClick={(e) => { if (!isVendorView) { e.stopPropagation(); handleViewProfile(); } }}
+          >
+            {profileName}
+          </div>
+          <div style={{ fontSize: '14px', color: '#374151', marginBottom: '3px' }}>{serviceName}</div>
+          {location && (
+            <div style={{ fontSize: '13px', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '3px' }}>
+              <i className="fas fa-map-marker-alt" style={{ fontSize: '11px' }}></i>
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{location}</span>
+            </div>
+          )}
+          {timeStr && (
+            <div style={{ fontSize: '13px', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <i className="fas fa-clock" style={{ fontSize: '11px' }}></i>
+              <span>{timeStr}{booking.Timezone || booking.TimeZone ? ` (${booking.Timezone || booking.TimeZone})` : ''}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Status Badge */}
+        <div style={{ 
+          display: 'inline-flex', 
+          alignItems: 'center', 
+          padding: '4px 10px', 
+          borderRadius: '999px', 
+          fontSize: '12px', 
+          background: statusCfg.bg, 
+          color: statusCfg.color, 
+          border: `1px solid ${statusCfg.color}`,
+          marginRight: '10px',
+          flexShrink: 0
+        }}>
+          {statusCfg.label}
+        </div>
+
+        {/* Expand Arrow */}
+        {showExpandable && (
+          <div style={{ color: '#9ca3af', fontSize: '14px', flexShrink: 0 }}>
+            <i className={`fas fa-chevron-${expanded ? 'up' : 'down'}`}></i>
+          </div>
+        )}
+      </div>
+
+      {/* Expanded Details with Animation */}
+      {showExpandable && (
+        <div style={{ 
+          maxHeight: expanded ? '800px' : '0', 
+          overflow: 'hidden', 
+          transition: 'max-height 0.3s ease-in-out'
+        }}>
+          <div style={{ padding: '16px', borderTop: '1px solid #e5e5e5' }}>
+            {/* Details Table */}
+            <div style={{ border: '1px solid #e5e5e5', borderRadius: '6px', overflow: 'hidden', background: '#fff' }}>
+              {/* Profile Row with Avatar */}
+              <div 
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', borderBottom: '1px solid #f3f4f6', cursor: !isVendorView ? 'pointer' : 'default' }}
+                onClick={!isVendorView ? handleViewProfile : undefined}
+              >
+                <span style={{ fontSize: '14px', color: '#6b7280' }}>{isVendorView ? 'Client' : 'Vendor'}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  {renderAvatar(32)}
+                  <span style={{ fontSize: '14px', color: '#111', fontWeight: 500 }}>{profileName}</span>
+                </div>
+              </div>
+
+              {renderDetailRow('Event Name', booking.EventName)}
+              {renderDetailRow('Service', serviceName)}
+              {renderDetailRow('Event Type', booking.EventType)}
+              {renderDetailRow('Attendees', booking.AttendeeCount ? `${booking.AttendeeCount} people` : null)}
+              {renderDetailRow('Location', location)}
+              {renderDetailRow('Date', eventDate ? eventDate.toLocaleDateString() : null, { underline: true })}
+              {renderDetailRow('Time', timeStr ? `${timeStr}${booking.Timezone || booking.TimeZone ? ` (${booking.Timezone || booking.TimeZone})` : ''}` : null)}
+              {renderDetailRow('Total Amount', booking.TotalAmount != null && Number(booking.TotalAmount) > 0 ? `$${Number(booking.TotalAmount).toLocaleString()}` : null, { bold: true })}
+              {renderDetailRow('Requested On', (booking.CreatedAt || booking.RequestedAt) ? new Date(booking.CreatedAt || booking.RequestedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : null)}
+              
+              {/* Special Requests */}
+              {booking.SpecialRequests && (
+                <div style={{ padding: '14px 18px' }}>
+                  <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '6px' }}>Special Requests</div>
+                  <div style={{ fontSize: '14px', color: '#111' }}>{booking.SpecialRequests}</div>
+                </div>
+              )}
+            </div>
+
+            {/* Decline reason */}
+            {s === 'declined' && (booking.DeclineReason || booking.DeclinedReason) && (
+              <div style={{ fontSize: '12px', color: '#ef4444', marginTop: '12px', padding: '10px', background: '#fef2f2', borderRadius: '6px', border: '1px solid #fecaca' }}>
+                <strong>Reason:</strong> {booking.DeclineReason || booking.DeclinedReason}
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            {showActions && (
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', justifyContent: 'flex-end', marginTop: '16px' }}>
+                {customActions || (
+                  <>
+                    {/* Vendor-specific actions */}
+                    {isVendorView && s === 'pending' && actions.onApprove && (
+                      <button 
+                        onClick={() => actions.onApprove(booking)}
+                        style={{ padding: '10px 24px', background: '#10b981', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}
+                      >
+                        Approve
+                      </button>
+                    )}
+                    {isVendorView && s === 'pending' && actions.onDecline && (
+                      <button 
+                        onClick={() => actions.onDecline(booking)}
+                        style={{ padding: '10px 20px', background: '#fff', color: '#ef4444', border: '1px solid #ef4444', borderRadius: '6px', fontSize: '14px', fontWeight: 500, cursor: 'pointer' }}
+                      >
+                        Decline
+                      </button>
+                    )}
+
+                    {/* Client-specific actions */}
+                    {!isVendorView && (s === 'confirmed' || s === 'accepted' || s === 'approved') && !isPaid && actions.onPayNow && (
+                      <button 
+                        onClick={() => actions.onPayNow(booking)}
+                        style={{ padding: '10px 24px', background: '#111', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}
+                      >
+                        {isDepositOnly ? 'Pay Balance' : 'Pay Now'}
+                      </button>
+                    )}
+
+                    {/* Cancel button (both views) */}
+                    {(s === 'pending' || s === 'confirmed' || s === 'accepted' || s === 'approved' || s === 'paid') && 
+                     !isEventPast(booking) && 
+                     !['cancelled', 'cancelled_by_client', 'cancelled_by_vendor', 'completed'].includes(s) && 
+                     actions.onCancel && (
+                      <button 
+                        onClick={() => actions.onCancel(booking)}
+                        style={{ padding: '10px 20px', background: '#fff', color: '#374151', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px', fontWeight: 500, cursor: 'pointer' }}
+                      >
+                        Cancel Booking
+                      </button>
+                    )}
+
+                    {/* Three-dot action menu */}
+                    {(actions.onMessage || actions.onViewInvoice) && (
+                      <div style={{ position: 'relative' }}>
+                        <button
+                          onClick={() => setMenuOpen(menuOpen === itemId ? null : itemId)}
+                          style={{ padding: '8px 12px', borderRadius: '6px', fontSize: '13px', background: 'white', color: '#374151', border: '1px solid #d1d5db', cursor: 'pointer' }}
+                        >
+                          <i className="fas fa-ellipsis-v"></i>
+                        </button>
+                        {menuOpen === itemId && (
+                          <div style={{ 
+                            position: 'absolute', 
+                            right: 0, 
+                            bottom: '100%', 
+                            marginBottom: '4px',
+                            background: 'white', 
+                            border: '1px solid #e5e7eb', 
+                            borderRadius: '8px', 
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.15)', 
+                            zIndex: 1000,
+                            minWidth: '150px',
+                            overflow: 'hidden'
+                          }}>
+                            {actions.onMessage && (
+                              <button
+                                onClick={() => { actions.onMessage(booking); setMenuOpen(null); }}
+                                style={{ width: '100%', padding: '10px 14px', border: 'none', background: 'white', textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: '#374151' }}
+                                onMouseEnter={(e) => e.currentTarget.style.background = '#f3f4f6'}
+                                onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                              >
+                                <i className="fas fa-comment" style={{ color: '#6b7280', width: '16px' }}></i>
+                                Message {isVendorView ? 'Client' : 'Vendor'}
+                              </button>
+                            )}
+                            {isPaid && actions.onViewInvoice && (
+                              <button
+                                onClick={() => { actions.onViewInvoice(booking); setMenuOpen(null); }}
+                                style={{ width: '100%', padding: '10px 14px', border: 'none', background: 'white', textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: '#374151', borderTop: '1px solid #f3f4f6' }}
+                                onMouseEnter={(e) => e.currentTarget.style.background = '#f3f4f6'}
+                                onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                              >
+                                <i className="fas fa-file-invoice" style={{ color: '#6b7280', width: '16px' }}></i>
+                                View Invoice
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default BookingCard;

@@ -50,6 +50,12 @@ function DashboardPage() {
     return currentUser?.isVendor ? 'today' : 'today';
   };
   
+  // Get deep link item ID from URL (for opening specific booking/payment/review)
+  const getDeepLinkItemId = () => {
+    const params = new URLSearchParams(location.search);
+    return params.get('itemId') || null;
+  };
+  
   const [activeSection, setActiveSection] = useState(getInitialSection());
   const [activeTab, setActiveTab] = useState('today'); // 'today' or 'upcoming'
   const [clientData, setClientData] = useState(null);
@@ -59,6 +65,7 @@ function DashboardPage() {
   const [bookingsRefreshKey, setBookingsRefreshKey] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [deepLinkItemId, setDeepLinkItemId] = useState(getDeepLinkItemId());
   const [notificationCounts, setNotificationCounts] = useState({
     pendingBookings: 0,
     unreadMessages: 0,
@@ -154,6 +161,16 @@ function DashboardPage() {
     if (sectionParam) {
       console.log('DashboardPage: URL section changed to:', sectionParam);
       setActiveSection(sectionParam);
+    }
+    
+    // Handle deep link item ID
+    const itemId = params.get('itemId');
+    if (itemId) {
+      setDeepLinkItemId(itemId);
+      // Clear the itemId from URL after capturing it
+      params.delete('itemId');
+      const newUrl = params.toString() ? `${location.pathname}?${params.toString()}` : location.pathname;
+      window.history.replaceState({}, '', newUrl);
     }
   }, [location.search]);
 
@@ -448,13 +465,13 @@ function DashboardPage() {
       case 'dashboard':
         return <ClientDashboardSection data={clientData} loading={loading && !clientData} onSectionChange={handleSectionChange} onPayNow={handlePayNow} />;
       case 'bookings':
-        return <ClientBookingsSection key={bookingsRefreshKey} onPayNow={handlePayNow} />;
+        return <ClientBookingsSection key={bookingsRefreshKey} onPayNow={handlePayNow} deepLinkBookingId={deepLinkItemId} onDeepLinkHandled={() => setDeepLinkItemId(null)} />;
       case 'invoices':
         return <ClientInvoicesSection />;
       case 'favorites':
         return <ClientFavoritesSection />;
       case 'reviews':
-        return <ClientReviewsSection />;
+        return <ClientReviewsSection deepLinkBookingId={deepLinkItemId} onDeepLinkHandled={() => setDeepLinkItemId(null)} />;
       case 'settings':
         return <ClientSettingsSection />;
       case 'payment':
@@ -470,7 +487,7 @@ function DashboardPage() {
       case 'vendor-dashboard':
         return <VendorDashboardSection data={vendorData} loading={loading && !vendorData} onSectionChange={handleSectionChange} />;
       case 'vendor-requests':
-        return <VendorRequestsSection />;
+        return <VendorRequestsSection deepLinkBookingId={deepLinkItemId} onDeepLinkHandled={() => setDeepLinkItemId(null)} />;
       case 'vendor-invoices':
         return <VendorInvoicesSection />;
       case 'vendor-business-profile':

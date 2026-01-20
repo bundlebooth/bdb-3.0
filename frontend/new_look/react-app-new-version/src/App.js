@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import ScrollToTop from './components/ScrollToTop';
 import IndexPage from './pages/IndexPage';
 import LandingPage from './pages/LandingPage';
@@ -14,6 +14,7 @@ import PaymentSuccessPage from './pages/PaymentSuccessPage';
 import TermsOfServicePage from './pages/TermsOfServicePage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import HelpCentrePage from './pages/HelpCentrePage';
+import HelpCentreArticlePage from './pages/HelpCentreArticlePage';
 import ForumPage from './pages/ForumPage';
 import ForumPostPage from './pages/ForumPostPage';
 import BrowsePage from './pages/BrowsePage';
@@ -60,6 +61,47 @@ function HomeRoute() {
   return currentUser ? <IndexPage /> : <LandingPage />;
 }
 
+// Protected deep link component - redirects to login if not authenticated, then to the target
+function ProtectedDeepLink({ section }) {
+  const { currentUser, loading } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+  
+  useEffect(() => {
+    if (loading) return;
+    
+    if (!currentUser) {
+      // Store the intended destination for after login
+      const returnUrl = location.pathname + location.search;
+      sessionStorage.setItem('postLoginRedirect', returnUrl);
+      // Redirect to landing page (which has login)
+      navigate('/', { state: { showLogin: true, returnUrl } });
+    } else {
+      // User is logged in, redirect to dashboard with the appropriate section and item
+      const pathParts = location.pathname.split('/');
+      const itemId = pathParts[pathParts.length - 1];
+      
+      // Build the dashboard URL with section and item ID
+      let dashboardUrl = `/dashboard?section=${section}`;
+      if (itemId && itemId !== section) {
+        dashboardUrl += `&itemId=${itemId}`;
+      }
+      
+      navigate(dashboardUrl, { replace: true });
+    }
+  }, [currentUser, loading, location, navigate, section]);
+  
+  // Show loading while checking auth or redirecting
+  return (
+    <div id="app-loading-overlay">
+      <div className="loading-logo">
+        <img src="/images/logo.png" alt="Planbeau" style={{ height: '160px', width: 'auto' }} />
+      </div>
+      <div className="loading-spinner"></div>
+    </div>
+  );
+}
+
 function App() {
   const [appLoading, setAppLoading] = useState(true);
 
@@ -103,6 +145,13 @@ function App() {
           <Route path="/terms-of-service" element={<TermsOfServicePage />} />
           <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
           <Route path="/help-centre" element={<HelpCentrePage />} />
+          <Route path="/help-centre/category/:categorySlug" element={<HelpCentrePage />} />
+          <Route path="/help-centre/category/:categorySlug/article/:articleId" element={<HelpCentrePage />} />
+          <Route path="/help-centre/article/:articleSlug" element={<HelpCentreArticlePage />} />
+          {/* Deep link routes for bookings/payments/reviews */}
+          <Route path="/dashboard/booking/:bookingId" element={<ProtectedDeepLink section="bookings" />} />
+          <Route path="/dashboard/payment/:bookingId" element={<ProtectedDeepLink section="payment" />} />
+          <Route path="/dashboard/review/:bookingId" element={<ProtectedDeepLink section="reviews" />} />
           <Route path="/forum" element={<ForumPage />} />
           <Route path="/forum/:slug" element={<ForumPage />} />
           <Route path="/forum/post/:slug" element={<ForumPostPage />} />

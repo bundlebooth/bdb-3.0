@@ -75,7 +75,7 @@ router.post('/announcements/:id/dismiss', async (req, res) => {
   }
 });
 
-// Get FAQs
+// Get FAQs (legacy endpoint)
 router.get('/faqs', async (req, res) => {
   try {
     const pool = await poolPromise;
@@ -89,6 +89,389 @@ router.get('/faqs', async (req, res) => {
   } catch (error) {
     console.error('Error fetching FAQs:', error);
     res.json({ faqs: DEFAULT_FAQS });
+  }
+});
+
+// Track FAQ view
+router.post('/faqs/:id/view', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pool = await poolPromise;
+    
+    await pool.request()
+      .input('FAQID', sql.Int, parseInt(id))
+      .query(`UPDATE [admin].[FAQs] SET ViewCount = ISNULL(ViewCount, 0) + 1 WHERE FAQID = @FAQID`);
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error tracking FAQ view:', error);
+    res.json({ success: false });
+  }
+});
+
+// Submit FAQ feedback (emoji: sad, neutral, happy)
+router.post('/faqs/:id/feedback', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rating } = req.body; // 'sad', 'neutral', 'happy'
+    const pool = await poolPromise;
+    
+    let updateField = '';
+    if (rating === 'happy') {
+      updateField = 'HelpfulCount = ISNULL(HelpfulCount, 0) + 1';
+    } else if (rating === 'neutral') {
+      updateField = 'NeutralCount = ISNULL(NeutralCount, 0) + 1';
+    } else if (rating === 'sad') {
+      updateField = 'NotHelpfulCount = ISNULL(NotHelpfulCount, 0) + 1';
+    } else {
+      return res.status(400).json({ error: 'Invalid rating' });
+    }
+    
+    await pool.request()
+      .input('FAQID', sql.Int, parseInt(id))
+      .query(`UPDATE [admin].[FAQs] SET ${updateField} WHERE FAQID = @FAQID`);
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error submitting FAQ feedback:', error);
+    res.status(500).json({ error: 'Failed to submit feedback' });
+  }
+});
+
+// ==================== HELP CENTRE ROUTES ====================
+
+// Get FAQ categories with article counts
+router.get('/help-centre/categories', async (req, res) => {
+  try {
+    const pool = await poolPromise;
+    
+    // Try stored procedure first, fallback to direct query
+    try {
+      const result = await pool.request().execute('admin.sp_GetFAQCategories');
+      res.json({ categories: result.recordset || [] });
+    } catch (spError) {
+      // Fallback: direct query if SP doesn't exist
+      const result = await pool.request().query(`
+        SELECT 
+          c.CategoryID,
+          c.Name,
+          c.Slug,
+          c.Description,
+          c.Icon,
+          c.DisplayOrder,
+          c.IsActive,
+          (SELECT COUNT(*) FROM [admin].[FAQs] f WHERE f.CategoryID = c.CategoryID AND f.IsActive = 1) AS ArticleCount
+        FROM [admin].[FAQCategories] c
+        WHERE c.IsActive = 1
+        ORDER BY c.DisplayOrder, c.Name
+      `);
+      res.json({ categories: result.recordset || [] });
+    }
+  } catch (error) {
+    console.error('Error fetching FAQ categories:', error);
+    // Return default categories if table doesn't exist
+    res.json({ categories: [
+      { CategoryID: 1, Name: 'Getting Started', Slug: 'getting-started', Icon: 'fa-rocket', ArticleCount: 5 },
+      { CategoryID: 2, Name: 'Account & Profile', Slug: 'account-profile', Icon: 'fa-user-circle', ArticleCount: 6 },
+      { CategoryID: 3, Name: 'Booking & Reservations', Slug: 'booking-reservations', Icon: 'fa-calendar-check', ArticleCount: 7 },
+      { CategoryID: 4, Name: 'Payments & Billing', Slug: 'payments-billing', Icon: 'fa-credit-card', ArticleCount: 7 },
+      { CategoryID: 5, Name: 'For Vendors', Slug: 'for-vendors', Icon: 'fa-store', ArticleCount: 10 },
+      { CategoryID: 6, Name: 'For Clients', Slug: 'for-clients', Icon: 'fa-users', ArticleCount: 5 }
+    ]});
+  }
+});
+
+// Get FAQs by category
+router.get('/help-centre/faqs', async (req, res) => {
+  try {
+    const { category, search } = req.query;
+    const pool = await poolPromise;
+    
+    let query = `
+      SELECT 
+        f.FAQID,
+        f.Question,
+        f.Answer,
+        f.Category,
+        f.CategoryID,
+        f.DisplayOrder,
+        f.ViewCount,
+        f.HelpfulCount,
+        f.NotHelpfulCount,
+        c.Name AS CategoryName,
+        c.Slug AS CategorySlug,
+        c.Icon AS CategoryIcon
+      FROM [admin].[FAQs] f
+      LEFT JOIN [admin].[FAQCategories] c ON f.CategoryID = c.CategoryID
+      WHERE f.IsActive = 1
+    `;
+    
+    const request = pool.request();
+    
+    if (category) {
+      query += ` AND c.Slug = @CategorySlug`;
+      request.input('CategorySlug', sql.NVarChar(100), category);
+    }
+    
+    if (search) {
+      query += ` AND (f.Question LIKE @Search OR f.Answer LIKE @Search)`;
+      request.input('Search', sql.NVarChar(200), `%${search}%`);
+    }
+    
+    query += ` ORDER BY f.CategoryID, f.DisplayOrder, f.FAQID`;
+    
+    const result = await request.query(query);
+    res.json({ faqs: result.recordset || [] });
+  } catch (error) {
+    console.error('Error fetching FAQs by category:', error);
+    res.json({ faqs: DEFAULT_FAQS });
+  }
+});
+
+// Get single FAQ by ID
+router.get('/help-centre/faqs/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pool = await poolPromise;
+    
+    const result = await pool.request()
+      .input('FAQID', sql.Int, parseInt(id))
+      .query(`
+        SELECT 
+          f.FAQID,
+          f.Question,
+          f.Answer,
+          f.Category,
+          f.CategoryID,
+          f.ViewCount,
+          f.HelpfulCount,
+          f.NotHelpfulCount,
+          c.Name AS CategoryName,
+          c.Slug AS CategorySlug
+        FROM [admin].[FAQs] f
+        LEFT JOIN [admin].[FAQCategories] c ON f.CategoryID = c.CategoryID
+        WHERE f.FAQID = @FAQID AND f.IsActive = 1
+      `);
+    
+    if (result.recordset.length === 0) {
+      return res.status(404).json({ error: 'FAQ not found' });
+    }
+    
+    // Increment view count
+    await pool.request()
+      .input('FAQID', sql.Int, parseInt(id))
+      .query(`UPDATE [admin].[FAQs] SET ViewCount = ISNULL(ViewCount, 0) + 1 WHERE FAQID = @FAQID`);
+    
+    res.json({ faq: result.recordset[0] });
+  } catch (error) {
+    console.error('Error fetching FAQ:', error);
+    res.status(500).json({ error: 'Failed to fetch FAQ' });
+  }
+});
+
+// Get articles
+router.get('/help-centre/articles', async (req, res) => {
+  try {
+    const { type, category, featured } = req.query;
+    const pool = await poolPromise;
+    
+    let query = `
+      SELECT 
+        a.ArticleID,
+        a.Title,
+        a.Slug,
+        a.Summary,
+        a.Content,
+        a.CategoryID,
+        a.ArticleType,
+        a.FeaturedImage,
+        a.Author,
+        a.Tags,
+        a.DisplayOrder,
+        a.IsFeatured,
+        a.ViewCount,
+        a.PublishedAt,
+        c.Name AS CategoryName,
+        c.Slug AS CategorySlug
+      FROM [admin].[Articles] a
+      LEFT JOIN [admin].[FAQCategories] c ON a.CategoryID = c.CategoryID
+      WHERE a.IsActive = 1
+    `;
+    
+    const request = pool.request();
+    
+    if (type) {
+      query += ` AND a.ArticleType = @ArticleType`;
+      request.input('ArticleType', sql.NVarChar(50), type);
+    }
+    
+    if (category) {
+      query += ` AND a.CategoryID = @CategoryID`;
+      request.input('CategoryID', sql.Int, parseInt(category));
+    }
+    
+    if (featured === 'true') {
+      query += ` AND a.IsFeatured = 1`;
+    }
+    
+    query += ` ORDER BY a.IsFeatured DESC, a.DisplayOrder, a.PublishedAt DESC`;
+    
+    const result = await request.query(query);
+    res.json({ articles: result.recordset || [] });
+  } catch (error) {
+    console.error('Error fetching articles:', error);
+    res.json({ articles: [] });
+  }
+});
+
+// Get single article by slug
+router.get('/help-centre/articles/:slug', async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const pool = await poolPromise;
+    
+    const result = await pool.request()
+      .input('Slug', sql.NVarChar(255), slug)
+      .query(`
+        SELECT 
+          a.ArticleID,
+          a.Title,
+          a.Slug,
+          a.Summary,
+          a.Content,
+          a.CategoryID,
+          a.ArticleType,
+          a.FeaturedImage,
+          a.Author,
+          a.Tags,
+          a.IsFeatured,
+          a.ViewCount,
+          a.HelpfulCount,
+          a.NotHelpfulCount,
+          a.PublishedAt,
+          c.Name AS CategoryName,
+          c.Slug AS CategorySlug
+        FROM [admin].[Articles] a
+        LEFT JOIN [admin].[FAQCategories] c ON a.CategoryID = c.CategoryID
+        WHERE a.Slug = @Slug AND a.IsActive = 1
+      `);
+    
+    if (result.recordset.length === 0) {
+      return res.status(404).json({ error: 'Article not found' });
+    }
+    
+    // Increment view count
+    await pool.request()
+      .input('Slug', sql.NVarChar(255), slug)
+      .query(`UPDATE [admin].[Articles] SET ViewCount = ISNULL(ViewCount, 0) + 1 WHERE Slug = @Slug`);
+    
+    // Get related articles
+    const article = result.recordset[0];
+    const relatedResult = await pool.request()
+      .input('ArticleID', sql.Int, article.ArticleID)
+      .input('CategoryID', sql.Int, article.CategoryID)
+      .input('ArticleType', sql.NVarChar(50), article.ArticleType)
+      .query(`
+        SELECT TOP 3
+          ArticleID, Title, Slug, Summary, FeaturedImage, Author, PublishedAt
+        FROM [admin].[Articles]
+        WHERE IsActive = 1 
+          AND ArticleID != @ArticleID
+          AND (CategoryID = @CategoryID OR ArticleType = @ArticleType)
+        ORDER BY IsFeatured DESC, PublishedAt DESC
+      `);
+    
+    res.json({ 
+      article: article,
+      relatedArticles: relatedResult.recordset || []
+    });
+  } catch (error) {
+    console.error('Error fetching article:', error);
+    res.status(500).json({ error: 'Failed to fetch article' });
+  }
+});
+
+// Submit article/FAQ feedback (helpful/not helpful)
+router.post('/help-centre/feedback', async (req, res) => {
+  try {
+    const { type, id, helpful, userId } = req.body;
+    const pool = await poolPromise;
+    
+    if (type === 'faq') {
+      const column = helpful ? 'HelpfulCount' : 'NotHelpfulCount';
+      await pool.request()
+        .input('FAQID', sql.Int, parseInt(id))
+        .query(`UPDATE [admin].[FAQs] SET ${column} = ISNULL(${column}, 0) + 1 WHERE FAQID = @FAQID`);
+    } else if (type === 'article') {
+      const column = helpful ? 'HelpfulCount' : 'NotHelpfulCount';
+      await pool.request()
+        .input('ArticleID', sql.Int, parseInt(id))
+        .query(`UPDATE [admin].[Articles] SET ${column} = ISNULL(${column}, 0) + 1 WHERE ArticleID = @ArticleID`);
+    }
+    
+    res.json({ success: true, message: 'Feedback submitted' });
+  } catch (error) {
+    console.error('Error submitting feedback:', error);
+    res.status(500).json({ error: 'Failed to submit feedback' });
+  }
+});
+
+// Search FAQs and articles
+router.get('/help-centre/search', async (req, res) => {
+  try {
+    const { q } = req.query;
+    if (!q || q.length < 2) {
+      return res.json({ faqs: [], articles: [] });
+    }
+    
+    const pool = await poolPromise;
+    const searchTerm = `%${q}%`;
+    
+    // Search FAQs
+    const faqResult = await pool.request()
+      .input('Search', sql.NVarChar(200), searchTerm)
+      .query(`
+        SELECT TOP 10
+          f.FAQID,
+          f.Question,
+          f.Answer,
+          f.Category,
+          c.Name AS CategoryName,
+          c.Slug AS CategorySlug
+        FROM [admin].[FAQs] f
+        LEFT JOIN [admin].[FAQCategories] c ON f.CategoryID = c.CategoryID
+        WHERE f.IsActive = 1 AND (f.Question LIKE @Search OR f.Answer LIKE @Search)
+        ORDER BY 
+          CASE WHEN f.Question LIKE @Search THEN 0 ELSE 1 END,
+          f.DisplayOrder
+      `);
+    
+    // Search articles
+    const articleResult = await pool.request()
+      .input('Search', sql.NVarChar(200), searchTerm)
+      .query(`
+        SELECT TOP 5
+          a.ArticleID,
+          a.Title,
+          a.Slug,
+          a.Summary,
+          a.ArticleType,
+          c.Name AS CategoryName
+        FROM [admin].[Articles] a
+        LEFT JOIN [admin].[FAQCategories] c ON a.CategoryID = c.CategoryID
+        WHERE a.IsActive = 1 AND (a.Title LIKE @Search OR a.Summary LIKE @Search OR a.Content LIKE @Search)
+        ORDER BY 
+          CASE WHEN a.Title LIKE @Search THEN 0 ELSE 1 END,
+          a.IsFeatured DESC
+      `);
+    
+    res.json({ 
+      faqs: faqResult.recordset || [],
+      articles: articleResult.recordset || []
+    });
+  } catch (error) {
+    console.error('Error searching help centre:', error);
+    res.json({ faqs: [], articles: [] });
   }
 });
 

@@ -83,6 +83,7 @@ SELECT
     u.Name AS ClientName,
     u.Email AS ClientEmail,
     u.Phone AS ClientPhone,
+    u.ProfileImageURL AS ClientProfilePic,
     CAST(u.UserID AS NVARCHAR(50)) AS ClientPublicId,
     -- Vendor info
     vp.BusinessName AS VendorName,

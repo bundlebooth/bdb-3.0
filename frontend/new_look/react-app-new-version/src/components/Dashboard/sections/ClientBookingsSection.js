@@ -1,13 +1,24 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import { showBanner } from '../../../utils/banners';
 import { apiGet, apiPost } from '../../../utils/api';
 import { buildInvoiceUrl } from '../../../utils/urlHelpers';
 import { getBookingStatusConfig } from '../../../utils/bookingStatus';
 import BookingDetailsModal from '../BookingDetailsModal';
+import BookingCard from '../BookingCard';
 
-function ClientBookingsSection({ onPayNow, onOpenChat }) {
+function ClientBookingsSection({ onPayNow, onOpenChat, deepLinkBookingId, onDeepLinkHandled }) {
+  const navigate = useNavigate();
   const { currentUser } = useAuth();
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  // Handle window resize for responsive layout
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   const [activeTab, setActiveTab] = useState('all');
   const [allBookings, setAllBookings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -15,6 +26,7 @@ function ClientBookingsSection({ onPayNow, onOpenChat }) {
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [sortBy, setSortBy] = useState('eventDate'); // 'eventDate', 'requestedOn', 'vendor'
   const [openActionMenu, setOpenActionMenu] = useState(null); // Track which booking's action menu is open
+  const [expandedCards, setExpandedCards] = useState({}); // Track which cards are expanded
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancellingBooking, setCancellingBooking] = useState(null);
   const [cancelReason, setCancelReason] = useState('');
@@ -52,6 +64,41 @@ function ClientBookingsSection({ onPayNow, onOpenChat }) {
   useEffect(() => {
     loadBookings();
   }, [loadBookings]);
+
+  // Handle deep link - auto-open booking details when deepLinkBookingId is provided
+  useEffect(() => {
+    if (deepLinkBookingId && allBookings.length > 0 && !loading) {
+      // Find the booking by ID (could be BookingID or RequestID)
+      const booking = allBookings.find(b => 
+        String(b.BookingID) === String(deepLinkBookingId) || 
+        String(b.RequestID) === String(deepLinkBookingId) ||
+        String(b.bookingPublicId) === String(deepLinkBookingId)
+      );
+      
+      if (booking) {
+        // Auto-expand the booking card
+        const itemId = booking.RequestID || booking.BookingID;
+        setExpandedCards(prev => ({ ...prev, [itemId]: true }));
+        
+        // Open the details modal
+        setSelectedBooking(booking);
+        setShowDetailsModal(true);
+        
+        // Scroll to the booking card
+        setTimeout(() => {
+          const element = document.getElementById(`booking-card-${itemId}`);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 100);
+      }
+      
+      // Clear the deep link after handling
+      if (onDeepLinkHandled) {
+        onDeepLinkHandled();
+      }
+    }
+  }, [deepLinkBookingId, allBookings, loading, onDeepLinkHandled]);
 
   // Sort bookings based on selected sort option
   const sortBookings = (bookings) => {
@@ -255,188 +302,28 @@ function ClientBookingsSection({ onPayNow, onOpenChat }) {
   };
 
   const renderBookingItem = (booking) => {
-    const isPaid = booking.FullAmountPaid === true || booking.FullAmountPaid === 1 || 
-                   booking.PaymentStatus === 'paid' || booking.PaymentStatus === 'completed' ||
-                   booking._status === 'paid';
-    const isDepositOnly = !isPaid && (booking.DepositPaid === true || booking.DepositPaid === 1);
-    const s = booking._status || 'pending';
-    
-    // Safely parse date - check for valid date
-    const rawDate = booking.EventDate || booking.eventDate;
-    const eventDate = rawDate ? new Date(rawDate) : null;
-    const isValidDate = eventDate && !isNaN(eventDate.getTime());
-    
-    let month = 'TBD', day = '--', weekday = '', timeStr = 'Time TBD';
-    if (isValidDate) {
-      month = eventDate.toLocaleDateString('en-US', { month: 'short' });
-      day = eventDate.getDate();
-      weekday = eventDate.toLocaleDateString('en-US', { weekday: 'short' });
-      
-      // Use StartTime/EndTime if available, otherwise fallback to EventDate
-      const formatTime = (timeVal) => {
-        if (!timeVal) return '';
-        const timeStrVal = typeof timeVal === 'string' ? timeVal : timeVal.toString();
-        const parts = timeStrVal.split(':');
-        const hours = parseInt(parts[0], 10) || 0;
-        const minutes = parseInt(parts[1], 10) || 0;
-        const hour12 = hours % 12 || 12;
-        const ampm = hours >= 12 ? 'PM' : 'AM';
-        return `${hour12}:${String(minutes).padStart(2, '0')} ${ampm}`;
-      };
-      
-      if (booking.StartTime || booking.EndTime) {
-        const startFormatted = formatTime(booking.StartTime);
-        const endFormatted = formatTime(booking.EndTime);
-        timeStr = startFormatted && endFormatted 
-          ? `${startFormatted} - ${endFormatted}` 
-          : startFormatted || endFormatted;
-      } else {
-        const startTime = eventDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-        const endDateTime = new Date(eventDate.getTime() + 90 * 60000);
-        const endTime = endDateTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-        timeStr = `${startTime} - ${endTime}`;
-      }
-    }
-
-    // Get detailed status
-    const statusCfg = getDetailedStatus(booking);
-
-    // Use RequestID for approved requests, BookingID for confirmed bookings
     const itemId = booking.RequestID || booking.BookingID;
-    const isMenuOpen = openActionMenu === itemId;
-
+    const isExpanded = expandedCards[itemId] || false;
+    
     return (
-      <div key={itemId} className="booking-item" style={{ padding: '10px 12px', marginBottom: '8px' }}>
-        <div className="booking-date-section" style={{ minWidth: '40px' }}>
-          <div className="booking-month">{month}</div>
-          <div className="booking-day">{day}</div>
-          <div className="booking-weekday">{weekday}</div>
-        </div>
-        <div className="booking-info" style={{ gap: '2px' }}>
-          <div className="booking-client" style={{ gap: '6px', marginBottom: 0 }}>
-            <span className="booking-client-name" style={{ fontSize: '14px', fontWeight: 700, color: '#111827' }}>
-              {booking.VendorName || 'Vendor'}
-            </span>
-          </div>
-          <div className="booking-service-row">
-            <span className="booking-service">{booking.ServiceName || 'Booking'}</span>
-          </div>
-          {booking.Location && (
-            <div className="booking-location-row">
-              <i className="fas fa-map-marker-alt" style={{ color: '#6b7280', fontSize: '12px' }}></i>
-              <span className="booking-location" style={{ maxWidth: '520px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {booking.Location}
-              </span>
-            </div>
-          )}
-          {eventDate && (
-            <div className="booking-date-row">
-              <i className="fas fa-calendar-alt" style={{ color: '#6b7280', fontSize: '12px' }}></i>
-              <span className="booking-date">{eventDate.toLocaleDateString()}</span>
-            </div>
-          )}
-          {timeStr && (
-            <div className="booking-time-row">
-              <i className="fas fa-clock" style={{ color: '#6b7280', fontSize: '12px' }}></i>
-              <span className="booking-time">{timeStr}{booking.Timezone ? ` (${booking.Timezone})` : ''}</span>
-            </div>
-          )}
-          {booking.TotalAmount != null && booking.TotalAmount !== '' && Number(booking.TotalAmount) > 0 && (
-            <div className="booking-price-row">
-              <i className="fas fa-dollar-sign" style={{ color: '#6b7280', fontSize: '12px' }}></i>
-              <span className="booking-price">${Number(booking.TotalAmount).toLocaleString()}</span>
-            </div>
-          )}
-        </div>
-        <div className="booking-actions" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px', paddingRight: '10px' }}>
-          <div className="status-col" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-            <div className="request-status-badge" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '999px', fontSize: '12px', background: statusCfg.bg, color: statusCfg.color, border: `1px ${statusCfg.borderStyle || 'solid'} ${statusCfg.color}` }}>
-              <i className={`fas ${statusCfg.icon}`} style={{ fontSize: '11px' }}></i>
-              <span>{statusCfg.label}</span>
-            </div>
-            {s === 'declined' && booking.DeclineReason && (
-              <div style={{ fontSize: '11px', color: '#ef4444', textAlign: 'right', maxWidth: '180px' }}>
-                Reason: {booking.DeclineReason}
-              </div>
-            )}
-          </div>
-          <div className="actions-row">
-            {(s === 'confirmed' || s === 'accepted' || s === 'approved') && !isPaid && (
-              <span 
-                className="booking-action-btn booking-action-btn-primary"
-                onClick={() => handlePayNow(booking)}
-              >
-                <i className="fas fa-credit-card"></i>
-                {isDepositOnly ? 'Pay Balance' : 'Pay Now'}
-              </span>
-            )}
-            {/* Cancel Booking button - only show if event hasn't passed and not already cancelled/completed */}
-            {(s === 'pending' || s === 'confirmed' || s === 'accepted' || s === 'approved' || s === 'paid') && 
-             !isEventPast(booking) && 
-             !['cancelled', 'cancelled_by_client', 'cancelled_by_vendor', 'completed'].includes(s) && (
-              <span 
-                className="booking-action-btn booking-action-btn-danger"
-                onClick={() => handleCancelBooking(booking)}
-              >
-                <i className="fas fa-times"></i>
-                Cancel
-              </span>
-            )}
-            <span 
-              className="booking-action-btn booking-action-btn-secondary"
-              onClick={() => handleShowDetails(booking)}
-            >
-              <i className="fas fa-info-circle"></i>
-              Details
-            </span>
-            {/* Three-dot action menu */}
-            <div style={{ position: 'relative' }}>
-              <button
-                onClick={() => setOpenActionMenu(isMenuOpen ? null : itemId)}
-                style={{ padding: '6px 10px', borderRadius: '6px', fontSize: '14px', background: 'white', color: '#374151', border: '1px solid #d1d5db', cursor: 'pointer' }}
-              >
-                <i className="fas fa-ellipsis-v"></i>
-              </button>
-              {isMenuOpen && (
-                <div style={{ 
-                  position: 'absolute', 
-                  right: 0, 
-                  top: '100%', 
-                  marginTop: '4px',
-                  background: 'white', 
-                  border: '1px solid #e5e7eb', 
-                  borderRadius: '8px', 
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)', 
-                  zIndex: 100,
-                  minWidth: '150px',
-                  overflow: 'hidden'
-                }}>
-                  <button
-                    onClick={() => { handleOpenChat(booking); setOpenActionMenu(null); }}
-                    style={{ width: '100%', padding: '10px 14px', border: 'none', background: 'white', textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: '#374151' }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = '#f3f4f6'}
-                    onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
-                  >
-                    <i className="fas fa-comment" style={{ color: '#6b7280', width: '16px' }}></i>
-                    Message Vendor
-                  </button>
-                  {isPaid && (
-                    <button
-                      onClick={() => { handleViewInvoice(booking); setOpenActionMenu(null); }}
-                      style={{ width: '100%', padding: '10px 14px', border: 'none', background: 'white', textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: '#374151', borderTop: '1px solid #f3f4f6' }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = '#f3f4f6'}
-                      onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
-                    >
-                      <i className="fas fa-file-invoice" style={{ color: '#6b7280', width: '16px' }}></i>
-                      View Invoice
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
+      <BookingCard
+        key={itemId}
+        booking={booking}
+        isVendorView={false}
+        isExpanded={isExpanded}
+        onToggleExpand={() => setExpandedCards(prev => ({ ...prev, [itemId]: !prev[itemId] }))}
+        showExpandable={true}
+        compact={false}
+        actions={{
+          onPayNow: handlePayNow,
+          onCancel: handleCancelBooking,
+          onMessage: handleOpenChat,
+          onViewInvoice: handleViewInvoice
+        }}
+        showActions={true}
+        openActionMenu={openActionMenu}
+        setOpenActionMenu={setOpenActionMenu}
+      />
     );
   };
 
