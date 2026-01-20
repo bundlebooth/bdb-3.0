@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL, GOOGLE_MAPS_API_KEY } from '../config';
 import { apiGet, apiPost, apiDelete } from '../utils/api';
 import { PageLayout } from '../components/PageWrapper';
+import Header from '../components/Header';
 import VendorSection from '../components/VendorSection';
 import VendorCard from '../components/VendorCard';
 import Footer from '../components/Footer';
@@ -270,104 +271,113 @@ function LandingPage() {
 
   return (
     <PageLayout variant="fullWidth" pageClassName="landing-page">
-      {/* Header */}
-      <header className={`landing-header ${isScrolled ? 'scrolled' : ''}`}>
-        <div className="landing-header-content">
-          <div className="landing-logo" onClick={() => navigate('/')}>
-            <img src="/images/logo.png" alt="Planbeau" className="header-logo-img" />
-          </div>
-          <nav className="landing-nav">
-            <a href="/become-a-vendor" className="nav-link">Become a Vendor</a>
-            {currentUser ? (
-              <button className="nav-btn login-btn" onClick={() => { window.scrollTo(0, 0); navigate('/explore'); }}>
-                Go to App
-              </button>
-            ) : (
-              <button className="nav-btn login-btn" onClick={() => { window.scrollTo(0, 0); navigate('/explore'); }}>
-                Log in
-              </button>
-            )}
-          </nav>
-        </div>
-      </header>
+      {/* Standard Header */}
+      <Header 
+        onSearch={() => navigate('/explore')} 
+        onProfileClick={() => setProfileModalOpen(true)}
+        onWishlistClick={() => navigate('/explore')}
+        onChatClick={() => navigate('/explore')}
+        onNotificationsClick={() => {}}
+      />
+      <ProfileModal isOpen={profileModalOpen} onClose={() => setProfileModalOpen(false)} />
 
-      {/* Hero Section - Full Screen Slideshow */}
-      <section className="hero-section-fullscreen">
-        {/* Background Slideshow */}
-        <div className="hero-slideshow">
-          {heroSlides.map((slide, index) => (
-            <div 
-              key={index}
-              className={`hero-slide ${index === activeSlide ? 'active' : ''}`}
-            >
-              <img 
-                src={slide.image} 
-                alt={slide.label}
-              />
+      {/* Hero Section - Tagvenue style with overlapping image */}
+      <section className="landing-hero">
+        <div className="landing-hero-container">
+          {/* Hero Image - positioned on right, extends below search bar */}
+          <div className="landing-hero-images">
+            <div className="landing-hero-slideshow">
+              {heroSlides.map((slide, index) => (
+                <div 
+                  key={index}
+                  className={`landing-hero-slide ${index === activeSlide ? 'active' : ''}`}
+                >
+                  <img src={slide.image} alt={slide.label} />
+                </div>
+              ))}
             </div>
-          ))}
-          <div className="hero-overlay"></div>
-        </div>
-        
-        <div className="hero-center-content">
-          {/* Clickable Icons */}
-          <div className="hero-icons">
-            {heroSlides.map((slide, index) => (
-              <button
-                key={index}
-                className={`hero-icon-btn ${index === activeSlide ? 'active' : ''}`}
-                onClick={() => setActiveSlide(index)}
-                title={slide.label}
-              >
-                <i className={`fas ${slide.icon}`}></i>
-              </button>
-            ))}
           </div>
           
-          {/* Fixed Title - doesn't change with slides to prevent layout shift */}
-          <h1>Celebrate<br/>in venues big and small</h1>
-          
-          {/* Search Bar - Image 1 Style (Where + When + Search) */}
-          <form className="hero-search-bar-styled" onSubmit={handleSearch}>
-            <div className="search-field-group">
-              <label>Where?</label>
-              <div className="field-input-wrapper">
-                <input 
-                  ref={locationInputRef}
-                  type="text" 
-                  placeholder="Toronto, Ontario"
-                  value={searchLocation}
-                  onChange={(e) => setSearchLocation(e.target.value)}
-                />
-                <i className="fas fa-crosshairs location-icon"></i>
+          {/* Text Content and Search Bar - positioned on left */}
+          <div className="landing-hero-content">
+            <div className="landing-hero-badge">
+              <span>Over 500 vendors</span>
+              <span className="badge-dot">·</span>
+              <span>Trusted by 10K+ customers</span>
+            </div>
+            
+            <h1 className="landing-hero-title">
+              Find and book venues<br/>
+              for any event<br/>
+              imaginable
+            </h1>
+            
+            {/* Search Bar - inside content, extends into image area */}
+            <form className="landing-search-bar" onSubmit={handleSearch}>
+              <div className="landing-search-field">
+                <svg className="landing-search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="11" cy="11" r="8"/>
+                  <path d="M21 21l-4.35-4.35"/>
+                </svg>
+                <div className="landing-search-field-inner">
+                  <span className="landing-search-label">EVENT TYPE</span>
+                  <select 
+                    value={eventType}
+                    onChange={(e) => setEventType(e.target.value)}
+                    className="landing-search-select"
+                  >
+                    <option value="">What are you planning?</option>
+                    {eventTypes.map(type => (
+                      <option key={type} value={type}>{type}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
-            </div>
-            <div className="search-divider-line"></div>
-            <div className="search-field-group">
-              <label>When?</label>
-              <input 
-                type="text" 
-                placeholder="Pick the date"
-                value={searchGuests}
-                onChange={(e) => setSearchGuests(e.target.value)}
-              />
-            </div>
-            <button type="submit" className="search-btn-styled">
-              <i className="fas fa-search"></i>
-              Search
-            </button>
-          </form>
-        </div>
-        
-        <div className="hero-scroll-indicator">
-          <div className="scroll-dots">
-            {heroSlides.map((_, index) => (
-              <button
-                key={index}
-                className={`dot ${index === activeSlide ? 'active' : ''}`}
-                onClick={() => setActiveSlide(index)}
-              />
-            ))}
+              
+              <div className="landing-search-divider"></div>
+              
+              <div className="landing-search-field">
+                <svg className="landing-search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                  <circle cx="9" cy="7" r="4"/>
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                </svg>
+                <div className="landing-search-field-inner">
+                  <span className="landing-search-label">GUESTS</span>
+                  <input 
+                    type="text" 
+                    placeholder="Number of guests"
+                    value={searchGuests}
+                    onChange={(e) => setSearchGuests(e.target.value)}
+                    className="landing-search-input"
+                  />
+                </div>
+              </div>
+              
+              <div className="landing-search-divider"></div>
+              
+              <div className="landing-search-field">
+                <svg className="landing-search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                  <circle cx="12" cy="10" r="3"/>
+                </svg>
+                <div className="landing-search-field-inner">
+                  <span className="landing-search-label">LOCATION</span>
+                  <input 
+                    ref={locationInputRef}
+                    type="text" 
+                    placeholder="Toronto"
+                    value={searchLocation}
+                    onChange={(e) => setSearchLocation(e.target.value)}
+                    className="landing-search-input"
+                  />
+                </div>
+              </div>
+              
+              <button type="submit" className="landing-search-btn">
+                Search
+              </button>
+            </form>
           </div>
         </div>
       </section>

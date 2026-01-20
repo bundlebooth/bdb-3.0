@@ -69,23 +69,7 @@
   }
 }
 
-/* Header - Transparent on hero */
-.landing-header {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 1000;
-  background: transparent;
-  border-bottom: none;
-  transition: background 0.3s, border-bottom 0.3s;
-}
-
-.landing-header.scrolled {
-  background: rgba(255, 255, 255, 0.98);
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
-}
+/* Landing page uses standard Header component - no custom header styles needed */
 
 .landing-header-content {
   max-width: 100%;
@@ -4399,5 +4383,316 @@
   
   .stat-number {
     font-size: 24px;
+  }
+}
+
+/* ==========================================
+   LANDING HERO SECTION - Tagvenue Style
+   ========================================== */
+
+.landing-hero {
+  background: #ffffff;
+  padding: 20px 0 180px;
+  position: relative;
+  min-height: 600px;
+  overflow: hidden;
+}
+
+.landing-hero-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 80px;
+  position: relative;
+}
+
+@media (max-width: 1128px) {
+  .landing-hero-container {
+    padding: 0 40px;
+  }
+}
+
+@media (max-width: 744px) {
+  .landing-hero-container {
+    padding: 0 24px;
+  }
+}
+
+/* Text Content - positioned on left */
+.landing-hero-content {
+  position: relative;
+  z-index: 2;
+  padding-top: 30px;
+}
+
+.landing-hero-content .landing-hero-badge,
+.landing-hero-content .landing-hero-title {
+  max-width: 420px;
+}
+
+.landing-hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #e8f5e9;
+  padding: 6px 14px;
+  border-radius: 16px;
+  margin-bottom: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #2e7d32;
+}
+
+.landing-hero-badge .badge-dot {
+  color: #81c784;
+}
+
+.landing-hero-title {
+  font-size: 40px;
+  font-weight: 700;
+  color: #1a1a1a;
+  line-height: 1.2;
+  margin: 0 0 32px 0;
+  letter-spacing: -0.5px;
+}
+
+/* Search Bar - Static position, extends into image area */
+.landing-search-bar {
+  display: inline-flex;
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  position: relative;
+  z-index: 10;
+  margin-bottom: 40px;
+}
+
+@media (max-width: 744px) {
+  .landing-search-bar {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+}
+
+.landing-search-field {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  flex: 1;
+  min-width: 0;
+}
+
+.landing-search-icon {
+  color: #9ca3af;
+  margin-right: 10px;
+  flex-shrink: 0;
+}
+
+.landing-search-field-inner {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.landing-search-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 2px;
+}
+
+.landing-search-input,
+.landing-search-select {
+  border: none;
+  background: transparent;
+  font-size: 14px;
+  color: #1f2937;
+  padding: 0;
+  width: 100%;
+  outline: none;
+  font-family: inherit;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.landing-search-select {
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.landing-search-input::placeholder {
+  color: #9ca3af;
+}
+
+.landing-search-divider {
+  width: 1px;
+  height: 32px;
+  background: #e5e7eb;
+  flex-shrink: 0;
+}
+
+.landing-search-btn {
+  padding: 12px 24px;
+  background: #5B68F4;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+  white-space: nowrap;
+  margin: 8px;
+  flex-shrink: 0;
+}
+
+.landing-search-btn:hover {
+  background: #4A56E2;
+}
+
+/* Right Side - Hero Images with Slideshow */
+.landing-hero-images {
+  position: absolute;
+  right: 160px;
+  top: 0;
+  width: 38%;
+  height: 700px;
+  z-index: 1;
+}
+
+@media (max-width: 1128px) {
+  .landing-hero-images {
+    right: 40px;
+    width: 42%;
+    height: 480px;
+  }
+}
+
+@media (max-width: 744px) {
+  .landing-hero-images {
+    position: relative;
+    right: auto;
+    top: auto;
+    width: calc(100% + 48px);
+    margin-left: -24px;
+    height: 320px;
+    margin-bottom: 20px;
+  }
+}
+
+.landing-hero-slideshow {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.landing-hero-slide {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  transition: opacity 0.8s ease-in-out;
+}
+
+.landing-hero-slide.active {
+  opacity: 1;
+}
+
+.landing-hero-slide img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 12px;
+}
+
+/* Responsive - Tablet */
+@media (max-width: 1024px) {
+  .landing-hero {
+    padding: 20px 0 40px;
+  }
+  
+  .landing-hero-container {
+    min-height: auto;
+  }
+  
+  .landing-hero-content {
+    max-width: 45%;
+  }
+  
+  .landing-hero-title {
+    font-size: 32px;
+  }
+  
+  .landing-search-bar {
+    width: 100%;
+    flex-wrap: wrap;
+    background: #fff;
+  }
+  
+  .landing-search-field {
+    flex: 1 1 calc(50% - 1px);
+    min-width: 140px;
+  }
+  
+  .landing-search-divider {
+    display: none;
+  }
+  
+  .landing-search-btn {
+    width: calc(100% - 16px);
+    margin: 8px;
+  }
+}
+
+/* Responsive - Mobile */
+@media (max-width: 640px) {
+  .landing-hero {
+    padding: 10px 0 30px;
+  }
+  
+  .landing-hero-content {
+    max-width: 100%;
+    padding-top: 20px;
+  }
+  
+  .landing-hero-badge {
+    font-size: 11px;
+    padding: 5px 12px;
+  }
+  
+  .landing-hero-title {
+    font-size: 26px;
+    margin-bottom: 24px;
+  }
+  
+  .landing-search-bar {
+    flex-direction: column;
+    border-radius: 12px;
+    width: 100%;
+  }
+  
+  .landing-search-field {
+    width: 100%;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 14px 16px;
+  }
+  
+  .landing-search-field:last-of-type {
+    border-bottom: none;
+  }
+  
+  .landing-search-btn {
+    width: calc(100% - 16px);
+    padding: 14px;
   }
 }
