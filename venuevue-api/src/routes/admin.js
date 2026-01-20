@@ -608,6 +608,242 @@ router.get('/users/:id', async (req, res) => {
   }
 });
 
+// POST /admin/users/:id/unlock - Unlock a locked user account
+router.post('/users/:id/unlock', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pool = await getPool();
+    
+    // Unlock the account and reset failed attempts
+    await pool.request()
+      .input('UserID', sql.Int, id)
+      .query(`
+        UPDATE users.Users 
+        SET IsLocked = 0, 
+            LockExpiresAt = NULL, 
+            LockReason = NULL,
+            FailedLoginAttempts = 0
+        WHERE UserID = @UserID
+      `);
+    
+    // Get user info for email notification
+    const userResult = await pool.request()
+      .input('UserID', sql.Int, id)
+      .query('SELECT Email, Name FROM users.Users WHERE UserID = @UserID');
+    
+    if (userResult.recordset.length > 0) {
+      const user = userResult.recordset[0];
+      
+      // Send account unlocked email
+      try {
+        await sendAccountReactivated(user.Email, user.Name);
+      } catch (emailErr) {
+        console.error('Failed to send account unlocked email:', emailErr.message);
+      }
+      
+      // Log the unlock action
+      await pool.request()
+        .input('userId', sql.Int, id)
+        .input('email', sql.NVarChar, user.Email)
+        .input('action', sql.NVarChar, 'AccountUnlocked')
+        .input('ActionStatus', sql.NVarChar, 'Success')
+        .input('ipAddress', sql.NVarChar, req.ip || 'Admin Console')
+        .input('userAgent', sql.NVarChar, 'Admin Action')
+        .input('details', sql.NVarChar, `Account unlocked by admin (UserID: ${req.user?.id || 'Unknown'})`)
+        .execute('users.sp_InsertSecurityLog');
+    }
+    
+    res.json({ success: true, message: 'Account unlocked successfully' });
+  } catch (error) {
+    console.error('Error unlocking user account:', error);
+    res.status(500).json({ error: 'Failed to unlock account' });
+  }
+});
+
+// POST /admin/users/:id/reset-password - Admin-initiated password reset
+router.post('/users/:id/reset-password', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { sendEmailNotification = true } = req.body;
+    const pool = await getPool();
+    const bcrypt = require('bcryptjs');
+    const crypto = require('crypto');
+    
+    // Get user info
+    const userResult = await pool.request()
+      .input('UserID', sql.Int, id)
+      .query('SELECT Email, Name FROM users.Users WHERE UserID = @UserID');
+    
+    if (userResult.recordset.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const user = userResult.recordset[0];
+    
+    // Generate a temporary password
+    const tempPassword = crypto.randomBytes(8).toString('hex');
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(tempPassword, salt);
+    
+    // Update password and unlock account
+    await pool.request()
+      .input('UserID', sql.Int, id)
+      .input('PasswordHash', sql.NVarChar(255), hashedPassword)
+      .query(`
+        UPDATE users.Users 
+        SET PasswordHash = @PasswordHash,
+            IsLocked = 0,
+            LockExpiresAt = NULL,
+            LockReason = NULL,
+            FailedLoginAttempts = 0,
+            PasswordResetRequired = 1
+        WHERE UserID = @UserID
+      `);
+    
+    // Send password reset email if requested
+    if (sendEmailNotification) {
+      try {
+        await sendEmail(
+          user.Email,
+          'Your Planbeau Password Has Been Reset',
+          `<p>Hi ${user.Name},</p>
+           <p>Your password has been reset by an administrator.</p>
+           <p>Your temporary password is: <strong>${tempPassword}</strong></p>
+           <p>Please log in and change your password immediately.</p>
+           <p>If you did not request this reset, please contact support immediately at support@planbeau.com</p>`,
+          `Hi ${user.Name}, Your password has been reset. Temporary password: ${tempPassword}. Please log in and change it immediately.`
+        );
+      } catch (emailErr) {
+        console.error('Failed to send password reset email:', emailErr.message);
+      }
+    }
+    
+    // Log the password reset action
+    await pool.request()
+      .input('userId', sql.Int, id)
+      .input('email', sql.NVarChar, user.Email)
+      .input('action', sql.NVarChar, 'PasswordResetByAdmin')
+      .input('ActionStatus', sql.NVarChar, 'Success')
+      .input('ipAddress', sql.NVarChar, req.ip || 'Admin Console')
+      .input('userAgent', sql.NVarChar, 'Admin Action')
+      .input('details', sql.NVarChar, `Password reset by admin (UserID: ${req.user?.id || 'Unknown'})`)
+      .execute('users.sp_InsertSecurityLog');
+    
+    res.json({ 
+      success: true, 
+      message: 'Password reset successfully',
+      tempPassword: sendEmailNotification ? undefined : tempPassword // Only return temp password if email not sent
+    });
+  } catch (error) {
+    console.error('Error resetting user password:', error);
+    res.status(500).json({ error: 'Failed to reset password' });
+  }
+});
+
+// POST /admin/users/:id/freeze - Freeze/deactivate a user account
+router.post('/users/:id/freeze', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+    const pool = await getPool();
+    
+    // Deactivate the account
+    await pool.request()
+      .input('UserID', sql.Int, id)
+      .input('Reason', sql.NVarChar(500), reason || 'Account frozen by administrator')
+      .query(`
+        UPDATE users.Users 
+        SET IsActive = 0,
+            DeactivatedAt = GETDATE(),
+            DeactivationReason = @Reason
+        WHERE UserID = @UserID
+      `);
+    
+    // Get user info for email notification
+    const userResult = await pool.request()
+      .input('UserID', sql.Int, id)
+      .query('SELECT Email, Name FROM users.Users WHERE UserID = @UserID');
+    
+    if (userResult.recordset.length > 0) {
+      const user = userResult.recordset[0];
+      
+      // Send account suspended email
+      try {
+        await sendAccountSuspended(user.Email, user.Name, reason || 'Account frozen by administrator');
+      } catch (emailErr) {
+        console.error('Failed to send account suspended email:', emailErr.message);
+      }
+      
+      // Log the freeze action
+      await pool.request()
+        .input('userId', sql.Int, id)
+        .input('email', sql.NVarChar, user.Email)
+        .input('action', sql.NVarChar, 'AccountFrozen')
+        .input('ActionStatus', sql.NVarChar, 'Success')
+        .input('ipAddress', sql.NVarChar, req.ip || 'Admin Console')
+        .input('userAgent', sql.NVarChar, 'Admin Action')
+        .input('details', sql.NVarChar, `Account frozen by admin: ${reason || 'No reason provided'}`)
+        .execute('users.sp_InsertSecurityLog');
+    }
+    
+    res.json({ success: true, message: 'Account frozen successfully' });
+  } catch (error) {
+    console.error('Error freezing user account:', error);
+    res.status(500).json({ error: 'Failed to freeze account' });
+  }
+});
+
+// POST /admin/users/:id/unfreeze - Unfreeze/reactivate a user account
+router.post('/users/:id/unfreeze', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pool = await getPool();
+    
+    // Reactivate the account
+    await pool.request()
+      .input('UserID', sql.Int, id)
+      .query(`
+        UPDATE users.Users 
+        SET IsActive = 1,
+            DeactivatedAt = NULL,
+            DeactivationReason = NULL
+        WHERE UserID = @UserID
+      `);
+    
+    // Get user info for email notification
+    const userResult = await pool.request()
+      .input('UserID', sql.Int, id)
+      .query('SELECT Email, Name FROM users.Users WHERE UserID = @UserID');
+    
+    if (userResult.recordset.length > 0) {
+      const user = userResult.recordset[0];
+      
+      // Send account reactivated email
+      try {
+        await sendAccountReactivated(user.Email, user.Name);
+      } catch (emailErr) {
+        console.error('Failed to send account reactivated email:', emailErr.message);
+      }
+      
+      // Log the unfreeze action
+      await pool.request()
+        .input('userId', sql.Int, id)
+        .input('email', sql.NVarChar, user.Email)
+        .input('action', sql.NVarChar, 'AccountUnfrozen')
+        .input('ActionStatus', sql.NVarChar, 'Success')
+        .input('ipAddress', sql.NVarChar, req.ip || 'Admin Console')
+        .input('userAgent', sql.NVarChar, 'Admin Action')
+        .input('details', sql.NVarChar, `Account unfrozen by admin (UserID: ${req.user?.id || 'Unknown'})`)
+        .execute('users.sp_InsertSecurityLog');
+    }
+    
+    res.json({ success: true, message: 'Account unfrozen successfully' });
+  } catch (error) {
+    console.error('Error unfreezing user account:', error);
+    res.status(500).json({ error: 'Failed to unfreeze account' });
+  }
+});
+
 // GET /admin/users/:id/activity - Get user activity log
 router.get('/users/:id/activity', async (req, res) => {
   try {

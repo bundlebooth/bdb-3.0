@@ -26,7 +26,14 @@ BEGIN
         u.IsVendor,
         u.IsAdmin,
         u.IsActive,
-        v.VendorProfileID
+        v.VendorProfileID,
+        -- Login security fields
+        ISNULL(u.FailedLoginAttempts, 0) AS FailedLoginAttempts,
+        u.LastFailedLoginAt,
+        ISNULL(u.IsLocked, 0) AS IsLocked,
+        u.LockExpiresAt,
+        u.LockReason,
+        ISNULL(u.PasswordResetRequired, 0) AS PasswordResetRequired
     FROM users.Users u
     LEFT JOIN vendors.VendorProfiles v ON u.UserID = v.UserID
     WHERE u.Email = @Email;

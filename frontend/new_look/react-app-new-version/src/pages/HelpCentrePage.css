@@ -78,7 +78,7 @@
 }
 
 .help-centre-collection-title {
-  color: #6366f1;
+  color: var(--primary, #4F86E8);
   font-size: 1rem;
   font-weight: 600;
   margin-bottom: 0.25rem;
@@ -103,7 +103,7 @@
   border-radius: 50%;
   border: 2px solid #fff;
   margin-left: -6px;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  background: var(--primary, #4F86E8);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -130,7 +130,7 @@
 }
 
 .help-centre-breadcrumb-link {
-  color: #6366f1;
+  color: var(--primary, #4F86E8);
   text-decoration: none;
   font-size: 0.85rem;
 }
@@ -222,7 +222,7 @@
 }
 
 .help-centre-article-title {
-  color: #6366f1;
+  color: var(--primary, #4F86E8);
   font-size: 0.95rem;
   font-weight: 500;
 }
@@ -289,12 +289,12 @@
 }
 
 .help-centre-article-body a {
-  color: #6366f1;
+  color: var(--primary, #4F86E8);
   text-decoration: underline;
 }
 
 .help-centre-article-body a:hover {
-  color: #4f46e5;
+  color: var(--primary-dark, #3A6FD4);
 }
 
 .help-centre-article-body table {

@@ -3,7 +3,7 @@ const router = express.Router();
 const { poolPromise, sql } = require('../config/db');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { sendTwoFactorCode } = require('../services/email');
+const { sendTwoFactorCode, sendTemplatedEmail, sendAccountSuspended } = require('../services/email');
 const { processUnsubscribe, generateUnsubscribeHtml, getUserPreferences, updateUserPreferences, verifyUnsubscribeToken } = require('../services/unsubscribeService');
 const crypto = require('crypto');
 const { upload } = require('../middlewares/uploadMiddleware');
@@ -152,6 +152,20 @@ router.post('/login', async (req, res) => {
 
     const user = result.recordset[0];
 
+    // Check if account is locked due to failed login attempts
+    if (user.IsLocked) {
+      const lockExpiry = user.LockExpiresAt ? new Date(user.LockExpiresAt) : null;
+      if (lockExpiry && lockExpiry > new Date()) {
+        const minutesRemaining = Math.ceil((lockExpiry - new Date()) / 60000);
+        return res.status(423).json({
+          success: false,
+          message: `Account is temporarily locked due to too many failed login attempts. Please try again in ${minutesRemaining} minute(s) or contact support.`,
+          isLocked: true,
+          lockExpiresAt: lockExpiry.toISOString()
+        });
+      }
+    }
+
     // Check if account is active
     if (!user.IsActive) {
       return res.status(403).json({
@@ -163,8 +177,62 @@ router.post('/login', async (req, res) => {
     // Verify password
     const isMatch = await bcrypt.compare(password, user.PasswordHash);
     if (!isMatch) {
-      // Log failed login attempt
+      // Increment failed login attempts
+      const failedAttempts = (user.FailedLoginAttempts || 0) + 1;
+      const maxAttempts = 3;
+      const lockDurationMinutes = 30;
+      
       try {
+        // Update failed attempts count
+        await pool.request()
+          .input('UserID', sql.Int, user.UserID)
+          .input('FailedAttempts', sql.Int, failedAttempts)
+          .query(`
+            UPDATE users.Users 
+            SET FailedLoginAttempts = @FailedAttempts,
+                LastFailedLoginAt = GETDATE()
+            WHERE UserID = @UserID
+          `);
+        
+        // Lock account if max attempts reached
+        if (failedAttempts >= maxAttempts) {
+          const lockExpiry = new Date(Date.now() + lockDurationMinutes * 60 * 1000);
+          await pool.request()
+            .input('UserID', sql.Int, user.UserID)
+            .input('LockExpiresAt', sql.DateTime, lockExpiry)
+            .query(`
+              UPDATE users.Users 
+              SET IsLocked = 1, 
+                  LockExpiresAt = @LockExpiresAt,
+                  LockReason = 'Too many failed login attempts'
+              WHERE UserID = @UserID
+            `);
+          
+          // Send account locked email notification using existing account_suspended template
+          try {
+            await sendAccountSuspended(
+              user.Email,
+              user.Name,
+              `Too many failed login attempts. Your account will be automatically unlocked in ${lockDurationMinutes} minutes.`,
+              user.UserID
+            );
+          } catch (emailErr) {
+            console.error('Failed to send account locked email:', emailErr.message);
+          }
+          
+          // Log account lock event
+          await pool.request()
+            .input('userId', sql.Int, user.UserID)
+            .input('email', sql.NVarChar, email)
+            .input('action', sql.NVarChar, 'AccountLocked')
+            .input('ActionStatus', sql.NVarChar, 'Success')
+            .input('ipAddress', sql.NVarChar, req.ip || req.headers['x-forwarded-for'] || 'Unknown')
+            .input('userAgent', sql.NVarChar, req.headers['user-agent'] || 'Unknown')
+            .input('details', sql.NVarChar, `Account locked after ${failedAttempts} failed attempts`)
+            .execute('users.sp_InsertSecurityLog');
+        }
+        
+        // Log failed login attempt
         await pool.request()
           .input('userId', sql.Int, user.UserID)
           .input('email', sql.NVarChar, email)
@@ -172,15 +240,40 @@ router.post('/login', async (req, res) => {
           .input('ActionStatus', sql.NVarChar, 'Failed')
           .input('ipAddress', sql.NVarChar, req.ip || req.headers['x-forwarded-for'] || 'Unknown')
           .input('userAgent', sql.NVarChar, req.headers['user-agent'] || 'Unknown')
-          .input('details', sql.NVarChar, 'Invalid password')
+          .input('details', sql.NVarChar, `Invalid password (attempt ${failedAttempts}/${maxAttempts})`)
           .execute('users.sp_InsertSecurityLog');
       } catch (logErr) { console.error('Failed to log security event:', logErr.message); }
       
+      // Return appropriate message based on attempts remaining
+      const attemptsRemaining = maxAttempts - failedAttempts;
+      if (attemptsRemaining <= 0) {
+        return res.status(423).json({
+          success: false,
+          message: 'Account has been locked due to too many failed login attempts. Please check your email for instructions.',
+          isLocked: true
+        });
+      }
+      
       return res.status(401).json({
         success: false,
-        message: 'Invalid credentials'
+        message: `Invalid credentials. ${attemptsRemaining} attempt(s) remaining before account lock.`,
+        attemptsRemaining
       });
     }
+    
+    // Successful login - reset failed attempts
+    try {
+      await pool.request()
+        .input('UserID', sql.Int, user.UserID)
+        .query(`
+          UPDATE users.Users 
+          SET FailedLoginAttempts = 0,
+              IsLocked = 0,
+              LockExpiresAt = NULL,
+              LockReason = NULL
+          WHERE UserID = @UserID
+        `);
+    } catch (resetErr) { console.error('Failed to reset login attempts:', resetErr.message); }
 
     // Check 2FA settings from database (SecuritySettings table - key-value pairs)
     let enable2FA = String(process.env.ENABLE_2FA || 'false').toLowerCase() === 'true';

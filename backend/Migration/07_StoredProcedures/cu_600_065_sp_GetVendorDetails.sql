@@ -68,8 +68,44 @@ BEGIN
         (SELECT COUNT(*) FROM users.Favorites f WHERE f.VendorProfileID = vp.VendorProfileID) AS FavoriteCount,
         (SELECT AVG(CAST(r.Rating AS DECIMAL(3,1))) FROM vendors.Reviews r WHERE r.VendorProfileID = vp.VendorProfileID AND r.IsApproved = 1) AS AverageRating,
         (SELECT COUNT(*) FROM vendors.Reviews r WHERE r.VendorProfileID = vp.VendorProfileID AND r.IsApproved = 1) AS ReviewCount,
-        (SELECT COUNT(*) FROM bookings.Bookings b WHERE b.VendorProfileID = vp.VendorProfileID) AS BookingCount
+        (SELECT COUNT(*) FROM bookings.Bookings b WHERE b.VendorProfileID = vp.VendorProfileID) AS BookingCount,
+        -- Host user info (the actual owner of the vendor)
+        vp.UserID AS HostUserID,
+        u.Name AS HostName,
+        u.ProfileImageURL AS HostProfileImage,
+        u.CreatedAt AS HostMemberSince,
+        -- Response metrics calculated from messages
+        (SELECT 
+            CASE 
+                WHEN AVG(DATEDIFF(MINUTE, m.CreatedAt, mr.CreatedAt)) <= 60 THEN 'Within an hour'
+                WHEN AVG(DATEDIFF(MINUTE, m.CreatedAt, mr.CreatedAt)) <= 180 THEN 'A few hours'
+                WHEN AVG(DATEDIFF(MINUTE, m.CreatedAt, mr.CreatedAt)) <= 1440 THEN 'Within a day'
+                ELSE 'A few days'
+            END
+         FROM messages.Messages m
+         INNER JOIN messages.Messages mr ON mr.ConversationID = m.ConversationID 
+            AND mr.SenderID = vp.UserID 
+            AND mr.CreatedAt > m.CreatedAt
+            AND mr.MessageID = (SELECT MIN(MessageID) FROM messages.Messages WHERE ConversationID = m.ConversationID AND SenderID = vp.UserID AND CreatedAt > m.CreatedAt)
+         INNER JOIN messages.Conversations c ON c.ConversationID = m.ConversationID AND c.VendorProfileID = vp.VendorProfileID
+         WHERE m.SenderID != vp.UserID
+        ) AS ResponseTime,
+        -- Response rating based on response rate
+        (SELECT 
+            CASE 
+                WHEN COUNT(DISTINCT m.ConversationID) = 0 THEN NULL
+                WHEN CAST(COUNT(DISTINCT mr.ConversationID) AS FLOAT) / NULLIF(COUNT(DISTINCT m.ConversationID), 0) >= 0.9 THEN 'Excellent'
+                WHEN CAST(COUNT(DISTINCT mr.ConversationID) AS FLOAT) / NULLIF(COUNT(DISTINCT m.ConversationID), 0) >= 0.7 THEN 'Good'
+                WHEN CAST(COUNT(DISTINCT mr.ConversationID) AS FLOAT) / NULLIF(COUNT(DISTINCT m.ConversationID), 0) >= 0.5 THEN 'Fair'
+                ELSE 'Needs improvement'
+            END
+         FROM messages.Messages m
+         INNER JOIN messages.Conversations c ON c.ConversationID = m.ConversationID AND c.VendorProfileID = vp.VendorProfileID
+         LEFT JOIN messages.Messages mr ON mr.ConversationID = m.ConversationID AND mr.SenderID = vp.UserID AND mr.CreatedAt > m.CreatedAt
+         WHERE m.SenderID != vp.UserID
+        ) AS ResponseRating
     FROM vendors.VendorProfiles vp
+    LEFT JOIN users.Users u ON u.UserID = vp.UserID
     WHERE vp.VendorProfileID = @VendorProfileID;
     
     -- Vendor categories (recordset 2)

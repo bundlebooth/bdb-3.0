@@ -29,19 +29,23 @@ BEGIN
     SET NOCOUNT ON;
     
     SELECT 
-        UserID, 
-        Name, 
-        Email, 
-        Phone, 
-        ProfileImageURL AS Avatar, 
-        Bio, 
-        IsVendor, 
-        IsAdmin, 
-        EmailVerified, 
-        CreatedAt, 
-        UpdatedAt
-    FROM users.Users 
-    WHERE UserID = @UserID;
+        u.UserID, 
+        u.Name, 
+        u.Email, 
+        u.Phone, 
+        u.ProfileImageURL, 
+        u.ProfileImageURL AS Avatar, 
+        u.Bio, 
+        u.IsVendor, 
+        u.IsAdmin, 
+        u.EmailVerified,
+        u.IsActive,
+        u.CreatedAt, 
+        u.UpdatedAt,
+        v.VendorProfileID
+    FROM users.Users u
+    LEFT JOIN vendors.VendorProfiles v ON v.UserID = u.UserID
+    WHERE u.UserID = @UserID;
 END;
 
 GO

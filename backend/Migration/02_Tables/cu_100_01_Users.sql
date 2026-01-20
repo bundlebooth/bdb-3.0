@@ -34,6 +34,15 @@ BEGIN
 	[StripeCustomerID] [nvarchar](100) NULL,
 	[NotificationPreferences] [nvarchar](max) NULL,
 	[IsActive] [bit] NULL,
+	-- Login security columns
+	[FailedLoginAttempts] [int] NOT NULL CONSTRAINT DF_Users_FailedLoginAttempts DEFAULT 0,
+	[LastFailedLoginAt] [datetime] NULL,
+	[IsLocked] [bit] NOT NULL CONSTRAINT DF_Users_IsLocked DEFAULT 0,
+	[LockExpiresAt] [datetime] NULL,
+	[LockReason] [nvarchar](500) NULL,
+	[PasswordResetRequired] [bit] NOT NULL CONSTRAINT DF_Users_PasswordResetRequired DEFAULT 0,
+	[DeactivatedAt] [datetime] NULL,
+	[DeactivationReason] [nvarchar](500) NULL,
 PRIMARY KEY CLUSTERED 
 (
 	[UserID] ASC

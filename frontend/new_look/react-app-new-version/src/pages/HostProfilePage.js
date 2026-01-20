@@ -22,59 +22,154 @@ function HostProfilePage() {
   const [loading, setLoading] = useState(true);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [currentReviewPage, setCurrentReviewPage] = useState(1);
+  const [isUserProfile, setIsUserProfile] = useState(false); // true = client profile, false = vendor host
   const reviewsPerPage = 5;
 
-  // Load host profile data
+  // Load host profile data - fetches USER data, not vendor data
   const loadHostProfile = useCallback(async () => {
     try {
       setLoading(true);
       
-      // Load vendor profile to get host info
-      const response = await fetch(`${API_BASE_URL}/vendors/${hostId}`);
-      if (!response.ok) {
-        throw new Error('Failed to load host profile');
+      // First try to load user profile directly
+      const profileResp = await fetch(`${API_BASE_URL}/users/${hostId}/profile`);
+      
+      if (profileResp.ok) {
+        // User profile found - show client/user info
+        const profileData = await profileResp.json();
+        const userProfile = profileData.profile;
+        
+        // Load reviews given by this user
+        const reviewsResp = await fetch(`${API_BASE_URL}/users/${hostId}/reviews`);
+        const reviewsData = reviewsResp.ok ? await reviewsResp.json() : [];
+        
+        // Load bookings to get associated vendors (for clients)
+        const bookingsResp = await fetch(`${API_BASE_URL}/users/${hostId}/bookings/all`);
+        const bookingsData = bookingsResp.ok ? await bookingsResp.json() : [];
+        
+        // Check if user has a vendor profile to get response metrics
+        let vendorResponseRating = null;
+        let vendorResponseTime = null;
+        let vendorListings = [];
+        let vendorReviews = [];
+        
+        if (userProfile?.VendorProfileID) {
+          // User is a vendor - fetch their vendor data for response metrics
+          try {
+            const vendorResp = await fetch(`${API_BASE_URL}/vendors/${userProfile.VendorProfileID}`);
+            if (vendorResp.ok) {
+              const vendorData = await vendorResp.json();
+              const vp = vendorData.data?.profile;
+              vendorResponseRating = vp?.ResponseRating;
+              vendorResponseTime = vp?.ResponseTime;
+              vendorReviews = vendorData.data?.reviews || [];
+              
+              // Add their vendor as a listing
+              vendorListings.push({
+                id: userProfile.VendorProfileID,
+                businessName: vp?.BusinessName,
+                featuredImage: vendorData.data?.images?.[0]?.ImageURL || vp?.LogoURL,
+                city: vp?.City,
+                state: vp?.State,
+                category: vendorData.data?.categories?.[0]?.Category,
+                rating: vp?.AverageRating || 5.0,
+                reviewCount: vp?.ReviewCount || 0
+              });
+            }
+          } catch (vendorErr) {
+            console.warn('Could not fetch vendor data:', vendorErr.message);
+          }
+        }
+        
+        // Extract unique vendors from bookings (for clients who booked vendors)
+        const vendorMap = new Map();
+        (Array.isArray(bookingsData) ? bookingsData : []).forEach(booking => {
+          if (booking.VendorProfileID && !vendorMap.has(booking.VendorProfileID)) {
+            vendorMap.set(booking.VendorProfileID, {
+              id: booking.VendorProfileID,
+              businessName: booking.VendorBusinessName || booking.BusinessName,
+              featuredImage: booking.VendorImage || booking.FeaturedImageURL,
+              city: booking.VendorCity || booking.City,
+              state: booking.VendorState || booking.State,
+              category: booking.VendorCategory || booking.CategoryName,
+              rating: 5.0,
+              reviewCount: 0
+            });
+          }
+        });
+        
+        // Combine vendor listings with booked vendors
+        const allListings = [...vendorListings, ...Array.from(vendorMap.values())];
+        
+        // Use vendor reviews if user is a vendor, otherwise use reviews they gave
+        const displayReviews = vendorReviews.length > 0 ? vendorReviews : (Array.isArray(reviewsData) ? reviewsData : []);
+        
+        const hostInfo = {
+          id: hostId,
+          name: userProfile?.Name || userProfile?.DisplayName || 'User',
+          profileImage: userProfile?.ProfileImageURL || userProfile?.Avatar,
+          bio: userProfile?.Bio || '',
+          memberSince: userProfile?.CreatedAt || userProfile?.JoinDate,
+          responseRating: vendorResponseRating || null,
+          responseTime: vendorResponseTime || null,
+          reviewCount: displayReviews.length,
+          isVerified: userProfile?.IsVerified || false,
+          isEmailConfirmed: userProfile?.IsEmailConfirmed || userProfile?.EmailVerified || false,
+          isPhoneConfirmed: userProfile?.IsPhoneConfirmed || !!userProfile?.Phone,
+          isSuperhost: false,
+          isVendor: !!userProfile?.VendorProfileID
+        };
+        
+        setHost(hostInfo);
+        setReviews(displayReviews);
+        setListings(allListings);
+        setIsUserProfile(true);
+        
+        document.title = `${hostInfo.name} - Profile | Planbeau`;
+      } else {
+        // Fallback: Try loading as vendor profile (for backwards compatibility)
+        const response = await fetch(`${API_BASE_URL}/vendors/${hostId}`);
+        if (!response.ok) {
+          throw new Error('Failed to load profile');
+        }
+
+        const data = await response.json();
+        const vendorData = data.data;
+        
+        // Extract host info from vendor profile
+        const hostInfo = {
+          id: hostId,
+          name: vendorData.profile?.HostName || vendorData.profile?.ContactName || vendorData.profile?.BusinessName?.split(' ')[0] || 'Host',
+          profileImage: vendorData.profile?.HostProfileImage || vendorData.profile?.LogoURL || vendorData.profile?.FeaturedImageURL,
+          bio: vendorData.profile?.HostBio || vendorData.profile?.BusinessDescription || '',
+          memberSince: vendorData.profile?.HostMemberSince || vendorData.profile?.CreatedAt || vendorData.profile?.JoinDate,
+          responseRating: vendorData.profile?.ResponseRating || null,
+          responseTime: vendorData.profile?.ResponseTime || null,
+          reviewCount: vendorData.reviews?.length || 0,
+          isVerified: vendorData.profile?.IsVerified || false,
+          isEmailConfirmed: true,
+          isPhoneConfirmed: vendorData.profile?.Phone ? true : false,
+          isSuperhost: vendorData.profile?.IsSuperhost || false
+        };
+        
+        setHost(hostInfo);
+        setReviews(vendorData.reviews || []);
+        setListings([{
+          id: hostId,
+          businessName: vendorData.profile?.BusinessName,
+          featuredImage: vendorData.images?.[0]?.url || vendorData.images?.[0]?.URL || vendorData.profile?.FeaturedImageURL,
+          city: vendorData.profile?.City,
+          state: vendorData.profile?.State,
+          rating: 5.0,
+          reviewCount: vendorData.reviews?.length || 0,
+          category: vendorData.profile?.PrimaryCategory || vendorData.profile?.CategoryName
+        }]);
+        setIsUserProfile(false);
+
+        document.title = `${hostInfo.name} - Host Profile | Planbeau`;
       }
-
-      const data = await response.json();
-      const vendorData = data.data;
-      
-      // Extract host info from vendor profile
-      const hostInfo = {
-        id: hostId,
-        name: vendorData.profile?.HostName || vendorData.profile?.ContactName || vendorData.profile?.BusinessName?.split(' ')[0] || 'Host',
-        profileImage: vendorData.profile?.HostProfileImage || vendorData.profile?.LogoURL || vendorData.profile?.FeaturedImageURL,
-        bio: vendorData.profile?.HostBio || vendorData.profile?.BusinessDescription || '',
-        memberSince: vendorData.profile?.CreatedAt || vendorData.profile?.JoinDate,
-        responseRating: vendorData.profile?.ResponseRating || 'Excellent',
-        responseTime: vendorData.profile?.ResponseTime || 'A few hours',
-        reviewCount: vendorData.reviews?.length || 0,
-        isVerified: vendorData.profile?.IsVerified || false,
-        isEmailConfirmed: true,
-        isPhoneConfirmed: vendorData.profile?.Phone ? true : false,
-        isSuperhost: vendorData.profile?.IsSuperhost || false
-      };
-      
-      setHost(hostInfo);
-      setReviews(vendorData.reviews || []);
-      
-      // Load all listings by this host (vendor's other listings)
-      // For now, we'll show the current vendor as the only listing
-      // In a real implementation, you'd fetch all vendors owned by this user
-      setListings([{
-        id: hostId,
-        businessName: vendorData.profile?.BusinessName,
-        featuredImage: vendorData.images?.[0]?.url || vendorData.images?.[0]?.URL || vendorData.profile?.FeaturedImageURL,
-        city: vendorData.profile?.City,
-        state: vendorData.profile?.State,
-        rating: 5.0,
-        reviewCount: vendorData.reviews?.length || 0,
-        category: vendorData.profile?.PrimaryCategory || vendorData.profile?.CategoryName
-      }]);
-
-      document.title = `${hostInfo.name} - Host Profile | Planbeau`;
     } catch (error) {
       console.error('Error loading host profile:', error);
-      showBanner('Failed to load host profile', 'error');
+      showBanner('Failed to load profile', 'error');
     } finally {
       setLoading(false);
     }
@@ -186,23 +281,23 @@ function HostProfilePage() {
               {host.bio || `Welcome! I'm ${host.name}, and I'm passionate about helping create memorable events. Feel free to reach out with any questions about my listings.`}
             </p>
             
-            {/* Host Stats */}
+            {/* Host Stats - Giggster style layout */}
             <div className="host-stats">
               <div className="host-stat">
                 <i className="fas fa-calendar-alt"></i>
-                <span>Member since: {formatDate(host.memberSince)}</span>
+                <span>Member since: <strong>{formatDate(host.memberSince)}</strong></span>
               </div>
               <div className="host-stat">
                 <i className="fas fa-star"></i>
-                <span>Response rating: {host.responseRating}</span>
+                <span>Response rating: <strong>{host.responseRating || 'Excellent'}</strong></span>
               </div>
               <div className="host-stat">
                 <i className="fas fa-clock"></i>
-                <span>Response speed: {host.responseTime}</span>
+                <span>Response speed: <strong>{host.responseTime || 'A few hours'}</strong></span>
               </div>
               <div className="host-stat">
                 <i className="fas fa-comment"></i>
-                <span>Reviews: {host.reviewCount}</span>
+                <span>Reviews: <strong>{host.reviewCount}</strong></span>
               </div>
             </div>
 
@@ -228,7 +323,7 @@ function HostProfilePage() {
 
           {/* Listings Section */}
           <div className="host-listings-section">
-            <h2>{host.name}'s {listings.length} listing{listings.length !== 1 ? 's' : ''}</h2>
+            <h2>{isUserProfile ? 'Vendors worked with' : `${host.name}'s ${listings.length} listing${listings.length !== 1 ? 's' : ''}`}</h2>
             <div className="host-listings-grid">
               {listings.map((listing) => (
                 <div 

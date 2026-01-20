@@ -2611,7 +2611,7 @@ function VendorProfilePage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
               {/* Host Avatar */}
               <div 
-                onClick={() => navigate(`/host/${vendor.userId || vendorId}`)}
+                onClick={() => navigate(`/host/${profile.HostUserID || vendorId}`)}
                 style={{ 
                   width: '56px', 
                   height: '56px', 
@@ -2623,8 +2623,8 @@ function VendorProfilePage() {
                 }}
               >
                 <img 
-                  src={profile.HostProfileImage || profile.LogoURL || profile.FeaturedImageURL || 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png'}
-                  alt={profile.HostName || profile.ContactName || 'Host'}
+                  src={profile.HostProfileImage || profile.LogoURL || 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png'}
+                  alt={profile.HostName || 'Host'}
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                   onError={(e) => { e.target.src = 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png'; }}
                 />
@@ -2633,7 +2633,7 @@ function VendorProfilePage() {
               {/* Host Info */}
               <div style={{ flex: 1 }}>
                 <div 
-                  onClick={() => navigate(`/host/${vendor.userId || vendorId}`)}
+                  onClick={() => navigate(`/host/${profile.HostUserID || vendorId}`)}
                   style={{ 
                     fontSize: '1rem', 
                     fontWeight: 600, 
@@ -2644,24 +2644,15 @@ function VendorProfilePage() {
                     gap: '6px'
                   }}
                 >
-                  Hosted by {profile.HostName || profile.ContactName || profile.BusinessName?.split(' ')[0] || 'Host'}
+                  Hosted by {profile.HostName || profile.BusinessName?.split(' ')[0] || 'Host'}
                 </div>
                 <div style={{ fontSize: '0.85rem', color: '#717171', marginTop: '2px' }}>
-                  {profile.ResponseRating && (
-                    <span>Response rating: <strong style={{ color: '#222' }}>{profile.ResponseRating}</strong></span>
-                  )}
-                  {!profile.ResponseRating && reviews.length > 0 && (
+                  {reviews.length > 0 ? (
                     <span>{reviews.length} review{reviews.length !== 1 ? 's' : ''}</span>
-                  )}
-                  {!profile.ResponseRating && reviews.length === 0 && (
+                  ) : (
                     <span>New host</span>
                   )}
                 </div>
-                {profile.ResponseTime && (
-                  <div style={{ fontSize: '0.85rem', color: '#717171' }}>
-                    Response time: <strong style={{ color: '#222' }}>{profile.ResponseTime}</strong>
-                  </div>
-                )}
               </div>
             </div>
             

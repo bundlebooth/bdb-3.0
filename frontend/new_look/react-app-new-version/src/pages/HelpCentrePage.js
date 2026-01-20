@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { PageLayout } from '../components/PageWrapper';
 import Header from '../components/Header';
+import Footer from '../components/Footer';
 import { API_BASE_URL } from '../config';
 import './HelpCentrePage.css';
 
@@ -152,20 +153,20 @@ function HelpCentrePage() {
     return (
       <PageLayout variant="fullWidth" pageClassName="help-centre-page">
         <Header />
-        <div style={{ minHeight: '100vh', backgroundColor: '#fff', paddingTop: '1rem' }}>
+        <div style={{ minHeight: '100vh', backgroundColor: '#fff' }}>
           {/* Breadcrumb Navigation */}
           <div style={{ borderBottom: '1px solid #e5e7eb', padding: '1rem 0', backgroundColor: '#f9fafb' }}>
             <div style={{ maxWidth: '800px', margin: '0 auto', padding: '0 1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
               <button 
                 onClick={handleBackToCategories} 
-                style={{ background: 'none', border: 'none', color: '#6366f1', cursor: 'pointer', fontSize: '0.9rem', padding: 0, display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                style={{ background: 'none', border: 'none', color: 'var(--primary, #4F86E8)', cursor: 'pointer', fontSize: '0.9rem', padding: 0, display: 'flex', alignItems: 'center', gap: '0.25rem' }}
               >
                 <i className="fas fa-home" style={{ fontSize: '0.8rem' }}></i> Help Centre
               </button>
               <span style={{ color: '#9ca3af' }}>›</span>
               <button 
                 onClick={handleBackToCategory} 
-                style={{ background: 'none', border: 'none', color: '#6366f1', cursor: 'pointer', fontSize: '0.9rem', padding: 0 }}
+                style={{ background: 'none', border: 'none', color: 'var(--primary, #4F86E8)', cursor: 'pointer', fontSize: '0.9rem', padding: 0 }}
               >
                 {currentCategory?.name || selectedArticle.Category}
               </button>
@@ -181,7 +182,7 @@ function HelpCentrePage() {
             </h1>
             
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '2.5rem', color: '#6b7280', fontSize: '0.9rem', paddingBottom: '1.5rem', borderBottom: '1px solid #e5e7eb' }}>
-              <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '0.8rem', fontWeight: '600' }}>PB</div>
+              <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'var(--primary, #4F86E8)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '0.8rem', fontWeight: '600' }}>PB</div>
               <div>
                 <div style={{ color: '#111', fontWeight: '500' }}>Planbeau Team</div>
                 <div style={{ fontSize: '0.8rem' }}>Updated recently</div>
@@ -227,19 +228,7 @@ function HelpCentrePage() {
           </div>
 
           {/* Footer */}
-          <footer style={{ borderTop: '1px solid #e5e7eb', padding: '2rem 1.5rem', backgroundColor: '#f9fafb' }}>
-            <div style={{ maxWidth: '800px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-              <div>
-                <Link to="/" style={{ color: '#6366f1', fontWeight: '600', textDecoration: 'none', fontSize: '1.1rem' }}>Planbeau</Link>
-                <p style={{ color: '#6b7280', fontSize: '0.85rem', marginTop: '0.25rem' }}>Canada's Event Services Marketplace</p>
-              </div>
-              <div style={{ display: 'flex', gap: '1.5rem', fontSize: '0.9rem' }}>
-                <Link to="/help-centre" style={{ color: '#6b7280', textDecoration: 'none' }}>Help Centre</Link>
-                <Link to="/terms-of-service" style={{ color: '#6b7280', textDecoration: 'none' }}>Terms</Link>
-                <Link to="/privacy-policy" style={{ color: '#6b7280', textDecoration: 'none' }}>Privacy</Link>
-              </div>
-            </div>
-          </footer>
+          <Footer />
         </div>
       </PageLayout>
     );
@@ -250,13 +239,13 @@ function HelpCentrePage() {
     return (
       <PageLayout variant="fullWidth" pageClassName="help-centre-page">
         <Header />
-        <div style={{ minHeight: '100vh', backgroundColor: '#fff', paddingTop: '1rem' }}>
+        <div style={{ minHeight: '100vh', backgroundColor: '#fff' }}>
           {/* Breadcrumb Navigation */}
           <div style={{ borderBottom: '1px solid #e5e7eb', padding: '1rem 0', backgroundColor: '#f9fafb' }}>
             <div style={{ maxWidth: '800px', margin: '0 auto', padding: '0 1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <button 
                 onClick={handleBackToCategories} 
-                style={{ background: 'none', border: 'none', color: '#6366f1', cursor: 'pointer', fontSize: '0.9rem', padding: 0, display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                style={{ background: 'none', border: 'none', color: 'var(--primary, #4F86E8)', cursor: 'pointer', fontSize: '0.9rem', padding: 0, display: 'flex', alignItems: 'center', gap: '0.25rem' }}
               >
                 <i className="fas fa-home" style={{ fontSize: '0.8rem' }}></i> Help Centre
               </button>
@@ -268,7 +257,7 @@ function HelpCentrePage() {
           {/* Category Header */}
           <div style={{ maxWidth: '800px', margin: '0 auto', padding: '2.5rem 1.5rem 1.5rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-              <div style={{ width: '56px', height: '56px', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ width: '56px', height: '56px', background: 'var(--primary, #4F86E8)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <i className={`fas ${currentCategory?.icon || 'fa-folder'}`} style={{ color: '#fff', fontSize: '1.5rem' }}></i>
               </div>
               <div>
@@ -306,7 +295,7 @@ function HelpCentrePage() {
                     onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
                     onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#fff'}
                   >
-                    <span style={{ color: '#6366f1', fontSize: '0.95rem', fontWeight: '500' }}>{faq.Question}</span>
+                    <span style={{ color: 'var(--primary, #4F86E8)', fontSize: '0.95rem', fontWeight: '500' }}>{faq.Question}</span>
                     <i className="fas fa-chevron-right" style={{ color: '#d1d5db', fontSize: '0.75rem' }}></i>
                   </div>
                 ))}
@@ -315,19 +304,7 @@ function HelpCentrePage() {
           </div>
 
           {/* Footer */}
-          <footer style={{ borderTop: '1px solid #e5e7eb', padding: '2rem 1.5rem', backgroundColor: '#f9fafb' }}>
-            <div style={{ maxWidth: '800px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-              <div>
-                <Link to="/" style={{ color: '#6366f1', fontWeight: '600', textDecoration: 'none', fontSize: '1.1rem' }}>Planbeau</Link>
-                <p style={{ color: '#6b7280', fontSize: '0.85rem', marginTop: '0.25rem' }}>Canada's Event Services Marketplace</p>
-              </div>
-              <div style={{ display: 'flex', gap: '1.5rem', fontSize: '0.9rem' }}>
-                <Link to="/help-centre" style={{ color: '#6b7280', textDecoration: 'none' }}>Help Centre</Link>
-                <Link to="/terms-of-service" style={{ color: '#6b7280', textDecoration: 'none' }}>Terms</Link>
-                <Link to="/privacy-policy" style={{ color: '#6b7280', textDecoration: 'none' }}>Privacy</Link>
-              </div>
-            </div>
-          </footer>
+          <Footer />
         </div>
       </PageLayout>
     );
@@ -337,11 +314,11 @@ function HelpCentrePage() {
   return (
     <PageLayout variant="fullWidth" pageClassName="help-centre-page">
       <Header />
-      <div style={{ minHeight: '100vh', backgroundColor: '#fff', paddingTop: '1rem' }}>
+      <div style={{ minHeight: '100vh', backgroundColor: '#fff' }}>
         {/* Hero Section */}
-        <div style={{ background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)', padding: '3rem 1.5rem', textAlign: 'center' }}>
-          <h1 style={{ color: '#fff', fontSize: '2rem', fontWeight: '700', marginBottom: '0.75rem' }}>How can we help you?</h1>
-          <p style={{ color: 'rgba(255,255,255,0.9)', fontSize: '1.1rem', marginBottom: '2rem' }}>Search our knowledge base or browse categories below</p>
+        <div style={{ background: 'linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%)', padding: '3rem 1.5rem', textAlign: 'center' }}>
+          <h1 style={{ color: '#111', fontSize: '2rem', fontWeight: '700', marginBottom: '0.75rem' }}>How can we help you?</h1>
+          <p style={{ color: '#666', fontSize: '1.1rem', marginBottom: '2rem' }}>Search our knowledge base or browse categories below</p>
           
           {/* Search Bar */}
           <div style={{ maxWidth: '600px', margin: '0 auto', position: 'relative' }}>
@@ -404,11 +381,11 @@ function HelpCentrePage() {
                   onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)'; e.currentTarget.style.borderColor = '#d1d5db'; }}
                   onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = '#e5e7eb'; }}
                 >
-                  <div style={{ width: '48px', height: '48px', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <div style={{ width: '48px', height: '48px', background: 'var(--primary, #4F86E8)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     <i className={`fas ${category.icon}`} style={{ color: '#fff', fontSize: '1.1rem' }}></i>
                   </div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ color: '#6366f1', fontSize: '1rem', fontWeight: '600', marginBottom: '0.25rem' }}>{category.name}</div>
+                    <div style={{ color: 'var(--primary, #4F86E8)', fontSize: '1rem', fontWeight: '600', marginBottom: '0.25rem' }}>{category.name}</div>
                     <div style={{ color: '#6b7280', fontSize: '0.85rem' }}>{groupedFaqs[category.slug]?.length || 0} articles</div>
                   </div>
                   <i className="fas fa-chevron-right" style={{ color: '#d1d5db', fontSize: '0.85rem' }}></i>
@@ -422,25 +399,13 @@ function HelpCentrePage() {
         <div style={{ backgroundColor: '#f9fafb', padding: '3rem 1.5rem', textAlign: 'center', borderTop: '1px solid #e5e7eb' }}>
           <h2 style={{ color: '#111', fontSize: '1.5rem', fontWeight: '600', marginBottom: '0.75rem' }}>Still need help?</h2>
           <p style={{ color: '#6b7280', marginBottom: '1.5rem' }}>Our support team is here to assist you</p>
-          <a href="mailto:support@planbeau.com" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', color: '#fff', padding: '0.875rem 1.5rem', borderRadius: '8px', textDecoration: 'none', fontWeight: '500' }}>
+          <a href="mailto:support@planbeau.com" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: 'var(--primary, #4F86E8)', color: '#fff', padding: '0.875rem 1.5rem', borderRadius: '8px', textDecoration: 'none', fontWeight: '500' }}>
             <i className="fas fa-envelope"></i> Contact Support
           </a>
         </div>
 
         {/* Footer */}
-        <footer style={{ borderTop: '1px solid #e5e7eb', padding: '2rem 1.5rem', backgroundColor: '#fff' }}>
-          <div style={{ maxWidth: '800px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-            <div>
-              <Link to="/" style={{ color: '#6366f1', fontWeight: '600', textDecoration: 'none', fontSize: '1.1rem' }}>Planbeau</Link>
-              <p style={{ color: '#6b7280', fontSize: '0.85rem', marginTop: '0.25rem' }}>Canada's Event Services Marketplace</p>
-            </div>
-            <div style={{ display: 'flex', gap: '1.5rem', fontSize: '0.9rem' }}>
-              <Link to="/help-centre" style={{ color: '#6b7280', textDecoration: 'none' }}>Help Centre</Link>
-              <Link to="/terms-of-service" style={{ color: '#6b7280', textDecoration: 'none' }}>Terms</Link>
-              <Link to="/privacy-policy" style={{ color: '#6b7280', textDecoration: 'none' }}>Privacy</Link>
-            </div>
-          </div>
-        </footer>
+        <Footer />
       </div>
     </PageLayout>
   );
