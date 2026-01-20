@@ -18,6 +18,7 @@ function ProfileModal({ isOpen, onClose }) {
   const [accountType, setAccountType] = useState('client');
   const [twofaCode, setTwofaCode] = useState(['', '', '', '', '', '']);
   const [twofaEmail, setTwofaEmail] = useState('');
+  const [twofaTempToken, setTwofaTempToken] = useState('');
   
   // Google Sign-In states
   const [googleAccountType, setGoogleAccountType] = useState('client');
@@ -243,6 +244,7 @@ function ProfileModal({ isOpen, onClose }) {
       // Check if 2FA is required
       if (data.twoFactorRequired) {
         setTwofaEmail(loginEmail);
+        setTwofaTempToken(data.tempToken);
         setView('twofa');
         showBanner('Verification code sent to your email', 'info');
         return;
@@ -367,7 +369,7 @@ function ProfileModal({ isOpen, onClose }) {
 
     try {
       setLoading(true);
-      const response = await apiPost('/auth/verify-2fa', { email: twofaEmail, code });
+      const response = await apiPost('/users/login/verify-2fa', { tempToken: twofaTempToken, code });
 
       if (!response.ok) {
         throw new Error('Invalid verification code');

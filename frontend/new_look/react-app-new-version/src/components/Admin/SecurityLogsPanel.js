@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { showBanner } from '../../utils/helpers';
+import { showBanner, formatDateTime } from '../../utils/helpers';
 import { apiGet, apiPost } from '../../utils/api';
 import { LoadingState, EmptyState } from '../common/AdminComponents';
 
@@ -39,6 +39,11 @@ const SecurityLogsPanel = () => {
       const response = await apiGet(`/admin/security/logs?type=${activeTab}&status=${statusFilter}&page=${pagination.page}&limit=${pagination.limit}&search=${searchTerm}`);
       if (response.ok) {
         const data = await response.json();
+        // Debug: log first item to see timestamp format
+        if (data.logs && data.logs[0]) {
+          console.log('First log raw data:', data.logs[0]);
+          console.log('Timestamp value:', data.logs[0].timestamp);
+        }
         // Transform the data to match expected format
         const transformedLogs = (data.logs || []).map(log => ({
           id: log.id,
@@ -148,6 +153,21 @@ const SecurityLogsPanel = () => {
     } catch (error) {
       console.error('Error resetting 2FA:', error);
       showBanner('Failed to reset 2FA', 'error');
+    }
+  };
+
+  const resetPassword = async (userId, email) => {
+    if (!window.confirm(`Send password reset to ${email}? This will generate a temporary password and email it to the user.`)) return;
+    try {
+      const response = await apiPost(`/admin/users/${userId}/reset-password`, { sendEmailNotification: true });
+      if (response.ok) {
+        showBanner('Password reset email sent successfully', 'success');
+      } else {
+        showBanner('Failed to reset password', 'error');
+      }
+    } catch (error) {
+      console.error('Error resetting password:', error);
+      showBanner('Failed to reset password', 'error');
     }
   };
 
@@ -346,7 +366,7 @@ const SecurityLogsPanel = () => {
                   </tr>
                 ) : sortedLogs.map(log => (
                   <tr key={log.id} className={log.action === 'Login Failed' ? 'warning-row' : ''}>
-                    <td>{log.timestamp ? new Date(log.timestamp).toLocaleString() : 'N/A'}</td>
+                    <td>{formatDateTime(log.timestamp)}</td>
                     <td><strong>{log.user || 'Unknown'}</strong></td>
                     <td>{getActionBadge(log.action)}</td>
                     <td><code>{log.ip || 'Unknown'}</code></td>
@@ -388,7 +408,7 @@ const SecurityLogsPanel = () => {
                   </tr>
                 ) : sortedLogs.map(log => (
                   <tr key={log.id}>
-                    <td>{log.timestamp ? new Date(log.timestamp).toLocaleString() : 'N/A'}</td>
+                    <td>{formatDateTime(log.timestamp)}</td>
                     <td><strong>{log.admin || 'Unknown'}</strong></td>
                     <td>{getActionBadge(log.action)}</td>
                     <td>{log.target || 'N/A'}</td>
@@ -428,7 +448,7 @@ const SecurityLogsPanel = () => {
                       {getSeverityBadge(item.severity)}
                     </div>
                     <p className="flagged-reason">{item.reason}</p>
-                    <span className="flagged-time">{new Date(item.timestamp).toLocaleString()}</span>
+                    <span className="flagged-time">{formatDateTime(item.timestamp)}</span>
                   </div>
                   <div className="flagged-actions">
                     <button className="btn-small primary">Review</button>
@@ -534,9 +554,10 @@ const SecurityLogsPanel = () => {
                         {admin.TwoFactorEnabled ? 'Enabled' : 'Disabled'}
                       </span>
                     </td>
-                    <td>{admin.LastLogin ? new Date(admin.LastLogin).toLocaleString() : 'Never'}</td>
+                    <td>{formatDateTime(admin.LastLogin) || 'Never'}</td>
                     <td>
                       <button className="btn-small secondary" onClick={() => reset2FA(admin.UserID)}>Reset 2FA</button>
+                      <button className="btn-small primary" style={{ marginLeft: '8px' }} onClick={() => resetPassword(admin.UserID, admin.Email)}>Reset Password</button>
                     </td>
                   </tr>
                 )) : (

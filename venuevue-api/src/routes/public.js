@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { poolPromise, sql } = require('../config/db');
+const { serializeDates, serializeRecords } = require('../utils/helpers');
 
 // Default FAQs fallback
 const DEFAULT_FAQS = [

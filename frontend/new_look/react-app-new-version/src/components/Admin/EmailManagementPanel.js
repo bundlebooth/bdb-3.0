@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { showBanner } from '../../utils/helpers';
+import { showBanner, formatDateTime } from '../../utils/helpers';
 import { apiGet, apiPost, apiPut, apiDelete } from '../../utils/api';
 import { API_BASE_URL } from '../../config';
 import UniversalModal from '../UniversalModal';
@@ -526,20 +526,8 @@ const EmailManagementPanel = () => {
                     const logStatus = log.status || log.Status || 'unknown';
                     const bodyHtml = log.htmlBody || log.HtmlBody || log.body || log.Body || log.htmlContent || log.HtmlContent;
                     
-                    // Format date properly
-                    let formattedDate = '-';
-                    if (sentDate) {
-                      const dateObj = new Date(sentDate);
-                      if (!isNaN(dateObj.getTime())) {
-                        formattedDate = dateObj.toLocaleString('en-US', {
-                          year: 'numeric',
-                          month: 'short',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        });
-                      }
-                    }
+                    // Format date properly using helper
+                    const formattedDate = formatDateTime(sentDate);
                     
                     return (
                       <tr key={log.id || log.LogID || idx} style={{ borderTop: '1px solid #e5e7eb' }}>
@@ -703,7 +691,7 @@ const EmailManagementPanel = () => {
                           <code style={{ background: '#f3f4f6', padding: '2px 6px', borderRadius: '4px', fontSize: '12px' }}>{item.TemplateKey}</code>
                         </td>
                         <td style={{ padding: '12px 16px', fontSize: '13px', color: '#6b7280' }}>
-                          {item.ScheduledAt ? new Date(item.ScheduledAt).toLocaleString() : '-'}
+                          {formatDateTime(item.ScheduledAt)}
                         </td>
                         <td style={{ padding: '12px 16px' }}>
                           <span style={{ padding: '4px 8px', borderRadius: '4px', fontSize: '12px', background: sc.bg, color: sc.color, textTransform: 'capitalize' }}>

@@ -3,6 +3,7 @@ const router = express.Router();
 const { poolPromise, sql } = require('../config/db');
 const { authenticateToken, requireAdmin } = require('../middlewares/auth');
 const { sendEmail, sendAccountSuspended, sendAccountReactivated } = require('../services/email');
+const { serializeDates, serializeRecords } = require('../utils/helpers');
 
 // Helper to get pool
 const getPool = async () => await poolPromise;
@@ -165,7 +166,7 @@ router.get('/vendor-approvals', async (req, res) => {
     
     const result = await request.execute('admin.sp_GetVendorApprovals');
     
-    res.json({ profiles: result.recordset });
+    res.json({ profiles: serializeRecords(result.recordset) });
   } catch (error) {
     console.error('Error fetching vendor approvals:', error);
     res.status(500).json({ error: 'Failed to fetch vendor approvals', details: error.message });
@@ -601,7 +602,7 @@ router.get('/users/:id', async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
     
-    res.json({ user: result.recordset[0] });
+    res.json({ user: serializeDates(result.recordset[0]) });
   } catch (error) {
     console.error('Error fetching user:', error);
     res.status(500).json({ error: 'Failed to fetch user' });
@@ -918,7 +919,7 @@ router.get('/bookings/:id', async (req, res) => {
       return res.status(404).json({ error: 'Booking not found' });
     }
     
-    res.json({ booking: result.recordset[0] });
+    res.json({ booking: serializeDates(result.recordset[0]) });
   } catch (error) {
     console.error('Error fetching booking:', error);
     res.status(500).json({ error: 'Failed to fetch booking' });
@@ -1320,7 +1321,7 @@ router.get('/payments/vendor-balances', async (req, res) => {
     
     const result = await pool.request().execute('admin.sp_GetVendorBalances');
     
-    res.json({ balances: result.recordset });
+    res.json({ balances: serializeRecords(result.recordset) });
   } catch (error) {
     console.error('Error fetching vendor balances:', error);
     res.status(500).json({ error: 'Failed to fetch vendor balances', details: error.message });
@@ -1392,8 +1393,14 @@ router.get('/security/logs', async (req, res) => {
     
     const result = await request.execute('admin.sp_GetSecurityLogs');
     
+    // Convert Date objects to ISO strings for proper JSON serialization
+    const logs = (result.recordsets[0] || []).map(log => ({
+      ...log,
+      timestamp: log.timestamp instanceof Date ? log.timestamp.toISOString() : log.timestamp
+    }));
+    
     res.json({ 
-      logs: result.recordsets[0] || [], 
+      logs, 
       total: result.recordsets[1]?.[0]?.total || 0,
       page: pageNum,
       limit: limitNum
@@ -1469,7 +1476,7 @@ router.get('/chats/:id/messages', async (req, res) => {
     
     const result = await request.execute('admin.sp_GetChatMessages');
     
-    res.json({ messages: result.recordsets[1] || [] });
+    res.json({ messages: serializeRecords(result.recordsets[1] || []) });
   } catch (error) {
     console.error('Error fetching messages:', error);
     res.status(500).json({ error: 'Failed to fetch messages', details: error.message });
@@ -1554,7 +1561,7 @@ router.get('/support/search', async (req, res) => {
     
     const result = await request.execute('admin.sp_SearchUsers');
     
-    res.json({ results: result.recordset });
+    res.json({ results: serializeRecords(result.recordset) });
   } catch (error) {
     console.error('Error searching:', error);
     res.status(500).json({ error: 'Search failed' });
@@ -1653,7 +1660,7 @@ router.get('/support/tickets/:id/messages', async (req, res) => {
     
     const result = await request.execute('admin.sp_GetTicketMessages');
     
-    res.json({ messages: result.recordset });
+    res.json({ messages: serializeRecords(result.recordset) });
   } catch (error) {
     console.error('Error fetching messages:', error);
     res.status(500).json({ error: 'Failed to fetch messages' });
@@ -1693,7 +1700,7 @@ router.get('/content/banners', async (req, res) => {
     
     const result = await pool.request().execute('admin.sp_GetBanners');
     
-    res.json({ items: result.recordset || [] });
+    res.json({ items: serializeRecords(result.recordset || []) });
   } catch (error) {
     console.error('Error fetching banners:', error);
     res.status(500).json({ error: 'Failed to fetch banners' });
@@ -1755,7 +1762,7 @@ router.get('/content/announcements', async (req, res) => {
     
     const result = await pool.request().execute('admin.sp_GetAnnouncements');
     
-    res.json({ items: result.recordset || [] });
+    res.json({ items: serializeRecords(result.recordset || []) });
   } catch (error) {
     console.error('Error fetching announcements:', error);
     res.status(500).json({ error: 'Failed to fetch announcements' });
@@ -1827,7 +1834,7 @@ router.get('/content/faqs', async (req, res) => {
     
     const result = await pool.request().execute('admin.sp_GetFAQs');
     
-    res.json({ items: result.recordset || [] });
+    res.json({ items: serializeRecords(result.recordset || []) });
   } catch (error) {
     console.error('Error fetching FAQs:', error);
     res.status(500).json({ error: 'Failed to fetch FAQs' });
@@ -1894,7 +1901,7 @@ router.get('/notifications/templates', async (req, res) => {
     
     const result = await pool.request().execute('admin.sp_GetEmailTemplates');
     
-    res.json({ templates: result.recordset });
+    res.json({ templates: serializeRecords(result.recordset) });
   } catch (error) {
     console.error('Error fetching templates:', error);
     res.status(500).json({ error: 'Failed to fetch templates', details: error.message });
@@ -1963,8 +1970,17 @@ router.get('/notifications/logs', async (req, res) => {
     
     const result = await request.execute('admin.sp_GetEmailLogs');
     
+    // Convert Date objects to ISO strings for proper JSON serialization
+    const logs = (result.recordsets[0] || []).map(log => ({
+      ...log,
+      sentAt: log.sentAt instanceof Date ? log.sentAt.toISOString() : log.sentAt,
+      SentAt: log.SentAt instanceof Date ? log.SentAt.toISOString() : log.SentAt,
+      createdAt: log.createdAt instanceof Date ? log.createdAt.toISOString() : log.createdAt,
+      CreatedAt: log.CreatedAt instanceof Date ? log.CreatedAt.toISOString() : log.CreatedAt
+    }));
+    
     res.json({ 
-      logs: result.recordsets[0] || [], 
+      logs, 
       total: result.recordsets[1]?.[0]?.total || 0,
       page: parseInt(page),
       limit: parseInt(limit)
@@ -2357,7 +2373,7 @@ router.get('/categories/:id/services', async (req, res) => {
     
     const result = await request.execute('admin.sp_GetCategoryServices');
     
-    res.json({ services: result.recordset });
+    res.json({ services: serializeRecords(result.recordset) });
   } catch (error) {
     console.error('Error fetching category services:', error);
     res.status(500).json({ error: 'Failed to fetch services', details: error.message });
@@ -2494,7 +2510,7 @@ router.get('/analytics/revenue', async (req, res) => {
     
     const dailyRevenue = await request.execute('admin.sp_GetRevenueReport');
     
-    res.json({ dailyRevenue: dailyRevenue.recordset });
+    res.json({ dailyRevenue: serializeRecords(dailyRevenue.recordset) });
   } catch (error) {
     console.error('Error fetching revenue analytics:', error);
     res.status(500).json({ error: 'Failed to fetch analytics', details: error.message });
@@ -2526,7 +2542,7 @@ router.get('/public/banners', async (req, res) => {
     
     const result = await pool.request().execute('admin.sp_GetPublicBanners');
     
-    res.json({ banners: result.recordset || [] });
+    res.json({ banners: serializeRecords(result.recordset || []) });
   } catch (error) {
     console.error('Error fetching public banners:', error);
     res.status(500).json({ error: 'Failed to fetch banners' });
@@ -2544,7 +2560,7 @@ router.get('/public/announcements', async (req, res) => {
     
     const result = await request.execute('admin.sp_GetPublicAnnouncements');
     
-    res.json({ announcements: result.recordset || [] });
+    res.json({ announcements: serializeRecords(result.recordset || []) });
   } catch (error) {
     console.error('Error fetching public announcements:', error);
     res.status(500).json({ error: 'Failed to fetch announcements' });
@@ -2578,7 +2594,7 @@ router.get('/faqs', async (req, res) => {
     
     const result = await pool.request().execute('admin.sp_GetPublicFAQs');
     
-    res.json({ faqs: result.recordset || [] });
+    res.json({ faqs: serializeRecords(result.recordset) });
   } catch (error) {
     console.error('Error fetching FAQs:', error);
     res.status(500).json({ error: 'Failed to fetch FAQs' });
@@ -2599,7 +2615,7 @@ router.post('/faqs', async (req, res) => {
     
     const result = await request.execute('admin.sp_CreatePublicFAQ');
     
-    res.json({ success: true, faq: result.recordset[0] });
+    res.json({ success: true, faq: serializeRecords(result.recordset)[0] });
   } catch (error) {
     console.error('Error creating FAQ:', error);
     res.status(500).json({ error: 'Failed to create FAQ' });
@@ -2657,7 +2673,7 @@ router.get('/commission-settings', async (req, res) => {
     
     const result = await pool.request().execute('admin.sp_GetCommissionSettings');
     
-    res.json({ settings: result.recordset || [] });
+    res.json({ settings: serializeRecords(result.recordset) });
   } catch (error) {
     console.error('Error fetching commission settings:', error);
     res.status(500).json({ error: 'Failed to fetch commission settings' });
@@ -2701,7 +2717,7 @@ router.post('/commission-settings', async (req, res) => {
     
     const result = await request.execute('admin.sp_CreateCommissionSetting');
     
-    res.json({ success: true, setting: result.recordset[0] });
+    res.json({ success: true, setting: serializeRecords(result.recordset)[0] });
   } catch (error) {
     console.error('Error creating commission setting:', error);
     res.status(500).json({ error: 'Failed to create commission setting' });
@@ -2884,7 +2900,14 @@ router.get('/security/admin-2fa-status', async (req, res) => {
     
     const result = await pool.request().execute('admin.sp_GetUsersWithTwoFactor');
     
-    res.json({ success: true, admins: result.recordset });
+    // Convert Date objects to ISO strings for proper JSON serialization
+    const admins = (result.recordset || []).map(admin => ({
+      ...admin,
+      LastLogin: admin.LastLogin instanceof Date ? admin.LastLogin.toISOString() : admin.LastLogin,
+      CreatedAt: admin.CreatedAt instanceof Date ? admin.CreatedAt.toISOString() : admin.CreatedAt
+    }));
+    
+    res.json({ success: true, admins: serializeRecords(admins) });
   } catch (error) {
     console.error('Error fetching admin 2FA status:', error);
     res.status(500).json({ error: 'Failed to fetch admin 2FA status' });
@@ -2938,7 +2961,7 @@ router.get('/security/flagged-items', async (req, res) => {
       timestamp: item.lastOccurrence
     }));
     
-    res.json({ success: true, items: flaggedItems });
+    res.json({ success: true, items: serializeRecords(flaggedItems) });
   } catch (error) {
     console.error('Error fetching flagged items:', error);
     res.status(500).json({ error: 'Failed to fetch flagged items' });
@@ -2964,7 +2987,7 @@ router.get('/blogs', async (req, res) => {
     try {
       const result = await request.execute('admin.sp_GetBlogs');
       res.json({
-        blogs: result.recordsets[0] || [],
+        blogs: serializeRecords(result.recordsets[0] || []),
         total: result.recordsets[1]?.[0]?.total || 0,
         page: parseInt(page),
         limit: parseInt(limit)
@@ -2996,7 +3019,7 @@ router.get('/blogs', async (req, res) => {
       const countResult = await pool.request().query('SELECT COUNT(*) as total FROM content.Blogs');
       
       res.json({
-        blogs: result.recordset || [],
+        blogs: serializeRecords(result.recordset || []),
         total: countResult.recordset[0]?.total || 0,
         page: parseInt(page),
         limit: parseInt(limit)
@@ -3023,7 +3046,7 @@ router.get('/blogs/:id', async (req, res) => {
       return res.status(404).json({ error: 'Blog post not found' });
     }
     
-    res.json({ blog: result.recordset[0] });
+    res.json({ blog: serializeRecords(result.recordset)[0] });
   } catch (error) {
     console.error('Error fetching blog:', error);
     res.status(500).json({ error: 'Failed to fetch blog' });
@@ -3058,7 +3081,7 @@ router.post('/blogs', async (req, res) => {
     
     const result = await request.execute('admin.sp_CreateBlog');
     
-    res.json({ success: true, blogId: result.recordset[0].BlogID });
+    res.json({ success: true, blogId: serializeRecords(result.recordset)[0].BlogID });
   } catch (error) {
     console.error('Error creating blog:', error);
     res.status(500).json({ error: 'Failed to create blog', details: error.message });
@@ -3193,7 +3216,7 @@ router.get('/blog-categories', async (req, res) => {
     const existingCategories = result.recordset.map(r => r.Category);
     const allCategories = [...new Set([...existingCategories, ...defaultCategories])];
     
-    res.json({ categories: allCategories });
+    res.json({ categories: serializeRecords(allCategories) });
   } catch (error) {
     console.error('Error fetching blog categories:', error);
     res.json({ categories: ['Wedding Planning', 'Event Tips', 'Vendor Spotlights', 'Industry News', 'Holiday Festivities', 'Business Events'] });
@@ -3209,20 +3232,20 @@ router.get('/badges', async (req, res) => {
   try {
     const pool = await getPool();
     const result = await pool.request().execute('admin.sp_GetAllBadgeTypes');
-    res.json({ success: true, badgeTypes: result.recordset || [] });
+    res.json({ success: true, badgeTypes: serializeRecords(result.recordset) });
   } catch (error) {
     console.error('Error fetching badge types:', error);
     // Return default badge types if stored procedure doesn't exist
     res.json({ 
       success: true, 
-      badgeTypes: [
+      badgeTypes: serializeRecords([
         { BadgeType: 'new_vendor', BadgeName: 'New Vendor', Description: 'Recently joined vendor', Icon: 'fa-sparkles', Color: '#0369a1' },
         { BadgeType: 'top_rated', BadgeName: 'Top Rated', Description: 'Highly rated by clients', Icon: 'fa-star', Color: '#d97706' },
         { BadgeType: 'choice_award', BadgeName: 'Choice Award', Description: 'Winner of choice awards', Icon: 'fa-award', Color: '#dc2626' },
         { BadgeType: 'premium', BadgeName: 'Premium', Description: 'Premium vendor status', Icon: 'fa-crown', Color: '#7c3aed' },
         { BadgeType: 'verified', BadgeName: 'Verified', Description: 'Identity verified', Icon: 'fa-check-circle', Color: '#059669' },
         { BadgeType: 'featured', BadgeName: 'Featured', Description: 'Featured vendor', Icon: 'fa-fire', Color: '#db2777' }
-      ]
+      ])
     });
   }
 });
@@ -3236,7 +3259,7 @@ router.get('/vendors/:id/badges', async (req, res) => {
     request.input('VendorProfileID', sql.Int, parseInt(id));
     
     const result = await request.execute('vendors.sp_GetVendorBadges');
-    res.json({ success: true, badges: result.recordset || [] });
+    res.json({ success: true, badges: serializeRecords(result.recordset) });
   } catch (error) {
     console.error('Error fetching vendor badges:', error);
     res.status(500).json({ success: false, message: 'Failed to get vendor badges' });
@@ -3264,7 +3287,7 @@ router.post('/vendors/:id/badges', async (req, res) => {
     
     const result = await request.execute('vendors.sp_AssignVendorBadge');
     
-    res.json({ success: true, badgeId: result.recordset[0]?.BadgeID, message: 'Badge assigned successfully' });
+    res.json({ success: true, badgeId: serializeRecords(result.recordset)[0]?.BadgeID, message: 'Badge assigned successfully' });
   } catch (error) {
     console.error('Error assigning badge:', error);
     res.status(500).json({ success: false, message: 'Failed to assign badge' });
@@ -3311,9 +3334,18 @@ router.get('/email-queue', async (req, res) => {
   try {
     const { status, page = 1, pageSize = 50 } = req.query;
     const result = await getQueueItems(status || null, parseInt(page), parseInt(pageSize));
+    
+    // Convert Date objects to ISO strings for proper JSON serialization
+    const items = (result.items || []).map(item => ({
+      ...item,
+      ScheduledAt: item.ScheduledAt instanceof Date ? item.ScheduledAt.toISOString() : item.ScheduledAt,
+      SentAt: item.SentAt instanceof Date ? item.SentAt.toISOString() : item.SentAt,
+      CreatedAt: item.CreatedAt instanceof Date ? item.CreatedAt.toISOString() : item.CreatedAt
+    }));
+    
     res.json({ 
       success: true, 
-      items: result.items, 
+      items: serializeRecords(items), 
       total: result.total,
       page: parseInt(page),
       pageSize: parseInt(pageSize)
@@ -3381,7 +3413,7 @@ router.get('/faq-categories', async (req, res) => {
       ORDER BY c.DisplayOrder, c.Name
     `);
     
-    res.json({ categories: result.recordset || [] });
+    res.json({ categories: serializeRecords(result.recordset) });
   } catch (error) {
     console.error('Error fetching FAQ categories:', error);
     res.status(500).json({ error: 'Failed to fetch FAQ categories' });
@@ -3407,7 +3439,7 @@ router.post('/faq-categories', async (req, res) => {
         VALUES (@Name, @Slug, @Description, @Icon, @DisplayOrder, @IsActive)
       `);
     
-    res.json({ success: true, category: result.recordset[0] });
+    res.json({ success: true, category: serializeRecords(result.recordset)[0] });
   } catch (error) {
     console.error('Error creating FAQ category:', error);
     res.status(500).json({ error: 'Failed to create FAQ category' });
@@ -3494,7 +3526,7 @@ router.get('/faqs/all', async (req, res) => {
       ORDER BY f.CategoryID, f.DisplayOrder, f.FAQID
     `);
     
-    res.json({ faqs: result.recordset || [] });
+    res.json({ faqs: serializeRecords(result.recordset) });
   } catch (error) {
     console.error('Error fetching all FAQs:', error);
     res.status(500).json({ error: 'Failed to fetch FAQs' });

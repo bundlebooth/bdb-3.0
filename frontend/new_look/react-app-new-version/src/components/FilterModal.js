@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import UniversalModal from './UniversalModal';
+import { API_BASE_URL } from '../config';
 
 function FilterModal({ isOpen, onClose, filters, onFilterChange, userLocation, onApply, vendorCount = 0 }) {
   const locationInputRef = useRef(null);
@@ -11,6 +12,73 @@ function FilterModal({ isOpen, onClose, filters, onFilterChange, userLocation, o
   const [minRating, setMinRating] = useState(filters.minRating || '');
   const [region, setRegion] = useState(filters.region || '');
   const [activeTags, setActiveTags] = useState(filters.tags || []);
+  const [previewCount, setPreviewCount] = useState(vendorCount);
+  const [loadingCount, setLoadingCount] = useState(false);
+  const debounceRef = useRef(null);
+
+  // Fetch preview count when filters change
+  const fetchPreviewCount = useCallback(async () => {
+    if (!isOpen) return;
+    
+    try {
+      setLoadingCount(true);
+      const params = new URLSearchParams();
+      
+      // Add location params
+      if (userLocation) {
+        params.set('latitude', String(userLocation.lat));
+        params.set('longitude', String(userLocation.lng));
+      }
+      
+      // Add distance filter (convert km to miles)
+      const radiusMiles = Math.round(distanceKm * 0.621371);
+      params.set('radiusMiles', String(radiusMiles));
+      
+      // Add other filters
+      if (priceLevel) params.set('priceLevel', priceLevel);
+      if (minRating) params.set('minRating', minRating);
+      if (region) params.set('region', region);
+      if (activeTags.length > 0) params.set('tags', activeTags.join(','));
+      
+      params.set('countOnly', 'true');
+      
+      const response = await fetch(`${API_BASE_URL}/vendors?${params.toString()}`);
+      if (response.ok) {
+        const data = await response.json();
+        setPreviewCount(data.totalCount || data.count || (data.vendors || data.data || []).length || 0);
+      }
+    } catch (error) {
+      console.error('Error fetching preview count:', error);
+    } finally {
+      setLoadingCount(false);
+    }
+  }, [isOpen, userLocation, distanceKm, priceLevel, minRating, region, activeTags]);
+
+  // Debounced fetch when filters change
+  useEffect(() => {
+    if (!isOpen) return;
+    
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+    
+    debounceRef.current = setTimeout(() => {
+      fetchPreviewCount();
+    }, 300);
+    
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
+  }, [fetchPreviewCount, isOpen]);
+
+  // Reset preview count when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setPreviewCount(vendorCount);
+    }
+  }, [isOpen, vendorCount]);
   
   // Auto-check "Use my location" when geolocation is approved
   useEffect(() => {
@@ -432,24 +500,24 @@ function FilterModal({ isOpen, onClose, filters, onFilterChange, userLocation, o
               padding: '0.75rem 2rem',
               border: 'none',
               borderRadius: '8px',
-              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+              background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
               color: 'white',
               fontSize: '1rem',
               fontWeight: 600,
               cursor: 'pointer',
               transition: 'transform 0.2s, box-shadow 0.2s',
-              boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)'
+              boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)'
             }}
             onMouseEnter={(e) => {
               e.target.style.transform = 'translateY(-2px)';
-              e.target.style.boxShadow = '0 6px 16px rgba(16, 185, 129, 0.4)';
+              e.target.style.boxShadow = '0 6px 16px rgba(99, 102, 241, 0.4)';
             }}
             onMouseLeave={(e) => {
               e.target.style.transform = 'translateY(0)';
-              e.target.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.3)';
+              e.target.style.boxShadow = '0 4px 12px rgba(99, 102, 241, 0.3)';
             }}
           >
-            Show {vendorCount} listing{vendorCount !== 1 ? 's' : ''}
+            {loadingCount ? 'Loading...' : `Show ${previewCount} listing${previewCount !== 1 ? 's' : ''}`}
           </button>
         </div>
 
@@ -479,7 +547,7 @@ function FilterModal({ isOpen, onClose, filters, onFilterChange, userLocation, o
           border-radius: 50%;
           background: white;
           cursor: pointer;
-          border: 2px solid #10b981;
+          border: 2px solid #6366f1;
           box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
         }
 
@@ -489,7 +557,7 @@ function FilterModal({ isOpen, onClose, filters, onFilterChange, userLocation, o
           border-radius: 50%;
           background: white;
           cursor: pointer;
-          border: 2px solid #10b981;
+          border: 2px solid #6366f1;
           box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
         }
 

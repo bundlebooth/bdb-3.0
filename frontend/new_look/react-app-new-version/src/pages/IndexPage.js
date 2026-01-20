@@ -118,11 +118,40 @@ function IndexPage() {
   }, [currentUser?.id]);
 
   // State for detected city name from IP geolocation
-  const [detectedCity, setDetectedCity] = useState('');
+  // Check sessionStorage first for user-entered location
+  const [detectedCity, setDetectedCity] = useState(() => {
+    const savedLocation = sessionStorage.getItem('userSelectedLocation');
+    if (savedLocation) {
+      try {
+        const parsed = JSON.parse(savedLocation);
+        return parsed.city || '';
+      } catch { return ''; }
+    }
+    return '';
+  });
+  
+  // Initialize userLocation from sessionStorage if available
+  useEffect(() => {
+    const savedLocation = sessionStorage.getItem('userSelectedLocation');
+    if (savedLocation) {
+      try {
+        const parsed = JSON.parse(savedLocation);
+        if (parsed.lat && parsed.lng) {
+          setUserLocation(parsed);
+          setFilters(prev => ({ ...prev, location: parsed.city || '' }));
+        }
+      } catch { /* ignore */ }
+    }
+  }, []);
   
   // Auto-detect user's city using IP geolocation (no permission required)
   // Using IP-based services first (no permission needed), then browser geolocation for accuracy
   const detectCityFromIP = useCallback(async () => {
+    // Skip IP lookup if user has already selected a location this session
+    const savedLocation = sessionStorage.getItem('userSelectedLocation');
+    if (savedLocation) {
+      return; // User-selected location takes priority
+    }
     // IP-based geolocation services (no permission needed, works immediately)
     const geoServices = [
       {
@@ -539,6 +568,20 @@ function IndexPage() {
     await loadVendors();
   }, [loadDiscoverySections, loadVendors, tryGetUserLocation, loadFavorites, currentUser, currentCategory, filters.location]);
 
+  // Reload vendors when filters change (triggered by handleFilterChange)
+  const filtersRef = useRef(filters);
+  useEffect(() => {
+    // Skip on initial mount - initializePage handles that
+    if (isInitialMount.current) return;
+    
+    // Check if filters actually changed (not just reference)
+    const filtersChanged = JSON.stringify(filtersRef.current) !== JSON.stringify(filters);
+    if (filtersChanged) {
+      filtersRef.current = filters;
+      loadVendors(false);
+    }
+  }, [filters, loadVendors]);
+
   // Initialize page on mount - URL params are already loaded in useState initializers
   useEffect(() => {
     initializePage();
@@ -781,11 +824,10 @@ function IndexPage() {
     const newUrl = `${window.location.pathname}?${params.toString()}`;
     window.history.pushState({}, '', newUrl);
     
-    // Reset to page 1 and reload vendors with new filters
+    // Reset to page 1 - useEffect will trigger loadVendors when filters state updates
     setCurrentPage(1);
     setServerPageNumber(1);
-    loadVendors(false);
-  }, [loadVendors]);
+  }, []);
 
   const handleToggleFavorite = useCallback(async (vendorId) => {
     if (!currentUser) {
@@ -983,14 +1025,26 @@ function IndexPage() {
           if (locationData.location) {
             // Update filters with new location
             handleFilterChange({ location: locationData.location });
+            setDetectedCity(locationData.location.split(',')[0].trim());
             // Update user location coordinates if provided
             if (locationData.coordinates) {
-              setUserLocation({
-                latitude: locationData.coordinates.lat,
-                longitude: locationData.coordinates.lng
-              });
+              const newLocation = {
+                lat: locationData.coordinates.lat,
+                lng: locationData.coordinates.lng,
+                city: locationData.location
+              };
+              setUserLocation(newLocation);
+              // Save to sessionStorage so it persists during session
+              sessionStorage.setItem('userSelectedLocation', JSON.stringify(newLocation));
             }
           }
+        }}
+        onUseCurrentLocation={() => {
+          // Clear sessionStorage to allow IP lookup again
+          sessionStorage.removeItem('userSelectedLocation');
+          setLocationModalOpen(false);
+          // Re-detect location from IP
+          detectCityFromIP();
         }}
         initialLocation={detectedCity || filters.location || ''}
         initialRadius={filters.radius || 50}

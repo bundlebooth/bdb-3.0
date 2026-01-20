@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { poolPromise, sql } = require('../config/db');
+const { serializeDates, serializeRecords } = require('../utils/helpers');
 const invoicesRouter = require('./invoices');
 const { 
   PROVINCE_TAX_RATES, 

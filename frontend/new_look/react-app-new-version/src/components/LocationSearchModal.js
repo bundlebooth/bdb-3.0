@@ -3,7 +3,7 @@ import { GOOGLE_MAPS_API_KEY } from '../config';
 import UniversalModal from './UniversalModal';
 import './LocationSearchModal.css';
 
-const LocationSearchModal = ({ isOpen, onClose, onApply, initialLocation, initialRadius }) => {
+const LocationSearchModal = ({ isOpen, onClose, onApply, onUseCurrentLocation, initialLocation, initialRadius }) => {
   const [location, setLocation] = useState(initialLocation || '');
   const [radius, setRadius] = useState(initialRadius || 50);
   const [coordinates, setCoordinates] = useState(null);
@@ -207,6 +207,11 @@ const LocationSearchModal = ({ isOpen, onClose, onApply, initialLocation, initia
     if (!navigator.geolocation) {
       alert('Geolocation is not supported by your browser');
       return;
+    }
+
+    // Clear sessionStorage to allow fresh location detection
+    if (onUseCurrentLocation) {
+      sessionStorage.removeItem('userSelectedLocation');
     }
 
     // Show loading state

@@ -270,6 +270,7 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false, u
       zoomControlOptions: {
         position: window.google.maps.ControlPosition.RIGHT_CENTER
       },
+      gestureHandling: 'greedy', // Allow scroll zoom without Ctrl key
       styles: [
         {
           featureType: 'poi',
@@ -523,7 +524,8 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false, u
 
     // Show city-level view instead of zooming to individual vendors
     // This keeps the map at a city overview level
-    if (hasValidMarkers) {
+    // BUT: Don't re-center if searchOnDrag is enabled - user is controlling the map position
+    if (hasValidMarkers && !searchOnDragEnabledRef.current) {
       // If we have user location, center on that city
       if (userLocation && userLocation.lat && userLocation.lng) {
         mapInstanceRef.current.setCenter({ lat: userLocation.lat, lng: userLocation.lng });
@@ -534,7 +536,6 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false, u
         mapInstanceRef.current.setCenter(center);
         mapInstanceRef.current.setZoom(11); // City-level zoom, don't zoom in on vendors
       }
-    } else {
     }
 
     // No clustering - show all individual pins like Google Maps default
