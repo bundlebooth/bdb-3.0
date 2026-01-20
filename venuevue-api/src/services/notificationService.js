@@ -62,9 +62,9 @@ async function notifyVendorOfNewRequest(requestId, userId, vendorProfileId, even
       eventDate,
       eventDetails.location || 'Not specified',
       budget,
-      `${FRONTEND_URL}/dashboard`,
+      `${FRONTEND_URL}/dashboard/booking/${requestId}`,
       data.VendorUserID,
-      null
+      requestId
     );
   } catch (error) {
     console.error('[NotificationService] Failed to notify vendor of new request:', error.message);
@@ -92,9 +92,9 @@ async function notifyClientOfApproval(requestId) {
       data.ClientName,
       data.VendorName,
       data.ServiceName,
-      `${FRONTEND_URL}/dashboard`,
+      `${FRONTEND_URL}/dashboard/booking/${requestId}`,
       data.UserID,
-      null
+      requestId
     );
   } catch (error) {
     console.error('[NotificationService] Failed to notify client of approval:', error.message);

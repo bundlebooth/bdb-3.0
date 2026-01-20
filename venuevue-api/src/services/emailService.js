@@ -107,9 +107,9 @@ async function notifyVendorOfNewRequest(requestId, userId, vendorProfileId, even
       eventDate,
       eventDetails.location || 'Not specified',
       total,
-      `${FRONTEND_URL}/dashboard`,
+      `${FRONTEND_URL}/dashboard/booking/${requestId}`,
       data.VendorUserID,
-      null,
+      requestId,
       eventTime,
       null,
       timezone
@@ -152,9 +152,9 @@ async function notifyClientOfApproval(requestId) {
       data.ClientName,
       data.VendorName,
       data.ServiceName,
-      `${FRONTEND_URL}/dashboard`,
+      `${FRONTEND_URL}/dashboard/booking/${requestId}`,
       data.UserID,
-      null
+      requestId
     );
     
     // Send push notification to client
@@ -363,7 +363,7 @@ async function notifyVendorOfPayment(bookingId, amountCents, currency = 'CAD', t
       amount,
       data.ServiceName,
       eventDate,
-      `${FRONTEND_URL}/dashboard`,
+      `${FRONTEND_URL}/dashboard/payment/${bookingId}`,
       data.VendorUserID,
       bookingId,
       invoiceAttachment
@@ -447,7 +447,7 @@ async function notifyOfBookingCancellation(bookingId, cancelledBy, reason = null
         data.ServiceName || 'Service',
         eventDate,
         reason,
-        `${FRONTEND_URL}/dashboard`,
+        `${FRONTEND_URL}/dashboard/booking/${bookingId}`,
         data.VendorUserID,
         bookingId
       );
@@ -538,7 +538,7 @@ async function notifyClientOfPayment(bookingId, amountCents, currency = 'CAD', t
       amount,
       data.ServiceName || 'Service',
       eventDate,
-      `${FRONTEND_URL}/dashboard`,
+      `${FRONTEND_URL}/dashboard/payment/${bookingId}`,
       data.ClientUserID,
       bookingId,
       invoiceAttachment
