@@ -21,7 +21,7 @@ AS
 BEGIN
     SET NOCOUNT ON;
     
-    INSERT INTO UserTwoFactorCodes (UserID, CodeHash, Purpose, ExpiresAt)
+    INSERT INTO users.UserTwoFactorCodes (UserID, CodeHash, Purpose, ExpiresAt)
     VALUES (@UserID, @CodeHash, @Purpose, @ExpiresAt);
     
     SELECT SCOPE_IDENTITY() AS CodeID;

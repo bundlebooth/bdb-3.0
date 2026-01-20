@@ -24,8 +24,8 @@ BEGIN
     
     DECLARE @Offset INT = (@PageNumber - 1) * @PageSize;
     
-    -- Check if SecurityLogs table exists
-    IF EXISTS (SELECT 1 FROM sys.tables WHERE name = 'SecurityLogs')
+    -- Check if SecurityLogs table exists in users schema
+    IF EXISTS (SELECT 1 FROM sys.tables t JOIN sys.schemas s ON t.schema_id = s.schema_id WHERE t.name = 'SecurityLogs' AND s.name = 'users')
     BEGIN
         SELECT 
             LogID as id,
@@ -38,7 +38,7 @@ BEGIN
             Device as device,
             Details as details,
             CreatedAt as timestamp
-        FROM SecurityLogs
+        FROM users.SecurityLogs
         WHERE 
             (@Type = 'login' AND Action IN ('Login', 'Logout', 'LoginFailed') OR
              @Type = 'admin' AND Action LIKE 'Admin%' OR
@@ -52,7 +52,7 @@ BEGIN
         OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY;
         
         SELECT COUNT(*) as total
-        FROM SecurityLogs
+        FROM users.SecurityLogs
         WHERE 
             (@Type = 'login' AND Action IN ('Login', 'Logout', 'LoginFailed') OR
              @Type = 'admin' AND Action LIKE 'Admin%' OR

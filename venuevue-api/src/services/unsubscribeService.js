@@ -66,10 +66,8 @@ function verifyUnsubscribeToken(token) {
  */
 function getUnsubscribeUrl(userId, email, category = null) {
   const token = generateUnsubscribeToken(userId, email);
-  // Always use production URL for emails in production
-  const frontendUrl = process.env.NODE_ENV === 'production' 
-    ? 'https://www.planbeau.com' 
-    : (process.env.FRONTEND_URL || 'http://localhost:3000');
+  // ALWAYS use production URL for email links - never localhost
+  const frontendUrl = 'https://www.planbeau.com';
   let url = `${frontendUrl}/unsubscribe/${token}`;
   if (category) {
     url += `?category=${category}`;
@@ -85,10 +83,8 @@ function getUnsubscribeUrl(userId, email, category = null) {
  */
 function getPreferencesUrl(userId, email) {
   const token = generateUnsubscribeToken(userId, email);
-  // Always use production URL for emails in production
-  const frontendUrl = process.env.NODE_ENV === 'production' 
-    ? 'https://www.planbeau.com' 
-    : (process.env.FRONTEND_URL || 'http://localhost:3000');
+  // ALWAYS use production URL for email links - never localhost
+  const frontendUrl = 'https://www.planbeau.com';
   return `${frontendUrl}/email-preferences/${token}`;
 }
 
@@ -158,6 +154,7 @@ async function updateUserPreferences(userId, preferences) {
 async function unsubscribeUser(userId, category = null) {
   try {
     const currentPrefs = await getUserPreferences(userId);
+    const pool = await poolPromise;
     
     if (category) {
       // Unsubscribe from specific category
@@ -170,7 +167,8 @@ async function unsubscribeUser(userId, category = null) {
         'payments': ['payments'],
         'promotions': ['promotions'],
         'newsletter': ['newsletter'],
-        'marketing': ['promotions', 'newsletter']
+        'marketing': ['promotions', 'newsletter'],
+        'all': Object.keys(currentPrefs.email)
       };
       
       const keysToDisable = categoryMap[category] || [category];
@@ -179,6 +177,13 @@ async function unsubscribeUser(userId, category = null) {
           currentPrefs.email[key] = false;
         }
       });
+      
+      // If unsubscribing from all, mark in database
+      if (category === 'all') {
+        await pool.request()
+          .input('userId', sql.Int, userId)
+          .query('UPDATE users.Users SET UnsubscribedFromAll = 1, UnsubscribedAt = GETUTCDATE() WHERE UserID = @userId');
+      }
     } else {
       // Unsubscribe from all marketing/promotional emails
       currentPrefs.email.promotions = false;
@@ -189,6 +194,30 @@ async function unsubscribeUser(userId, category = null) {
     return { success, preferences: currentPrefs };
   } catch (error) {
     console.error('[UnsubscribeService] Error unsubscribing user:', error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Resubscribe user to emails
+ * @param {number} userId - User ID
+ * @returns {object} Result with success status
+ */
+async function resubscribeUser(userId) {
+  try {
+    const pool = await poolPromise;
+    
+    // Reset to default preferences
+    await updateUserPreferences(userId, DEFAULT_PREFERENCES);
+    
+    // Clear unsubscribe flags
+    await pool.request()
+      .input('userId', sql.Int, userId)
+      .query('UPDATE users.Users SET UnsubscribedFromAll = 0, UnsubscribedAt = NULL WHERE UserID = @userId');
+    
+    return { success: true, preferences: DEFAULT_PREFERENCES };
+  } catch (error) {
+    console.error('[UnsubscribeService] Error resubscribing user:', error.message);
     return { success: false, error: error.message };
   }
 }
@@ -306,6 +335,7 @@ module.exports = {
   getUserPreferences,
   updateUserPreferences,
   unsubscribeUser,
+  resubscribeUser,
   processUnsubscribe,
   generateUnsubscribeHtml,
   DEFAULT_PREFERENCES

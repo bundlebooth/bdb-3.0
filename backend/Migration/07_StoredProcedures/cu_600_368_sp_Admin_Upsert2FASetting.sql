@@ -19,24 +19,14 @@ AS
 BEGIN
     SET NOCOUNT ON;
     
-    -- Create table if not exists
-    IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'SecuritySettings')
-    BEGIN
-        CREATE TABLE SecuritySettings (
-            SettingID INT PRIMARY KEY IDENTITY(1,1),
-            SettingKey NVARCHAR(100) NOT NULL UNIQUE,
-            SettingValue NVARCHAR(500) NOT NULL,
-            Description NVARCHAR(500),
-            IsActive BIT DEFAULT 1,
-            UpdatedAt DATETIME DEFAULT GETUTCDATE(),
-            UpdatedBy INT
-        );
-    END
-    
-    -- Upsert setting
-    IF EXISTS (SELECT 1 FROM SecuritySettings WHERE SettingKey = @SettingKey)
-        UPDATE SecuritySettings SET SettingValue = @SettingValue, UpdatedAt = GETUTCDATE() WHERE SettingKey = @SettingKey;
-    ELSE
-        INSERT INTO SecuritySettings (SettingKey, SettingValue) VALUES (@SettingKey, @SettingValue);
+    -- Update dbo.SecuritySettings column-based table
+    IF @SettingKey = 'require_2fa_admins'
+      UPDATE dbo.SecuritySettings SET Require2FAForAdmins = CASE WHEN @SettingValue = 'true' THEN 1 ELSE 0 END, UpdatedAt = GETUTCDATE();
+    ELSE IF @SettingKey = 'require_2fa_vendors'
+      UPDATE dbo.SecuritySettings SET Require2FAForVendors = CASE WHEN @SettingValue = 'true' THEN 1 ELSE 0 END, UpdatedAt = GETUTCDATE();
+    ELSE IF @SettingKey = 'session_timeout_minutes'
+      UPDATE dbo.SecuritySettings SET SessionTimeout = CAST(@SettingValue AS INT), UpdatedAt = GETUTCDATE();
+    ELSE IF @SettingKey = 'failed_login_lockout'
+      UPDATE dbo.SecuritySettings SET FailedLoginLockout = CAST(@SettingValue AS INT), UpdatedAt = GETUTCDATE();
 END
 GO

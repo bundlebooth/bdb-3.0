@@ -18,6 +18,6 @@ AS
 BEGIN
     SET NOCOUNT ON;
     
-    UPDATE UserTwoFactorCodes SET Attempts = Attempts + 1 WHERE CodeID = @CodeID;
+    UPDATE users.UserTwoFactorCodes SET Attempts = Attempts + 1 WHERE CodeID = @CodeID;
 END
 GO

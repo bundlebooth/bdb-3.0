@@ -26,19 +26,20 @@ AS
 BEGIN
     SET NOCOUNT ON;
     
-    -- Check if table exists and return settings
-    IF EXISTS (SELECT 1 FROM sys.tables t JOIN sys.schemas s ON t.schema_id = s.schema_id WHERE t.name = 'SecuritySettings' AND s.name = 'users')
+    -- Use dbo.SecuritySettings with column-based format
+    IF EXISTS (SELECT 1 FROM sys.tables t JOIN sys.schemas s ON t.schema_id = s.schema_id WHERE t.name = 'SecuritySettings' AND s.name = 'dbo')
+      AND EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = 'dbo' AND TABLE_NAME = 'SecuritySettings' AND COLUMN_NAME = 'Require2FAForAdmins')
     BEGIN
-        SELECT SettingKey, SettingValue FROM users.SecuritySettings;
-    END
-    ELSE IF EXISTS (SELECT 1 FROM sys.tables WHERE name = 'SecuritySettings')
-    BEGIN
-        -- Try dbo schema
-        SELECT 'require_2fa_admins' AS SettingKey, CAST(Require2FAForAdmins AS NVARCHAR(10)) AS SettingValue FROM dbo.SecuritySettings
+      EXEC sp_executesql N'
+        SELECT ''require_2fa_admins'' AS SettingKey, CASE WHEN Require2FAForAdmins = 1 THEN ''true'' ELSE ''false'' END AS SettingValue FROM dbo.SecuritySettings
         UNION ALL
-        SELECT 'require_2fa_vendors' AS SettingKey, CAST(Require2FAForVendors AS NVARCHAR(10)) AS SettingValue FROM dbo.SecuritySettings;
+        SELECT ''require_2fa_vendors'', CASE WHEN Require2FAForVendors = 1 THEN ''true'' ELSE ''false'' END FROM dbo.SecuritySettings
+        UNION ALL
+        SELECT ''session_timeout_minutes'', CAST(ISNULL(SessionTimeout, 60) AS NVARCHAR(10)) FROM dbo.SecuritySettings
+        UNION ALL
+        SELECT ''failed_login_lockout'', CAST(ISNULL(FailedLoginLockout, 5) AS NVARCHAR(10)) FROM dbo.SecuritySettings
+      ';
     END
-    -- If table doesn't exist, return empty result set
 END
 GO
 

@@ -25,7 +25,7 @@ AS
 BEGIN
     SET NOCOUNT ON;
     
-    INSERT INTO SecurityLogs (UserID, Email, Action, ActionStatus, IPAddress, UserAgent, Device, Details)
+    INSERT INTO users.SecurityLogs (UserID, Email, Action, ActionStatus, IPAddress, UserAgent, Device, Details)
     VALUES (@UserID, @Email, @Action, @ActionStatus, @IPAddress, @UserAgent, @Device, @Details);
     
     SELECT SCOPE_IDENTITY() AS LogID;

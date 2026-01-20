@@ -17,19 +17,21 @@ AS
 BEGIN
     SET NOCOUNT ON;
     
-    -- Note: TwoFactorEnabled column does not exist in Users table
-    -- This SP returns empty result set until 2FA columns are added
+    -- Return admin users with 2FA status
     SELECT 
         u.UserID,
         u.Name,
         u.Email,
         u.IsVendor,
         u.IsAdmin,
-        CAST(0 AS BIT) as TwoFactorEnabled,
+        CASE WHEN EXISTS (
+            SELECT 1 FROM users.UserTwoFactorCodes c 
+            WHERE c.UserID = u.UserID AND c.IsUsed = 1
+        ) THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT) END as TwoFactorEnabled,
         u.CreatedAt,
         u.LastLogin
     FROM users.Users u
-    WHERE 1 = 0  -- No 2FA support yet
+    WHERE u.IsAdmin = 1
     ORDER BY u.Name;
 END
 GO

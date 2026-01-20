@@ -4,7 +4,7 @@ const { poolPromise, sql } = require('../config/db');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { sendTwoFactorCode, sendTemplatedEmail, sendAccountSuspended } = require('../services/email');
-const { processUnsubscribe, generateUnsubscribeHtml, getUserPreferences, updateUserPreferences, verifyUnsubscribeToken } = require('../services/unsubscribeService');
+const { processUnsubscribe, generateUnsubscribeHtml, getUserPreferences, updateUserPreferences, verifyUnsubscribeToken, resubscribeUser } = require('../services/unsubscribeService');
 const crypto = require('crypto');
 const { upload } = require('../middlewares/uploadMiddleware');
 const cloudinaryService = require('../services/cloudinaryService');
@@ -1459,6 +1459,28 @@ router.put('/email-preferences/:token', async (req, res) => {
   } catch (err) {
     console.error('Update preferences error:', err);
     res.status(500).json({ success: false, message: 'Failed to update preferences' });
+  }
+});
+
+// Resubscribe to emails via token (no auth required)
+router.post('/resubscribe/:token', async (req, res) => {
+  try {
+    const { token } = req.params;
+    const decoded = verifyUnsubscribeToken(token);
+    
+    if (!decoded) {
+      return res.status(400).json({ success: false, message: 'Invalid or expired token' });
+    }
+    
+    const result = await resubscribeUser(decoded.userId);
+    if (result.success) {
+      res.json({ success: true, message: 'Successfully resubscribed to emails', preferences: result.preferences });
+    } else {
+      res.status(500).json({ success: false, message: 'Failed to resubscribe' });
+    }
+  } catch (err) {
+    console.error('Resubscribe error:', err);
+    res.status(500).json({ success: false, message: 'Failed to resubscribe' });
   }
 });
 

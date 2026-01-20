@@ -287,10 +287,8 @@ async function sendTemplatedEmail(templateKey, recipientEmail, recipientName, va
     }
 
     // Auto-inject platform variables
-    // Always use production URL for emails - environment variable may be misconfigured
-    const frontendUrl = process.env.NODE_ENV === 'production' 
-      ? 'https://www.planbeau.com' 
-      : (process.env.FRONTEND_URL || 'http://localhost:3000');
+    // ALWAYS use production URL for email links - never localhost
+    const frontendUrl = 'https://www.planbeau.com';
     
     // Generate unsubscribe and preferences URLs if we have userId
     let unsubscribeUrl = `${frontendUrl}/dashboard/settings`;

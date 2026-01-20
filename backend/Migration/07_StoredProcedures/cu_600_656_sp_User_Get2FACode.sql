@@ -20,7 +20,7 @@ BEGIN
     SET NOCOUNT ON;
     
     SELECT TOP 1 CodeID, CodeHash, ExpiresAt, Attempts, IsUsed
-    FROM UserTwoFactorCodes
+    FROM users.UserTwoFactorCodes
     WHERE UserID = @UserID AND Purpose = @Purpose AND IsUsed = 0
     ORDER BY CreatedAt DESC;
 END

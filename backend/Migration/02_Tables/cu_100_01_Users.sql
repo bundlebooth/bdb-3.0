@@ -43,6 +43,9 @@ BEGIN
 	[PasswordResetRequired] [bit] NOT NULL CONSTRAINT DF_Users_PasswordResetRequired DEFAULT 0,
 	[DeactivatedAt] [datetime] NULL,
 	[DeactivationReason] [nvarchar](500) NULL,
+	-- Email unsubscribe tracking
+	[UnsubscribedAt] [datetime2] NULL,
+	[UnsubscribedFromAll] [bit] NOT NULL CONSTRAINT DF_Users_UnsubscribedFromAll DEFAULT 0,
 PRIMARY KEY CLUSTERED 
 (
 	[UserID] ASC
