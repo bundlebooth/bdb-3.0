@@ -27,10 +27,8 @@ const {
 const { generateInvoicePDF, formatInvoiceData } = require('./invoiceService');
 const pushService = require('./pushNotificationService');
 
-// Always use production URL for emails in production
-const FRONTEND_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://www.planbeau.com' 
-  : (process.env.FRONTEND_URL || 'http://localhost:3000');
+// ALWAYS use production URL for email links - never localhost
+const FRONTEND_URL = 'https://www.planbeau.com';
 
 /**
  * Create an in-app notification for a user

@@ -1411,6 +1411,34 @@ router.get('/security/logs', async (req, res) => {
   }
 });
 
+// GET /admin/security/locked-accounts - Get all locked user accounts
+router.get('/security/locked-accounts', async (req, res) => {
+  try {
+    const pool = await getPool();
+    
+    // Get users who are marked as locked (IsLocked = 1) - includes both active and expired locks
+    const result = await pool.request().query(`
+      SELECT 
+        UserID,
+        Name,
+        Email,
+        FailedLoginAttempts,
+        LastFailedLoginAt,
+        LockExpiresAt,
+        LockReason,
+        CASE WHEN LockExpiresAt > GETUTCDATE() THEN 1 ELSE 0 END as IsActivelyLocked
+      FROM users.Users
+      WHERE IsLocked = 1
+      ORDER BY LockExpiresAt DESC
+    `);
+    
+    res.json({ success: true, accounts: serializeRecords(result.recordset || []) });
+  } catch (error) {
+    console.error('Error fetching locked accounts:', error);
+    res.status(500).json({ error: 'Failed to fetch locked accounts' });
+  }
+});
+
 // POST /admin/security/log - Log a security event
 router.post('/security/log', async (req, res) => {
   try {
@@ -1618,8 +1646,25 @@ router.post('/support/tickets', async (req, res) => {
     request.input('ConversationID', sql.Int, conversationId || null);
     
     const result = await request.execute('admin.sp_CreateSupportTicket');
+    const newTicketNumber = result.recordset[0].TicketNumber;
     
-    res.json({ success: true, ticketId: result.recordset[0].TicketID, ticketNumber: result.recordset[0].TicketNumber });
+    // Send confirmation email to user
+    if (userEmail) {
+      try {
+        const dashboardUrl = 'https://www.planbeau.com/dashboard?section=support';
+        await sendEmail(userEmail, 'support_ticket_opened', {
+          userName: userName || 'User',
+          ticketId: newTicketNumber,
+          ticketSubject: subject,
+          ticketCategory: category || 'General',
+          dashboardUrl
+        }, userId);
+      } catch (emailErr) {
+        console.error('Failed to send ticket created email:', emailErr.message);
+      }
+    }
+    
+    res.json({ success: true, ticketId: result.recordset[0].TicketID, ticketNumber: newTicketNumber });
   } catch (error) {
     console.error('Error creating ticket:', error);
     res.status(500).json({ error: 'Failed to create ticket' });
@@ -1630,8 +1675,19 @@ router.post('/support/tickets', async (req, res) => {
 router.put('/support/tickets/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, priority, assignedTo, category } = req.body;
+    const { status, priority, assignedTo, category, resolution } = req.body;
     const pool = await getPool();
+    
+    // Get ticket info before update for notification
+    const ticketInfo = await pool.request()
+      .input('TicketID', sql.Int, id)
+      .query(`
+        SELECT TicketNumber, Subject, UserEmail, UserName, UserID, Status as OldStatus, Category
+        FROM admin.SupportTickets WHERE TicketID = @TicketID
+      `);
+    
+    const ticket = ticketInfo.recordset[0];
+    const oldStatus = ticket?.OldStatus;
     
     const request = pool.request();
     request.input('TicketID', sql.Int, id);
@@ -1641,6 +1697,35 @@ router.put('/support/tickets/:id', async (req, res) => {
     request.input('Category', sql.NVarChar(50), category || null);
     
     await request.execute('admin.sp_UpdateSupportTicket');
+    
+    // Send email notification if status changed
+    if (status && ticket && status !== oldStatus) {
+      const dashboardUrl = 'https://www.planbeau.com/dashboard?section=support';
+      
+      try {
+        let templateKey = null;
+        const variables = {
+          userName: ticket.UserName || 'User',
+          ticketId: ticket.TicketNumber,
+          ticketSubject: ticket.Subject,
+          ticketCategory: ticket.Category || 'General',
+          dashboardUrl,
+          resolution: resolution || 'Your issue has been addressed.'
+        };
+        
+        if (status === 'in_progress' || status === 'In Progress') {
+          templateKey = 'support_ticket_in_progress';
+        } else if (status === 'closed' || status === 'Closed' || status === 'resolved' || status === 'Resolved') {
+          templateKey = 'support_ticket_closed';
+        }
+        
+        if (templateKey && ticket.UserEmail) {
+          await sendEmail(ticket.UserEmail, templateKey, variables, ticket.UserID);
+        }
+      } catch (emailErr) {
+        console.error('Failed to send ticket status email:', emailErr.message);
+      }
+    }
     
     res.json({ success: true });
   } catch (error) {
@@ -1683,6 +1768,34 @@ router.post('/support/tickets/:id/messages', async (req, res) => {
     request.input('IsInternal', sql.Bit, isInternal || false);
     
     const result = await request.execute('admin.sp_AddTicketMessage');
+    
+    // Send email notification to user if admin replies (non-internal message)
+    if (senderType === 'admin' && !isInternal) {
+      try {
+        const ticketInfo = await pool.request()
+          .input('TicketID', sql.Int, id)
+          .query(`
+            SELECT TicketNumber, Subject, UserEmail, UserName, UserID
+            FROM admin.SupportTickets WHERE TicketID = @TicketID
+          `);
+        
+        const ticket = ticketInfo.recordset[0];
+        if (ticket && ticket.UserEmail) {
+          const dashboardUrl = 'https://www.planbeau.com/dashboard?section=support';
+          const replyPreview = message.length > 200 ? message.substring(0, 200) + '...' : message;
+          
+          await sendEmail(ticket.UserEmail, 'support_ticket_reply', {
+            userName: ticket.UserName || 'User',
+            ticketId: ticket.TicketNumber,
+            replierName: 'Planbeau Support',
+            replyPreview,
+            dashboardUrl
+          }, ticket.UserID);
+        }
+      } catch (emailErr) {
+        console.error('Failed to send ticket reply email:', emailErr.message);
+      }
+    }
     
     res.json({ success: true, messageId: result.recordset[0].MessageID });
   } catch (error) {

@@ -18,6 +18,7 @@ const SecurityLogsPanel = () => {
   });
   const [adminList, setAdminList] = useState([]);
   const [flaggedItems, setFlaggedItems] = useState([]);
+  const [lockedAccounts, setLockedAccounts] = useState([]);
   const [saving, setSaving] = useState(false);
   const [sortConfig, setSortConfig] = useState({ key: 'timestamp', direction: 'desc' });
 
@@ -27,6 +28,8 @@ const SecurityLogsPanel = () => {
       fetchAdminList();
     } else if (activeTab === 'flagged') {
       fetchFlaggedItems();
+    } else if (activeTab === 'locked') {
+      fetchLockedAccounts();
     } else {
       fetchLogs();
     }
@@ -171,6 +174,41 @@ const SecurityLogsPanel = () => {
     }
   };
 
+  const fetchLockedAccounts = async () => {
+    try {
+      setLoading(true);
+      const response = await apiGet('/admin/security/locked-accounts');
+      if (response.ok) {
+        const data = await response.json();
+        setLockedAccounts(data.accounts || []);
+      } else {
+        setLockedAccounts([]);
+      }
+    } catch (error) {
+      console.error('Error fetching locked accounts:', error);
+      setLockedAccounts([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const unlockAccount = async (userId, email) => {
+    if (!window.confirm(`Unlock account for ${email}? This will reset their failed login attempts and allow them to log in again.`)) return;
+    try {
+      const response = await apiPost(`/admin/users/${userId}/unlock`, {});
+      if (response.ok) {
+        showBanner(`Account unlocked successfully for ${email}`, 'success');
+        fetchLockedAccounts();
+      } else {
+        const data = await response.json();
+        showBanner(data.error || 'Failed to unlock account', 'error');
+      }
+    } catch (error) {
+      console.error('Error unlocking account:', error);
+      showBanner('Failed to unlock account', 'error');
+    }
+  };
+
   const getMockLogs = (type) => {
     const now = new Date();
     if (type === 'login') {
@@ -288,6 +326,12 @@ const SecurityLogsPanel = () => {
           onClick={() => setActiveTab('flagged')}
         >
           <i className="fas fa-flag"></i> Flagged Items
+        </button>
+        <button
+          className={`tab ${activeTab === 'locked' ? 'active' : ''}`}
+          onClick={() => setActiveTab('locked')}
+        >
+          <i className="fas fa-lock"></i> Locked Accounts
         </button>
         <button
           className={`tab ${activeTab === '2fa' ? 'active' : ''}`}
@@ -458,6 +502,74 @@ const SecurityLogsPanel = () => {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {activeTab === 'locked' && (
+        <div className="locked-accounts-section">
+          <div className="section-card">
+            <h3><i className="fas fa-lock"></i> Locked Accounts</h3>
+            <p className="section-description">
+              Accounts that have been locked due to too many failed login attempts. You can unlock them to allow the user to log in again.
+            </p>
+            {loading ? (
+              <div className="loading-state">
+                <div className="spinner"></div>
+                <p>Loading locked accounts...</p>
+              </div>
+            ) : lockedAccounts.length === 0 ? (
+              <div className="empty-state" style={{ padding: '2rem', textAlign: 'center' }}>
+                <i className="fas fa-check-circle" style={{ fontSize: '3rem', color: '#10b981', marginBottom: '1rem' }}></i>
+                <h4>No Locked Accounts</h4>
+                <p>All user accounts are currently accessible.</p>
+              </div>
+            ) : (
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>User</th>
+                    <th>Email</th>
+                    <th>Failed Attempts</th>
+                    <th>Status</th>
+                    <th>Lock Expires</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {lockedAccounts.map(account => (
+                    <tr key={account.UserID}>
+                      <td><strong>{account.Name || 'Unknown'}</strong></td>
+                      <td>{account.Email}</td>
+                      <td>
+                        <span className="status-badge badge-danger">
+                          {account.FailedLoginAttempts} attempts
+                        </span>
+                      </td>
+                      <td>
+                        <span className={`status-badge ${account.IsActivelyLocked ? 'badge-danger' : 'badge-warning'}`}>
+                          {account.IsActivelyLocked ? 'Actively Locked' : 'Lock Expired'}
+                        </span>
+                      </td>
+                      <td>{formatDateTime(account.LockExpiresAt)}</td>
+                      <td>
+                        <button 
+                          className="btn-small primary" 
+                          onClick={() => unlockAccount(account.UserID, account.Email)}
+                        >
+                          <i className="fas fa-unlock"></i> Clear Lock
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+            <div style={{ marginTop: '1rem' }}>
+              <button className="btn-secondary" onClick={fetchLockedAccounts}>
+                <i className="fas fa-sync-alt"></i> Refresh
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

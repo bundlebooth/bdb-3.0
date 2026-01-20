@@ -117,5 +117,83 @@ BEGIN
         VALUES (N'client_to_vendor_welcome', N'Client to Vendor Welcome', 1, 29, 2, N'Welcome to {{platformName}} as a Vendor, {{vendorName}}!', N'welcome', N'["vendorName","businessName","dashboardUrl","platformName","platformUrl","currentYear","logoUrl"]', 1, GETDATE(), GETDATE());
         PRINT 'Added client_to_vendor_welcome template';
     END
+
+    -- Add password_reset template
+    IF NOT EXISTS (SELECT 1 FROM [admin].[EmailTemplates] WHERE [TemplateKey] = 'password_reset')
+    BEGIN
+        DECLARE @PasswordResetBodyID INT;
+        SELECT @PasswordResetBodyID = ComponentID FROM [admin].[EmailTemplateComponents] WHERE [ComponentName] = 'Password Reset';
+        IF @PasswordResetBodyID IS NOT NULL
+        BEGIN
+            INSERT [admin].[EmailTemplates] ([TemplateKey], [TemplateName], [HeaderComponentID], [BodyComponentID], [FooterComponentID], [Subject], [Category], [AvailableVariables], [IsActive], [CreatedAt], [UpdatedAt])
+            VALUES (N'password_reset', N'Password Reset Request', 1, @PasswordResetBodyID, 2, N'Reset Your {{platformName}} Password', N'account', N'["userName","resetUrl","expiryTime","platformName","currentYear","unsubscribeUrl","preferencesUrl"]', 1, GETDATE(), GETDATE());
+            PRINT 'Added password_reset template';
+        END
+    END
+
+    -- Add password_changed template
+    IF NOT EXISTS (SELECT 1 FROM [admin].[EmailTemplates] WHERE [TemplateKey] = 'password_changed')
+    BEGIN
+        DECLARE @PasswordChangedBodyID INT;
+        SELECT @PasswordChangedBodyID = ComponentID FROM [admin].[EmailTemplateComponents] WHERE [ComponentName] = 'Password Changed';
+        IF @PasswordChangedBodyID IS NOT NULL
+        BEGIN
+            INSERT [admin].[EmailTemplates] ([TemplateKey], [TemplateName], [HeaderComponentID], [BodyComponentID], [FooterComponentID], [Subject], [Category], [AvailableVariables], [IsActive], [CreatedAt], [UpdatedAt])
+            VALUES (N'password_changed', N'Password Changed Confirmation', 1, @PasswordChangedBodyID, 2, N'Your {{platformName}} Password Has Been Changed', N'account', N'["userName","platformName","currentYear"]', 1, GETDATE(), GETDATE());
+            PRINT 'Added password_changed template';
+        END
+    END
+
+    -- Add support_ticket_opened template
+    IF NOT EXISTS (SELECT 1 FROM [admin].[EmailTemplates] WHERE [TemplateKey] = 'support_ticket_opened')
+    BEGIN
+        DECLARE @TicketOpenedBodyID INT;
+        SELECT @TicketOpenedBodyID = ComponentID FROM [admin].[EmailTemplateComponents] WHERE [ComponentName] = 'Support Ticket Opened';
+        IF @TicketOpenedBodyID IS NOT NULL
+        BEGIN
+            INSERT [admin].[EmailTemplates] ([TemplateKey], [TemplateName], [HeaderComponentID], [BodyComponentID], [FooterComponentID], [Subject], [Category], [AvailableVariables], [IsActive], [CreatedAt], [UpdatedAt])
+            VALUES (N'support_ticket_opened', N'Support Ticket Opened', 1, @TicketOpenedBodyID, 2, N'Support Ticket #{{ticketId}} - We Received Your Request', N'support', N'["userName","ticketId","ticketSubject","ticketCategory","dashboardUrl","platformName","currentYear","unsubscribeUrl","preferencesUrl"]', 1, GETDATE(), GETDATE());
+            PRINT 'Added support_ticket_opened template';
+        END
+    END
+
+    -- Add support_ticket_in_progress template
+    IF NOT EXISTS (SELECT 1 FROM [admin].[EmailTemplates] WHERE [TemplateKey] = 'support_ticket_in_progress')
+    BEGIN
+        DECLARE @TicketInProgressBodyID INT;
+        SELECT @TicketInProgressBodyID = ComponentID FROM [admin].[EmailTemplateComponents] WHERE [ComponentName] = 'Support Ticket In Progress';
+        IF @TicketInProgressBodyID IS NOT NULL
+        BEGIN
+            INSERT [admin].[EmailTemplates] ([TemplateKey], [TemplateName], [HeaderComponentID], [BodyComponentID], [FooterComponentID], [Subject], [Category], [AvailableVariables], [IsActive], [CreatedAt], [UpdatedAt])
+            VALUES (N'support_ticket_in_progress', N'Support Ticket In Progress', 1, @TicketInProgressBodyID, 2, N'Support Ticket #{{ticketId}} - Now In Progress', N'support', N'["userName","ticketId","ticketSubject","dashboardUrl","platformName","currentYear","unsubscribeUrl","preferencesUrl"]', 1, GETDATE(), GETDATE());
+            PRINT 'Added support_ticket_in_progress template';
+        END
+    END
+
+    -- Add support_ticket_closed template
+    IF NOT EXISTS (SELECT 1 FROM [admin].[EmailTemplates] WHERE [TemplateKey] = 'support_ticket_closed')
+    BEGIN
+        DECLARE @TicketClosedBodyID INT;
+        SELECT @TicketClosedBodyID = ComponentID FROM [admin].[EmailTemplateComponents] WHERE [ComponentName] = 'Support Ticket Closed';
+        IF @TicketClosedBodyID IS NOT NULL
+        BEGIN
+            INSERT [admin].[EmailTemplates] ([TemplateKey], [TemplateName], [HeaderComponentID], [BodyComponentID], [FooterComponentID], [Subject], [Category], [AvailableVariables], [IsActive], [CreatedAt], [UpdatedAt])
+            VALUES (N'support_ticket_closed', N'Support Ticket Closed', 1, @TicketClosedBodyID, 2, N'Support Ticket #{{ticketId}} - Resolved', N'support', N'["userName","ticketId","ticketSubject","resolution","dashboardUrl","platformName","currentYear","unsubscribeUrl","preferencesUrl"]', 1, GETDATE(), GETDATE());
+            PRINT 'Added support_ticket_closed template';
+        END
+    END
+
+    -- Add support_ticket_reply template
+    IF NOT EXISTS (SELECT 1 FROM [admin].[EmailTemplates] WHERE [TemplateKey] = 'support_ticket_reply')
+    BEGIN
+        DECLARE @TicketReplyBodyID INT;
+        SELECT @TicketReplyBodyID = ComponentID FROM [admin].[EmailTemplateComponents] WHERE [ComponentName] = 'Support Ticket Reply';
+        IF @TicketReplyBodyID IS NOT NULL
+        BEGIN
+            INSERT [admin].[EmailTemplates] ([TemplateKey], [TemplateName], [HeaderComponentID], [BodyComponentID], [FooterComponentID], [Subject], [Category], [AvailableVariables], [IsActive], [CreatedAt], [UpdatedAt])
+            VALUES (N'support_ticket_reply', N'Support Ticket Reply', 1, @TicketReplyBodyID, 2, N'New Reply on Support Ticket #{{ticketId}}', N'support', N'["userName","ticketId","replierName","replyPreview","dashboardUrl","platformName","currentYear","unsubscribeUrl","preferencesUrl"]', 1, GETDATE(), GETDATE());
+            PRINT 'Added support_ticket_reply template';
+        END
+    END
 END
 GO

@@ -23,6 +23,7 @@ import DashboardPage from './pages/DashboardPage';
 import BlogPage from './components/BlogPage';
 import UnsubscribePage from './pages/UnsubscribePage';
 import EmailPreferencesPage from './pages/EmailPreferencesPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { useHeartbeat } from './hooks/useOnlineStatus';
 import './styles/MapControls.css';
@@ -165,6 +166,7 @@ function App() {
           <Route path="/browse/:filter/:subfilter" element={<BrowsePage />} />
           <Route path="/unsubscribe/:token" element={<UnsubscribePage />} />
           <Route path="/email-preferences/:token" element={<EmailPreferencesPage />} />
+          <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>

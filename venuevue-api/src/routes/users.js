@@ -1485,4 +1485,187 @@ router.post('/resubscribe/:token', async (req, res) => {
   }
 });
 
+// ==================== PASSWORD RESET ====================
+
+/**
+ * Generate a password reset token
+ */
+function generatePasswordResetToken(userId, email) {
+  const secret = process.env.JWT_SECRET || 'your-secret-key';
+  const payload = { userId, email, purpose: 'password-reset' };
+  return jwt.sign(payload, secret, { expiresIn: '1h' }); // 1 hour expiry for security
+}
+
+/**
+ * Verify a password reset token
+ */
+function verifyPasswordResetToken(token) {
+  try {
+    const secret = process.env.JWT_SECRET || 'your-secret-key';
+    const decoded = jwt.verify(token, secret);
+    if (decoded.purpose !== 'password-reset') {
+      return null;
+    }
+    return decoded;
+  } catch (error) {
+    console.error('[PasswordReset] Token verification failed:', error.message);
+    return null;
+  }
+}
+
+/**
+ * Get password reset URL
+ */
+function getPasswordResetUrl(userId, email) {
+  const token = generatePasswordResetToken(userId, email);
+  // ALWAYS use production URL for email links
+  const frontendUrl = 'https://www.planbeau.com';
+  return `${frontendUrl}/reset-password/${token}`;
+}
+
+// POST /users/forgot-password - Request password reset email
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    if (!email || !validateEmail(email)) {
+      return res.status(400).json({ success: false, message: 'Valid email is required' });
+    }
+    
+    const pool = await poolPromise;
+    
+    // Check if user exists
+    const userResult = await pool.request()
+      .input('Email', sql.NVarChar, email.toLowerCase())
+      .query('SELECT UserID, Name, Email FROM users.Users WHERE Email = @Email');
+    
+    // Always return success to prevent email enumeration attacks
+    if (userResult.recordset.length === 0) {
+      return res.json({ success: true, message: 'If an account exists with this email, a password reset link will be sent.' });
+    }
+    
+    const user = userResult.recordset[0];
+    const resetUrl = getPasswordResetUrl(user.UserID, user.Email);
+    
+    // Send password reset email
+    try {
+      await sendTemplatedEmail(user.Email, 'password_reset', {
+        userName: user.Name || 'User',
+        resetUrl: resetUrl,
+        expiryTime: '1 hour'
+      });
+    } catch (emailErr) {
+      console.error('Failed to send password reset email:', emailErr.message);
+    }
+    
+    // Log the password reset request
+    await pool.request()
+      .input('userId', sql.Int, user.UserID)
+      .input('email', sql.NVarChar, user.Email)
+      .input('action', sql.NVarChar, 'PasswordResetRequested')
+      .input('ActionStatus', sql.NVarChar, 'Success')
+      .input('ipAddress', sql.NVarChar, req.ip || 'Unknown')
+      .input('userAgent', sql.NVarChar, req.headers['user-agent'] || 'Unknown')
+      .input('details', sql.NVarChar, 'Password reset email sent')
+      .execute('users.sp_InsertSecurityLog');
+    
+    res.json({ success: true, message: 'If an account exists with this email, a password reset link will be sent.' });
+  } catch (err) {
+    console.error('Forgot password error:', err);
+    res.status(500).json({ success: false, message: 'Failed to process request' });
+  }
+});
+
+// GET /users/reset-password/verify/:token - Verify reset token is valid
+router.get('/reset-password/verify/:token', async (req, res) => {
+  try {
+    const { token } = req.params;
+    const decoded = verifyPasswordResetToken(token);
+    
+    if (!decoded) {
+      return res.status(400).json({ success: false, message: 'Invalid or expired reset link' });
+    }
+    
+    // Verify user still exists
+    const pool = await poolPromise;
+    const userResult = await pool.request()
+      .input('UserID', sql.Int, decoded.userId)
+      .query('SELECT Email FROM users.Users WHERE UserID = @UserID');
+    
+    if (userResult.recordset.length === 0) {
+      return res.status(400).json({ success: false, message: 'User not found' });
+    }
+    
+    res.json({ success: true, email: decoded.email });
+  } catch (err) {
+    console.error('Verify reset token error:', err);
+    res.status(500).json({ success: false, message: 'Failed to verify token' });
+  }
+});
+
+// POST /users/reset-password/complete/:token - Complete password reset
+router.post('/reset-password/complete/:token', async (req, res) => {
+  try {
+    const { token } = req.params;
+    const { newPassword } = req.body;
+    
+    // Verify token
+    const decoded = verifyPasswordResetToken(token);
+    if (!decoded) {
+      return res.status(400).json({ success: false, message: 'Invalid or expired reset link' });
+    }
+    
+    // Validate password
+    if (!newPassword || newPassword.length < 8) {
+      return res.status(400).json({ success: false, message: 'Password must be at least 8 characters' });
+    }
+    
+    const pool = await poolPromise;
+    
+    // Hash new password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+    
+    // Update password and clear any lockout
+    await pool.request()
+      .input('UserID', sql.Int, decoded.userId)
+      .input('PasswordHash', sql.NVarChar(255), hashedPassword)
+      .query(`
+        UPDATE users.Users 
+        SET PasswordHash = @PasswordHash,
+            FailedLoginAttempts = 0,
+            IsLocked = 0,
+            LockExpiresAt = NULL,
+            LockReason = NULL,
+            UpdatedAt = GETUTCDATE()
+        WHERE UserID = @UserID
+      `);
+    
+    // Log the password reset
+    await pool.request()
+      .input('userId', sql.Int, decoded.userId)
+      .input('email', sql.NVarChar, decoded.email)
+      .input('action', sql.NVarChar, 'PasswordResetCompleted')
+      .input('ActionStatus', sql.NVarChar, 'Success')
+      .input('ipAddress', sql.NVarChar, req.ip || 'Unknown')
+      .input('userAgent', sql.NVarChar, req.headers['user-agent'] || 'Unknown')
+      .input('details', sql.NVarChar, 'Password reset completed via email link')
+      .execute('users.sp_InsertSecurityLog');
+    
+    // Send confirmation email
+    try {
+      await sendTemplatedEmail(decoded.email, 'password_changed', {
+        userName: decoded.email.split('@')[0]
+      });
+    } catch (emailErr) {
+      console.error('Failed to send password changed confirmation:', emailErr.message);
+    }
+    
+    res.json({ success: true, message: 'Password reset successfully' });
+  } catch (err) {
+    console.error('Complete password reset error:', err);
+    res.status(500).json({ success: false, message: 'Failed to reset password' });
+  }
+});
+
 module.exports = router;
