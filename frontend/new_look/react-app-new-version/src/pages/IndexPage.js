@@ -117,38 +117,70 @@ function IndexPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser?.id]);
 
+  // Location session duration in hours (default 24 hours, can be configured via admin)
+  const LOCATION_SESSION_HOURS = parseInt(localStorage.getItem('planbeau_location_session_hours') || '24', 10);
+  
+  // Helper to get saved location with expiration check
+  const getSavedLocation = useCallback(() => {
+    const savedData = localStorage.getItem('userSelectedLocation');
+    if (savedData) {
+      try {
+        const parsed = JSON.parse(savedData);
+        // Check if location has expired
+        if (parsed.expiresAt && new Date(parsed.expiresAt) > new Date()) {
+          return parsed;
+        } else {
+          // Expired, remove it
+          localStorage.removeItem('userSelectedLocation');
+        }
+      } catch { /* ignore */ }
+    }
+    return null;
+  }, []);
+  
+  // Helper to save location with expiration
+  const saveUserLocation = useCallback((locationData) => {
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + LOCATION_SESSION_HOURS);
+    const dataToSave = {
+      ...locationData,
+      expiresAt: expiresAt.toISOString(),
+      savedAt: new Date().toISOString()
+    };
+    localStorage.setItem('userSelectedLocation', JSON.stringify(dataToSave));
+  }, [LOCATION_SESSION_HOURS]);
+  
   // State for detected city name from IP geolocation
-  // Check sessionStorage first for user-entered location
+  // Check localStorage first for user-entered location
   const [detectedCity, setDetectedCity] = useState(() => {
-    const savedLocation = sessionStorage.getItem('userSelectedLocation');
+    const savedLocation = localStorage.getItem('userSelectedLocation');
     if (savedLocation) {
       try {
         const parsed = JSON.parse(savedLocation);
-        return parsed.city || '';
+        // Check expiration
+        if (parsed.expiresAt && new Date(parsed.expiresAt) > new Date()) {
+          return parsed.city || '';
+        }
       } catch { return ''; }
     }
     return '';
   });
   
-  // Initialize userLocation from sessionStorage if available
+  // Initialize userLocation from localStorage if available and not expired
   useEffect(() => {
-    const savedLocation = sessionStorage.getItem('userSelectedLocation');
-    if (savedLocation) {
-      try {
-        const parsed = JSON.parse(savedLocation);
-        if (parsed.lat && parsed.lng) {
-          setUserLocation(parsed);
-          setFilters(prev => ({ ...prev, location: parsed.city || '' }));
-        }
-      } catch { /* ignore */ }
+    const savedLocation = getSavedLocation();
+    if (savedLocation && savedLocation.lat && savedLocation.lng) {
+      setUserLocation(savedLocation);
+      setFilters(prev => ({ ...prev, location: savedLocation.city || '' }));
+      setDetectedCity(savedLocation.city || '');
     }
-  }, []);
+  }, [getSavedLocation]);
   
   // Auto-detect user's city using IP geolocation (no permission required)
   // Using IP-based services first (no permission needed), then browser geolocation for accuracy
   const detectCityFromIP = useCallback(async () => {
-    // Skip IP lookup if user has already selected a location this session
-    const savedLocation = sessionStorage.getItem('userSelectedLocation');
+    // Skip IP lookup if user has already selected a location this session (and it hasn't expired)
+    const savedLocation = getSavedLocation();
     if (savedLocation) {
       return; // User-selected location takes priority
     }
@@ -1034,14 +1066,14 @@ function IndexPage() {
                 city: locationData.location
               };
               setUserLocation(newLocation);
-              // Save to sessionStorage so it persists during session
-              sessionStorage.setItem('userSelectedLocation', JSON.stringify(newLocation));
+              // Save to localStorage with expiration so it persists during session
+              saveUserLocation(newLocation);
             }
           }
         }}
         onUseCurrentLocation={() => {
-          // Clear sessionStorage to allow IP lookup again
-          sessionStorage.removeItem('userSelectedLocation');
+          // Clear localStorage to allow IP lookup again
+          localStorage.removeItem('userSelectedLocation');
           setLocationModalOpen(false);
           // Re-detect location from IP
           detectCityFromIP();

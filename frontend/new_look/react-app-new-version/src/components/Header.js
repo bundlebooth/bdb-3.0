@@ -15,8 +15,8 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
   const location = useLocation();
   const { currentUser } = useAuth();
   
-  // Only show search bar and incomplete profile banner on explore/main page
-  const isExplorePage = location.pathname === '/' || location.pathname === '' || location.pathname === '/explore';
+  // Only show search bar on explore page, not on landing page
+  const isExplorePage = location.pathname === '/explore';
   const [searchQuery, setSearchQuery] = useState('');
   const [favoritesBadge, setFavoritesBadge] = useState(0);
   const [messagesBadge, setMessagesBadge] = useState(0);

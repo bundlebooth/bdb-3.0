@@ -24,6 +24,7 @@ import BlogPage from './components/BlogPage';
 import UnsubscribePage from './pages/UnsubscribePage';
 import EmailPreferencesPage from './pages/EmailPreferencesPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
+import CookieConsent from './components/CookieConsent';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { useHeartbeat } from './hooks/useOnlineStatus';
 import './styles/MapControls.css';
@@ -169,6 +170,7 @@ function App() {
           <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        <CookieConsent />
       </Router>
     </AuthProvider>
   );

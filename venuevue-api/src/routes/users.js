@@ -1548,14 +1548,25 @@ router.post('/forgot-password', async (req, res) => {
     const resetUrl = getPasswordResetUrl(user.UserID, user.Email);
     
     // Send password reset email
+    // Signature: sendTemplatedEmail(templateKey, recipientEmail, recipientName, variables, userId, bookingId, metadata, emailCategory)
     try {
-      await sendTemplatedEmail(user.Email, 'password_reset', {
-        userName: user.Name || 'User',
-        resetUrl: resetUrl,
-        expiryTime: '1 hour'
-      });
+      await sendTemplatedEmail(
+        'password_reset',           // templateKey
+        user.Email,                 // recipientEmail
+        user.Name || 'User',        // recipientName
+        {                           // variables
+          userName: user.Name || 'User',
+          resetUrl: resetUrl,
+          expiryTime: '1 hour'
+        },
+        user.UserID,                // userId
+        null,                       // bookingId
+        null,                       // metadata
+        'account'                   // emailCategory (account-related emails)
+      );
+      console.log('[PasswordReset] Email sent successfully to:', user.Email);
     } catch (emailErr) {
-      console.error('Failed to send password reset email:', emailErr.message);
+      console.error('[PasswordReset] Failed to send email:', emailErr.message, emailErr.stack);
     }
     
     // Log the password reset request

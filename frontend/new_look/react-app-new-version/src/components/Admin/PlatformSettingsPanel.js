@@ -349,6 +349,44 @@ const PlatformSettingsPanel = () => {
             </div>
           </div>
 
+          <div className="section-card">
+            <h3><i className="fas fa-map-marker-alt"></i> Location Settings</h3>
+            <div className="form-row">
+              <div className="form-group">
+                <label>Location Session Duration (hours)</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="720"
+                  value={localStorage.getItem('planbeau_location_session_hours') || 24}
+                  onChange={e => {
+                    const hours = Math.max(1, Math.min(720, parseInt(e.target.value) || 24));
+                    localStorage.setItem('planbeau_location_session_hours', hours.toString());
+                    showBanner(`Location session duration set to ${hours} hours`, 'success');
+                  }}
+                />
+                <small style={{ color: '#888' }}>
+                  How long a user's selected location persists before reverting to IP-based detection. 
+                  Default: 24 hours. Max: 720 hours (30 days).
+                </small>
+              </div>
+              <div className="form-group">
+                <label>Current Setting</label>
+                <div style={{ 
+                  padding: '12px', 
+                  background: '#f0f9ff', 
+                  borderRadius: '8px', 
+                  border: '1px solid #bae6fd',
+                  fontSize: '14px',
+                  color: '#0369a1'
+                }}>
+                  <i className="fas fa-clock" style={{ marginRight: '8px' }}></i>
+                  User locations persist for <strong>{localStorage.getItem('planbeau_location_session_hours') || 24} hours</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div className="section-card warning">
             <h3><i className="fas fa-tools"></i> Maintenance Mode</h3>
             <div className="maintenance-toggle">

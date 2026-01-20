@@ -453,6 +453,7 @@ function ProfileModal({ isOpen, onClose }) {
     if (view === 'signup') return 'Create Account';
     if (view === 'twofa') return 'Verify Your Account';
     if (view === 'googleAccountType') return 'Choose Account Type';
+    if (view === 'forgotPassword') return 'Reset Password';
     if (view === 'loggedIn') return 'My Account';
     return 'Account';
   };
@@ -522,6 +523,24 @@ function ProfileModal({ isOpen, onClose }) {
                   onBlur={(e) => e.target.style.borderColor = '#D1D5DB'}
                   required
                 />
+                <div style={{ textAlign: 'right', marginTop: '8px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setView('forgotPassword')}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#5B68F4',
+                      fontSize: '13px',
+                      cursor: 'pointer',
+                      padding: 0,
+                      fontFamily: 'inherit',
+                      fontWeight: '500'
+                    }}
+                  >
+                    Forgot Password?
+                  </button>
+                </div>
               </div>
               <button 
                 type="submit" 
@@ -899,6 +918,128 @@ function ProfileModal({ isOpen, onClose }) {
                   setPendingGoogleCredential(null);
                   setGoogleAccountType('client');
                 }}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  backgroundColor: 'white',
+                  color: '#6B7280',
+                  border: '1px solid #E5E7EB',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s'
+                }}
+                onMouseEnter={(e) => e.target.style.backgroundColor = '#F9FAFB'}
+                onMouseLeave={(e) => e.target.style.backgroundColor = 'white'}
+              >
+                Back to Login
+              </button>
+            </div>
+          )}
+
+          {/* Forgot Password View */}
+          {view === 'forgotPassword' && (
+            <div id="forgot-password-form" style={{ display: 'flex', flexDirection: 'column' }}>
+              <div style={{ 
+                textAlign: 'center', 
+                marginBottom: '24px',
+                padding: '16px',
+                backgroundColor: '#F0F9FF',
+                borderRadius: '12px',
+                border: '1px solid #BAE6FD'
+              }}>
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#0369A1" strokeWidth="2" style={{ marginBottom: '12px' }}>
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+                <p style={{ 
+                  color: '#0369A1', 
+                  fontSize: '14px', 
+                  margin: 0,
+                  fontWeight: '500'
+                }}>
+                  Enter your email and we'll send you a link to reset your password
+                </p>
+              </div>
+
+              <form onSubmit={async (e) => {
+                e.preventDefault();
+                if (!loginEmail) {
+                  showBanner('Please enter your email address', 'error');
+                  return;
+                }
+                try {
+                  setLoading(true);
+                  const response = await apiPost('/users/forgot-password', { email: loginEmail });
+                  const data = await response.json();
+                  if (response.ok) {
+                    showBanner('Password reset link sent! Check your email.', 'success');
+                    setView('login');
+                  } else {
+                    showBanner(data.message || 'Failed to send reset email', 'error');
+                  }
+                } catch (error) {
+                  showBanner('Failed to send reset email. Please try again.', 'error');
+                } finally {
+                  setLoading(false);
+                }
+              }}>
+                <div style={{ marginBottom: '20px' }}>
+                  <label style={{ 
+                    display: 'block', 
+                    marginBottom: '8px', 
+                    fontWeight: '500',
+                    fontSize: '14px',
+                    color: '#374151'
+                  }}>Email Address</label>
+                  <input
+                    type="email"
+                    value={loginEmail}
+                    onChange={(e) => setLoginEmail(e.target.value)}
+                    placeholder="Enter your email"
+                    style={{ 
+                      width: '100%', 
+                      padding: '12px 16px', 
+                      border: '1px solid #D1D5DB', 
+                      borderRadius: '8px',
+                      fontSize: '15px',
+                      outline: 'none',
+                      transition: 'border-color 0.2s',
+                      boxSizing: 'border-box'
+                    }}
+                    onFocus={(e) => e.target.style.borderColor = '#5B68F4'}
+                    onBlur={(e) => e.target.style.borderColor = '#D1D5DB'}
+                    required
+                  />
+                </div>
+
+                <button 
+                  type="submit"
+                  disabled={loading}
+                  style={{
+                    width: '100%',
+                    padding: '14px',
+                    backgroundColor: '#5B68F4',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    cursor: loading ? 'not-allowed' : 'pointer',
+                    marginBottom: '12px',
+                    opacity: loading ? 0.7 : 1,
+                    transition: 'background-color 0.2s'
+                  }}
+                  onMouseEnter={(e) => !loading && (e.target.style.backgroundColor = '#4A56E2')}
+                  onMouseLeave={(e) => !loading && (e.target.style.backgroundColor = '#5B68F4')}
+                >
+                  {loading ? 'Sending...' : 'Send Reset Link'}
+                </button>
+              </form>
+
+              <button 
+                onClick={() => setView('login')}
                 style={{
                   width: '100%',
                   padding: '12px',

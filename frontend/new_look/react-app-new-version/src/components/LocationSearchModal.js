@@ -209,9 +209,9 @@ const LocationSearchModal = ({ isOpen, onClose, onApply, onUseCurrentLocation, i
       return;
     }
 
-    // Clear sessionStorage to allow fresh location detection
+    // Clear localStorage to allow fresh location detection
     if (onUseCurrentLocation) {
-      sessionStorage.removeItem('userSelectedLocation');
+      localStorage.removeItem('userSelectedLocation');
     }
 
     // Show loading state
