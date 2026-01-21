@@ -363,6 +363,7 @@ function MessagingWidget() {
           
           // Set the conversation and switch to chat view
           setCurrentConversation(supportConversation);
+          setMainView('messages'); // Must set mainView to 'messages' for chat to render
           setView('chat');
           loadMessages(data.conversationId);
           
@@ -649,13 +650,13 @@ function MessagingWidget() {
           {/* Ticket Form Overlay - Shows when creating a support ticket */}
           {showTicketForm && (
             <div style={{ 
-              position: 'absolute', 
+              position: 'fixed', 
               top: 0, 
               left: 0, 
               right: 0, 
               bottom: 0, 
               background: 'white', 
-              zIndex: 100,
+              zIndex: 10000,
               display: 'flex',
               flexDirection: 'column',
               overflow: 'auto'
@@ -1127,8 +1128,8 @@ function MessagingWidget() {
             </div>
           )}
 
-          {/* Messages View - Support Only */}
-          {mainView === 'messages' && (
+          {/* Messages View - Support Only (Show intro only when not in chat) */}
+          {mainView === 'messages' && view !== 'chat' && (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'white', padding: '20px' }}>
               {/* Support Chat Header */}
               <div style={{ textAlign: 'center', marginBottom: '24px' }}>
@@ -2521,6 +2522,143 @@ function MessagingWidget() {
                       </div>
                     </div>
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* Desktop Chat View */}
+            {mainView === 'messages' && view === 'chat' && currentConversation && (
+              <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+                <div className="chat-header" style={{
+                  padding: '16px',
+                  borderBottom: '1px solid #e0e0e0',
+                  display: 'flex',
+                  alignItems: 'center',
+                  background: 'white'
+                }}>
+                  <button className="back-button" onClick={backToConversations} style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#222',
+                    cursor: 'pointer',
+                    padding: '8px',
+                    marginRight: '12px',
+                    fontSize: '18px'
+                  }}>
+                    <i className="fas fa-arrow-left"></i>
+                  </button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
+                    <div style={{
+                      width: '40px',
+                      height: '40px',
+                      borderRadius: '50%',
+                      background: '#5e72e4',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'white',
+                      fontSize: '16px',
+                      fontWeight: 600
+                    }}>
+                      {(currentConversation.OtherPartyName || 'S')[0].toUpperCase()}
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      <span style={{ fontWeight: 600, fontSize: '16px', color: '#222' }}>
+                        {currentConversation.OtherPartyName || 'Support'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Messages Area */}
+                <div 
+                  style={{ 
+                    flex: 1, 
+                    overflowY: 'auto', 
+                    padding: '16px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '12px'
+                  }}
+                >
+                  {loading ? (
+                    <div style={{ display: 'flex', justifyContent: 'center', padding: '20px' }}>
+                      <div className="spinner"></div>
+                    </div>
+                  ) : messages.length === 0 ? (
+                    <div style={{ textAlign: 'center', color: '#666', padding: '40px 20px' }}>
+                      <p>No messages yet. Start the conversation!</p>
+                    </div>
+                  ) : (
+                    messages.map((msg, index) => (
+                      <div 
+                        key={msg.MessageID || index}
+                        style={{
+                          display: 'flex',
+                          justifyContent: msg.SenderID === currentUser?.id ? 'flex-end' : 'flex-start'
+                        }}
+                      >
+                        <div style={{
+                          maxWidth: '70%',
+                          padding: '12px 16px',
+                          borderRadius: msg.SenderID === currentUser?.id ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
+                          background: msg.SenderID === currentUser?.id ? '#5e72e4' : '#f0f0f0',
+                          color: msg.SenderID === currentUser?.id ? 'white' : '#222'
+                        }}>
+                          <p style={{ margin: 0, fontSize: '14px', lineHeight: '1.4' }}>{msg.Content}</p>
+                          <span style={{ 
+                            fontSize: '11px', 
+                            opacity: 0.7,
+                            display: 'block',
+                            marginTop: '4px'
+                          }}>
+                            {new Date(msg.CreatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {/* Message Input */}
+                <div style={{
+                  padding: '12px 16px',
+                  borderTop: '1px solid #e0e0e0',
+                  display: 'flex',
+                  gap: '12px',
+                  background: 'white'
+                }}>
+                  <input
+                    type="text"
+                    value={messageInput}
+                    onChange={(e) => setMessageInput(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                    placeholder="Type a message..."
+                    style={{
+                      flex: 1,
+                      padding: '12px 16px',
+                      border: '1px solid #e0e0e0',
+                      borderRadius: '24px',
+                      fontSize: '14px',
+                      outline: 'none'
+                    }}
+                  />
+                  <button
+                    onClick={sendMessage}
+                    disabled={!messageInput.trim()}
+                    style={{
+                      padding: '12px 20px',
+                      background: messageInput.trim() ? '#5e72e4' : '#ccc',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '24px',
+                      cursor: messageInput.trim() ? 'pointer' : 'not-allowed',
+                      fontWeight: 600,
+                      fontSize: '14px'
+                    }}
+                  >
+                    Send
+                  </button>
                 </div>
               </div>
             )}
