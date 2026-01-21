@@ -1630,23 +1630,21 @@ router.post('/support/tickets', async (req, res) => {
     const { userId, userEmail, userName, subject, description, category, priority, source, conversationId } = req.body;
     const pool = await getPool();
     
-    // Generate ticket number
-    const ticketNumber = 'TKT-' + new Date().toISOString().slice(0,10).replace(/-/g,'') + '-' + Math.random().toString(36).substr(2, 4).toUpperCase();
+    // Use stored procedure to create ticket (ticket number generated in SP)
+    const result = await pool.request()
+      .input('UserID', sql.Int, userId || null)
+      .input('UserEmail', sql.NVarChar(255), userEmail || null)
+      .input('UserName', sql.NVarChar(100), userName || null)
+      .input('Subject', sql.NVarChar(255), subject)
+      .input('Description', sql.NVarChar(sql.MAX), description)
+      .input('Category', sql.NVarChar(50), category || 'general')
+      .input('Priority', sql.NVarChar(20), priority || 'medium')
+      .input('Source', sql.NVarChar(50), source || 'chat')
+      .input('ConversationID', sql.Int, conversationId || null)
+      .execute('admin.sp_CreateSupportTicket');
     
-    const request = pool.request();
-    request.input('TicketNumber', sql.NVarChar(50), ticketNumber);
-    request.input('UserID', sql.Int, userId || null);
-    request.input('UserEmail', sql.NVarChar(255), userEmail);
-    request.input('UserName', sql.NVarChar(255), userName);
-    request.input('Subject', sql.NVarChar(255), subject);
-    request.input('Description', sql.NVarChar(sql.MAX), description);
-    request.input('Category', sql.NVarChar(50), category || 'general');
-    request.input('Priority', sql.NVarChar(50), priority || 'medium');
-    request.input('Source', sql.NVarChar(50), source || 'chat');
-    request.input('ConversationID', sql.Int, conversationId || null);
-    
-    const result = await request.execute('admin.sp_CreateSupportTicket');
-    const newTicketNumber = result.recordset[0].TicketNumber;
+    const newTicketId = result.recordset[0]?.TicketID;
+    const newTicketNumber = result.recordset[0]?.TicketNumber;
     
     // Send confirmation email to user
     if (userEmail) {
@@ -1664,10 +1662,10 @@ router.post('/support/tickets', async (req, res) => {
       }
     }
     
-    res.json({ success: true, ticketId: result.recordset[0].TicketID, ticketNumber: newTicketNumber });
+    res.json({ success: true, ticketId: newTicketId, ticketNumber: newTicketNumber });
   } catch (error) {
     console.error('Error creating ticket:', error);
-    res.status(500).json({ error: 'Failed to create ticket' });
+    res.status(500).json({ error: 'Failed to create ticket', message: error.message });
   }
 });
 
@@ -1801,6 +1799,82 @@ router.post('/support/tickets/:id/messages', async (req, res) => {
   } catch (error) {
     console.error('Error adding message:', error);
     res.status(500).json({ error: 'Failed to add message' });
+  }
+});
+
+// ==================== SUPPORT CONVERSATIONS (LIVE CHAT) ====================
+
+// GET /admin/support/conversations - Get all support conversations
+router.get('/support/conversations', async (req, res) => {
+  try {
+    const pool = await getPool();
+    
+    const result = await pool.request().execute('admin.sp_GetSupportConversations');
+    
+    res.json({ conversations: result.recordset || [] });
+  } catch (error) {
+    console.error('Error fetching support conversations:', error);
+    res.status(500).json({ error: 'Failed to fetch support conversations' });
+  }
+});
+
+// GET /admin/support/conversations/:id/messages - Get messages for a support conversation
+router.get('/support/conversations/:id/messages', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pool = await getPool();
+    
+    const result = await pool.request()
+      .input('ConversationID', sql.Int, id)
+      .execute('admin.sp_GetSupportConversationMessages');
+    
+    res.json({ messages: result.recordset || [] });
+  } catch (error) {
+    console.error('Error fetching support messages:', error);
+    res.status(500).json({ error: 'Failed to fetch messages' });
+  }
+});
+
+// POST /admin/support/conversations/:id/reply - Send reply to support conversation
+router.post('/support/conversations/:id/reply', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { content } = req.body;
+    const adminUserId = req.user.id; // From auth middleware
+    
+    if (!content || !content.trim()) {
+      return res.status(400).json({ error: 'Message content is required' });
+    }
+    
+    const pool = await getPool();
+    
+    const result = await pool.request()
+      .input('ConversationID', sql.Int, id)
+      .input('SenderID', sql.Int, adminUserId)
+      .input('Content', sql.NVarChar(sql.MAX), content.trim())
+      .execute('admin.sp_SendSupportReply');
+    
+    // Send email notification to user (optional)
+    if (result.recordset.length > 0) {
+      const user = result.recordset[0];
+      try {
+        await sendEmail(user.Email, 'support_message_received', {
+          userName: user.Name || 'User',
+          messagePreview: content.length > 100 ? content.substring(0, 100) + '...' : content,
+          dashboardUrl: 'https://www.planbeau.com'
+        }, user.UserID);
+      } catch (emailErr) {
+        console.error('Failed to send support reply notification:', emailErr.message);
+      }
+    }
+    
+    res.json({ 
+      success: true, 
+      messageId: result.recordset[0]?.MessageID 
+    });
+  } catch (error) {
+    console.error('Error sending support reply:', error);
+    res.status(500).json({ error: 'Failed to send reply' });
   }
 });
 

@@ -18,11 +18,10 @@ AS
 BEGIN
     SET NOCOUNT ON;
     
-    -- Check for support conversation via SupportConversations table
+    -- Check for support conversation via ConversationType column
     SELECT TOP 1 c.ConversationID 
     FROM messages.Conversations c
-    INNER JOIN SupportConversations sc ON c.ConversationID = sc.ConversationID
-    WHERE c.UserID = @UserID
+    WHERE c.UserID = @UserID AND c.ConversationType = 'support'
     ORDER BY c.CreatedAt DESC;
 END
 GO

@@ -467,10 +467,10 @@ router.post('/conversations/support', async (req, res) => {
 
     const pool = await poolPromise;
     
-    // Check if user already has a support conversation
-    const checkRequest = pool.request();
-    checkRequest.input('UserID', sql.Int, userId);
-    const existingResult = await checkRequest.execute('messages.sp_CheckSupportConversation');
+    // Check if user already has a support conversation using stored procedure
+    const existingResult = await pool.request()
+      .input('UserID', sql.Int, userId)
+      .execute('messages.sp_CheckSupportConversation');
     
     if (existingResult.recordset.length > 0) {
       return res.json({
@@ -480,11 +480,11 @@ router.post('/conversations/support', async (req, res) => {
       });
     }
     
-    // Create new support conversation with welcome message
-    const createRequest = pool.request();
-    createRequest.input('UserID', sql.Int, userId);
-    createRequest.input('Subject', sql.NVarChar(255), subject || 'Support Request');
-    const createResult = await createRequest.execute('messages.sp_CreateSupportConversation');
+    // Create new support conversation using stored procedure
+    const createResult = await pool.request()
+      .input('UserID', sql.Int, userId)
+      .input('Subject', sql.NVarChar(255), subject || 'Support Request')
+      .execute('messages.sp_CreateSupportConversation');
     
     const conversationId = createResult.recordset[0]?.ConversationID;
 

@@ -6,19 +6,93 @@ import UniversalModal from '../UniversalModal';
 import { LoadingState, EmptyState } from '../common/AdminComponents';
 
 const SupportToolsPanel = () => {
-  const [activeTab, setActiveTab] = useState('impersonate'); // impersonate, tickets, notes
+  const [activeTab, setActiveTab] = useState('messages'); // messages, impersonate, tickets, notes
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [searching, setSearching] = useState(false);
   const [tickets, setTickets] = useState([]);
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [loading, setLoading] = useState(false);
+  
+  // Support Messages state
+  const [supportConversations, setSupportConversations] = useState([]);
+  const [selectedSupportConv, setSelectedSupportConv] = useState(null);
+  const [supportMessages, setSupportMessages] = useState([]);
+  const [supportReply, setSupportReply] = useState('');
+  const [messagesLoading, setMessagesLoading] = useState(false);
+  const [sendingReply, setSendingReply] = useState(false);
 
   useEffect(() => {
     if (activeTab === 'tickets') {
       fetchTickets();
     }
+    if (activeTab === 'messages') {
+      fetchSupportConversations();
+    }
   }, [activeTab]);
+  
+  // Fetch support conversations
+  const fetchSupportConversations = async () => {
+    try {
+      setLoading(true);
+      const response = await apiGet('/admin/support/conversations');
+      if (response.ok) {
+        const data = await response.json();
+        setSupportConversations(data.conversations || []);
+      }
+    } catch (error) {
+      console.error('Error fetching support conversations:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Fetch messages for a support conversation
+  const fetchSupportMessages = async (conversationId) => {
+    try {
+      setMessagesLoading(true);
+      const response = await apiGet(`/admin/support/conversations/${conversationId}/messages`);
+      if (response.ok) {
+        const data = await response.json();
+        setSupportMessages(data.messages || []);
+      }
+    } catch (error) {
+      console.error('Error fetching support messages:', error);
+    } finally {
+      setMessagesLoading(false);
+    }
+  };
+  
+  // Send reply to support conversation
+  const sendSupportReply = async () => {
+    if (!supportReply.trim() || !selectedSupportConv) return;
+    
+    try {
+      setSendingReply(true);
+      const response = await apiPost(`/admin/support/conversations/${selectedSupportConv.ConversationID}/reply`, {
+        content: supportReply
+      });
+      
+      if (response.ok) {
+        setSupportReply('');
+        fetchSupportMessages(selectedSupportConv.ConversationID);
+        showBanner('Reply sent successfully', 'success');
+      } else {
+        showBanner('Failed to send reply', 'error');
+      }
+    } catch (error) {
+      console.error('Error sending reply:', error);
+      showBanner('Failed to send reply', 'error');
+    } finally {
+      setSendingReply(false);
+    }
+  };
+  
+  // Handle selecting a support conversation
+  const handleSelectSupportConv = (conv) => {
+    setSelectedSupportConv(conv);
+    fetchSupportMessages(conv.ConversationID);
+  };
 
   const handleSearch = async () => {
     if (!searchTerm.trim()) return;
@@ -109,10 +183,10 @@ const SupportToolsPanel = () => {
       {/* Tabs */}
       <div className="panel-tabs">
         <button
-          className={`tab ${activeTab === 'impersonate' ? 'active' : ''}`}
-          onClick={() => setActiveTab('impersonate')}
+          className={`tab ${activeTab === 'messages' ? 'active' : ''}`}
+          onClick={() => setActiveTab('messages')}
         >
-          <i className="fas fa-user-secret"></i> Impersonate User
+          <i className="fas fa-comments"></i> Support Messages
         </button>
         <button
           className={`tab ${activeTab === 'tickets' ? 'active' : ''}`}
@@ -121,12 +195,223 @@ const SupportToolsPanel = () => {
           <i className="fas fa-ticket-alt"></i> Support Tickets
         </button>
         <button
+          className={`tab ${activeTab === 'impersonate' ? 'active' : ''}`}
+          onClick={() => setActiveTab('impersonate')}
+        >
+          <i className="fas fa-user-secret"></i> Impersonate User
+        </button>
+        <button
           className={`tab ${activeTab === 'notes' ? 'active' : ''}`}
           onClick={() => setActiveTab('notes')}
         >
           <i className="fas fa-sticky-note"></i> Internal Notes
         </button>
       </div>
+
+      {/* Support Messages Tab */}
+      {activeTab === 'messages' && (
+        <div className="support-messages-section">
+          <div style={{ display: 'flex', height: 'calc(100vh - 250px)', gap: '20px' }}>
+            {/* Conversations List */}
+            <div style={{ width: '350px', background: '#fff', borderRadius: '12px', border: '1px solid #e5e7eb', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ padding: '16px', borderBottom: '1px solid #e5e7eb', background: '#f9fafb' }}>
+                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600 }}>
+                  <i className="fas fa-inbox" style={{ marginRight: '8px', color: '#5e72e4' }}></i>
+                  Support Inbox
+                </h3>
+              </div>
+              <div style={{ flex: 1, overflowY: 'auto' }}>
+                {loading ? (
+                  <div style={{ padding: '40px', textAlign: 'center' }}>
+                    <div className="spinner"></div>
+                  </div>
+                ) : supportConversations.length === 0 ? (
+                  <div style={{ padding: '40px 20px', textAlign: 'center', color: '#6b7280' }}>
+                    <i className="fas fa-inbox" style={{ fontSize: '48px', opacity: 0.3, marginBottom: '12px', display: 'block' }}></i>
+                    <p style={{ margin: 0 }}>No support conversations</p>
+                  </div>
+                ) : (
+                  supportConversations.map(conv => (
+                    <div
+                      key={conv.ConversationID}
+                      onClick={() => handleSelectSupportConv(conv)}
+                      style={{
+                        padding: '14px 16px',
+                        borderBottom: '1px solid #f0f0f0',
+                        cursor: 'pointer',
+                        background: selectedSupportConv?.ConversationID === conv.ConversationID ? '#f0f4ff' : 'white',
+                        transition: 'background 0.2s'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{
+                          width: '40px',
+                          height: '40px',
+                          borderRadius: '50%',
+                          background: '#5e72e4',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: 'white',
+                          fontSize: '14px',
+                          fontWeight: 600
+                        }}>
+                          {(conv.UserName || 'U')[0].toUpperCase()}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 600, fontSize: '14px', color: '#111' }}>
+                            {conv.UserName || 'Unknown User'}
+                          </div>
+                          <div style={{ fontSize: '12px', color: '#6b7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {conv.LastMessage || 'No messages yet'}
+                          </div>
+                        </div>
+                        {conv.UnreadCount > 0 && (
+                          <span style={{
+                            background: '#ef4444',
+                            color: 'white',
+                            borderRadius: '10px',
+                            padding: '2px 8px',
+                            fontSize: '11px',
+                            fontWeight: 600
+                          }}>
+                            {conv.UnreadCount}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+              <div style={{ padding: '12px', borderTop: '1px solid #e5e7eb' }}>
+                <button className="btn-secondary" onClick={fetchSupportConversations} style={{ width: '100%' }}>
+                  <i className="fas fa-sync-alt"></i> Refresh
+                </button>
+              </div>
+            </div>
+
+            {/* Chat Area */}
+            <div style={{ flex: 1, background: '#fff', borderRadius: '12px', border: '1px solid #e5e7eb', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+              {selectedSupportConv ? (
+                <>
+                  {/* Chat Header */}
+                  <div style={{ padding: '16px', borderBottom: '1px solid #e5e7eb', background: '#f9fafb', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{
+                      width: '44px',
+                      height: '44px',
+                      borderRadius: '50%',
+                      background: '#5e72e4',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'white',
+                      fontSize: '16px',
+                      fontWeight: 600
+                    }}>
+                      {(selectedSupportConv.UserName || 'U')[0].toUpperCase()}
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: '16px', color: '#111' }}>
+                        {selectedSupportConv.UserName || 'Unknown User'}
+                      </div>
+                      <div style={{ fontSize: '13px', color: '#6b7280' }}>
+                        {selectedSupportConv.UserEmail || 'No email'}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Messages */}
+                  <div style={{ flex: 1, overflowY: 'auto', padding: '16px', background: '#f9fafb' }}>
+                    {messagesLoading ? (
+                      <div style={{ textAlign: 'center', padding: '40px' }}>
+                        <div className="spinner"></div>
+                      </div>
+                    ) : supportMessages.length === 0 ? (
+                      <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
+                        <p>No messages in this conversation</p>
+                      </div>
+                    ) : (
+                      supportMessages.map((msg, idx) => (
+                        <div
+                          key={idx}
+                          style={{
+                            display: 'flex',
+                            justifyContent: msg.IsFromSupport ? 'flex-end' : 'flex-start',
+                            marginBottom: '12px'
+                          }}
+                        >
+                          <div style={{
+                            maxWidth: '70%',
+                            padding: '12px 16px',
+                            borderRadius: msg.IsFromSupport ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
+                            background: msg.IsFromSupport ? '#5e72e4' : 'white',
+                            color: msg.IsFromSupport ? 'white' : '#111',
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                          }}>
+                            <div style={{ fontSize: '14px', lineHeight: '1.5' }}>{msg.Content}</div>
+                            <div style={{ fontSize: '11px', marginTop: '6px', opacity: 0.7 }}>
+                              {new Date(msg.CreatedAt).toLocaleString()}
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  {/* Reply Input */}
+                  <div style={{ padding: '16px', borderTop: '1px solid #e5e7eb', background: 'white' }}>
+                    <div style={{ display: 'flex', gap: '12px' }}>
+                      <textarea
+                        value={supportReply}
+                        onChange={(e) => setSupportReply(e.target.value)}
+                        placeholder="Type your reply..."
+                        rows={2}
+                        style={{
+                          flex: 1,
+                          padding: '12px',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '8px',
+                          fontSize: '14px',
+                          resize: 'none',
+                          outline: 'none'
+                        }}
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            sendSupportReply();
+                          }
+                        }}
+                      />
+                      <button
+                        className="btn-primary"
+                        onClick={sendSupportReply}
+                        disabled={sendingReply || !supportReply.trim()}
+                        style={{ alignSelf: 'flex-end', padding: '12px 24px' }}
+                      >
+                        {sendingReply ? (
+                          <i className="fas fa-spinner fa-spin"></i>
+                        ) : (
+                          <>
+                            <i className="fas fa-paper-plane"></i> Send
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280' }}>
+                  <div style={{ textAlign: 'center' }}>
+                    <i className="fas fa-comments" style={{ fontSize: '64px', opacity: 0.3, marginBottom: '16px', display: 'block' }}></i>
+                    <h3 style={{ margin: '0 0 8px 0', fontWeight: 600 }}>Select a conversation</h3>
+                    <p style={{ margin: 0, fontSize: '14px' }}>Choose a support conversation from the list to view and reply</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Impersonate Tab */}
       {activeTab === 'impersonate' && (

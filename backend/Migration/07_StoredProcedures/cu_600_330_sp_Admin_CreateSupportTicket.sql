@@ -13,23 +13,27 @@ IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[s
 GO
 
 CREATE PROCEDURE [admin].[sp_CreateSupportTicket]
-    @TicketNumber NVARCHAR(50),
     @UserID INT = NULL,
-    @UserEmail NVARCHAR(255),
-    @UserName NVARCHAR(255),
+    @UserEmail NVARCHAR(255) = NULL,
+    @UserName NVARCHAR(100) = NULL,
     @Subject NVARCHAR(255),
     @Description NVARCHAR(MAX),
     @Category NVARCHAR(50) = 'general',
-    @Priority NVARCHAR(50) = 'medium',
+    @Priority NVARCHAR(20) = 'medium',
     @Source NVARCHAR(50) = 'chat',
     @ConversationID INT = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
     
-    INSERT INTO admin.SupportTickets (TicketNumber, UserID, UserEmail, UserName, Subject, Description, Category, Priority, Source, ConversationID)
-    OUTPUT INSERTED.TicketID, INSERTED.TicketNumber
-    VALUES (@TicketNumber, @UserID, @UserEmail, @UserName, @Subject, @Description, @Category, @Priority, @Source, @ConversationID);
+    -- Generate ticket number (TKT- + 8 random alphanumeric chars)
+    DECLARE @TicketNumber NVARCHAR(20);
+    SET @TicketNumber = 'TKT-' + UPPER(SUBSTRING(CONVERT(VARCHAR(36), NEWID()), 1, 8));
+    
+    INSERT INTO admin.SupportTickets (TicketNumber, UserID, UserEmail, UserName, Subject, Description, Category, Priority, Status, Source, ConversationID, CreatedAt, UpdatedAt)
+    VALUES (@TicketNumber, @UserID, @UserEmail, @UserName, @Subject, @Description, @Category, @Priority, 'open', @Source, @ConversationID, GETDATE(), GETDATE());
+    
+    SELECT SCOPE_IDENTITY() as TicketID, @TicketNumber as TicketNumber;
 END
 GO
 

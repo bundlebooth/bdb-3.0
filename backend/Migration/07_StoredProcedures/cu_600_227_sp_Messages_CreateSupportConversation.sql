@@ -20,24 +20,21 @@ BEGIN
     SET NOCOUNT ON;
     
     DECLARE @ConversationID INT;
-    DECLARE @TicketID INT;
+    DECLARE @AdminID INT;
     
-    -- Create the conversation (without ConversationType - use SupportConversations table instead)
-    INSERT INTO messages.Conversations (UserID, VendorProfileID, Subject, CreatedAt, UpdatedAt)
-    VALUES (@UserID, 1, @Subject, GETDATE(), GETDATE());
+    -- Get an admin user ID for the welcome message
+    SELECT TOP 1 @AdminID = UserID FROM users.Users WHERE IsAdmin = 1;
+    IF @AdminID IS NULL SET @AdminID = 1;
+    
+    -- Create the conversation with ConversationType = 'support'
+    INSERT INTO messages.Conversations (UserID, VendorProfileID, Subject, ConversationType, CreatedAt, UpdatedAt)
+    VALUES (@UserID, NULL, @Subject, 'support', GETDATE(), GETDATE());
     
     SET @ConversationID = SCOPE_IDENTITY();
     
-    -- Generate a ticket ID (simple incrementing number)
-    SELECT @TicketID = ISNULL(MAX(TicketID), 0) + 1 FROM SupportConversations;
-    
-    -- Link to SupportConversations table
-    INSERT INTO SupportConversations (TicketID, ConversationID, CreatedAt)
-    VALUES (@TicketID, @ConversationID, GETDATE());
-    
     -- Add initial welcome message from support
     INSERT INTO messages.Messages (ConversationID, SenderID, Content, IsRead, CreatedAt)
-    VALUES (@ConversationID, 1, 'Hello! Welcome to VenueVue Support. How can we help you today?', 0, GETDATE());
+    VALUES (@ConversationID, @AdminID, 'Welcome to Planbeau Support! How can we help you today? Our team typically responds within a few hours during business hours.', 0, GETDATE());
     
     SELECT @ConversationID AS ConversationID;
 END
