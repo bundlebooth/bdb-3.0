@@ -168,6 +168,98 @@ router.get('/service-categories', (req, res) => {
   });
 });
 
+// ============================================================
+// VALIDATE BOOKING - For deep link validation from email buttons
+// MUST be before /:id route to avoid route conflict
+// ============================================================
+router.get('/validate/:bookingId', async (req, res) => {
+  try {
+    const bookingId = resolveBookingId(req.params.bookingId);
+    if (!bookingId) {
+      return res.status(404).json({ 
+        valid: false, 
+        errorTitle: 'Invalid Link',
+        errorMessage: 'This booking link is not valid.' 
+      });
+    }
+
+    const userId = req.user?.id;
+    
+    const pool = await poolPromise;
+    const result = await pool.request()
+      .input('BookingID', sql.Int, bookingId)
+      .query(`
+        SELECT 
+          b.BookingID,
+          b.UserID,
+          b.VendorProfileID,
+          b.Status,
+          b.EventDate,
+          b.CreatedAt,
+          b.CancelledAt,
+          vp.UserID AS VendorUserID
+        FROM bookings.Bookings b
+        LEFT JOIN vendors.VendorProfiles vp ON b.VendorProfileID = vp.VendorProfileID
+        WHERE b.BookingID = @BookingID
+      `);
+
+    if (result.recordset.length === 0) {
+      return res.status(404).json({ 
+        valid: false,
+        errorTitle: 'Booking Not Found',
+        errorMessage: 'This booking could not be found. It may have been deleted.'
+      });
+    }
+
+    const booking = result.recordset[0];
+    
+    // Check if user has access (is client or vendor)
+    if (userId) {
+      const isClient = booking.UserID === userId;
+      const isVendor = booking.VendorUserID === userId;
+      
+      if (!isClient && !isVendor) {
+        return res.status(403).json({ 
+          valid: false,
+          errorTitle: 'Access Denied',
+          errorMessage: 'You do not have permission to view this booking.'
+        });
+      }
+    }
+
+    // Check if booking is cancelled
+    if (booking.Status === 'cancelled' || booking.CancelledAt) {
+      return res.json({ 
+        valid: true,
+        status: 'cancelled',
+        bookingId: booking.BookingID,
+        warning: 'This booking has been cancelled.'
+      });
+    }
+
+    // Check if event has passed (expired)
+    const eventDate = booking.EventDate ? new Date(booking.EventDate) : null;
+    const now = new Date();
+    const isExpired = eventDate && eventDate < now;
+
+    return res.json({ 
+      valid: true,
+      status: booking.Status,
+      bookingId: booking.BookingID,
+      isExpired,
+      eventDate: booking.EventDate
+    });
+
+  } catch (err) {
+    console.error('Validate booking error:', err);
+    res.status(500).json({ 
+      valid: false, 
+      errorTitle: 'Something Went Wrong',
+      errorMessage: 'We couldn\'t validate this booking. Please try again.'
+    });
+  }
+});
+
 // Get booking details
 router.get('/:id', async (req, res) => {
   try {
@@ -2111,97 +2203,6 @@ router.get('/:id/cancellation-policy', async (req, res) => {
   } catch (err) {
     console.error('Get cancellation policy error:', err);
     res.status(500).json({ success: false, message: 'Failed to get cancellation policy', error: err.message });
-  }
-});
-
-// ============================================================
-// VALIDATE BOOKING - For deep link validation from email buttons
-// ============================================================
-router.get('/validate/:bookingId', async (req, res) => {
-  try {
-    const bookingId = resolveBookingId(req.params.bookingId);
-    if (!bookingId) {
-      return res.status(404).json({ 
-        valid: false, 
-        errorTitle: 'Invalid Link',
-        errorMessage: 'This booking link is not valid.' 
-      });
-    }
-
-    const userId = req.user?.id;
-    
-    const pool = await poolPromise;
-    const result = await pool.request()
-      .input('BookingID', sql.Int, bookingId)
-      .query(`
-        SELECT 
-          b.BookingID,
-          b.UserID,
-          b.VendorProfileID,
-          b.Status,
-          b.EventDate,
-          b.CreatedAt,
-          b.CancelledAt,
-          vp.UserID AS VendorUserID
-        FROM bookings.Bookings b
-        LEFT JOIN vendors.VendorProfiles vp ON b.VendorProfileID = vp.VendorProfileID
-        WHERE b.BookingID = @BookingID
-      `);
-
-    if (result.recordset.length === 0) {
-      return res.status(404).json({ 
-        valid: false,
-        errorTitle: 'Booking Not Found',
-        errorMessage: 'This booking could not be found. It may have been deleted.'
-      });
-    }
-
-    const booking = result.recordset[0];
-    
-    // Check if user has access (is client or vendor)
-    if (userId) {
-      const isClient = booking.UserID === userId;
-      const isVendor = booking.VendorUserID === userId;
-      
-      if (!isClient && !isVendor) {
-        return res.status(403).json({ 
-          valid: false,
-          errorTitle: 'Access Denied',
-          errorMessage: 'You do not have permission to view this booking.'
-        });
-      }
-    }
-
-    // Check if booking is cancelled
-    if (booking.Status === 'cancelled' || booking.CancelledAt) {
-      return res.json({ 
-        valid: true,
-        status: 'cancelled',
-        bookingId: booking.BookingID,
-        warning: 'This booking has been cancelled.'
-      });
-    }
-
-    // Check if event has passed (expired)
-    const eventDate = booking.EventDate ? new Date(booking.EventDate) : null;
-    const now = new Date();
-    const isExpired = eventDate && eventDate < now;
-
-    return res.json({ 
-      valid: true,
-      status: booking.Status,
-      bookingId: booking.BookingID,
-      isExpired,
-      eventDate: booking.EventDate
-    });
-
-  } catch (err) {
-    console.error('Validate booking error:', err);
-    res.status(500).json({ 
-      valid: false, 
-      errorTitle: 'Something Went Wrong',
-      errorMessage: 'We couldn\'t validate this booking. Please try again.'
-    });
   }
 });
 
