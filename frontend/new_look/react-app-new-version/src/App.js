@@ -25,6 +25,7 @@ import UnsubscribePage from './pages/UnsubscribePage';
 import EmailPreferencesPage from './pages/EmailPreferencesPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import PaymentPage from './pages/PaymentPage';
+import DeepLinkPage from './pages/DeepLinkPage';
 import CookieConsent from './components/CookieConsent';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { useHeartbeat } from './hooks/useOnlineStatus';
@@ -168,6 +169,8 @@ function App() {
           {/* Deep link routes for bookings/payments/reviews */}
           <Route path="/dashboard/booking/:bookingId" element={<ProtectedDeepLink section="bookings" />} />
           <Route path="/dashboard/review/:bookingId" element={<ProtectedDeepLink section="reviews" />} />
+          {/* Centralized deep link validation for all email buttons */}
+          <Route path="/link/:linkType/:resourceId" element={<DeepLinkPage />} />
           {/* Direct payment page - standalone route for email links */}
           <Route path="/payment/:bookingId" element={<PaymentPage />} />
           <Route path="/forum" element={<ForumPage />} />

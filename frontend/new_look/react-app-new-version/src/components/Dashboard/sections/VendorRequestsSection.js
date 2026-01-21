@@ -134,6 +134,9 @@ function VendorRequestsSection({ deepLinkBookingId, onDeepLinkHandled }) {
             element.scrollIntoView({ behavior: 'smooth', block: 'center' });
           }
         }, 100);
+      } else {
+        // Booking not found - show error message
+        showBanner('The booking you are looking for was not found. It may have been cancelled, expired, or you may not have access to view it.', 'error');
       }
       
       // Clear the deep link after handling

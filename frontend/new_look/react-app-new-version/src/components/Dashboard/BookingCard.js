@@ -134,8 +134,32 @@ const BookingCard = ({
   // Location
   const location = booking.Location || booking.EventLocation;
 
-  // Service name
-  const serviceName = booking.ServiceName || 'Service';
+  // Service name - parse from Services JSON if available
+  const getServiceName = () => {
+    // First try direct ServiceName field
+    if (booking.ServiceName && booking.ServiceName !== 'Service') {
+      return booking.ServiceName;
+    }
+    // Try parsing Services JSON
+    if (booking.Services) {
+      try {
+        const services = typeof booking.Services === 'string' 
+          ? JSON.parse(booking.Services) 
+          : booking.Services;
+        if (Array.isArray(services) && services.length > 0) {
+          // Get names of all services/packages
+          const names = services.map(s => s.name).filter(Boolean);
+          if (names.length > 0) {
+            return names.join(', ');
+          }
+        }
+      } catch (e) {
+        console.error('Error parsing Services JSON:', e);
+      }
+    }
+    return 'Service';
+  };
+  const serviceName = getServiceName();
 
   // Format date for compact display
   const monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];

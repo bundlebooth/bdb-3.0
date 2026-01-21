@@ -224,52 +224,320 @@ Manage Preferences: {{preferencesUrl}}
         PRINT 'Added Account Reactivated component';
     END
 
-    -- Password Reset component
+    -- Password Reset component (clean style matching Account Reactivated)
     IF NOT EXISTS (SELECT 1 FROM [admin].[EmailTemplateComponents] WHERE [ComponentName] = 'Password Reset')
     BEGIN
         INSERT [admin].[EmailTemplateComponents] ([ComponentType], [ComponentName], [HtmlContent], [TextContent], [Description], [IsActive], [CreatedAt], [UpdatedAt])
-        VALUES (N'body', N'Password Reset', N'<tr><td style="padding:40px"><h1 style="margin:0 0 20px;font-size:24px;font-weight:600;color:#1a1a1a;text-align:center">Reset Your Password</h1><p style="margin:0 0 20px;font-size:16px;color:#4a4a4a;line-height:1.6">Hi {{userName}},</p><p style="margin:0 0 20px;font-size:16px;color:#4a4a4a;line-height:1.6">We received a request to reset your password. Click the button below to create a new password:</p><div style="text-align:center;margin:30px 0"><a href="{{resetUrl}}" style="display:inline-block;padding:16px 40px;background-color:#222222;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:600;font-size:16px">Reset Password</a></div><p style="margin:0 0 20px;font-size:14px;color:#666;line-height:1.6">This link will expire in {{expiryTime}}. If you did not request a password reset, you can safely ignore this email.</p><p style="margin:0 0 10px;font-size:14px;color:#666;line-height:1.6">If the button does not work, copy and paste this link into your browser:</p><p style="margin:0 0 20px;font-size:12px;color:#667eea;word-break:break-all">{{resetUrl}}</p></td></tr>', N'Hi {{userName}}, We received a request to reset your password. Visit this link to create a new password: {{resetUrl}} This link will expire in {{expiryTime}}.', N'Password reset request email body', 1, GETDATE(), GETDATE());
+        VALUES (N'body', N'Password Reset', N'<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#ffffff"><tr><td align="center" style="padding:0 24px"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px"><tr><td style="padding:32px 0"><div style="width:48px;height:48px;background:#dbeafe;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 24px auto"><span style="font-size:24px;color:#2563eb">&#128274;</span></div><h1 style="color:#222222;font-size:24px;font-weight:600;margin:0 0 16px 0;text-align:center">Reset Your Password</h1><p style="color:#484848;font-size:16px;line-height:24px;margin:0 0 16px 0">Hello {{userName}},</p><p style="color:#484848;font-size:16px;line-height:24px;margin:0 0 24px 0">We received a request to reset your password for your PlanBeau account. Click the button below to create a new password.</p><p style="color:#717171;font-size:14px;line-height:22px;margin:0 0 24px 0">This link will expire in <strong>{{expiryTime}}</strong>.</p><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr><td align="center"><a href="{{resetUrl}}" style="display:inline-block;background-color:#222222;color:#ffffff;font-size:16px;font-weight:600;text-decoration:none;padding:14px 32px;border-radius:8px">Reset Password</a></td></tr></table><p style="color:#717171;font-size:14px;line-height:22px;margin:24px 0 0 0;text-align:center">If you did not request this, you can safely ignore this email.</p></td></tr></table></td></tr></table>', N'Hi {{userName}}, We received a request to reset your password. Visit this link to create a new password: {{resetUrl}} This link will expire in {{expiryTime}}.', N'Password reset request email body', 1, GETDATE(), GETDATE());
         PRINT 'Added Password Reset component';
     END
 
-    -- Password Changed component
+    -- Password Changed component (clean style)
     IF NOT EXISTS (SELECT 1 FROM [admin].[EmailTemplateComponents] WHERE [ComponentName] = 'Password Changed')
     BEGIN
         INSERT [admin].[EmailTemplateComponents] ([ComponentType], [ComponentName], [HtmlContent], [TextContent], [Description], [IsActive], [CreatedAt], [UpdatedAt])
-        VALUES (N'body', N'Password Changed', N'<tr><td style="padding:40px"><div style="text-align:center;margin-bottom:20px"><div style="width:60px;height:60px;background-color:#10b981;border-radius:50%;display:inline-block;text-align:center;line-height:60px"><span style="color:#fff;font-size:30px">✓</span></div></div><h1 style="margin:0 0 20px;font-size:24px;font-weight:600;color:#1a1a1a;text-align:center">Password Changed Successfully</h1><p style="margin:0 0 20px;font-size:16px;color:#4a4a4a;line-height:1.6">Hi {{userName}},</p><p style="margin:0 0 20px;font-size:16px;color:#4a4a4a;line-height:1.6">Your password has been successfully changed. You can now log in with your new password.</p><p style="margin:0 0 20px;font-size:14px;color:#666;line-height:1.6;background-color:#fef3c7;padding:15px;border-radius:8px"><strong>Did not make this change?</strong> If you did not change your password, please contact our support team immediately.</p><div style="text-align:center;margin:30px 0"><a href="https://www.planbeau.com" style="display:inline-block;padding:16px 40px;background-color:#222222;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:600;font-size:16px">Go to Planbeau</a></div></td></tr>', N'Hi {{userName}}, Your password has been successfully changed. You can now log in with your new password. If you did not make this change, please contact support immediately.', N'Password changed confirmation email body', 1, GETDATE(), GETDATE());
+        VALUES (N'body', N'Password Changed', N'<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#ffffff"><tr><td align="center" style="padding:0 24px"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px"><tr><td style="padding:32px 0"><div style="width:48px;height:48px;background:#d1fae5;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 24px auto"><span style="font-size:24px;color:#059669">&#10003;</span></div><h1 style="color:#222222;font-size:24px;font-weight:600;margin:0 0 16px 0;text-align:center">Password Changed Successfully</h1><p style="color:#484848;font-size:16px;line-height:24px;margin:0 0 16px 0">Hello {{userName}},</p><p style="color:#484848;font-size:16px;line-height:24px;margin:0 0 24px 0">Your password has been successfully changed. You can now log in with your new password.</p><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#fef3c7;border-radius:12px;margin-bottom:24px"><tr><td style="padding:16px;text-align:center"><p style="color:#92400e;font-size:14px;margin:0"><strong>Did not make this change?</strong> Contact our support team immediately.</p></td></tr></table><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr><td align="center"><a href="https://www.planbeau.com" style="display:inline-block;background-color:#222222;color:#ffffff;font-size:16px;font-weight:600;text-decoration:none;padding:14px 32px;border-radius:8px">Go to PlanBeau</a></td></tr></table></td></tr></table></td></tr></table>', N'Hi {{userName}}, Your password has been successfully changed. You can now log in with your new password. If you did not make this change, please contact support immediately.', N'Password changed confirmation email body', 1, GETDATE(), GETDATE());
         PRINT 'Added Password Changed component';
     END
 
-    -- Support Ticket Opened component
+    -- Support Ticket Opened component (clean style)
     IF NOT EXISTS (SELECT 1 FROM [admin].[EmailTemplateComponents] WHERE [ComponentName] = 'Support Ticket Opened')
     BEGIN
         INSERT [admin].[EmailTemplateComponents] ([ComponentType], [ComponentName], [HtmlContent], [TextContent], [Description], [IsActive], [CreatedAt], [UpdatedAt])
-        VALUES (N'body', N'Support Ticket Opened', N'<tr><td style="padding:40px"><h1 style="margin:0 0 20px;font-size:24px;font-weight:600;color:#1a1a1a;text-align:center">Support Ticket Created</h1><p style="margin:0 0 20px;font-size:16px;color:#4a4a4a;line-height:1.6">Hi {{userName}},</p><p style="margin:0 0 20px;font-size:16px;color:#4a4a4a;line-height:1.6">We have received your support request and created ticket <strong>#{{ticketId}}</strong>. Our team will review it and get back to you as soon as possible.</p><div style="background-color:#f8f9fa;padding:20px;border-radius:8px;margin:20px 0"><p style="margin:0 0 10px;font-size:14px;color:#666"><strong>Subject:</strong> {{ticketSubject}}</p><p style="margin:0 0 10px;font-size:14px;color:#666"><strong>Category:</strong> {{ticketCategory}}</p><p style="margin:0;font-size:14px;color:#666"><strong>Status:</strong> <span style="color:#f59e0b;font-weight:600">Open</span></p></div><p style="margin:0 0 20px;font-size:14px;color:#666;line-height:1.6">You can view and respond to your ticket from your dashboard.</p><div style="text-align:center;margin:30px 0"><a href="{{dashboardUrl}}" style="display:inline-block;padding:16px 40px;background-color:#222222;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:600;font-size:16px">View Ticket</a></div></td></tr>', N'Hi {{userName}}, We have received your support request and created ticket #{{ticketId}}. Subject: {{ticketSubject}}. Category: {{ticketCategory}}. Status: Open. View your ticket at: {{dashboardUrl}}', N'Support ticket opened notification', 1, GETDATE(), GETDATE());
+        VALUES (N'body', N'Support Ticket Opened', N'<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#ffffff"><tr><td align="center" style="padding:0 24px"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px"><tr><td style="padding:32px 0"><div style="width:48px;height:48px;background:#dbeafe;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 24px auto"><span style="font-size:24px;color:#2563eb">&#9993;</span></div><h1 style="color:#222222;font-size:24px;font-weight:600;margin:0 0 16px 0;text-align:center">Support Ticket Created</h1><p style="color:#484848;font-size:16px;line-height:24px;margin:0 0 16px 0">Hello {{userName}},</p><p style="color:#484848;font-size:16px;line-height:24px;margin:0 0 24px 0">We have received your support request and created ticket <strong>#{{ticketId}}</strong>. Our team will review it and get back to you as soon as possible.</p><p style="color:#484848;font-size:16px;line-height:24px;margin:0 0 8px 0"><strong>Subject:</strong> {{ticketSubject}}</p><p style="color:#484848;font-size:16px;line-height:24px;margin:0 0 24px 0"><strong>Status:</strong> <span style="color:#f59e0b;font-weight:600">Open</span></p><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr><td align="center"><a href="{{dashboardUrl}}" style="display:inline-block;background-color:#222222;color:#ffffff;font-size:16px;font-weight:600;text-decoration:none;padding:14px 32px;border-radius:8px">View Ticket</a></td></tr></table></td></tr></table></td></tr></table>', N'Hi {{userName}}, We have received your support request and created ticket #{{ticketId}}. Subject: {{ticketSubject}}. Status: Open. View your ticket at: {{dashboardUrl}}', N'Support ticket opened notification', 1, GETDATE(), GETDATE());
         PRINT 'Added Support Ticket Opened component';
     END
 
-    -- Support Ticket In Progress component
+    -- Support Ticket In Progress component (clean style)
     IF NOT EXISTS (SELECT 1 FROM [admin].[EmailTemplateComponents] WHERE [ComponentName] = 'Support Ticket In Progress')
     BEGIN
         INSERT [admin].[EmailTemplateComponents] ([ComponentType], [ComponentName], [HtmlContent], [TextContent], [Description], [IsActive], [CreatedAt], [UpdatedAt])
-        VALUES (N'body', N'Support Ticket In Progress', N'<tr><td style="padding:40px"><h1 style="margin:0 0 20px;font-size:24px;font-weight:600;color:#1a1a1a;text-align:center">Your Ticket Is Being Worked On</h1><p style="margin:0 0 20px;font-size:16px;color:#4a4a4a;line-height:1.6">Hi {{userName}},</p><p style="margin:0 0 20px;font-size:16px;color:#4a4a4a;line-height:1.6">Good news! Our support team has started working on your ticket <strong>#{{ticketId}}</strong>.</p><div style="background-color:#f8f9fa;padding:20px;border-radius:8px;margin:20px 0"><p style="margin:0 0 10px;font-size:14px;color:#666"><strong>Subject:</strong> {{ticketSubject}}</p><p style="margin:0;font-size:14px;color:#666"><strong>Status:</strong> <span style="color:#3b82f6;font-weight:600">In Progress</span></p></div><p style="margin:0 0 20px;font-size:14px;color:#666;line-height:1.6">We will notify you when there is an update or when your issue is resolved.</p><div style="text-align:center;margin:30px 0"><a href="{{dashboardUrl}}" style="display:inline-block;padding:16px 40px;background-color:#222222;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:600;font-size:16px">View Ticket</a></div></td></tr>', N'Hi {{userName}}, Good news! Our support team has started working on your ticket #{{ticketId}}. Subject: {{ticketSubject}}. Status: In Progress. View your ticket at: {{dashboardUrl}}', N'Support ticket in progress notification', 1, GETDATE(), GETDATE());
+        VALUES (N'body', N'Support Ticket In Progress', N'<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#ffffff"><tr><td align="center" style="padding:0 24px"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px"><tr><td style="padding:32px 0"><div style="width:48px;height:48px;background:#dbeafe;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 24px auto"><span style="font-size:24px;color:#2563eb">&#9881;</span></div><h1 style="color:#222222;font-size:24px;font-weight:600;margin:0 0 16px 0;text-align:center">Your Ticket Is Being Worked On</h1><p style="color:#484848;font-size:16px;line-height:24px;margin:0 0 16px 0">Hello {{userName}},</p><p style="color:#484848;font-size:16px;line-height:24px;margin:0 0 24px 0">Good news! Our support team has started working on your ticket <strong>#{{ticketId}}</strong>.</p><p style="color:#484848;font-size:16px;line-height:24px;margin:0 0 8px 0"><strong>Subject:</strong> {{ticketSubject}}</p><p style="color:#484848;font-size:16px;line-height:24px;margin:0 0 24px 0"><strong>Status:</strong> <span style="color:#3b82f6;font-weight:600">In Progress</span></p><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr><td align="center"><a href="{{dashboardUrl}}" style="display:inline-block;background-color:#222222;color:#ffffff;font-size:16px;font-weight:600;text-decoration:none;padding:14px 32px;border-radius:8px">View Ticket</a></td></tr></table></td></tr></table></td></tr></table>', N'Hi {{userName}}, Good news! Our support team has started working on your ticket #{{ticketId}}. Subject: {{ticketSubject}}. Status: In Progress. View your ticket at: {{dashboardUrl}}', N'Support ticket in progress notification', 1, GETDATE(), GETDATE());
         PRINT 'Added Support Ticket In Progress component';
     END
 
-    -- Support Ticket Closed component
+    -- Support Ticket Closed component (clean style)
     IF NOT EXISTS (SELECT 1 FROM [admin].[EmailTemplateComponents] WHERE [ComponentName] = 'Support Ticket Closed')
     BEGIN
         INSERT [admin].[EmailTemplateComponents] ([ComponentType], [ComponentName], [HtmlContent], [TextContent], [Description], [IsActive], [CreatedAt], [UpdatedAt])
-        VALUES (N'body', N'Support Ticket Closed', N'<tr><td style="padding:40px"><div style="text-align:center;margin-bottom:20px"><div style="width:60px;height:60px;background-color:#10b981;border-radius:50%;display:inline-block;text-align:center;line-height:60px"><span style="color:#fff;font-size:30px">✓</span></div></div><h1 style="margin:0 0 20px;font-size:24px;font-weight:600;color:#1a1a1a;text-align:center">Your Ticket Has Been Resolved</h1><p style="margin:0 0 20px;font-size:16px;color:#4a4a4a;line-height:1.6">Hi {{userName}},</p><p style="margin:0 0 20px;font-size:16px;color:#4a4a4a;line-height:1.6">Your support ticket <strong>#{{ticketId}}</strong> has been resolved and closed.</p><div style="background-color:#f8f9fa;padding:20px;border-radius:8px;margin:20px 0"><p style="margin:0 0 10px;font-size:14px;color:#666"><strong>Subject:</strong> {{ticketSubject}}</p><p style="margin:0 0 10px;font-size:14px;color:#666"><strong>Status:</strong> <span style="color:#10b981;font-weight:600">Closed</span></p><p style="margin:0;font-size:14px;color:#666"><strong>Resolution:</strong> {{resolution}}</p></div><p style="margin:0 0 20px;font-size:14px;color:#666;line-height:1.6">If you have any further questions or if your issue persists, feel free to open a new ticket.</p><div style="text-align:center;margin:30px 0"><a href="{{dashboardUrl}}" style="display:inline-block;padding:16px 40px;background-color:#222222;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:600;font-size:16px">View Ticket History</a></div></td></tr>', N'Hi {{userName}}, Your support ticket #{{ticketId}} has been resolved and closed. Subject: {{ticketSubject}}. Resolution: {{resolution}}. View your ticket history at: {{dashboardUrl}}', N'Support ticket closed notification', 1, GETDATE(), GETDATE());
+        VALUES (N'body', N'Support Ticket Closed', N'<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#ffffff"><tr><td align="center" style="padding:0 24px"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px"><tr><td style="padding:32px 0"><div style="width:48px;height:48px;background:#d1fae5;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 24px auto"><span style="font-size:24px;color:#059669">&#10003;</span></div><h1 style="color:#222222;font-size:24px;font-weight:600;margin:0 0 16px 0;text-align:center">Your Ticket Has Been Resolved</h1><p style="color:#484848;font-size:16px;line-height:24px;margin:0 0 16px 0">Hello {{userName}},</p><p style="color:#484848;font-size:16px;line-height:24px;margin:0 0 24px 0">Your support ticket <strong>#{{ticketId}}</strong> has been resolved and closed.</p><p style="color:#484848;font-size:16px;line-height:24px;margin:0 0 8px 0"><strong>Subject:</strong> {{ticketSubject}}</p><p style="color:#484848;font-size:16px;line-height:24px;margin:0 0 24px 0"><strong>Status:</strong> <span style="color:#059669;font-weight:600">Resolved</span></p><p style="color:#717171;font-size:14px;line-height:22px;margin:0 0 24px 0">If you have any further questions, feel free to open a new ticket.</p><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr><td align="center"><a href="{{dashboardUrl}}" style="display:inline-block;background-color:#222222;color:#ffffff;font-size:16px;font-weight:600;text-decoration:none;padding:14px 32px;border-radius:8px">View Ticket History</a></td></tr></table></td></tr></table></td></tr></table>', N'Hi {{userName}}, Your support ticket #{{ticketId}} has been resolved and closed. Subject: {{ticketSubject}}. View your ticket history at: {{dashboardUrl}}', N'Support ticket closed notification', 1, GETDATE(), GETDATE());
         PRINT 'Added Support Ticket Closed component';
     END
 
-    -- Support Ticket Reply component
+    -- Support Ticket Reply component (clean style)
     IF NOT EXISTS (SELECT 1 FROM [admin].[EmailTemplateComponents] WHERE [ComponentName] = 'Support Ticket Reply')
     BEGIN
         INSERT [admin].[EmailTemplateComponents] ([ComponentType], [ComponentName], [HtmlContent], [TextContent], [Description], [IsActive], [CreatedAt], [UpdatedAt])
-        VALUES (N'body', N'Support Ticket Reply', N'<tr><td style="padding:40px"><h1 style="margin:0 0 20px;font-size:24px;font-weight:600;color:#1a1a1a;text-align:center">New Reply on Your Ticket</h1><p style="margin:0 0 20px;font-size:16px;color:#4a4a4a;line-height:1.6">Hi {{userName}},</p><p style="margin:0 0 20px;font-size:16px;color:#4a4a4a;line-height:1.6">There is a new reply on your support ticket <strong>#{{ticketId}}</strong>.</p><div style="background-color:#f8f9fa;padding:20px;border-radius:8px;margin:20px 0;border-left:4px solid #667eea"><p style="margin:0 0 10px;font-size:12px;color:#666"><strong>{{replierName}}</strong> replied:</p><p style="margin:0;font-size:14px;color:#333;line-height:1.6">{{replyPreview}}</p></div><div style="text-align:center;margin:30px 0"><a href="{{dashboardUrl}}" style="display:inline-block;padding:16px 40px;background-color:#222222;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:600;font-size:16px">View Full Conversation</a></div></td></tr>', N'Hi {{userName}}, There is a new reply on your support ticket #{{ticketId}}. {{replierName}} replied: {{replyPreview}}. View the full conversation at: {{dashboardUrl}}', N'Support ticket reply notification', 1, GETDATE(), GETDATE());
+        VALUES (N'body', N'Support Ticket Reply', N'<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#ffffff"><tr><td align="center" style="padding:0 24px"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px"><tr><td style="padding:32px 0"><div style="width:48px;height:48px;background:#dbeafe;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 24px auto"><span style="font-size:24px;color:#2563eb">&#128172;</span></div><h1 style="color:#222222;font-size:24px;font-weight:600;margin:0 0 16px 0;text-align:center">New Reply on Your Ticket</h1><p style="color:#484848;font-size:16px;line-height:24px;margin:0 0 16px 0">Hello {{userName}},</p><p style="color:#484848;font-size:16px;line-height:24px;margin:0 0 24px 0">There is a new reply on your support ticket <strong>#{{ticketId}}</strong>.</p><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#f3f4f6;border-radius:12px;border-left:4px solid #2563eb;margin-bottom:24px"><tr><td style="padding:16px 20px"><p style="color:#717171;font-size:12px;margin:0 0 8px 0"><strong>{{replierName}}</strong> replied:</p><p style="color:#222222;font-size:14px;line-height:22px;margin:0">{{replyPreview}}</p></td></tr></table><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr><td align="center"><a href="{{dashboardUrl}}" style="display:inline-block;background-color:#222222;color:#ffffff;font-size:16px;font-weight:600;text-decoration:none;padding:14px 32px;border-radius:8px">View Full Conversation</a></td></tr></table></td></tr></table></td></tr></table>', N'Hi {{userName}}, There is a new reply on your support ticket #{{ticketId}}. {{replierName}} replied: {{replyPreview}}. View the full conversation at: {{dashboardUrl}}', N'Support ticket reply notification', 1, GETDATE(), GETDATE());
         PRINT 'Added Support Ticket Reply component';
     END
+
+    -- Remove duplicate Password Reset component (ComponentID 41) - keep only ComponentID 35
+    -- First update any EmailTemplates using ComponentID 41 to use 35 instead
+    IF EXISTS (SELECT 1 FROM [admin].[EmailTemplateComponents] WHERE ComponentID = 41 AND [ComponentName] = 'Password Reset')
+    BEGIN
+        -- Update EmailTemplates to use ComponentID 35 instead of 41
+        UPDATE [admin].[EmailTemplates]
+        SET BodyComponentID = 35, UpdatedAt = GETDATE()
+        WHERE BodyComponentID = 41;
+        
+        -- Delete the duplicate ComponentID 41
+        DELETE FROM [admin].[EmailTemplateComponents] 
+        WHERE ComponentID = 41;
+        
+        PRINT 'Deleted Password Reset ComponentID 41, updated templates to use ComponentID 35';
+    END
+    ELSE
+    BEGIN
+        -- Fallback: Remove any duplicate Password Reset components by name (keep lowest ID)
+        DECLARE @FirstPasswordResetID INT;
+        SELECT TOP 1 @FirstPasswordResetID = ComponentID 
+        FROM [admin].[EmailTemplateComponents] 
+        WHERE [ComponentName] = 'Password Reset' 
+        ORDER BY ComponentID ASC;
+        
+        IF @FirstPasswordResetID IS NOT NULL
+        BEGIN
+            -- Update EmailTemplates to use the first Password Reset component
+            UPDATE [admin].[EmailTemplates]
+            SET BodyComponentID = @FirstPasswordResetID, UpdatedAt = GETDATE()
+            WHERE BodyComponentID IN (
+                SELECT ComponentID FROM [admin].[EmailTemplateComponents] 
+                WHERE [ComponentName] = 'Password Reset' AND ComponentID > @FirstPasswordResetID
+            );
+            
+            -- Delete any duplicate Password Reset components
+            DELETE FROM [admin].[EmailTemplateComponents] 
+            WHERE [ComponentName] = 'Password Reset' AND ComponentID > @FirstPasswordResetID;
+            
+            IF @@ROWCOUNT > 0
+                PRINT 'Removed duplicate Password Reset components, keeping ComponentID: ' + CAST(@FirstPasswordResetID AS VARCHAR(10));
+        END
+    END
+
+    -- Update TextContent for Event Reminder with proper descriptive content
+    UPDATE [admin].[EmailTemplateComponents]
+    SET [TextContent] = N'Hello {{recipientName}},
+
+This is a friendly reminder that your upcoming event is in {{daysUntilEvent}}.
+
+Event Details:
+- Service: {{serviceName}}
+- Date: {{eventDate}}
+- Time: {{eventTime}}
+- Location: {{location}}
+- {{otherPartyLabel}}: {{otherPartyName}}
+
+Please make sure you are prepared for your event. If you have any questions, feel free to reach out to {{otherPartyName}} through the messaging feature.
+
+View your booking details at: {{frontendUrl}}/dashboard?tab=bookings
+
+Best regards,
+The {{platformName}} Team',
+        [UpdatedAt] = GETDATE()
+    WHERE [ComponentName] = 'Event Reminder';
+
+    -- Update TextContent for Booking Action Reminder with proper descriptive content
+    UPDATE [admin].[EmailTemplateComponents]
+    SET [TextContent] = N'Hello {{recipientName}},
+
+{{actionMessage}}
+
+Booking Details:
+- Service: {{serviceName}}
+- Date: {{eventDate}}
+- {{otherPartyLabel}}: {{otherPartyName}}
+
+Please take action soon to avoid any delays or issues with your booking.
+
+{{actionButtonText}}: {{actionUrl}}
+
+Best regards,
+The {{platformName}} Team',
+        [UpdatedAt] = GETDATE()
+    WHERE [ComponentName] = 'Booking Action Reminder';
+
+    -- Update TextContent for Analytics Summary with proper descriptive content
+    UPDATE [admin].[EmailTemplateComponents]
+    SET [TextContent] = N'Hello {{recipientName}},
+
+Here is your {{summaryPeriod}} analytics summary for {{periodRange}}.
+
+Performance Overview:
+- Profile Views: {{profileViews}} ({{viewsChange}} from last period)
+- Bookings: {{bookings}} ({{bookingsChange}} from last period)
+- Revenue: {{revenue}} ({{revenueChange}} from last period)
+- Conversion Rate: {{conversionRate}}
+
+Keep up the great work! View your full analytics dashboard at: {{frontendUrl}}/dashboard?tab=analytics
+
+Best regards,
+The {{platformName}} Team',
+        [UpdatedAt] = GETDATE()
+    WHERE [ComponentName] = 'Analytics Summary';
+
+    -- Update TextContent for Account Suspended with proper descriptive content
+    UPDATE [admin].[EmailTemplateComponents]
+    SET [TextContent] = N'Hello {{recipientName}},
+
+Your {{platformName}} account has been temporarily suspended.
+
+Reason for suspension: {{suspensionReason}}
+
+If you believe this is an error or would like to appeal this decision, please contact our support team at support@planbeau.com.
+
+We take the safety and integrity of our platform seriously and appreciate your understanding.
+
+Best regards,
+The {{platformName}} Team',
+        [UpdatedAt] = GETDATE()
+    WHERE [ComponentName] = 'Account Suspended';
+
+    -- Update TextContent for Account Reactivated with proper descriptive content
+    UPDATE [admin].[EmailTemplateComponents]
+    SET [TextContent] = N'Hello {{recipientName}},
+
+Great news! Your {{platformName}} account has been reactivated.
+
+Your account is now active and all features have been restored. You can log in and continue using the platform as normal.
+
+Go to your dashboard: {{frontendUrl}}/dashboard
+
+If you have any questions, please do not hesitate to contact our support team.
+
+Best regards,
+The {{platformName}} Team',
+        [UpdatedAt] = GETDATE()
+    WHERE [ComponentName] = 'Account Reactivated';
+
+    PRINT 'Updated TextContent for support email templates';
 END
+GO
+
+-- =============================================
+-- UNCONDITIONAL CLEANUP - Always runs to ensure data integrity
+-- =============================================
+PRINT 'Running unconditional cleanup...';
+
+-- Delete duplicate Password Reset ComponentID 41 (keep only 35)
+IF EXISTS (SELECT 1 FROM [admin].[EmailTemplateComponents] WHERE ComponentID = 41)
+BEGIN
+    -- First update any templates using ComponentID 41 to use a valid component
+    UPDATE [admin].[EmailTemplates]
+    SET BodyComponentID = (SELECT TOP 1 ComponentID FROM [admin].[EmailTemplateComponents] WHERE [ComponentName] = 'Password Reset' AND ComponentID <> 41 ORDER BY ComponentID ASC),
+        UpdatedAt = GETDATE()
+    WHERE BodyComponentID = 41;
+    
+    -- Delete ComponentID 41
+    DELETE FROM [admin].[EmailTemplateComponents] WHERE ComponentID = 41;
+    PRINT 'Deleted ComponentID 41 (duplicate Password Reset)';
+END
+
+-- Ensure password_reset template uses the correct Password Reset component (not 41)
+DECLARE @CorrectPasswordResetID INT;
+SELECT TOP 1 @CorrectPasswordResetID = ComponentID 
+FROM [admin].[EmailTemplateComponents] 
+WHERE [ComponentName] = 'Password Reset' 
+ORDER BY ComponentID ASC;
+
+IF @CorrectPasswordResetID IS NOT NULL
+BEGIN
+    UPDATE [admin].[EmailTemplates]
+    SET BodyComponentID = @CorrectPasswordResetID, UpdatedAt = GETDATE()
+    WHERE TemplateKey = 'password_reset' AND BodyComponentID <> @CorrectPasswordResetID;
+    PRINT 'Ensured password_reset template uses ComponentID: ' + CAST(@CorrectPasswordResetID AS VARCHAR(10));
+END
+
+-- Update TextContent for support emails (unconditional)
+UPDATE [admin].[EmailTemplateComponents]
+SET [TextContent] = N'Hello {{recipientName}},
+
+This is a friendly reminder that your upcoming event is in {{daysUntilEvent}}.
+
+Event Details:
+- Service: {{serviceName}}
+- Date: {{eventDate}}
+- Time: {{eventTime}}
+- Location: {{location}}
+- {{otherPartyLabel}}: {{otherPartyName}}
+
+Please make sure you are prepared for your event. If you have any questions, feel free to reach out to {{otherPartyName}} through the messaging feature.
+
+View your booking details at: {{frontendUrl}}/dashboard?tab=bookings
+
+Best regards,
+The {{platformName}} Team',
+    [UpdatedAt] = GETDATE()
+WHERE [ComponentName] = 'Event Reminder';
+
+UPDATE [admin].[EmailTemplateComponents]
+SET [TextContent] = N'Hello {{recipientName}},
+
+{{actionMessage}}
+
+Booking Details:
+- Service: {{serviceName}}
+- Date: {{eventDate}}
+- {{otherPartyLabel}}: {{otherPartyName}}
+
+Please take action soon to avoid any delays or issues with your booking.
+
+{{actionButtonText}}: {{actionUrl}}
+
+Best regards,
+The {{platformName}} Team',
+    [UpdatedAt] = GETDATE()
+WHERE [ComponentName] = 'Booking Action Reminder';
+
+UPDATE [admin].[EmailTemplateComponents]
+SET [TextContent] = N'Hello {{recipientName}},
+
+Here is your {{summaryPeriod}} analytics summary for {{periodRange}}.
+
+Performance Overview:
+- Profile Views: {{profileViews}} ({{viewsChange}} from last period)
+- Bookings: {{bookings}} ({{bookingsChange}} from last period)
+- Revenue: {{revenue}} ({{revenueChange}} from last period)
+- Conversion Rate: {{conversionRate}}
+
+Keep up the great work! View your full analytics dashboard at: {{frontendUrl}}/dashboard?tab=analytics
+
+Best regards,
+The {{platformName}} Team',
+    [UpdatedAt] = GETDATE()
+WHERE [ComponentName] = 'Analytics Summary';
+
+UPDATE [admin].[EmailTemplateComponents]
+SET [TextContent] = N'Hello {{recipientName}},
+
+Your {{platformName}} account has been temporarily suspended.
+
+Reason for suspension: {{suspensionReason}}
+
+If you believe this is an error or would like to appeal this decision, please contact our support team at support@planbeau.com.
+
+We take the safety and integrity of our platform seriously and appreciate your understanding.
+
+Best regards,
+The {{platformName}} Team',
+    [UpdatedAt] = GETDATE()
+WHERE [ComponentName] = 'Account Suspended';
+
+UPDATE [admin].[EmailTemplateComponents]
+SET [TextContent] = N'Hello {{recipientName}},
+
+Great news! Your {{platformName}} account has been reactivated.
+
+Your account is now active and all features have been restored. You can log in and continue using the platform as normal.
+
+Go to your dashboard: {{frontendUrl}}/dashboard
+
+If you have any questions, please do not hesitate to contact our support team.
+
+Best regards,
+The {{platformName}} Team',
+    [UpdatedAt] = GETDATE()
+WHERE [ComponentName] = 'Account Reactivated';
+
+PRINT 'Unconditional cleanup completed - ComponentID 41 deleted, TextContent updated for support emails';
 GO

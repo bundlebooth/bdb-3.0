@@ -108,7 +108,7 @@ async function notifyVendorOfNewRequest(requestId, userId, vendorProfileId, even
       eventDate,
       eventDetails.location || 'Not specified',
       total,
-      `${FRONTEND_URL}/dashboard/booking/${requestId}`,
+      `${FRONTEND_URL}/link/vendor-request/${encodeBookingId(requestId)}`,
       data.VendorUserID,
       requestId,
       eventTime,
@@ -151,12 +151,19 @@ async function notifyClientOfApproval(requestId) {
       return;
     }
     const data = result.recordset[0];
-    console.log(`[NotificationService] Found request data:`, { ClientEmail: data.ClientEmail, ClientName: data.ClientName, VendorName: data.VendorName });
+    console.log(`[NotificationService] Found request data:`, { 
+      ClientEmail: data.ClientEmail, 
+      ClientName: data.ClientName, 
+      VendorName: data.VendorName,
+      EventLocation: data.EventLocation,
+      EventTime: data.EventTime,
+      TimeZone: data.TimeZone
+    });
     
     // Generate encoded booking ID for payment URL
     const encodedBookingId = encodeBookingId(requestId);
-    const paymentUrl = `${FRONTEND_URL}/payment/${encodedBookingId}`;
-    const dashboardUrl = `${FRONTEND_URL}/dashboard?section=bookings&itemId=${encodedBookingId}`;
+    const paymentUrl = `${FRONTEND_URL}/link/payment/${encodedBookingId}`;
+    const dashboardUrl = `${FRONTEND_URL}/link/booking/${encodedBookingId}`;
     
     // Format event date if available
     const eventDate = data.EventDate 
@@ -164,6 +171,12 @@ async function notifyClientOfApproval(requestId) {
           weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
         })
       : null;
+    
+    // Get location and time from database
+    const eventLocation = data.EventLocation || null;
+    const eventTime = data.EventTime || null;
+    const timezone = data.TimeZone || null;
+    const amount = data.TotalAmount ? `$${Number(data.TotalAmount).toFixed(2)}` : null;
     
     console.log(`[NotificationService] Sending booking accepted email to ${data.ClientEmail}`);
     await sendBookingAcceptedToClient(
@@ -175,10 +188,10 @@ async function notifyClientOfApproval(requestId) {
       data.UserID,
       requestId,
       eventDate,
-      null, // eventTime
-      null, // location
-      null, // amount
-      null, // timezone
+      eventTime,
+      eventLocation,
+      amount,
+      timezone,
       null, // vendorProfilePic
       paymentUrl
     );
@@ -270,7 +283,7 @@ async function notifyOfNewMessage(conversationId, senderId, content) {
     
     // Truncate message for preview
     const messagePreview = content.length > 200 ? content.substring(0, 200) + '...' : content;
-    const dashboardUrl = `${FRONTEND_URL}/dashboard`;
+    const dashboardUrl = `${FRONTEND_URL}/link/message/${conversationId}`;
     
     // Determine sender and recipient
     if (senderId === conv.UserID) {
@@ -391,7 +404,7 @@ async function notifyVendorOfPayment(bookingId, amountCents, currency = 'CAD', t
       amount,
       data.ServiceName,
       eventDate,
-      `${FRONTEND_URL}/payment/${encodeBookingId(bookingId)}`,
+      `${FRONTEND_URL}/link/payment/${encodeBookingId(bookingId)}`,
       data.VendorUserID,
       bookingId,
       invoiceAttachment
@@ -475,7 +488,7 @@ async function notifyOfBookingCancellation(bookingId, cancelledBy, reason = null
         data.ServiceName || 'Service',
         eventDate,
         reason,
-        `${FRONTEND_URL}/dashboard/booking/${bookingId}`,
+        `${FRONTEND_URL}/link/vendor-request/${encodeBookingId(bookingId)}`,
         data.VendorUserID,
         bookingId
       );
@@ -566,7 +579,7 @@ async function notifyClientOfPayment(bookingId, amountCents, currency = 'CAD', t
       amount,
       data.ServiceName || 'Service',
       eventDate,
-      `${FRONTEND_URL}/payment/${encodeBookingId(bookingId)}`,
+      `${FRONTEND_URL}/link/payment/${encodeBookingId(bookingId)}`,
       data.ClientUserID,
       bookingId,
       invoiceAttachment
@@ -693,7 +706,7 @@ async function notifyOfBookingConfirmation(bookingId) {
       data.ServiceName || 'Service',
       eventDate,
       data.EventLocation || 'TBD',
-      `${FRONTEND_URL}/dashboard`,
+      `${FRONTEND_URL}/link/booking/${encodeBookingId(bookingId)}`,
       data.ClientUserID,
       bookingId
     );
@@ -723,7 +736,7 @@ async function notifyOfBookingConfirmation(bookingId) {
       data.ServiceName || 'Service',
       eventDate,
       data.EventLocation || 'TBD',
-      `${FRONTEND_URL}/dashboard`,
+      `${FRONTEND_URL}/link/vendor-request/${encodeBookingId(bookingId)}`,
       data.VendorUserID,
       bookingId
     );
