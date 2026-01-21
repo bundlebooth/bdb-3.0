@@ -93,7 +93,8 @@ function DeepLinkPage() {
       case 'booking': {
         // Validate booking exists and user has access
         try {
-          const response = await apiGet(`/bookings/validate/${resourceId}`);
+          const res = await apiGet(`/bookings/validate/${resourceId}`);
+          const response = await res.json();
           if (response.valid) {
             const section = isVendorView ? 'vendor-requests' : 'bookings';
             return {
@@ -128,7 +129,8 @@ function DeepLinkPage() {
       case 'payment': {
         // Validate payment/booking exists and is awaiting payment
         try {
-          const response = await apiGet(`/bookings/validate/${resourceId}`);
+          const res = await apiGet(`/bookings/validate/${resourceId}`);
+          const response = await res.json();
           if (response.valid) {
             if (response.status === 'confirmed' || response.status === 'completed') {
               return {
@@ -169,7 +171,8 @@ function DeepLinkPage() {
       case 'message': {
         // Validate conversation exists and user is a participant
         try {
-          const response = await apiGet(`/conversations/validate/${resourceId}`);
+          const res = await apiGet(`/conversations/validate/${resourceId}`);
+          const response = await res.json();
           if (response.valid) {
             return {
               valid: true,
@@ -193,7 +196,8 @@ function DeepLinkPage() {
       case 'ticket': {
         // Validate support ticket exists and user owns it
         try {
-          const response = await apiGet(`/support/tickets/validate/${resourceId}`);
+          const res = await apiGet(`/support/tickets/validate/${resourceId}`);
+          const response = await res.json();
           if (response.valid) {
             return {
               valid: true,
@@ -217,7 +221,8 @@ function DeepLinkPage() {
       case 'review': {
         // Validate review request exists and hasn't expired
         try {
-          const response = await apiGet(`/reviews/validate/${resourceId}`);
+          const res = await apiGet(`/reviews/validate/${resourceId}`);
+          const response = await res.json();
           if (response.valid) {
             return {
               valid: true,
@@ -255,7 +260,8 @@ function DeepLinkPage() {
       case 'vendor-request': {
         // Validate vendor has access to this booking request
         try {
-          const response = await apiGet(`/bookings/validate/${resourceId}`);
+          const res = await apiGet(`/bookings/validate/${resourceId}`);
+          const response = await res.json();
           if (response.valid) {
             return {
               valid: true,
