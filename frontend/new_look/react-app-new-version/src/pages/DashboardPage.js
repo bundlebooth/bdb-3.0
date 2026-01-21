@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { apiGet } from '../utils/api';
+import { encodeBookingId } from '../utils/hashIds';
 import { PageLayout } from '../components/PageWrapper';
 import Header from '../components/Header';
 import { useNotifications } from '../hooks/useNotifications';
@@ -401,8 +402,10 @@ function DashboardPage() {
   };
 
   const handlePayNow = (booking) => {
-    setSelectedBookingForPayment(booking);
-    setActiveSection('payment');
+    // Navigate to dedicated payment page with encoded booking ID
+    const bookingId = booking.BookingID || booking.RequestID;
+    const encodedId = encodeBookingId(bookingId);
+    navigate(`/payment/${encodedId}`);
   };
 
   const handlePaymentSuccess = (paymentIntent) => {

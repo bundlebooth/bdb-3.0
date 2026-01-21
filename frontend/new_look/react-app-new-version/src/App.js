@@ -24,6 +24,7 @@ import BlogPage from './components/BlogPage';
 import UnsubscribePage from './pages/UnsubscribePage';
 import EmailPreferencesPage from './pages/EmailPreferencesPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
+import PaymentPage from './pages/PaymentPage';
 import CookieConsent from './components/CookieConsent';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { useHeartbeat } from './hooks/useOnlineStatus';
@@ -154,8 +155,9 @@ function App() {
           <Route path="/help-centre/article/:articleSlug" element={<HelpCentreArticlePage />} />
           {/* Deep link routes for bookings/payments/reviews */}
           <Route path="/dashboard/booking/:bookingId" element={<ProtectedDeepLink section="bookings" />} />
-          <Route path="/dashboard/payment/:bookingId" element={<ProtectedDeepLink section="payment" />} />
           <Route path="/dashboard/review/:bookingId" element={<ProtectedDeepLink section="reviews" />} />
+          {/* Direct payment page - standalone route for email links */}
+          <Route path="/payment/:bookingId" element={<PaymentPage />} />
           <Route path="/forum" element={<ForumPage />} />
           <Route path="/forum/:slug" element={<ForumPage />} />
           <Route path="/forum/post/:slug" element={<ForumPostPage />} />

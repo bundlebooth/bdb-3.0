@@ -26,6 +26,7 @@ const {
 } = require('./email');
 const { generateInvoicePDF, formatInvoiceData } = require('./invoiceService');
 const pushService = require('./pushNotificationService');
+const { encodeBookingId } = require('../utils/hashIds');
 
 // ALWAYS use production URL for email links - never localhost
 const FRONTEND_URL = 'https://www.planbeau.com';
@@ -363,7 +364,7 @@ async function notifyVendorOfPayment(bookingId, amountCents, currency = 'CAD', t
       amount,
       data.ServiceName,
       eventDate,
-      `${FRONTEND_URL}/dashboard/payment/${bookingId}`,
+      `${FRONTEND_URL}/payment/${encodeBookingId(bookingId)}`,
       data.VendorUserID,
       bookingId,
       invoiceAttachment
@@ -538,7 +539,7 @@ async function notifyClientOfPayment(bookingId, amountCents, currency = 'CAD', t
       amount,
       data.ServiceName || 'Service',
       eventDate,
-      `${FRONTEND_URL}/dashboard/payment/${bookingId}`,
+      `${FRONTEND_URL}/payment/${encodeBookingId(bookingId)}`,
       data.ClientUserID,
       bookingId,
       invoiceAttachment

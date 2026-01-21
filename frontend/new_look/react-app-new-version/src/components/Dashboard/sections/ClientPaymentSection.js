@@ -4,8 +4,8 @@ import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-
 import { apiGet, apiPost } from '../../../utils/api';
 import { formatCurrency } from '../../../utils/helpers';
 import { getProvinceFromLocation, getTaxInfoForProvince } from '../../../utils/taxCalculations';
+import './ClientPaymentSection.css';
 
-// Checkout Form Component
 function CheckoutForm({ onSuccess, onCancel, clientProvince, total }) {
   const stripe = useStripe();
   const elements = useElements();
@@ -14,7 +14,6 @@ function CheckoutForm({ onSuccess, onCancel, clientProvince, total }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     if (!stripe || !elements) return;
 
     setIsProcessing(true);
@@ -31,18 +30,10 @@ function CheckoutForm({ onSuccess, onCancel, clientProvince, total }) {
 
       if (submitError) {
         setError(submitError.message || 'Payment failed. Please try again.');
+        setIsProcessing(false);
       } else if (paymentIntent && paymentIntent.status === 'succeeded') {
-        // Verify payment and create booking record on backend
-        console.log('[Payment] Payment succeeded, verifying with backend...', paymentIntent.id);
         try {
-          const verifyResponse = await apiGet(`/payments/verify-intent?paymentIntentId=${paymentIntent.id}`);
-          const verifyData = await verifyResponse.json();
-          console.log('[Payment] Verify response:', verifyData);
-          if (!verifyResponse.ok) {
-            console.error('Payment verification failed:', verifyData.message);
-          } else {
-            console.log('[Payment] Booking created/updated successfully:', verifyData);
-          }
+          await apiGet(`/payments/verify-intent?paymentIntentId=${paymentIntent.id}`);
         } catch (verifyErr) {
           console.error('Payment verification error:', verifyErr);
         }
@@ -50,7 +41,6 @@ function CheckoutForm({ onSuccess, onCancel, clientProvince, total }) {
       }
     } catch (err) {
       setError(err.message || 'An unexpected error occurred');
-    } finally {
       setIsProcessing(false);
     }
   };
@@ -59,102 +49,62 @@ function CheckoutForm({ onSuccess, onCancel, clientProvince, total }) {
 
   return (
     <form onSubmit={handleSubmit}>
-      <PaymentElement 
-        options={{
-          layout: 'tabs'
-        }}
-      />
+      <div className="client-payment-stripe-wrapper">
+        <PaymentElement options={{ layout: 'tabs' }} />
+      </div>
 
       {error && (
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.5rem',
-          padding: '0.75rem 1rem',
-          background: '#fef2f2',
-          border: '1px solid #fecaca',
-          borderRadius: '8px',
-          color: '#dc2626',
-          fontSize: '0.875rem',
-          marginTop: '1rem'
-        }}>
+        <div className="client-payment-error">
           <i className="fas fa-exclamation-circle"></i>
           <span>{error}</span>
         </div>
       )}
 
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '0.5rem',
-        padding: '0.75rem 1rem',
-        background: 'var(--secondary)',
-        borderRadius: '8px',
-        color: 'var(--primary)',
-        fontSize: '0.85rem',
-        marginTop: '1rem'
-      }}>
+      <div className="client-payment-tax-info">
         <i className="fas fa-info-circle"></i>
         <span>Tax calculated based on event location: <strong>{taxInfo.label}</strong></span>
       </div>
 
-      <div style={{ 
-        display: 'flex', 
-        gap: '0.75rem', 
-        marginTop: '1.5rem'
-      }}>
+      <div className="client-payment-actions">
         <button 
           type="button" 
           onClick={onCancel}
           disabled={isProcessing}
-          className="btn btn-outline"
-          style={{ flex: 1 }}
+          className="btn btn-cancel"
         >
-          <i className="fas fa-arrow-left"></i> Cancel
+          <i className="fas fa-arrow-left"></i>
+          <span>Cancel</span>
         </button>
         <button 
           type="submit" 
           disabled={!stripe || isProcessing}
-          className="btn btn-primary"
-          style={{ 
-            flex: 2,
-            opacity: (!stripe || isProcessing) ? 0.6 : 1
-          }}
+          className="btn btn-submit"
         >
           {isProcessing ? (
             <>
-              <i className="fas fa-spinner fa-spin"></i> Processing...
+              <i className="fas fa-spinner fa-spin"></i>
+              <span>Processing...</span>
             </>
           ) : (
             <>
-              <i className="fas fa-lock"></i> Pay {formatCurrency(total)}
+              <i className="fas fa-lock"></i>
+              <span>Pay {formatCurrency(total)}</span>
             </>
           )}
         </button>
       </div>
 
-      {/* Stripe Footer */}
-      <div style={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'center',
-        gap: '0.5rem',
-        marginTop: '1.5rem',
-        paddingTop: '1rem',
-        borderTop: '1px solid var(--border)',
-        fontSize: '0.8rem',
-        color: 'var(--text-light)'
-      }}>
-        <i className="fas fa-lock" style={{ color: '#22c55e', fontSize: '0.75rem' }}></i>
-        <span>Secured by</span>
-        <svg viewBox="0 0 60 25" xmlns="http://www.w3.org/2000/svg" width="40" height="16" style={{ marginLeft: '2px' }}>
-          <path fill="#635BFF" d="M59.64 14.28h-8.06c.19 1.93 1.6 2.55 3.2 2.55 1.64 0 2.96-.37 4.05-.95v3.32a10.4 10.4 0 0 1-4.56 1c-4.01 0-6.83-2.5-6.83-7.48 0-4.19 2.39-7.52 6.3-7.52 3.92 0 5.96 3.28 5.96 7.5 0 .4-.04 1.26-.06 1.58zm-5.92-5.62c-1.03 0-2.17.73-2.17 2.58h4.25c0-1.85-1.07-2.58-2.08-2.58zM40.95 20.3c-1.44 0-2.32-.6-2.9-1.04l-.02 4.63-4.12.87V5.57h3.76l.08 1.02a4.7 4.7 0 0 1 3.23-1.29c2.9 0 5.62 2.6 5.62 7.4 0 5.23-2.7 7.6-5.65 7.6zM40 8.95c-.95 0-1.54.34-1.97.81l.02 6.12c.4.44.98.78 1.95.78 1.52 0 2.54-1.65 2.54-3.87 0-2.15-1.04-3.84-2.54-3.84zM28.24 5.57h4.13v14.44h-4.13V5.57zm0-5.13L32.37 0v3.77l-4.13.88V.44zm-4.32 9.35v10.22H19.8V5.57h3.7l.12 1.22c1-1.77 3.07-1.41 3.62-1.22v3.79c-.52-.17-2.29-.45-3.32.43zm-8.55 4.72c0 2.43 2.6 1.68 3.12 1.46v3.36c-.55.3-1.54.67-2.99.67-2.98 0-4.26-1.58-4.26-4.29V9.5H9.14V5.57h2.1l.58-3.77 3.54-.75v4.52h3.12V9.5h-3.12v4.99l.01.02zM6.49 13.28c0-4.66-6.4-3.89-6.4-5.6 0-.57.49-.79 1.28-.79.96 0 2.17.32 3.13.89V4.5A10.14 10.14 0 0 0 1.4 3.8C.5 3.8 0 4.55 0 5.8c0 4.54 6.39 3.82 6.39 5.63 0 .68-.59.9-1.42.9-1.23 0-2.81-.5-4.06-1.18v3.32c1.38.59 2.78.92 4.06.92 3.34 0 5.52-1.64 5.52-4.11z"/>
-        </svg>
-        <span style={{ marginLeft: '1rem', display: 'flex', gap: '0.5rem', color: '#94a3b8', fontSize: '1.25rem' }}>
+      <div className="client-payment-secure">
+        <div className="badge">
+          <i className="fas fa-lock"></i>
+          <span>Secured by</span>
+          <span style={{ fontWeight: 700, fontSize: '1rem', color: '#635BFF', marginLeft: '4px' }}>Stripe</span>
+        </div>
+        <div className="cards">
           <i className="fab fa-cc-visa"></i>
           <i className="fab fa-cc-mastercard"></i>
           <i className="fab fa-cc-amex"></i>
-        </span>
+        </div>
       </div>
     </form>
   );
@@ -236,16 +186,29 @@ function ClientPaymentSection({ booking, onBack, onPaymentSuccess }) {
     onPaymentSuccess?.(paymentIntent);
   };
 
+  const formatTime = (t) => {
+    if (!t) return '';
+    const parts = t.toString().split(':');
+    const h = parseInt(parts[0], 10) || 0;
+    const m = parseInt(parts[1], 10) || 0;
+    return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
+  };
+
   if (!booking) {
     return (
-      <div>
-        <button className="btn btn-outline back-to-menu-btn" style={{ marginBottom: '1rem' }} onClick={onBack}>
-          <i className="fas fa-arrow-left"></i> Back to Bookings
-        </button>
-        <div className="dashboard-card" style={{ textAlign: 'center', padding: '3rem' }}>
-          <i className="fas fa-exclamation-triangle" style={{ fontSize: '2.5rem', color: '#d97706', marginBottom: '1rem' }}></i>
-          <h3 style={{ margin: '0 0 0.5rem', color: 'var(--text)' }}>No Booking Selected</h3>
-          <p style={{ color: 'var(--text-light)', margin: 0 }}>Please select a booking to proceed with payment.</p>
+      <div className="client-payment-section">
+        <div className="client-payment-header">
+          <button className="client-payment-back-btn" onClick={onBack}>
+            <i className="fas fa-arrow-left"></i>
+            <span>Back to Bookings</span>
+          </button>
+        </div>
+        <div className="client-payment-card">
+          <div className="client-payment-no-booking">
+            <i className="fas fa-exclamation-triangle"></i>
+            <h3>No Booking Selected</h3>
+            <p>Please select a booking to proceed with payment.</p>
+          </div>
         </div>
       </div>
     );
@@ -259,228 +222,129 @@ function ClientPaymentSection({ booking, onBack, onPaymentSuccess }) {
   const total = breakdown?.total || (subtotal + taxAmount + platformFee + processingFee);
 
   return (
-    <div>
-      {/* Back Button */}
-      <button className="btn btn-outline back-to-menu-btn" style={{ marginBottom: '1rem' }} onClick={onBack}>
-        <i className="fas fa-arrow-left"></i> Back to Bookings
-      </button>
+    <div className="client-payment-section">
+      <div className="client-payment-header">
+        <button className="client-payment-back-btn" onClick={onBack}>
+          <i className="fas fa-arrow-left"></i>
+          <span>Back to Bookings</span>
+        </button>
+      </div>
 
-      {/* Main Card */}
-      <div className="dashboard-card">
-        <h2 className="dashboard-card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <span style={{ width: '36px', height: '36px', borderRadius: '8px', background: 'var(--secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', fontSize: '1.1rem' }}>
+      <div className="client-payment-card">
+        <div className="client-payment-card-header">
+          <div className="icon-box">
             <i className="fas fa-credit-card"></i>
-          </span>
-          Payment
-        </h2>
-        <p style={{ color: 'var(--text-light)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
-          Complete your payment for this booking.
-        </p>
-        <hr style={{ border: 'none', borderTop: '1px solid #e5e7eb', margin: '1.5rem 0' }} />
+          </div>
+          <h2>Payment</h2>
+        </div>
+        <p className="client-payment-subtitle">Complete your payment for this booking.</p>
+        <hr className="client-payment-divider" />
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: '2rem' }}>
-          {/* Left - Booking Summary (matching BookingPage style) */}
-          <div style={{ 
-            background: 'white', 
-            border: '1px solid var(--border)', 
-            borderRadius: '16px',
-            padding: '1.5rem',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-          }}>
-            {/* Vendor Header */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.25rem', paddingBottom: '1.25rem', borderBottom: '1px solid var(--border)' }}>
-              <div style={{ 
-                width: '56px', 
-                height: '56px', 
-                borderRadius: '50%', 
-                background: 'var(--secondary)', 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center',
-                border: '2px solid var(--border)',
-                overflow: 'hidden',
-                flexShrink: 0
-              }}>
+        <div className="client-payment-grid">
+          {/* Left - Booking Summary */}
+          <div className="client-payment-summary">
+            <div className="client-payment-vendor">
+              <div className="avatar">
                 {booking?.VendorLogo ? (
-                  <img src={booking.VendorLogo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <img src={booking.VendorLogo} alt={booking?.VendorName} />
                 ) : (
-                  <i className="fas fa-store" style={{ color: 'var(--text-light)', fontSize: '1.25rem' }}></i>
+                  <i className="fas fa-store"></i>
                 )}
               </div>
-              <div>
-                <div style={{ fontWeight: 600, fontSize: '1.1rem', color: 'var(--text)', marginBottom: '0.25rem' }}>
-                  {booking?.VendorName || 'Vendor'}
+              <div className="info">
+                <h3>{booking?.VendorName || 'Vendor'}</h3>
+                <span>{booking?.ServiceCategory || booking?.ServiceName || 'Service'}</span>
+              </div>
+            </div>
+
+            <div className="client-payment-event">
+              <div className="detail-row">
+                <span>
+                  {booking?.EventDate ? new Date(booking.EventDate).toLocaleDateString('en-CA', {
+                    weekday: 'short',
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric'
+                  }) : 'Date TBD'}
+                </span>
+                <span>
+                  {(() => {
+                    const start = formatTime(booking?.StartTime || booking?.EventTime);
+                    const end = formatTime(booking?.EndTime || booking?.EventEndTime);
+                    return start && end ? `${start} → ${end}` : '';
+                  })()}
+                </span>
+              </div>
+              
+              {booking?.AttendeeCount && (
+                <div className="detail-item">
+                  <i className="fas fa-users"></i>
+                  <span>{booking.AttendeeCount} guests</span>
                 </div>
-                <div style={{ fontSize: '0.85rem', color: 'var(--text-light)' }}>
-                  {booking?.ServiceCategory || booking?.ServiceName || 'Service'}
+              )}
+              
+              {(booking?.EventLocation || booking?.Location) && (
+                <div className="detail-item">
+                  <i className="fas fa-map-marker-alt"></i>
+                  <span>{booking.EventLocation || booking.Location}</span>
                 </div>
-              </div>
+              )}
             </div>
 
-            {/* Event Date/Time Row */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
-              <div style={{ fontSize: '0.95rem', color: 'var(--text)' }}>
-                {booking?.EventDate ? new Date(booking.EventDate).toLocaleDateString('en-CA', {
-                  weekday: 'short',
-                  month: 'short',
-                  day: 'numeric',
-                  year: 'numeric'
-                }) : 'Date TBD'}
+            <div className="client-payment-prices">
+              <div className="price-row service">
+                <span>{booking?.ServiceName || 'Service'}</span>
+                <span>{formatCurrency(subtotal)}</span>
               </div>
-              <div style={{ textAlign: 'right' }}>
-                {(() => {
-                  const formatTime = (t) => {
-                    if (!t) return '';
-                    const parts = t.toString().split(':');
-                    const h = parseInt(parts[0], 10) || 0;
-                    const m = parseInt(parts[1], 10) || 0;
-                    return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
-                  };
-                  const start = formatTime(booking?.StartTime || booking?.EventTime);
-                  const end = formatTime(booking?.EndTime || booking?.EventEndTime);
-                  if (start && end) {
-                    return (
-                      <div style={{ fontSize: '0.95rem', color: 'var(--text)' }}>
-                        {start} <span style={{ color: 'var(--text-light)' }}>→</span> {end}
-                      </div>
-                    );
-                  }
-                  return null;
-                })()}
-                {booking?.TotalHours && (
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-light)' }}>Total hours: {booking.TotalHours}</div>
-                )}
+              
+              <div className="price-row subtotal">
+                <span>Subtotal</span>
+                <span>{formatCurrency(subtotal)}</span>
               </div>
-            </div>
-
-            {/* Guest Count */}
-            {booking?.AttendeeCount && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', color: 'var(--text-light)', marginBottom: '1.25rem' }}>
-                <i className="fas fa-users" style={{ fontSize: '0.85rem' }}></i>
-                <span>{booking.AttendeeCount} guests</span>
-              </div>
-            )}
-
-            {/* Event Location */}
-            {(booking?.EventLocation || booking?.Location) && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', color: 'var(--text-light)', marginBottom: '1.25rem' }}>
-                <i className="fas fa-map-marker-alt" style={{ fontSize: '0.85rem' }}></i>
-                <span>{booking.EventLocation || booking.Location}</span>
-              </div>
-            )}
-
-            <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '1rem 0' }} />
-
-            {/* Services List */}
-            <div style={{ marginBottom: '1rem' }}>
-              {(() => {
-                let services = [];
-                if (booking?.ServicesJson) {
-                  try {
-                    services = typeof booking.ServicesJson === 'string' 
-                      ? JSON.parse(booking.ServicesJson) 
-                      : booking.ServicesJson;
-                  } catch (e) { /* ignore */ }
-                }
-                
-                if (services.length > 0) {
-                  return services.map((service, idx) => (
-                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '0.5rem 0' }}>
-                      <div>
-                        <span style={{ fontWeight: 500, color: 'var(--text)' }}>{service.name || service.ServiceName || 'Service'}</span>
-                        {service.hours && (
-                          <span style={{ color: 'var(--text-light)', fontSize: '0.85rem', marginLeft: '0.5rem' }}>
-                            ({formatCurrency(service.price || 0)} × {service.hours} hrs)
-                          </span>
-                        )}
-                      </div>
-                      <span style={{ fontWeight: 600, color: 'var(--text)' }}>{formatCurrency(service.calculatedPrice || service.price || 0)}</span>
-                    </div>
-                  ));
-                }
-                
-                return (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0' }}>
-                    <span style={{ fontWeight: 500, color: 'var(--text)' }}>{booking?.ServiceName || 'Service'}</span>
-                    <span style={{ fontWeight: 600, color: 'var(--text)' }}>{formatCurrency(subtotal)}</span>
-                  </div>
-                );
-              })()}
-            </div>
-
-            {/* Subtotal */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.75rem 0', borderTop: '1px solid var(--border)' }}>
-              <span style={{ fontWeight: 600, color: 'var(--text)' }}>Subtotal</span>
-              <span style={{ fontWeight: 600, color: 'var(--text)' }}>{formatCurrency(subtotal)}</span>
-            </div>
-
-            <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '0.5rem 0' }} />
-
-            {/* Fees Breakdown */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
+              
               {platformFee > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
-                  <span style={{ color: 'var(--text-light)' }}>Platform Service Fee</span>
-                  <span style={{ color: 'var(--text)' }}>{formatCurrency(platformFee)}</span>
+                <div className="price-row fee">
+                  <span>Platform Service Fee</span>
+                  <span>{formatCurrency(platformFee)}</span>
                 </div>
               )}
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
-                <span style={{ color: 'var(--text-light)' }}>Tax ({taxInfo.label})</span>
-                <span style={{ color: 'var(--text)' }}>{formatCurrency(taxAmount)}</span>
+              
+              <div className="price-row fee">
+                <span>Tax ({taxInfo.label})</span>
+                <span>{formatCurrency(taxAmount)}</span>
               </div>
+              
               {processingFee > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
-                  <span style={{ color: 'var(--text-light)' }}>Payment Processing Fee</span>
-                  <span style={{ color: 'var(--text)' }}>{formatCurrency(processingFee)}</span>
+                <div className="price-row fee">
+                  <span>Payment Processing Fee</span>
+                  <span>{formatCurrency(processingFee)}</span>
                 </div>
               )}
-            </div>
-
-            {/* Total */}
-            <div style={{ 
-              display: 'flex', 
-              justifyContent: 'space-between',
-              paddingTop: '1rem',
-              marginTop: '1rem',
-              borderTop: '2px solid var(--border)'
-            }}>
-              <span style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text)' }}>Total</span>
-              <span style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--primary)' }}>{formatCurrency(total)}</span>
+              
+              <div className="price-row total">
+                <span>Total</span>
+                <span className="amount">{formatCurrency(total)}</span>
+              </div>
             </div>
           </div>
 
           {/* Right - Payment Form */}
-          <div>
-            <h3 style={{ fontSize: '0.95rem', fontWeight: 600, marginBottom: '1rem', color: 'var(--text)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <i className="fas fa-lock" style={{ color: 'var(--primary)' }}></i>
+          <div className="client-payment-form-panel">
+            <h3>
+              <i className="fas fa-lock"></i>
               Payment Details
             </h3>
 
             {loading ? (
-              <div style={{ 
-                display: 'flex', 
-                flexDirection: 'column', 
-                alignItems: 'center', 
-                justifyContent: 'center',
-                padding: '3rem',
-                color: 'var(--text-light)'
-              }}>
-                <div className="spinner" style={{ marginBottom: '1rem' }}></div>
-                <p style={{ margin: 0 }}>Initializing secure payment...</p>
+              <div className="client-payment-loading">
+                <div className="spinner"></div>
+                <p>Initializing secure payment...</p>
               </div>
             ) : error ? (
-              <div style={{ 
-                display: 'flex', 
-                flexDirection: 'column', 
-                alignItems: 'center', 
-                padding: '2rem', 
-                textAlign: 'center',
-                background: '#fef2f2',
-                borderRadius: '12px'
-              }}>
-                <i className="fas fa-exclamation-triangle" style={{ fontSize: '2rem', color: '#dc2626', marginBottom: '1rem' }}></i>
-                <h4 style={{ margin: '0 0 0.5rem', color: 'var(--text)' }}>Payment Error</h4>
-                <p style={{ color: 'var(--text-light)', margin: '0 0 1rem', fontSize: '0.9rem' }}>{error}</p>
+              <div className="client-payment-error-state">
+                <i className="fas fa-exclamation-triangle"></i>
+                <h4>Payment Error</h4>
+                <p>{error}</p>
                 <button className="btn btn-outline" onClick={onBack}>
                   <i className="fas fa-arrow-left"></i> Back to Bookings
                 </button>
@@ -491,28 +355,73 @@ function ClientPaymentSection({ booking, onBack, onPaymentSuccess }) {
                 options={{
                   clientSecret,
                   appearance: {
-                    theme: 'stripe',
+                    theme: 'flat',
                     variables: {
-                      colorPrimary: '#5e72e4',
+                      colorPrimary: '#4F86E8',
                       colorBackground: '#ffffff',
                       colorText: '#2d3748',
+                      colorTextSecondary: '#718096',
                       colorDanger: '#dc2626',
                       fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif',
+                      fontSizeBase: '15px',
                       borderRadius: '8px',
-                      spacingUnit: '4px'
+                      spacingUnit: '4px',
+                      colorIconTab: '#718096',
+                      colorIconTabSelected: '#4F86E8'
                     },
                     rules: {
                       '.Input': {
                         border: '1px solid #e2e8f0',
-                        boxShadow: 'none'
+                        boxShadow: 'none',
+                        padding: '12px 14px',
+                        backgroundColor: '#ffffff'
                       },
                       '.Input:focus': {
-                        border: '1px solid #5e72e4',
-                        boxShadow: '0 0 0 1px #5e72e4'
+                        border: '1px solid #4F86E8',
+                        boxShadow: '0 0 0 3px rgba(79, 134, 232, 0.1)',
+                        outline: 'none'
+                      },
+                      '.Input--invalid': {
+                        border: '1px solid #dc2626',
+                        boxShadow: 'none'
                       },
                       '.Label': {
                         fontWeight: '500',
-                        marginBottom: '6px'
+                        marginBottom: '6px',
+                        fontSize: '14px',
+                        color: '#2d3748'
+                      },
+                      '.Tab': {
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '8px',
+                        backgroundColor: '#ffffff',
+                        boxShadow: 'none'
+                      },
+                      '.Tab:hover': {
+                        backgroundColor: '#f7fafc',
+                        border: '1px solid #cbd5e0'
+                      },
+                      '.Tab--selected': {
+                        border: '1px solid #4F86E8',
+                        backgroundColor: '#f0f7ff',
+                        boxShadow: 'none',
+                        color: '#2d3748'
+                      },
+                      '.TabLabel': {
+                        color: '#2d3748'
+                      },
+                      '.TabLabel--selected': {
+                        color: '#2d3748'
+                      },
+                      '.TabIcon': {
+                        fill: '#718096'
+                      },
+                      '.TabIcon--selected': {
+                        fill: '#4F86E8'
+                      },
+                      '.Error': {
+                        fontSize: '13px',
+                        color: '#dc2626'
                       }
                     }
                   }
@@ -526,18 +435,10 @@ function ClientPaymentSection({ booking, onBack, onPaymentSuccess }) {
                 />
               </Elements>
             ) : (
-              <div style={{ 
-                display: 'flex', 
-                flexDirection: 'column', 
-                alignItems: 'center', 
-                padding: '2rem', 
-                textAlign: 'center',
-                background: '#fef3c7',
-                borderRadius: '12px'
-              }}>
-                <i className="fas fa-exclamation-triangle" style={{ fontSize: '2rem', color: '#d97706', marginBottom: '1rem' }}></i>
-                <h4 style={{ margin: '0 0 0.5rem', color: 'var(--text)' }}>Unable to Load Payment</h4>
-                <p style={{ color: 'var(--text-light)', margin: '0 0 1rem', fontSize: '0.9rem' }}>Please try again later.</p>
+              <div className="client-payment-error-state" style={{ background: '#fef3c7' }}>
+                <i className="fas fa-exclamation-triangle" style={{ color: '#d97706' }}></i>
+                <h4>Unable to Load Payment</h4>
+                <p>Please try again later.</p>
                 <button className="btn btn-outline" onClick={onBack}>
                   <i className="fas fa-arrow-left"></i> Back to Bookings
                 </button>
