@@ -312,17 +312,13 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false, u
               zoom: map.getZoom()
             });
           }
-        }, 2500); // 2500ms debounce - wait for user to stop dragging
+        }, 800); // 800ms debounce - responsive but avoids spam
       }
     };
 
-    // Add dragend listener for "search as you drag" functionality
-    map.addListener('dragend', () => {
-      triggerBoundsChange();
-    });
-
-    // Add zoom_changed listener for scroll/zoom events
-    map.addListener('zoom_changed', () => {
+    // Use 'idle' event - fires after map stops moving (pan, zoom, etc.)
+    // This is the most reliable way to detect when user finishes interacting
+    map.addListener('idle', () => {
       triggerBoundsChange();
     });
 
@@ -398,7 +394,7 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false, u
         position,
         map: mapInstanceRef.current,
         title: vendor.BusinessName || vendor.name,
-        animation: window.google.maps.Animation.DROP,
+        animation: searchOnDragEnabledRef.current ? null : window.google.maps.Animation.DROP,
         icon: {
           url: greyIcon,
           scaledSize: new window.google.maps.Size(20, 30),
@@ -525,6 +521,7 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false, u
     // Show city-level view instead of zooming to individual vendors
     // This keeps the map at a city overview level
     // BUT: Don't re-center if searchOnDrag is enabled - user is controlling the map position
+    // When searchOnDrag is enabled, NEVER recenter or change zoom - user controls the map
     if (hasValidMarkers && !searchOnDragEnabledRef.current) {
       // If we have user location, center on that city
       if (userLocation && userLocation.lat && userLocation.lng) {
@@ -537,6 +534,7 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false, u
         mapInstanceRef.current.setZoom(11); // City-level zoom, don't zoom in on vendors
       }
     }
+    // When searchOnDrag is enabled, pins update in place without moving the map
 
     // No clustering - show all individual pins like Google Maps default
     // Clustering disabled to match the desired pin style
@@ -552,15 +550,16 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false, u
     }
     
     // Do NOT create a marker - user requested no blue location marker
-    // But DO center the map on user location if available
-    if (mapInstanceRef.current && userLocation && userLocation.lat && userLocation.lng) {
+    // Only center the map if searchOnDrag is NOT enabled
+    // When searchOnDrag is enabled, user controls the map position - don't recenter
+    if (mapInstanceRef.current && userLocation && userLocation.lat && userLocation.lng && !searchOnDragEnabledRef.current) {
       mapInstanceRef.current.setCenter({ lat: userLocation.lat, lng: userLocation.lng });
       mapInstanceRef.current.setZoom(11); // City-level zoom
-      
-      // Store city name if available
-      if (userLocation.city) {
-        setUserCity(userLocation.city);
-      }
+    }
+    
+    // Store city name if available (regardless of searchOnDrag state)
+    if (userLocation && userLocation.city) {
+      setUserCity(userLocation.city);
     }
   }, [userLocation]);
 
@@ -750,14 +749,12 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false, u
         style={{ 
           width: '100%', 
           height: '100%',
-          minHeight: '500px',
-          opacity: loading ? 0 : 1,
-          transition: 'opacity 0.3s ease'
+          minHeight: '500px'
         }}
       />
       
-      {/* Loading overlay */}
-      {loading && (
+      {/* Loading overlay - only show when NOT in searchOnDrag mode to avoid map "refresh" effect */}
+      {loading && !searchOnDragEnabled && (
         <div 
           style={{ 
             position: 'absolute',

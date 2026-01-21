@@ -263,8 +263,32 @@ function IndexPage() {
   // Handler for map bounds change - search as user drags map
   const handleMapBoundsChange = useCallback(async (boundsData) => {
     // Calculate radius based on map bounds (approximate)
+    // ~69 miles per degree latitude - use the full visible area
     const latDiff = Math.abs(boundsData.bounds.north - boundsData.bounds.south);
-    const radiusMiles = Math.max(10, Math.min(100, Math.round(latDiff * 69 / 2))); // ~69 miles per degree latitude
+    const calculatedRadius = Math.round(latDiff * 69 / 2);
+    
+    // For very zoomed out views (country/continent level), use a very large radius
+    // Canada is ~3000 miles wide, so we need to support large radii
+    // Zoom level ~4-5 = country view, ~6-7 = province view, ~10+ = city view
+    const isCountryView = boundsData.zoom <= 5;
+    const isProvinceView = boundsData.zoom <= 7 && boundsData.zoom > 5;
+    
+    let radiusMiles;
+    let pageSize;
+    
+    if (isCountryView) {
+      // Country-wide view - fetch all vendors nationwide
+      radiusMiles = 3000; // Cover entire country
+      pageSize = 500; // Get lots of vendors
+    } else if (isProvinceView) {
+      // Province/state view
+      radiusMiles = Math.min(1000, Math.max(200, calculatedRadius));
+      pageSize = 300;
+    } else {
+      // City/local view
+      radiusMiles = Math.min(200, Math.max(10, calculatedRadius));
+      pageSize = radiusMiles > 50 ? 150 : 100;
+    }
     
     // Show loading state while fetching
     setLoading(true);
@@ -276,7 +300,7 @@ function IndexPage() {
       qp.set('latitude', String(boundsData.center.lat));
       qp.set('longitude', String(boundsData.center.lng));
       qp.set('radiusMiles', String(radiusMiles));
-      qp.set('pageSize', '100');
+      qp.set('pageSize', String(pageSize));
       qp.set('includeDiscoverySections', 'true'); // Include discovery sections
       
       if (currentCategory && currentCategory !== 'all') {
