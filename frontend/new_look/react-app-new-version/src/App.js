@@ -85,8 +85,20 @@ function ProtectedDeepLink({ section }) {
       const pathParts = location.pathname.split('/');
       const itemId = pathParts[pathParts.length - 1];
       
+      // Determine the correct section based on user type and stored view mode
+      let targetSection = section;
+      const viewMode = localStorage.getItem('viewMode');
+      const isVendorView = viewMode === 'vendor' || (currentUser?.isVendor && viewMode !== 'client');
+      
+      // Map client sections to vendor sections if user is in vendor view
+      if (isVendorView && section === 'bookings') {
+        targetSection = 'vendor-requests';
+      } else if (isVendorView && section === 'reviews') {
+        targetSection = 'vendor-reviews';
+      }
+      
       // Build the dashboard URL with section and item ID
-      let dashboardUrl = `/dashboard?section=${section}`;
+      let dashboardUrl = `/dashboard?section=${targetSection}`;
       if (itemId && itemId !== section) {
         dashboardUrl += `&itemId=${itemId}`;
       }

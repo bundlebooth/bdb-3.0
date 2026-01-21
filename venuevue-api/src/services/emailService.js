@@ -138,6 +138,7 @@ async function notifyVendorOfNewRequest(requestId, userId, vendorProfileId, even
  */
 async function notifyClientOfApproval(requestId) {
   try {
+    console.log(`[NotificationService] notifyClientOfApproval called for requestId: ${requestId}`);
     const pool = await poolPromise;
     
     // Get request details via stored procedure
@@ -145,18 +146,43 @@ async function notifyClientOfApproval(requestId) {
       .input('RequestID', sql.Int, requestId)
       .execute('email.sp_GetRequestForApproval');
     
-    if (result.recordset.length === 0) return;
+    if (result.recordset.length === 0) {
+      console.log(`[NotificationService] No request found for requestId: ${requestId}`);
+      return;
+    }
     const data = result.recordset[0];
+    console.log(`[NotificationService] Found request data:`, { ClientEmail: data.ClientEmail, ClientName: data.ClientName, VendorName: data.VendorName });
     
+    // Generate encoded booking ID for payment URL
+    const encodedBookingId = encodeBookingId(requestId);
+    const paymentUrl = `${FRONTEND_URL}/payment/${encodedBookingId}`;
+    const dashboardUrl = `${FRONTEND_URL}/dashboard?section=bookings&itemId=${encodedBookingId}`;
+    
+    // Format event date if available
+    const eventDate = data.EventDate 
+      ? new Date(data.EventDate).toLocaleDateString('en-US', { 
+          weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
+        })
+      : null;
+    
+    console.log(`[NotificationService] Sending booking accepted email to ${data.ClientEmail}`);
     await sendBookingAcceptedToClient(
       data.ClientEmail,
       data.ClientName,
       data.VendorName,
       data.ServiceName,
-      `${FRONTEND_URL}/dashboard/booking/${requestId}`,
+      dashboardUrl,
       data.UserID,
-      requestId
+      requestId,
+      eventDate,
+      null, // eventTime
+      null, // location
+      null, // amount
+      null, // timezone
+      null, // vendorProfilePic
+      paymentUrl
     );
+    console.log(`[NotificationService] Booking accepted email sent successfully`);
     
     // Send push notification to client
     await pushService.notifyBookingUpdate(data.UserID, 'accepted', data.VendorName);
@@ -171,6 +197,7 @@ async function notifyClientOfApproval(requestId) {
     );
   } catch (error) {
     console.error('[NotificationService] Failed to notify client of approval:', error.message);
+    console.error('[NotificationService] Full error:', error);
   }
 }
 

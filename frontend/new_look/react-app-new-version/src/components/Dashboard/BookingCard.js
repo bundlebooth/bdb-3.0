@@ -203,6 +203,22 @@ const BookingCard = ({
 
   // Compact card (for dashboard)
   if (compact) {
+    // Determine navigation based on status and view
+    const handleCompactClick = () => {
+      const bookingId = booking.BookingID || booking.RequestID || booking.BookingRequestId;
+      const status = (booking.Status || '').toLowerCase();
+      
+      // If awaiting payment, navigate to payment page
+      if (status === 'awaiting_payment' || status === 'awaiting payment' || status === 'accepted' || status === 'approved') {
+        navigate(`/payment/${bookingId}`);
+        return;
+      }
+      
+      // Otherwise navigate to bookings section with the item expanded
+      const section = isVendorView ? 'vendor-requests' : 'bookings';
+      navigate(`/dashboard?section=${section}&itemId=${bookingId}`);
+    };
+    
     return (
       <div 
         style={{ 
@@ -215,7 +231,7 @@ const BookingCard = ({
           marginBottom: '8px',
           cursor: 'pointer'
         }}
-        onClick={() => navigate(isVendorView ? '/dashboard/requests' : '/dashboard/bookings')}
+        onClick={handleCompactClick}
       >
         {/* Date Block */}
         <div style={{ 
@@ -289,12 +305,21 @@ const BookingCard = ({
 
         {/* Info */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div 
-            style={{ fontSize: '15px', fontWeight: 600, color: '#10b981', cursor: !isVendorView ? 'pointer' : 'default', marginBottom: '3px' }}
-            onClick={(e) => { if (!isVendorView) { e.stopPropagation(); handleViewProfile(); } }}
-          >
-            {profileName}
-          </div>
+          {!isVendorView ? (
+            <span 
+              style={{ fontSize: '15px', fontWeight: 600, color: '#10b981', cursor: 'pointer', marginBottom: '3px', display: 'inline-block' }}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleViewProfile(); }}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); handleViewProfile(); } }}
+            >
+              {profileName}
+            </span>
+          ) : (
+            <div style={{ fontSize: '15px', fontWeight: 600, color: '#10b981', marginBottom: '3px' }}>
+              {profileName}
+            </div>
+          )}
           <div style={{ fontSize: '14px', color: '#374151', marginBottom: '3px' }}>{serviceName}</div>
           {location && (
             <div style={{ fontSize: '13px', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '3px' }}>
@@ -346,13 +371,24 @@ const BookingCard = ({
             <div style={{ border: '1px solid #e5e5e5', borderRadius: '6px', overflow: 'hidden', background: '#fff' }}>
               {/* Profile Row with Avatar */}
               <div 
-                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', borderBottom: '1px solid #f3f4f6', cursor: !isVendorView ? 'pointer' : 'default' }}
-                onClick={!isVendorView ? handleViewProfile : undefined}
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', borderBottom: '1px solid #f3f4f6' }}
               >
                 <span style={{ fontSize: '14px', color: '#6b7280' }}>{isVendorView ? 'Client' : 'Vendor'}</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   {renderAvatar(32)}
-                  <span style={{ fontSize: '14px', color: '#111', fontWeight: 500 }}>{profileName}</span>
+                  {!isVendorView ? (
+                    <span 
+                      style={{ fontSize: '14px', color: '#10b981', fontWeight: 500, cursor: 'pointer', textDecoration: 'underline' }}
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleViewProfile(); }}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); handleViewProfile(); } }}
+                    >
+                      {profileName}
+                    </span>
+                  ) : (
+                    <span style={{ fontSize: '14px', color: '#111', fontWeight: 500 }}>{profileName}</span>
+                  )}
                 </div>
               </div>
 

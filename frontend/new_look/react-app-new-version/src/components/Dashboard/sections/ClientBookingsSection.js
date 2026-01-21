@@ -5,6 +5,7 @@ import { showBanner } from '../../../utils/banners';
 import { apiGet, apiPost } from '../../../utils/api';
 import { buildInvoiceUrl } from '../../../utils/urlHelpers';
 import { getBookingStatusConfig } from '../../../utils/bookingStatus';
+import { decodeBookingId, isPublicId } from '../../../utils/hashIds';
 import BookingDetailsModal from '../BookingDetailsModal';
 import BookingCard from '../BookingCard';
 
@@ -68,10 +69,19 @@ function ClientBookingsSection({ onPayNow, onOpenChat, deepLinkBookingId, onDeep
   // Handle deep link - auto-open booking details when deepLinkBookingId is provided
   useEffect(() => {
     if (deepLinkBookingId && allBookings.length > 0 && !loading) {
-      // Find the booking by ID (could be BookingID or RequestID)
+      // Decode the booking ID if it's a public hash ID
+      let targetId = deepLinkBookingId;
+      if (isPublicId(deepLinkBookingId)) {
+        const decoded = decodeBookingId(deepLinkBookingId);
+        if (decoded) {
+          targetId = decoded;
+        }
+      }
+      
+      // Find the booking by ID (could be BookingID, RequestID, or public ID)
       const booking = allBookings.find(b => 
-        String(b.BookingID) === String(deepLinkBookingId) || 
-        String(b.RequestID) === String(deepLinkBookingId) ||
+        String(b.BookingID) === String(targetId) || 
+        String(b.RequestID) === String(targetId) ||
         String(b.bookingPublicId) === String(deepLinkBookingId)
       );
       

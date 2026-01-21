@@ -454,15 +454,21 @@ async function sendBookingRequestToVendor(vendorEmail, vendorName, clientName, s
   }, vendorUserId, bookingId, null, 'bookingUpdates', adminEmail);
 }
 
-async function sendBookingAcceptedToClient(clientEmail, clientName, vendorName, serviceName, dashboardUrl, userId = null, bookingId = null, eventDate = null, eventTime = null, location = null, amount = null, timezone = null, vendorProfilePic = null) {
+async function sendBookingAcceptedToClient(clientEmail, clientName, vendorName, serviceName, dashboardUrl, userId = null, bookingId = null, eventDate = null, eventTime = null, location = null, amount = null, timezone = null, vendorProfilePic = null, paymentUrl = null) {
   const adminEmail = process.env.ADMIN_EMAIL || 'admin@planbeau.com';
   const timezoneDisplay = timezone || 'Local Time';
   const vendorInitial = vendorName ? vendorName.charAt(0).toUpperCase() : 'V';
   const vendorAvatarHtml = vendorProfilePic 
     ? `<img src="${vendorProfilePic}" alt="${vendorName}" style="width:48px;height:48px;border-radius:50%;object-fit:cover">`
     : `<div style="width:48px;height:48px;background-color:#222222;border-radius:50%;text-align:center;line-height:48px;color:#ffffff;font-weight:600;font-size:18px">${vendorInitial}</div>`;
+  
+  // Generate payment button HTML if payment URL is provided
+  const paymentButtonHtml = paymentUrl 
+    ? `<div style="text-align:center;margin:24px 0"><a href="${paymentUrl}" style="display:inline-block;background:#222222;color:#ffffff;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:600;font-size:16px">Pay Now</a></div>`
+    : '';
+  
   return sendTemplatedEmail('booking_accepted_client', clientEmail, clientName, {
-    clientName, vendorName, serviceName, dashboardUrl, bookingId, eventDate: eventDate || 'TBD', eventTime: eventTime ? `${eventTime} (${timezoneDisplay})` : 'TBD', location: location || 'TBD', amount: amount || 'TBD', timezone: timezoneDisplay, vendorAvatarHtml
+    clientName, vendorName, serviceName, dashboardUrl, bookingId, eventDate: eventDate || 'TBD', eventTime: eventTime ? `${eventTime} (${timezoneDisplay})` : 'TBD', location: location || 'TBD', amount: amount || 'TBD', timezone: timezoneDisplay, vendorAvatarHtml, paymentUrl: paymentUrl || dashboardUrl, paymentButtonHtml
   }, userId, bookingId, null, 'bookingUpdates', adminEmail);
 }
 

@@ -21,12 +21,12 @@ const FRONTEND_URL = process.env.NODE_ENV === 'production'
 
 /**
  * Send email notification when a new booking request is created
- * @param {number} requestId - The booking request ID
+ * @param {number} vendorProfileId - The vendor's profile ID
  * @param {number} userId - The client's user ID
- * @param {number} vendorProfileId - The vendor profile ID
- * @param {object} eventDetails - Event details (date, location, budget, services)
+ * @param {number} requestId - The booking request ID
+ * @param {object} eventDetails - Event details (date, location, budget, etc.)
  */
-async function notifyVendorOfNewRequest(requestId, userId, vendorProfileId, eventDetails = {}) {
+async function notifyVendorOfNewRequest(vendorProfileId, userId, requestId, eventDetails = {}) {
   try {
     const pool = await poolPromise;
     
@@ -54,6 +54,15 @@ async function notifyVendorOfNewRequest(requestId, userId, vendorProfileId, even
     // Get service name
     const serviceName = eventDetails.serviceName || 'Service';
     
+    // Generate encoded booking ID for deep link URL
+    const Hashids = require('hashids');
+    const BASE_SALT = process.env.HASHID_SALT || 'd4f1b8c0e7a24f56a9c3e1b77f08d92c4eb1a6f53d7e9c0fa2b14ce8f937ab10';
+    const bookingHashids = new Hashids(`${BASE_SALT}_booking`, 8, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789');
+    const encodedRequestId = bookingHashids.encode(requestId);
+    
+    // Use deep link format that works with ProtectedDeepLink component
+    const dashboardUrl = `${FRONTEND_URL}/dashboard/booking/${encodedRequestId}`;
+    
     await sendBookingRequestToVendor(
       data.VendorEmail,
       data.VendorBusinessName || data.VendorName,
@@ -62,7 +71,7 @@ async function notifyVendorOfNewRequest(requestId, userId, vendorProfileId, even
       eventDate,
       eventDetails.location || 'Not specified',
       budget,
-      `${FRONTEND_URL}/dashboard/booking/${requestId}`,
+      dashboardUrl,
       data.VendorUserID,
       requestId
     );
@@ -87,14 +96,41 @@ async function notifyClientOfApproval(requestId) {
     if (result.recordset.length === 0) return;
     const data = result.recordset[0];
     
+    // Generate encoded booking ID for payment URL
+    const Hashids = require('hashids');
+    const BASE_SALT = process.env.HASHID_SALT || 'd4f1b8c0e7a24f56a9c3e1b77f08d92c4eb1a6f53d7e9c0fa2b14ce8f937ab10';
+    const bookingHashids = new Hashids(`${BASE_SALT}_booking`, 8, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789');
+    const encodedBookingId = bookingHashids.encode(requestId);
+    
+    // Generate payment URL with encoded booking ID
+    const paymentUrl = `${FRONTEND_URL}/payment/${encodedBookingId}`;
+    const dashboardUrl = `${FRONTEND_URL}/dashboard?section=bookings&itemId=${encodedBookingId}`;
+    
+    // Format event date if available
+    const eventDate = data.EventDate 
+      ? new Date(data.EventDate).toLocaleDateString('en-US', { 
+          weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
+        })
+      : null;
+    
+    // Format amount if available
+    const amount = data.TotalAmount ? `$${Number(data.TotalAmount).toFixed(2)}` : null;
+    
     await sendBookingAcceptedToClient(
       data.ClientEmail,
       data.ClientName,
       data.VendorName,
       data.ServiceName,
-      `${FRONTEND_URL}/dashboard/booking/${requestId}`,
+      dashboardUrl,
       data.UserID,
-      requestId
+      requestId,
+      eventDate,
+      data.EventTime || null,
+      data.EventLocation || null,
+      amount,
+      data.TimeZone || null,
+      data.VendorLogoUrl || null,
+      paymentUrl
     );
   } catch (error) {
     console.error('[NotificationService] Failed to notify client of approval:', error.message);

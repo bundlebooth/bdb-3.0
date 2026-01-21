@@ -18,15 +18,10 @@ export const createSlug = (text) => {
     .replace(/^-+|-+$/g, '');
 };
 
-export const generateImpressionId = () => {
-  const timestamp = Date.now();
-  const random = Math.random().toString(36).substring(2, 15);
-  return 'p3_' + timestamp + '_' + random;
-};
-
 /**
  * Build vendor profile URL using obfuscated public ID
  * Format: /vendor/business-name-XzA91Qb3
+ * Clean URLs without unnecessary tracking parameters
  */
 export const buildVendorProfileUrl = (vendor, options = {}) => {
   // Get the public ID (either from vendor object or encode the internal ID)
@@ -40,15 +35,9 @@ export const buildVendorProfileUrl = (vendor, options = {}) => {
   const slug = createSlug(businessName);
   const baseUrl = '/vendor/' + slug + '-' + publicId;
   
+  // Only include essential parameters that affect page content
   const params = new URLSearchParams();
-  if (options.source) params.append('source', options.source);
-  if (options.category) params.append('category', options.category);
   if (options.photoId) params.append('photo_id', options.photoId);
-  if (options.previousSection) params.append('previous_page_section_name', options.previousSection);
-  params.append('impression_id', generateImpressionId());
-  if (options.searchQuery) params.append('search_query', options.searchQuery);
-  if (options.location) params.append('location', options.location);
-  if (options.date) params.append('date', options.date);
   const queryString = params.toString();
   return queryString ? baseUrl + '?' + queryString : baseUrl;
 };
@@ -56,6 +45,7 @@ export const buildVendorProfileUrl = (vendor, options = {}) => {
 /**
  * Build booking URL using obfuscated public ID
  * Format: /booking/business-name-XzA91Qb3
+ * Clean URLs with only essential booking parameters
  */
 export const buildBookingUrl = (vendor, options = {}) => {
   // Get the public ID (either from vendor object or encode the internal ID)
@@ -69,6 +59,7 @@ export const buildBookingUrl = (vendor, options = {}) => {
   const slug = createSlug(businessName);
   const baseUrl = '/booking/' + slug + '-' + publicId;
   
+  // Only include essential parameters that affect booking flow
   const params = new URLSearchParams();
   if (options.checkIn) params.append('check_in', options.checkIn);
   if (options.guests) params.append('guests', options.guests);
@@ -79,13 +70,11 @@ export const buildBookingUrl = (vendor, options = {}) => {
       params.append('service_id', servicePublicId);
     }
   }
-  if (options.source) params.append('source', options.source);
   // Pre-filled booking data from ProfileVendorWidget
   if (options.date) params.append('date', options.date);
   if (options.startTime) params.append('startTime', options.startTime);
   if (options.endTime) params.append('endTime', options.endTime);
   if (options.packageId) params.append('packageId', options.packageId);
-  params.append('impression_id', generateImpressionId());
   const queryString = params.toString();
   return queryString ? baseUrl + '?' + queryString : baseUrl;
 };
@@ -105,11 +94,10 @@ export const buildInvoiceUrl = (invoiceOrBookingId, isBookingId = false) => {
 
 export const buildBecomeVendorUrl = (options = {}) => {
   const baseUrl = '/become-a-vendor';
+  // Only include essential parameters
   const params = new URLSearchParams();
-  if (options.source) params.append('source', options.source);
   if (options.ref) params.append('ref', options.ref);
   if (options.step) params.append('step', options.step);
-  params.append('impression_id', generateImpressionId());
   const queryString = params.toString();
   return queryString ? baseUrl + '?' + queryString : baseUrl;
 };

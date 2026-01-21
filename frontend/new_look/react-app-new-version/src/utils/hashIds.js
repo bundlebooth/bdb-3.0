@@ -5,6 +5,7 @@
  * Uses the same salts as the backend to ensure consistent encoding/decoding.
  * 
  * IMPORTANT: The salt must match the backend salt exactly!
+ * Set REACT_APP_HASHID_SALT in your environment variables.
  * 
  * Usage:
  *   import { encodeVendorId, decodeVendorId } from './utils/hashIds';
@@ -13,11 +14,12 @@
  */
 
 import Hashids from 'hashids';
+import { HASHID_SALT, HASHID_MIN_LENGTH } from '../config';
 
-// Configuration - Must match backend salt exactly!
-// In production, this should be loaded from environment or config
-const BASE_SALT = 'd4f1b8c0e7a24f56a9c3e1b77f08d92c4eb1a6f53d7e9c0fa2b14ce8f937ab10';
-const MIN_LENGTH = 8;
+// Configuration - loaded from environment via config.js
+// IMPORTANT: Set REACT_APP_HASHID_SALT in environment variables for production
+const BASE_SALT = HASHID_SALT;
+const MIN_LENGTH = HASHID_MIN_LENGTH;
 
 // Create separate Hashids instances for each entity type
 const hashids = {
