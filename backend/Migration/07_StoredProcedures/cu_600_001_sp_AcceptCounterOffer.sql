@@ -61,7 +61,7 @@ BEGIN
         SELECT 
             u.UserID,
             'Counter Offer Accepted',
-            (SELECT Name FROM users.Users WHERE UserID = @UserID) + ' has accepted your counter offer.',
+            (SELECT CONCAT(FirstName, ' ', ISNULL(LastName, '')) FROM users.Users WHERE UserID = @UserID) + ' has accepted your counter offer.',
             'counter_offer_accepted',
             @RequestID,
             'request'

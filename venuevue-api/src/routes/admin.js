@@ -570,12 +570,22 @@ router.post('/users/:id/toggle-status', async (req, res) => {
 router.put('/users/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, email } = req.body;
+    const { name, firstName, lastName, email } = req.body;
     const pool = await getPool();
+    
+    // Support both name (legacy) and firstName/lastName
+    let fName = firstName;
+    let lName = lastName;
+    if (!fName && name) {
+      const nameParts = name.trim().split(' ');
+      fName = nameParts[0] || '';
+      lName = nameParts.slice(1).join(' ') || '';
+    }
     
     const request = pool.request();
     request.input('UserID', sql.Int, id);
-    request.input('Name', sql.NVarChar(100), name);
+    request.input('FirstName', sql.NVarChar(100), fName);
+    request.input('LastName', sql.NVarChar(100), lName || null);
     request.input('Email', sql.NVarChar(100), email);
     
     await request.execute('admin.sp_UpdateUser');

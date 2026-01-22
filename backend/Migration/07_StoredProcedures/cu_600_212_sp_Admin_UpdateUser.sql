@@ -14,14 +14,16 @@ GO
 
 CREATE PROCEDURE [admin].[sp_UpdateUser]
     @UserID INT,
-    @Name NVARCHAR(100),
+    @FirstName NVARCHAR(100),
+    @LastName NVARCHAR(100) = NULL,
     @Email NVARCHAR(100)
 AS
 BEGIN
     SET NOCOUNT ON;
     
     UPDATE users.Users 
-    SET Name = @Name, 
+    SET FirstName = @FirstName,
+        LastName = @LastName, 
         Email = @Email, 
         UpdatedAt = GETDATE()
     WHERE UserID = @UserID;

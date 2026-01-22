@@ -23,7 +23,8 @@ GO
 
 CREATE   PROCEDURE [users].[sp_UpdateProfile]
     @UserID INT,
-    @Name NVARCHAR(100) = NULL,
+    @FirstName NVARCHAR(100) = NULL,
+    @LastName NVARCHAR(100) = NULL,
     @Phone NVARCHAR(20) = NULL,
     @Bio NVARCHAR(MAX) = NULL,
     @ProfileImageURL NVARCHAR(255) = NULL
@@ -33,7 +34,8 @@ BEGIN
 
     UPDATE users.Users
     SET 
-        Name = ISNULL(@Name, Name),
+        FirstName = ISNULL(@FirstName, FirstName),
+        LastName = ISNULL(@LastName, LastName),
         Phone = ISNULL(@Phone, Phone),
         Bio = ISNULL(@Bio, Bio),
         ProfileImageURL = ISNULL(@ProfileImageURL, ProfileImageURL),

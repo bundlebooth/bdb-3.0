@@ -496,7 +496,12 @@ router.post('/social-login', async (req, res) => {
     const pool = await poolPromise;
     const request = pool.request();
     request.input('Email', sql.NVarChar(100), email.toLowerCase().trim());
-    request.input('Name', sql.NVarChar(100), name);
+    // Split name into FirstName and LastName
+    const nameParts = (name || '').trim().split(' ');
+    const firstName = nameParts[0] || '';
+    const lastName = nameParts.slice(1).join(' ') || '';
+    request.input('FirstName', sql.NVarChar(100), firstName);
+    request.input('LastName', sql.NVarChar(100), lastName);
     request.input('AuthProvider', sql.NVarChar(20), authProvider);
     request.input('ProfileImageURL', sql.NVarChar(255), avatar || '');
     request.input('IsVendor', sql.Bit, isVendorFlag);
@@ -842,15 +847,24 @@ router.get('/:id/profile-details', async (req, res) => {
 router.put('/:id/profile-update', async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, phone, bio, avatar } = req.body;
+    const { name, firstName, lastName, phone, bio, avatar } = req.body;
     const pool = await poolPromise;
     const request = pool.request();
     request.input('UserID', sql.Int, parseInt(id));
-    request.input('Name', sql.NVarChar(100), name || null);
+    // Support both name (legacy) and firstName/lastName
+    let fName = firstName;
+    let lName = lastName;
+    if (!fName && name) {
+      const nameParts = name.trim().split(' ');
+      fName = nameParts[0] || '';
+      lName = nameParts.slice(1).join(' ') || '';
+    }
+    request.input('FirstName', sql.NVarChar(100), fName || null);
+    request.input('LastName', sql.NVarChar(100), lName || null);
     request.input('Phone', sql.NVarChar(20), phone || null);
     request.input('Bio', sql.NVarChar(sql.MAX), bio || null);
-    request.input('Avatar', sql.NVarChar(255), avatar || null);
-    await request.execute('users.sp_UpdateUserProfile');
+    request.input('ProfileImageURL', sql.NVarChar(255), avatar || null);
+    await request.execute('users.sp_UpdateProfile');
     res.json({ success: true, message: 'User profile updated successfully' });
   } catch (err) {
     console.error('Update user profile error:', err);
@@ -1213,7 +1227,8 @@ router.put('/:id', async (req, res) => {
     // Update user profile
     const request = pool.request();
     request.input('UserID', sql.Int, parseInt(id));
-    request.input('Name', sql.NVarChar(100), `${firstName || ''} ${lastName || ''}`.trim());
+    request.input('FirstName', sql.NVarChar(100), firstName || '');
+    request.input('LastName', sql.NVarChar(100), lastName || null);
     request.input('Phone', sql.NVarChar(20), phone || null);
 
     await request.execute('users.sp_UpdateProfile');
