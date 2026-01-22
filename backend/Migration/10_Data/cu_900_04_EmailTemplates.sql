@@ -195,5 +195,18 @@ BEGIN
             PRINT 'Added support_ticket_reply template';
         END
     END
+
+    -- Add review_request template (post-event review request)
+    IF NOT EXISTS (SELECT 1 FROM [admin].[EmailTemplates] WHERE [TemplateKey] = 'review_request')
+    BEGIN
+        DECLARE @ReviewRequestBodyID INT;
+        SELECT @ReviewRequestBodyID = ComponentID FROM [admin].[EmailTemplateComponents] WHERE [ComponentName] = 'Review Request';
+        IF @ReviewRequestBodyID IS NOT NULL
+        BEGIN
+            INSERT [admin].[EmailTemplates] ([TemplateKey], [TemplateName], [HeaderComponentID], [BodyComponentID], [FooterComponentID], [Subject], [Category], [AvailableVariables], [IsActive], [CreatedAt], [UpdatedAt])
+            VALUES (N'review_request', N'Post-Event Review Request', 1, @ReviewRequestBodyID, 2, N'How was your experience with {{vendorName}}?', N'review', N'["clientName","vendorName","serviceName","eventDate","reviewUrl","platformName","platformUrl","currentYear","logoUrl"]', 1, GETDATE(), GETDATE());
+            PRINT 'Added review_request template';
+        END
+    END
 END
 GO

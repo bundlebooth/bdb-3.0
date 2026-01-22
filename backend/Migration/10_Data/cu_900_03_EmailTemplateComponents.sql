@@ -540,4 +540,35 @@ The {{platformName}} Team',
 WHERE [ComponentName] = 'Account Reactivated';
 
 PRINT 'Unconditional cleanup completed - ComponentID 41 deleted, TextContent updated for support emails';
+
+-- Add Review Request email component if not exists
+IF NOT EXISTS (SELECT 1 FROM [admin].[EmailTemplateComponents] WHERE [ComponentName] = 'Review Request')
+BEGIN
+    INSERT INTO [admin].[EmailTemplateComponents] ([ComponentType], [ComponentName], [HtmlContent], [TextContent], [Description], [IsActive], [CreatedAt], [UpdatedAt])
+    VALUES (
+        N'body',
+        N'Review Request',
+        N'<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f7f7f7"><tr><td align="center" style="padding:0 20px"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;background-color:#ffffff;border:1px solid #ebebeb;border-top:none"><tr><td style="padding:40px"><h2 style="color:#667eea;margin:0 0 20px;text-align:center">How Was Your Event?</h2><p style="color:#666;margin:0 0 20px">Hello {{clientName}},</p><p style="color:#666;margin:0 0 30px">We hope your event with <strong>{{vendorName}}</strong> went wonderfully! Your feedback helps other clients find great vendors and helps vendors improve their services.</p><div style="background:#f0f4ff;padding:20px;border-radius:8px;border-left:4px solid #667eea;margin:0 0 30px"><h3 style="color:#4338ca;margin:0 0 15px;font-size:16px">Event Details</h3><p style="color:#4338ca;margin:5px 0"><strong>Vendor:</strong> {{vendorName}}</p><p style="color:#4338ca;margin:5px 0"><strong>Service:</strong> {{serviceName}}</p><p style="color:#4338ca;margin:5px 0"><strong>Date:</strong> {{eventDate}}</p></div><p style="color:#666;margin:0 0 30px">Would you take a moment to share your experience? It only takes a few minutes.</p><p style="text-align:center;margin:0"><a href="{{reviewUrl}}" style="display:inline-block;background:#222222;color:white;padding:14px 30px;text-decoration:none;border-radius:6px;font-weight:600">Write a Review</a></p><p style="color:#999;font-size:12px;margin:30px 0 0;text-align:center">This review link is valid for 30 days after your event.</p></td></tr></table></td></tr></table>',
+        N'Hello {{clientName}},
+
+We hope your event with {{vendorName}} went wonderfully! Your feedback helps other clients find great vendors.
+
+Event Details:
+- Vendor: {{vendorName}}
+- Service: {{serviceName}}
+- Date: {{eventDate}}
+
+Would you take a moment to share your experience? Click here to write a review: {{reviewUrl}}
+
+This review link is valid for 30 days after your event.
+
+Thank you,
+The {{platformName}} Team',
+        N'Post-event review request email sent the morning after the event',
+        1,
+        GETDATE(),
+        GETDATE()
+    );
+    PRINT 'Added Review Request email component';
+END
 GO

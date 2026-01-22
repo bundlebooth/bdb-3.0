@@ -79,6 +79,7 @@ const publicRouter = require('./routes/public');
 const forumRouter = require('./routes/forum');
 const geoRouter = require('./routes/geo');
 const pushRouter = require('./routes/push');
+const reviewsRouter = require('./routes/reviews');
 app.use('/api/users', usersRouter);
 app.use('/api/bookings', bookingsRouter);
 app.use('/api/vendors', vendorsRouter);
@@ -94,6 +95,7 @@ app.use('/api/public', publicRouter);
 app.use('/api/forum', forumRouter);
 app.use('/api/geo', geoRouter);
 app.use('/api/push', pushRouter);
+app.use('/api/reviews', reviewsRouter);
 
 // Backward compatibility: Favorites routes now in users.js
 app.use('/api/favorites', (req, res, next) => {

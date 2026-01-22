@@ -6540,6 +6540,147 @@ router.post('/reviews/submit', async (req, res) => {
   }
 });
 
+// POST /api/vendors/reviews/upload-photo - Upload a photo for a review
+router.post('/reviews/upload-photo', upload.single('photo'), async (req, res) => {
+  try {
+    res.setHeader('Content-Type', 'application/json');
+    
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'No file uploaded' });
+    }
+
+    // Upload to Cloudinary in review-photos folder
+    const result = await cloudinaryService.uploadImage(req.file.path, {
+      folder: 'venuevue/review-photos',
+      transformation: [
+        { width: 800, height: 600, crop: 'limit' },
+        { quality: 'auto' }
+      ]
+    });
+
+    res.json({
+      success: true,
+      url: result.secure_url,
+      publicId: result.public_id
+    });
+  } catch (error) {
+    console.error('Review photo upload error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to upload review photo',
+      error: error.message 
+    });
+  }
+});
+
+// POST /api/vendors/reviews/submit-with-photos - Submit a review with photos
+router.post('/reviews/submit-with-photos', async (req, res) => {
+  try {
+    const { 
+      userId, vendorProfileId, bookingId, rating, title, comment,
+      qualityRating, communicationRating, valueRating, 
+      punctualityRating, professionalismRating, wouldRecommend,
+      photoUrls // Array of photo URLs from Cloudinary
+    } = req.body;
+
+    if (!userId || !vendorProfileId || !rating || !comment) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Missing required fields' 
+      });
+    }
+
+    const pool = await poolPromise;
+    const request = pool.request();
+    
+    request.input('UserID', sql.Int, userId);
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
+    request.input('BookingID', sql.Int, bookingId || null);
+    request.input('Rating', sql.Int, rating);
+    request.input('Title', sql.NVarChar(100), title || null);
+    request.input('Comment', sql.NVarChar(sql.MAX), comment);
+    request.input('QualityRating', sql.TinyInt, qualityRating || null);
+    request.input('CommunicationRating', sql.TinyInt, communicationRating || null);
+    request.input('ValueRating', sql.TinyInt, valueRating || null);
+    request.input('PunctualityRating', sql.TinyInt, punctualityRating || null);
+    request.input('ProfessionalismRating', sql.TinyInt, professionalismRating || null);
+    request.input('WouldRecommend', sql.Bit, wouldRecommend != null ? wouldRecommend : null);
+    // Store photo URLs as JSON string
+    request.input('PhotoUrls', sql.NVarChar(sql.MAX), photoUrls && photoUrls.length > 0 ? JSON.stringify(photoUrls) : null);
+    
+    const result = await request.execute('vendors.sp_SubmitReviewWithPhotos');
+    
+    // Check for error message (already reviewed)
+    if (result.recordset[0]?.ErrorMessage) {
+      return res.status(400).json({
+        success: false,
+        message: result.recordset[0].ErrorMessage
+      });
+    }
+    
+    res.json({
+      success: true,
+      review: result.recordset[0]
+    });
+
+  } catch (err) {
+    console.error('Review submission error:', err);
+    // Fall back to regular submit if new SP doesn't exist
+    if (err.message && err.message.includes('sp_SubmitReviewWithPhotos')) {
+      // Try the original SP without photos
+      try {
+        const { 
+          userId, vendorProfileId, bookingId, rating, title, comment,
+          qualityRating, communicationRating, valueRating, 
+          punctualityRating, professionalismRating, wouldRecommend
+        } = req.body;
+
+        const pool = await poolPromise;
+        const request = pool.request();
+        
+        request.input('UserID', sql.Int, userId);
+        request.input('VendorProfileID', sql.Int, vendorProfileId);
+        request.input('BookingID', sql.Int, bookingId || null);
+        request.input('Rating', sql.Int, rating);
+        request.input('Title', sql.NVarChar(100), title || null);
+        request.input('Comment', sql.NVarChar(sql.MAX), comment);
+        request.input('QualityRating', sql.TinyInt, qualityRating || null);
+        request.input('CommunicationRating', sql.TinyInt, communicationRating || null);
+        request.input('ValueRating', sql.TinyInt, valueRating || null);
+        request.input('PunctualityRating', sql.TinyInt, punctualityRating || null);
+        request.input('ProfessionalismRating', sql.TinyInt, professionalismRating || null);
+        request.input('WouldRecommend', sql.Bit, wouldRecommend != null ? wouldRecommend : null);
+        
+        const result = await request.execute('vendors.sp_SubmitReview');
+        
+        if (result.recordset[0]?.ErrorMessage) {
+          return res.status(400).json({
+            success: false,
+            message: result.recordset[0].ErrorMessage
+          });
+        }
+        
+        return res.json({
+          success: true,
+          review: result.recordset[0],
+          photosSkipped: true // Indicate photos weren't saved
+        });
+      } catch (fallbackErr) {
+        return res.status(500).json({ 
+          success: false,
+          message: 'Failed to submit review',
+          error: fallbackErr.message 
+        });
+      }
+    }
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to submit review',
+      error: err.message 
+    });
+  }
+});
+
 // GET /api/vendors/reviews/vendor/:vendorProfileId - Get reviews for a vendor
 router.get('/reviews/vendor/:vendorProfileId', async (req, res) => {
   try {

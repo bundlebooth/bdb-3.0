@@ -155,11 +155,76 @@ async function sendPendingPaymentReminders() {
   } catch (error) { console.error('[SCHEDULER] Error sending pending payment reminders:', error.message); }
 }
 
+/**
+ * Send review request emails the morning after the event date
+ * Only sends to clients who have completed (paid) bookings where the event has passed
+ */
+async function sendPostEventReviewRequests() {
+  try {
+    const pool = await poolPromise;
+    const frontendUrl = process.env.FRONTEND_URL || 'https://www.planbeau.com';
+    const platformName = process.env.PLATFORM_NAME || 'Planbeau';
+    
+    // Get bookings where event was yesterday and payment is complete
+    const result = await pool.request().execute('admin.sp_GetPostEventReviewRequests');
+    const bookings = result.recordset || [];
+    
+    if (bookings.length === 0) {
+      console.log('[SCHEDULER] No post-event review requests to send');
+      return 0;
+    }
+    
+    let sent = 0;
+    for (const booking of bookings) {
+      try {
+        const eventDate = new Date(booking.EventDate).toLocaleDateString('en-US', { 
+          weekday: 'long', 
+          year: 'numeric', 
+          month: 'long', 
+          day: 'numeric' 
+        });
+        const reviewUrl = `${frontendUrl}/review/${booking.BookingID}`;
+        
+        await sendTemplatedEmail(
+          'review_request',
+          booking.ClientEmail,
+          booking.ClientName,
+          {
+            clientName: booking.ClientName,
+            vendorName: booking.VendorName,
+            serviceName: booking.ServiceName || 'Service',
+            eventDate: eventDate,
+            reviewUrl: reviewUrl,
+            platformName: platformName,
+            platformUrl: frontendUrl
+          },
+          booking.ClientUserID,
+          booking.BookingID,
+          null,
+          'reviewRequests'
+        );
+        
+        console.log('[SCHEDULER] Sent review request for booking ' + booking.BookingID + ' to ' + booking.ClientEmail);
+        sent++;
+      } catch (err) {
+        console.error('[SCHEDULER] Failed to send review request for booking ' + booking.BookingID + ':', err.message);
+      }
+    }
+    
+    console.log('[SCHEDULER] Sent ' + sent + ' post-event review requests');
+    return sent;
+  } catch (error) {
+    console.error('[SCHEDULER] Error sending post-event review requests:', error.message);
+    return 0;
+  }
+}
+
 async function runScheduledEmails() {
   console.log('[SCHEDULER] Running scheduled email tasks...');
   await queueUpcomingEventReminders();
   await sendPendingApprovalReminders();
   await sendPendingPaymentReminders();
+  await sendPostEventReviewRequests();
   const result = await processEmailQueue();
   console.log('[SCHEDULER] Queue processed: ' + result.sent + ' sent, ' + result.failed + ' failed');
 }
@@ -177,4 +242,4 @@ function startEmailScheduler() {
   setInterval(processEmailQueue, 5 * 60 * 1000);
 }
 
-module.exports = { queueEmail, processEmailQueue, getQueueStats, getQueueItems, cancelQueuedEmail, runScheduledEmails, startEmailScheduler, queueUpcomingEventReminders, sendPendingApprovalReminders, sendPendingPaymentReminders };
+module.exports = { queueEmail, processEmailQueue, getQueueStats, getQueueItems, cancelQueuedEmail, runScheduledEmails, startEmailScheduler, queueUpcomingEventReminders, sendPendingApprovalReminders, sendPendingPaymentReminders, sendPostEventReviewRequests };
