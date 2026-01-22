@@ -1,10 +1,12 @@
 import React from 'react';
+import { useLocalization } from '../context/LocalizationContext';
 
 /**
  * Unified ServiceCard component used across Vendor Profile, Business Profile, and Booking pages
  * Ensures consistent display of service information
  */
 function ServiceCard({ service, variant = 'display', isSelected = false, onSelect = null }) {
+  const { formatCurrency } = useLocalization();
   const serviceName = service.ServiceName || service.name || service.Name || 'Unnamed Service';
   const serviceDescription = service.Description || service.description || service.vendorDescription || '';
   const categoryName = service.CategoryName || service.category || service.Category || '';
@@ -37,8 +39,8 @@ function ServiceCard({ service, variant = 'display', isSelected = false, onSelec
   // Format pricing display - professional and clean
   const getPricingDisplay = () => {
     if (pricingModel === 'time_based' && baseRate) {
-      const base = `$${parseFloat(baseRate).toFixed(0)}`;
-      const overtime = overtimeRate ? `$${parseFloat(overtimeRate).toFixed(0)}` : null;
+      const base = formatCurrency(parseFloat(baseRate), null, { showCents: false });
+      const overtime = overtimeRate ? formatCurrency(parseFloat(overtimeRate), null, { showCents: false }) : null;
       return { 
         main: base,
         sub: 'Base price',
@@ -47,21 +49,21 @@ function ServiceCard({ service, variant = 'display', isSelected = false, onSelec
       };
     } else if (pricingModel === 'fixed_price' && fixedPrice) {
       return { 
-        main: `$${parseFloat(fixedPrice).toFixed(0)}`,
+        main: formatCurrency(parseFloat(fixedPrice), null, { showCents: false }),
         sub: 'Fixed price',
         overtime: null,
         overtimeSub: null
       };
     } else if (pricingModel === 'per_attendee' && pricePerPerson) {
       return { 
-        main: `$${parseFloat(pricePerPerson).toFixed(0)}`,
+        main: formatCurrency(parseFloat(pricePerPerson), null, { showCents: false }),
         sub: 'Per person',
         overtime: null,
         overtimeSub: null
       };
     } else if (fixedPrice) {
       return { 
-        main: `$${parseFloat(fixedPrice).toFixed(0)}`,
+        main: formatCurrency(parseFloat(fixedPrice), null, { showCents: false }),
         sub: 'Per service',
         overtime: null,
         overtimeSub: null

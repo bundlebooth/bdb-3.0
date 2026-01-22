@@ -1,6 +1,7 @@
 import React from 'react';
 import './PackageServiceCard.css';
 import { ActionButtonGroup, EditButton, DeleteButton } from './common/UIComponents';
+import { useLocalization } from '../context/LocalizationContext';
 
 /**
  * Universal Package/Service Card Component
@@ -34,6 +35,7 @@ export const ServiceCard = ({
   showActions = false,
   selectable = false 
 }) => {
+  const { formatCurrency } = useLocalization();
   const name = service.ServiceName || service.serviceName || service.name || service.Name || '';
   const description = service.ServiceDescription || service.Description || service.description || service.vendorDescription || service.VendorDescription || service.PredefinedDescription || '';
   const imageURL = service.ImageURL || service.imageURL || service.Image || '';
@@ -103,7 +105,7 @@ export const ServiceCard = ({
   };
 
   const pricing = getPricing();
-  const priceDisplay = pricing.price > 0 ? `$${pricing.price.toFixed(0)}` : 'Price TBD';
+  const priceDisplay = pricing.price > 0 ? formatCurrency(pricing.price, null, { showCents: false }) : 'Price TBD';
   
   // Get min/max attendees for per_attendee pricing
   const minAttendees = service.MinimumAttendees || service.minimumAttendees || null;
@@ -176,8 +178,8 @@ export const ServiceCard = ({
               <div className="psc-card-pricing">
                 {isOnSale ? (
                   <>
-                    <span className="psc-price">${parseFloat(salePrice).toFixed(0)}</span>
-                    <span className="psc-price-original">${parseFloat(regularPrice).toFixed(0)}</span>
+                    <span className="psc-price">{formatCurrency(parseFloat(salePrice), null, { showCents: false })}</span>
+                    <span className="psc-price-original">{formatCurrency(parseFloat(regularPrice), null, { showCents: false })}</span>
                   </>
                 ) : (
                   <span className="psc-price">{priceDisplay}</span>
@@ -262,6 +264,7 @@ export const PackageCard = ({
   showActions = false,
   selectable = false 
 }) => {
+  const { formatCurrency } = useLocalization();
   const name = pkg.PackageName || pkg.name || '';
   const description = pkg.Description || pkg.description || '';
   const imageURL = pkg.ImageURL || pkg.imageURL || '';
@@ -351,11 +354,11 @@ export const PackageCard = ({
               <div className="psc-card-pricing">
                 {isOnSale ? (
                   <>
-                    <span className="psc-price">${salePrice.toFixed(0)}</span>
-                    <span className="psc-price-original">${price.toFixed(0)}</span>
+                    <span className="psc-price">{formatCurrency(salePrice, null, { showCents: false })}</span>
+                    <span className="psc-price-original">{formatCurrency(price, null, { showCents: false })}</span>
                   </>
                 ) : (
-                  <span className="psc-price">${price.toFixed(0)}</span>
+                  <span className="psc-price">{formatCurrency(price, null, { showCents: false })}</span>
                 )}
                 <span className="psc-price-suffix">{getPriceSuffix()}</span>
               </div>

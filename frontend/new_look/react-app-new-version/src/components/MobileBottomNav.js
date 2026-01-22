@@ -2,11 +2,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
+import { useTranslation } from '../hooks/useTranslation';
 
 function MobileBottomNav({ onOpenDashboard, onOpenProfile, onOpenMessages, onOpenMap, onCloseDashboard }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { currentUser } = useAuth();
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState(null);
   const [mobileMapOpen, setMobileMapOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
@@ -233,7 +235,7 @@ function MobileBottomNav({ onOpenDashboard, onOpenProfile, onOpenMessages, onOpe
         onClick={handleExploreClick}
       >
         <i className="fas fa-compass"></i>
-        <span className="nav-label">Explore</span>
+        <span className="nav-label">{t('nav.explore')}</span>
       </button>
       
       {/* Map button - always visible on all allowed pages */}
@@ -243,7 +245,7 @@ function MobileBottomNav({ onOpenDashboard, onOpenProfile, onOpenMessages, onOpe
         onClick={handleMapClick}
       >
         <i className="fas fa-map"></i>
-        <span className="nav-label">Map</span>
+        <span className="nav-label">{t('common.map', 'Map')}</span>
       </button>
       
       <button 
@@ -252,7 +254,7 @@ function MobileBottomNav({ onOpenDashboard, onOpenProfile, onOpenMessages, onOpe
         onClick={handleForumClick}
       >
         <i className="fas fa-comments"></i>
-        <span className="nav-label">Forum</span>
+        <span className="nav-label">{t('common.forum', 'Forum')}</span>
       </button>
       
       <button 
@@ -261,7 +263,7 @@ function MobileBottomNav({ onOpenDashboard, onOpenProfile, onOpenMessages, onOpe
         onClick={handleMessagesClick}
       >
         <i className="fas fa-envelope"></i>
-        <span className="nav-label">Messages</span>
+        <span className="nav-label">{t('sidebar.messages')}</span>
       </button>
       
       <button 
@@ -291,7 +293,7 @@ function MobileBottomNav({ onOpenDashboard, onOpenProfile, onOpenMessages, onOpe
         ) : (
           <i className="fas fa-user"></i>
         )}
-        <span className="nav-label">{currentUser ? 'Account' : 'Login'}</span>
+        <span className="nav-label">{currentUser ? t('nav.account') : t('nav.logIn')}</span>
       </button>
     </nav>
   );

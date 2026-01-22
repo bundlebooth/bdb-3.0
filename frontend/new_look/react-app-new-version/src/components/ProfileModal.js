@@ -156,6 +156,15 @@ function ProfileModal({ isOpen, onClose }) {
         setTimeout(() => {
           window.location.href = '/become-a-vendor';
         }, 500);
+      } else {
+        // Check for post-login redirect (from email deep links)
+        const postLoginRedirect = sessionStorage.getItem('postLoginRedirect');
+        if (postLoginRedirect) {
+          sessionStorage.removeItem('postLoginRedirect');
+          setTimeout(() => {
+            window.location.href = postLoginRedirect;
+          }, 300);
+        }
       }
 
       // Clear pending credential
@@ -281,6 +290,15 @@ function ProfileModal({ isOpen, onClose }) {
       
       showBanner('Successfully logged in!', 'success');
       onClose();
+      
+      // Check for post-login redirect (from email deep links)
+      const postLoginRedirect = sessionStorage.getItem('postLoginRedirect');
+      if (postLoginRedirect) {
+        sessionStorage.removeItem('postLoginRedirect');
+        setTimeout(() => {
+          window.location.href = postLoginRedirect;
+        }, 300);
+      }
     } catch (error) {
       console.error('Login error:', error);
       showBanner(error.message || 'Login failed', 'error');
@@ -356,6 +374,15 @@ function ProfileModal({ isOpen, onClose }) {
             detail: { section: 'vendor-settings' } 
           }));
         }, 500);
+      } else {
+        // Check for post-login redirect (from email deep links)
+        const postLoginRedirect = sessionStorage.getItem('postLoginRedirect');
+        if (postLoginRedirect) {
+          sessionStorage.removeItem('postLoginRedirect');
+          setTimeout(() => {
+            window.location.href = postLoginRedirect;
+          }, 300);
+        }
       }
     } catch (error) {
       console.error('Signup error:', error);
@@ -409,6 +436,15 @@ function ProfileModal({ isOpen, onClose }) {
       
       showBanner('Successfully verified!', 'success');
       onClose();
+      
+      // Check for post-login redirect (from email deep links)
+      const postLoginRedirect = sessionStorage.getItem('postLoginRedirect');
+      if (postLoginRedirect) {
+        sessionStorage.removeItem('postLoginRedirect');
+        setTimeout(() => {
+          window.location.href = postLoginRedirect;
+        }, 300);
+      }
     } catch (error) {
       console.error('2FA verification error:', error);
       showBanner('Invalid verification code', 'error');

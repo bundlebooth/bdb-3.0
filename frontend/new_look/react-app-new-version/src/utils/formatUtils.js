@@ -211,15 +211,40 @@ export function isFuture(date) {
 // CURRENCY FORMATTING
 // ============================================================
 
+// Currency configuration for localization
+const CURRENCY_CONFIG = {
+  CAD: { locale: 'en-CA', symbol: '$' },
+  USD: { locale: 'en-US', symbol: '$' },
+  EUR: { locale: 'de-DE', symbol: '€' },
+  GBP: { locale: 'en-GB', symbol: '£' },
+  AUD: { locale: 'en-AU', symbol: '$' },
+  MXN: { locale: 'es-MX', symbol: '$' },
+};
+
 /**
- * Format currency
+ * Get the user's selected currency from localStorage
+ * @returns {string} Currency code
+ */
+export function getSelectedCurrency() {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    return localStorage.getItem('planbeau_currency') || 'CAD';
+  }
+  return 'CAD';
+}
+
+/**
+ * Format currency with localization support
  * @param {number} amount - Amount to format
- * @param {string} currency - Currency code (default: CAD)
+ * @param {string} currency - Currency code (default: user's selected currency)
  * @param {Object} options - Additional options
  * @returns {string} Formatted currency
  */
-export function formatCurrency(amount, currency = 'CAD', options = {}) {
+export function formatCurrency(amount, currency = null, options = {}) {
   if (amount == null || isNaN(amount)) return '$0.00';
+  
+  // Use provided currency or get from localStorage
+  const currencyCode = currency || getSelectedCurrency();
+  const config = CURRENCY_CONFIG[currencyCode] || CURRENCY_CONFIG.CAD;
   
   const { showCents = true, compact = false } = options;
   
@@ -229,15 +254,31 @@ export function formatCurrency(amount, currency = 'CAD', options = {}) {
     const suffix = suffixes[tier] || '';
     const scale = Math.pow(10, tier * 3);
     const scaled = amount / scale;
-    return `$${scaled.toFixed(1)}${suffix}`;
+    return `${config.symbol}${scaled.toFixed(1)}${suffix}`;
   }
   
-  return new Intl.NumberFormat('en-CA', {
-    style: 'currency',
-    currency,
-    minimumFractionDigits: showCents ? 2 : 0,
-    maximumFractionDigits: showCents ? 2 : 0
-  }).format(amount);
+  try {
+    return new Intl.NumberFormat(config.locale, {
+      style: 'currency',
+      currency: currencyCode,
+      minimumFractionDigits: showCents ? 2 : 0,
+      maximumFractionDigits: showCents ? 2 : 0
+    }).format(amount);
+  } catch {
+    return `${config.symbol}${amount.toFixed(showCents ? 2 : 0)}`;
+  }
+}
+
+/**
+ * Format currency with explicit currency code display (e.g., "$150.00 CAD")
+ * @param {number} amount - Amount to format
+ * @param {boolean} showCode - Whether to show currency code
+ * @returns {string} Formatted currency with code
+ */
+export function formatCurrencyWithCode(amount, showCode = true) {
+  const currencyCode = getSelectedCurrency();
+  const formatted = formatCurrency(amount, currencyCode);
+  return showCode ? `${formatted} ${currencyCode}` : formatted;
 }
 
 /**

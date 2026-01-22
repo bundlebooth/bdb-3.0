@@ -4,10 +4,12 @@ import { useAuth } from '../../../context/AuthContext';
 import { apiGet } from '../../../utils/api';
 import { buildInvoiceUrl } from '../../../utils/urlHelpers';
 import { formatDate, normalizeString } from '../../../utils/helpers';
+import { useLocalization } from '../../../context/LocalizationContext';
 
 function VendorInvoicesSection() {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
+  const { formatCurrency } = useLocalization();
   const [loading, setLoading] = useState(true);
   const [invoices, setInvoices] = useState([]);
   const [vendorProfileId, setVendorProfileId] = useState(null);
@@ -283,7 +285,7 @@ function VendorInvoicesSection() {
                 }
                 
                 const name = b.ClientName || 'Client';
-                const total = b.TotalAmount != null ? `$${Number(b.TotalAmount).toFixed(2)}` : '$0.00';
+                const total = formatCurrency(b.TotalAmount || 0);
                 const statusRaw = (b.InvoiceStatus || b.Status || 'pending').toString().toLowerCase();
                 const statusLabel = statusRaw === 'confirmed' ? 'Accepted' : statusRaw.charAt(0).toUpperCase() + statusRaw.slice(1);
                 const svc = b.ServicesSummary || b.ServiceName || 'Service';

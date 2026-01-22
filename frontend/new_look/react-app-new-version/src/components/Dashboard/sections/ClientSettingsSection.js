@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../context/AuthContext';
+import { useTranslation } from '../../../hooks/useTranslation';
 import PersonalDetailsPanel from '../panels/PersonalDetailsPanel';
 import CommunicationPreferencesPanel from '../panels/CommunicationPreferencesPanel';
 import SecurityPanel from '../panels/SecurityPanel';
 import LocationPanel from '../panels/LocationPanel';
 import DeleteAccountPanel from '../panels/DeleteAccountPanel';
+import LanguageCurrencyPanel from '../panels/LanguageCurrencyPanel';
 
 function ClientSettingsSection() {
   const { currentUser } = useAuth();
+  const { t } = useTranslation();
   const [activePanel, setActivePanel] = useState(null);
 
   // Close any open panel when user changes
@@ -19,36 +22,43 @@ function ClientSettingsSection() {
     { 
       id: 'personal-details', 
       icon: 'fa-user', 
-      title: 'Personal details', 
-      description: 'Contact information, password, authentication methods and your active sessions.',
+      title: t('settings.personalDetails'), 
+      description: t('settings.personalDetailsDesc'),
       category: 'personal'
     },
     { 
       id: 'location', 
       icon: 'fa-map-marker-alt', 
-      title: 'Location & Tax', 
-      description: 'Set your province for accurate tax calculation on payments.',
+      title: t('settings.location'), 
+      description: t('settings.locationDesc'),
       category: 'personal'
     },
     { 
       id: 'communication-preferences', 
       icon: 'fa-envelope', 
-      title: 'Communication preferences', 
-      description: 'Customise the emails, SMS, and push notifications you receive.',
+      title: t('settings.communicationPreferences'), 
+      description: t('settings.communicationPreferencesDesc'),
+      category: 'personal'
+    },
+    { 
+      id: 'language-currency', 
+      icon: 'fa-globe', 
+      title: t('settings.languageCurrency'), 
+      description: t('settings.languageCurrencyDesc'),
       category: 'personal'
     },
     { 
       id: 'security', 
       icon: 'fa-shield-alt', 
-      title: 'Security', 
-      description: 'Manage your account security, authorised apps, and shared resources.',
+      title: t('settings.security'), 
+      description: t('settings.securityDesc'),
       category: 'account'
     },
     { 
       id: 'delete-account', 
       icon: 'fa-trash-alt', 
-      title: 'Delete account', 
-      description: 'Permanently delete your account and all associated data.',
+      title: t('settings.deleteAccount'), 
+      description: t('settings.deleteAccountDesc'),
       category: 'account',
       danger: true
     }
@@ -68,6 +78,8 @@ function ClientSettingsSection() {
         return <SecurityPanel key={userId} onBack={() => setActivePanel(null)} />;
       case 'delete-account':
         return <DeleteAccountPanel key={userId} onBack={() => setActivePanel(null)} />;
+      case 'language-currency':
+        return <LanguageCurrencyPanel key={userId} onBack={() => setActivePanel(null)} />;
       default:
         return null;
     }

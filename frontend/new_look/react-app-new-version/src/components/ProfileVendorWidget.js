@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { API_BASE_URL } from '../config';
+import { useLocalization } from '../context/LocalizationContext';
 import './ProfileVendorWidget.css';
 
 const ProfileVendorWidget = ({ 
@@ -17,6 +18,7 @@ const ProfileVendorWidget = ({
   onMessage
 }) => {
   const navigate = useNavigate();
+  const { formatCurrency } = useLocalization();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedStartTime, setSelectedStartTime] = useState(null);
@@ -789,8 +791,8 @@ const ProfileVendorWidget = ({
             <span>${total.toFixed(2)}</span>
           </div>
           <div className="gbw-breakdown-total">
-            <span>Total CAD</span>
-            <span>${total.toFixed(2)}</span>
+            <span>Total</span>
+            <span>{formatCurrency(total)}</span>
           </div>
         </div>
       )}

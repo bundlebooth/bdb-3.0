@@ -166,21 +166,15 @@ function TrendingVendors({ onViewVendor }) {
             ))
           ) : (
             trendingVendors.map((vendor, index) => {
-              // Add analytics badge showing view count or engagement
+              // Add analytics badge showing view count - always show views for trending
               const viewCount = vendor.viewCount7Days || vendor.profileViews || vendor.ViewCount7Days || 0;
               let badgeText;
               if (viewCount > 0) {
-                badgeText = `${viewCount} views`;
+                badgeText = `${viewCount} view${viewCount !== 1 ? 's' : ''}`;
+              } else if (index < 3) {
+                badgeText = `#${index + 1} Trending`;
               } else {
-                // Calculate engagement score for display
-                const engagementScore = ((vendor.bookingCount || 0) * 3) + ((vendor.favoriteCount || 0) * 2) + ((vendor.totalReviews || vendor.reviewCount || 0));
-                if (engagementScore > 10) {
-                  badgeText = `${engagementScore} engagement score`;
-                } else if (index < 3) {
-                  badgeText = `#${index + 1} Trending`;
-                } else {
-                  badgeText = 'Trending now';
-                }
+                badgeText = 'Trending now';
               }
               const vendorWithBadge = {
                 ...vendor,

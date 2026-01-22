@@ -4,10 +4,14 @@ import { useAuth } from '../../../context/AuthContext';
 import { apiGet } from '../../../utils/api';
 import { buildInvoiceUrl } from '../../../utils/urlHelpers';
 import { formatDate, normalizeString } from '../../../utils/helpers';
+import { useLocalization } from '../../../context/LocalizationContext';
+import { useTranslation } from '../../../hooks/useTranslation';
 
 function ClientInvoicesSection() {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
+  const { formatCurrency } = useLocalization();
+  const { t } = useTranslation();
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -178,7 +182,7 @@ function ClientInvoicesSection() {
       <div id="invoices-section">
         <div className="dashboard-card">
           <div id="client-invoices-list">
-            <p>No invoices available.</p>
+            <p>{t('invoices.noInvoices')}</p>
           </div>
         </div>
       </div>
@@ -205,7 +209,7 @@ function ClientInvoicesSection() {
         <div style={{ padding: '16px 20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
           <input 
             type="text" 
-            placeholder="Search invoices..." 
+            placeholder={t('invoices.searchInvoices', 'Search invoices...')} 
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             style={{ 
@@ -219,7 +223,7 @@ function ClientInvoicesSection() {
               outline: 'none'
             }}
           />
-          <span style={{ color: '#6b7280', fontSize: '14px' }}>{filteredInvoices.length} invoices</span>
+          <span style={{ color: '#6b7280', fontSize: '14px' }}>{filteredInvoices.length} {t('invoices.title').toLowerCase()}</span>
         </div>
 
         {/* Mobile Card View - DISABLED, using scrollable table instead */}
@@ -241,7 +245,7 @@ function ClientInvoicesSection() {
               }
             }
             const name = b.VendorName || 'Vendor';
-            const total = b.TotalAmount != null ? `$${Number(b.TotalAmount).toFixed(2)}` : '$0.00';
+            const total = formatCurrency(b.TotalAmount || 0);
             const statusRaw = (b.InvoiceStatus || b.Status || 'pending').toString().toLowerCase();
             const statusLabel = statusRaw === 'confirmed' ? 'Accepted' : statusRaw.charAt(0).toUpperCase() + statusRaw.slice(1);
             const svc = b.ServicesSummary || b.ServiceName || 'Service';
@@ -363,7 +367,7 @@ function ClientInvoicesSection() {
                 }
                 
                 const name = b.VendorName || 'Vendor';
-                const total = b.TotalAmount != null ? `$${Number(b.TotalAmount).toFixed(2)}` : '$0.00';
+                const total = formatCurrency(b.TotalAmount || 0);
                 const statusRaw = (b.InvoiceStatus || b.Status || 'pending').toString().toLowerCase();
                 const statusLabel = statusRaw === 'confirmed' ? 'Accepted' : statusRaw.charAt(0).toUpperCase() + statusRaw.slice(1);
                 const svc = b.ServicesSummary || b.ServiceName || 'Service';

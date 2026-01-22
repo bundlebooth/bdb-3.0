@@ -6,12 +6,16 @@ import { apiGet, apiPost } from '../../../utils/api';
 import { buildInvoiceUrl } from '../../../utils/urlHelpers';
 import { getBookingStatusConfig } from '../../../utils/bookingStatus';
 import { decodeBookingId, isPublicId } from '../../../utils/hashIds';
+import { useLocalization } from '../../../context/LocalizationContext';
+import { useTranslation } from '../../../hooks/useTranslation';
 import BookingDetailsModal from '../BookingDetailsModal';
 import BookingCard from '../BookingCard';
 
 function ClientBookingsSection({ onPayNow, onOpenChat, deepLinkBookingId, onDeepLinkHandled }) {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
+  const { formatCurrency } = useLocalization();
+  const { t } = useTranslation();
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
   // Handle window resize for responsive layout
@@ -259,7 +263,7 @@ function ClientBookingsSection({ onPayNow, onOpenChat, deepLinkBookingId, onDeep
       if (response.ok) {
         const data = await response.json();
         if (data.refund?.amount > 0) {
-          showBanner(`Booking cancelled. Refund of $${data.refund.amount.toFixed(2)} will be processed.`, 'success');
+          showBanner(`Booking cancelled. Refund of ${formatCurrency(data.refund.amount)} will be processed.`, 'success');
         } else {
           showBanner('Booking cancelled successfully', 'success');
         }
@@ -422,9 +426,9 @@ function ClientBookingsSection({ onPayNow, onOpenChat, deepLinkBookingId, onDeep
                 </div>
                 <div style={{ fontSize: '0.9rem', color: '#166534' }}>
                   {refundPreview.refundPercent === 100 ? (
-                    <p style={{ margin: 0 }}>You will receive a <strong>full refund</strong> of ${refundPreview.refundAmount?.toFixed(2) || '0.00'}</p>
+                    <p style={{ margin: 0 }}>You will receive a <strong>full refund</strong> of {formatCurrency(refundPreview.refundAmount || 0)}</p>
                   ) : refundPreview.refundPercent > 0 ? (
-                    <p style={{ margin: 0 }}>Based on the vendor's cancellation policy, you will receive a <strong>{refundPreview.refundPercent}% refund</strong> (${refundPreview.refundAmount?.toFixed(2) || '0.00'})</p>
+                    <p style={{ margin: 0 }}>Based on the vendor's cancellation policy, you will receive a <strong>{refundPreview.refundPercent}% refund</strong> ({formatCurrency(refundPreview.refundAmount || 0)})</p>
                   ) : (
                     <p style={{ margin: 0, color: '#dc2626' }}>Based on the vendor's cancellation policy, <strong>no refund</strong> is available at this time.</p>
                   )}
@@ -507,42 +511,42 @@ function ClientBookingsSection({ onPayNow, onOpenChat, deepLinkBookingId, onDeep
             data-tab="all"
             onClick={() => setActiveTab('all')}
           >
-            All
+            {t('bookings.all')}
           </button>
           <button 
             className={`booking-tab ${activeTab === 'pending' ? 'active' : ''}`} 
             data-tab="pending"
             onClick={() => setActiveTab('pending')}
           >
-            Pending
+            {t('bookings.pending')}
           </button>
           <button 
             className={`booking-tab ${activeTab === 'accepted' ? 'active' : ''}`} 
             data-tab="accepted"
             onClick={() => setActiveTab('accepted')}
           >
-            Upcoming
+            {t('bookings.upcoming')}
           </button>
           <button 
             className={`booking-tab ${activeTab === 'completed' ? 'active' : ''}`} 
             data-tab="completed"
             onClick={() => setActiveTab('completed')}
           >
-            Completed
+            {t('bookings.completed')}
           </button>
           <button 
             className={`booking-tab ${activeTab === 'cancelled' ? 'active' : ''}`} 
             data-tab="cancelled"
             onClick={() => setActiveTab('cancelled')}
           >
-            Cancelled
+            {t('bookings.cancelled')}
           </button>
           <button 
             className={`booking-tab ${activeTab === 'declined' ? 'active' : ''}`} 
             data-tab="declined"
             onClick={() => setActiveTab('declined')}
           >
-            Declined
+            {t('bookings.declined')}
           </button>
         </div>
         {loading ? (
@@ -554,15 +558,15 @@ function ClientBookingsSection({ onPayNow, onOpenChat, deepLinkBookingId, onDeep
             {/* Sort dropdown - below tabs */}
             <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '12px 16px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '13px', color: '#6b7280' }}>Sort by:</span>
+                <span style={{ fontSize: '13px', color: '#6b7280' }}>{t('common.sortBy', 'Sort by')}:</span>
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
                   style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '13px', color: '#374151', background: 'white', cursor: 'pointer' }}
                 >
-                  <option value="eventDate">Event Date</option>
-                  <option value="requestedOn">Requested On</option>
-                  <option value="vendor">Vendor Name</option>
+                  <option value="eventDate">{t('bookings.eventDate')}</option>
+                  <option value="requestedOn">{t('bookings.requestedOn', 'Requested On')}</option>
+                  <option value="vendor">{t('bookings.vendorName', 'Vendor Name')}</option>
                 </select>
               </div>
             </div>
@@ -575,7 +579,7 @@ function ClientBookingsSection({ onPayNow, onOpenChat, deepLinkBookingId, onDeep
                   {filteredBookings.length > 0 ? (
                     filteredBookings.map(renderBookingItem)
                   ) : (
-                    <div className="empty-state">No items.</div>
+                    <div className="empty-state">{t('bookings.noBookings')}</div>
                   )}
                 </div>
               </div>

@@ -146,6 +146,13 @@ function DeepLinkPage() {
                 errorMessage: 'This booking has been cancelled and payment is no longer required.'
               };
             }
+            if (response.isExpired) {
+              return {
+                valid: false,
+                errorTitle: 'Payment Link Expired',
+                errorMessage: 'This payment link has expired. The event date has already passed.'
+              };
+            }
             return {
               valid: true,
               redirectUrl: `/payment/${resourceId}`

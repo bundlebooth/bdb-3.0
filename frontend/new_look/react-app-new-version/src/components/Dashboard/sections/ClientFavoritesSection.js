@@ -3,10 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import { apiGet, apiPost } from '../../../utils/api';
 import { buildVendorProfileUrl } from '../../../utils/urlHelpers';
+import { useLocalization } from '../../../context/LocalizationContext';
 
 function ClientFavoritesSection() {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
+  const { formatCurrency } = useLocalization();
   const [favorites, setFavorites] = useState([]);
   const [loading, setLoading] = useState(true);
   const [openMenuId, setOpenMenuId] = useState(null);
@@ -86,7 +88,7 @@ function ClientFavoritesSection() {
     const vendorId = vendor.VendorProfileID || vendor.id;
     const locationText = [vendor.City, vendor.State].filter(Boolean).join(' ');
     const rawPrice = vendor.MinPrice ?? vendor.startingPrice;
-    const priceDisplay = rawPrice ? `$${Math.round(rawPrice)} CAD` : 'Contact for pricing';
+    const priceDisplay = rawPrice ? formatCurrency(rawPrice, null, { showCents: false }) : 'Contact for pricing';
     const ratingValue = parseFloat(vendor.averageRating || 0);
     const reviewCount = vendor.totalReviews || 0;
     const isMenuOpen = openMenuId === vendorId;
@@ -213,7 +215,7 @@ function ClientFavoritesSection() {
             {rawPrice ? (
               <>
                 <span style={{ color: '#717171' }}>Starting from</span>
-                <span style={{ fontWeight: 600, color: '#222222' }}>${Math.round(rawPrice).toLocaleString()} CAD</span>
+                <span style={{ fontWeight: 600, color: '#222222' }}>{formatCurrency(rawPrice, null, { showCents: false })}</span>
               </>
             ) : (
               <span style={{ color: '#717171' }}>Contact for pricing</span>

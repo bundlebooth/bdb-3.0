@@ -349,7 +349,7 @@ export function ServicesStep({ formData, setFormData }) {
                 )}
                 {isSelected && (
                   <div className="service-pricing">
-                    <label>Your Price (CAD)</label>
+                    <label>Your Price</label>
                     <input
                       type="number"
                       value={selectedService?.price || ''}

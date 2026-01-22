@@ -11,11 +11,13 @@ import Footer from '../components/Footer';
 import MobileBottomNav from '../components/MobileBottomNav';
 import MessagingWidget from '../components/MessagingWidget';
 import ProfileModal from '../components/ProfileModal';
+import { useTranslation } from '../hooks/useTranslation';
 import './LandingPage.css';
 
 function LandingPage() {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
+  const { t } = useTranslation();
   
   const [discoverySections, setDiscoverySections] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -301,15 +303,15 @@ function LandingPage() {
           {/* Text Content and Search Bar - positioned on left */}
           <div className="landing-hero-content">
             <div className="landing-hero-badge">
-              <span>Over 500 vendors</span>
+              <span>{t('landing.over500Vendors', 'Over 500 vendors')}</span>
               <span className="badge-dot">·</span>
-              <span>Trusted by 10K+ customers</span>
+              <span>{t('landing.trustedBy', 'Trusted by 10K+ customers')}</span>
             </div>
             
             <h1 className="landing-hero-title">
-              Find and book venues<br/>
-              for any event<br/>
-              imaginable
+              {t('landing.heroTitle', 'Find and book venues')}<br/>
+              {t('landing.heroTitle2', 'for any event')}<br/>
+              {t('landing.heroTitle3', 'imaginable')}
             </h1>
             
             {/* Search Bar - inside content, extends into image area */}
@@ -320,13 +322,13 @@ function LandingPage() {
                   <path d="M21 21l-4.35-4.35"/>
                 </svg>
                 <div className="landing-search-field-inner">
-                  <span className="landing-search-label">EVENT TYPE</span>
+                  <span className="landing-search-label">{t('landing.eventType', 'EVENT TYPE')}</span>
                   <select 
                     value={eventType}
                     onChange={(e) => setEventType(e.target.value)}
                     className="landing-search-select"
                   >
-                    <option value="">What are you planning?</option>
+                    <option value="">{t('landing.whatPlanning', 'What are you planning?')}</option>
                     {eventTypes.map(type => (
                       <option key={type} value={type}>{type}</option>
                     ))}
@@ -343,10 +345,10 @@ function LandingPage() {
                   <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
                 </svg>
                 <div className="landing-search-field-inner">
-                  <span className="landing-search-label">GUESTS</span>
+                  <span className="landing-search-label">{t('landing.guests', 'GUESTS')}</span>
                   <input 
                     type="text" 
-                    placeholder="Number of guests"
+                    placeholder={t('landing.numberOfGuests', 'Number of guests')}
                     value={searchGuests}
                     onChange={(e) => setSearchGuests(e.target.value)}
                     className="landing-search-input"
@@ -362,11 +364,11 @@ function LandingPage() {
                   <circle cx="12" cy="10" r="3"/>
                 </svg>
                 <div className="landing-search-field-inner">
-                  <span className="landing-search-label">LOCATION</span>
+                  <span className="landing-search-label">{t('landing.location', 'LOCATION')}</span>
                   <input 
                     ref={locationInputRef}
                     type="text" 
-                    placeholder="Toronto"
+                    placeholder={t('landing.locationPlaceholder', 'Toronto')}
                     value={searchLocation}
                     onChange={(e) => setSearchLocation(e.target.value)}
                     className="landing-search-input"
@@ -375,7 +377,7 @@ function LandingPage() {
               </div>
               
               <button type="submit" className="landing-search-btn">
-                Search
+                {t('common.search')}
               </button>
             </form>
           </div>
@@ -392,10 +394,10 @@ function LandingPage() {
             <div className="feature-text-side">
               <div className="feature-badge">
                 <i className="fas fa-compass"></i>
-                <span>Discover</span>
+                <span>{t('landing.discover', 'Discover')}</span>
               </div>
-              <h2>Find the perfect vendors for your event</h2>
-              <p>Browse <strong>500+ verified vendors</strong> across Canada. From photographers to caterers, venues to DJs — we've curated the best so you don't have to search endlessly.</p>
+              <h2>{t('landing.findPerfectVendors', 'Find the perfect vendors for your event')}</h2>
+              <p>{t('landing.browseVendorsDesc', "Browse 500+ verified vendors across Canada. From photographers to caterers, venues to DJs — we've curated the best so you don't have to search endlessly.")}</p>
               <ul className="feature-list">
                 <li><i className="fas fa-check-circle"></i> Photographers & Videographers</li>
                 <li><i className="fas fa-check-circle"></i> Caterers & Food Services</li>
@@ -403,7 +405,7 @@ function LandingPage() {
                 <li><i className="fas fa-check-circle"></i> DJs, Musicians & Entertainment</li>
               </ul>
               <button className="feature-cta" onClick={() => { window.scrollTo(0, 0); navigate('/explore'); }}>
-                Explore Vendors <i className="fas fa-arrow-right"></i>
+                {t('landing.exploreVendors', 'Explore Vendors')} <i className="fas fa-arrow-right"></i>
               </button>
             </div>
             <div className="feature-image-side">
@@ -429,19 +431,19 @@ function LandingPage() {
           <div className="stats-grid">
             <div className="stat-item">
               <div className="stat-number" data-target="500">500+</div>
-              <div className="stat-label">Verified Vendors</div>
+              <div className="stat-label">{t('landing.verifiedVendors', 'Verified Vendors')}</div>
             </div>
             <div className="stat-item">
               <div className="stat-number" data-target="10000">10K+</div>
-              <div className="stat-label">Events Booked</div>
+              <div className="stat-label">{t('landing.eventsBooked', 'Events Booked')}</div>
             </div>
             <div className="stat-item">
               <div className="stat-number" data-target="50">50+</div>
-              <div className="stat-label">Cities Covered</div>
+              <div className="stat-label">{t('landing.citiesCovered', 'Cities Covered')}</div>
             </div>
             <div className="stat-item">
               <div className="stat-number" data-target="4.9">4.9</div>
-              <div className="stat-label">Average Rating</div>
+              <div className="stat-label">{t('landing.averageRating', 'Average Rating')}</div>
             </div>
           </div>
         </div>
@@ -450,8 +452,8 @@ function LandingPage() {
       {/* 3. Browse by vendor type (Navigation) */}
       <section className="category-carousel-section">
         <div className="section-container">
-          <h2>Browse by vendor type</h2>
-          <p className="section-subtitle">Find the perfect vendors for every aspect of your event</p>
+          <h2>{t('landing.browseByType', 'Browse by vendor type')}</h2>
+          <p className="section-subtitle">{t('landing.browseByTypeDesc', 'Find the perfect vendors for every aspect of your event')}</p>
           <div className="carousel-wrapper">
             <div className="carousel-scroll">
               {vendorCategories.map((category, index) => (

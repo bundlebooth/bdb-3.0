@@ -18,6 +18,8 @@ import MessagingWidget from '../components/MessagingWidget';
 import { useVendorOnlineStatus } from '../hooks/useOnlineStatus';
 import { showBanner } from '../utils/helpers';
 import { extractVendorIdFromSlug, parseQueryParams, trackPageView, buildBookingUrl } from '../utils/urlHelpers';
+import { useLocalization } from '../context/LocalizationContext';
+import { useTranslation } from '../hooks/useTranslation';
 import ProfileVendorWidget from '../components/ProfileVendorWidget';
 import './VendorProfilePage.css';
 
@@ -25,6 +27,8 @@ function VendorProfilePage() {
   const { vendorSlug } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const { formatCurrency } = useLocalization();
+  const { t } = useTranslation();
   
   // Extract vendor ID from slug (supports both "138" and "business-name-138")
   const vendorId = extractVendorIdFromSlug(vendorSlug) || vendorSlug;
@@ -892,7 +896,7 @@ function VendorProfilePage() {
                     <span style={{ fontWeight: 500, color: '#111827' }}>{location}</span>
                     {area.TravelCost && parseFloat(area.TravelCost) > 0 && (
                       <span style={{ color: '#6b7280', fontSize: '0.8rem', marginLeft: '0.25rem' }}>
-                        (${parseFloat(area.TravelCost).toFixed(0)} fee)
+                        ({formatCurrency(parseFloat(area.TravelCost), null, { showCents: false })} fee)
                       </span>
                     )}
                   </div>
@@ -1211,7 +1215,7 @@ function VendorProfilePage() {
 
     return (
       <div className="content-section">
-        <h2>What we offer</h2>
+        <h2>{t('vendorProfile.whatWeOffer', 'What we offer')}</h2>
         
         {/* Tab Toggle - only show if both exist */}
         {hasPackages && hasServices && (
@@ -2695,7 +2699,7 @@ function VendorProfilePage() {
         <div className="sticky-bar-price">
           <span className="price-amount">
             {profile?.HourlyRate || profile?.BasePrice 
-              ? `from $${(profile?.HourlyRate || profile?.BasePrice).toFixed(0)}` 
+              ? `from ${formatCurrency(profile?.HourlyRate || profile?.BasePrice, null, { showCents: false })}` 
               : 'Contact for pricing'}
           </span>
           {(profile?.HourlyRate || profile?.BasePrice) && (
@@ -3096,16 +3100,16 @@ function VendorProfilePage() {
                     {selectedPackage.SalePrice && parseFloat(selectedPackage.SalePrice) < parseFloat(selectedPackage.Price) ? (
                       <>
                         <span style={{ fontSize: '1.5rem', fontWeight: 600, color: '#222' }}>
-                          ${parseFloat(selectedPackage.SalePrice).toFixed(0)}
+                          {formatCurrency(parseFloat(selectedPackage.SalePrice), null, { showCents: false })}
                         </span>
                         <span style={{ fontSize: '1rem', color: '#717171', textDecoration: 'line-through' }}>
-                          ${parseFloat(selectedPackage.Price).toFixed(0)}
+                          {formatCurrency(parseFloat(selectedPackage.Price), null, { showCents: false })}
                         </span>
                         <span style={{ color: '#e31c5f', fontSize: '0.875rem', fontWeight: 600 }}>SALE!</span>
                       </>
                     ) : (
                       <span style={{ fontSize: '1.5rem', fontWeight: 600, color: '#222' }}>
-                        ${parseFloat(selectedPackage.Price).toFixed(0)}
+                        {formatCurrency(parseFloat(selectedPackage.Price), null, { showCents: false })}
                       </span>
                     )}
                     <span style={{ fontSize: '1rem', color: '#717171' }}>
@@ -3167,7 +3171,7 @@ function VendorProfilePage() {
                   cursor: 'pointer'
                 }}
               >
-                Request Booking
+                {t('bookings.requestToBook', 'Request Booking')}
               </button>
             </div>
           </div>
@@ -3270,10 +3274,10 @@ function VendorProfilePage() {
                       return isOnSale ? (
                         <>
                           <span style={{ fontSize: '1.5rem', fontWeight: 600, color: '#222' }}>
-                            ${parseFloat(salePrice).toFixed(0)}
+                            {formatCurrency(parseFloat(salePrice), null, { showCents: false })}
                           </span>
                           <span style={{ fontSize: '1rem', color: '#717171', textDecoration: 'line-through' }}>
-                            ${price.toFixed(0)}
+                            {formatCurrency(price, null, { showCents: false })}
                           </span>
                           <span style={{ color: '#e31c5f', fontSize: '0.875rem', fontWeight: 600 }}>SALE!</span>
                           <span style={{ fontSize: '1rem', color: '#717171' }}>{suffix}</span>
@@ -3281,7 +3285,7 @@ function VendorProfilePage() {
                       ) : (
                         <>
                           <span style={{ fontSize: '1.5rem', fontWeight: 600, color: '#222' }}>
-                            ${price.toFixed(0)}
+                            {formatCurrency(price, null, { showCents: false })}
                           </span>
                           <span style={{ fontSize: '1rem', color: '#717171' }}>{suffix}</span>
                         </>

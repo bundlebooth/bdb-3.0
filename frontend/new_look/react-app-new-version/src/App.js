@@ -29,6 +29,7 @@ import DeepLinkPage from './pages/DeepLinkPage';
 import ReviewPage from './pages/ReviewPage';
 import CookieConsent from './components/CookieConsent';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { LocalizationProvider } from './context/LocalizationContext';
 import { useHeartbeat } from './hooks/useOnlineStatus';
 import './styles/MapControls.css';
 
@@ -144,10 +145,11 @@ function App() {
   }
 
   return (
-    <AuthProvider>
-      <Router>
-        <ScrollToTop />
-        <Routes>
+    <LocalizationProvider>
+      <AuthProvider>
+        <Router>
+          <ScrollToTop />
+          <Routes>
           <Route path="/" element={<HomeRoute />} />
           <Route path="/explore" element={<IndexPage />} />
           {/* Support both old format (/vendor/138) and new format (/vendor/business-name-138) */}
@@ -191,8 +193,9 @@ function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         <CookieConsent />
-      </Router>
-    </AuthProvider>
+        </Router>
+      </AuthProvider>
+    </LocalizationProvider>
   );
 }
 

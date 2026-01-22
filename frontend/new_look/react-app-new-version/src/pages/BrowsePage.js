@@ -698,11 +698,9 @@ function BrowsePage() {
           const engagementScore = (bookingCount * 3) + (favoriteCount * 2) + (totalReviews * 1) + (viewCount * 1);
           
           if (discoveryFilter === 'trending' || discoveryFilter === 'trending-vendors') {
-            // Show views if available, otherwise show engagement score
+            // Show views for trending vendors
             if (viewCount > 0) {
-              badge = `${viewCount.toLocaleString()} views`;
-            } else if (engagementScore > 0) {
-              badge = `${engagementScore} engagement`;
+              badge = `${viewCount.toLocaleString()} view${viewCount !== 1 ? 's' : ''}`;
             }
           } else if (discoveryFilter === 'most-booked' || discoveryFilter === 'popular') {
             if (bookingCount > 0) {
@@ -726,11 +724,9 @@ function BrowsePage() {
           } else if (discoveryFilter === 'premium') {
             badge = 'Premium vendor';
           } else {
-            // Default: show views or engagement if available
+            // Default: show views if available
             if (viewCount > 0) {
-              badge = `${viewCount.toLocaleString()} views`;
-            } else if (engagementScore > 0) {
-              badge = `${engagementScore} engagement`;
+              badge = `${viewCount.toLocaleString()} view${viewCount !== 1 ? 's' : ''}`;
             }
           }
           

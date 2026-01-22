@@ -8,15 +8,15 @@ import WhatsNewSidebar from './WhatsNewSidebar';
 import UnifiedSidebar from './UnifiedSidebar';
 import { getUnreadNotificationCount, updatePageTitle } from '../utils/notifications';
 import { buildBecomeVendorUrl } from '../utils/urlHelpers';
+import { useTranslation } from '../hooks/useTranslation';
 import './EnhancedSearchBar.css';
 
 const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick, onChatClick, onNotificationsClick }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { currentUser } = useAuth();
+  const { t } = useTranslation();
   
-  // Only show search bar on explore page, not on landing page
-  const isExplorePage = location.pathname === '/explore';
   const [searchQuery, setSearchQuery] = useState('');
   const [favoritesBadge, setFavoritesBadge] = useState(0);
   const [messagesBadge, setMessagesBadge] = useState(0);
@@ -265,8 +265,8 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
         
       </div>
 
-      {isExplorePage && (
-        <div className="search-container">
+      {location.pathname === '/explore' && (
+        <div className="search-container" style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
           <EnhancedSearchBar 
             onSearch={onSearch} 
             isScrolled={isScrolled}
@@ -297,7 +297,7 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
             onMouseEnter={(e) => e.target.style.backgroundColor = '#f7f7f7'}
             onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
           >
-            Become A Vendor
+            {t('footer.becomeVendor')}
           </button>
         )}
         {(currentUser?.isAdmin === true || currentUser?.isAdmin === 1 || currentUser?.IsAdmin === true || currentUser?.IsAdmin === 1) && (
@@ -329,7 +329,7 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
             }}
           >
             <i className="fas fa-tachometer-alt" style={{ fontSize: '0.9rem' }}></i>
-            Admin Dashboard
+            {t('nav.dashboard')}
           </button>
         )}
         {/* What's New Button */}

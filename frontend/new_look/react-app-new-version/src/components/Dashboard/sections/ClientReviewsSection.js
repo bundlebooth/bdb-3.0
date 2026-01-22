@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import { apiGet, apiPost } from '../../../utils/api';
 import { showBanner } from '../../../utils/banners';
+import { useTranslation } from '../../../hooks/useTranslation';
+import { useLocalization } from '../../../context/LocalizationContext';
 import UniversalModal from '../../UniversalModal';
 import CardRow from '../CardRow';
 import ReviewCard from '../ReviewCard';
@@ -10,6 +12,8 @@ import ReviewCard from '../ReviewCard';
 function ClientReviewsSection({ deepLinkBookingId, onDeepLinkHandled }) {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
+  const { t } = useTranslation();
+  const { formatCurrency } = useLocalization();
   const [reviews, setReviews] = useState([]);
   const [pastBookings, setPastBookings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -789,7 +793,7 @@ function ClientReviewsSection({ deepLinkBookingId, onDeepLinkHandled }) {
                     {selectedBooking.TotalAmount != null && (
                       <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                         <i className="fas fa-dollar-sign" style={{ fontSize: '11px' }}></i>
-                        ${Number(selectedBooking.TotalAmount).toLocaleString()} CAD
+                        {formatCurrency(selectedBooking.TotalAmount)}
                       </span>
                     )}
                     {(selectedBooking.Location || selectedBooking.EventLocation) && (

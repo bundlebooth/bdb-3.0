@@ -1,10 +1,12 @@
 import React, { memo } from 'react';
 import { getCategoryIconHtml, mapTypeToCategory, formatLocationShort } from '../utils/helpers';
 import { buildVendorProfileUrl } from '../utils/urlHelpers';
+import { useLocalization } from '../context/LocalizationContext';
 
 const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavorite, onView, onHighlight, showViewCount, showResponseTime, showAnalyticsBadge, analyticsBadgeType, onlineStatus, showBio = false }) {
   const [isHovered, setIsHovered] = React.useState(false);
   const [currentImageIndex, setCurrentImageIndex] = React.useState(0);
+  const { formatCurrency } = useLocalization();
   const vendorId = vendor.VendorProfileID || vendor.id;
   
   // Build array of all available images for carousel
@@ -422,7 +424,7 @@ const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavori
           {locationText || 'Location not specified'}
         </div>
         
-        {/* Line 3: Starting from $X CAD · ★ Rating (count) - Single line */}
+        {/* Line 3: Starting from price · ★ Rating (count) - Single line */}
         <div className="vendor-card-price-row" style={{ 
           fontSize: '13px',
           lineHeight: '17px',
@@ -435,7 +437,7 @@ const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavori
           {hourlyRate > 0 ? (
             <>
               <span style={{ fontWeight: 400, color: '#717171' }}>Starting from</span>
-              <span style={{ fontWeight: 600, color: '#222222' }}>${hourlyRate.toLocaleString()} CAD</span>
+              <span style={{ fontWeight: 600, color: '#222222' }}>{formatCurrency(hourlyRate, null, { showCents: false })}</span>
             </>
           ) : (
             <span style={{ fontWeight: 400, color: '#717171' }}>Contact for pricing</span>

@@ -8761,6 +8761,80 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
 @media (max-width: 992px) { .vv-footer .vv-wrap { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 600px) { .vv-footer .vv-wrap { grid-template-columns: 1fr; } .vv-footer .vv-social a { width: 32px; height: 32px; } }
 
+/* Footer Bottom - Language & Currency Controls (Airbnb style) */
+.vv-footer-bottom {
+  border-top: 1px solid var(--border);
+  background: var(--surface-bg);
+}
+.vv-footer-bottom-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.vv-footer-legal {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--text);
+  flex-wrap: wrap;
+}
+.vv-footer-legal a {
+  color: var(--text);
+  text-decoration: none;
+}
+.vv-footer-legal a:hover {
+  text-decoration: underline;
+}
+.vv-footer-dot {
+  color: var(--text-light);
+}
+.vv-footer-locale {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.vv-locale-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  transition: background 0.2s;
+}
+.vv-locale-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+.vv-locale-btn i {
+  font-size: 16px;
+}
+.vv-currency-symbol {
+  font-weight: 600;
+  font-size: 15px;
+}
+@media (max-width: 600px) {
+  .vv-footer-bottom-content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .vv-footer-locale {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
+
 /* Vendor cards - no animation, immediate display */
 .vendor-card {
     opacity: 1;

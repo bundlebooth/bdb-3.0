@@ -17,6 +17,8 @@ import SharedDateTimePicker from '../components/SharedDateTimePicker';
 import { extractVendorIdFromSlug, parseQueryParams, trackPageView } from '../utils/urlHelpers';
 import { formatDateWithWeekday } from '../utils/helpers';
 import { getProvinceFromLocation, getTaxInfoForProvince, PROVINCE_TAX_RATES } from '../utils/taxCalculations';
+import { useLocalization } from '../context/LocalizationContext';
+import { useTranslation } from '../hooks/useTranslation';
 import '../styles/BookingPage.css';
 import '../components/Calendar.css';
 
@@ -25,6 +27,8 @@ function BookingPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { currentUser } = useAuth();
+  const { formatCurrency } = useLocalization();
+  const { t } = useTranslation();
   
   // Extract vendor ID from slug (supports both "138" and "business-name-138")
   const vendorId = extractVendorIdFromSlug(vendorSlug) || vendorSlug;
@@ -1298,9 +1302,9 @@ function BookingPage() {
                           <span style={{ fontWeight: 600, color: '#222' }}>{selectedPackage.PackageName}</span>
                         </div>
                         <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#222', marginBottom: '0.5rem' }}>
-                          ${selectedPackage.SalePrice && parseFloat(selectedPackage.SalePrice) < parseFloat(selectedPackage.Price) 
-                            ? parseFloat(selectedPackage.SalePrice).toFixed(0) 
-                            : parseFloat(selectedPackage.Price).toFixed(0)}
+                          {selectedPackage.SalePrice && parseFloat(selectedPackage.SalePrice) < parseFloat(selectedPackage.Price) 
+                            ? formatCurrency(parseFloat(selectedPackage.SalePrice), null, { showCents: false }) 
+                            : formatCurrency(parseFloat(selectedPackage.Price), null, { showCents: false })}
                           <span style={{ fontSize: '0.85rem', fontWeight: 400, color: '#6b7280', marginLeft: '0.25rem' }}>
                             / {selectedPackage.PriceType === 'per_person' ? 'person' : 'package'}
                           </span>
@@ -1618,7 +1622,7 @@ function BookingPage() {
                               </span>
                               {isPackageHourly && totalHours > 0 && (
                                 <span style={{ color: '#6b7280', fontSize: '0.85rem', marginLeft: '4px' }}>
-                                  (${packageBasePrice.toFixed(2)} × {totalHours % 1 === 0 ? totalHours : totalHours.toFixed(1)} hrs)
+                                  ({formatCurrency(packageBasePrice)} × {totalHours % 1 === 0 ? totalHours : totalHours.toFixed(1)} hrs)
                                 </span>
                               )}
                               {selectedPackage.PriceType === 'per_person' && bookingData.attendeeCount && (
@@ -1628,7 +1632,7 @@ function BookingPage() {
                               )}
                             </div>
                             <span style={{ color: '#222', fontSize: '0.95rem', fontWeight: 500 }}>
-                              ${packagePrice.toFixed(2)}
+                              {formatCurrency(packagePrice)}
                             </span>
                           </div>
                         )}
@@ -1648,12 +1652,12 @@ function BookingPage() {
                                 </span>
                                 {isHourly && totalHours > 0 && (
                                   <span style={{ color: '#6b7280', fontSize: '0.85rem', marginLeft: '4px' }}>
-                                    (${servicePrice.toFixed(2)} × {totalHours % 1 === 0 ? totalHours : totalHours.toFixed(1)} hrs)
+                                    ({formatCurrency(servicePrice)} × {totalHours % 1 === 0 ? totalHours : totalHours.toFixed(1)} hrs)
                                   </span>
                                 )}
                               </div>
                               <span style={{ color: '#222', fontSize: '0.95rem', fontWeight: 500 }}>
-                                ${calculatedPrice.toFixed(2)}
+                                {formatCurrency(calculatedPrice)}
                               </span>
                             </div>
                           );
@@ -1664,7 +1668,7 @@ function BookingPage() {
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <span style={{ color: '#222', fontSize: '0.95rem' }}>Subtotal</span>
                             <span style={{ color: '#222', fontSize: '0.95rem', fontWeight: 500 }}>
-                              ${subtotal.toFixed(2)}
+                              {formatCurrency(subtotal)}
                             </span>
                           </div>
                         </div>
@@ -1678,7 +1682,7 @@ function BookingPage() {
                             </TooltipIcon>
                           </div>
                           <span style={{ color: '#6b7280', fontSize: '0.9rem' }}>
-                            ${platformFee.toFixed(2)}
+                            {formatCurrency(platformFee)}
                           </span>
                         </div>
 
@@ -1691,7 +1695,7 @@ function BookingPage() {
                             </TooltipIcon>
                           </div>
                           <span style={{ color: '#6b7280', fontSize: '0.9rem' }}>
-                            ${tax.toFixed(2)}
+                            {formatCurrency(tax)}
                           </span>
                         </div>
 
@@ -1704,7 +1708,7 @@ function BookingPage() {
                             </TooltipIcon>
                           </div>
                           <span style={{ color: '#6b7280', fontSize: '0.9rem' }}>
-                            ${stripeFee.toFixed(2)}
+                            {formatCurrency(stripeFee)}
                           </span>
                         </div>
 
@@ -1713,7 +1717,7 @@ function BookingPage() {
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <span style={{ color: '#222', fontSize: '1rem', fontWeight: 600 }}>Total</span>
                             <span style={{ color: '#222', fontSize: '1.15rem', fontWeight: 700 }}>
-                              ${total.toFixed(2)}
+                              {formatCurrency(total)}
                             </span>
                           </div>
                         </div>
