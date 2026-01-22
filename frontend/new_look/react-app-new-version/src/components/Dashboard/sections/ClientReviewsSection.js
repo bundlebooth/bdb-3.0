@@ -1,17 +1,21 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { apiGet, apiPost } from '../../../utils/api';
 import { showBanner } from '../../../utils/banners';
+import UniversalModal from '../../UniversalModal';
 
 function ClientReviewsSection({ deepLinkBookingId, onDeepLinkHandled }) {
   const { currentUser } = useAuth();
   const [reviews, setReviews] = useState([]);
   const [pastBookings, setPastBookings] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('pending'); // 'pending' or 'submitted'
+  const [activeTab, setActiveTab] = useState('pending');
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [expandedCardId, setExpandedCardId] = useState(null);
+  const [reviewPhotos, setReviewPhotos] = useState([]);
+  const fileInputRef = useRef(null);
   
   // Review form state - start with 0 stars (empty)
   const [reviewForm, setReviewForm] = useState({
@@ -171,203 +175,750 @@ function ClientReviewsSection({ deepLinkBookingId, onDeepLinkHandled }) {
     </div>
   );
 
-  const renderPendingBooking = (booking) => {
-    const itemId = booking.RequestID || booking.BookingID;
-    const eventDate = booking.EventDate ? new Date(booking.EventDate) : null;
-    const monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
-    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    const dateMonth = eventDate ? monthNames[eventDate.getMonth()] : '';
-    const dateDay = eventDate ? eventDate.getDate() : '';
-    const dateDayName = eventDate ? dayNames[eventDate.getDay()] : '';
-    const vendorInitial = (booking.VendorName || 'V').charAt(0).toUpperCase();
-    const vendorLogo = booking.VendorLogo || booking.VendorLogoUrl || booking.LogoUrl;
+
+  // Toggle card expansion
+  const toggleCardExpand = (itemId, booking) => {
+    if (expandedCardId === itemId) {
+      setExpandedCardId(null);
+      setSelectedBooking(null);
+      setReviewPhotos([]);
+    } else {
+      setExpandedCardId(itemId);
+      setSelectedBooking(booking);
+      setReviewPhotos([]);
+      setReviewForm({
+        rating: 0,
+        title: '',
+        comment: '',
+        qualityRating: 0,
+        communicationRating: 0,
+        valueRating: 0,
+        punctualityRating: 0,
+        professionalismRating: 0,
+        wouldRecommend: true
+      });
+    }
+  };
+
+  // Handle photo upload
+  const handlePhotoUpload = (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
     
+    const newPhotos = files.slice(0, 5 - reviewPhotos.length).map(file => ({
+      file,
+      preview: URL.createObjectURL(file),
+      name: file.name
+    }));
+    
+    setReviewPhotos(prev => [...prev, ...newPhotos].slice(0, 5));
+    e.target.value = '';
+  };
+
+  // Remove photo
+  const removePhoto = (index) => {
+    setReviewPhotos(prev => {
+      const newPhotos = [...prev];
+      URL.revokeObjectURL(newPhotos[index].preview);
+      newPhotos.splice(index, 1);
+      return newPhotos;
+    });
+  };
+
+  // Upload photos to Cloudinary and get URLs
+  const uploadPhotos = async () => {
+    if (reviewPhotos.length === 0) return [];
+    
+    const uploadedUrls = [];
+    for (const photo of reviewPhotos) {
+      try {
+        const formData = new FormData();
+        formData.append('photo', photo.file);
+        
+        const response = await fetch(`${process.env.REACT_APP_API_URL || ''}/api/vendors/reviews/upload-photo`, {
+          method: 'POST',
+          body: formData
+        });
+        
+        const data = await response.json();
+        if (data.success && data.url) {
+          uploadedUrls.push(data.url);
+        }
+      } catch (err) {
+        console.error('Error uploading photo:', err);
+      }
+    }
+    return uploadedUrls;
+  };
+
+  // Submit inline review
+  const submitInlineReview = async () => {
+    if (!selectedBooking || !reviewForm.comment.trim() || reviewForm.rating === 0) return;
+    
+    setSubmitting(true);
+    try {
+      // First upload photos if any
+      const photoUrls = await uploadPhotos();
+      
+      // Then submit review with photo URLs
+      const endpoint = photoUrls.length > 0 ? '/vendors/reviews/submit-with-photos' : '/vendors/reviews/submit';
+      const resp = await apiPost(endpoint, {
+        userId: currentUser.id,
+        vendorProfileId: selectedBooking.VendorProfileID,
+        bookingId: selectedBooking.BookingID,
+        rating: reviewForm.rating,
+        title: reviewForm.title,
+        comment: reviewForm.comment,
+        qualityRating: reviewForm.qualityRating,
+        communicationRating: reviewForm.communicationRating,
+        valueRating: reviewForm.valueRating,
+        punctualityRating: reviewForm.punctualityRating,
+        professionalismRating: reviewForm.professionalismRating,
+        wouldRecommend: reviewForm.wouldRecommend,
+        photoUrls: photoUrls
+      });
+      
+      const data = await resp.json();
+      if (data.success) {
+        setExpandedCardId(null);
+        setSelectedBooking(null);
+        setReviewPhotos([]);
+        showBanner('Your review has been submitted successfully!', 'success');
+        loadData();
+      } else {
+        alert(data.message || 'Failed to submit review');
+      }
+    } catch (error) {
+      console.error('Error submitting review:', error);
+      alert('Failed to submit review');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Render a pending booking - Matching Bookings layout with date block
+  const renderPendingCard = (booking) => {
+    const itemId = booking.RequestID || booking.BookingID;
+    const vendorName = booking.VendorName || 'Vendor';
+    const serviceName = booking.ServiceName || 'Service';
+    const eventDate = booking.EventDate ? new Date(booking.EventDate) : null;
+    const location = booking.Location || booking.EventLocation || booking.Address || '';
+    const isExpanded = expandedCardId === itemId;
+    
+    // Vendor ratings
+    const inAppRating = booking.AverageRating || booking.averageRating || booking.VendorRating;
+    const googleRating = booking.GoogleRating || booking.googleRating;
+
+    // Format date parts
+    const monthShort = eventDate ? eventDate.toLocaleDateString('en-US', { month: 'short' }).toUpperCase() : '';
+    const dayNum = eventDate ? eventDate.getDate() : '';
+    const dayName = eventDate ? eventDate.toLocaleDateString('en-US', { weekday: 'short' }) : '';
+
     return (
-      <div key={itemId} style={{
-        background: '#fff',
-        border: '1px solid #e5e5e5',
-        borderRadius: '6px',
-        marginBottom: '8px',
-        overflow: 'hidden'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', padding: '12px 16px' }}>
-          {/* Date Block */}
-          <div style={{ 
-            width: '50px', 
-            textAlign: 'center', 
-            marginRight: '16px',
+      <div 
+        key={itemId}
+        style={{
+          borderBottom: '1px solid #e5e7eb',
+          overflow: 'hidden'
+        }}
+      >
+        {/* Header Row - Clickable - Matching Bookings layout */}
+        <div 
+          onClick={() => toggleCardExpand(itemId, booking)}
+          style={{
+            padding: '16px 20px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '16px',
+            cursor: 'pointer',
+            background: isExpanded ? '#f8f9fa' : 'transparent',
+            transition: 'background 0.2s'
+          }}
+        >
+          {/* Date Block - Like Bookings */}
+          <div style={{
+            textAlign: 'center',
+            minWidth: '45px',
             flexShrink: 0
           }}>
-            <div style={{ fontSize: '12px', color: '#6b7280', fontWeight: 500 }}>{dateMonth}</div>
-            <div style={{ fontSize: '24px', fontWeight: 700, color: '#1f2937', lineHeight: 1 }}>{dateDay}</div>
-            <div style={{ fontSize: '12px', color: '#9ca3af' }}>{dateDayName}</div>
-          </div>
-
-          {/* Vendor Logo */}
-          <div style={{ marginRight: '12px', flexShrink: 0 }}>
-            {vendorLogo ? (
-              <img 
-                src={vendorLogo}
-                alt={booking.VendorName}
-                style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #10b981' }}
-                onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
-              />
-            ) : null}
             <div style={{ 
-              width: '40px', 
-              height: '40px', 
-              borderRadius: '50%', 
-              background: '#10b981', 
-              display: vendorLogo ? 'none' : 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center', 
-              color: '#fff', 
-              fontSize: '16px', 
-              fontWeight: 600 
-            }}>
-              {vendorInitial}
-            </div>
-          </div>
-
-          {/* Booking Info */}
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: '15px', fontWeight: 600, color: '#10b981', marginBottom: '3px' }}>
-              {booking.VendorName || 'Vendor'}
-            </div>
-            <div style={{ fontSize: '14px', color: '#374151', marginBottom: '3px' }}>
-              {booking.ServiceName || 'Service'}
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', fontSize: '13px', color: '#6b7280' }}>
-              {booking.TotalAmount != null && (
-                <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                  <i className="fas fa-dollar-sign" style={{ fontSize: '11px' }}></i>
-                  ${Number(booking.TotalAmount).toLocaleString()} CAD
-                </span>
-              )}
-              {(booking.Location || booking.EventLocation) && (
-                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <i className="fas fa-map-marker-alt" style={{ fontSize: '11px' }}></i>
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {booking.Location || booking.EventLocation}
-                  </span>
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* Write Review Button */}
-          <button
-            onClick={() => openReviewModal(booking)}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '6px',
-              padding: '8px 16px',
-              background: '#5e72e4',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              fontSize: '13px',
+              fontSize: '11px', 
+              color: '#6b7280', 
               fontWeight: 500,
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-              transition: 'all 0.2s',
-              flexShrink: 0
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = '#4c5fd7'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = '#5e72e4'; }}
-          >
-            <i className="fas fa-pen" style={{ fontSize: '11px' }}></i>
-            Write Review
-          </button>
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px'
+            }}>
+              {monthShort}
+            </div>
+            <div style={{ 
+              fontSize: '24px', 
+              fontWeight: 700, 
+              color: '#1f2937',
+              lineHeight: 1.1
+            }}>
+              {dayNum}
+            </div>
+            <div style={{ 
+              fontSize: '11px', 
+              color: '#9ca3af',
+              textTransform: 'capitalize'
+            }}>
+              {dayName}
+            </div>
+          </div>
+
+          {/* Content - Vendor Info */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {/* Vendor Name - Teal/Green like Bookings */}
+            <div style={{ 
+              fontSize: '14px', 
+              fontWeight: 600, 
+              color: '#0d9488', 
+              marginBottom: '2px'
+            }}>
+              {vendorName}
+            </div>
+            {/* Service Name */}
+            <div style={{ 
+              fontSize: '14px', 
+              color: '#374151', 
+              marginBottom: '4px'
+            }}>
+              {serviceName}
+            </div>
+            {/* Location with icon */}
+            {location && (
+              <div style={{ 
+                fontSize: '13px', 
+                color: '#6b7280',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}>
+                <i className="fas fa-map-marker-alt" style={{ fontSize: '11px', color: '#9ca3af' }}></i>
+                <span style={{ 
+                  overflow: 'hidden', 
+                  textOverflow: 'ellipsis', 
+                  whiteSpace: 'nowrap',
+                  maxWidth: '300px'
+                }}>
+                  {location}
+                </span>
+              </div>
+            )}
+            {/* Vendor Ratings - smaller, inline */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '4px' }}>
+              {inAppRating && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                  <span style={{ color: '#5e72e4', fontSize: '12px' }}>★</span>
+                  <span style={{ fontSize: '12px', color: '#374151', fontWeight: 500 }}>{Number(inAppRating).toFixed(1)}</span>
+                </div>
+              )}
+              {googleRating && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                  <img src="https://www.google.com/favicon.ico" alt="Google" style={{ width: '12px', height: '12px' }} />
+                  <span style={{ fontSize: '12px', color: '#374151', fontWeight: 500 }}>{Number(googleRating).toFixed(1)}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Right side - Badge and Chevron */}
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '12px',
+            flexShrink: 0
+          }}>
+            {/* Status Badge - Like Bookings "Awaiting Payment" style */}
+            <span style={{ 
+              padding: '6px 12px',
+              borderRadius: '20px',
+              fontSize: '12px',
+              fontWeight: 500,
+              border: '1px solid #5e72e4',
+              color: '#5e72e4',
+              background: 'white',
+              whiteSpace: 'nowrap'
+            }}>
+              {isExpanded ? 'Writing Review' : 'Pending Review'}
+            </span>
+            <i 
+              className={`fas fa-chevron-${isExpanded ? 'up' : 'down'}`} 
+              style={{ color: '#9ca3af', fontSize: '14px' }}
+            ></i>
+          </div>
+        </div>
+
+        {/* Expanded Review Form */}
+        <div style={{
+          maxHeight: isExpanded ? '1400px' : '0',
+          overflow: 'hidden',
+          transition: 'max-height 0.3s ease-in-out'
+        }}>
+          <div style={{ padding: '0 20px 20px 20px' }}>
+            {/* Overall Rating */}
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500, color: '#1a1a1a', fontSize: '14px' }}>
+                Overall Rating <span style={{ color: '#ef4444' }}>*</span>
+              </label>
+              <div style={{ display: 'flex', gap: '4px' }}>
+                {[1, 2, 3, 4, 5].map(star => (
+                  <button
+                    key={star}
+                    type="button"
+                    onClick={() => setReviewForm(f => ({ ...f, rating: star }))}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontSize: '32px',
+                      color: star <= reviewForm.rating ? '#5e72e4' : '#dadce0',
+                      padding: '4px',
+                      transition: 'transform 0.1s'
+                    }}
+                    onMouseOver={(e) => e.target.style.transform = 'scale(1.15)'}
+                    onMouseOut={(e) => e.target.style.transform = 'scale(1)'}
+                  >
+                    ★
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Detailed Ratings - Always visible (MOVED BEFORE Your Review) */}
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '12px', fontWeight: 500, color: '#1a1a1a', fontSize: '14px' }}>
+                Detailed Ratings <span style={{ color: '#ef4444' }}>*</span>
+              </label>
+              <div style={{ 
+                padding: '16px', 
+                background: '#f8f9fa', 
+                borderRadius: '8px'
+              }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+                  {[
+                    { key: 'qualityRating', label: 'Quality of Service' },
+                    { key: 'communicationRating', label: 'Communication' },
+                    { key: 'valueRating', label: 'Value for Money' },
+                    { key: 'punctualityRating', label: 'Punctuality' },
+                    { key: 'professionalismRating', label: 'Professionalism' }
+                  ].map(({ key, label }) => (
+                    <div key={key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: '13px', color: '#5f6368' }}>{label}</span>
+                      <div style={{ display: 'flex', gap: '2px' }}>
+                        {[1, 2, 3, 4, 5].map(star => (
+                          <button
+                            key={star}
+                            type="button"
+                            onClick={() => setReviewForm(f => ({ ...f, [key]: star }))}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              cursor: 'pointer',
+                              fontSize: '18px',
+                              color: star <= reviewForm[key] ? '#5e72e4' : '#dadce0',
+                              padding: '0 2px'
+                            }}
+                          >
+                            ★
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Review Text (MOVED AFTER Detailed Ratings) */}
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500, color: '#1a1a1a', fontSize: '14px' }}>
+                Your Review <span style={{ color: '#ef4444' }}>*</span>
+              </label>
+              <textarea
+                value={reviewForm.comment}
+                onChange={(e) => setReviewForm(f => ({ ...f, comment: e.target.value }))}
+                placeholder="Share details of your experience..."
+                rows={4}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '1px solid #dadce0',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  resize: 'vertical',
+                  boxSizing: 'border-box'
+                }}
+              />
+            </div>
+
+            {/* Would You Recommend? */}
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500, color: '#1a1a1a', fontSize: '14px' }}>
+                Would you recommend this vendor? <span style={{ color: '#ef4444' }}>*</span>
+              </label>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button
+                  type="button"
+                  onClick={() => setReviewForm(f => ({ ...f, wouldRecommend: true }))}
+                  style={{
+                    padding: '10px 24px',
+                    border: reviewForm.wouldRecommend ? '2px solid #10b981' : '1px solid #dadce0',
+                    borderRadius: '8px',
+                    background: reviewForm.wouldRecommend ? '#ecfdf5' : 'white',
+                    color: reviewForm.wouldRecommend ? '#10b981' : '#5f6368',
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    fontSize: '14px'
+                  }}
+                >
+                  <i className="fas fa-thumbs-up"></i> Yes
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setReviewForm(f => ({ ...f, wouldRecommend: false }))}
+                  style={{
+                    padding: '10px 24px',
+                    border: !reviewForm.wouldRecommend ? '2px solid #ef4444' : '1px solid #dadce0',
+                    borderRadius: '8px',
+                    background: !reviewForm.wouldRecommend ? '#fef2f2' : 'white',
+                    color: !reviewForm.wouldRecommend ? '#ef4444' : '#5f6368',
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    fontSize: '14px'
+                  }}
+                >
+                  <i className="fas fa-thumbs-down"></i> No
+                </button>
+              </div>
+            </div>
+
+            {/* Photo Upload - Optional */}
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500, color: '#1a1a1a', fontSize: '14px' }}>
+                Add Photos <span style={{ fontWeight: 400, color: '#80868b' }}>(optional, max 5)</span>
+              </label>
+              
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handlePhotoUpload}
+                accept="image/*"
+                multiple
+                style={{ display: 'none' }}
+              />
+              
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+                {/* Photo Previews */}
+                {reviewPhotos.map((photo, index) => (
+                  <div 
+                    key={index}
+                    style={{
+                      position: 'relative',
+                      width: '80px',
+                      height: '80px',
+                      borderRadius: '8px',
+                      overflow: 'hidden'
+                    }}
+                  >
+                    <img 
+                      src={photo.preview} 
+                      alt={`Upload ${index + 1}`}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                    <button
+                      onClick={() => removePhoto(index)}
+                      style={{
+                        position: 'absolute',
+                        top: '4px',
+                        right: '4px',
+                        width: '20px',
+                        height: '20px',
+                        borderRadius: '50%',
+                        background: 'rgba(0,0,0,0.6)',
+                        color: 'white',
+                        border: 'none',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '12px'
+                      }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+                
+                {/* Add Photo Button */}
+                {reviewPhotos.length < 5 && (
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    style={{
+                      width: '80px',
+                      height: '80px',
+                      borderRadius: '8px',
+                      border: '2px dashed #dadce0',
+                      background: '#f8f9fa',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '4px',
+                      color: '#80868b'
+                    }}
+                  >
+                    <i className="fas fa-camera" style={{ fontSize: '20px' }}></i>
+                    <span style={{ fontSize: '11px' }}>Add</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+              <button
+                onClick={() => toggleCardExpand(itemId, booking)}
+                style={{
+                  padding: '10px 20px',
+                  background: 'white',
+                  color: '#5f6368',
+                  border: '1px solid #dadce0',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: 500,
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={submitInlineReview}
+                disabled={submitting || !reviewForm.comment.trim() || reviewForm.rating === 0}
+                style={{
+                  padding: '10px 24px',
+                  background: submitting || !reviewForm.comment.trim() || reviewForm.rating === 0 
+                    ? '#dadce0' 
+                    : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  color: submitting || !reviewForm.comment.trim() || reviewForm.rating === 0 ? '#9aa0a6' : 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  cursor: submitting || !reviewForm.comment.trim() || reviewForm.rating === 0 ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+              >
+                {submitting && <i className="fas fa-spinner fa-spin"></i>}
+                {submitting ? 'Submitting...' : 'Post Review'}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     );
   };
 
-  const renderReviewItem = (review) => {
-    const surveyRatings = [
-      { label: 'Quality', value: review.QualityRating },
-      { label: 'Communication', value: review.CommunicationRating },
-      { label: 'Value', value: review.ValueRating },
-      { label: 'Punctuality', value: review.PunctualityRating },
-      { label: 'Professionalism', value: review.ProfessionalismRating }
-    ].filter(r => r.value != null);
+  // Render a submitted review - Matching Bookings layout with date block
+  const renderReviewCard = (review) => {
+    const vendorName = review.VendorName || 'Vendor';
+    const rating = review.Rating || 5;
+    const serviceName = review.ServiceName || 'Service';
+
+    // Parse date safely - handle various date formats
+    let reviewDate = null;
+    const dateStr = review.CreatedAt || review.ReviewDate;
+    if (dateStr) {
+      const parsed = new Date(dateStr);
+      if (!isNaN(parsed.getTime())) {
+        reviewDate = parsed;
+      }
+    }
+
+    // Format date parts with fallbacks
+    const monthShort = reviewDate ? reviewDate.toLocaleDateString('en-US', { month: 'short' }).toUpperCase() : '';
+    const dayNum = reviewDate ? reviewDate.getDate() : '';
+    const dayName = reviewDate ? reviewDate.toLocaleDateString('en-US', { weekday: 'short' }) : '';
 
     return (
-      <div key={review.ReviewID || review.id} style={{
-        padding: '20px',
-        borderBottom: '1px solid #e5e7eb'
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-          <div>
-            <div style={{ fontWeight: 600, color: '#111827', fontSize: '16px' }}>
-              {review.VendorName || 'Vendor'}
-            </div>
-            <div style={{ fontSize: '13px', color: '#6b7280' }}>
-              {(() => {
-                const rawDate = review.CreatedAt || review.createdAt || review.ReviewDate || review.reviewDate || review.DateCreated;
-                if (!rawDate) return '';
-                const date = new Date(rawDate);
-                if (isNaN(date.getTime())) return '';
-                return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-              })()}
-            </div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <span style={{ color: '#5e72e4', fontSize: '18px' }}>
-              {'★'.repeat(review.Rating)}{'☆'.repeat(5 - review.Rating)}
-            </span>
-            <span style={{ fontWeight: 600, color: '#111827' }}>{review.Rating}/5</span>
-          </div>
-        </div>
-        
-        {review.Title && (
-          <div style={{ fontWeight: 600, color: '#374151', marginBottom: '8px' }}>
-            {review.Title}
-          </div>
-        )}
-        
-        {/* Only show Comment if it's different from Title */}
-        {review.Comment && review.Comment !== review.Title && (
-          <div style={{ color: '#4b5563', lineHeight: 1.6, marginBottom: '12px' }}>
-            {review.Comment}
-          </div>
-        )}
-        
-        {surveyRatings.length > 0 && (
-          <div style={{ 
-            display: 'flex', 
-            flexWrap: 'wrap', 
-            gap: '12px', 
-            padding: '12px', 
-            background: '#f9fafb', 
-            borderRadius: '8px',
-            marginTop: '12px'
+      <div 
+        key={review.ReviewID || review.id}
+        style={{
+          padding: '16px 20px',
+          borderBottom: '1px solid #e5e7eb'
+        }}
+      >
+        {/* Header Row - Matching Bookings layout */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
+          {/* Date Block - Like Bookings */}
+          <div style={{
+            textAlign: 'center',
+            minWidth: '45px',
+            flexShrink: 0
           }}>
-            {surveyRatings.map(r => (
-              <div key={r.label} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ fontSize: '13px', color: '#6b7280' }}>{r.label}:</span>
-                <span style={{ color: '#5e72e4', fontSize: '12px' }}>
-                  {'★'.repeat(r.value)}{'☆'.repeat(5 - r.value)}
-                </span>
-              </div>
-            ))}
-            {review.WouldRecommend != null && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ fontSize: '13px', color: '#6b7280' }}>Would Recommend:</span>
-                <span style={{ 
-                  color: review.WouldRecommend ? '#10b981' : '#ef4444',
+            {reviewDate ? (
+              <>
+                <div style={{ 
+                  fontSize: '11px', 
+                  color: '#6b7280', 
                   fontWeight: 500,
-                  fontSize: '13px'
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px'
                 }}>
-                  {review.WouldRecommend ? 'Yes' : 'No'}
-                </span>
+                  {monthShort}
+                </div>
+                <div style={{ 
+                  fontSize: '24px', 
+                  fontWeight: 700, 
+                  color: '#1f2937',
+                  lineHeight: 1.1
+                }}>
+                  {dayNum}
+                </div>
+                <div style={{ 
+                  fontSize: '11px', 
+                  color: '#9ca3af',
+                  textTransform: 'capitalize'
+                }}>
+                  {dayName}
+                </div>
+              </>
+            ) : (
+              <div style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '8px',
+                background: '#f3f4f6',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <i className="fas fa-star" style={{ color: '#5e72e4', fontSize: '16px' }}></i>
               </div>
             )}
           </div>
-        )}
+
+          {/* Content */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {/* Vendor Name - Teal like Bookings */}
+            <div style={{ 
+              fontSize: '14px', 
+              fontWeight: 600, 
+              color: '#0d9488', 
+              marginBottom: '2px'
+            }}>
+              {vendorName}
+            </div>
+            {/* Service Name */}
+            <div style={{ 
+              fontSize: '14px', 
+              color: '#374151', 
+              marginBottom: '4px'
+            }}>
+              {serviceName}
+            </div>
+            {/* Star Rating */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+              <div style={{ display: 'flex', gap: '2px' }}>
+                {[1, 2, 3, 4, 5].map(star => (
+                  <span 
+                    key={star} 
+                    style={{ 
+                      color: star <= rating ? '#5e72e4' : '#dadce0',
+                      fontSize: '14px'
+                    }}
+                  >
+                    ★
+                  </span>
+                ))}
+              </div>
+              <span style={{ fontSize: '12px', color: '#6b7280' }}>
+                {rating}/5
+              </span>
+            </div>
+
+            {/* Review Comment */}
+            {review.Comment && (
+              <div style={{ 
+                fontSize: '13px', 
+                color: '#4b5563', 
+                lineHeight: 1.5,
+                marginBottom: '8px'
+              }}>
+                {review.Comment.length > 150 ? `${review.Comment.substring(0, 150)}...` : review.Comment}
+              </div>
+            )}
+
+            {/* Detailed Ratings - compact inline */}
+            {(review.QualityRating || review.CommunicationRating || review.ValueRating) && (
+              <div style={{ 
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: '12px',
+                marginTop: '8px'
+              }}>
+                {[
+                  { label: 'Quality', value: review.QualityRating },
+                  { label: 'Communication', value: review.CommunicationRating },
+                  { label: 'Value', value: review.ValueRating },
+                  { label: 'Punctuality', value: review.PunctualityRating },
+                  { label: 'Professionalism', value: review.ProfessionalismRating }
+                ].filter(r => r.value).map(r => (
+                  <div key={r.label} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span style={{ fontSize: '11px', color: '#6b7280' }}>{r.label}:</span>
+                    <div style={{ display: 'flex', gap: '1px' }}>
+                      {[1, 2, 3, 4, 5].map(star => (
+                        <span key={star} style={{ color: star <= r.value ? '#5e72e4' : '#dadce0', fontSize: '10px' }}>★</span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Right side - Status Badge */}
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '12px',
+            flexShrink: 0
+          }}>
+            {/* Completed Badge - Green like "Confirmed & Paid" */}
+            <span style={{ 
+              padding: '6px 12px',
+              borderRadius: '20px',
+              fontSize: '12px',
+              fontWeight: 500,
+              border: '1px solid #10b981',
+              color: '#10b981',
+              background: 'white',
+              whiteSpace: 'nowrap'
+            }}>
+              Reviewed
+            </span>
+            {/* Would Recommend indicator */}
+            {review.WouldRecommend != null && (
+              <i 
+                className={`fas fa-${review.WouldRecommend ? 'thumbs-up' : 'thumbs-down'}`} 
+                style={{ 
+                  color: review.WouldRecommend ? '#10b981' : '#ef4444', 
+                  fontSize: '14px' 
+                }}
+              ></i>
+            )}
+          </div>
+        </div>
       </div>
     );
   };
@@ -386,353 +937,283 @@ function ClientReviewsSection({ deepLinkBookingId, onDeepLinkHandled }) {
 
   return (
     <div id="reviews-section">
-      {/* Tabs */}
-      <div style={{ 
-        display: 'flex', 
-        gap: '0', 
-        marginBottom: '20px',
-        borderBottom: '2px solid #e5e7eb'
-      }}>
-        <button
-          onClick={() => setActiveTab('pending')}
-          style={{
-            padding: '12px 24px',
-            background: 'none',
-            border: 'none',
-            borderBottom: activeTab === 'pending' ? '2px solid #5e72e4' : '2px solid transparent',
-            marginBottom: '-2px',
-            color: activeTab === 'pending' ? '#5e72e4' : '#6b7280',
-            fontWeight: activeTab === 'pending' ? 600 : 400,
-            cursor: 'pointer',
-            fontSize: '15px'
-          }}
-        >
-          Pending Reviews ({pastBookings.length})
-        </button>
-        <button
-          onClick={() => setActiveTab('submitted')}
-          style={{
-            padding: '12px 24px',
-            background: 'none',
-            border: 'none',
-            borderBottom: activeTab === 'submitted' ? '2px solid #5e72e4' : '2px solid transparent',
-            marginBottom: '-2px',
-            color: activeTab === 'submitted' ? '#5e72e4' : '#6b7280',
-            fontWeight: activeTab === 'submitted' ? 600 : 400,
-            cursor: 'pointer',
-            fontSize: '15px'
-          }}
-        >
-          My Reviews ({reviews.length})
-        </button>
-      </div>
+      {/* Card with tabs inside like Bookings */}
+      <div className="dashboard-card" style={{ padding: 0 }}>
+        {/* Tabs inside the card */}
+        <div style={{ 
+          display: 'flex', 
+          borderBottom: '1px solid #e5e7eb',
+          padding: '0 20px'
+        }}>
+          <button
+            onClick={() => setActiveTab('pending')}
+            style={{
+              padding: '16px 20px',
+              background: 'none',
+              border: 'none',
+              borderBottom: activeTab === 'pending' ? '3px solid #5e72e4' : '3px solid transparent',
+              color: activeTab === 'pending' ? '#5e72e4' : '#6b7280',
+              fontWeight: 500,
+              cursor: 'pointer',
+              fontSize: '14px',
+              marginBottom: '-1px'
+            }}
+          >
+            Pending Reviews ({pastBookings.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('submitted')}
+            style={{
+              padding: '16px 20px',
+              background: 'none',
+              border: 'none',
+              borderBottom: activeTab === 'submitted' ? '3px solid #5e72e4' : '3px solid transparent',
+              color: activeTab === 'submitted' ? '#5e72e4' : '#6b7280',
+              fontWeight: 500,
+              cursor: 'pointer',
+              fontSize: '14px',
+              marginBottom: '-1px'
+            }}
+          >
+            My Reviews ({reviews.length})
+          </button>
+        </div>
 
-      <div className="dashboard-card">
+        {/* Content */}
+        <div>
         {activeTab === 'pending' ? (
           pastBookings.length > 0 ? (
-            <div className="bookings-list">{pastBookings.map(renderPendingBooking)}</div>
+            <div>{pastBookings.map(renderPendingCard)}</div>
           ) : (
-            <div style={{ padding: '40px', textAlign: 'center', color: '#6b7280' }}>
-              <i className="fas fa-star" style={{ fontSize: '48px', color: '#d1d5db', marginBottom: '16px', display: 'block' }}></i>
-              <p style={{ margin: 0 }}>No pending reviews. Complete a booking to leave a review!</p>
+            <div style={{ padding: '60px 40px', textAlign: 'center', color: '#5f6368' }}>
+              <i className="fas fa-star" style={{ fontSize: '48px', color: '#dadce0', marginBottom: '16px', display: 'block' }}></i>
+              <p style={{ margin: 0, fontSize: '16px' }}>No pending reviews</p>
+              <p style={{ margin: '8px 0 0 0', fontSize: '14px', color: '#80868b' }}>Complete a booking to leave a review</p>
             </div>
           )
         ) : (
           reviews.length > 0 ? (
-            <div className="bookings-list">{reviews.map(renderReviewItem)}</div>
+            <div>{reviews.map(renderReviewCard)}</div>
           ) : (
-            <div style={{ padding: '40px', textAlign: 'center', color: '#6b7280' }}>
-              <i className="fas fa-comment-alt" style={{ fontSize: '48px', color: '#d1d5db', marginBottom: '16px', display: 'block' }}></i>
-              <p style={{ margin: 0 }}>No reviews submitted yet.</p>
+            <div style={{ padding: '60px 40px', textAlign: 'center', color: '#5f6368' }}>
+              <i className="fas fa-comment-alt" style={{ fontSize: '48px', color: '#dadce0', marginBottom: '16px', display: 'block' }}></i>
+              <p style={{ margin: 0, fontSize: '16px' }}>No reviews yet</p>
+              <p style={{ margin: '8px 0 0 0', fontSize: '14px', color: '#80868b' }}>Your submitted reviews will appear here</p>
             </div>
           )
         )}
+        </div>
       </div>
 
-      {/* Review Modal */}
-      {showReviewModal && selectedBooking && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-          padding: '20px'
-        }}>
-          <div style={{
-            background: 'white',
-            borderRadius: '12px',
-            width: '100%',
-            maxWidth: '600px',
-            maxHeight: '90vh',
-            overflow: 'auto',
-            boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)'
-          }}>
-            {/* Modal Header */}
-            <div style={{
-              padding: '16px 24px',
-              borderBottom: '1px solid #e5e7eb',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center'
-            }}>
-              <h2 style={{ margin: 0, fontSize: '18px', color: '#111827', fontWeight: 600 }}>Write a Review</h2>
-              <button
-                onClick={() => setShowReviewModal(false)}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  fontSize: '24px',
-                  color: '#6b7280',
-                  cursor: 'pointer',
-                  padding: '4px',
-                  lineHeight: 1
-                }}
-              >
-                ×
-              </button>
-            </div>
-
-            {/* Booking Card - Date section style */}
-            <div style={{
-              margin: '16px 24px',
+      {/* Review Modal - Using UniversalModal */}
+      <UniversalModal
+        isOpen={showReviewModal && !!selectedBooking}
+        onClose={() => setShowReviewModal(false)}
+        title="Write a Review"
+        size="large"
+        primaryAction={{
+          label: submitting ? 'Submitting...' : 'Submit Review',
+          onClick: submitReview,
+          disabled: submitting || !reviewForm.comment.trim(),
+          loading: submitting
+        }}
+        secondaryAction={{
+          label: 'Cancel',
+          onClick: () => setShowReviewModal(false)
+        }}
+      >
+        {selectedBooking && (
+          <>
+            {/* Booking Card - Mobile friendly */}
+            <div className="review-modal-booking-card" style={{
+              marginBottom: '20px',
               padding: '12px 16px',
               background: '#f8fafc',
               borderRadius: '10px',
-              border: '1px solid #e2e8f0',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '16px'
+              border: '1px solid #e2e8f0'
             }}>
-              {/* Date Section */}
-              <div style={{
-                textAlign: 'center',
-                minWidth: '50px',
-                padding: '8px 0',
-                borderRight: '1px solid #e2e8f0',
-                paddingRight: '16px'
-              }}>
-                <div style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase', fontWeight: 500 }}>
-                  {selectedBooking.EventDate ? new Date(selectedBooking.EventDate).toLocaleDateString('en-US', { month: 'short' }) : 'TBD'}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                {/* Date Section */}
+                <div style={{
+                  textAlign: 'center',
+                  minWidth: '50px',
+                  padding: '8px 12px 8px 0',
+                  borderRight: '1px solid #e2e8f0',
+                  flexShrink: 0
+                }}>
+                  <div style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase', fontWeight: 500 }}>
+                    {selectedBooking.EventDate ? new Date(selectedBooking.EventDate).toLocaleDateString('en-US', { month: 'short' }) : 'TBD'}
+                  </div>
+                  <div style={{ fontSize: '24px', fontWeight: 700, color: '#111827', lineHeight: 1.1 }}>
+                    {selectedBooking.EventDate ? new Date(selectedBooking.EventDate).getDate() : '--'}
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#9ca3af' }}>
+                    {selectedBooking.EventDate ? new Date(selectedBooking.EventDate).toLocaleDateString('en-US', { weekday: 'short' }) : ''}
+                  </div>
                 </div>
-                <div style={{ fontSize: '24px', fontWeight: 700, color: '#111827', lineHeight: 1.1 }}>
-                  {selectedBooking.EventDate ? new Date(selectedBooking.EventDate).getDate() : '--'}
-                </div>
-                <div style={{ fontSize: '11px', color: '#9ca3af' }}>
-                  {selectedBooking.EventDate ? new Date(selectedBooking.EventDate).toLocaleDateString('en-US', { weekday: 'short' }) : ''}
-                </div>
-              </div>
-              {/* Booking Info */}
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 600, color: '#111827', fontSize: '15px', marginBottom: '4px' }}>
-                  {selectedBooking.VendorName || 'Vendor'}
-                </div>
-                <div style={{ fontSize: '13px', color: '#4b5563', marginBottom: '4px' }}>
-                  {selectedBooking.ServiceName || 'Service'}
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', fontSize: '12px', color: '#6b7280' }}>
-                  {selectedBooking.TotalAmount != null && (
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <i className="fas fa-dollar-sign" style={{ fontSize: '11px' }}></i>
-                      ${Number(selectedBooking.TotalAmount).toLocaleString()} CAD
-                    </span>
-                  )}
-                  {(selectedBooking.Location || selectedBooking.EventLocation) && (
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <i className="fas fa-map-marker-alt" style={{ fontSize: '11px' }}></i>
-                      {selectedBooking.Location || selectedBooking.EventLocation}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Modal Body */}
-            <div style={{ padding: '0 24px 24px' }}>
-              {/* Overall Rating */}
-              <StarRating
-                label="Overall Rating"
-                value={reviewForm.rating}
-                onChange={(v) => setReviewForm(f => ({ ...f, rating: v }))}
-              />
-
-              {/* Title */}
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', marginBottom: '6px', fontWeight: 500, color: '#374151', fontSize: '14px' }}>
-                  Review Title (optional)
-                </label>
-                <input
-                  type="text"
-                  value={reviewForm.title}
-                  onChange={(e) => setReviewForm(f => ({ ...f, title: e.target.value }))}
-                  placeholder="Summarize your experience"
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '6px',
-                    fontSize: '14px'
-                  }}
-                />
-              </div>
-
-              {/* Comment */}
-              <div style={{ marginBottom: '20px' }}>
-                <label style={{ display: 'block', marginBottom: '6px', fontWeight: 500, color: '#374151', fontSize: '14px' }}>
-                  Your Review *
-                </label>
-                <textarea
-                  value={reviewForm.comment}
-                  onChange={(e) => setReviewForm(f => ({ ...f, comment: e.target.value }))}
-                  placeholder="Share your experience with this vendor..."
-                  rows={4}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '6px',
-                    fontSize: '14px',
-                    resize: 'vertical'
-                  }}
-                />
-              </div>
-
-              {/* Survey Section */}
-              <div style={{ 
-                background: '#f9fafb', 
-                padding: '20px', 
-                borderRadius: '8px',
-                marginBottom: '20px'
-              }}>
-                <h3 style={{ margin: '0 0 16px', fontSize: '16px', color: '#374151' }}>
-                  Rate Your Experience
-                </h3>
-                
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
-                  <StarRating
-                    label="Quality of Service"
-                    value={reviewForm.qualityRating}
-                    onChange={(v) => setReviewForm(f => ({ ...f, qualityRating: v }))}
-                  />
-                  <StarRating
-                    label="Communication"
-                    value={reviewForm.communicationRating}
-                    onChange={(v) => setReviewForm(f => ({ ...f, communicationRating: v }))}
-                  />
-                  <StarRating
-                    label="Value for Money"
-                    value={reviewForm.valueRating}
-                    onChange={(v) => setReviewForm(f => ({ ...f, valueRating: v }))}
-                  />
-                  <StarRating
-                    label="Punctuality"
-                    value={reviewForm.punctualityRating}
-                    onChange={(v) => setReviewForm(f => ({ ...f, punctualityRating: v }))}
-                  />
-                  <StarRating
-                    label="Professionalism"
-                    value={reviewForm.professionalismRating}
-                    onChange={(v) => setReviewForm(f => ({ ...f, professionalismRating: v }))}
-                  />
-                </div>
-
-                {/* Would Recommend */}
-                <div style={{ marginTop: '16px' }}>
-                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500, color: '#374151', fontSize: '14px' }}>
-                    Would you recommend this vendor?
-                  </label>
-                  <div style={{ display: 'flex', gap: '12px' }}>
-                    <button
-                      type="button"
-                      onClick={() => setReviewForm(f => ({ ...f, wouldRecommend: true }))}
-                      style={{
-                        padding: '10px 24px',
-                        border: reviewForm.wouldRecommend ? '2px solid #10b981' : '1px solid #d1d5db',
-                        borderRadius: '6px',
-                        background: reviewForm.wouldRecommend ? '#ecfdf5' : 'white',
-                        color: reviewForm.wouldRecommend ? '#10b981' : '#6b7280',
-                        fontWeight: 500,
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px'
-                      }}
-                    >
-                      <i className="fas fa-thumbs-up"></i> Yes
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setReviewForm(f => ({ ...f, wouldRecommend: false }))}
-                      style={{
-                        padding: '10px 24px',
-                        border: !reviewForm.wouldRecommend ? '2px solid #ef4444' : '1px solid #d1d5db',
-                        borderRadius: '6px',
-                        background: !reviewForm.wouldRecommend ? '#fef2f2' : 'white',
-                        color: !reviewForm.wouldRecommend ? '#ef4444' : '#6b7280',
-                        fontWeight: 500,
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px'
-                      }}
-                    >
-                      <i className="fas fa-thumbs-down"></i> No
-                    </button>
+                {/* Booking Info */}
+                <div style={{ flex: 1, minWidth: '150px' }}>
+                  <div style={{ fontWeight: 600, color: '#111827', fontSize: '15px', marginBottom: '4px' }}>
+                    {selectedBooking.VendorName || 'Vendor'}
+                  </div>
+                  <div style={{ fontSize: '13px', color: '#4b5563', marginBottom: '4px' }}>
+                    {selectedBooking.ServiceName || 'Service'}
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', fontSize: '12px', color: '#6b7280' }}>
+                    {selectedBooking.TotalAmount != null && (
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <i className="fas fa-dollar-sign" style={{ fontSize: '11px' }}></i>
+                        ${Number(selectedBooking.TotalAmount).toLocaleString()} CAD
+                      </span>
+                    )}
+                    {(selectedBooking.Location || selectedBooking.EventLocation) && (
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <i className="fas fa-map-marker-alt" style={{ fontSize: '11px' }}></i>
+                        {selectedBooking.Location || selectedBooking.EventLocation}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Modal Footer */}
-            <div style={{
-              padding: '16px 24px',
-              borderTop: '1px solid #e5e7eb',
-              display: 'flex',
-              justifyContent: 'flex-end',
-              gap: '12px'
-            }}>
-              <button
-                onClick={() => setShowReviewModal(false)}
+            {/* Overall Rating */}
+            <StarRating
+              label="Overall Rating"
+              value={reviewForm.rating}
+              onChange={(v) => setReviewForm(f => ({ ...f, rating: v }))}
+            />
+
+            {/* Title */}
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', marginBottom: '6px', fontWeight: 500, color: '#374151', fontSize: '14px' }}>
+                Review Title (optional)
+              </label>
+              <input
+                type="text"
+                value={reviewForm.title}
+                onChange={(e) => setReviewForm(f => ({ ...f, title: e.target.value }))}
+                placeholder="Summarize your experience"
                 style={{
-                  padding: '10px 20px',
+                  width: '100%',
+                  padding: '10px 12px',
                   border: '1px solid #d1d5db',
                   borderRadius: '6px',
-                  background: 'white',
-                  color: '#374151',
-                  fontWeight: 500,
-                  cursor: 'pointer'
+                  fontSize: '14px',
+                  boxSizing: 'border-box'
                 }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={submitReview}
-                disabled={submitting || !reviewForm.comment.trim()}
-                style={{
-                  padding: '10px 20px',
-                  border: 'none',
-                  borderRadius: '6px',
-                  background: submitting || !reviewForm.comment.trim() ? '#9ca3af' : '#5e72e4',
-                  color: 'white',
-                  fontWeight: 500,
-                  cursor: submitting || !reviewForm.comment.trim() ? 'not-allowed' : 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}
-              >
-                {submitting && <div className="spinner" style={{ width: '16px', height: '16px' }}></div>}
-                {submitting ? 'Submitting...' : 'Submit Review'}
-              </button>
+              />
             </div>
-          </div>
-        </div>
-      )}
+
+            {/* Comment */}
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '6px', fontWeight: 500, color: '#374151', fontSize: '14px' }}>
+                Your Review *
+              </label>
+              <textarea
+                value={reviewForm.comment}
+                onChange={(e) => setReviewForm(f => ({ ...f, comment: e.target.value }))}
+                placeholder="Share your experience with this vendor..."
+                rows={4}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  resize: 'vertical',
+                  boxSizing: 'border-box'
+                }}
+              />
+            </div>
+
+            {/* Survey Section */}
+            <div style={{ 
+              background: '#f9fafb', 
+              padding: '16px', 
+              borderRadius: '8px',
+              marginBottom: '20px'
+            }}>
+              <h3 style={{ margin: '0 0 16px', fontSize: '16px', color: '#374151' }}>
+                Rate Your Experience (optional)
+              </h3>
+              
+              <div className="review-survey-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
+                <StarRating
+                  label="Quality of Service"
+                  value={reviewForm.qualityRating}
+                  onChange={(v) => setReviewForm(f => ({ ...f, qualityRating: v }))}
+                />
+                <StarRating
+                  label="Communication"
+                  value={reviewForm.communicationRating}
+                  onChange={(v) => setReviewForm(f => ({ ...f, communicationRating: v }))}
+                />
+                <StarRating
+                  label="Value for Money"
+                  value={reviewForm.valueRating}
+                  onChange={(v) => setReviewForm(f => ({ ...f, valueRating: v }))}
+                />
+                <StarRating
+                  label="Punctuality"
+                  value={reviewForm.punctualityRating}
+                  onChange={(v) => setReviewForm(f => ({ ...f, punctualityRating: v }))}
+                />
+                <StarRating
+                  label="Professionalism"
+                  value={reviewForm.professionalismRating}
+                  onChange={(v) => setReviewForm(f => ({ ...f, professionalismRating: v }))}
+                />
+              </div>
+
+              {/* Would Recommend */}
+              <div style={{ marginTop: '16px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500, color: '#374151', fontSize: '14px' }}>
+                  Would you recommend this vendor?
+                </label>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setReviewForm(f => ({ ...f, wouldRecommend: true }))}
+                    style={{
+                      padding: '10px 24px',
+                      border: reviewForm.wouldRecommend ? '2px solid #10b981' : '1px solid #d1d5db',
+                      borderRadius: '6px',
+                      background: reviewForm.wouldRecommend ? '#ecfdf5' : 'white',
+                      color: reviewForm.wouldRecommend ? '#10b981' : '#6b7280',
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    <i className="fas fa-thumbs-up"></i> Yes
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setReviewForm(f => ({ ...f, wouldRecommend: false }))}
+                    style={{
+                      padding: '10px 24px',
+                      border: !reviewForm.wouldRecommend ? '2px solid #ef4444' : '1px solid #d1d5db',
+                      borderRadius: '6px',
+                      background: !reviewForm.wouldRecommend ? '#fef2f2' : 'white',
+                      color: !reviewForm.wouldRecommend ? '#ef4444' : '#6b7280',
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    <i className="fas fa-thumbs-down"></i> No
+                  </button>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+      </UniversalModal>
     </div>
   );
 }

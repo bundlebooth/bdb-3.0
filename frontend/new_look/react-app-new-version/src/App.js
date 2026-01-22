@@ -26,6 +26,7 @@ import EmailPreferencesPage from './pages/EmailPreferencesPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import PaymentPage from './pages/PaymentPage';
 import DeepLinkPage from './pages/DeepLinkPage';
+import ReviewPage from './pages/ReviewPage';
 import CookieConsent from './components/CookieConsent';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { useHeartbeat } from './hooks/useOnlineStatus';
@@ -173,6 +174,8 @@ function App() {
           <Route path="/link/:linkType/:resourceId" element={<DeepLinkPage />} />
           {/* Direct payment page - standalone route for email links */}
           <Route path="/payment/:bookingId" element={<PaymentPage />} />
+          {/* Direct review page - standalone route for email links */}
+          <Route path="/review/:bookingId" element={<ReviewPage />} />
           <Route path="/forum" element={<ForumPage />} />
           <Route path="/forum/:slug" element={<ForumPage />} />
           <Route path="/forum/post/:slug" element={<ForumPostPage />} />

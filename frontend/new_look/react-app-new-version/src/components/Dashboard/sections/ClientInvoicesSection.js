@@ -392,42 +392,42 @@ function ClientInvoicesSection() {
                     </td>
                     <td style={{ padding: '16px 20px', textAlign: 'right', fontWeight: 600, color: '#111827', fontSize: '14px' }}>{total}</td>
                     <td style={{ padding: '16px 20px', textAlign: 'center' }}>
-                      <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'center', gap: '16px' }}>
                         <button 
                           onClick={() => handleViewInvoice(b)}
                           style={{ 
-                            padding: '6px 12px', 
-                            background: '#111827', 
-                            color: 'white',
+                            padding: '4px 8px', 
+                            background: 'transparent', 
+                            color: '#6b7280',
                             border: 'none', 
-                            borderRadius: '8px', 
                             cursor: 'pointer', 
                             fontSize: '12px',
                             fontWeight: 500,
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '4px'
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.5px'
                           }}
+                          onMouseEnter={(e) => e.currentTarget.style.color = '#374151'}
+                          onMouseLeave={(e) => e.currentTarget.style.color = '#6b7280'}
                         >
-                          <i className="fas fa-eye" style={{ fontSize: '11px' }}></i> View
+                          VIEW
                         </button>
                         <button 
                           onClick={() => handleDownloadInvoice(b)}
                           style={{ 
-                            padding: '6px 12px', 
-                            background: 'white', 
-                            color: '#374151',
-                            border: '1px solid #e5e7eb', 
-                            borderRadius: '6px', 
+                            padding: '4px 8px', 
+                            background: 'transparent', 
+                            color: '#6b7280',
+                            border: 'none', 
                             cursor: 'pointer', 
                             fontSize: '12px',
                             fontWeight: 500,
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '4px'
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.5px'
                           }}
+                          onMouseEnter={(e) => e.currentTarget.style.color = '#374151'}
+                          onMouseLeave={(e) => e.currentTarget.style.color = '#6b7280'}
                         >
-                          <i className="fas fa-download" style={{ fontSize: '11px' }}></i>
+                          DOWNLOAD
                         </button>
                       </div>
                     </td>

@@ -86,8 +86,10 @@ const BookingCard = ({
   actions = {},
   showActions = true,
   customActions = null,
+  customActionButton = null,
   openActionMenu,
-  setOpenActionMenu
+  setOpenActionMenu,
+  onCardClick = null
 }) => {
   const navigate = useNavigate();
   const [internalExpanded, setInternalExpanded] = useState(false);
@@ -229,6 +231,12 @@ const BookingCard = ({
   if (compact) {
     // Determine navigation based on status and view
     const handleCompactClick = () => {
+      // If custom click handler provided, use it instead
+      if (onCardClick) {
+        onCardClick(booking);
+        return;
+      }
+      
       const bookingId = booking.BookingID || booking.RequestID || booking.BookingRequestId;
       const status = (booking.Status || '').toLowerCase();
       
@@ -248,37 +256,38 @@ const BookingCard = ({
         style={{ 
           display: 'flex', 
           alignItems: 'center', 
-          padding: '12px 16px', 
+          padding: '16px 20px', 
           background: '#fff', 
-          border: '1px solid #e5e5e5', 
-          borderRadius: '6px', 
-          marginBottom: '8px',
-          cursor: 'pointer'
+          borderBottom: '1px solid #e5e7eb',
+          cursor: 'pointer',
+          transition: 'background 0.2s'
         }}
         onClick={handleCompactClick}
+        onMouseOver={(e) => e.currentTarget.style.background = '#f9fafb'}
+        onMouseOut={(e) => e.currentTarget.style.background = '#fff'}
       >
         {/* Date Block */}
         <div style={{ 
-          width: '50px', 
           textAlign: 'center', 
+          minWidth: '45px',
           marginRight: '16px',
           flexShrink: 0
         }}>
-          <div style={{ fontSize: '12px', color: '#6b7280', fontWeight: 500 }}>{dateMonth}</div>
-          <div style={{ fontSize: '24px', fontWeight: 700, color: '#1f2937', lineHeight: 1 }}>{dateDay}</div>
-          <div style={{ fontSize: '12px', color: '#9ca3af' }}>{dateDayName}</div>
+          <div style={{ fontSize: '11px', color: '#6b7280', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{dateMonth}</div>
+          <div style={{ fontSize: '24px', fontWeight: 700, color: '#1f2937', lineHeight: 1.1 }}>{dateDay}</div>
+          <div style={{ fontSize: '11px', color: '#9ca3af', textTransform: 'capitalize' }}>{dateDayName}</div>
         </div>
 
         {/* Info */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: '15px', fontWeight: 600, color: '#10b981', marginBottom: '3px' }}>
+          <div style={{ fontSize: '14px', fontWeight: 600, color: '#0d9488', marginBottom: '2px' }}>
             {profileName}
           </div>
-          <div style={{ fontSize: '14px', color: '#374151', marginBottom: '3px' }}>{serviceName}</div>
+          <div style={{ fontSize: '14px', color: '#374151', marginBottom: '4px' }}>{serviceName}</div>
           {location && (
             <div style={{ fontSize: '13px', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <i className="fas fa-map-marker-alt" style={{ fontSize: '11px' }}></i>
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{location}</span>
+              <i className="fas fa-map-marker-alt" style={{ fontSize: '11px', color: '#9ca3af' }}></i>
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '300px' }}>{location}</span>
             </div>
           )}
         </div>
@@ -287,14 +296,16 @@ const BookingCard = ({
         <div style={{ 
           display: 'inline-flex', 
           alignItems: 'center', 
-          padding: '4px 10px', 
-          borderRadius: '999px', 
+          padding: '6px 12px', 
+          borderRadius: '20px', 
           fontSize: '12px', 
-          background: statusCfg.bg, 
+          fontWeight: 500,
+          background: 'white', 
           color: statusCfg.color, 
           border: `1px solid ${statusCfg.color}`,
-          marginRight: '10px',
-          flexShrink: 0
+          marginRight: '12px',
+          flexShrink: 0,
+          whiteSpace: 'nowrap'
         }}>
           {statusCfg.label}
         </div>
@@ -309,29 +320,36 @@ const BookingCard = ({
 
   // Full card with expandable details
   return (
-    <div style={{ background: '#fff', border: '1px solid #e5e5e5', borderRadius: '6px', marginBottom: '8px', overflow: 'hidden' }}>
+    <div style={{ background: '#fff', borderBottom: '1px solid #e5e7eb', overflow: 'hidden' }}>
       {/* Compact Header Row */}
       <div 
-        style={{ display: 'flex', alignItems: 'center', padding: '12px 16px', cursor: showExpandable ? 'pointer' : 'default' }}
+        style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          padding: '16px 20px', 
+          cursor: showExpandable ? 'pointer' : 'default',
+          background: expanded ? '#f8f9fa' : 'transparent',
+          transition: 'background 0.2s'
+        }}
         onClick={showExpandable ? toggleExpand : undefined}
       >
         {/* Date Block */}
         <div style={{ 
-          width: '50px', 
           textAlign: 'center', 
+          minWidth: '45px',
           marginRight: '16px',
           flexShrink: 0
         }}>
-          <div style={{ fontSize: '12px', color: '#6b7280', fontWeight: 500 }}>{dateMonth}</div>
-          <div style={{ fontSize: '24px', fontWeight: 700, color: '#1f2937', lineHeight: 1 }}>{dateDay}</div>
-          <div style={{ fontSize: '12px', color: '#9ca3af' }}>{dateDayName}</div>
+          <div style={{ fontSize: '11px', color: '#6b7280', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{dateMonth}</div>
+          <div style={{ fontSize: '24px', fontWeight: 700, color: '#1f2937', lineHeight: 1.1 }}>{dateDay}</div>
+          <div style={{ fontSize: '11px', color: '#9ca3af', textTransform: 'capitalize' }}>{dateDayName}</div>
         </div>
 
         {/* Info */}
         <div style={{ flex: 1, minWidth: 0 }}>
           {!isVendorView ? (
             <span 
-              style={{ fontSize: '15px', fontWeight: 600, color: '#10b981', cursor: 'pointer', marginBottom: '3px', display: 'inline-block' }}
+              style={{ fontSize: '14px', fontWeight: 600, color: '#0d9488', cursor: 'pointer', marginBottom: '2px', display: 'inline-block' }}
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleViewProfile(); }}
               role="button"
               tabIndex={0}
@@ -340,20 +358,20 @@ const BookingCard = ({
               {profileName}
             </span>
           ) : (
-            <div style={{ fontSize: '15px', fontWeight: 600, color: '#10b981', marginBottom: '3px' }}>
+            <div style={{ fontSize: '14px', fontWeight: 600, color: '#0d9488', marginBottom: '2px' }}>
               {profileName}
             </div>
           )}
-          <div style={{ fontSize: '14px', color: '#374151', marginBottom: '3px' }}>{serviceName}</div>
+          <div style={{ fontSize: '14px', color: '#374151', marginBottom: '4px' }}>{serviceName}</div>
           {location && (
-            <div style={{ fontSize: '13px', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '3px' }}>
-              <i className="fas fa-map-marker-alt" style={{ fontSize: '11px' }}></i>
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{location}</span>
+            <div style={{ fontSize: '13px', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '4px' }}>
+              <i className="fas fa-map-marker-alt" style={{ fontSize: '11px', color: '#9ca3af' }}></i>
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '300px' }}>{location}</span>
             </div>
           )}
           {timeStr && (
             <div style={{ fontSize: '13px', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <i className="fas fa-clock" style={{ fontSize: '11px' }}></i>
+              <i className="fas fa-clock" style={{ fontSize: '11px', color: '#9ca3af' }}></i>
               <span>{timeStr}{booking.Timezone || booking.TimeZone ? ` (${booking.Timezone || booking.TimeZone})` : ''}</span>
             </div>
           )}
@@ -363,14 +381,16 @@ const BookingCard = ({
         <div style={{ 
           display: 'inline-flex', 
           alignItems: 'center', 
-          padding: '4px 10px', 
-          borderRadius: '999px', 
+          padding: '6px 12px', 
+          borderRadius: '20px', 
           fontSize: '12px', 
-          background: statusCfg.bg, 
+          fontWeight: 500,
+          background: 'white', 
           color: statusCfg.color, 
           border: `1px solid ${statusCfg.color}`,
-          marginRight: '10px',
-          flexShrink: 0
+          marginRight: '12px',
+          flexShrink: 0,
+          whiteSpace: 'nowrap'
         }}>
           {statusCfg.label}
         </div>
