@@ -53,14 +53,10 @@ const UniversalModal = ({
     large: 'um-modal-large'
   };
 
-  const handleBackdropClick = (e) => {
-    if (e.target === e.currentTarget) {
-      onClose();
-    }
-  };
+  // Removed backdrop click to close - modals can only be closed via X button or explicit actions
 
   return (
-    <div className="um-backdrop" onClick={handleBackdropClick}>
+    <div className="um-backdrop">
       <div className={`um-modal ${sizeClasses[size] || sizeClasses.medium}`}>
         {/* Modal Header */}
         <div className="um-header">

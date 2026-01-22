@@ -463,15 +463,70 @@ function ProfileModal({ isOpen, onClose }) {
   };
 
   const handleTwoFAInput = (index, value) => {
-    if (value.length > 1) value = value.slice(0, 1);
+    // Handle paste - if pasting full code
+    if (value.length > 1) {
+      const pastedCode = value.replace(/\D/g, '').slice(0, 6);
+      if (pastedCode.length > 0) {
+        const newCode = pastedCode.split('').concat(['', '', '', '', '', '']).slice(0, 6);
+        setTwofaCode(newCode);
+        // Auto-verify if we have 6 digits
+        if (pastedCode.length === 6) {
+          setTimeout(() => {
+            document.querySelector('.otp-verify-btn')?.click();
+          }, 100);
+        }
+        return;
+      }
+    }
+    
     if (!/^\d*$/.test(value)) return;
 
     const newCode = [...twofaCode];
-    newCode[index] = value;
+    newCode[index] = value.slice(-1); // Take only last character
     setTwofaCode(newCode);
 
-    // Auto-focus next input
+    // Auto-focus next input or auto-verify if complete
     if (value && index < 5) {
+      const nextInput = document.querySelectorAll('.otp-digit')[index + 1];
+      if (nextInput) nextInput.focus();
+    } else if (value && index === 5) {
+      // Last digit entered, auto-verify
+      const fullCode = newCode.join('');
+      if (fullCode.length === 6 && /^\d{6}$/.test(fullCode)) {
+        setTimeout(() => {
+          document.querySelector('.otp-verify-btn')?.click();
+        }, 100);
+      }
+    }
+  };
+
+  const handleTwoFAKeyDown = (index, e) => {
+    // Handle backspace
+    if (e.key === 'Backspace') {
+      e.preventDefault();
+      const newCode = [...twofaCode];
+      
+      if (twofaCode[index]) {
+        // Clear current field
+        newCode[index] = '';
+        setTwofaCode(newCode);
+      } else if (index > 0) {
+        // Move to previous field and clear it
+        newCode[index - 1] = '';
+        setTwofaCode(newCode);
+        const prevInput = document.querySelectorAll('.otp-digit')[index - 1];
+        if (prevInput) prevInput.focus();
+      }
+    }
+    
+    // Handle left arrow
+    if (e.key === 'ArrowLeft' && index > 0) {
+      const prevInput = document.querySelectorAll('.otp-digit')[index - 1];
+      if (prevInput) prevInput.focus();
+    }
+    
+    // Handle right arrow
+    if (e.key === 'ArrowRight' && index < 5) {
       const nextInput = document.querySelectorAll('.otp-digit')[index + 1];
       if (nextInput) nextInput.focus();
     }
@@ -805,12 +860,20 @@ function ProfileModal({ isOpen, onClose }) {
                       maxLength="1"
                       value={digit}
                       onChange={(e) => handleTwoFAInput(index, e.target.value)}
+                      onKeyDown={(e) => handleTwoFAKeyDown(index, e)}
+                      onPaste={(e) => {
+                        e.preventDefault();
+                        const pastedData = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+                        if (pastedData) {
+                          handleTwoFAInput(0, pastedData);
+                        }
+                      }}
                       style={{ width: '44px', height: '48px', textAlign: 'center', fontSize: '1.25rem', border: '1px solid var(--border)', borderRadius: 'var(--radius)' }}
                     />
                   ))}
                 </div>
               </div>
-              <button className="btn btn-primary" onClick={handleTwoFAVerify} disabled={loading} style={{ width: '100%', marginBottom: '0.75rem' }}>
+              <button className="btn btn-primary otp-verify-btn" onClick={handleTwoFAVerify} disabled={loading} style={{ width: '100%', marginBottom: '0.75rem' }}>
                 {loading ? 'Verifying...' : 'Verify'}
               </button>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', marginTop: 'auto' }}>
