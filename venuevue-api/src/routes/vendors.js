@@ -671,12 +671,10 @@ router.get('/', async (req, res) => {
         .sort((a, b) => b.trendingScore - a.trendingScore)
         .slice(0, 20)
         .map(v => {
-          // Show real analytics - prioritize profile views, then engagement score
+          // Show real analytics - prioritize profile views, then show position
           let badgeText;
           if (v.profileViews > 0) {
-            badgeText = `${v.profileViews} views`;
-          } else if (v.trendingScore > 10) {
-            badgeText = `${v.trendingScore} engagement score`;
+            badgeText = `${v.profileViews} view${v.profileViews !== 1 ? 's' : ''}`;
           } else {
             badgeText = 'Trending now';
           }
@@ -1220,9 +1218,7 @@ router.get('/search-by-categories', async (req, res) => {
         .map(v => {
           let badgeText;
           if (v.profileViews > 0) {
-            badgeText = `${v.profileViews} views`;
-          } else if (v.trendingScore > 10) {
-            badgeText = `${v.trendingScore} engagement score`;
+            badgeText = `${v.profileViews} view${v.profileViews !== 1 ? 's' : ''}`;
           } else {
             badgeText = 'Trending now';
           }
