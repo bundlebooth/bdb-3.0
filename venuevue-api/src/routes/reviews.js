@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { poolPromise, sql } = require('../config/db');
+const { decodeBookingId, encodeBookingId } = require('../utils/hashIds');
 
 /**
  * Reviews Routes
@@ -9,6 +10,7 @@ const { poolPromise, sql } = require('../config/db');
 
 // GET /api/reviews/validate/:bookingId - Validate a review request
 // Used by the ReviewPage to check if a booking can be reviewed
+// bookingId can be either a numeric ID or an encoded hash ID
 router.get('/validate/:bookingId', async (req, res) => {
   try {
     const { bookingId } = req.params;
@@ -21,9 +23,23 @@ router.get('/validate/:bookingId', async (req, res) => {
       });
     }
 
+    // Try to decode if it's a hash ID, otherwise use as numeric ID
+    let numericBookingId = parseInt(bookingId, 10);
+    if (isNaN(numericBookingId)) {
+      // It's an encoded hash ID, decode it
+      numericBookingId = decodeBookingId(bookingId);
+      if (!numericBookingId) {
+        return res.status(400).json({
+          valid: false,
+          errorTitle: 'Invalid Link',
+          errorMessage: 'This review link is not valid.'
+        });
+      }
+    }
+
     const pool = await poolPromise;
     const request = pool.request();
-    request.input('BookingID', sql.Int, parseInt(bookingId, 10));
+    request.input('BookingID', sql.Int, numericBookingId);
     
     // Call stored procedure to validate the review request
     const result = await request.execute('vendors.sp_ValidateReviewRequest');
@@ -78,6 +94,7 @@ router.get('/validate/:bookingId', async (req, res) => {
       valid: true,
       booking: {
         BookingID: data.BookingID,
+        bookingPublicId: encodeBookingId(data.BookingID),
         VendorProfileID: data.VendorProfileID,
         VendorName: data.VendorName,
         VendorLogo: data.VendorLogo,

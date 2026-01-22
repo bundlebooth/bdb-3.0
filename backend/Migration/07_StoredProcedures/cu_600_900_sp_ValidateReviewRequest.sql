@@ -31,10 +31,10 @@ BEGIN
     
     -- Check if booking exists and get details
     SELECT 
-        @EventDate = br.EventDate,
-        @IsPaid = CASE WHEN br.FullAmountPaid = 1 THEN 1 ELSE 0 END
-    FROM bookings.BookingRequests br
-    WHERE br.RequestID = @BookingID OR br.BookingID = @BookingID;
+        @EventDate = b.EventDate,
+        @IsPaid = CASE WHEN b.FullAmountPaid = 1 THEN 1 ELSE 0 END
+    FROM bookings.Bookings b
+    WHERE b.BookingID = @BookingID;
     
     IF @EventDate IS NULL
     BEGIN
@@ -65,25 +65,22 @@ BEGIN
     
     -- Return validation result with booking details
     SELECT 
-        br.RequestID AS BookingID,
-        br.VendorProfileID,
+        b.BookingID AS BookingID,
+        b.VendorProfileID,
         vp.BusinessName AS VendorName,
         vp.LogoURL AS VendorLogo,
-        COALESCE(
-            (SELECT TOP 1 s.ServiceName FROM vendors.Services s 
-             WHERE s.VendorProfileID = br.VendorProfileID),
-            'Service'
-        ) AS ServiceName,
-        br.EventDate,
-        br.EventLocation,
-        br.TotalAmount,
+        COALESCE(s.Name, 'Service') AS ServiceName,
+        b.EventDate,
+        b.EventLocation,
+        b.TotalAmount,
         @AlreadyReviewed AS AlreadyReviewed,
         @Expired AS Expired,
         @IsCompleted AS IsCompleted,
         @IsPaid AS IsPaid
-    FROM bookings.BookingRequests br
-    INNER JOIN vendors.VendorProfiles vp ON br.VendorProfileID = vp.VendorProfileID
-    WHERE br.RequestID = @BookingID OR br.BookingID = @BookingID;
+    FROM bookings.Bookings b
+    INNER JOIN vendors.VendorProfiles vp ON b.VendorProfileID = vp.VendorProfileID
+    LEFT JOIN vendors.Services s ON b.ServiceID = s.ServiceID
+    WHERE b.BookingID = @BookingID;
 END
 GO
 

@@ -5,6 +5,7 @@
 
 const { poolPromise, sql } = require('../config/db');
 const { sendTemplatedEmail } = require('./email');
+const { encodeBookingId } = require('../utils/hashIds');
 
 const REMINDER_INTERVALS = {
   EVENT_REMINDERS: [1, 3, 7],
@@ -164,6 +165,7 @@ async function sendPostEventReviewRequests() {
     const pool = await poolPromise;
     const frontendUrl = process.env.FRONTEND_URL || 'https://www.planbeau.com';
     const platformName = process.env.PLATFORM_NAME || 'Planbeau';
+    const adminBccEmail = process.env.ADMIN_EMAIL || 'admin@planbeau.com';
     
     // Get bookings where event was yesterday and payment is complete
     const result = await pool.request().execute('admin.sp_GetPostEventReviewRequests');
@@ -183,7 +185,9 @@ async function sendPostEventReviewRequests() {
           month: 'long', 
           day: 'numeric' 
         });
-        const reviewUrl = `${frontendUrl}/review/${booking.BookingID}`;
+        // Use encoded booking ID for secure deeplink
+        const encodedBookingId = encodeBookingId(booking.BookingID);
+        const reviewUrl = `${frontendUrl}/link/review/${encodedBookingId}`;
         
         await sendTemplatedEmail(
           'review_request',
@@ -201,7 +205,8 @@ async function sendPostEventReviewRequests() {
           booking.ClientUserID,
           booking.BookingID,
           null,
-          'reviewRequests'
+          'reviewRequests',
+          adminBccEmail  // BCC admin on all review request emails
         );
         
         console.log('[SCHEDULER] Sent review request for booking ' + booking.BookingID + ' to ' + booking.ClientEmail);
