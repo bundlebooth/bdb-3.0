@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { apiGet } from '../../../utils/api';
+import ReviewCard from '../ReviewCard';
 
 function VendorReviewsSection() {
   const { currentUser } = useAuth();
@@ -88,122 +89,35 @@ function VendorReviewsSection() {
     }
   }, [vendorProfileId]);
 
+  // Render review item - Using shared ReviewCard component
   const renderReviewItem = (review, isGoogle = false) => {
-    if (isGoogle) {
-      return (
-        <div key={review.author_name + review.time} className="review-card" style={{ 
-          padding: '1rem', 
-          borderBottom: '1px solid #e5e7eb',
-          marginBottom: '0.5rem'
-        }}>
-          <div className="review-header" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
-            {review.profile_photo_url && (
-              <img 
-                src={review.profile_photo_url} 
-                alt={review.author_name} 
-                style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }}
-              />
-            )}
-            <div>
-              <div className="reviewer" style={{ fontWeight: 600, color: '#111827' }}>{review.author_name || 'Anonymous'}</div>
-              <div className="review-date" style={{ fontSize: '0.85rem', color: '#6b7280' }}>{review.relative_time_description}</div>
-            </div>
-          </div>
-          <div className="review-rating" style={{ color: '#5e72e4', marginBottom: '0.5rem' }}>
-            {'★'.repeat(review.rating || 0)}{'☆'.repeat(5 - (review.rating || 0))}
-          </div>
-          <div className="review-text" style={{ color: '#374151', lineHeight: 1.5 }}>{review.text}</div>
-        </div>
-      );
-    }
-    
-    // Calculate relative time
-    const getRelativeTime = (dateStr) => {
-      if (!dateStr) return '';
-      const date = new Date(dateStr);
-      if (isNaN(date.getTime())) return '';
-      const now = new Date();
-      const diffMs = now - date;
-      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-      const diffWeeks = Math.floor(diffDays / 7);
-      const diffMonths = Math.floor(diffDays / 30);
-      const diffYears = Math.floor(diffDays / 365);
-      if (diffDays === 0) return 'Today';
-      if (diffDays === 1) return 'Yesterday';
-      if (diffDays < 7) return `${diffDays} days ago`;
-      if (diffWeeks === 1) return '1 week ago';
-      if (diffWeeks < 4) return `${diffWeeks} weeks ago`;
-      if (diffMonths === 1) return '1 month ago';
-      if (diffMonths < 12) return `${diffMonths} months ago`;
-      if (diffYears === 1) return '1 year ago';
-      return `${diffYears} years ago`;
-    };
+    const rating = isGoogle ? (review.rating || 0) : (review.Rating || 0);
+    const reviewerName = isGoogle ? (review.author_name || 'Anonymous') : (review.ClientName || review.ReviewerName || 'Client');
+    const comment = isGoogle ? review.text : review.Comment;
+    const profilePhoto = isGoogle ? review.profile_photo_url : null;
+    const relativeTime = isGoogle ? review.relative_time_description : null;
 
-    // Survey ratings for detailed display
-    const surveyRatings = [
+    // Survey ratings for in-app reviews
+    const surveyRatings = isGoogle ? [] : [
       { label: 'Quality', value: review.QualityRating },
       { label: 'Communication', value: review.CommunicationRating },
       { label: 'Value', value: review.ValueRating },
       { label: 'Punctuality', value: review.PunctualityRating },
       { label: 'Professionalism', value: review.ProfessionalismRating }
-    ].filter(r => r.value != null && r.value > 0);
+    ];
 
     return (
-      <div key={review.ReviewID || review.id} className="review-card" style={{ 
-        padding: '1.25rem', 
-        borderBottom: '1px solid #e5e7eb',
-        marginBottom: '0.5rem'
-      }}>
-        <div className="review-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <div className="reviewer" style={{ fontWeight: 600, color: '#111827' }}>{review.ClientName || review.ReviewerName || 'Client'}</div>
-            <div className="review-date" style={{ fontSize: '0.85rem', color: '#6b7280' }}>{getRelativeTime(review.CreatedAt)}</div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ color: '#5e72e4', fontSize: '0.9rem' }}>
-              {'★'.repeat(review.Rating || 0)}{'☆'.repeat(5 - (review.Rating || 0))}
-            </span>
-            <span style={{ fontWeight: 600, color: '#111827' }}>{review.Rating}/5</span>
-          </div>
-        </div>
-        
-        {review.Title && (
-          <div className="review-title" style={{ fontWeight: 600, color: '#374151', marginBottom: '0.5rem' }}>{review.Title}</div>
-        )}
-        
-        {review.Comment && review.Comment !== review.Title && (
-          <div className="review-text" style={{ color: '#4b5563', lineHeight: 1.6, marginBottom: '0.75rem' }}>{review.Comment}</div>
-        )}
-
-        {/* Survey Ratings - Like Client My Reviews */}
-        {surveyRatings.length > 0 && (
-          <div style={{ 
-            display: 'flex', 
-            flexWrap: 'wrap', 
-            gap: '12px', 
-            padding: '12px', 
-            background: '#f9fafb', 
-            borderRadius: '8px',
-            marginTop: '12px'
-          }}>
-            {surveyRatings.map(r => (
-              <div key={r.label} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ fontSize: '13px', color: '#6b7280' }}>{r.label}:</span>
-                <span style={{ color: '#5e72e4', fontSize: '12px' }}>
-                  {'★'.repeat(r.value)}{'☆'.repeat(5 - r.value)}
-                </span>
-              </div>
-            ))}
-            {review.WouldRecommend !== undefined && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ fontSize: '13px', color: '#6b7280' }}>Would Recommend:</span>
-                <span style={{ fontSize: '13px', fontWeight: 600, color: review.WouldRecommend ? '#10b981' : '#ef4444' }}>
-                  {review.WouldRecommend ? 'Yes' : 'No'}
-                </span>
-              </div>
-            )}
-          </div>
-        )}
+      <div key={isGoogle ? (review.author_name + review.time) : (review.ReviewID || review.id)}>
+        <ReviewCard
+          reviewerName={reviewerName}
+          rating={rating}
+          comment={comment}
+          surveyRatings={surveyRatings}
+          wouldRecommend={isGoogle ? undefined : review.WouldRecommend}
+          isGoogle={isGoogle}
+          profilePhoto={profilePhoto}
+          relativeTime={relativeTime}
+        />
       </div>
     );
   };

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { apiGet } from '../../../utils/api';
 import { useAuth } from '../../../context/AuthContext';
+import CardRow from '../CardRow';
 
 function VendorDashboardSection({ data, loading, onSectionChange }) {
   const { currentUser } = useAuth();
@@ -128,25 +129,20 @@ function VendorDashboardSection({ data, loading, onSectionChange }) {
 
   const renderBookingItem = (booking) => {
     const eventDate = booking.EventDate ? new Date(booking.EventDate) : null;
-    const isValidDate = eventDate && !isNaN(eventDate.getTime());
-    
-    const month = isValidDate ? eventDate.toLocaleDateString('en-US', { month: 'short' }).toUpperCase() : 'TBD';
-    const day = isValidDate ? eventDate.getDate() : '--';
-    const weekday = isValidDate ? eventDate.toLocaleDateString('en-US', { weekday: 'short' }) : '';
 
     const s = (booking.Status || '').toString().toLowerCase();
     const isPaid = booking.FullAmountPaid === true || booking.FullAmountPaid === 1 || s === 'paid';
     
     // Status configuration
     const statusMap = {
-      pending:   { icon: 'fa-clock', bg: '#fef3c7', color: '#f59e0b', label: 'Pending', borderStyle: 'dashed' },
-      confirmed: { icon: 'fa-check-circle', bg: '#ecfdf5', color: '#10b981', label: 'Confirmed', borderStyle: 'dashed' },
-      accepted:  { icon: 'fa-check-circle', bg: '#ecfdf5', color: '#10b981', label: 'Confirmed', borderStyle: 'dashed' },
-      approved:  { icon: 'fa-check-circle', bg: '#ecfdf5', color: '#10b981', label: 'Confirmed', borderStyle: 'dashed' },
-      paid:      { icon: 'fa-check-circle', bg: '#ecfdf5', color: '#10b981', label: 'Paid', borderStyle: 'solid' },
-      declined:  { icon: 'fa-times-circle', bg: '#fef2f2', color: '#ef4444', label: 'Declined', borderStyle: 'dashed' },
-      cancelled: { icon: 'fa-ban', bg: '#f3f4f6', color: '#6b7280', label: 'Cancelled', borderStyle: 'dashed' },
-      expired:   { icon: 'fa-clock', bg: '#f3f4f6', color: '#6b7280', label: 'Expired', borderStyle: 'dashed' }
+      pending:   { color: '#f59e0b', label: 'Pending' },
+      confirmed: { color: '#10b981', label: 'Confirmed' },
+      accepted:  { color: '#10b981', label: 'Confirmed' },
+      approved:  { color: '#10b981', label: 'Confirmed' },
+      paid:      { color: '#10b981', label: 'Paid' },
+      declined:  { color: '#ef4444', label: 'Declined' },
+      cancelled: { color: '#6b7280', label: 'Cancelled' },
+      expired:   { color: '#6b7280', label: 'Expired' }
     };
     const status = isPaid ? 'paid' : s;
     const statusCfg = statusMap[status] || statusMap.pending;
@@ -154,85 +150,22 @@ function VendorDashboardSection({ data, loading, onSectionChange }) {
     return (
       <div 
         key={booking.BookingID || booking.RequestID} 
-        className="dashboard-booking-card" 
         onClick={() => onSectionChange && onSectionChange('bookings')}
         style={{
-          padding: '12px 16px',
-          background: '#f8fafc',
-          borderRadius: '10px',
-          border: '1px solid #e2e8f0',
-          marginBottom: '10px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '16px',
-          cursor: 'pointer',
-          transition: 'all 0.2s ease'
+          borderBottom: '1px solid #e5e7eb',
+          cursor: 'pointer'
         }}
-        onMouseEnter={(e) => { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.borderColor = '#cbd5e1'; }}
-        onMouseLeave={(e) => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
       >
-        {/* Date Section */}
-        <div style={{
-          textAlign: 'center',
-          minWidth: '50px',
-          padding: '8px 0',
-          borderRight: '1px solid #e2e8f0',
-          paddingRight: '16px',
-          flexShrink: 0
-        }}>
-          <div style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase', fontWeight: 600 }}>
-            {month}
-          </div>
-          <div style={{ fontSize: '24px', fontWeight: 700, color: '#111827', lineHeight: 1.1 }}>
-            {day}
-          </div>
-          <div style={{ fontSize: '11px', color: '#9ca3af' }}>
-            {weekday}
-          </div>
-        </div>
-        {/* Booking Info */}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
-            <div style={{ fontWeight: 600, color: '#111827', fontSize: '15px' }}>
-              {booking.ClientName || 'Client'}
-            </div>
-            <div style={{ 
-              display: 'inline-flex', 
-              alignItems: 'center', 
-              gap: '4px', 
-              padding: '4px 10px', 
-              borderRadius: '999px', 
-              fontSize: '11px', 
-              background: statusCfg.bg, 
-              color: statusCfg.color, 
-              border: `1px ${statusCfg.borderStyle || 'solid'} ${statusCfg.color}`,
-              whiteSpace: 'nowrap',
-              flexShrink: 0
-            }}>
-              <i className={`fas ${statusCfg.icon}`} style={{ fontSize: '10px' }}></i>
-              <span>{statusCfg.label}</span>
-            </div>
-          </div>
-          <div style={{ fontSize: '13px', color: '#4b5563', marginBottom: '4px' }}>
-            {booking.ServiceName || 'Service'}
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', fontSize: '12px', color: '#6b7280' }}>
-            {booking.TotalAmount != null && Number(booking.TotalAmount) > 0 && (
-              <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <i className="fas fa-dollar-sign" style={{ fontSize: '11px' }}></i>
-                ${Number(booking.TotalAmount).toLocaleString()} CAD
-              </span>
-            )}
-            {(booking.Location || booking.EventLocation) && (
-              <span style={{ display: 'flex', alignItems: 'center', gap: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '200px' }}>
-                <i className="fas fa-map-marker-alt" style={{ fontSize: '11px', flexShrink: 0 }}></i>
-                {booking.Location || booking.EventLocation}
-              </span>
-            )}
-          </div>
-        </div>
-        {/* Arrow indicator */}
-        <i className="fas fa-chevron-right" style={{ color: '#9ca3af', fontSize: '14px', flexShrink: 0 }}></i>
+        <CardRow
+          date={eventDate}
+          primaryName={booking.ClientName || 'Client'}
+          serviceName={booking.ServiceName || 'Service'}
+          location={booking.Location || booking.EventLocation}
+          badgeLabel={statusCfg.label}
+          badgeColor={statusCfg.color}
+          isExpanded={false}
+          showChevron={true}
+        />
       </div>
     );
   };

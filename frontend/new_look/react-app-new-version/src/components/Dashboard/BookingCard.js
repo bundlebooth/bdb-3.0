@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import CardRow from './CardRow';
 
 /**
  * Shared BookingCard component for displaying booking information
@@ -254,154 +255,52 @@ const BookingCard = ({
     return (
       <div 
         style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          padding: '16px 20px', 
           background: '#fff', 
           borderBottom: '1px solid #e5e7eb',
-          cursor: 'pointer',
-          transition: 'background 0.2s'
+          cursor: 'pointer'
         }}
         onClick={handleCompactClick}
-        onMouseOver={(e) => e.currentTarget.style.background = '#f9fafb'}
-        onMouseOut={(e) => e.currentTarget.style.background = '#fff'}
       >
-        {/* Date Block */}
-        <div style={{ 
-          textAlign: 'center', 
-          minWidth: '45px',
-          marginRight: '16px',
-          flexShrink: 0
-        }}>
-          <div style={{ fontSize: '11px', color: '#6b7280', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{dateMonth}</div>
-          <div style={{ fontSize: '24px', fontWeight: 700, color: '#1f2937', lineHeight: 1.1 }}>{dateDay}</div>
-          <div style={{ fontSize: '11px', color: '#9ca3af', textTransform: 'capitalize' }}>{dateDayName}</div>
-        </div>
-
-        {/* Info */}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: '14px', fontWeight: 600, color: '#0d9488', marginBottom: '2px' }}>
-            {profileName}
-          </div>
-          <div style={{ fontSize: '14px', color: '#374151', marginBottom: '4px' }}>{serviceName}</div>
-          {location && (
-            <div style={{ fontSize: '13px', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <i className="fas fa-map-marker-alt" style={{ fontSize: '11px', color: '#9ca3af' }}></i>
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '300px' }}>{location}</span>
-            </div>
-          )}
-        </div>
-
-        {/* Status Badge */}
-        <div style={{ 
-          display: 'inline-flex', 
-          alignItems: 'center', 
-          padding: '6px 12px', 
-          borderRadius: '20px', 
-          fontSize: '12px', 
-          fontWeight: 500,
-          background: 'white', 
-          color: statusCfg.color, 
-          border: `1px solid ${statusCfg.color}`,
-          marginRight: '12px',
-          flexShrink: 0,
-          whiteSpace: 'nowrap'
-        }}>
-          {statusCfg.label}
-        </div>
-
-        {/* Arrow */}
-        <div style={{ color: '#9ca3af', fontSize: '14px', flexShrink: 0 }}>
-          <i className="fas fa-chevron-right"></i>
-        </div>
+        <CardRow
+          date={eventDate}
+          primaryName={profileName}
+          serviceName={serviceName}
+          location={location}
+          badgeLabel={statusCfg.label}
+          badgeColor={statusCfg.color}
+          isExpanded={false}
+          showChevron={true}
+        />
       </div>
     );
   }
 
+  // Extra info for time display
+  const timeExtraInfo = timeStr ? (
+    <div style={{ fontSize: '13px', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
+      <i className="fas fa-clock" style={{ fontSize: '11px', color: '#9ca3af' }}></i>
+      <span>{timeStr}{booking.Timezone || booking.TimeZone ? ` (${booking.Timezone || booking.TimeZone})` : ''}</span>
+    </div>
+  ) : null;
+
   // Full card with expandable details
   return (
     <div style={{ background: '#fff', borderBottom: '1px solid #e5e7eb', overflow: 'hidden' }}>
-      {/* Compact Header Row */}
-      <div 
-        style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          padding: '16px 20px', 
-          cursor: showExpandable ? 'pointer' : 'default',
-          background: expanded ? '#f8f9fa' : 'transparent',
-          transition: 'background 0.2s'
-        }}
+      {/* Header Row - Using shared CardRow component */}
+      <CardRow
+        date={eventDate}
+        primaryName={profileName}
+        primaryNameClickable={!isVendorView}
+        onPrimaryNameClick={handleViewProfile}
+        serviceName={serviceName}
+        location={location}
+        badgeLabel={statusCfg.label}
+        badgeColor={statusCfg.color}
+        isExpanded={expanded}
         onClick={showExpandable ? toggleExpand : undefined}
-      >
-        {/* Date Block */}
-        <div style={{ 
-          textAlign: 'center', 
-          minWidth: '45px',
-          marginRight: '16px',
-          flexShrink: 0
-        }}>
-          <div style={{ fontSize: '11px', color: '#6b7280', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{dateMonth}</div>
-          <div style={{ fontSize: '24px', fontWeight: 700, color: '#1f2937', lineHeight: 1.1 }}>{dateDay}</div>
-          <div style={{ fontSize: '11px', color: '#9ca3af', textTransform: 'capitalize' }}>{dateDayName}</div>
-        </div>
-
-        {/* Info */}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          {!isVendorView ? (
-            <span 
-              style={{ fontSize: '14px', fontWeight: 600, color: '#0d9488', cursor: 'pointer', marginBottom: '2px', display: 'inline-block' }}
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleViewProfile(); }}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); handleViewProfile(); } }}
-            >
-              {profileName}
-            </span>
-          ) : (
-            <div style={{ fontSize: '14px', fontWeight: 600, color: '#0d9488', marginBottom: '2px' }}>
-              {profileName}
-            </div>
-          )}
-          <div style={{ fontSize: '14px', color: '#374151', marginBottom: '4px' }}>{serviceName}</div>
-          {location && (
-            <div style={{ fontSize: '13px', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '4px' }}>
-              <i className="fas fa-map-marker-alt" style={{ fontSize: '11px', color: '#9ca3af' }}></i>
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '300px' }}>{location}</span>
-            </div>
-          )}
-          {timeStr && (
-            <div style={{ fontSize: '13px', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <i className="fas fa-clock" style={{ fontSize: '11px', color: '#9ca3af' }}></i>
-              <span>{timeStr}{booking.Timezone || booking.TimeZone ? ` (${booking.Timezone || booking.TimeZone})` : ''}</span>
-            </div>
-          )}
-        </div>
-
-        {/* Status Badge */}
-        <div style={{ 
-          display: 'inline-flex', 
-          alignItems: 'center', 
-          padding: '6px 12px', 
-          borderRadius: '20px', 
-          fontSize: '12px', 
-          fontWeight: 500,
-          background: 'white', 
-          color: statusCfg.color, 
-          border: `1px solid ${statusCfg.color}`,
-          marginRight: '12px',
-          flexShrink: 0,
-          whiteSpace: 'nowrap'
-        }}>
-          {statusCfg.label}
-        </div>
-
-        {/* Expand Arrow */}
-        {showExpandable && (
-          <div style={{ color: '#9ca3af', fontSize: '14px', flexShrink: 0 }}>
-            <i className={`fas fa-chevron-${expanded ? 'up' : 'down'}`}></i>
-          </div>
-        )}
-      </div>
+        showChevron={showExpandable}
+        extraInfo={timeExtraInfo}
+      />
 
       {/* Expanded Details with Animation */}
       {showExpandable && (

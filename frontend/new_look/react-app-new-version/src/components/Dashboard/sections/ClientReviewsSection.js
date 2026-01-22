@@ -1,11 +1,15 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import { apiGet, apiPost } from '../../../utils/api';
 import { showBanner } from '../../../utils/banners';
 import UniversalModal from '../../UniversalModal';
+import CardRow from '../CardRow';
+import ReviewCard from '../ReviewCard';
 
 function ClientReviewsSection({ deepLinkBookingId, onDeepLinkHandled }) {
   const { currentUser } = useAuth();
+  const navigate = useNavigate();
   const [reviews, setReviews] = useState([]);
   const [pastBookings, setPastBookings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -13,6 +17,7 @@ function ClientReviewsSection({ deepLinkBookingId, onDeepLinkHandled }) {
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [reviewSuccess, setReviewSuccess] = useState(false);
   const [expandedCardId, setExpandedCardId] = useState(null);
   const [reviewPhotos, setReviewPhotos] = useState([]);
   const fileInputRef = useRef(null);
@@ -71,7 +76,7 @@ function ClientReviewsSection({ deepLinkBookingId, onDeepLinkHandled }) {
     loadData();
   }, [loadData]);
 
-  // Handle deep link - auto-open review modal when deepLinkBookingId is provided
+  // Handle deep link - open review modal when deepLinkBookingId is provided
   useEffect(() => {
     if (deepLinkBookingId && pastBookings.length > 0 && !loading) {
       // Find the booking by ID
@@ -82,7 +87,7 @@ function ClientReviewsSection({ deepLinkBookingId, onDeepLinkHandled }) {
       );
       
       if (booking) {
-        // Auto-open the review modal for this booking
+        // Open the review modal for this booking
         openReviewModal(booking);
       }
       
@@ -131,8 +136,7 @@ function ClientReviewsSection({ deepLinkBookingId, onDeepLinkHandled }) {
       
       const data = await resp.json();
       if (data.success) {
-        setShowReviewModal(false);
-        showBanner('Your review has been submitted successfully!', 'success');
+        setReviewSuccess(true);
         loadData(); // Reload to update lists
       } else {
         alert(data.message || 'Failed to submit review');
@@ -143,6 +147,12 @@ function ClientReviewsSection({ deepLinkBookingId, onDeepLinkHandled }) {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const closeReviewModal = () => {
+    setShowReviewModal(false);
+    setReviewSuccess(false);
+    setSelectedBooking(null);
   };
 
   const StarRating = ({ value, onChange, label }) => (
@@ -296,159 +306,36 @@ function ClientReviewsSection({ deepLinkBookingId, onDeepLinkHandled }) {
     }
   };
 
-  // Render a pending booking - Matching Bookings layout with date block
+  // Render a pending booking - Using shared CardRow component
   const renderPendingCard = (booking) => {
-    const itemId = booking.RequestID || booking.BookingID;
+    const itemId = `pending-${booking.BookingID}`;
     const vendorName = booking.VendorName || 'Vendor';
     const serviceName = booking.ServiceName || 'Service';
     const eventDate = booking.EventDate ? new Date(booking.EventDate) : null;
     const location = booking.Location || booking.EventLocation || booking.Address || '';
     const isExpanded = expandedCardId === itemId;
-    
-    // Vendor ratings
-    const inAppRating = booking.AverageRating || booking.averageRating || booking.VendorRating;
-    const googleRating = booking.GoogleRating || booking.googleRating;
-
-    // Format date parts
-    const monthShort = eventDate ? eventDate.toLocaleDateString('en-US', { month: 'short' }).toUpperCase() : '';
-    const dayNum = eventDate ? eventDate.getDate() : '';
-    const dayName = eventDate ? eventDate.toLocaleDateString('en-US', { weekday: 'short' }) : '';
 
     return (
       <div 
         key={itemId}
+        id={itemId}
         style={{
           borderBottom: '1px solid #e5e7eb',
           overflow: 'hidden'
         }}
       >
-        {/* Header Row - Clickable - Matching Bookings layout */}
-        <div 
+        {/* Header Row - Using shared CardRow component */}
+        <CardRow
+          date={eventDate}
+          primaryName={vendorName}
+          serviceName={serviceName}
+          location={location}
+          badgeLabel={isExpanded ? 'Writing Review' : 'Pending Review'}
+          badgeColor="#5e72e4"
+          isExpanded={isExpanded}
           onClick={() => toggleCardExpand(itemId, booking)}
-          style={{
-            padding: '16px 20px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '16px',
-            cursor: 'pointer',
-            background: isExpanded ? '#f8f9fa' : 'transparent',
-            transition: 'background 0.2s'
-          }}
-        >
-          {/* Date Block - Like Bookings */}
-          <div style={{
-            textAlign: 'center',
-            minWidth: '45px',
-            flexShrink: 0
-          }}>
-            <div style={{ 
-              fontSize: '11px', 
-              color: '#6b7280', 
-              fontWeight: 500,
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px'
-            }}>
-              {monthShort}
-            </div>
-            <div style={{ 
-              fontSize: '24px', 
-              fontWeight: 700, 
-              color: '#1f2937',
-              lineHeight: 1.1
-            }}>
-              {dayNum}
-            </div>
-            <div style={{ 
-              fontSize: '11px', 
-              color: '#9ca3af',
-              textTransform: 'capitalize'
-            }}>
-              {dayName}
-            </div>
-          </div>
-
-          {/* Content - Vendor Info */}
-          <div style={{ flex: 1, minWidth: 0 }}>
-            {/* Vendor Name - Teal/Green like Bookings */}
-            <div style={{ 
-              fontSize: '14px', 
-              fontWeight: 600, 
-              color: '#0d9488', 
-              marginBottom: '2px'
-            }}>
-              {vendorName}
-            </div>
-            {/* Service Name */}
-            <div style={{ 
-              fontSize: '14px', 
-              color: '#374151', 
-              marginBottom: '4px'
-            }}>
-              {serviceName}
-            </div>
-            {/* Location with icon */}
-            {location && (
-              <div style={{ 
-                fontSize: '13px', 
-                color: '#6b7280',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px'
-              }}>
-                <i className="fas fa-map-marker-alt" style={{ fontSize: '11px', color: '#9ca3af' }}></i>
-                <span style={{ 
-                  overflow: 'hidden', 
-                  textOverflow: 'ellipsis', 
-                  whiteSpace: 'nowrap',
-                  maxWidth: '300px'
-                }}>
-                  {location}
-                </span>
-              </div>
-            )}
-            {/* Vendor Ratings - smaller, inline */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '4px' }}>
-              {inAppRating && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
-                  <span style={{ color: '#5e72e4', fontSize: '12px' }}>★</span>
-                  <span style={{ fontSize: '12px', color: '#374151', fontWeight: 500 }}>{Number(inAppRating).toFixed(1)}</span>
-                </div>
-              )}
-              {googleRating && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
-                  <img src="https://www.google.com/favicon.ico" alt="Google" style={{ width: '12px', height: '12px' }} />
-                  <span style={{ fontSize: '12px', color: '#374151', fontWeight: 500 }}>{Number(googleRating).toFixed(1)}</span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Right side - Badge and Chevron */}
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '12px',
-            flexShrink: 0
-          }}>
-            {/* Status Badge - Like Bookings "Awaiting Payment" style */}
-            <span style={{ 
-              padding: '6px 12px',
-              borderRadius: '20px',
-              fontSize: '12px',
-              fontWeight: 500,
-              border: '1px solid #5e72e4',
-              color: '#5e72e4',
-              background: 'white',
-              whiteSpace: 'nowrap'
-            }}>
-              {isExpanded ? 'Writing Review' : 'Pending Review'}
-            </span>
-            <i 
-              className={`fas fa-chevron-${isExpanded ? 'up' : 'down'}`} 
-              style={{ color: '#9ca3af', fontSize: '14px' }}
-            ></i>
-          </div>
-        </div>
+          showChevron={true}
+        />
 
         {/* Expanded Review Form */}
         <div style={{
@@ -729,196 +616,26 @@ function ClientReviewsSection({ deepLinkBookingId, onDeepLinkHandled }) {
     );
   };
 
-  // Render a submitted review - Matching Bookings layout with date block
+  // Render a submitted review - Using shared ReviewCard component
   const renderReviewCard = (review) => {
-    const vendorName = review.VendorName || 'Vendor';
-    const rating = review.Rating || 5;
-    const serviceName = review.ServiceName || 'Service';
-
-    // Parse date safely - handle various date formats
-    let reviewDate = null;
-    const dateStr = review.CreatedAt || review.ReviewDate;
-    if (dateStr) {
-      const parsed = new Date(dateStr);
-      if (!isNaN(parsed.getTime())) {
-        reviewDate = parsed;
-      }
-    }
-
-    // Format date parts with fallbacks
-    const monthShort = reviewDate ? reviewDate.toLocaleDateString('en-US', { month: 'short' }).toUpperCase() : '';
-    const dayNum = reviewDate ? reviewDate.getDate() : '';
-    const dayName = reviewDate ? reviewDate.toLocaleDateString('en-US', { weekday: 'short' }) : '';
+    const surveyRatings = [
+      { label: 'Quality', value: review.QualityRating },
+      { label: 'Communication', value: review.CommunicationRating },
+      { label: 'Value', value: review.ValueRating },
+      { label: 'Punctuality', value: review.PunctualityRating },
+      { label: 'Professionalism', value: review.ProfessionalismRating }
+    ];
 
     return (
-      <div 
-        key={review.ReviewID || review.id}
-        style={{
-          padding: '16px 20px',
-          borderBottom: '1px solid #e5e7eb'
-        }}
-      >
-        {/* Header Row - Matching Bookings layout */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
-          {/* Date Block - Like Bookings */}
-          <div style={{
-            textAlign: 'center',
-            minWidth: '45px',
-            flexShrink: 0
-          }}>
-            {reviewDate ? (
-              <>
-                <div style={{ 
-                  fontSize: '11px', 
-                  color: '#6b7280', 
-                  fontWeight: 500,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px'
-                }}>
-                  {monthShort}
-                </div>
-                <div style={{ 
-                  fontSize: '24px', 
-                  fontWeight: 700, 
-                  color: '#1f2937',
-                  lineHeight: 1.1
-                }}>
-                  {dayNum}
-                </div>
-                <div style={{ 
-                  fontSize: '11px', 
-                  color: '#9ca3af',
-                  textTransform: 'capitalize'
-                }}>
-                  {dayName}
-                </div>
-              </>
-            ) : (
-              <div style={{
-                width: '40px',
-                height: '40px',
-                borderRadius: '8px',
-                background: '#f3f4f6',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}>
-                <i className="fas fa-star" style={{ color: '#5e72e4', fontSize: '16px' }}></i>
-              </div>
-            )}
-          </div>
-
-          {/* Content */}
-          <div style={{ flex: 1, minWidth: 0 }}>
-            {/* Vendor Name - Teal like Bookings */}
-            <div style={{ 
-              fontSize: '14px', 
-              fontWeight: 600, 
-              color: '#0d9488', 
-              marginBottom: '2px'
-            }}>
-              {vendorName}
-            </div>
-            {/* Service Name */}
-            <div style={{ 
-              fontSize: '14px', 
-              color: '#374151', 
-              marginBottom: '4px'
-            }}>
-              {serviceName}
-            </div>
-            {/* Star Rating */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-              <div style={{ display: 'flex', gap: '2px' }}>
-                {[1, 2, 3, 4, 5].map(star => (
-                  <span 
-                    key={star} 
-                    style={{ 
-                      color: star <= rating ? '#5e72e4' : '#dadce0',
-                      fontSize: '14px'
-                    }}
-                  >
-                    ★
-                  </span>
-                ))}
-              </div>
-              <span style={{ fontSize: '12px', color: '#6b7280' }}>
-                {rating}/5
-              </span>
-            </div>
-
-            {/* Review Comment */}
-            {review.Comment && (
-              <div style={{ 
-                fontSize: '13px', 
-                color: '#4b5563', 
-                lineHeight: 1.5,
-                marginBottom: '8px'
-              }}>
-                {review.Comment.length > 150 ? `${review.Comment.substring(0, 150)}...` : review.Comment}
-              </div>
-            )}
-
-            {/* Detailed Ratings - compact inline */}
-            {(review.QualityRating || review.CommunicationRating || review.ValueRating) && (
-              <div style={{ 
-                display: 'flex',
-                flexWrap: 'wrap',
-                gap: '12px',
-                marginTop: '8px'
-              }}>
-                {[
-                  { label: 'Quality', value: review.QualityRating },
-                  { label: 'Communication', value: review.CommunicationRating },
-                  { label: 'Value', value: review.ValueRating },
-                  { label: 'Punctuality', value: review.PunctualityRating },
-                  { label: 'Professionalism', value: review.ProfessionalismRating }
-                ].filter(r => r.value).map(r => (
-                  <div key={r.label} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <span style={{ fontSize: '11px', color: '#6b7280' }}>{r.label}:</span>
-                    <div style={{ display: 'flex', gap: '1px' }}>
-                      {[1, 2, 3, 4, 5].map(star => (
-                        <span key={star} style={{ color: star <= r.value ? '#5e72e4' : '#dadce0', fontSize: '10px' }}>★</span>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Right side - Status Badge */}
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '12px',
-            flexShrink: 0
-          }}>
-            {/* Completed Badge - Green like "Confirmed & Paid" */}
-            <span style={{ 
-              padding: '6px 12px',
-              borderRadius: '20px',
-              fontSize: '12px',
-              fontWeight: 500,
-              border: '1px solid #10b981',
-              color: '#10b981',
-              background: 'white',
-              whiteSpace: 'nowrap'
-            }}>
-              Reviewed
-            </span>
-            {/* Would Recommend indicator */}
-            {review.WouldRecommend != null && (
-              <i 
-                className={`fas fa-${review.WouldRecommend ? 'thumbs-up' : 'thumbs-down'}`} 
-                style={{ 
-                  color: review.WouldRecommend ? '#10b981' : '#ef4444', 
-                  fontSize: '14px' 
-                }}
-              ></i>
-            )}
-          </div>
-        </div>
+      <div key={review.ReviewID || review.id} style={{ padding: '0 20px' }}>
+        <ReviewCard
+          reviewerName={review.VendorName || 'Vendor'}
+          rating={review.Rating || 5}
+          comment={review.Comment}
+          surveyRatings={surveyRatings}
+          wouldRecommend={review.WouldRecommend}
+          isGoogle={false}
+        />
       </div>
     );
   };
@@ -938,42 +655,18 @@ function ClientReviewsSection({ deepLinkBookingId, onDeepLinkHandled }) {
   return (
     <div id="reviews-section">
       {/* Card with tabs inside like Bookings */}
-      <div className="dashboard-card" style={{ padding: 0 }}>
-        {/* Tabs inside the card */}
-        <div style={{ 
-          display: 'flex', 
-          borderBottom: '1px solid #e5e7eb',
-          padding: '0 20px'
-        }}>
+      <div className="dashboard-card">
+        {/* Tabs - using same CSS classes as Bookings */}
+        <div className="booking-tabs">
           <button
+            className={`booking-tab ${activeTab === 'pending' ? 'active' : ''}`}
             onClick={() => setActiveTab('pending')}
-            style={{
-              padding: '16px 20px',
-              background: 'none',
-              border: 'none',
-              borderBottom: activeTab === 'pending' ? '3px solid #5e72e4' : '3px solid transparent',
-              color: activeTab === 'pending' ? '#5e72e4' : '#6b7280',
-              fontWeight: 500,
-              cursor: 'pointer',
-              fontSize: '14px',
-              marginBottom: '-1px'
-            }}
           >
             Pending Reviews ({pastBookings.length})
           </button>
           <button
+            className={`booking-tab ${activeTab === 'submitted' ? 'active' : ''}`}
             onClick={() => setActiveTab('submitted')}
-            style={{
-              padding: '16px 20px',
-              background: 'none',
-              border: 'none',
-              borderBottom: activeTab === 'submitted' ? '3px solid #5e72e4' : '3px solid transparent',
-              color: activeTab === 'submitted' ? '#5e72e4' : '#6b7280',
-              fontWeight: 500,
-              cursor: 'pointer',
-              fontSize: '14px',
-              marginBottom: '-1px'
-            }}
           >
             My Reviews ({reviews.length})
           </button>
@@ -1008,21 +701,54 @@ function ClientReviewsSection({ deepLinkBookingId, onDeepLinkHandled }) {
       {/* Review Modal - Using UniversalModal */}
       <UniversalModal
         isOpen={showReviewModal && !!selectedBooking}
-        onClose={() => setShowReviewModal(false)}
-        title="Write a Review"
+        onClose={closeReviewModal}
+        title={reviewSuccess ? "Thank You!" : "Write a Review"}
         size="large"
-        primaryAction={{
+        primaryAction={reviewSuccess ? {
+          label: 'View My Bookings',
+          onClick: () => {
+            closeReviewModal();
+            navigate('/dashboard?section=bookings');
+          }
+        } : {
           label: submitting ? 'Submitting...' : 'Submit Review',
           onClick: submitReview,
           disabled: submitting || !reviewForm.comment.trim(),
           loading: submitting
         }}
-        secondaryAction={{
+        secondaryAction={reviewSuccess ? {
+          label: 'Go to Home',
+          onClick: () => {
+            closeReviewModal();
+            navigate('/');
+          }
+        } : {
           label: 'Cancel',
-          onClick: () => setShowReviewModal(false)
+          onClick: closeReviewModal
         }}
       >
-        {selectedBooking && (
+        {reviewSuccess ? (
+          <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+            <div style={{ 
+              width: '80px', 
+              height: '80px', 
+              borderRadius: '50%', 
+              background: '#10b981', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              margin: '0 auto 24px'
+            }}>
+              <i className="fas fa-check" style={{ fontSize: '40px', color: 'white' }}></i>
+            </div>
+            <h2 style={{ margin: '0 0 12px', fontSize: '24px', color: '#111827' }}>
+              Review Submitted!
+            </h2>
+            <p style={{ margin: '0 0 24px', fontSize: '16px', color: '#6b7280', lineHeight: 1.6 }}>
+              Thank you for sharing your experience. Your feedback helps other clients find great vendors!
+            </p>
+          </div>
+        ) : selectedBooking && (
           <>
             {/* Booking Card - Mobile friendly */}
             <div className="review-modal-booking-card" style={{
