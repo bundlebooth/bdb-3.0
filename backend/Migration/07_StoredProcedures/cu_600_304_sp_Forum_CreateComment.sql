@@ -41,7 +41,7 @@ BEGIN
         c.PostID,
         c.ParentCommentID,
         c.AuthorID,
-        u.Name AS AuthorName,
+        CONCAT(u.FirstName, ' ', ISNULL(u.LastName, '')) AS AuthorName,
         u.ProfileImageURL AS AuthorAvatar,
         c.Content,
         c.UpvoteCount,

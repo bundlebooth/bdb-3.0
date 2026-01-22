@@ -22,7 +22,7 @@ BEGIN
         b.EventTime,
         b.EventLocation,
         b.Services,
-        u.Name AS ClientName,
+        CONCAT(u.FirstName, ' ', ISNULL(u.LastName, '')) AS ClientName,
         u.Email AS ClientEmail,
         vp.BusinessName AS VendorName,
         COALESCE(JSON_VALUE(b.Services, '$[0].name'), 'Service') AS ServiceName

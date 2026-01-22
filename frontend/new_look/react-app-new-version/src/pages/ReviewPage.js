@@ -245,10 +245,16 @@ function ReviewPage() {
             <div className="booking-card-header">
               <div className="booking-date">
                 <span className="month">
-                  {booking.EventDate ? new Date(booking.EventDate).toLocaleDateString('en-US', { month: 'short' }).toUpperCase() : 'TBD'}
+                  {booking.EventDate ? (() => {
+                    const date = new Date(booking.EventDate);
+                    return !isNaN(date.getTime()) ? date.toLocaleDateString('en-US', { month: 'short' }).toUpperCase() : 'TBD';
+                  })() : 'TBD'}
                 </span>
                 <span className="day">
-                  {booking.EventDate ? new Date(booking.EventDate).getDate() : '--'}
+                  {booking.EventDate ? (() => {
+                    const date = new Date(booking.EventDate);
+                    return !isNaN(date.getTime()) ? date.getDate() : '--';
+                  })() : '--'}
                 </span>
               </div>
               <div className="booking-info">
@@ -380,10 +386,7 @@ function ReviewPage() {
                   Submitting...
                 </>
               ) : (
-                <>
-                  <i className="fas fa-paper-plane"></i>
-                  Submit Review
-                </>
+                'Submit Review'
               )}
             </button>
           </div>

@@ -25,7 +25,7 @@ BEGIN
     SELECT 
         b.BookingID as TransactionID,
         b.CreatedAt,
-        u.Name as ClientName,
+        CONCAT(u.FirstName, ' ', ISNULL(u.LastName, '')) as ClientName,
         vp.BusinessName as VendorName,
         b.BookingID,
         b.TotalAmount as Amount,

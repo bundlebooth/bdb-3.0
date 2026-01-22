@@ -22,7 +22,7 @@ BEGIN
         b.BookingID, b.UserID, b.VendorProfileID, b.EventDate, b.EndDate,
         b.EventName, b.EventType, b.EventLocation, b.Status, b.TotalAmount,
         b.FullAmountPaid, b.AttendeeCount, b.SpecialRequests, b.CreatedAt,
-        u.Name AS ClientName, u.Email AS ClientEmail,
+        CONCAT(u.FirstName, ' ', ISNULL(u.LastName, '')) AS ClientName, u.Email AS ClientEmail,
         vp.BusinessName AS VendorName
     FROM bookings.Bookings b
     LEFT JOIN users.Users u ON b.UserID = u.UserID

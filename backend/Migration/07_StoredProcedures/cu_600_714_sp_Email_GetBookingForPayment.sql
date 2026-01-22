@@ -23,7 +23,7 @@ BEGIN
     SELECT 
         b.EventDate,
         b.TotalAmount,
-        u.Name AS ClientName,
+        CONCAT(u.FirstName, ' ', ISNULL(u.LastName, '')) AS ClientName,
         vp.BusinessName AS VendorName,
         vu.UserID AS VendorUserID,
         vu.Email AS VendorEmail,

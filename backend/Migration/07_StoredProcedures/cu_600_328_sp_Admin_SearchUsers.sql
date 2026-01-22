@@ -21,11 +21,11 @@ BEGIN
     SELECT TOP 10
         'user' as type,
         u.UserID as id,
-        u.Name as name,
+        CONCAT(u.FirstName, ' ', ISNULL(u.LastName, '')) as name,
         u.Email as email,
         CASE WHEN u.IsVendor = 1 THEN 'Vendor' ELSE 'Client' END as accountType
     FROM users.Users u
-    WHERE u.Email LIKE '%' + @Search + '%' OR u.Name LIKE '%' + @Search + '%'
+    WHERE u.Email LIKE '%' + @Search + '%' OR u.FirstName LIKE '%' + @Search + '%' OR u.LastName LIKE '%' + @Search + '%'
     ORDER BY u.CreatedAt DESC;
 END
 GO

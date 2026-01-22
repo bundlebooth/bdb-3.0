@@ -33,7 +33,7 @@ BEGIN
         c.Icon AS CategoryIcon,
         c.Color AS CategoryColor,
         p.AuthorID,
-        u.Name AS AuthorName,
+        CONCAT(u.FirstName, ' ', ISNULL(u.LastName, '')) AS AuthorName,
         u.ProfileImageURL AS AuthorAvatar,
         p.Title,
         p.Content,

@@ -36,7 +36,7 @@ BEGIN
         @MessageID as MessageID,
         u.UserID,
         u.Email,
-        u.Name
+        CONCAT(u.FirstName, ' ', ISNULL(u.LastName, '')) AS Name
     FROM messages.Conversations c
     INNER JOIN users.Users u ON c.UserID = u.UserID
     WHERE c.ConversationID = @ConversationID;

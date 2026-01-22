@@ -30,7 +30,7 @@ BEGIN
     
     SELECT 
         b.*,
-        u.Name AS ClientName,
+        CONCAT(u.FirstName, ' ', ISNULL(u.LastName, '')) AS ClientName,
         u.Email AS ClientEmail,
         br.EventTime,
         br.EventEndTime

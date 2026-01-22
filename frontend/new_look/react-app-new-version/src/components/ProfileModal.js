@@ -12,7 +12,8 @@ function ProfileModal({ isOpen, onClose }) {
   // Form states
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
-  const [signupName, setSignupName] = useState('');
+  const [signupFirstName, setSignupFirstName] = useState('');
+  const [signupLastName, setSignupLastName] = useState('');
   const [signupEmail, setSignupEmail] = useState('');
   const [signupPassword, setSignupPassword] = useState('');
   const [accountType, setAccountType] = useState('client');
@@ -259,7 +260,9 @@ function ProfileModal({ isOpen, onClose }) {
       const userData = {
         id: data.userId,
         userId: data.userId,
-        name: data.name || data.email?.split('@')[0] || 'User',
+        name: data.firstName ? `${data.firstName} ${data.lastName || ''}`.trim() : data.email?.split('@')[0] || 'User',
+        firstName: data.firstName,
+        lastName: data.lastName,
         email: data.email,
         userType: data.isVendor ? 'vendor' : 'client',
         isVendor: data.isVendor || false,
@@ -289,7 +292,7 @@ function ProfileModal({ isOpen, onClose }) {
   const handleSignup = async (e) => {
     e.preventDefault();
     
-    if (!signupName || !signupEmail || !signupPassword) {
+    if (!signupFirstName || !signupLastName || !signupEmail || !signupPassword) {
       showBanner('Please fill in all fields', 'error');
       return;
     }
@@ -302,7 +305,8 @@ function ProfileModal({ isOpen, onClose }) {
     try {
       setLoading(true);
       const response = await apiPost('/users/register', {
-        name: signupName,
+        firstName: signupFirstName,
+        lastName: signupLastName,
         email: signupEmail,
         password: signupPassword,
         accountType: accountType
@@ -323,7 +327,9 @@ function ProfileModal({ isOpen, onClose }) {
       const userData = {
         id: data.userId,
         userId: data.userId,
-        name: data.name || data.email?.split('@')[0] || 'User',
+        name: data.firstName ? `${data.firstName} ${data.lastName || ''}`.trim() : data.email?.split('@')[0] || 'User',
+        firstName: data.firstName,
+        lastName: data.lastName,
         email: data.email,
         userType: data.isVendor ? 'vendor' : 'client',
         isVendor: data.isVendor || false,
@@ -673,15 +679,27 @@ function ProfileModal({ isOpen, onClose }) {
           {/* Signup Form */}
           {view === 'signup' && (
             <form id="signup-form" onSubmit={handleSignup}>
-              <div style={{ marginBottom: '1.5rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Full Name</label>
-                <input
-                  type="text"
-                  value={signupName}
-                  onChange={(e) => setSignupName(e.target.value)}
-                  style={{ width: '100%', padding: '0.75rem', border: '1px solid var(--border)', borderRadius: 'var(--radius)' }}
-                  required
-                />
+              <div style={{ display: 'flex', gap: '12px', marginBottom: '1.5rem' }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>First Name</label>
+                  <input
+                    type="text"
+                    value={signupFirstName}
+                    onChange={(e) => setSignupFirstName(e.target.value)}
+                    style={{ width: '100%', padding: '0.75rem', border: '1px solid var(--border)', borderRadius: 'var(--radius)' }}
+                    required
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Last Name</label>
+                  <input
+                    type="text"
+                    value={signupLastName}
+                    onChange={(e) => setSignupLastName(e.target.value)}
+                    style={{ width: '100%', padding: '0.75rem', border: '1px solid var(--border)', borderRadius: 'var(--radius)' }}
+                    required
+                  />
+                </div>
               </div>
               <div style={{ marginBottom: '1.5rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Email</label>

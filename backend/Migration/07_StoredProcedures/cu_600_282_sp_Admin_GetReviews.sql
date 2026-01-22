@@ -31,7 +31,7 @@ BEGIN
         r.FlagReason,
         r.AdminNotes,
         r.CreatedAt,
-        u.Name as ReviewerName,
+        CONCAT(u.FirstName, ' ', ISNULL(u.LastName, '')) as ReviewerName,
         u.Email as ReviewerEmail,
         vp.BusinessName as VendorName,
         vp.VendorProfileID,

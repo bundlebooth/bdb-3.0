@@ -18,7 +18,7 @@ AS
 BEGIN
     SET NOCOUNT ON;
     
-    SELECT u.UserID, u.Name, u.Email, u.IsVendor, u.IsAdmin, v.VendorProfileID
+    SELECT u.UserID, CONCAT(u.FirstName, ' ', ISNULL(u.LastName, '')) AS Name, u.FirstName, u.LastName, u.Email, u.IsVendor, u.IsAdmin, v.VendorProfileID
     FROM users.Users u
     LEFT JOIN vendors.VendorProfiles v ON u.UserID = v.UserID
     WHERE u.UserID = @UserID;

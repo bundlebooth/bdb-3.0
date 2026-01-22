@@ -16,7 +16,8 @@ IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[users].[s
 GO
 
 CREATE PROCEDURE [users].[sp_Register]
-    @Name NVARCHAR(100),
+    @FirstName NVARCHAR(100),
+    @LastName NVARCHAR(100) = '',
     @Email NVARCHAR(100),
     @PasswordHash NVARCHAR(255),
     @IsVendor BIT = 0,
@@ -30,12 +31,12 @@ BEGIN
 
         -- Insert user with default values for optional fields to prevent NULLs
         INSERT INTO users.Users (
-            Name, Email, PasswordHash, IsVendor, AuthProvider, 
+            FirstName, LastName, Email, PasswordHash, IsVendor, AuthProvider, 
             Phone, Bio, ProfileImageURL, StripeCustomerID, 
             CreatedAt, UpdatedAt
         )
         VALUES (
-            @Name, @Email, @PasswordHash, @IsVendor, @AuthProvider, 
+            @FirstName, @LastName, @Email, @PasswordHash, @IsVendor, @AuthProvider, 
             '', '', '', '', 
             GETDATE(), GETDATE()
         );
@@ -52,7 +53,7 @@ BEGIN
                 CreatedAt, UpdatedAt
             )
             VALUES (
-                @UserID, @Name, '', '', 
+                @UserID, CONCAT(@FirstName, ' ', ISNULL(@LastName, '')), '', '', 
                 '', '', '', 
                 0, 0, 0, 
                 GETDATE(), GETDATE()

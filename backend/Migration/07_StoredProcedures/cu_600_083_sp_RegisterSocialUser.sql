@@ -23,7 +23,8 @@ GO
 
 CREATE   PROCEDURE [users].[sp_RegisterSocialUser]
     @Email NVARCHAR(100),
-    @Name NVARCHAR(100),
+    @FirstName NVARCHAR(100),
+    @LastName NVARCHAR(100) = '',
     @AuthProvider NVARCHAR(20),
     @ProfileImageURL NVARCHAR(255) = NULL,
     @IsVendor BIT = 0  -- New parameter for account type
@@ -39,15 +40,15 @@ BEGIN
     BEGIN
         SET @IsNewUser = 1;
         -- User does not exist, create new user with selected account type
-        INSERT INTO users.Users (Name, Email, AuthProvider, ProfileImageURL, IsVendor)
-        VALUES (@Name, @Email, @AuthProvider, @ProfileImageURL, @IsVendor);
+        INSERT INTO users.Users (FirstName, LastName, Email, AuthProvider, ProfileImageURL, IsVendor)
+        VALUES (@FirstName, @LastName, @Email, @AuthProvider, @ProfileImageURL, @IsVendor);
         SET @UserID = SCOPE_IDENTITY();
         
         -- If vendor, create vendor profile
         IF @IsVendor = 1
         BEGIN
             INSERT INTO vendors.VendorProfiles (UserID, BusinessName)
-            VALUES (@UserID, @Name);
+            VALUES (@UserID, CONCAT(@FirstName, ' ', ISNULL(@LastName, '')));
         END
     END
     ELSE
@@ -55,7 +56,8 @@ BEGIN
         -- User exists, update details if needed (e.g., AuthProvider, Name)
         UPDATE users.Users
         SET AuthProvider = @AuthProvider,
-            Name = @Name,
+            FirstName = @FirstName,
+            LastName = @LastName,
             ProfileImageURL = ISNULL(@ProfileImageURL, ProfileImageURL),
             LastLogin = GETDATE(),
             UpdatedAt = GETDATE()
@@ -64,7 +66,7 @@ BEGIN
 
     SELECT 
         u.UserID, 
-        u.Name, 
+        CONCAT(u.FirstName, ' ', ISNULL(u.LastName, '')) AS Name, 
         u.Email, 
         u.IsVendor,
         @IsNewUser AS IsNewUser,  -- Return whether this is a new user

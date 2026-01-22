@@ -15,7 +15,7 @@ BEGIN
     SELECT 
         b.BookingID, b.EventDate, b.EventTime AS StartTime, b.EventEndTime AS EndTime, b.TimeZone AS Timezone, b.EventLocation,
         s.Name AS ServiceName,
-        cu.UserID AS ClientUserID, cu.Email AS ClientEmail, cu.Name AS ClientName,
+        cu.UserID AS ClientUserID, cu.Email AS ClientEmail, CONCAT(cu.FirstName, ' ', ISNULL(cu.LastName, '')) AS ClientName,
         vu.UserID AS VendorUserID, vu.Email AS VendorEmail, v.BusinessName AS VendorName
     FROM bookings.Bookings b
     INNER JOIN vendors.Services s ON b.ServiceID = s.ServiceID

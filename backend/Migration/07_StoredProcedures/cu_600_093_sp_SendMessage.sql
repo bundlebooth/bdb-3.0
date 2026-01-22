@@ -100,7 +100,7 @@ BEGIN
             @IsVendor = CASE WHEN c.UserID = @SenderID THEN 1 ELSE 0 END,
             @VendorProfileID = c.VendorProfileID,
             @VendorName = v.BusinessName,
-            @UserName = u.Name
+            @UserName = CONCAT(u.FirstName, ' ', ISNULL(u.LastName, ''))
         FROM messages.Conversations c
         JOIN vendors.VendorProfiles v ON c.VendorProfileID = v.VendorProfileID
         JOIN users.Users u ON c.UserID = u.UserID

@@ -18,7 +18,7 @@ IF NOT EXISTS (SELECT 1 FROM sys.objects WHERE object_id = OBJECT_ID(N'[users].[
 BEGIN
     CREATE TABLE [users].[Users](
 	[UserID] [int] IDENTITY(1,1) NOT NULL,
-	[Name] [nvarchar](100) NOT NULL,
+	[FirstName] [nvarchar](100) NOT NULL,
 	[Email] [nvarchar](100) NOT NULL,
 	[PasswordHash] [nvarchar](255) NULL,
 	[ProfileImageURL] [nvarchar](255) CONSTRAINT DF_Users_ProfileImageURL DEFAULT '' NULL,
@@ -46,6 +46,12 @@ BEGIN
 	-- Email unsubscribe tracking
 	[UnsubscribedAt] [datetime2] NULL,
 	[UnsubscribedFromAll] [bit] NOT NULL CONSTRAINT DF_Users_UnsubscribedFromAll DEFAULT 0,
+	-- Last name field
+	[LastName] [nvarchar](100) NULL,
+	-- Soft delete columns
+	[IsDeleted] [bit] NOT NULL CONSTRAINT DF_Users_IsDeleted DEFAULT 0,
+	[DeletedAt] [datetime] NULL,
+	[DeletedReason] [nvarchar](500) NULL,
 PRIMARY KEY CLUSTERED 
 (
 	[UserID] ASC

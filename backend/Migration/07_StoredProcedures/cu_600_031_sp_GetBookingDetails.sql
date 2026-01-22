@@ -32,7 +32,7 @@ BEGIN
     SELECT 
         b.BookingID,
         b.UserID,
-        u.Name AS UserName,
+        CONCAT(u.FirstName, ' ', ISNULL(u.LastName, '')) AS UserName,
         u.Email AS UserEmail,
         u.Phone AS UserPhone,
         b.VendorProfileID,
@@ -88,7 +88,7 @@ BEGIN
         bt.TimelineID,
         bt.Status,
         bt.ChangedBy,
-        u.Name AS ChangedByName,
+        CONCAT(u.FirstName, ' ', ISNULL(u.LastName, '')) AS ChangedByName,
         bt.Notes,
         bt.CreatedAt
     FROM bookings.BookingTimeline bt

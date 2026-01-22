@@ -80,7 +80,7 @@ SELECT
     b.TimeZone,
     b.GroupID,
     -- Client info
-    u.Name AS ClientName,
+    CONCAT(u.FirstName, ' ', ISNULL(u.LastName, '')) AS ClientName,
     u.Email AS ClientEmail,
     u.Phone AS ClientPhone,
     u.ProfileImageURL AS ClientProfilePic,

@@ -53,7 +53,7 @@ BEGIN
                b.Status AS Status, 
                b.FullAmountPaid, 
                vp.BusinessName AS VendorName, 
-               u.Name AS ClientName, 
+               CONCAT(u.FirstName, ' ', ISNULL(u.LastName, '')) AS ClientName, 
                u.Email AS ClientEmail
         FROM [invoices].[Invoices] i
         INNER JOIN [bookings].[Bookings] b ON i.BookingID = b.BookingID
@@ -101,7 +101,7 @@ BEGIN
                b.Status AS Status, 
                b.FullAmountPaid, 
                vp.BusinessName AS VendorName, 
-               u.Name AS ClientName, 
+               CONCAT(u.FirstName, ' ', ISNULL(u.LastName, '')) AS ClientName, 
                u.Email AS ClientEmail
         FROM [invoices].[Invoices] i
         INNER JOIN [bookings].[Bookings] b ON i.BookingID = b.BookingID

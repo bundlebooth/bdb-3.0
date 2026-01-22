@@ -91,7 +91,7 @@ BEGIN
         SELECT 
             c.ConversationID,
             c.UserID,
-            u.Name AS UserName,
+            CONCAT(u.FirstName, ' ', ISNULL(u.LastName, '')) AS UserName,
             u.ProfileImageURL AS UserAvatar,
             c.VendorProfileID,
             v.BusinessName AS VendorName,

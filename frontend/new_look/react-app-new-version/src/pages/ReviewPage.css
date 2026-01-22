@@ -446,12 +446,12 @@
 }
 
 .form-actions .btn-primary {
-  background: #5e72e4;
+  background: #111827;
   color: white;
 }
 
 .form-actions .btn-primary:hover:not(:disabled) {
-  background: #4c5fd7;
+  background: #1f2937;
 }
 
 .form-actions .btn-primary:disabled {

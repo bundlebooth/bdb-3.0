@@ -84,13 +84,19 @@ export async function apiPut(endpoint, data = {}, options = {}) {
  * @param {Object} options - Additional fetch options
  * @returns {Promise<Response>} Fetch response
  */
-export async function apiDelete(endpoint, options = {}) {
+export async function apiDelete(endpoint, data = null, options = {}) {
   const url = endpoint.startsWith('http') ? endpoint : `${API_BASE_URL}${endpoint}`;
-  return fetch(url, {
+  const fetchOptions = {
     method: 'DELETE',
     headers: getAuthHeaders(),
     ...options
-  });
+  };
+  
+  if (data) {
+    fetchOptions.body = JSON.stringify(data);
+  }
+  
+  return fetch(url, fetchOptions);
 }
 
 /**

@@ -22,7 +22,7 @@ BEGIN
         m.MessageID as id,
         m.TicketID as ticketId,
         m.SenderID as senderId,
-        u.Name as senderName,
+        CONCAT(u.FirstName, ' ', ISNULL(u.LastName, '')) as senderName,
         m.SenderType as senderType,
         m.Message as message,
         m.Attachments as attachments,

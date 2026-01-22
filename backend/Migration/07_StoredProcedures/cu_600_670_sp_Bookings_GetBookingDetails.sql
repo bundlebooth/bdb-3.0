@@ -59,7 +59,7 @@ BEGIN
         b.CreatedAt,
         b.UpdatedAt,
         vp.BusinessName AS VendorName,
-        u.Name AS ClientName,
+        CONCAT(u.FirstName, ' ', ISNULL(u.LastName, '')) AS ClientName,
         u.Email AS ClientEmail,
         @CanView AS CanViewDetails
     FROM bookings.Bookings b

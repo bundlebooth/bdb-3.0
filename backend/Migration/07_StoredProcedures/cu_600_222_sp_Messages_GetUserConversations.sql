@@ -28,7 +28,7 @@ BEGIN
         c.UserID AS ConversationUserID,
         CASE 
             WHEN c.UserID = @UserID THEN v.BusinessName 
-            ELSE u.Name 
+            ELSE CONCAT(u.FirstName, ' ', ISNULL(u.LastName, '')) 
         END AS OtherPartyName,
         CASE 
             WHEN c.UserID = @UserID THEN 'vendor'
@@ -60,7 +60,7 @@ BEGIN
             ORDER BY CreatedAt DESC
         )
     WHERE c.UserID = @UserID OR (v.UserID = @UserID AND @UserVendorProfileID IS NOT NULL)
-    GROUP BY c.ConversationID, c.VendorProfileID, c.CreatedAt, c.UserID, u.Name, v.BusinessName, m.Content, m.CreatedAt, v.LogoURL, u.ProfileImageURL, v.UserID
+    GROUP BY c.ConversationID, c.VendorProfileID, c.CreatedAt, c.UserID, u.FirstName, u.LastName, v.BusinessName, m.Content, m.CreatedAt, v.LogoURL, u.ProfileImageURL, v.UserID
     ORDER BY COALESCE(m.CreatedAt, c.CreatedAt) DESC;
 END
 GO

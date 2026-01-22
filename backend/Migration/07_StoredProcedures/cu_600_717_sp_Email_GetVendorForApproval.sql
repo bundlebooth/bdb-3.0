@@ -28,7 +28,7 @@ BEGIN
         vp.DisplayName,
         u.UserID,
         u.Email,
-        u.Name
+        CONCAT(u.FirstName, ' ', ISNULL(u.LastName, '')) AS Name
     FROM [vendors].[VendorProfiles] vp
     INNER JOIN [users].[Users] u ON vp.UserID = u.UserID
     WHERE vp.VendorProfileID = @VendorProfileID;

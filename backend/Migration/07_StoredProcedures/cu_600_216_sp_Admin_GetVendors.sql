@@ -42,7 +42,7 @@ BEGIN
         vp.IsVerified,
         vp.CreatedAt,
         u.Email as OwnerEmail,
-        u.Name as OwnerName,
+        CONCAT(u.FirstName, ' ', ISNULL(u.LastName, '')) as OwnerName,
         (SELECT TOP 1 ImageURL FROM vendors.VendorImages WHERE VendorProfileID = vp.VendorProfileID AND IsPrimary = 1) as PrimaryImage,
         vp.AvgRating as AverageRating,
         vp.TotalReviews as ReviewCount,

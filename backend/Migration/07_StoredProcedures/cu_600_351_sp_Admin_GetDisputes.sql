@@ -20,7 +20,7 @@ BEGIN
     
     SELECT 
         b.BookingID,
-        u.Name as ClientName,
+        CONCAT(u.FirstName, ' ', ISNULL(u.LastName, '')) as ClientName,
         u.Email as ClientEmail,
         vp.BusinessName as VendorName,
         b.TotalAmount as Amount,

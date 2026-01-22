@@ -21,7 +21,7 @@ BEGIN
         vp.StripeAccountID AS VendorStripeAccountID,
         
         -- Client info
-        u.Name AS ClientName,
+        CONCAT(u.FirstName, ' ', ISNULL(u.LastName, '')) AS ClientName,
         u.Email AS ClientEmail,
         
         -- Cancellation policy

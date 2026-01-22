@@ -42,7 +42,7 @@ BEGIN
         b.EventType,
         b.CreatedAt,
         b.UpdatedAt,
-        u.Name as ClientName,
+        CONCAT(u.FirstName, ' ', ISNULL(u.LastName, '')) as ClientName,
         u.Email as ClientEmail,
         vp.BusinessName as VendorName
     FROM bookings.Bookings b
@@ -50,7 +50,7 @@ BEGIN
     LEFT JOIN vendors.VendorProfiles vp ON b.VendorProfileID = vp.VendorProfileID
     WHERE 
         (@Status IS NULL OR @Status = 'all' OR b.Status = @Status)
-        AND (@Search IS NULL OR u.Name LIKE '%' + @Search + '%' OR u.Email LIKE '%' + @Search + '%' OR vp.BusinessName LIKE '%' + @Search + '%')
+        AND (@Search IS NULL OR u.FirstName LIKE '%' + @Search + '%' OR u.LastName LIKE '%' + @Search + '%' OR u.Email LIKE '%' + @Search + '%' OR vp.BusinessName LIKE '%' + @Search + '%')
     ORDER BY b.CreatedAt DESC
     OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY;
     
@@ -61,7 +61,7 @@ BEGIN
     LEFT JOIN vendors.VendorProfiles vp ON b.VendorProfileID = vp.VendorProfileID
     WHERE 
         (@Status IS NULL OR @Status = 'all' OR b.Status = @Status)
-        AND (@Search IS NULL OR u.Name LIKE '%' + @Search + '%' OR u.Email LIKE '%' + @Search + '%' OR vp.BusinessName LIKE '%' + @Search + '%');
+        AND (@Search IS NULL OR u.FirstName LIKE '%' + @Search + '%' OR u.LastName LIKE '%' + @Search + '%' OR u.Email LIKE '%' + @Search + '%' OR vp.BusinessName LIKE '%' + @Search + '%');
 END
 GO
 

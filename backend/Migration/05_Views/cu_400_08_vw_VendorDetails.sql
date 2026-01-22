@@ -21,7 +21,7 @@ CREATE VIEW [vendors].[vw_VendorDetails] AS
 SELECT 
     v.VendorProfileID,
     v.UserID,
-    u.Name AS OwnerName,
+    CONCAT(u.FirstName, ' ', ISNULL(u.LastName, '')) AS OwnerName,
     u.Email AS OwnerEmail,
     u.Phone AS OwnerPhone,
     v.BusinessName,

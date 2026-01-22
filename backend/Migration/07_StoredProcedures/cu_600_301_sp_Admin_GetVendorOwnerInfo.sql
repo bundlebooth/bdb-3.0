@@ -19,7 +19,7 @@ BEGIN
     SET NOCOUNT ON;
     
     SELECT 
-        u.Name as OwnerName, 
+        CONCAT(u.FirstName, ' ', ISNULL(u.LastName, '')) as OwnerName, 
         u.Email as OwnerEmail, 
         u.Phone as OwnerPhone, 
         u.CreatedAt as UserCreatedAt,

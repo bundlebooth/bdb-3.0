@@ -24,7 +24,7 @@ BEGIN
     
     SELECT 
         UserID,
-        Name,
+        CONCAT(FirstName, ' ', ISNULL(LastName, '')) AS Name,
         Email,
         Phone
     FROM users.Users

@@ -23,7 +23,7 @@ BEGIN
     SELECT 
         c.UserID,
         c.VendorProfileID,
-        u.Name AS ClientName,
+        CONCAT(u.FirstName, ' ', ISNULL(u.LastName, '')) AS ClientName,
         u.Email AS ClientEmail,
         u.ProfileImageURL AS ClientProfilePic,
         vp.BusinessName AS VendorName,

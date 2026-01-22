@@ -48,8 +48,8 @@ BEGIN
         RETURN;
     END
     
-    -- Check if event has completed (date has passed)
-    IF @EventDate < CAST(GETDATE() AS DATE)
+    -- Check if event has completed (date has passed or is today)
+    IF @EventDate <= CAST(GETDATE() AS DATE)
         SET @IsCompleted = 1;
     
     -- Check if review link has expired (30 days after event)

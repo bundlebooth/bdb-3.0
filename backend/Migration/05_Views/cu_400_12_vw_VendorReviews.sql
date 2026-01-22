@@ -22,7 +22,7 @@ SELECT
     r.ReviewID,
     r.VendorProfileID,
     r.UserID,
-    u.Name AS ReviewerName,
+    CONCAT(u.FirstName, ' ', ISNULL(u.LastName, '')) AS ReviewerName,
     u.ProfileImageURL AS ReviewerAvatar,
     r.BookingID,
     r.Rating,

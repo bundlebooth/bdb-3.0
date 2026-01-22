@@ -20,7 +20,7 @@ BEGIN
     
     SELECT 
         u.UserID,
-        u.Name,
+        CONCAT(u.FirstName, ' ', ISNULL(u.LastName, '')) AS Name,
         u.Email,
         u.IsVendor,
         vp.VendorProfileID

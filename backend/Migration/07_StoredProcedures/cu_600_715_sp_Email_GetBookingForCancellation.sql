@@ -28,7 +28,7 @@ BEGIN
         b.EventLocation,
         b.Status,
         u.UserID AS ClientUserID,
-        u.Name AS ClientName,
+        CONCAT(u.FirstName, ' ', ISNULL(u.LastName, '')) AS ClientName,
         u.Email AS ClientEmail,
         vp.VendorProfileID,
         vp.BusinessName AS VendorName,

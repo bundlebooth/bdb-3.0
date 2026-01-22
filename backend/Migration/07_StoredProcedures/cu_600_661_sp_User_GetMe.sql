@@ -20,7 +20,7 @@ BEGIN
     
     SELECT 
         u.UserID as userId,
-        u.Name as name,
+        CONCAT(u.FirstName, ' ', ISNULL(u.LastName, '')) as name,
         u.Email as email,
         u.ProfileImageURL as avatar,
         u.IsVendor as isVendor,

@@ -17,7 +17,7 @@ BEGIN
         b.EventDate,
         b.CreatedAt,
         s.Name AS ServiceName,
-        cu.Name AS ClientName,
+        CONCAT(cu.FirstName, ' ', ISNULL(cu.LastName, '')) AS ClientName,
         vu.UserID AS VendorUserID,
         vu.Email AS VendorEmail,
         v.BusinessName AS VendorName

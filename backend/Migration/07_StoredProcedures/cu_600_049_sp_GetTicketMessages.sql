@@ -32,7 +32,7 @@ BEGIN
         m.MessageID,
         m.TicketID,
         m.SenderID,
-        u.Name AS SenderName,
+        CONCAT(u.FirstName, ' ', ISNULL(u.LastName, '')) AS SenderName,
         m.SenderType,
         m.Message,
         m.Attachments,

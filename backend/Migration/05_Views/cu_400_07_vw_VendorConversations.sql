@@ -22,7 +22,7 @@ SELECT
     c.ConversationID,
     c.VendorProfileID,
     c.UserID,
-    u.Name AS UserName,
+    CONCAT(u.FirstName, ' ', ISNULL(u.LastName, '')) AS UserName,
     u.ProfileImageURL AS UserAvatar,
     c.BookingID,
     b.ServiceID,

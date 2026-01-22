@@ -29,12 +29,12 @@ BEGIN
         c.VendorProfileID,
         c.CreatedAt,
         u.UserID as ClientID,
-        ISNULL(u.Name, 'Unknown Client') as ClientName,
+        ISNULL(CONCAT(u.FirstName, ' ', ISNULL(u.LastName, '')), 'Unknown Client') as ClientName,
         ISNULL(u.Email, 'No Email') as ClientEmail,
         vp.VendorProfileID,
         ISNULL(vp.BusinessName, 'Unknown Vendor') as VendorName,
         ISNULL(vu.Email, 'No Email') as VendorEmail,
-        ISNULL(vu.Name, 'Unknown Owner') as VendorOwnerName,
+        ISNULL(CONCAT(vu.FirstName, ' ', ISNULL(vu.LastName, '')), 'Unknown Owner') as VendorOwnerName,
         ISNULL((SELECT TOP 1 Content FROM messages.Messages WHERE ConversationID = c.ConversationID ORDER BY CreatedAt DESC), 'No messages') as LastMessage,
         (SELECT TOP 1 CreatedAt FROM messages.Messages WHERE ConversationID = c.ConversationID ORDER BY CreatedAt DESC) as LastMessageAt,
         ISNULL((SELECT COUNT(*) FROM messages.Messages WHERE ConversationID = c.ConversationID), 0) as MessageCount,
@@ -46,7 +46,8 @@ BEGIN
     LEFT JOIN users.Users vu ON vp.UserID = vu.UserID
     WHERE 
         (@Search IS NULL OR 
-         u.Name LIKE '%' + @Search + '%' OR 
+         u.FirstName LIKE '%' + @Search + '%' OR 
+         u.LastName LIKE '%' + @Search + '%' OR 
          u.Email LIKE '%' + @Search + '%' OR 
          vp.BusinessName LIKE '%' + @Search + '%')
     ORDER BY 
@@ -62,7 +63,8 @@ BEGIN
     LEFT JOIN vendors.VendorProfiles vp ON c.VendorProfileID = vp.VendorProfileID
     WHERE 
         (@Search IS NULL OR 
-         u.Name LIKE '%' + @Search + '%' OR 
+         u.FirstName LIKE '%' + @Search + '%' OR 
+         u.LastName LIKE '%' + @Search + '%' OR 
          u.Email LIKE '%' + @Search + '%' OR 
          vp.BusinessName LIKE '%' + @Search + '%');
 END

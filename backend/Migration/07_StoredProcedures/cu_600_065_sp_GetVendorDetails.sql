@@ -71,7 +71,7 @@ BEGIN
         (SELECT COUNT(*) FROM bookings.Bookings b WHERE b.VendorProfileID = vp.VendorProfileID) AS BookingCount,
         -- Host user info (the actual owner of the vendor)
         vp.UserID AS HostUserID,
-        u.Name AS HostName,
+        CONCAT(u.FirstName, ' ', ISNULL(u.LastName, '')) AS HostName,
         u.ProfileImageURL AS HostProfileImage,
         u.CreatedAt AS HostMemberSince,
         -- Response metrics calculated from messages

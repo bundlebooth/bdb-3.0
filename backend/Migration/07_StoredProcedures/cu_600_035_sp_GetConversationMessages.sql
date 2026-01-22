@@ -40,7 +40,7 @@ BEGIN
         SELECT 
             m.MessageID,
             m.SenderID,
-            u.Name AS SenderName,
+            CONCAT(u.FirstName, ' ', ISNULL(u.LastName, '')) AS SenderName,
             u.ProfileImageURL AS SenderAvatar,
             m.Content,
             m.IsRead,

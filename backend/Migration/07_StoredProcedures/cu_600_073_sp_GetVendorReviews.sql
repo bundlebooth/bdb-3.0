@@ -30,7 +30,7 @@ BEGIN
     SELECT 
         r.ReviewID,
         r.UserID,
-        u.Name AS ReviewerName,
+        CONCAT(u.FirstName, ' ', ISNULL(u.LastName, '')) AS ReviewerName,
         u.ProfileImageURL AS ReviewerAvatar,
         r.Rating,
         r.Title,

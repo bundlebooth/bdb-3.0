@@ -20,7 +20,7 @@ BEGIN
     SELECT 
         c.ConversationID,
         c.UserID,
-        u.Name as UserName,
+        CONCAT(u.FirstName, ' ', ISNULL(u.LastName, '')) as UserName,
         u.Email as UserEmail,
         c.CreatedAt,
         c.UpdatedAt,

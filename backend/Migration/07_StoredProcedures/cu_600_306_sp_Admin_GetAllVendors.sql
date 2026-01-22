@@ -37,7 +37,7 @@ BEGIN
         vp.TotalReviews,
         vp.AvgRating,
         u.UserID,
-        u.Name as OwnerName,
+        CONCAT(u.FirstName, ' ', ISNULL(u.LastName, '')) as OwnerName,
         u.Email as OwnerEmail,
         (SELECT TOP 1 Category FROM vendors.VendorCategories WHERE VendorProfileID = vp.VendorProfileID) as PrimaryCategory
     FROM vendors.VendorProfiles vp

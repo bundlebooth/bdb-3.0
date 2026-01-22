@@ -23,16 +23,16 @@ const validatePassword = (password) => {
 // User Registration
 router.post('/register', async (req, res) => {
   try {
-    const { name, email, password, isVendor = false, accountType } = req.body;
+    const { firstName, lastName, email, password, isVendor = false, accountType } = req.body;
     
     // Convert accountType to isVendor boolean if provided
     const isVendorFlag = accountType === 'vendor' || isVendor;
 
     // Manual validation
-    if (!name || !name.trim()) {
+    if (!firstName || !firstName.trim()) {
       return res.status(400).json({ 
         success: false,
-        message: 'Name is required' 
+        message: 'First name is required' 
       });
     }
 
@@ -69,7 +69,8 @@ router.post('/register', async (req, res) => {
 
     // Create user
     const request = pool.request();
-    request.input('Name', sql.NVarChar(100), name.trim());
+    request.input('FirstName', sql.NVarChar(100), firstName.trim());
+    request.input('LastName', sql.NVarChar(100), lastName ? lastName.trim() : null);
     request.input('Email', sql.NVarChar(100), email.toLowerCase().trim());
     request.input('PasswordHash', sql.NVarChar(255), passwordHash);
     request.input('IsVendor', sql.Bit, isVendorFlag);
@@ -101,7 +102,8 @@ router.post('/register', async (req, res) => {
     res.status(201).json({
       success: true,
       userId,
-      name: name.trim(),
+      firstName: firstName.trim(),
+      lastName: lastName ? lastName.trim() : null,
       email: email.toLowerCase().trim(),
       isVendor: isVendorFlag,
       token
@@ -165,6 +167,15 @@ router.post('/login', async (req, res) => {
           lockExpiresAt: lockExpiry.toISOString()
         });
       }
+    }
+
+    // Check if account is deleted (soft delete)
+    if (user.IsDeleted) {
+      return res.status(403).json({
+        success: false,
+        message: 'This account has been deleted. Account deletion is permanent and cannot be reversed. If you believe this is an error, please contact support.',
+        isDeleted: true
+      });
     }
 
     // Check if account is active
@@ -356,7 +367,8 @@ router.post('/login', async (req, res) => {
     res.json({
       success: true,
       userId: user.UserID,
-      name: user.Name,
+      firstName: user.FirstName,
+      lastName: user.LastName,
       email: user.Email,
       isVendor: user.IsVendor,
       isAdmin: user.IsAdmin,
@@ -1676,6 +1688,118 @@ router.post('/reset-password/complete/:token', async (req, res) => {
   } catch (err) {
     console.error('Complete password reset error:', err);
     res.status(500).json({ success: false, message: 'Failed to reset password' });
+  }
+});
+
+// Delete account (soft delete)
+router.delete('/:userId/delete-account', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { reason, password } = req.body;
+    
+    // Verify the user is deleting their own account (from auth token)
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ success: false, message: 'Authorization required' });
+    }
+    
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    if (String(decoded.id) !== String(userId)) {
+      return res.status(403).json({ success: false, message: 'You can only delete your own account' });
+    }
+    
+    const pool = await poolPromise;
+    
+    // Verify password before deletion
+    const userResult = await pool.request()
+      .input('UserID', sql.Int, userId)
+      .query('SELECT PasswordHash FROM users.Users WHERE UserID = @UserID');
+    
+    if (userResult.recordset.length === 0) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+    
+    const isMatch = await bcrypt.compare(password, userResult.recordset[0].PasswordHash);
+    if (!isMatch) {
+      return res.status(401).json({ success: false, message: 'Invalid password' });
+    }
+    
+    // Perform soft delete
+    const result = await pool.request()
+      .input('UserID', sql.Int, userId)
+      .input('Reason', sql.NVarChar(500), reason || 'User requested account deletion')
+      .execute('users.sp_SoftDeleteUser');
+    
+    if (result.recordset && result.recordset[0].Success) {
+      // Log the deletion
+      try {
+        await pool.request()
+          .input('userId', sql.Int, userId)
+          .input('email', sql.NVarChar, decoded.email)
+          .input('action', sql.NVarChar, 'AccountDeleted')
+          .input('ActionStatus', sql.NVarChar, 'Success')
+          .input('ipAddress', sql.NVarChar, req.ip || 'Unknown')
+          .input('userAgent', sql.NVarChar, req.headers['user-agent'] || 'Unknown')
+          .input('details', sql.NVarChar, reason || 'User requested account deletion')
+          .execute('users.sp_InsertSecurityLog');
+      } catch (logErr) { console.error('Failed to log deletion:', logErr.message); }
+      
+      res.json({ success: true, message: 'Account deleted successfully' });
+    } else {
+      res.status(400).json({ 
+        success: false, 
+        message: result.recordset?.[0]?.Message || 'Failed to delete account' 
+      });
+    }
+  } catch (err) {
+    console.error('Delete account error:', err);
+    res.status(500).json({ success: false, message: 'Failed to delete account' });
+  }
+});
+
+// Admin: Restore deleted account
+router.post('/:userId/restore-account', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    // Verify admin
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ success: false, message: 'Authorization required' });
+    }
+    
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    const pool = await poolPromise;
+    
+    // Check if requester is admin
+    const adminCheck = await pool.request()
+      .input('UserID', sql.Int, decoded.id)
+      .query('SELECT IsAdmin FROM users.Users WHERE UserID = @UserID');
+    
+    if (!adminCheck.recordset[0]?.IsAdmin) {
+      return res.status(403).json({ success: false, message: 'Admin access required' });
+    }
+    
+    // Restore the account
+    const result = await pool.request()
+      .input('UserID', sql.Int, userId)
+      .execute('users.sp_RestoreUser');
+    
+    if (result.recordset && result.recordset[0].Success) {
+      res.json({ success: true, message: 'Account restored successfully' });
+    } else {
+      res.status(400).json({ 
+        success: false, 
+        message: result.recordset?.[0]?.Message || 'Failed to restore account' 
+      });
+    }
+  } catch (err) {
+    console.error('Restore account error:', err);
+    res.status(500).json({ success: false, message: 'Failed to restore account' });
   }
 });
 

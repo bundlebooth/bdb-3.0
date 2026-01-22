@@ -26,7 +26,7 @@ BEGIN
         m.Content,
         m.CreatedAt,
         m.IsRead,
-        u.Name as SenderName,
+        CONCAT(u.FirstName, ' ', ISNULL(u.LastName, '')) as SenderName,
         CASE WHEN u.IsAdmin = 1 THEN 1 ELSE 0 END as IsFromSupport
     FROM messages.Messages m
     INNER JOIN users.Users u ON m.SenderID = u.UserID

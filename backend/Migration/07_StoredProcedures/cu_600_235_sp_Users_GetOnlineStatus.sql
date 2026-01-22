@@ -37,7 +37,7 @@ BEGIN
         -- Single user query
         SELECT 
             u.UserID,
-            u.Name,
+            CONCAT(u.FirstName, ' ', ISNULL(u.LastName, '')) AS Name,
             u.LastActiveAt,
             CASE 
                 WHEN u.LastActiveAt >= @OnlineThreshold THEN 1 
@@ -55,7 +55,7 @@ BEGIN
         -- Multiple users query using string split
         SELECT 
             u.UserID,
-            u.Name,
+            CONCAT(u.FirstName, ' ', ISNULL(u.LastName, '')) AS Name,
             u.LastActiveAt,
             CASE 
                 WHEN u.LastActiveAt >= @OnlineThreshold THEN 1 

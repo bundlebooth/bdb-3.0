@@ -17,7 +17,7 @@ GO
 
 CREATE PROCEDURE [users].[sp_RegisterSocialUser]
     @Email NVARCHAR(100),
-    @Name NVARCHAR(100),
+    @FirstName NVARCHAR(100),
     @AuthProvider NVARCHAR(20),
     @ProfileImageURL NVARCHAR(255) = NULL,
     @IsVendor BIT = 0
@@ -32,9 +32,9 @@ BEGIN
         RETURN;
     END
 
-    IF @Name IS NULL OR LTRIM(RTRIM(@Name)) = ''
+    IF @FirstName IS NULL OR LTRIM(RTRIM(@FirstName)) = ''
     BEGIN
-        RAISERROR('Name is required', 16, 1);
+        RAISERROR('First name is required', 16, 1);
         RETURN;
     END
 
@@ -53,12 +53,12 @@ BEGIN
     BEGIN
         SET @IsNewUser = 1;
         INSERT INTO users.Users (
-            Name, Email, AuthProvider, ProfileImageURL, IsVendor, 
+            FirstName, Email, AuthProvider, ProfileImageURL, IsVendor, 
             Phone, Bio, StripeCustomerID, 
             CreatedAt, UpdatedAt
         )
         VALUES (
-            @Name, @Email, @AuthProvider, @ProfileImageURL, @IsVendor, 
+            @FirstName, @Email, @AuthProvider, @ProfileImageURL, @IsVendor, 
             '', '', '', 
             GETDATE(), GETDATE()
         );
@@ -73,7 +73,7 @@ BEGIN
                 CreatedAt, UpdatedAt
             )
             VALUES (
-                @UserID, @Name, '', '', 
+                @UserID, @FirstName, '', '', 
                 '', '', '', 
                 0, 0, 0, 
                 GETDATE(), GETDATE()
@@ -84,14 +84,14 @@ BEGIN
     BEGIN
         UPDATE users.Users
         SET AuthProvider = @AuthProvider,
-            Name = @Name,
+            FirstName = @FirstName,
             ProfileImageURL = CASE WHEN @ProfileImageURL IS NOT NULL THEN @ProfileImageURL ELSE ProfileImageURL END,
             LastLogin = GETDATE(),
             UpdatedAt = GETDATE()
         WHERE UserID = @UserID;
     END
 
-    SELECT u.UserID, u.Name, u.Email, u.IsVendor, @IsNewUser AS IsNewUser, vp.VendorProfileID
+    SELECT u.UserID, u.FirstName, u.LastName, u.Email, u.IsVendor, @IsNewUser AS IsNewUser, vp.VendorProfileID
     FROM users.Users u
     LEFT JOIN vendors.VendorProfiles vp ON u.UserID = vp.UserID
     WHERE u.UserID = @UserID;

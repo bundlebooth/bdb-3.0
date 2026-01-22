@@ -19,7 +19,7 @@ BEGIN
         s.Name AS ServiceName,
         cu.UserID AS ClientUserID,
         cu.Email AS ClientEmail,
-        cu.Name AS ClientName,
+        CONCAT(cu.FirstName, ' ', ISNULL(cu.LastName, '')) AS ClientName,
         v.BusinessName AS VendorName
     FROM bookings.Bookings b
     INNER JOIN vendors.Services s ON b.ServiceID = s.ServiceID

@@ -20,7 +20,7 @@ BEGIN
     -- Return admin users with 2FA status
     SELECT 
         u.UserID,
-        u.Name,
+        CONCAT(u.FirstName, ' ', ISNULL(u.LastName, '')) AS Name,
         u.Email,
         u.IsVendor,
         u.IsAdmin,
@@ -32,7 +32,7 @@ BEGIN
         u.LastLogin
     FROM users.Users u
     WHERE u.IsAdmin = 1
-    ORDER BY u.Name;
+    ORDER BY u.FirstName;
 END
 GO
 

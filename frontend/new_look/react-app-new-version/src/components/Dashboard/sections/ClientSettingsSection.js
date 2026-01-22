@@ -4,6 +4,7 @@ import PersonalDetailsPanel from '../panels/PersonalDetailsPanel';
 import CommunicationPreferencesPanel from '../panels/CommunicationPreferencesPanel';
 import SecurityPanel from '../panels/SecurityPanel';
 import LocationPanel from '../panels/LocationPanel';
+import DeleteAccountPanel from '../panels/DeleteAccountPanel';
 
 function ClientSettingsSection() {
   const { currentUser } = useAuth();
@@ -42,6 +43,14 @@ function ClientSettingsSection() {
       title: 'Security', 
       description: 'Manage your account security, authorised apps, and shared resources.',
       category: 'account'
+    },
+    { 
+      id: 'delete-account', 
+      icon: 'fa-trash-alt', 
+      title: 'Delete account', 
+      description: 'Permanently delete your account and all associated data.',
+      category: 'account',
+      danger: true
     }
   ];
 
@@ -57,6 +66,8 @@ function ClientSettingsSection() {
         return <CommunicationPreferencesPanel key={userId} onBack={() => setActivePanel(null)} />;
       case 'security':
         return <SecurityPanel key={userId} onBack={() => setActivePanel(null)} />;
+      case 'delete-account':
+        return <DeleteAccountPanel key={userId} onBack={() => setActivePanel(null)} />;
       default:
         return null;
     }

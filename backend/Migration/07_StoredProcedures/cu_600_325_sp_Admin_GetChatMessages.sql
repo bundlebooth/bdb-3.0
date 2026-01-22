@@ -25,7 +25,7 @@ BEGIN
         c.VendorProfileID,
         c.Subject,
         c.CreatedAt,
-        u.Name as ClientName,
+        CONCAT(u.FirstName, ' ', ISNULL(u.LastName, '')) as ClientName,
         u.Email as ClientEmail,
         vp.BusinessName as VendorName,
         vu.Email as VendorEmail
@@ -43,7 +43,7 @@ BEGIN
         m.Content,
         m.IsRead,
         m.CreatedAt,
-        u.Name as SenderName,
+        CONCAT(u.FirstName, ' ', ISNULL(u.LastName, '')) as SenderName,
         u.Email as SenderEmail,
         CASE WHEN m.SenderID = c.UserID THEN 'client' ELSE 'vendor' END as SenderType
     FROM messages.Messages m

@@ -20,7 +20,8 @@ BEGIN
     
     SELECT 
         u.UserID, 
-        u.Name, 
+        u.FirstName,
+        u.LastName,
         u.Email, 
         u.PasswordHash, 
         u.IsVendor,
@@ -33,7 +34,10 @@ BEGIN
         ISNULL(u.IsLocked, 0) AS IsLocked,
         u.LockExpiresAt,
         u.LockReason,
-        ISNULL(u.PasswordResetRequired, 0) AS PasswordResetRequired
+        ISNULL(u.PasswordResetRequired, 0) AS PasswordResetRequired,
+        -- Soft delete fields
+        ISNULL(u.IsDeleted, 0) AS IsDeleted,
+        u.DeletedAt
     FROM users.Users u
     LEFT JOIN vendors.VendorProfiles v ON u.UserID = v.UserID
     WHERE u.Email = @Email;

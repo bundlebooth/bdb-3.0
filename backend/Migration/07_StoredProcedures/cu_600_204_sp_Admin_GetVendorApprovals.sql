@@ -38,7 +38,7 @@ BEGIN
         vp.UpdatedAt,
         vp.AdminNotes,
         vp.RejectionReason,
-        u.Name as OwnerName,
+        CONCAT(u.FirstName, ' ', ISNULL(u.LastName, '')) as OwnerName,
         u.Email as OwnerEmail,
         u.Phone as OwnerPhone,
         (SELECT TOP 1 ImageURL FROM vendors.VendorImages WHERE VendorProfileID = vp.VendorProfileID AND IsPrimary = 1) as PrimaryImage,

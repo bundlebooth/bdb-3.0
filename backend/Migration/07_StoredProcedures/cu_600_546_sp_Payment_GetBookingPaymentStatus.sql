@@ -30,7 +30,7 @@ BEGIN
         b.EventType,
         b.EventLocation,
         b.UpdatedAt,
-        u.Name AS ClientName,
+        CONCAT(u.FirstName, ' ', ISNULL(u.LastName, '')) AS ClientName,
         u.Email AS ClientEmail,
         vp.BusinessName AS VendorName
     FROM bookings.Bookings b

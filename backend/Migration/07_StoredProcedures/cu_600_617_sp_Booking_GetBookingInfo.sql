@@ -20,7 +20,7 @@ BEGIN
     
     SELECT b.BookingID, b.UserID AS ClientUserID, b.VendorProfileID, b.EventDate, b.EndDate, b.Status,
            b.TotalAmount, b.DepositAmount, b.DepositPaid, b.FullAmountPaid, b.StripePaymentIntentID,
-           u.Name AS ClientName, u.Email AS ClientEmail, u.Phone AS ClientPhone,
+           CONCAT(u.FirstName, ' ', ISNULL(u.LastName, '')) AS ClientName, u.Email AS ClientEmail, u.Phone AS ClientPhone,
            vp.BusinessName AS VendorName, vp.BusinessEmail AS VendorEmail, vp.BusinessPhone AS VendorPhone,
            vp.UserID AS VendorUserID
     FROM bookings.Bookings b

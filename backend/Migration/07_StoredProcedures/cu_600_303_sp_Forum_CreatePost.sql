@@ -47,7 +47,7 @@ BEGIN
         c.Name AS CategoryName,
         c.Slug AS CategorySlug,
         p.AuthorID,
-        u.Name AS AuthorName,
+        CONCAT(u.FirstName, ' ', ISNULL(u.LastName, '')) AS AuthorName,
         u.ProfileImageURL AS AuthorAvatar,
         p.Title,
         p.Content,

@@ -26,7 +26,9 @@ BEGIN
     SELECT 
         u.UserID,
         u.Email,
-        u.Name,
+        CONCAT(u.FirstName, ' ', ISNULL(u.LastName, '')) AS Name,
+        u.FirstName,
+        u.LastName,
         u.IsVendor,
         u.IsAdmin,
         u.IsActive,
@@ -40,7 +42,7 @@ BEGIN
          (@Status = 'inactive' AND u.IsActive = 0) OR
          (@Status = 'vendors' AND u.IsVendor = 1) OR
          (@Status = 'clients' AND u.IsVendor = 0))
-        AND (@Search IS NULL OR u.Email LIKE '%' + @Search + '%' OR u.Name LIKE '%' + @Search + '%')
+        AND (@Search IS NULL OR u.Email LIKE '%' + @Search + '%' OR u.FirstName LIKE '%' + @Search + '%' OR u.LastName LIKE '%' + @Search + '%')
     ORDER BY u.CreatedAt DESC
     OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY;
     
@@ -53,7 +55,7 @@ BEGIN
          (@Status = 'inactive' AND u.IsActive = 0) OR
          (@Status = 'vendors' AND u.IsVendor = 1) OR
          (@Status = 'clients' AND u.IsVendor = 0))
-        AND (@Search IS NULL OR u.Email LIKE '%' + @Search + '%' OR u.Name LIKE '%' + @Search + '%');
+        AND (@Search IS NULL OR u.Email LIKE '%' + @Search + '%' OR u.FirstName LIKE '%' + @Search + '%' OR u.LastName LIKE '%' + @Search + '%');
 END
 GO
 

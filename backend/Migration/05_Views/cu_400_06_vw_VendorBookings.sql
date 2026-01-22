@@ -22,7 +22,7 @@ SELECT
     b.BookingID,
     b.VendorProfileID,
     b.UserID,
-    u.Name AS ClientName,
+    CONCAT(u.FirstName, ' ', ISNULL(u.LastName, '')) AS ClientName,
     u.Email AS ClientEmail,
     u.Phone AS ClientPhone,
     b.ServiceID,

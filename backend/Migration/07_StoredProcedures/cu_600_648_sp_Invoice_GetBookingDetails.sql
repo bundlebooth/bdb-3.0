@@ -19,7 +19,7 @@ BEGIN
     SET NOCOUNT ON;
     
     SELECT b.BookingID, b.EventDate, b.EndDate, b.Status, b.EventName, b.EventType, b.EventLocation, b.TimeZone,
-           u.Name AS ClientName, u.Email AS ClientEmail, vp.BusinessName AS VendorName
+           CONCAT(u.FirstName, ' ', ISNULL(u.LastName, '')) AS ClientName, u.Email AS ClientEmail, vp.BusinessName AS VendorName
     FROM bookings.Bookings b
     INNER JOIN users.Users u ON b.UserID = u.UserID
     INNER JOIN vendors.VendorProfiles vp ON b.VendorProfileID = vp.VendorProfileID

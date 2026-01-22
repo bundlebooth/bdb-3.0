@@ -19,7 +19,8 @@ BEGIN
     SET NOCOUNT ON;
     SELECT 
         u.UserID, 
-        u.Name, 
+        u.FirstName,
+        u.LastName,
         u.Email, 
         u.PasswordHash, 
         u.IsVendor,

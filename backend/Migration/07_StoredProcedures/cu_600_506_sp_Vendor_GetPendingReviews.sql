@@ -31,7 +31,7 @@ BEGIN
         vp.ProfileStatus,
         vp.SubmittedForReviewAt,
         vp.CreatedAt,
-        u.Name as OwnerName,
+        CONCAT(u.FirstName, ' ', ISNULL(u.LastName, '')) as OwnerName,
         u.Email as OwnerEmail,
         (SELECT TOP 1 ImageURL FROM vendors.VendorImages WHERE VendorProfileID = vp.VendorProfileID ORDER BY IsPrimary DESC, DisplayOrder ASC) as PrimaryImage,
         (SELECT STRING_AGG(Category, ', ') FROM vendors.VendorCategories WHERE VendorProfileID = vp.VendorProfileID) as Categories

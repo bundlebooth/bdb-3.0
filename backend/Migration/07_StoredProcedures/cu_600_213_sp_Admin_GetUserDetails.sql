@@ -21,7 +21,9 @@ BEGIN
     SELECT 
         u.UserID,
         u.Email,
-        u.Name,
+        CONCAT(u.FirstName, ' ', ISNULL(u.LastName, '')) AS Name,
+        u.FirstName,
+        u.LastName,
         u.Phone,
         u.IsVendor,
         u.IsAdmin,

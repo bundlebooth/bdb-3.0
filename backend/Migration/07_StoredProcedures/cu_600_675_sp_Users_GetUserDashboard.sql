@@ -31,7 +31,7 @@ BEGIN
     -- Recordset 0: User info
     SELECT 
         u.UserID,
-        u.Name,
+        CONCAT(u.FirstName, ' ', ISNULL(u.LastName, '')) AS Name,
         u.Email,
         u.Phone,
         u.ProfileImageURL AS Avatar,
