@@ -2,6 +2,10 @@
     Stored Procedure: admin.sp_QueueEmail
     Description: Adds an email to the queue for scheduled sending
 */
+SET QUOTED_IDENTIFIER ON;
+SET ANSI_NULLS ON;
+GO
+
 IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND OBJECT_ID = OBJECT_ID('admin.sp_QueueEmail'))
     DROP PROCEDURE admin.sp_QueueEmail
 GO

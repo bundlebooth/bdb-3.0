@@ -2,6 +2,10 @@
     Stored Procedure: admin.sp_MarkEmailFailed
     Description: Marks a queued email as failed with retry logic
 */
+SET QUOTED_IDENTIFIER ON;
+SET ANSI_NULLS ON;
+GO
+
 IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND OBJECT_ID = OBJECT_ID('admin.sp_MarkEmailFailed'))
     DROP PROCEDURE admin.sp_MarkEmailFailed
 GO

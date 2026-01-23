@@ -2,6 +2,10 @@
     Stored Procedure: admin.sp_GetPendingEmails
     Description: Gets pending emails from queue ready to send
 */
+SET QUOTED_IDENTIFIER ON;
+SET ANSI_NULLS ON;
+GO
+
 IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND OBJECT_ID = OBJECT_ID('admin.sp_GetPendingEmails'))
     DROP PROCEDURE admin.sp_GetPendingEmails
 GO

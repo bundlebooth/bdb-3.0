@@ -1,6 +1,6 @@
 -- =============================================
 -- Stored Procedure: admin.sp_GetEmailTemplate
--- Description: Gets a single email template with full HTML
+-- Description: Gets a single email template by TemplateKey with full HTML
 -- Phase: 600 (Stored Procedures)
 -- Schema: admin
 -- =============================================
@@ -13,29 +13,32 @@ IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[s
 GO
 
 CREATE PROCEDURE [admin].[sp_GetEmailTemplate]
-    @TemplateID INT
+    @TemplateKey NVARCHAR(50)
 AS
 BEGIN
     SET NOCOUNT ON;
     
     SELECT 
-        t.TemplateID as id,
-        t.TemplateName as name,
-        t.TemplateKey as templateKey,
-        t.Category as category,
-        t.Subject as subject,
-        t.AvailableVariables as variables,
-        t.IsActive as isActive,
-        h.HtmlContent as headerHtml,
-        b.HtmlContent as bodyHtml,
-        f.HtmlContent as footerHtml,
-        h.ComponentID as headerComponentId,
-        b.ComponentID as bodyComponentId,
-        f.ComponentID as footerComponentId
-    FROM EmailTemplates t
-    LEFT JOIN EmailTemplateComponents h ON t.HeaderComponentID = h.ComponentID
-    LEFT JOIN EmailTemplateComponents b ON t.BodyComponentID = b.ComponentID
-    LEFT JOIN EmailTemplateComponents f ON t.FooterComponentID = f.ComponentID
-    WHERE t.TemplateID = @TemplateID;
+        t.TemplateID,
+        t.TemplateKey,
+        t.TemplateName,
+        t.Subject,
+        t.Category,
+        t.AvailableVariables,
+        h.HtmlContent AS HeaderHtml,
+        h.TextContent AS HeaderText,
+        b.HtmlContent AS BodyHtml,
+        b.TextContent AS BodyText,
+        f.HtmlContent AS FooterHtml,
+        f.TextContent AS FooterText
+    FROM admin.EmailTemplates t
+    LEFT JOIN admin.EmailTemplateComponents h ON t.HeaderComponentID = h.ComponentID
+    INNER JOIN admin.EmailTemplateComponents b ON t.BodyComponentID = b.ComponentID
+    LEFT JOIN admin.EmailTemplateComponents f ON t.FooterComponentID = f.ComponentID
+    WHERE t.TemplateKey = @TemplateKey 
+      AND t.IsActive = 1 
+      AND b.IsActive = 1
+      AND (h.IsActive = 1 OR h.ComponentID IS NULL) 
+      AND (f.IsActive = 1 OR f.ComponentID IS NULL);
 END
 GO

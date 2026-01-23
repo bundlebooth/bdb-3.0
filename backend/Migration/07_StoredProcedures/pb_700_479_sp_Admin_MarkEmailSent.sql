@@ -2,6 +2,10 @@
     Stored Procedure: admin.sp_MarkEmailSent
     Description: Marks a queued email as sent
 */
+SET QUOTED_IDENTIFIER ON;
+SET ANSI_NULLS ON;
+GO
+
 IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND OBJECT_ID = OBJECT_ID('admin.sp_MarkEmailSent'))
     DROP PROCEDURE admin.sp_MarkEmailSent
 GO
