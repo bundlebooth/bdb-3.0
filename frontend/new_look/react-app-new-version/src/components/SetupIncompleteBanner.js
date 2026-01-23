@@ -45,13 +45,14 @@ function SetupIncompleteBanner({
   const isInlineMode = externalSteps && externalIsStepCompleted;
 
   // EXACT same step definitions as BecomeVendorPage (excluding account and review)
-  // These titles MUST match BecomeVendorPage.js lines 159-274 exactly
+  // These titles MUST match BecomeVendorPage.js exactly
   const steps = [
     { id: 'categories', title: 'What services do you offer?' },
     { id: 'business-details', title: 'Tell us about your business' },
     { id: 'contact', title: 'How can clients reach you?' },
     { id: 'location', title: 'Where are you located?' },
     { id: 'services', title: 'What services do you provide?' },
+    { id: 'cancellation-policy', title: 'Set your cancellation policy' },
     { id: 'business-hours', title: 'When are you available?' },
     { id: 'questionnaire', title: 'Tell guests what your place has to offer' },
     { id: 'gallery', title: 'Add photos to showcase your work' },
@@ -241,8 +242,8 @@ function SetupIncompleteBanner({
           answer: faq.answer || faq.Answer
         })),
         
-        // Google Reviews
-        googlePlaceId: profile.GooglePlaceId || profile.GooglePlaceID || '',
+        // Google Reviews - googlePlaceId is at top level of API response
+        googlePlaceId: result.googlePlaceId || profile.GooglePlaceId || profile.GooglePlaceID || '',
         
         // Stripe (will be updated below)
         stripeConnected: false,
@@ -295,6 +296,18 @@ function SetupIncompleteBanner({
       } catch (e) {
       }
 
+      // STEP 4.5: Fetch Google Place ID from dedicated endpoint (more reliable than profile API)
+      try {
+        const googleRes = await fetch(`${API_BASE_URL}/vendors/${currentUser.vendorProfileId}/google-reviews-settings`, {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        if (googleRes.ok) {
+          const googleData = await googleRes.json();
+          updatedFormData.googlePlaceId = googleData.GooglePlaceId || '';
+        }
+      } catch (e) {
+      }
+
       // STEP 5: Fetch selected features from dedicated endpoint (more reliable than profile API)
       try {
         const featuresRes = await fetch(`${API_BASE_URL}/vendors/features/vendor/${currentUser.vendorProfileId}`, {
@@ -339,15 +352,18 @@ function SetupIncompleteBanner({
       case 'services':
         // BecomeVendorPage line 741: return formData.selectedServices.length > 0;
         return formData.selectedServices.length > 0;
+      case 'cancellation-policy':
+        // Cancellation policy is complete if any policy type is set
+        return !!formData.cancellationPolicy;
       case 'business-hours':
         // BecomeVendorPage line 743: return Object.values(formData.businessHours).some(h => h.isAvailable);
         return Object.values(formData.businessHours).some(h => h.isAvailable);
       case 'questionnaire':
-        // BecomeVendorPage line 745: return formData.selectedFeatures.length > 0;
-        return formData.selectedFeatures.length > 0;
+        // BecomeVendorPage: Optional - features (if not loaded from DB for existing vendor, return true)
+        return formData.selectedFeatures && formData.selectedFeatures.length > 0;
       case 'gallery':
-        // BecomeVendorPage line 747: return formData.photoURLs.length > 0;
-        return formData.photoURLs.length > 0;
+        // BecomeVendorPage: MANDATORY - Must have at least 5 photos uploaded
+        return formData.photoURLs && formData.photoURLs.length >= 5;
       case 'social-media':
         // BecomeVendorPage line 749: return !!(formData.facebook || formData.instagram || formData.twitter || formData.linkedin);
         return !!(formData.facebook || formData.instagram || formData.twitter || formData.linkedin);

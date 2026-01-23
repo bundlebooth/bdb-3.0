@@ -20,7 +20,7 @@ export const createSlug = (text) => {
 
 /**
  * Build vendor profile URL using obfuscated public ID
- * Format: /vendor/business-name-XzA91Qb3
+ * Format: /vendor/XzA91Qb3kL4m (public ID only, no business name for cleaner URLs)
  * Clean URLs without unnecessary tracking parameters
  */
 export const buildVendorProfileUrl = (vendor, options = {}) => {
@@ -31,9 +31,8 @@ export const buildVendorProfileUrl = (vendor, options = {}) => {
     return '/vendor/unknown';
   }
   
-  const businessName = vendor.BusinessName || vendor.name || 'vendor';
-  const slug = createSlug(businessName);
-  const baseUrl = '/vendor/' + slug + '-' + publicId;
+  // Use only the public ID for cleaner, more secure URLs
+  const baseUrl = '/vendor/' + publicId;
   
   // Only include essential parameters that affect page content
   const params = new URLSearchParams();
@@ -44,7 +43,7 @@ export const buildVendorProfileUrl = (vendor, options = {}) => {
 
 /**
  * Build booking URL using obfuscated public ID
- * Format: /booking/business-name-XzA91Qb3
+ * Format: /booking/XzA91Qb3kL4m (public ID only, no business name for cleaner URLs)
  * Clean URLs with only essential booking parameters
  */
 export const buildBookingUrl = (vendor, options = {}) => {
@@ -55,9 +54,8 @@ export const buildBookingUrl = (vendor, options = {}) => {
     return '/booking/unknown';
   }
   
-  const businessName = vendor.BusinessName || vendor.name || 'vendor';
-  const slug = createSlug(businessName);
-  const baseUrl = '/booking/' + slug + '-' + publicId;
+  // Use only the public ID for cleaner, more secure URLs
+  const baseUrl = '/booking/' + publicId;
   
   // Only include essential parameters that affect booking flow
   const params = new URLSearchParams();

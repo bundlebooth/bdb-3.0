@@ -1255,36 +1255,7 @@ function VendorProfilePage() {
           </PackageServiceList>
         )}
 
-        {/* Cancellation Policy - at bottom of services/packages */}
-        {policyBadge && (
-          <div style={{
-            marginTop: '1.5rem',
-            padding: '1rem 1.25rem',
-            background: '#f9fafb',
-            borderRadius: '12px',
-            border: '1px solid #e5e7eb'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-              <span style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '28px',
-                height: '28px',
-                borderRadius: '50%',
-                background: policyBadge.bg
-              }}>
-                <i className={`fas ${policyBadge.icon}`} style={{ color: policyBadge.color, fontSize: '0.85rem' }}></i>
-              </span>
-              <span style={{ fontWeight: 600, color: '#222', fontSize: '0.95rem' }}>
-                {policyBadge.label}
-              </span>
-            </div>
-            <p style={{ margin: 0, color: '#6b7280', fontSize: '0.9rem', lineHeight: 1.5 }}>
-              {getPolicyDescription()}
-            </p>
-          </div>
-        )}
+        {/* Cancellation Policy removed from here - now shown in booking widget only */}
       </div>
     );
   };
@@ -1564,8 +1535,103 @@ function VendorProfilePage() {
     // Get vendor name
     const vendorName = vendor?.profile?.BusinessName || vendor?.profile?.DisplayName || 'This Vendor';
 
+    // Calculate rating
+    const avgRating = showGoogleReviews 
+      ? (googleReviews?.rating || 0) 
+      : (reviews && reviews.length > 0 
+          ? reviews.reduce((sum, r) => sum + (r.Rating || 0), 0) / reviews.length
+          : 0
+        );
+    const reviewCount = showGoogleReviews ? (googleReviews?.user_ratings_total || 0) : (reviews?.length || 0);
+
     return (
       <div className="content-section" id="reviews-section">
+        {/* Guest Favourite Section - Airbnb style matching image 3 exactly */}
+        {avgRating >= 4.5 && reviewCount > 0 && (
+          <div style={{
+            textAlign: 'center',
+            padding: '3rem 1.5rem',
+            marginBottom: '2rem',
+            background: '#f7f7f7',
+            borderRadius: '16px'
+          }}>
+            {/* Crown and Rating Display - positioned like Airbnb */}
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'flex-start', 
+              justifyContent: 'center',
+              gap: '0.5rem',
+              marginBottom: '1.25rem'
+            }}>
+              <img 
+                src="/images/planbeau-platform-assets/circular_crown_left.avif" 
+                alt="" 
+                style={{ 
+                  width: '44px', 
+                  height: '88px', 
+                  objectFit: 'contain',
+                  marginTop: '0.5rem'
+                }}
+              />
+              <span style={{ 
+                fontSize: '4.5rem', 
+                fontWeight: 600, 
+                color: '#222222', 
+                lineHeight: 1,
+                letterSpacing: '-2px'
+              }}>
+                {avgRating.toFixed(2)}
+              </span>
+              <img 
+                src="/images/planbeau-platform-assets/circular_crown_right.avif" 
+                alt="" 
+                style={{ 
+                  width: '44px', 
+                  height: '88px', 
+                  objectFit: 'contain',
+                  marginTop: '0.5rem'
+                }}
+              />
+            </div>
+            
+            {/* Guest favourite label */}
+            <div style={{ 
+              fontSize: '1.25rem', 
+              fontWeight: 600, 
+              color: '#222222',
+              marginBottom: '0.75rem'
+            }}>
+              Guest favourite
+            </div>
+            
+            {/* Description */}
+            <div style={{ 
+              fontSize: '0.9rem', 
+              color: '#717171',
+              maxWidth: '280px',
+              margin: '0 auto 1rem',
+              lineHeight: 1.5
+            }}>
+              This vendor is a guest favourite based on ratings, reviews, and reliability
+            </div>
+
+            {/* How reviews work link */}
+            <a 
+              href="#reviews-section" 
+              style={{ 
+                fontSize: '0.85rem', 
+                color: '#222222',
+                textDecoration: 'underline',
+                fontWeight: 500,
+                cursor: 'pointer'
+              }}
+            >
+              How reviews work
+            </a>
+          </div>
+        )}
+
+
         {/* Header */}
         <h2 style={{ marginBottom: '1.5rem' }}>Reviews for {vendorName}</h2>
 
@@ -1586,13 +1652,7 @@ function VendorProfilePage() {
               color: 'var(--text)', 
               lineHeight: 1
             }}>
-              {showGoogleReviews 
-                ? (googleReviews?.rating?.toFixed(1) || 'N/A') 
-                : (reviews && reviews.length > 0 
-                    ? (reviews.reduce((sum, r) => sum + (r.Rating || 0), 0) / reviews.length).toFixed(1)
-                    : 'N/A'
-                  )
-              }
+              {avgRating > 0 ? avgRating.toFixed(1) : 'N/A'}
             </div>
             <div>
               <div style={{ 
@@ -1600,13 +1660,13 @@ function VendorProfilePage() {
                 color: 'var(--primary)',
                 marginBottom: '0.125rem'
               }}>
-                {'★'.repeat(Math.round(reviews && reviews.length > 0 ? reviews.reduce((sum, r) => sum + (r.Rating || 0), 0) / reviews.length : 5))}
+                {'★'.repeat(Math.round(avgRating) || 5)}
               </div>
               <div style={{ 
                 fontSize: '0.8rem', 
                 color: 'var(--text-light)'
               }}>
-                Based on {showGoogleReviews ? (googleReviews?.user_ratings_total || 0) : (reviews?.length || 0)} {showGoogleReviews ? 'Google ' : ''}reviews
+                Based on {reviewCount} {showGoogleReviews ? 'Google ' : ''}reviews
               </div>
             </div>
           </div>
@@ -2606,6 +2666,7 @@ function VendorProfilePage() {
             priceType={profile?.PricingType || 'per_hour'}
             minBookingHours={profile?.MinBookingHours || 1}
             timezone={profile?.TimeZone || profile?.Timezone}
+            cancellationPolicy={cancellationPolicy}
             onReserve={handleRequestBooking}
             onMessage={handleMessageVendor}
           />

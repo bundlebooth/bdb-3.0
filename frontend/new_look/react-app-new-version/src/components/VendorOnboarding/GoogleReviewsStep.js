@@ -171,14 +171,16 @@ function GoogleReviewsStep({ formData, setFormData, currentUser }) {
               alignItems: 'center',
               gap: '0.75rem'
             }}>
-              <i className={`fas ${verificationStatus === 'success' ? 'fa-check-circle' : 'fa-times-circle'}`} 
-                 style={{ color: verificationStatus === 'success' ? '#16a34a' : '#6b7280' }}></i>
+              <i className={`fas ${verificationStatus === 'success' ? 'fa-check-circle' : googlePlaceId ? 'fa-check-circle' : 'fa-times-circle'}`} 
+                 style={{ color: verificationStatus === 'success' ? '#16a34a' : googlePlaceId ? '#f59e0b' : '#6b7280' }}></i>
               <span style={{ fontWeight: 500 }}>
                 {!currentUser?.vendorProfileId 
                   ? 'Complete profile first'
                   : verificationStatus === 'success' 
                     ? 'Connected and verified' 
-                    : 'Not connected'}
+                    : googlePlaceId
+                      ? 'Connected (verification pending)'
+                      : 'Not connected'}
               </span>
             </div>
             <p style={{ color: '#6b7280', fontSize: '0.85rem', marginTop: '0.5rem' }}>

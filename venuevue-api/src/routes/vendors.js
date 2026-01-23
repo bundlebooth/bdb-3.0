@@ -2384,9 +2384,25 @@ router.get('/profile', async (req, res) => {
     // No separate SP call needed - all fields come from sp_GetProfileDetails
     const profile = profileData.profile;
     let stripeAccountId = profile.StripeAccountID || null;
-    let googlePlaceId = profile.GooglePlaceId || null;
     let profileStatus = profile.ProfileStatus || 'draft';
     let selectedFilters = [];
+
+    // ALWAYS fetch GooglePlaceId directly from VendorProfiles table (most reliable source)
+    let googlePlaceId = null;
+    try {
+      const googleRequest = new sql.Request(pool);
+      googleRequest.input('VendorProfileID', sql.Int, user.VendorProfileID);
+      const googleResult = await googleRequest.query(`
+        SELECT GooglePlaceId FROM vendors.VendorProfiles WHERE VendorProfileID = @VendorProfileID
+      `);
+      if (googleResult.recordset.length > 0 && googleResult.recordset[0].GooglePlaceId) {
+        googlePlaceId = googleResult.recordset[0].GooglePlaceId;
+      }
+    } catch (googleError) {
+      console.warn('Could not fetch GooglePlaceId:', googleError.message);
+      // Fallback to profile data if direct query fails
+      googlePlaceId = profile.GooglePlaceId || null;
+    }
     
     // Convert timestamps to ISO string for frontend
     if (profile.SubmittedForReviewAt) {
@@ -5237,9 +5253,14 @@ router.get('/:vendorProfileId/google-reviews-settings', async (req, res) => {
     const { vendorProfileId } = req.params;
     const pool = await poolPromise;
 
+    // Use direct query - fetch only GooglePlaceId from VendorProfiles
     const request = pool.request();
     request.input('VendorProfileID', sql.Int, vendorProfileId);
-    const result = await request.execute('vendors.sp_GetGoogleReviewsSettings');
+    const result = await request.query(`
+      SELECT GooglePlaceId
+      FROM vendors.VendorProfiles
+      WHERE VendorProfileID = @VendorProfileID
+    `);
 
     if (result.recordset.length === 0) {
       return res.status(404).json({
@@ -5251,7 +5272,7 @@ router.get('/:vendorProfileId/google-reviews-settings', async (req, res) => {
     res.json({
       success: true,
       GooglePlaceId: result.recordset[0].GooglePlaceId || '',
-      GoogleBusinessUrl: result.recordset[0].GoogleBusinessUrl || ''
+      GoogleBusinessUrl: ''
     });
 
   } catch (error) {
@@ -6383,7 +6404,7 @@ router.get('/features/vendor/:vendorProfileId', async (req, res) => {
 router.post('/features/vendor/:vendorProfileId', async (req, res) => {
   try {
     const { vendorProfileId } = req.params;
-    const { featureIds } = req.body; // Array of feature IDs
+    let { featureIds } = req.body; // Array of feature IDs or objects with id property
     
     if (!Array.isArray(featureIds)) {
       return res.status(400).json({
@@ -6391,6 +6412,14 @@ router.post('/features/vendor/:vendorProfileId', async (req, res) => {
         message: 'featureIds must be an array'
       });
     }
+    
+    // Handle both formats: array of integers [1, 2, 3] or array of objects [{id: 1}, {id: 2}]
+    featureIds = featureIds.map(item => {
+      if (typeof item === 'object' && item !== null) {
+        return parseInt(item.id || item.FeatureID || item.featureId, 10);
+      }
+      return parseInt(item, 10);
+    }).filter(id => !isNaN(id));
     
     const pool = await poolPromise;
     

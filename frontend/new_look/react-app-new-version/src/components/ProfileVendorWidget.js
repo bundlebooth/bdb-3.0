@@ -14,6 +14,7 @@ const ProfileVendorWidget = ({
   priceType = 'per_hour',
   minBookingHours = 1,
   timezone = null,
+  cancellationPolicy = null,
   onReserve,
   onMessage
 }) => {
@@ -773,10 +774,47 @@ const ProfileVendorWidget = ({
         Reserve
       </button>
 
-      {/* Cancellation Note */}
-      <p className="gbw-cancel-note">
-        Cancel for free within 24 hours
-      </p>
+      {/* Cancellation Policy - info icon with hover tooltip */}
+      {cancellationPolicy && (
+        <div 
+          className="gbw-cancel-policy"
+          style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '6px',
+            position: 'relative'
+          }}
+        >
+          <div 
+            style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '6px',
+              cursor: 'pointer',
+              padding: '8px 0'
+            }}
+            title={cancellationPolicy.Description || 
+              (cancellationPolicy.PolicyType === 'flexible' 
+                ? 'Full refund if cancelled at least 24 hours before the event date' 
+                : cancellationPolicy.PolicyType === 'moderate' 
+                  ? 'Free cancellation up to 5 days before the event date. 50% refund if cancelled 2-5 days before.' 
+                  : cancellationPolicy.PolicyType === 'strict'
+                    ? 'Non-refundable. No refund after booking is confirmed.'
+                    : 'Contact vendor for cancellation details')}
+          >
+            <i className="fas fa-info-circle" style={{ color: '#6b7280', fontSize: '14px' }}></i>
+            <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>
+              {cancellationPolicy.PolicyType === 'flexible' 
+                ? 'Free cancellation up to 24 hours before the event' 
+                : cancellationPolicy.PolicyType === 'moderate' 
+                  ? 'Free cancellation up to 5 days before the event' 
+                  : cancellationPolicy.PolicyType === 'strict'
+                    ? 'Non-refundable after booking'
+                    : 'Cancellation policy applies'}
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Price Breakdown */}
       {total && selectedStartTime && selectedEndTime && (

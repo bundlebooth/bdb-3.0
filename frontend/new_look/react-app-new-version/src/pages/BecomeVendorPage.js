@@ -584,8 +584,8 @@ const BecomeVendorPage = () => {
               answer: faq.answer || faq.Answer
             })),
             
-            // Google Reviews
-            googlePlaceId: profile.GooglePlaceId || ''
+            // Google Reviews - googlePlaceId is at top level of API response, not inside profile
+            googlePlaceId: result.googlePlaceId || profile.GooglePlaceId || ''
           };
 
           // Fetch Stripe status
@@ -630,6 +630,18 @@ const BecomeVendorPage = () => {
               updatedFormData.linkedin = socialData.linkedin || '';
               updatedFormData.youtube = socialData.youtube || '';
               updatedFormData.tiktok = socialData.tiktok || '';
+            }
+          } catch (e) {
+          }
+
+          // Fetch Google Place ID from dedicated endpoint (more reliable than profile API)
+          try {
+            const googleRes = await fetch(`${API_BASE_URL}/vendors/${currentUser.vendorProfileId}/google-reviews-settings`, {
+              headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+            });
+            if (googleRes.ok) {
+              const googleData = await googleRes.json();
+              updatedFormData.googlePlaceId = googleData.GooglePlaceId || '';
             }
           } catch (e) {
           }
@@ -846,13 +858,18 @@ const BecomeVendorPage = () => {
         // Also save features to dedicated endpoint if any are selected
         if (formData.selectedFeatures && formData.selectedFeatures.length > 0) {
           try {
+            // Extract just the IDs - features may be objects {id, name} or just numbers
+            const featureIdsOnly = formData.selectedFeatures.map(f => 
+              typeof f === 'object' ? f.id : f
+            ).filter(id => id != null);
+            
             const featuresResponse = await fetch(`${API_BASE_URL}/vendors/features/vendor/${vendorProfileId}`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${localStorage.getItem('token')}`
               },
-              body: JSON.stringify({ featureIds: formData.selectedFeatures })
+              body: JSON.stringify({ featureIds: featureIdsOnly })
             });
             if (featuresResponse.ok) {
             } else {
@@ -1249,13 +1266,18 @@ const BecomeVendorPage = () => {
       // This is important because the onboarding endpoint may not save features correctly
       if (vendorProfileId && currentFeatures && currentFeatures.length > 0) {
         try {
+          // Extract just the IDs - features may be objects {id, name} or just numbers
+          const featureIdsOnly = currentFeatures.map(f => 
+            typeof f === 'object' ? f.id : f
+          ).filter(id => id != null);
+          
           const featuresResponse = await fetch(`${API_BASE_URL}/vendors/features/vendor/${vendorProfileId}`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${localStorage.getItem('token')}`
             },
-            body: JSON.stringify({ featureIds: currentFeatures })
+            body: JSON.stringify({ featureIds: featureIdsOnly })
           });
           if (!featuresResponse.ok) {
             console.error('[handleSubmit] Failed to save features:', await featuresResponse.text());

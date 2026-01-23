@@ -14,7 +14,7 @@ import MessagingWidget from '../components/MessagingWidget';
 import Breadcrumb from '../components/Breadcrumb';
 import BookingCalendar from '../components/BookingCalendar';
 import SharedDateTimePicker from '../components/SharedDateTimePicker';
-import { extractVendorIdFromSlug, parseQueryParams, trackPageView } from '../utils/urlHelpers';
+import { extractVendorIdFromSlug, parseQueryParams, trackPageView, buildVendorProfileUrl } from '../utils/urlHelpers';
 import { formatDateWithWeekday } from '../utils/helpers';
 import { getProvinceFromLocation, getTaxInfoForProvince, PROVINCE_TAX_RATES } from '../utils/taxCalculations';
 import { useLocalization } from '../context/LocalizationContext';
@@ -689,7 +689,13 @@ function BookingPage() {
 
   const goBackToVendor = () => {
     if (window.confirm('Are you sure you want to leave? Your booking information will be lost.')) {
-      navigate(`/vendor/${vendorId}`);
+      // Use vendorData to build proper URL with public ID
+      if (vendorData?.profile) {
+        navigate(buildVendorProfileUrl(vendorData.profile));
+      } else {
+        // Fallback to vendorSlug from URL (already encoded)
+        navigate(`/vendor/${vendorSlug}`);
+      }
     }
   };
 
@@ -2003,7 +2009,13 @@ function BookingPage() {
                 View My Bookings
               </button>
               <button
-                onClick={() => navigate(`/vendor/${vendorId}`)}
+                onClick={() => {
+                  if (vendorData?.profile) {
+                    navigate(buildVendorProfileUrl(vendorData.profile));
+                  } else {
+                    navigate(`/vendor/${vendorSlug}`);
+                  }
+                }}
                 style={{
                   width: '100%',
                   padding: '0.875rem 1.5rem',

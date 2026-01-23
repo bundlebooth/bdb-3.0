@@ -63,30 +63,30 @@ function QuestionnaireStep({ formData, setFormData, currentUser, setFeaturesLoad
   };
 
   const toggleFeatureSelection = (featureId, featureName) => {
-    setSelectedFeatureIds(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(featureId)) {
-        newSet.delete(featureId);
-      } else {
-        newSet.add(featureId);
+    // First update the local state
+    const isCurrentlySelected = selectedFeatureIds.has(featureId);
+    const newSet = new Set(selectedFeatureIds);
+    
+    if (isCurrentlySelected) {
+      newSet.delete(featureId);
+    } else {
+      newSet.add(featureId);
+    }
+    
+    setSelectedFeatureIds(newSet);
+    
+    // Then update formData separately (not inside setState callback to avoid warning)
+    const currentFeatures = formData.selectedFeatures || [];
+    if (!isCurrentlySelected) {
+      // Add feature object
+      const exists = currentFeatures.some(f => (typeof f === 'object' ? f.id : f) === featureId);
+      if (!exists) {
+        setFormData(prev => ({ ...prev, selectedFeatures: [...currentFeatures, { id: featureId, name: featureName }] }));
       }
-      // Update formData with feature objects (id + name) for display in ReviewStep
-      setFormData(prevData => {
-        const currentFeatures = prevData.selectedFeatures || [];
-        if (newSet.has(featureId)) {
-          // Add feature object
-          const exists = currentFeatures.some(f => (typeof f === 'object' ? f.id : f) === featureId);
-          if (!exists) {
-            return { ...prevData, selectedFeatures: [...currentFeatures, { id: featureId, name: featureName }] };
-          }
-        } else {
-          // Remove feature
-          return { ...prevData, selectedFeatures: currentFeatures.filter(f => (typeof f === 'object' ? f.id : f) !== featureId) };
-        }
-        return prevData;
-      });
-      return newSet;
-    });
+    } else {
+      // Remove feature
+      setFormData(prev => ({ ...prev, selectedFeatures: currentFeatures.filter(f => (typeof f === 'object' ? f.id : f) !== featureId) }));
+    }
   };
 
   const handleSaveFeatures = async () => {
