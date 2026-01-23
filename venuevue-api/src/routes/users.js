@@ -1871,4 +1871,43 @@ router.post('/:userId/restore-account', async (req, res) => {
   }
 });
 
+// ============================================================
+// COOKIE CONSENT
+// ============================================================
+
+// POST /users/cookie-consent - Save cookie consent preferences
+router.post('/cookie-consent', async (req, res) => {
+  try {
+    const { 
+      userId, 
+      sessionId, 
+      necessary = true, 
+      analytics = false, 
+      marketing = false, 
+      functional = true 
+    } = req.body;
+    
+    const ipAddress = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+    const userAgent = req.headers['user-agent'];
+    
+    const pool = await poolPromise;
+    
+    await pool.request()
+      .input('UserID', sql.Int, userId || null)
+      .input('SessionID', sql.NVarChar(100), sessionId || null)
+      .input('IPAddress', sql.NVarChar(50), ipAddress)
+      .input('NecessaryCookies', sql.Bit, necessary ? 1 : 0)
+      .input('AnalyticsCookies', sql.Bit, analytics ? 1 : 0)
+      .input('MarketingCookies', sql.Bit, marketing ? 1 : 0)
+      .input('FunctionalCookies', sql.Bit, functional ? 1 : 0)
+      .input('UserAgent', sql.NVarChar(500), userAgent)
+      .execute('users.sp_SaveCookieConsent');
+    
+    res.json({ success: true, message: 'Cookie consent saved' });
+  } catch (error) {
+    console.error('Error saving cookie consent:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 module.exports = router;

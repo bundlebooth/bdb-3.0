@@ -356,7 +356,13 @@ async function getInvoiceCore(pool, invoiceId) {
     const dedup = [];
     for (const t of rows) {
       const d = new Date(t.CreatedAt);
-      const key = (t.StripeChargeID && String(t.StripeChargeID)) || (`${toCurrency(t.Amount)}@${d.getUTCFullYear()}-${(d.getUTCMonth()+1).toString().padStart(2,'0')}-${d.getUTCDate().toString().padStart(2,'0')}T${d.getUTCHours().toString().padStart(2,'0')}:${d.getUTCMinutes().toString().padStart(2,'0')}`);
+      const chargeId = t.StripeChargeID && String(t.StripeChargeID);
+      
+      // Skip PaymentIntent IDs (pi_) - only show Charge IDs (ch_) to avoid duplicates
+      // PaymentIntent and Charge are related but we only want to show one
+      if (chargeId && chargeId.startsWith('pi_')) continue;
+      
+      const key = chargeId || (`${toCurrency(t.Amount)}@${d.getUTCFullYear()}-${(d.getUTCMonth()+1).toString().padStart(2,'0')}-${d.getUTCDate().toString().padStart(2,'0')}T${d.getUTCHours().toString().padStart(2,'0')}:${d.getUTCMinutes().toString().padStart(2,'0')}`);
       if (seen.has(key)) continue;
       seen.add(key);
       dedup.push(t);

@@ -148,13 +148,31 @@ function InvoicePage() {
           <div className="invoice-container">
             <div className="invoice-header">
               <div className="invoice-branding">
-                <h1 className="company-name">Planbeau</h1>
-                <p className="company-tagline">Event Booking Platform</p>
+                <img 
+                  src="/images/logo.png" 
+                  alt="Planbeau" 
+                  style={{ height: '48px', width: 'auto', marginBottom: '8px' }}
+                />
+                <p className="company-tagline" style={{ color: '#6b7280', fontSize: '14px', margin: 0 }}>Event Booking Platform</p>
               </div>
               <div className="invoice-title-section">
-                <h2 className="invoice-title">INVOICE</h2>
-                <div className="invoice-number">#{invoice.InvoiceNumber || `INV-${invoice.InvoiceID}`}</div>
-                <div className={`invoice-status ${isPaid ? 'paid' : 'pending'}`}>
+                <h2 className="invoice-title" style={{ color: '#222', fontSize: '28px', fontWeight: 700, margin: 0 }}>INVOICE</h2>
+                <div className="invoice-number" style={{ color: '#6b7280', fontSize: '14px', marginTop: '4px' }}>
+                  #{invoice.InvoiceNumber || `INV-${invoice.InvoiceID}`}
+                </div>
+                <div 
+                  className={`invoice-status ${isPaid ? 'paid' : 'pending'}`}
+                  style={{
+                    display: 'inline-block',
+                    padding: '4px 12px',
+                    borderRadius: '20px',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    marginTop: '8px',
+                    background: isPaid ? '#dcfce7' : '#fef3c7',
+                    color: isPaid ? '#166534' : '#92400e'
+                  }}
+                >
                   {isPaid ? 'PAID' : 'PENDING'}
                 </div>
               </div>

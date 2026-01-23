@@ -81,6 +81,29 @@ function CookieConsent() {
     });
   };
 
+  // Save consent to backend database
+  const saveConsentToBackend = async (prefs) => {
+    try {
+      const sessionId = localStorage.getItem('planbeau_session_id') || 
+        `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      localStorage.setItem('planbeau_session_id', sessionId);
+      
+      await fetch('/api/users/cookie-consent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId,
+          necessary: prefs.necessary,
+          analytics: prefs.analytics,
+          marketing: prefs.marketing,
+          functional: prefs.functional
+        })
+      });
+    } catch (error) {
+      console.warn('[CookieConsent] Failed to save consent to backend:', error);
+    }
+  };
+
   const handleAcceptAll = () => {
     const allAccepted = {
       necessary: true,
@@ -92,6 +115,7 @@ function CookieConsent() {
     localStorage.setItem(COOKIE_CONSENT_KEY, 'accepted');
     localStorage.setItem(COOKIE_PREFERENCES_KEY, JSON.stringify(allAccepted));
     initializeGoogleAnalytics();
+    saveConsentToBackend(allAccepted);
     setShowBanner(false);
     setShowPreferences(false);
   };
@@ -107,6 +131,7 @@ function CookieConsent() {
     localStorage.setItem(COOKIE_CONSENT_KEY, 'rejected');
     localStorage.setItem(COOKIE_PREFERENCES_KEY, JSON.stringify(onlyNecessary));
     disableGoogleAnalytics();
+    saveConsentToBackend(onlyNecessary);
     setShowBanner(false);
     setShowPreferences(false);
   };
@@ -121,6 +146,7 @@ function CookieConsent() {
       disableGoogleAnalytics();
     }
     
+    saveConsentToBackend(preferences);
     setShowBanner(false);
     setShowPreferences(false);
   };

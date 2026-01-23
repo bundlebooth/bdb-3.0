@@ -73,6 +73,11 @@ function VendorProfilePage() {
 
   // Vendor badges state
   const [vendorBadges, setVendorBadges] = useState([]);
+  
+  // Report listing modal state
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportForm, setReportForm] = useState({ reason: '', details: '' });
+  const [reportSubmitting, setReportSubmitting] = useState(false);
 
   // Vendor packages state
   const [packages, setPackages] = useState([]);
@@ -2745,6 +2750,36 @@ function VendorProfilePage() {
             >
               Message Host
             </button>
+            
+            {/* Report this listing link */}
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              gap: '6px',
+              marginTop: '16px',
+              paddingTop: '16px',
+              borderTop: '1px solid #ebebeb'
+            }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#717171" strokeWidth="2">
+                <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/>
+                <line x1="4" y1="22" x2="4" y2="15"/>
+              </svg>
+              <button
+                onClick={() => setShowReportModal(true)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#717171',
+                  fontSize: '14px',
+                  cursor: 'pointer',
+                  textDecoration: 'underline',
+                  padding: 0
+                }}
+              >
+                Report this listing
+              </button>
+            </div>
           </div>
 
           </div>
@@ -3494,6 +3529,141 @@ function VendorProfilePage() {
               }}>
                 {vendor?.profile?.BusinessDescription || 'Welcome to our business! We provide exceptional event services tailored to your needs.'}
               </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Report Listing Modal */}
+      {showReportModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: '20px'
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: '12px',
+            maxWidth: '480px',
+            width: '100%',
+            maxHeight: '90vh',
+            overflow: 'auto'
+          }}>
+            <div style={{
+              padding: '16px 20px',
+              borderBottom: '1px solid #ebebeb',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>Report this listing</h3>
+              <button
+                onClick={() => { setShowReportModal(false); setReportForm({ reason: '', details: '' }); }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px', color: '#717171' }}
+              >
+                ×
+              </button>
+            </div>
+            
+            <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, marginBottom: '8px', color: '#222' }}>
+                  Why are you reporting this listing?
+                </label>
+                <select
+                  value={reportForm.reason}
+                  onChange={(e) => setReportForm({ ...reportForm, reason: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    border: '1px solid #e0e0e0',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    background: 'white'
+                  }}
+                >
+                  <option value="">Select a reason</option>
+                  <option value="inaccurate">Inaccurate or misleading information</option>
+                  <option value="inappropriate">Inappropriate content</option>
+                  <option value="scam">Suspected scam or fraud</option>
+                  <option value="duplicate">Duplicate listing</option>
+                  <option value="closed">Business is closed</option>
+                  <option value="offensive">Offensive content</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              
+              <div>
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, marginBottom: '8px', color: '#222' }}>
+                  Additional details (optional)
+                </label>
+                <textarea
+                  value={reportForm.details}
+                  onChange={(e) => setReportForm({ ...reportForm, details: e.target.value })}
+                  placeholder="Please provide any additional information..."
+                  rows={4}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    border: '1px solid #e0e0e0',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    resize: 'vertical',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+              
+              <button
+                onClick={async () => {
+                  if (!reportForm.reason) {
+                    showBanner('Please select a reason for reporting', 'error');
+                    return;
+                  }
+                  setReportSubmitting(true);
+                  try {
+                    const response = await apiPost('/vendors/report', {
+                      vendorProfileId: vendorId,
+                      reason: reportForm.reason,
+                      details: reportForm.details,
+                      reportedBy: currentUser?.id || null
+                    });
+                    if (response.ok) {
+                      showBanner('Thank you for your report. We will review it shortly.', 'success');
+                      setShowReportModal(false);
+                      setReportForm({ reason: '', details: '' });
+                    } else {
+                      showBanner('Failed to submit report. Please try again.', 'error');
+                    }
+                  } catch (error) {
+                    showBanner('Failed to submit report. Please try again.', 'error');
+                  } finally {
+                    setReportSubmitting(false);
+                  }
+                }}
+                disabled={reportSubmitting || !reportForm.reason}
+                style={{
+                  width: '100%',
+                  padding: '14px',
+                  background: reportSubmitting || !reportForm.reason ? '#ccc' : '#222',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '15px',
+                  fontWeight: 600,
+                  cursor: reportSubmitting || !reportForm.reason ? 'not-allowed' : 'pointer'
+                }}
+              >
+                {reportSubmitting ? 'Submitting...' : 'Submit Report'}
+              </button>
             </div>
           </div>
         </div>

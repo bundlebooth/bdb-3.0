@@ -5247,20 +5247,15 @@ router.get('/google-reviews/:placeId', async (req, res) => {
 });
 
 // GET /api/vendors/:vendorProfileId/google-reviews-settings
-// Get Google Reviews settings for a vendor
+// Get Google Reviews settings for a vendor (uses stored procedure)
 router.get('/:vendorProfileId/google-reviews-settings', async (req, res) => {
   try {
     const { vendorProfileId } = req.params;
     const pool = await poolPromise;
 
-    // Use direct query - fetch only GooglePlaceId from VendorProfiles
-    const request = pool.request();
-    request.input('VendorProfileID', sql.Int, vendorProfileId);
-    const result = await request.query(`
-      SELECT GooglePlaceId
-      FROM vendors.VendorProfiles
-      WHERE VendorProfileID = @VendorProfileID
-    `);
+    const result = await pool.request()
+      .input('VendorProfileID', sql.Int, vendorProfileId)
+      .execute('vendors.sp_GetGooglePlaceId');
 
     if (result.recordset.length === 0) {
       return res.status(404).json({
@@ -5271,10 +5266,8 @@ router.get('/:vendorProfileId/google-reviews-settings', async (req, res) => {
 
     res.json({
       success: true,
-      GooglePlaceId: result.recordset[0].GooglePlaceId || '',
-      GoogleBusinessUrl: ''
+      GooglePlaceId: result.recordset[0].GooglePlaceId || ''
     });
-
   } catch (error) {
     console.error('Error fetching Google Reviews settings:', error);
     res.status(500).json({
@@ -5286,30 +5279,64 @@ router.get('/:vendorProfileId/google-reviews-settings', async (req, res) => {
 });
 
 // POST /api/vendors/:vendorProfileId/google-reviews-settings
-// Save Google Reviews settings for a vendor
+// Save Google Reviews settings for a vendor (uses stored procedure)
 router.post('/:vendorProfileId/google-reviews-settings', async (req, res) => {
   try {
     const { vendorProfileId } = req.params;
-    const { GooglePlaceId, GoogleBusinessUrl } = req.body;
+    const { GooglePlaceId } = req.body;
     const pool = await poolPromise;
 
-    // Update vendor profile with Google Reviews settings
-    const request = pool.request();
-    request.input('VendorProfileID', sql.Int, vendorProfileId);
-    request.input('GooglePlaceId', sql.NVarChar(100), GooglePlaceId || null);
-    request.input('GoogleBusinessUrl', sql.NVarChar(500), GoogleBusinessUrl || null);
-    await request.execute('vendors.sp_UpdateGoogleReviewsSettings');
+    await pool.request()
+      .input('VendorProfileID', sql.Int, vendorProfileId)
+      .input('GooglePlaceId', sql.NVarChar(100), GooglePlaceId || null)
+      .execute('vendors.sp_SaveGooglePlaceId');
 
     res.json({
       success: true,
-      message: 'Google Reviews settings saved successfully'
+      message: 'Google Place ID saved successfully'
     });
-
   } catch (error) {
     console.error('Error saving Google Reviews settings:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to save settings',
+      error: error.message
+    });
+  }
+});
+
+// POST /api/vendors/report
+// Submit a report for a vendor listing
+router.post('/report', async (req, res) => {
+  try {
+    const { vendorProfileId, reason, details, reportedBy } = req.body;
+    
+    if (!vendorProfileId || !reason) {
+      return res.status(400).json({
+        success: false,
+        message: 'Vendor profile ID and reason are required'
+      });
+    }
+    
+    const pool = await poolPromise;
+    
+    const result = await pool.request()
+      .input('VendorProfileID', sql.Int, vendorProfileId)
+      .input('ReportedByUserID', sql.Int, reportedBy || null)
+      .input('Reason', sql.NVarChar(50), reason)
+      .input('Details', sql.NVarChar(sql.MAX), details || null)
+      .execute('vendors.sp_SubmitVendorReport');
+    
+    res.json({
+      success: true,
+      message: 'Report submitted successfully',
+      reportId: result.recordset[0]?.ReportID
+    });
+  } catch (error) {
+    console.error('Error submitting vendor report:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to submit report',
       error: error.message
     });
   }

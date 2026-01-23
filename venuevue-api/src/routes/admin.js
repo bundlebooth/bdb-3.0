@@ -4012,4 +4012,94 @@ router.get('/blog-stats', async (req, res) => {
   }
 });
 
+// ============================================================
+// COOKIE CONSENT & EMAIL UNSUBSCRIBE MANAGEMENT
+// ============================================================
+
+// GET /admin/cookie-consent/stats - Get cookie consent statistics
+router.get('/cookie-consent/stats', async (req, res) => {
+  try {
+    const pool = await poolPromise;
+    const result = await pool.request().execute('users.sp_GetCookieConsentStats');
+    const stats = result.recordset[0] || {};
+    res.json({ success: true, stats });
+  } catch (error) {
+    console.error('Error fetching cookie consent stats:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /admin/email-unsubscribes/stats - Get email unsubscribe statistics
+router.get('/email-unsubscribes/stats', async (req, res) => {
+  try {
+    const pool = await poolPromise;
+    const result = await pool.request().execute('users.sp_GetEmailUnsubscribeStats');
+    const stats = result.recordset || [];
+    res.json({ success: true, stats });
+  } catch (error) {
+    console.error('Error fetching email unsubscribe stats:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /admin/email-unsubscribes - Get all email unsubscribes with pagination
+router.get('/email-unsubscribes', async (req, res) => {
+  try {
+    const { category, isActive, page = 1, pageSize = 50 } = req.query;
+    const pool = await poolPromise;
+    
+    const result = await pool.request()
+      .input('Category', sql.NVarChar(50), category || null)
+      .input('IsActive', sql.Bit, isActive === 'true' ? 1 : (isActive === 'false' ? 0 : null))
+      .input('PageNumber', sql.Int, parseInt(page))
+      .input('PageSize', sql.Int, parseInt(pageSize))
+      .execute('users.sp_GetEmailUnsubscribes');
+    
+    res.json({ success: true, unsubscribes: result.recordset || [] });
+  } catch (error) {
+    console.error('Error fetching email unsubscribes:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /admin/vendor-reports - Get vendor reports for admin review
+router.get('/vendor-reports', async (req, res) => {
+  try {
+    const { status, vendorProfileId } = req.query;
+    const pool = await poolPromise;
+    
+    const result = await pool.request()
+      .input('Status', sql.NVarChar(20), status || null)
+      .input('VendorProfileID', sql.Int, vendorProfileId ? parseInt(vendorProfileId) : null)
+      .execute('vendors.sp_GetVendorReports');
+    
+    res.json({ success: true, reports: result.recordset || [] });
+  } catch (error) {
+    console.error('Error fetching vendor reports:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// PUT /admin/vendor-reports/:reportId - Update vendor report status
+router.put('/vendor-reports/:reportId', async (req, res) => {
+  try {
+    const { reportId } = req.params;
+    const { status, adminNotes } = req.body;
+    const adminId = req.user?.id || null;
+    const pool = await poolPromise;
+    
+    await pool.request()
+      .input('ReportID', sql.Int, parseInt(reportId))
+      .input('Status', sql.NVarChar(20), status)
+      .input('AdminNotes', sql.NVarChar(sql.MAX), adminNotes || null)
+      .input('AdminID', sql.Int, adminId)
+      .execute('vendors.sp_UpdateVendorReportStatus');
+    
+    res.json({ success: true, message: 'Report updated successfully' });
+  } catch (error) {
+    console.error('Error updating vendor report:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 module.exports = router;

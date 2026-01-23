@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
 import { useVendorOnlineStatus } from '../hooks/useOnlineStatus';
-import EmojiPicker from 'emoji-picker-react';
 import Header from './Header';
 
 function MessagingWidget() {
@@ -115,7 +114,31 @@ function MessagingWidget() {
   };
   const [otherPartyVendorId, setOtherPartyVendorId] = useState(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showGifPicker, setShowGifPicker] = useState(false);
+  const [gifs, setGifs] = useState([]);
+  const [gifSearchQuery, setGifSearchQuery] = useState('');
+  const [gifsLoading, setGifsLoading] = useState(false);
+  const [emojiSearch, setEmojiSearch] = useState('');
+  const [emojiCategory, setEmojiCategory] = useState('smileys');
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  // Emoji categories matching dashboard
+  const emojiCategories = {
+    smileys: { icon: '😀', name: 'Smileys', emojis: ['😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '🙃', '😉', '😊', '😇', '🥰', '😍', '🤩', '😘', '😗', '☺️', '😚', '😙', '🥲', '😋', '😛', '😜', '🤪', '😝', '🤑', '🤗', '🤭', '🤫', '🤔', '🤐', '🤨', '😐', '😑', '😶', '😏', '😒', '🙄', '😬', '🤥', '😌', '😔', '😪', '🤤', '😴', '😷', '🤒', '🤕', '🤢', '🤮', '🤧', '🥵', '🥶', '🥴', '😵', '🤯', '🤠', '🥳', '🥸', '😎', '🤓', '🧐'] },
+    gestures: { icon: '👋', name: 'Gestures', emojis: ['👋', '🤚', '🖐️', '✋', '🖖', '👌', '🤌', '🤏', '✌️', '🤞', '🤟', '🤘', '🤙', '👈', '👉', '👆', '🖕', '👇', '☝️', '👍', '👎', '✊', '👊', '🤛', '🤜', '👏', '🙌', '👐', '🤲', '🤝', '🙏', '✍️', '💅', '🤳', '💪'] },
+    hearts: { icon: '❤️', name: 'Hearts', emojis: ['❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💔', '❣️', '💕', '💞', '💓', '💗', '💖', '💘', '💝', '💟', '♥️', '💌', '💋', '😻', '😽', '🫶'] },
+    objects: { icon: '⭐', name: 'Objects', emojis: ['⭐', '🌟', '✨', '💫', '🔥', '💥', '💢', '💦', '💨', '🎉', '🎊', '🎈', '🎁', '🏆', '🥇', '🥈', '🥉', '⚽', '🏀', '🎯', '🎮', '🎲', '🎭', '🎨', '🎬', '🎤', '🎧', '🎵', '🎶', '💡', '📱', '💻', '⌨️', '🖥️', '📷', '📸'] },
+    food: { icon: '🍕', name: 'Food', emojis: ['🍕', '🍔', '🍟', '🌭', '🍿', '🧂', '🥓', '🥚', '🍳', '🧇', '🥞', '🧈', '🍞', '🥐', '🥖', '🥨', '🧀', '🥗', '🥙', '🥪', '🌮', '🌯', '🫔', '🥫', '🍝', '🍜', '🍲', '🍛', '🍣', '🍱', '🥟', '🍤', '🍙', '🍚', '🍘', '🍥', '🥠', '🍢', '🍡', '🍧', '🍨', '🍦', '🥧', '🧁', '🍰', '🎂', '🍮', '🍭', '🍬', '🍫', '🍩', '🍪', '☕', '🍵', '🧃', '🥤', '🧋', '🍶', '🍺', '🍻', '🥂', '🍷', '🥃', '🍸', '🍹', '🧉'] },
+    animals: { icon: '🐶', name: 'Animals', emojis: ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮', '🐷', '🐸', '🐵', '🙈', '🙉', '🙊', '🐒', '🐔', '🐧', '🐦', '🐤', '🐣', '🐥', '🦆', '🦅', '🦉', '🦇', '🐺', '🐗', '🐴', '🦄', '🐝', '🐛', '🦋', '🐌', '🐞', '🐜', '🦟', '🦗', '🕷️', '🦂', '🐢', '🐍', '🦎', '🦖', '🦕', '🐙', '🦑', '🦐', '🦞', '🦀', '🐡', '🐠', '🐟', '🐬', '🐳', '🐋', '🦈', '🐊', '🐅', '🐆', '🦓', '🦍', '🦧', '🐘', '🦛', '🦏', '🐪', '🐫', '🦒', '🦘', '🐃', '🐂', '🐄', '🐎', '🐖', '🐏', '🐑', '🦙', '🐐', '🦌', '🐕', '🐩', '🦮', '🐕‍🦺', '🐈', '🐈‍⬛', '🐓', '🦃', '🦚', '🦜', '🦢', '🦩', '🕊️', '🐇', '🦝', '🦨', '🦡', '🦦', '🦥', '🐁', '🐀', '🐿️', '🦔'] },
+    nature: { icon: '🌸', name: 'Nature', emojis: ['🌸', '💮', '🏵️', '🌹', '🥀', '🌺', '🌻', '🌼', '🌷', '🌱', '🌲', '🌳', '🌴', '🌵', '🌾', '🌿', '☘️', '🍀', '🍁', '🍂', '🍃', '🍄', '🌰', '🦀', '🦞', '🦐', '🦑', '🌍', '🌎', '🌏', '🌐', '🌑', '🌒', '🌓', '🌔', '🌕', '🌖', '🌗', '🌘', '🌙', '🌚', '🌛', '🌜', '☀️', '🌝', '🌞', '⭐', '🌟', '🌠', '☁️', '⛅', '⛈️', '🌤️', '🌥️', '🌦️', '🌧️', '🌨️', '🌩️', '🌪️', '🌫️', '🌬️', '🌀', '🌈', '🌂', '☂️', '☔', '⛱️', '⚡', '❄️', '☃️', '⛄', '🔥', '💧', '🌊'] }
+  };
+
+  // Get filtered emojis based on search
+  const getFilteredEmojis = () => {
+    if (!emojiSearch) return emojiCategories[emojiCategory]?.emojis || [];
+    const allEmojis = Object.values(emojiCategories).flatMap(cat => cat.emojis);
+    return allEmojis;
+  };
   const messagesEndRef = useRef(null);
   const pollingIntervalRef = useRef(null);
   const emojiPickerRef = useRef(null);
@@ -139,15 +162,79 @@ function MessagingWidget() {
     };
   }, [isOpen, isMobile]);
 
-  // Quick reply suggestions
+  // Quick reply suggestions - matching dashboard
   const quickReplies = [
     "Hi! 👋",
-    "Thank you!",
+    "Hello!",
+    "Thanks!",
+    "Great! 👍",
     "Sounds good!",
-    "I'm interested",
-    "Can we discuss?",
-    "Perfect! ✨"
+    "Perfect!"
   ];
+
+  // GIPHY API key
+  const GIPHY_API_KEY = 'GlVGYHkr3WSBnllca54iNt0yFbjz7L65';
+
+  // Fetch GIFs from GIPHY
+  const fetchGifs = async (query = '') => {
+    setGifsLoading(true);
+    try {
+      const endpoint = query 
+        ? `https://api.giphy.com/v1/gifs/search?api_key=${GIPHY_API_KEY}&q=${encodeURIComponent(query)}&limit=20&rating=g`
+        : `https://api.giphy.com/v1/gifs/trending?api_key=${GIPHY_API_KEY}&limit=20&rating=g`;
+      
+      const response = await fetch(endpoint);
+      const data = await response.json();
+      
+      if (data.data) {
+        setGifs(data.data.map(gif => ({
+          id: gif.id,
+          url: gif.images.fixed_height.url,
+          alt: gif.title
+        })));
+      }
+    } catch (error) {
+      console.error('Error fetching GIFs:', error);
+    } finally {
+      setGifsLoading(false);
+    }
+  };
+
+  // Load trending GIFs when picker opens
+  useEffect(() => {
+    if (showGifPicker && gifs.length === 0) {
+      fetchGifs();
+    }
+  }, [showGifPicker]);
+
+  // Handle sending a GIF
+  const handleSendGif = async (gifUrl) => {
+    if (!currentConversation) return;
+    
+    setShowGifPicker(false);
+    
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_BASE_URL}/messages`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          conversationId: currentConversation.ConversationID || currentConversation.id,
+          senderId: currentUser?.id,
+          content: gifUrl
+        })
+      });
+      
+      if (response.ok) {
+        loadMessages(currentConversation.ConversationID || currentConversation.id);
+      }
+    } catch (error) {
+      console.error('Error sending GIF:', error);
+    }
+  };
 
   // Handle emoji selection
   const onEmojiClick = (emojiData) => {
@@ -155,9 +242,35 @@ function MessagingWidget() {
     setShowEmojiPicker(false);
   };
 
-  // Handle quick reply click
-  const handleQuickReply = (reply) => {
-    setMessageInput(reply);
+  // Handle quick reply click - send directly like dashboard
+  const handleQuickReply = async (reply) => {
+    if (!currentConversation) {
+      setMessageInput(reply);
+      return;
+    }
+    
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_BASE_URL}/messages`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          conversationId: currentConversation.ConversationID || currentConversation.id,
+          senderId: currentUser?.id,
+          content: reply
+        })
+      });
+      
+      if (response.ok) {
+        loadMessages(currentConversation.ConversationID || currentConversation.id);
+      }
+    } catch (error) {
+      console.error('Error sending quick reply:', error);
+      setMessageInput(reply);
+    }
   };
 
   // Close emoji picker when clicking outside
@@ -380,6 +493,57 @@ function MessagingWidget() {
       alert('Unable to start support chat. Please check your connection.');
     }
   }, [currentUser, loadConversations, loadMessages]);
+
+  // Submit support ticket
+  const submitTicket = useCallback(async () => {
+    if (!ticketForm.subject || !ticketForm.description) return;
+    
+    setTicketSubmitting(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/support/tickets`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          userId: currentUser?.id,
+          subject: ticketForm.subject,
+          description: ticketForm.description,
+          category: ticketForm.category,
+          priority: ticketForm.priority
+        })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setTicketSuccess('Ticket submitted successfully! We will get back to you soon.');
+        setTicketForm({ subject: '', description: '', category: 'general', priority: 'medium', attachments: [] });
+        // Refresh tickets list
+        if (currentUser?.id) {
+          const ticketsRes = await fetch(`${API_BASE_URL}/support/tickets/user/${currentUser.id}`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+          });
+          if (ticketsRes.ok) {
+            const ticketsData = await ticketsRes.json();
+            setUserTickets(ticketsData.tickets || []);
+          }
+        }
+        setTimeout(() => {
+          setShowTicketForm(false);
+          setTicketSuccess(null);
+        }, 2000);
+      } else {
+        const errorData = await response.json();
+        alert(errorData.message || 'Failed to submit ticket');
+      }
+    } catch (error) {
+      console.error('Failed to submit ticket:', error);
+      alert('Failed to submit ticket. Please try again.');
+    } finally {
+      setTicketSubmitting(false);
+    }
+  }, [currentUser, ticketForm]);
 
   // Submit FAQ feedback
   const submitFaqFeedback = useCallback(async (faqId, rating) => {
@@ -683,23 +847,73 @@ function MessagingWidget() {
               <div style={{ flex: 1, padding: '20px', overflow: 'auto' }}>
                 {ticketSuccess ? (
                   <div style={{
-                    background: '#d4edda',
-                    border: '1px solid #c3e6cb',
-                    borderRadius: '12px',
-                    padding: '24px',
+                    background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
+                    border: '1px solid #86efac',
+                    borderRadius: '16px',
+                    padding: '32px 24px',
                     textAlign: 'center'
                   }}>
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" style={{ margin: '0 auto 12px' }}>
-                      <circle cx="12" cy="12" r="10" stroke="#28a745" strokeWidth="2"/>
-                      <path d="M9 12L11 14L15 10" stroke="#28a745" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                    <h4 style={{ margin: '0 0 8px 0', color: '#155724' }}>Ticket Submitted!</h4>
-                    <p style={{ margin: 0, color: '#155724', fontSize: '14px' }}>
-                      Your ticket number is: <strong>{ticketSuccess}</strong>
+                    <div style={{ 
+                      width: '64px', 
+                      height: '64px', 
+                      background: '#22c55e', 
+                      borderRadius: '50%', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center',
+                      margin: '0 auto 16px'
+                    }}>
+                      <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+                        <path d="M9 12L11 14L15 10" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </div>
+                    <h4 style={{ margin: '0 0 8px 0', color: '#166534', fontSize: '18px', fontWeight: 600 }}>Ticket Submitted Successfully!</h4>
+                    <p style={{ margin: '0 0 16px 0', color: '#166534', fontSize: '14px' }}>
+                      Your ticket number is: <strong style={{ fontFamily: 'monospace', background: '#bbf7d0', padding: '2px 8px', borderRadius: '4px' }}>{ticketSuccess}</strong>
+                    </p>
+                    <p style={{ margin: 0, color: '#6b7280', fontSize: '13px' }}>
+                      We'll get back to you within 24-48 hours.
                     </p>
                   </div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    {/* Category Selection - Dropdown */}
+                    <div>
+                      <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, marginBottom: '6px', color: '#222' }}>
+                        Category *
+                      </label>
+                      <select
+                        value={ticketForm.category}
+                        onChange={(e) => setTicketForm({ ...ticketForm, category: e.target.value })}
+                        style={{
+                          width: '100%',
+                          padding: '12px 14px',
+                          border: '1px solid #e0e0e0',
+                          borderRadius: '8px',
+                          fontSize: '14px',
+                          outline: 'none',
+                          boxSizing: 'border-box',
+                          background: 'white',
+                          color: '#222',
+                          cursor: 'pointer',
+                          appearance: 'none',
+                          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
+                          backgroundRepeat: 'no-repeat',
+                          backgroundPosition: 'right 12px center'
+                        }}
+                      >
+                        <option value="general">General Inquiry</option>
+                        <option value="booking_issue">Booking Issue</option>
+                        <option value="payment_refund">Payment & Refunds</option>
+                        <option value="vendor_complaint">Vendor Complaint</option>
+                        <option value="technical_bug">Technical Bug</option>
+                        <option value="account_access">Account Access</option>
+                        <option value="feature_request">Feature Request</option>
+                        <option value="vendor_onboarding">Vendor Onboarding Help</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
+
                     <div>
                       <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, marginBottom: '6px', color: '#222' }}>
                         Subject *
@@ -711,7 +925,7 @@ function MessagingWidget() {
                         placeholder="Brief description of your issue"
                         style={{
                           width: '100%',
-                          padding: '12px',
+                          padding: '12px 14px',
                           border: '1px solid #e0e0e0',
                           borderRadius: '8px',
                           fontSize: '14px',
@@ -719,33 +933,6 @@ function MessagingWidget() {
                           boxSizing: 'border-box'
                         }}
                       />
-                    </div>
-                    
-                    <div>
-                      <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, marginBottom: '6px', color: '#222' }}>
-                        Category
-                      </label>
-                      <select
-                        value={ticketForm.category}
-                        onChange={(e) => setTicketForm({ ...ticketForm, category: e.target.value })}
-                        style={{
-                          width: '100%',
-                          padding: '12px',
-                          border: '1px solid #e0e0e0',
-                          borderRadius: '8px',
-                          fontSize: '14px',
-                          outline: 'none',
-                          background: 'white',
-                          boxSizing: 'border-box'
-                        }}
-                      >
-                        <option value="general">General Inquiry</option>
-                        <option value="booking">Booking Issue</option>
-                        <option value="payment">Payment Problem</option>
-                        <option value="vendor">Vendor Related</option>
-                        <option value="technical">Technical Issue</option>
-                        <option value="account">Account Help</option>
-                      </select>
                     </div>
                     
                     <div>
@@ -756,10 +943,10 @@ function MessagingWidget() {
                         value={ticketForm.description}
                         onChange={(e) => setTicketForm({ ...ticketForm, description: e.target.value })}
                         placeholder="Please describe your issue in detail..."
-                        rows={5}
+                        rows={4}
                         style={{
                           width: '100%',
-                          padding: '12px',
+                          padding: '12px 14px',
                           border: '1px solid #e0e0e0',
                           borderRadius: '8px',
                           fontSize: '14px',
@@ -769,12 +956,109 @@ function MessagingWidget() {
                         }}
                       />
                     </div>
+
+                    {/* Image Upload */}
+                    <div>
+                      <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, marginBottom: '6px', color: '#222' }}>
+                        Attachments <span style={{ fontWeight: 400, color: '#6b7280' }}>(optional)</span>
+                      </label>
+                      <div 
+                        style={{
+                          border: '1px dashed #d0d0d0',
+                          borderRadius: '8px',
+                          padding: '16px',
+                          textAlign: 'center',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                          background: '#fafafa'
+                        }}
+                        onClick={() => document.getElementById('ticket-file-upload')?.click()}
+                        onDragOver={(e) => { e.preventDefault(); e.currentTarget.style.borderColor = 'var(--primary, #5e72e4)'; }}
+                        onDragLeave={(e) => { e.currentTarget.style.borderColor = '#e5e7eb'; }}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          e.currentTarget.style.borderColor = '#e5e7eb';
+                          const files = Array.from(e.dataTransfer.files);
+                          if (files.length > 0) {
+                            setTicketForm(prev => ({ ...prev, attachments: [...(prev.attachments || []), ...files] }));
+                          }
+                        }}
+                      >
+                        <input
+                          id="ticket-file-upload"
+                          type="file"
+                          multiple
+                          accept="image/*,.pdf,.doc,.docx"
+                          style={{ display: 'none' }}
+                          onChange={(e) => {
+                            const files = Array.from(e.target.files || []);
+                            if (files.length > 0) {
+                              setTicketForm(prev => ({ ...prev, attachments: [...(prev.attachments || []), ...files] }));
+                            }
+                          }}
+                        />
+                        <div style={{ fontSize: '24px', marginBottom: '8px' }}>📎</div>
+                        <div style={{ fontSize: '14px', color: '#374151', fontWeight: 500 }}>
+                          Drop files here or click to upload
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '4px' }}>
+                          Images, PDFs, or documents (max 10MB)
+                        </div>
+                      </div>
+                      {ticketForm.attachments && ticketForm.attachments.length > 0 && (
+                        <div style={{ marginTop: '12px', display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                          {ticketForm.attachments.map((file, idx) => (
+                            <div key={idx} style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              padding: '6px 10px',
+                              background: '#f3f4f6',
+                              borderRadius: '8px',
+                              fontSize: '12px'
+                            }}>
+                              <span>📄</span>
+                              <span style={{ maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {file.name}
+                              </span>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setTicketForm(prev => ({
+                                    ...prev,
+                                    attachments: prev.attachments.filter((_, i) => i !== idx)
+                                  }));
+                                }}
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', fontSize: '14px' }}
+                              >
+                                ×
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Technical Issues Tip */}
+                    {ticketForm.category === 'technical_bug' && (
+                      <div style={{
+                        background: '#fef3c7',
+                        border: '1px solid #fcd34d',
+                        borderRadius: '12px',
+                        padding: '14px 16px',
+                        fontSize: '13px',
+                        color: '#92400e'
+                      }}>
+                        <strong style={{ display: 'block', marginBottom: '4px' }}>💡 Tip for technical issues:</strong>
+                        Press <kbd style={{ background: '#fef9c3', padding: '2px 6px', borderRadius: '4px', fontFamily: 'monospace' }}>F12</kbd> → Console tab and include any red error messages in your description. This helps us fix the issue faster!
+                      </div>
+                    )}
                     
                     <button
                       onClick={submitSupportTicket}
-                      disabled={ticketSubmitting}
+                      disabled={ticketSubmitting || !ticketForm.subject || !ticketForm.description}
                       style={{
-                        background: ticketSubmitting ? '#ccc' : '#5e72e4',
+                        background: (ticketSubmitting || !ticketForm.subject || !ticketForm.description) ? '#d1d5db' : 'var(--primary, #5e72e4)',
                         color: 'white',
                         border: 'none',
                         borderRadius: '8px',
@@ -1195,7 +1479,7 @@ function MessagingWidget() {
                     </div>
                   </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: '12px' }}>
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, marginTop: '2px' }}>
                     <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" stroke="#10b981" strokeWidth="2"/>
                     <path d="M9 12L11 14L15 10" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -1204,6 +1488,18 @@ function MessagingWidget() {
                     <div style={{ fontWeight: 600, fontSize: '14px', color: '#111', marginBottom: '4px' }}>Response time</div>
                     <div style={{ fontSize: '13px', color: '#6b7280', lineHeight: '1.5' }}>
                       We typically respond within a few hours during business hours.
+                    </div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, marginTop: '2px' }}>
+                    <path d="M14.5 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V7.5L14.5 2Z" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M14 2V8H20" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: '14px', color: '#111', marginBottom: '4px' }}>Reporting issues?</div>
+                    <div style={{ fontSize: '13px', color: '#6b7280', lineHeight: '1.5' }}>
+                      Please include screenshots of any errors. On desktop, press <strong>F12</strong> → <strong>Console</strong> tab and copy any red error messages to help us diagnose the issue faster.
                     </div>
                   </div>
                 </div>
@@ -1366,35 +1662,97 @@ function MessagingWidget() {
                     <p>No messages yet. Start the conversation!</p>
                   </div>
                 ) : (
-                  messages.map((msg, index) => {
+                  messages
+                    // Hide first auto-reply message when widget is collapsed (not expanded)
+                    .filter((msg, index) => {
+                      if (!isWidgetExpanded && index === 0 && msg.SenderID !== currentUser?.id) {
+                        // Skip first message if it's from support (auto-reply) and widget is collapsed
+                        return false;
+                      }
+                      return true;
+                    })
+                    .map((msg, index) => {
                     const isSent = msg.SenderID === currentUser.id;
                     const isRead = msg.IsRead === true || msg.IsRead === 1;
                     // Only show read receipt on the last sent message
                     const isLastSentMessage = isSent && !messages.slice(index + 1).some(m => m.SenderID === currentUser.id);
+                    // Check if this is a new day compared to previous message
+                    const showDateDivider = index === 0 || (() => {
+                      const prevDate = new Date(messages[index - 1]?.CreatedAt || messages[index - 1]?.SentAt);
+                      const currDate = new Date(msg.CreatedAt || msg.SentAt);
+                      return prevDate.toDateString() !== currDate.toDateString();
+                    })();
                     return (
-                      <div
-                        key={msg.MessageID}
-                        style={{
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: isSent ? 'flex-end' : 'flex-start',
-                          marginBottom: '12px'
-                        }}
-                      >
-                        <div style={{
-                          maxWidth: '70%',
-                          padding: '10px 14px',
-                          borderRadius: '18px',
-                          background: isSent ? '#5e72e4' : '#f0f0f0',
-                          color: isSent ? 'white' : '#222',
-                          wordWrap: 'break-word'
-                        }}>
-                          <div style={{ fontSize: '14px', lineHeight: '1.4' }}>{msg.Content || msg.MessageText}</div>
+                      <React.Fragment key={msg.MessageID}>
+                        {/* Date divider - matching dashboard style */}
+                        {showDateDivider && (
+                          <div style={{ 
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            margin: '16px 0',
+                            gap: '12px'
+                          }}>
+                            <div style={{ flex: 1, height: '1px', backgroundColor: '#e5e7eb' }}></div>
+                            <span style={{
+                              fontSize: '11px',
+                              color: '#9ca3af',
+                              fontWeight: 500,
+                              padding: '4px 12px',
+                              backgroundColor: '#f3f4f6',
+                              borderRadius: '12px'
+                            }}>
+                              {(() => {
+                                const date = new Date(msg.CreatedAt || msg.SentAt);
+                                const today = new Date();
+                                const yesterday = new Date(today);
+                                yesterday.setDate(yesterday.getDate() - 1);
+                                if (date.toDateString() === today.toDateString()) return 'Today';
+                                if (date.toDateString() === yesterday.toDateString()) return 'Yesterday';
+                                return date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' });
+                              })()}
+                            </span>
+                            <div style={{ flex: 1, height: '1px', backgroundColor: '#e5e7eb' }}></div>
+                          </div>
+                        )}
+                        <div
+                          style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: isSent ? 'flex-end' : 'flex-start',
+                            marginBottom: '16px'
+                          }}
+                        >
+                          {/* Sender name for received messages */}
+                          {!isSent && (
+                            <div style={{ 
+                              fontSize: '12px', 
+                              fontWeight: 600, 
+                              color: '#6b7280', 
+                              marginBottom: '4px',
+                              marginLeft: '4px'
+                            }}>
+                              {currentConversation?.OtherPartyName || 'Support'}
+                            </div>
+                          )}
+                          <div style={{
+                            maxWidth: isWidgetExpanded ? '60%' : '75%',
+                            padding: '12px 16px',
+                            borderRadius: isSent ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
+                            background: isSent ? '#5e72e4' : '#f3f4f6',
+                            color: isSent ? 'white' : '#1f2937',
+                            wordWrap: 'break-word',
+                            boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                          }}>
+                            <div style={{ fontSize: '14px', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>{msg.Content || msg.MessageText}</div>
+                          </div>
+                          {/* Timestamp below message */}
                           <div style={{ 
                             fontSize: '11px', 
                             marginTop: '4px',
-                            opacity: 0.7,
-                            textAlign: 'right'
+                            color: '#9ca3af',
+                            marginLeft: isSent ? '0' : '4px',
+                            marginRight: isSent ? '4px' : '0'
                           }}>
                             {(() => {
                               const dateStr = msg.CreatedAt || msg.SentAt;
@@ -1403,149 +1761,338 @@ function MessagingWidget() {
                               if (isNaN(date.getTime())) return '';
                               return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                             })()}
+                            {/* Read receipt inline for sent messages */}
+                            {isLastSentMessage && isRead && ' • Seen'}
                           </div>
                         </div>
-                        {/* Read receipt - shown outside message bubble for last sent message */}
-                        {isLastSentMessage && isRead && msg.ReadAt && (
-                          <div style={{ 
-                            fontSize: '11px', 
-                            color: '#666',
-                            marginTop: '4px',
-                            paddingRight: '4px'
-                          }}>
-                            Seen on: {(() => {
-                              const date = new Date(msg.ReadAt);
-                              if (isNaN(date.getTime())) return '';
-                              return date.toLocaleString([], { 
-                                month: 'short', 
-                                day: 'numeric',
-                                hour: '2-digit', 
-                                minute: '2-digit' 
-                              });
-                            })()}
-                          </div>
-                        )}
-                      </div>
+                      </React.Fragment>
                     );
                   })
                 )}
                 <div ref={messagesEndRef} />
               </div>
-              {/* Quick Reply Buttons */}
-              {messages.length > 0 && !messageInput && (
-                <div style={{
-                  padding: '8px 16px',
-                  borderTop: '1px solid #e0e0e0',
-                  background: '#f8f9fa',
-                  display: 'flex',
-                  gap: '8px',
-                  flexWrap: 'wrap'
-                }}>
-                  {quickReplies.map((reply, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => handleQuickReply(reply)}
-                      style={{
-                        padding: '6px 12px',
-                        background: 'white',
-                        border: '1px solid #e0e0e0',
-                        borderRadius: '16px',
-                        fontSize: '12px',
-                        cursor: 'pointer',
-                        color: '#555',
-                        transition: 'all 0.2s'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.target.style.background = '#5e72e4';
-                        e.target.style.color = 'white';
-                        e.target.style.borderColor = '#5e72e4';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.target.style.background = 'white';
-                        e.target.style.color = '#555';
-                        e.target.style.borderColor = '#e0e0e0';
-                      }}
-                    >
-                      {reply}
-                    </button>
-                  ))}
-                </div>
-              )}
               <div className="chat-input-container" style={{
-                padding: '16px',
-                borderTop: '1px solid #e0e0e0',
+                padding: '12px 16px',
+                borderTop: '1px solid #e5e5e5',
                 background: 'white',
-                display: 'flex',
-                gap: '12px',
-                alignItems: 'center',
                 position: 'relative'
               }}>
-                {/* Emoji Picker */}
+                {/* Quick replies - only show when expanded */}
+                {isWidgetExpanded && (
+                  <div style={{ 
+                    display: 'flex', 
+                    gap: '6px', 
+                    flexWrap: 'wrap', 
+                    marginBottom: '10px',
+                    overflowX: 'hidden'
+                  }}>
+                    {quickReplies.map((reply, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => handleQuickReply(reply)}
+                        style={{
+                          padding: '5px 10px',
+                          borderRadius: '14px',
+                          border: '1px solid #e5e7eb',
+                          background: 'white',
+                          fontSize: '12px',
+                          color: '#374151',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                          whiteSpace: 'nowrap'
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = '#f3f4f6'; e.currentTarget.style.borderColor = '#d1d5db'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = 'white'; e.currentTarget.style.borderColor = '#e5e7eb'; }}
+                      >
+                        {reply}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Emoji Picker - Custom matching dashboard */}
                 {showEmojiPicker && (
                   <div 
                     ref={emojiPickerRef}
                     style={{
                       position: 'absolute',
-                      bottom: '70px',
+                      bottom: '100%',
                       left: '16px',
-                      zIndex: 1000
+                      marginBottom: '8px',
+                      background: 'white',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '12px',
+                      padding: '10px',
+                      boxShadow: '0 -4px 12px rgba(0,0,0,0.15)',
+                      zIndex: 1000,
+                      width: '300px',
+                      maxWidth: 'calc(100vw - 48px)',
+                      overflow: 'hidden'
                     }}
                   >
-                    <EmojiPicker 
-                      onEmojiClick={onEmojiClick}
-                      width={300}
-                      height={350}
-                      searchDisabled={false}
-                      skinTonesDisabled
-                      previewConfig={{ showPreview: false }}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <span style={{ fontSize: '13px', fontWeight: 500, color: '#374151' }}>Emojis</span>
+                      <button 
+                        onClick={() => setShowEmojiPicker(false)}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', fontSize: '14px', padding: '4px' }}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Search emojis..."
+                      value={emojiSearch}
+                      onChange={(e) => setEmojiSearch(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '6px 10px',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '6px',
+                        fontSize: '12px',
+                        marginBottom: '8px',
+                        outline: 'none',
+                        boxSizing: 'border-box'
+                      }}
                     />
+                    <div style={{ display: 'flex', gap: '2px', marginBottom: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
+                      {Object.entries(emojiCategories).map(([key, cat]) => (
+                        <button
+                          key={key}
+                          onClick={() => setEmojiCategory(key)}
+                          style={{
+                            padding: '4px 6px',
+                            border: 'none',
+                            background: emojiCategory === key ? '#e5e7eb' : 'transparent',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontSize: '16px'
+                          }}
+                          title={cat.name}
+                        >
+                          {cat.icon}
+                        </button>
+                      ))}
+                    </div>
+                    <div style={{ fontSize: '12px', fontWeight: 500, color: '#6b7280', marginBottom: '6px' }}>
+                      {emojiCategories[emojiCategory]?.name}
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: '2px', maxHeight: '180px', overflowY: 'auto' }}>
+                      {getFilteredEmojis().map((emoji, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => { setMessageInput(prev => prev + emoji); }}
+                          style={{
+                            padding: '4px',
+                            border: 'none',
+                            background: 'transparent',
+                            fontSize: '18px',
+                            cursor: 'pointer',
+                            borderRadius: '4px',
+                            width: '32px',
+                            height: '32px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = '#f3f4f6'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
-                <button
-                  onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    fontSize: '20px',
-                    color: showEmojiPicker ? '#5e72e4' : '#666',
-                    padding: '8px'
-                  }}
-                >
-                  <i className="far fa-smile"></i>
-                </button>
-                <input
-                  type="text"
-                  className="widget-chat-input"
-                  placeholder="Type a message..."
-                  value={messageInput}
-                  onChange={(e) => setMessageInput(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  style={{
-                    flex: 1,
-                    padding: '12px 16px',
-                    border: '1px solid #e0e0e0',
-                    borderRadius: '24px',
-                    fontSize: '14px',
-                    outline: 'none'
-                  }}
-                />
-                <button className="widget-send-button" onClick={sendMessage} style={{
-                  background: '#5e72e4',
-                  border: 'none',
-                  borderRadius: '50%',
-                  width: '44px',
-                  height: '44px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  color: 'white',
-                  fontSize: '16px',
-                  transition: 'background 0.2s'
-                }}>
-                  <i className="fas fa-paper-plane"></i>
-                </button>
+
+                {/* GIF Picker */}
+                {showGifPicker && (
+                  <div style={{ 
+                    position: 'absolute',
+                    bottom: '100%',
+                    left: '16px',
+                    marginBottom: '8px',
+                    background: 'white',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '12px',
+                    padding: '12px',
+                    boxShadow: '0 -4px 12px rgba(0,0,0,0.15)',
+                    zIndex: 1000,
+                    width: '300px',
+                    maxWidth: 'calc(100vw - 48px)'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <span style={{ fontSize: '13px', fontWeight: 500, color: '#374151' }}>GIFs</span>
+                      <button 
+                        onClick={() => setShowGifPicker(false)}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', fontSize: '14px', padding: '4px' }}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    <div style={{ display: 'flex', gap: '6px', marginBottom: '10px' }}>
+                      <input
+                        type="text"
+                        placeholder="Search GIFs..."
+                        value={gifSearchQuery}
+                        onChange={(e) => setGifSearchQuery(e.target.value)}
+                        onKeyPress={(e) => { if (e.key === 'Enter') fetchGifs(gifSearchQuery); }}
+                        style={{
+                          flex: 1,
+                          padding: '8px 12px',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '8px',
+                          fontSize: '13px',
+                          outline: 'none',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                      <button
+                        onClick={() => fetchGifs(gifSearchQuery)}
+                        style={{
+                          padding: '8px 12px',
+                          background: '#5e72e4',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '8px',
+                          cursor: 'pointer',
+                          fontSize: '12px'
+                        }}
+                      >
+                        Search
+                      </button>
+                    </div>
+                    <div style={{ 
+                      display: 'grid', 
+                      gridTemplateColumns: 'repeat(2, 1fr)', 
+                      gap: '6px',
+                      maxHeight: '200px',
+                      overflowY: 'auto'
+                    }}>
+                      {gifsLoading ? (
+                        <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '20px', color: '#6b7280' }}>
+                          Loading GIFs...
+                        </div>
+                      ) : gifs.length > 0 ? (
+                        gifs.map((gif) => (
+                          <button
+                            key={gif.id}
+                            onClick={() => handleSendGif(gif.url)}
+                            style={{
+                              padding: 0,
+                              border: '1px solid #e5e7eb',
+                              borderRadius: '8px',
+                              background: '#f9fafb',
+                              cursor: 'pointer',
+                              overflow: 'hidden',
+                              height: '80px'
+                            }}
+                          >
+                            <img 
+                              src={gif.url} 
+                              alt={gif.alt}
+                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                              loading="lazy"
+                            />
+                          </button>
+                        ))
+                      ) : (
+                        <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '20px', color: '#6b7280' }}>
+                          Search for GIFs
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ marginTop: '8px', fontSize: '10px', color: '#9ca3af', textAlign: 'center' }}>
+                      Powered by GIPHY
+                    </div>
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  {/* Emoji button */}
+                  <button 
+                    onClick={() => { setShowEmojiPicker(!showEmojiPicker); setShowGifPicker(false); }}
+                    style={{ 
+                      width: '36px',
+                      height: '36px',
+                      borderRadius: '50%',
+                      border: '1px solid #e5e7eb',
+                      backgroundColor: showEmojiPicker ? '#f3f4f6' : 'white',
+                      color: '#6b7280',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '16px',
+                      flexShrink: 0
+                    }}
+                    title="Emojis"
+                  >
+                    😊
+                  </button>
+                  {/* GIF button */}
+                  <button 
+                    onClick={() => { setShowGifPicker(!showGifPicker); setShowEmojiPicker(false); }}
+                    style={{ 
+                      width: '36px',
+                      height: '36px',
+                      borderRadius: '50%',
+                      border: '1px solid #e5e7eb',
+                      backgroundColor: showGifPicker ? '#f3f4f6' : 'white',
+                      color: '#6b7280',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '12px',
+                      fontWeight: 700,
+                      flexShrink: 0
+                    }}
+                    title="GIFs"
+                  >
+                    GIF
+                  </button>
+                  <input
+                    type="text"
+                    className="widget-chat-input"
+                    placeholder="Type your message..."
+                    value={messageInput}
+                    onChange={(e) => setMessageInput(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    style={{
+                      flex: 1,
+                      padding: '10px 14px',
+                      border: '1px solid #e5e5e5',
+                      borderRadius: '20px',
+                      fontSize: '14px',
+                      outline: 'none',
+                      minWidth: 0
+                    }}
+                  />
+                  <button 
+                    className="widget-send-button" 
+                    onClick={sendMessage}
+                    disabled={!messageInput.trim()}
+                    style={{
+                      width: '36px',
+                      height: '36px',
+                      borderRadius: '50%',
+                      border: 'none',
+                      backgroundColor: messageInput.trim() ? '#5e72e4' : '#e5e7eb',
+                      color: 'white',
+                      cursor: messageInput.trim() ? 'pointer' : 'not-allowed',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                      transition: 'background 0.2s'
+                    }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                      <path d="M22 2L11 13M22 2L15 22L11 13M22 2L2 9L11 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -2056,6 +2603,246 @@ function MessagingWidget() {
           border: '1px solid rgba(0,0,0,0.1)',
           transition: 'width 0.3s ease, height 0.3s ease, max-height 0.3s ease'
         }}>
+          {/* Desktop Ticket Form Overlay */}
+          {showTicketForm && (
+            <div style={{ 
+              position: 'absolute', 
+              top: 0, 
+              left: 0, 
+              right: 0, 
+              bottom: 0, 
+              background: 'white', 
+              zIndex: 100,
+              display: 'flex',
+              flexDirection: 'column',
+              borderRadius: '16px'
+            }}>
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                padding: '16px', 
+                borderBottom: '1px solid #e5e7eb',
+                background: 'white'
+              }}>
+                <button 
+                  onClick={() => { setShowTicketForm(false); setTicketSuccess(null); }}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '8px', marginRight: '8px' }}
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                    <path d="M19 12H5M12 19L5 12L12 5" stroke="#222" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>Create Support Ticket</h3>
+              </div>
+              
+              <div style={{ flex: 1, padding: '20px', overflow: 'auto' }}>
+                {ticketSuccess ? (
+                  <div style={{
+                    background: '#d4edda',
+                    border: '1px solid #c3e6cb',
+                    borderRadius: '12px',
+                    padding: '24px',
+                    textAlign: 'center'
+                  }}>
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" style={{ margin: '0 auto 12px' }}>
+                      <circle cx="12" cy="12" r="10" stroke="#28a745" strokeWidth="2"/>
+                      <path d="M9 12L11 14L15 10" stroke="#28a745" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    <h4 style={{ margin: '0 0 8px 0', color: '#155724' }}>Ticket Submitted!</h4>
+                    <p style={{ margin: 0, color: '#155724', fontSize: '14px' }}>
+                      Your ticket number is: <strong>{ticketSuccess}</strong>
+                    </p>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    {/* Category Selection - Dropdown */}
+                    <div>
+                      <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, marginBottom: '6px', color: '#222' }}>
+                        Category *
+                      </label>
+                      <select
+                        value={ticketForm.category}
+                        onChange={(e) => setTicketForm({ ...ticketForm, category: e.target.value })}
+                        style={{
+                          width: '100%',
+                          padding: '12px 14px',
+                          border: '1px solid #e0e0e0',
+                          borderRadius: '8px',
+                          fontSize: '14px',
+                          outline: 'none',
+                          boxSizing: 'border-box',
+                          background: 'white',
+                          color: '#222',
+                          cursor: 'pointer',
+                          appearance: 'none',
+                          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
+                          backgroundRepeat: 'no-repeat',
+                          backgroundPosition: 'right 12px center'
+                        }}
+                      >
+                        <option value="general">General Inquiry</option>
+                        <option value="booking_issue">Booking Issue</option>
+                        <option value="payment_refund">Payment & Refunds</option>
+                        <option value="vendor_complaint">Vendor Complaint</option>
+                        <option value="technical_bug">Technical Bug</option>
+                        <option value="account_access">Account Access</option>
+                        <option value="feature_request">Feature Request</option>
+                        <option value="vendor_onboarding">Vendor Onboarding Help</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, marginBottom: '6px', color: '#222' }}>
+                        Subject *
+                      </label>
+                      <input
+                        type="text"
+                        value={ticketForm.subject}
+                        onChange={(e) => setTicketForm({ ...ticketForm, subject: e.target.value })}
+                        placeholder="Brief description of your issue"
+                        style={{
+                          width: '100%',
+                          padding: '12px 14px',
+                          border: '1px solid #e0e0e0',
+                          borderRadius: '8px',
+                          fontSize: '14px',
+                          outline: 'none',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                    </div>
+                    
+                    <div>
+                      <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, marginBottom: '6px', color: '#222' }}>
+                        Description *
+                      </label>
+                      <textarea
+                        value={ticketForm.description}
+                        onChange={(e) => setTicketForm({ ...ticketForm, description: e.target.value })}
+                        placeholder="Please describe your issue in detail..."
+                        rows={4}
+                        style={{
+                          width: '100%',
+                          padding: '12px 14px',
+                          border: '1px solid #e0e0e0',
+                          borderRadius: '8px',
+                          fontSize: '14px',
+                          outline: 'none',
+                          resize: 'vertical',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                    </div>
+
+                    {/* Image Upload */}
+                    <div>
+                      <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, marginBottom: '6px', color: '#222' }}>
+                        Attachments <span style={{ fontWeight: 400, color: '#6b7280' }}>(optional)</span>
+                      </label>
+                      <div 
+                        style={{
+                          border: '1px dashed #d0d0d0',
+                          borderRadius: '8px',
+                          padding: '16px',
+                          textAlign: 'center',
+                          cursor: 'pointer',
+                          background: '#fafafa'
+                        }}
+                        onClick={() => document.getElementById('mobile-ticket-file-upload')?.click()}
+                      >
+                        <input
+                          id="mobile-ticket-file-upload"
+                          type="file"
+                          multiple
+                          accept="image/*,.pdf,.doc,.docx"
+                          style={{ display: 'none' }}
+                          onChange={(e) => {
+                            const files = Array.from(e.target.files || []);
+                            if (files.length > 0) {
+                              setTicketForm(prev => ({ ...prev, attachments: [...(prev.attachments || []), ...files] }));
+                            }
+                          }}
+                        />
+                        <div style={{ fontSize: '20px', marginBottom: '6px' }}>📎</div>
+                        <div style={{ fontSize: '13px', color: '#374151', fontWeight: 500 }}>
+                          Tap to upload screenshots
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '2px' }}>
+                          Images, PDFs (max 10MB)
+                        </div>
+                      </div>
+                      {ticketForm.attachments && ticketForm.attachments.length > 0 && (
+                        <div style={{ marginTop: '10px', display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                          {ticketForm.attachments.map((file, idx) => (
+                            <div key={idx} style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              padding: '4px 8px',
+                              background: '#f3f4f6',
+                              borderRadius: '6px',
+                              fontSize: '11px'
+                            }}>
+                              <span>📄</span>
+                              <span style={{ maxWidth: '80px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {file.name}
+                              </span>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setTicketForm(prev => ({
+                                    ...prev,
+                                    attachments: prev.attachments.filter((_, i) => i !== idx)
+                                  }));
+                                }}
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', fontSize: '12px', padding: 0 }}
+                              >
+                                ×
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Technical Issues Tip */}
+                    {ticketForm.category === 'technical_bug' && (
+                      <div style={{
+                        background: '#fef3c7',
+                        border: '1px solid #fcd34d',
+                        borderRadius: '10px',
+                        padding: '12px',
+                        fontSize: '12px',
+                        color: '#92400e'
+                      }}>
+                        <strong>💡 Tip:</strong> Press <kbd style={{ background: '#fef9c3', padding: '1px 4px', borderRadius: '3px', fontFamily: 'monospace' }}>F12</kbd> → Console tab and include any red error messages.
+                      </div>
+                    )}
+                    
+                    <button
+                      onClick={submitTicket}
+                      disabled={ticketSubmitting || !ticketForm.subject || !ticketForm.description}
+                      style={{
+                        width: '100%',
+                        padding: '14px',
+                        background: ticketSubmitting || !ticketForm.subject || !ticketForm.description ? '#d1d5db' : 'var(--primary, #5e72e4)',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '10px',
+                        fontSize: '15px',
+                        fontWeight: 600,
+                        cursor: ticketSubmitting || !ticketForm.subject || !ticketForm.description ? 'not-allowed' : 'pointer'
+                      }}
+                    >
+                      {ticketSubmitting ? 'Submitting...' : 'Submit Ticket'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+          
           {/* Header like Image 1 - back button left, expand/collapse and X right */}
           <header style={{
             display: 'flex',
@@ -2100,9 +2887,8 @@ function MessagingWidget() {
             
             {/* Right side - Expand/Collapse and Close buttons */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              {/* Expand/Collapse button - always show when viewing article */}
-              {selectedFaq && (
-                <button 
+              {/* Expand/Collapse button - always visible */}
+              <button 
                   onClick={() => setIsWidgetExpanded(!isWidgetExpanded)}
                   style={{ 
                     background: 'none', 
@@ -2119,7 +2905,6 @@ function MessagingWidget() {
                     <path d="M15 3H21V9M9 21H3V15M21 3L14 10M3 21L10 14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
                 </button>
-              )}
               {/* Close button - styled X */}
               <button 
                 onClick={toggleWidget}
@@ -2590,7 +3375,15 @@ function MessagingWidget() {
                       <p>No messages yet. Start the conversation!</p>
                     </div>
                   ) : (
-                    messages.map((msg, index) => (
+                    messages
+                      // Hide first auto-reply message when widget is collapsed
+                      .filter((msg, idx) => {
+                        if (!isWidgetExpanded && idx === 0 && msg.SenderID !== currentUser?.id) {
+                          return false;
+                        }
+                        return true;
+                      })
+                      .map((msg, index) => (
                       <div 
                         key={msg.MessageID || index}
                         style={{
@@ -2620,45 +3413,330 @@ function MessagingWidget() {
                   )}
                 </div>
 
-                {/* Message Input */}
+                {/* Message Input - Desktop with emoji/GIF pickers */}
                 <div style={{
                   padding: '12px 16px',
-                  borderTop: '1px solid #e0e0e0',
-                  display: 'flex',
-                  gap: '12px',
-                  background: 'white'
+                  borderTop: '1px solid #e5e5e5',
+                  background: 'white',
+                  position: 'relative'
                 }}>
-                  <input
-                    type="text"
-                    value={messageInput}
-                    onChange={(e) => setMessageInput(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-                    placeholder="Type a message..."
-                    style={{
-                      flex: 1,
-                      padding: '12px 16px',
-                      border: '1px solid #e0e0e0',
-                      borderRadius: '24px',
-                      fontSize: '14px',
-                      outline: 'none'
-                    }}
-                  />
-                  <button
-                    onClick={sendMessage}
-                    disabled={!messageInput.trim()}
-                    style={{
-                      padding: '12px 20px',
-                      background: messageInput.trim() ? '#5e72e4' : '#ccc',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '24px',
-                      cursor: messageInput.trim() ? 'pointer' : 'not-allowed',
-                      fontWeight: 600,
-                      fontSize: '14px'
-                    }}
-                  >
-                    Send
-                  </button>
+                  {/* Quick replies - only show when expanded */}
+                  {isWidgetExpanded && (
+                    <div style={{ 
+                      display: 'flex', 
+                      gap: '6px', 
+                      flexWrap: 'wrap', 
+                      marginBottom: '10px',
+                      overflowX: 'hidden'
+                    }}>
+                      {quickReplies.map((reply, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => handleQuickReply(reply)}
+                          style={{
+                            padding: '5px 10px',
+                            borderRadius: '14px',
+                            border: '1px solid #e5e7eb',
+                            background: 'white',
+                            fontSize: '12px',
+                            color: '#374151',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            whiteSpace: 'nowrap'
+                          }}
+                          onMouseEnter={(e) => { e.currentTarget.style.background = '#f3f4f6'; e.currentTarget.style.borderColor = '#d1d5db'; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.background = 'white'; e.currentTarget.style.borderColor = '#e5e7eb'; }}
+                        >
+                          {reply}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Emoji Picker - Custom matching dashboard */}
+                  {showEmojiPicker && (
+                    <div 
+                      ref={emojiPickerRef}
+                      style={{
+                        position: 'absolute',
+                        bottom: '100%',
+                        left: '16px',
+                        marginBottom: '8px',
+                        background: 'white',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '12px',
+                        padding: '10px',
+                        boxShadow: '0 -4px 12px rgba(0,0,0,0.15)',
+                        zIndex: 1000,
+                        width: '300px',
+                        maxWidth: 'calc(100vw - 48px)',
+                        overflow: 'hidden'
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                        <span style={{ fontSize: '13px', fontWeight: 500, color: '#374151' }}>Emojis</span>
+                        <button 
+                          onClick={() => setShowEmojiPicker(false)}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', fontSize: '14px', padding: '4px' }}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                      {/* Search */}
+                      <input
+                        type="text"
+                        placeholder="Search emojis..."
+                        value={emojiSearch}
+                        onChange={(e) => setEmojiSearch(e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: '6px 10px',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '6px',
+                          fontSize: '12px',
+                          marginBottom: '8px',
+                          outline: 'none',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                      {/* Category tabs */}
+                      <div style={{ display: 'flex', gap: '2px', marginBottom: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
+                        {Object.entries(emojiCategories).map(([key, cat]) => (
+                          <button
+                            key={key}
+                            onClick={() => setEmojiCategory(key)}
+                            style={{
+                              padding: '4px 6px',
+                              border: 'none',
+                              background: emojiCategory === key ? '#e5e7eb' : 'transparent',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              fontSize: '16px'
+                            }}
+                            title={cat.name}
+                          >
+                            {cat.icon}
+                          </button>
+                        ))}
+                      </div>
+                      {/* Category name */}
+                      <div style={{ fontSize: '12px', fontWeight: 500, color: '#6b7280', marginBottom: '6px' }}>
+                        {emojiCategories[emojiCategory]?.name}
+                      </div>
+                      {/* Emoji grid */}
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: '2px', maxHeight: '180px', overflowY: 'auto' }}>
+                        {getFilteredEmojis().map((emoji, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => { setMessageInput(prev => prev + emoji); }}
+                            style={{
+                              padding: '4px',
+                              border: 'none',
+                              background: 'transparent',
+                              fontSize: '18px',
+                              cursor: 'pointer',
+                              borderRadius: '4px',
+                              transition: 'background 0.15s',
+                              width: '32px',
+                              height: '32px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.background = '#f3f4f6'}
+                            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                          >
+                            {emoji}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* GIF Picker */}
+                  {showGifPicker && (
+                    <div style={{ 
+                      position: 'absolute',
+                      bottom: '100%',
+                      left: '16px',
+                      marginBottom: '8px',
+                      background: 'white',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '12px',
+                      padding: '12px',
+                      boxShadow: '0 -4px 12px rgba(0,0,0,0.15)',
+                      zIndex: 1000,
+                      width: '300px'
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                        <span style={{ fontSize: '13px', fontWeight: 500, color: '#374151' }}>GIFs</span>
+                        <button 
+                          onClick={() => setShowGifPicker(false)}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', fontSize: '14px', padding: '4px' }}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                      <div style={{ display: 'flex', gap: '6px', marginBottom: '10px' }}>
+                        <input
+                          type="text"
+                          placeholder="Search GIFs..."
+                          value={gifSearchQuery}
+                          onChange={(e) => setGifSearchQuery(e.target.value)}
+                          onKeyPress={(e) => { if (e.key === 'Enter') fetchGifs(gifSearchQuery); }}
+                          style={{
+                            flex: 1,
+                            padding: '8px 12px',
+                            border: '1px solid #e5e7eb',
+                            borderRadius: '8px',
+                            fontSize: '13px',
+                            outline: 'none'
+                          }}
+                        />
+                        <button
+                          onClick={() => fetchGifs(gifSearchQuery)}
+                          style={{
+                            padding: '8px 12px',
+                            background: '#5e72e4',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            fontSize: '12px'
+                          }}
+                        >
+                          Search
+                        </button>
+                      </div>
+                      <div style={{ 
+                        display: 'grid', 
+                        gridTemplateColumns: 'repeat(2, 1fr)', 
+                        gap: '6px',
+                        maxHeight: '200px',
+                        overflowY: 'auto'
+                      }}>
+                        {gifsLoading ? (
+                          <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '20px', color: '#6b7280' }}>
+                            Loading GIFs...
+                          </div>
+                        ) : gifs.length > 0 ? (
+                          gifs.map((gif) => (
+                            <button
+                              key={gif.id}
+                              onClick={() => handleSendGif(gif.url)}
+                              style={{
+                                padding: 0,
+                                border: '1px solid #e5e7eb',
+                                borderRadius: '8px',
+                                background: '#f9fafb',
+                                cursor: 'pointer',
+                                overflow: 'hidden',
+                                height: '80px'
+                              }}
+                            >
+                              <img 
+                                src={gif.url} 
+                                alt={gif.alt}
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                loading="lazy"
+                              />
+                            </button>
+                          ))
+                        ) : (
+                          <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '20px', color: '#6b7280' }}>
+                            Search for GIFs
+                          </div>
+                        )}
+                      </div>
+                      <div style={{ marginTop: '8px', fontSize: '10px', color: '#9ca3af', textAlign: 'center' }}>
+                        Powered by GIPHY
+                      </div>
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    {/* Emoji button */}
+                    <button 
+                      onClick={() => { setShowEmojiPicker(!showEmojiPicker); setShowGifPicker(false); }}
+                      style={{ 
+                        width: '36px',
+                        height: '36px',
+                        borderRadius: '50%',
+                        border: '1px solid #e5e7eb',
+                        backgroundColor: showEmojiPicker ? '#f3f4f6' : 'white',
+                        color: '#6b7280',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '16px',
+                        flexShrink: 0
+                      }}
+                      title="Emojis"
+                    >
+                      😊
+                    </button>
+                    {/* GIF button */}
+                    <button 
+                      onClick={() => { setShowGifPicker(!showGifPicker); setShowEmojiPicker(false); }}
+                      style={{ 
+                        width: '36px',
+                        height: '36px',
+                        borderRadius: '50%',
+                        border: '1px solid #e5e7eb',
+                        backgroundColor: showGifPicker ? '#f3f4f6' : 'white',
+                        color: '#6b7280',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '12px',
+                        fontWeight: 700,
+                        flexShrink: 0
+                      }}
+                      title="GIFs"
+                    >
+                      GIF
+                    </button>
+                    <input
+                      type="text"
+                      value={messageInput}
+                      onChange={(e) => setMessageInput(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                      placeholder="Type your message..."
+                      style={{
+                        flex: 1,
+                        padding: '10px 14px',
+                        border: '1px solid #e5e5e5',
+                        borderRadius: '20px',
+                        fontSize: '14px',
+                        outline: 'none',
+                        minWidth: 0
+                      }}
+                    />
+                    <button 
+                      onClick={sendMessage}
+                      disabled={!messageInput.trim()}
+                      style={{
+                        width: '36px',
+                        height: '36px',
+                        borderRadius: '50%',
+                        border: 'none',
+                        backgroundColor: messageInput.trim() ? '#5e72e4' : '#e5e7eb',
+                        color: 'white',
+                        cursor: messageInput.trim() ? 'pointer' : 'not-allowed',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                        transition: 'background 0.2s'
+                      }}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                        <path d="M22 2L11 13M22 2L15 22L11 13M22 2L2 9L11 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </button>
+                  </div>
                 </div>
               </div>
             )}

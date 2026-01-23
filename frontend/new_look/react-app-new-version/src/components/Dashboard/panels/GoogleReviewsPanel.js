@@ -31,7 +31,7 @@ function GoogleReviewsPanel({ onBack, vendorProfileId }) {
         const data = await response.json();
         setFormData({
           googlePlaceId: data.GooglePlaceId || '',
-          googleBusinessUrl: data.GoogleBusinessUrl || ''
+          googleBusinessUrl: ''
         });
         
         // If Place ID exists, verify it
