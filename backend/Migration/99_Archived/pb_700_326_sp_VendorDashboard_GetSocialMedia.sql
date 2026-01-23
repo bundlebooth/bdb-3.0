@@ -18,11 +18,8 @@ AS
 BEGIN
     SET NOCOUNT ON;
     
-    -- First recordset: Social media profiles
+    -- Social media profiles
     SELECT Platform, URL, DisplayOrder FROM vendors.VendorSocialMedia WHERE VendorProfileID = @VendorProfileID ORDER BY DisplayOrder;
-    
-    -- Second recordset: Booking link
-    SELECT BookingLink FROM vendors.VendorProfiles WHERE VendorProfileID = @VendorProfileID;
 END
 GO
 
