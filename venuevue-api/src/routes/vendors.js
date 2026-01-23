@@ -610,8 +610,6 @@ router.get('/', async (req, res) => {
       favoriteCount: vendor.FavoriteCount,
       bookingCount: vendor.BookingCount,
       image: vendor.image || '', // Legacy image field
-      capacity: vendor.Capacity,
-      rooms: vendor.Rooms,
       isPremium: vendor.IsPremium,
       isEcoFriendly: vendor.IsEcoFriendly,
       isAwardWinning: vendor.IsAwardWinning,
@@ -1150,8 +1148,6 @@ router.get('/search-by-categories', async (req, res) => {
         favoriteCount: vendor.FavoriteCount,
         bookingCount: vendor.BookingCount,
         image: vendor.image || '',
-        capacity: vendor.Capacity,
-        rooms: vendor.Rooms,
         isPremium: vendor.IsPremium,
         isEcoFriendly: vendor.IsEcoFriendly,
         isAwardWinning: vendor.IsAwardWinning,
@@ -3682,7 +3678,6 @@ router.post('/setup/step6-social', async (req, res) => {
     const {
       vendorProfileId,
       socialMediaProfiles,
-      bookingLink,
       externalLinks
     } = req.body;
 
@@ -3694,15 +3689,6 @@ router.post('/setup/step6-social', async (req, res) => {
     }
 
     const pool = await poolPromise;
-    
-    // Update booking link
-    if (bookingLink) {
-      const updateRequest = new sql.Request(pool);
-      updateRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-      updateRequest.input('BookingLink', sql.NVarChar(500), bookingLink);
-      
-      await updateRequest.execute('vendors.sp_UpdateBookingLink');
-    }
     
     // Handle social media profiles
     if (socialMediaProfiles && socialMediaProfiles.length > 0) {

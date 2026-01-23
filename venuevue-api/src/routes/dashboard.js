@@ -654,12 +654,10 @@ router.get('/:id/social', async (req, res) => {
     request.input('VendorProfileID', sql.Int, parseInt(id));
 
     const socialResult = await request.execute('vendors.sp_Dashboard_GetSocialMedia');
-    const bookingLinkResult = { recordset: socialResult.recordsets[1] || [] };
-    const socialRecordset = socialResult.recordsets[0] || [];
+    const socialRecordset = socialResult.recordset || [];
 
     res.json({
       success: true,
-      bookingLink: bookingLinkResult.recordset[0]?.BookingLink || null,
       socialMediaProfiles: socialRecordset || []
     });
 
@@ -673,18 +671,10 @@ router.get('/:id/social', async (req, res) => {
 router.post('/:id/social', async (req, res) => {
   try {
     const { id } = req.params; // VendorProfileID
-    const { bookingLink, socialMediaProfiles } = req.body;
+    const { socialMediaProfiles } = req.body;
     const pool = await poolPromise;
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, parseInt(id));
-
-    // Update booking link if provided
-    if (bookingLink !== undefined) {
-      const blReq = new sql.Request(pool);
-      blReq.input('VendorProfileID', sql.Int, parseInt(id));
-      blReq.input('BookingLink', sql.NVarChar, bookingLink || null);
-      await blReq.execute('vendors.sp_Dashboard_UpdateBookingLink');
-    }
 
     if (Array.isArray(socialMediaProfiles)) {
       // Clear existing
