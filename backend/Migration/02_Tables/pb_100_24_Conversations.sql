@@ -24,6 +24,7 @@ BEGIN
 	[LastMessageAt] [datetime] NULL,
 	[CreatedAt] [datetime] NULL,
 	[UpdatedAt] [datetime] NULL,
+	[ConversationType] [nvarchar](50) NULL,
 PRIMARY KEY CLUSTERED 
 (
 	[ConversationID] ASC

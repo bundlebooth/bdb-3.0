@@ -205,5 +205,41 @@ BEGIN
 END
 GO
 
+-- Create content schema for blog/content-related objects
+IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = 'content')
+BEGIN
+    EXEC('CREATE SCHEMA [content]');
+    PRINT 'Schema [content] created.';
+END
+ELSE
+BEGIN
+    PRINT 'Schema [content] already exists. Skipping.';
+END
+GO
+
+-- Create email schema for email-related objects
+IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = 'email')
+BEGIN
+    EXEC('CREATE SCHEMA [email]');
+    PRINT 'Schema [email] created.';
+END
+ELSE
+BEGIN
+    PRINT 'Schema [email] already exists. Skipping.';
+END
+GO
+
+-- Create forum schema for community discussion objects
+IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = 'forum')
+BEGIN
+    EXEC('CREATE SCHEMA [forum]');
+    PRINT 'Schema [forum] created.';
+END
+ELSE
+BEGIN
+    PRINT 'Schema [forum] already exists. Skipping.';
+END
+GO
+
 PRINT 'Schema creation completed.';
 GO

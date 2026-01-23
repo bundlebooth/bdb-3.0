@@ -1,10 +1,7 @@
-﻿/*
+/*
     Migration Script: Create Table [VendorServiceAreas]
     Phase: 100 - Tables
-    Script: cu_100_31_dbo.VendorServiceAreas.sql
     Description: Creates the [vendors].[VendorServiceAreas] table
-    
-    Execution Order: 31
 */
 
 SET NOCOUNT ON;
@@ -24,8 +21,8 @@ BEGIN
 	[Country] [nvarchar](100) NOT NULL,
 	[Latitude] [decimal](9, 6) NULL,
 	[Longitude] [decimal](9, 6) NULL,
-	[ServiceRadius] [decimal](10, 2) NULL,
-	[IsActive] [bit] NOT NULL,
+	[ServiceRadius] [decimal](10, 2) NULL CONSTRAINT [DF__VendorSer__Servi__444B1483] DEFAULT ((25.0)),
+	[IsActive] [bit] NOT NULL CONSTRAINT [DF__VendorSer__IsAct__4727812E] DEFAULT ((1)),
 	[FormattedAddress] [nvarchar](255) NULL,
 	[BoundsNortheastLat] [decimal](9, 6) NULL,
 	[BoundsNortheastLng] [decimal](9, 6) NULL,
@@ -35,8 +32,8 @@ BEGIN
 	[PostalCode] [nvarchar](20) NULL,
 	[TravelCost] [decimal](10, 2) NULL,
 	[MinimumBookingAmount] [decimal](10, 2) NULL,
-	[CreatedDate] [datetime] NOT NULL,
-	[LastModifiedDate] [datetime] NOT NULL,
+	[CreatedDate] [datetime] NOT NULL CONSTRAINT [DF__VendorSer__Creat__46335CF5] DEFAULT (getdate()),
+	[LastModifiedDate] [datetime] NOT NULL CONSTRAINT [DF__VendorSer__LastM__453F38BC] DEFAULT (getdate()),
 PRIMARY KEY CLUSTERED 
 (
 	[VendorServiceAreaID] ASC

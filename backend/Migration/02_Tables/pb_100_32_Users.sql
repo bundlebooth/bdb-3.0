@@ -49,6 +49,7 @@ BEGIN
 	[IsDeleted] [bit] NOT NULL CONSTRAINT DF_Users_IsDeleted DEFAULT 0,
 	[DeletedAt] [datetime] NULL,
 	[DeletedReason] [nvarchar](500) NULL,
+	[LastActiveAt] [datetime] NULL,
 PRIMARY KEY CLUSTERED 
 (
 	[UserID] ASC

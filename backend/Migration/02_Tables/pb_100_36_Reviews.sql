@@ -33,6 +33,12 @@ BEGIN
 	[IsFlagged] [bit] NULL,
 	[FlagReason] [nvarchar](255) NULL,
 	[AdminNotes] [nvarchar](max) NULL,
+	[QualityRating] [tinyint] NULL,
+	[CommunicationRating] [tinyint] NULL,
+	[ValueRating] [tinyint] NULL,
+	[PunctualityRating] [tinyint] NULL,
+	[ProfessionalismRating] [tinyint] NULL,
+	[WouldRecommend] [bit] NULL,
 PRIMARY KEY CLUSTERED 
 (
 	[ReviewID] ASC
