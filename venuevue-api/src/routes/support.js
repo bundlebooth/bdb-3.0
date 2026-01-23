@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { poolPromise, sql } = require('../config/db');
+const { sendTemplatedEmail } = require('../services/email');
 
 // POST /api/support/tickets - Create support ticket (user-facing)
 router.post('/tickets', async (req, res) => {
@@ -15,63 +16,83 @@ router.post('/tickets', async (req, res) => {
     }
 
     const pool = await poolPromise;
-    const request = pool.request();
     
     // Generate ticket number
     const ticketNumber = `TKT-${Date.now().toString(36).toUpperCase()}`;
     
-    request.input('TicketNumber', sql.NVarChar(50), ticketNumber);
-    request.input('UserID', sql.Int, userId || null);
-    request.input('UserEmail', sql.NVarChar(255), userEmail || null);
-    request.input('UserName', sql.NVarChar(255), userName || null);
-    request.input('Subject', sql.NVarChar(500), subject);
-    request.input('Description', sql.NVarChar(sql.MAX), description);
-    request.input('Category', sql.NVarChar(50), category || 'general');
-    request.input('Priority', sql.NVarChar(20), priority || 'medium');
-    request.input('Source', sql.NVarChar(50), source || 'widget');
-    request.input('ConversationID', sql.Int, conversationId || null);
-    request.input('Attachments', sql.NVarChar(sql.MAX), attachments ? JSON.stringify(attachments) : null);
+    const result = await pool.request()
+      .input('TicketNumber', sql.NVarChar(50), ticketNumber)
+      .input('UserID', sql.Int, userId || null)
+      .input('UserEmail', sql.NVarChar(255), userEmail || null)
+      .input('UserName', sql.NVarChar(255), userName || null)
+      .input('Subject', sql.NVarChar(500), subject)
+      .input('Description', sql.NVarChar(sql.MAX), description)
+      .input('Category', sql.NVarChar(50), category || 'general')
+      .input('Priority', sql.NVarChar(20), priority || 'medium')
+      .input('Source', sql.NVarChar(50), source || 'widget')
+      .input('ConversationID', sql.Int, conversationId || null)
+      .input('Attachments', sql.NVarChar(sql.MAX), attachments ? JSON.stringify(attachments) : null)
+      .execute('admin.sp_CreateSupportTicket');
     
-    // Try to use stored procedure first, fall back to direct insert
-    try {
-      const result = await request.execute('admin.sp_CreateSupportTicket');
-      res.json({ 
-        success: true, 
-        ticketId: result.recordset[0]?.TicketID,
-        ticketNumber: ticketNumber,
-        message: 'Support ticket created successfully'
-      });
-    } catch (spError) {
-      // Fallback to direct insert if stored procedure doesn't exist
-      console.warn('Stored procedure not found, using direct insert:', spError.message);
-      
-      const insertResult = await pool.request()
-        .input('TicketNumber', sql.NVarChar(50), ticketNumber)
-        .input('UserID', sql.Int, userId || null)
-        .input('UserEmail', sql.NVarChar(255), userEmail || null)
-        .input('UserName', sql.NVarChar(255), userName || null)
-        .input('Subject', sql.NVarChar(500), subject)
-        .input('Description', sql.NVarChar(sql.MAX), description)
-        .input('Category', sql.NVarChar(50), category || 'general')
-        .input('Priority', sql.NVarChar(20), priority || 'medium')
-        .input('Status', sql.NVarChar(20), 'open')
-        .input('Source', sql.NVarChar(50), source || 'widget')
-        .input('ConversationID', sql.Int, conversationId || null)
-        .input('Attachments', sql.NVarChar(sql.MAX), attachments ? JSON.stringify(attachments) : null)
-        .query(`
-          INSERT INTO admin.SupportTickets 
-          (TicketNumber, UserID, UserEmail, UserName, Subject, Description, Category, Priority, Status, Source, ConversationID, Attachments, CreatedAt)
-          OUTPUT INSERTED.TicketID
-          VALUES (@TicketNumber, @UserID, @UserEmail, @UserName, @Subject, @Description, @Category, @Priority, @Status, @Source, @ConversationID, @Attachments, GETDATE())
-        `);
-      
-      res.json({ 
-        success: true, 
-        ticketId: insertResult.recordset[0]?.TicketID,
-        ticketNumber: ticketNumber,
-        message: 'Support ticket created successfully'
-      });
+    const ticketId = result.recordset[0]?.TicketID;
+    
+    // Send confirmation email to user
+    if (userEmail) {
+      try {
+        await sendTemplatedEmail(
+          'support_ticket_confirmation',
+          userEmail,
+          userName || 'Valued Customer',
+          {
+            userName: userName || 'Valued Customer',
+            ticketNumber,
+            ticketSubject: subject,
+            category: category || 'general',
+            description,
+            createdAt: new Date().toLocaleString()
+          },
+          userId || null,
+          null,
+          null,
+          'support'
+        );
+      } catch (emailError) {
+        console.error('Failed to send ticket confirmation email:', emailError);
+      }
     }
+    
+    // Send notification to support team
+    try {
+      await sendTemplatedEmail(
+        'support_ticket_admin',
+        'support@planbeau.com',
+        'Support Team',
+        {
+          ticketNumber,
+          userName: userName || 'Anonymous',
+          userEmail: userEmail || 'Not provided',
+          ticketSubject: subject,
+          category: category || 'general',
+          priority: priority || 'medium',
+          description,
+          attachmentCount: attachments ? attachments.length : 0,
+          createdAt: new Date().toLocaleString()
+        },
+        null,
+        null,
+        null,
+        'support'
+      );
+    } catch (emailError) {
+      console.error('Failed to send admin notification email:', emailError);
+    }
+    
+    res.json({ 
+      success: true, 
+      ticketId,
+      ticketNumber,
+      message: 'Support ticket created successfully'
+    });
   } catch (error) {
     console.error('Error creating support ticket:', error);
     res.status(500).json({ 
@@ -90,13 +111,7 @@ router.get('/tickets/user/:userId', async (req, res) => {
     
     const result = await pool.request()
       .input('UserID', sql.Int, userId)
-      .query(`
-        SELECT TicketID, TicketNumber, Subject, Description, Category, Priority, Status, 
-               CreatedAt, UpdatedAt, ResolvedAt, Resolution
-        FROM admin.SupportTickets 
-        WHERE UserID = @UserID 
-        ORDER BY CreatedAt DESC
-      `);
+      .execute('admin.sp_GetUserSupportTickets');
     
     res.json({ 
       success: true, 
@@ -120,12 +135,7 @@ router.get('/tickets/:ticketId', async (req, res) => {
     
     const result = await pool.request()
       .input('TicketID', sql.Int, ticketId)
-      .query(`
-        SELECT TicketID, TicketNumber, Subject, Description, Category, Priority, Status, 
-               CreatedAt, UpdatedAt, ResolvedAt, Resolution, Attachments
-        FROM admin.SupportTickets 
-        WHERE TicketID = @TicketID
-      `);
+      .execute('admin.sp_GetSupportTicketById');
     
     if (result.recordset.length === 0) {
       return res.status(404).json({ 

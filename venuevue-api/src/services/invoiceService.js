@@ -1,12 +1,12 @@
 /**
  * Invoice Generation Service
- * Generates PDF invoices for payment confirmations
+ * Generates PDF invoices matching the dashboard invoice design
  */
 
 const PDFDocument = require('pdfkit');
 
 /**
- * Generate an invoice PDF as a Buffer
+ * Generate an invoice PDF as a Buffer - matches dashboard InvoicePage design
  * @param {Object} invoiceData - Invoice data
  * @returns {Promise<Buffer>} - PDF buffer
  */
@@ -35,198 +35,260 @@ async function generateInvoicePDF(invoiceData) {
         clientPhone = '',
         serviceName = 'Service',
         serviceDescription = '',
+        eventName = '',
+        eventType = '',
         eventDate = '',
         eventLocation = '',
         subtotal = 0,
+        platformFee = 0,
         taxRate = 0.13,
         taxAmount = 0,
         totalAmount = 0,
         paymentMethod = 'Credit Card',
         paymentDate = new Date().toLocaleDateString('en-CA'),
         transactionId = '',
+        isPaid = true,
         platformName = 'PlanBeau',
         platformUrl = 'planbeau.com'
       } = invoiceData;
       
-      // Colors
-      const primaryColor = '#667eea';
-      const secondaryColor = '#764ba2';
-      const textColor = '#333333';
-      const lightGray = '#f8f9fa';
+      // Colors matching dashboard theme
+      const primaryGreen = '#166534';
+      const accentGold = '#92400e';
+      const textDark = '#222222';
+      const textMuted = '#6b7280';
+      const borderColor = '#e5e7eb';
+      const bgLight = '#f9fafb';
       
-      // Header with gradient-like effect
-      doc.rect(0, 0, doc.page.width, 120)
-         .fill(primaryColor);
+      let yPos = 50;
       
-      // Platform name
-      doc.fontSize(28)
-         .fillColor('white')
+      // Logo and Header Section
+      doc.fontSize(24)
+         .fillColor(primaryGreen)
          .font('Helvetica-Bold')
-         .text(platformName, 50, 40);
+         .text('planbeau', 50, yPos);
       
-      doc.fontSize(12)
-         .fillColor('rgba(255,255,255,0.9)')
+      doc.fontSize(10)
+         .fillColor(textMuted)
          .font('Helvetica')
-         .text('Payment Invoice', 50, 75);
+         .text('Event Booking Platform', 50, yPos + 28);
       
-      // Invoice number and date (right side)
-      doc.fontSize(10)
-         .fillColor('white')
-         .text(`Invoice #: ${invoiceNumber}`, 400, 40, { align: 'right' })
-         .text(`Date: ${invoiceDate}`, 400, 55, { align: 'right' })
-         .text(`Payment Date: ${paymentDate}`, 400, 70, { align: 'right' });
-      
-      // Reset position
-      let yPos = 150;
-      
-      // Bill To / From section
-      doc.fontSize(10)
-         .fillColor(primaryColor)
+      // Invoice title (right side)
+      doc.fontSize(28)
+         .fillColor(textDark)
          .font('Helvetica-Bold')
-         .text('BILLED TO:', 50, yPos);
+         .text('INVOICE', 350, yPos, { align: 'right' });
       
       doc.fontSize(10)
-         .fillColor(primaryColor)
-         .text('SERVICE PROVIDED BY:', 300, yPos);
+         .fillColor(textMuted)
+         .font('Helvetica')
+         .text(`#${invoiceNumber}`, 350, yPos + 32, { align: 'right' });
       
-      yPos += 20;
+      // Status badge
+      yPos += 50;
+      const statusText = isPaid ? 'PAID' : 'PENDING';
+      const statusBg = isPaid ? '#dcfce7' : '#fef3c7';
+      const statusColor = isPaid ? primaryGreen : accentGold;
       
+      doc.roundedRect(480, yPos, 70, 22, 11)
+         .fill(statusBg);
       doc.fontSize(10)
-         .fillColor(textColor)
+         .fillColor(statusColor)
          .font('Helvetica-Bold')
-         .text(clientName, 50, yPos)
-         .text(vendorName, 300, yPos);
+         .text(statusText, 480, yPos + 6, { width: 70, align: 'center' });
       
-      yPos += 15;
+      yPos += 50;
       
-      doc.font('Helvetica')
-         .text(clientEmail || '', 50, yPos)
-         .text(vendorEmail || '', 300, yPos);
+      // Three column header: Bill To | Service Provider | Invoice Details
+      const col1X = 50;
+      const col2X = 220;
+      const col3X = 390;
       
-      yPos += 15;
+      doc.fontSize(9)
+         .fillColor(textMuted)
+         .font('Helvetica-Bold')
+         .text('BILL TO', col1X, yPos)
+         .text('SERVICE PROVIDER', col2X, yPos)
+         .text('INVOICE DETAILS', col3X, yPos);
       
-      if (clientPhone) {
-        doc.text(clientPhone, 50, yPos);
-      }
-      if (vendorPhone) {
-        doc.text(vendorPhone, 300, yPos);
+      yPos += 18;
+      
+      doc.fontSize(11)
+         .fillColor(textDark)
+         .font('Helvetica-Bold')
+         .text(clientName, col1X, yPos)
+         .text(vendorName, col2X, yPos);
+      
+      doc.fontSize(10)
+         .fillColor(textMuted)
+         .font('Helvetica');
+      
+      yPos += 16;
+      if (clientEmail) doc.text(clientEmail, col1X, yPos);
+      
+      doc.fontSize(10)
+         .fillColor(textDark)
+         .font('Helvetica')
+         .text(`Issue Date: ${invoiceDate}`, col3X, yPos - 16)
+         .text(`Due Date: ${invoiceDate}`, col3X, yPos);
+      
+      if (isPaid) {
+        yPos += 14;
+        doc.text(`Paid On: ${paymentDate}`, col3X, yPos);
       }
       
       yPos += 40;
       
-      // Service Details Header
-      doc.rect(50, yPos, 512, 25)
-         .fill(lightGray);
+      // Event Details Section (if available)
+      if (eventName || eventDate || eventLocation) {
+        doc.fontSize(11)
+           .fillColor(textDark)
+           .font('Helvetica-Bold')
+           .text('Event Details', 50, yPos);
+        
+        yPos += 20;
+        
+        // Event details grid
+        doc.fontSize(10)
+           .font('Helvetica');
+        
+        if (eventName) {
+          doc.fillColor(textMuted).text('Event:', 60, yPos);
+          doc.fillColor(primaryGreen).text(eventName, 130, yPos);
+          yPos += 16;
+        }
+        if (eventType) {
+          doc.fillColor(textMuted).text('Type:', 60, yPos);
+          doc.fillColor(textDark).text(eventType, 130, yPos);
+          yPos += 16;
+        }
+        if (eventDate) {
+          doc.fillColor(textMuted).text('Date:', 60, yPos);
+          doc.fillColor(textDark).text(eventDate, 130, yPos);
+          yPos += 16;
+        }
+        if (eventLocation) {
+          doc.fillColor(textMuted).text('Location:', 60, yPos);
+          doc.fillColor(primaryGreen).text(eventLocation, 130, yPos, { width: 380 });
+          yPos += 16;
+        }
+        
+        yPos += 20;
+      }
       
-      doc.fontSize(10)
-         .fillColor(textColor)
+      // Services & Charges Section
+      doc.fontSize(11)
+         .fillColor(textDark)
          .font('Helvetica-Bold')
-         .text('DESCRIPTION', 60, yPos + 7)
-         .text('AMOUNT', 480, yPos + 7, { align: 'right' });
+         .text('Services & Charges', 50, yPos);
+      
+      yPos += 20;
+      
+      // Table header
+      doc.rect(50, yPos, 512, 25)
+         .fill(bgLight);
+      
+      doc.fontSize(9)
+         .fillColor(textMuted)
+         .font('Helvetica-Bold')
+         .text('DESCRIPTION', 60, yPos + 8)
+         .text('QTY', 280, yPos + 8, { align: 'center', width: 50 })
+         .text('UNIT PRICE', 340, yPos + 8, { align: 'right', width: 80 })
+         .text('AMOUNT', 440, yPos + 8, { align: 'right', width: 80 });
       
       yPos += 35;
       
       // Service line item
-      doc.font('Helvetica-Bold')
-         .fontSize(11)
-         .fillColor(textColor)
-         .text(serviceName, 60, yPos);
+      doc.fontSize(10)
+         .fillColor(textDark)
+         .font('Helvetica')
+         .text(serviceName || 'Service', 60, yPos)
+         .text('1', 280, yPos, { align: 'center', width: 50 })
+         .text(`$${subtotal.toFixed(2)}`, 340, yPos, { align: 'right', width: 80 })
+         .text(`$${subtotal.toFixed(2)}`, 440, yPos, { align: 'right', width: 80 });
       
-      doc.font('Helvetica')
-         .fontSize(10)
-         .text(`$${subtotal.toFixed(2)}`, 400, yPos, { align: 'right', width: 112 });
+      yPos += 40;
       
-      yPos += 18;
-      
-      if (serviceDescription) {
-        doc.fontSize(9)
-           .fillColor('#666666')
-           .text(serviceDescription, 60, yPos, { width: 350 });
-        yPos += 15;
-      }
-      
-      if (eventDate) {
-        doc.fontSize(9)
-           .fillColor('#666666')
-           .text(`Event Date: ${eventDate}`, 60, yPos);
-        yPos += 12;
-      }
-      
-      if (eventLocation) {
-        doc.fontSize(9)
-           .text(`Location: ${eventLocation}`, 60, yPos);
-        yPos += 12;
-      }
-      
-      yPos += 30;
-      
-      // Divider line
-      doc.moveTo(50, yPos)
-         .lineTo(562, yPos)
-         .strokeColor('#e9ecef')
-         .stroke();
+      // Divider
+      doc.moveTo(50, yPos).lineTo(562, yPos).strokeColor(borderColor).stroke();
       
       yPos += 20;
       
-      // Totals section
-      const totalsX = 380;
+      // Totals section (right aligned)
+      const totalsLabelX = 380;
+      const totalsValueX = 480;
       
       doc.fontSize(10)
-         .fillColor(textColor)
+         .fillColor(textMuted)
          .font('Helvetica')
-         .text('Subtotal:', totalsX, yPos)
-         .text(`$${subtotal.toFixed(2)}`, 480, yPos, { align: 'right', width: 82 });
+         .text('Subtotal', totalsLabelX, yPos);
+      doc.fillColor(textDark)
+         .text(`$${subtotal.toFixed(2)}`, totalsValueX, yPos, { align: 'right', width: 82 });
       
       yPos += 18;
       
-      const taxLabel = taxRate === 0.13 ? 'HST (13%)' : `Tax (${(taxRate * 100).toFixed(1)}%)`;
-      doc.text(taxLabel + ':', totalsX, yPos)
-         .text(`$${taxAmount.toFixed(2)}`, 480, yPos, { align: 'right', width: 82 });
+      if (platformFee > 0) {
+        doc.fillColor(textMuted)
+           .text('Platform Service Fee', totalsLabelX, yPos);
+        doc.fillColor(textDark)
+           .text(`$${platformFee.toFixed(2)}`, totalsValueX, yPos, { align: 'right', width: 82 });
+        yPos += 18;
+      }
+      
+      const taxLabel = taxRate === 0.13 ? 'Tax (HST 13%)' : `Tax (${(taxRate * 100).toFixed(1)}%)`;
+      doc.fillColor(textMuted)
+         .text(taxLabel, totalsLabelX, yPos);
+      doc.fillColor(textDark)
+         .text(`$${taxAmount.toFixed(2)}`, totalsValueX, yPos, { align: 'right', width: 82 });
       
       yPos += 25;
       
-      // Total box
-      doc.rect(totalsX - 10, yPos - 5, 192, 30)
-         .fill(primaryColor);
-      
-      doc.fontSize(12)
-         .fillColor('white')
+      // Total row
+      doc.fontSize(11)
+         .fillColor(textDark)
          .font('Helvetica-Bold')
-         .text('TOTAL PAID:', totalsX, yPos + 3)
-         .text(`$${totalAmount.toFixed(2)}`, 480, yPos + 3, { align: 'right', width: 82 });
+         .text('Total', totalsLabelX, yPos);
+      doc.text(`$${totalAmount.toFixed(2)}`, totalsValueX, yPos, { align: 'right', width: 82 });
       
-      yPos += 50;
-      
-      // Payment Information
-      doc.fontSize(10)
-         .fillColor(primaryColor)
-         .font('Helvetica-Bold')
-         .text('PAYMENT INFORMATION', 50, yPos);
-      
-      yPos += 20;
-      
-      doc.fontSize(9)
-         .fillColor(textColor)
-         .font('Helvetica')
-         .text(`Payment Method: ${paymentMethod}`, 50, yPos);
-      
-      yPos += 15;
-      
-      if (transactionId) {
-        doc.text(`Transaction ID: ${transactionId}`, 50, yPos);
-        yPos += 15;
+      if (isPaid) {
+        yPos += 20;
+        doc.fillColor(primaryGreen)
+           .text('Amount Paid', totalsLabelX, yPos);
+        doc.text(`$${totalAmount.toFixed(2)}`, totalsValueX, yPos, { align: 'right', width: 82 });
       }
       
-      doc.text(`Status: PAID`, 50, yPos);
+      yPos += 40;
+      
+      // Payment Information
+      if (transactionId || paymentMethod) {
+        doc.fontSize(11)
+           .fillColor(textDark)
+           .font('Helvetica-Bold')
+           .text('Payment Information', 50, yPos);
+        
+        yPos += 18;
+        
+        doc.fontSize(10)
+           .font('Helvetica')
+           .fillColor(textMuted);
+        
+        if (paymentMethod) {
+          doc.text(`Payment Method: ${paymentMethod}`, 50, yPos);
+          yPos += 14;
+        }
+        if (transactionId) {
+          doc.text(`Transaction ID: ${transactionId}`, 50, yPos);
+          yPos += 14;
+        }
+      }
       
       // Footer
-      const footerY = doc.page.height - 80;
+      const footerY = doc.page.height - 60;
       
       doc.fontSize(9)
-         .fillColor('#999999')
+         .fillColor(textMuted)
          .text(`Thank you for using ${platformName}!`, 50, footerY, { align: 'center', width: 512 })
-         .text(`Questions? Contact us at support@${platformUrl}`, 50, footerY + 15, { align: 'center', width: 512 })
-         .text(`© ${new Date().getFullYear()} ${platformName}. All rights reserved.`, 50, footerY + 30, { align: 'center', width: 512 });
+         .text(`Questions? Contact us at support@${platformUrl}`, 50, footerY + 14, { align: 'center', width: 512 });
       
       doc.end();
     } catch (error) {

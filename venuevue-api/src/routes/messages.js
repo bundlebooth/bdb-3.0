@@ -636,6 +636,78 @@ router.get('/read-status/:conversationId', async (req, res) => {
   }
 });
 
+// In-memory typing status store (simple approach - could use Redis for production)
+const typingStatus = new Map();
+
+// POST /api/messages/typing - Set typing status
+router.post('/typing', async (req, res) => {
+  try {
+    const { conversationId, userId, isTyping } = req.body;
+    
+    if (!conversationId || !userId) {
+      return res.status(400).json({ success: false, message: 'conversationId and userId required' });
+    }
+    
+    const key = `${conversationId}-${userId}`;
+    
+    if (isTyping) {
+      typingStatus.set(key, {
+        userId,
+        conversationId,
+        timestamp: Date.now()
+      });
+    } else {
+      typingStatus.delete(key);
+    }
+    
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Set typing status error:', err);
+    res.json({ success: false });
+  }
+});
+
+// GET /api/messages/typing/:conversationId - Check if other user is typing
+router.get('/typing/:conversationId', async (req, res) => {
+  try {
+    const { conversationId } = req.params;
+    const { userId } = req.query;
+    
+    if (!conversationId || !userId) {
+      return res.json({ isTyping: false });
+    }
+    
+    // Parse to integers for consistent comparison
+    const convId = parseInt(conversationId);
+    const reqUserId = parseInt(userId);
+    
+    // Find typing status for this conversation from OTHER users (not the requesting user)
+    let isTyping = false;
+    const now = Date.now();
+    
+    for (const [key, status] of typingStatus.entries()) {
+      if (parseInt(status.conversationId) === convId && 
+          parseInt(status.userId) !== reqUserId && 
+          now - status.timestamp < 5000) { // Typing status expires after 5 seconds
+        isTyping = true;
+        break;
+      }
+    }
+    
+    // Clean up old typing statuses
+    for (const [key, status] of typingStatus.entries()) {
+      if (now - status.timestamp > 10000) {
+        typingStatus.delete(key);
+      }
+    }
+    
+    res.json({ isTyping });
+  } catch (err) {
+    console.error('Get typing status error:', err);
+    res.json({ isTyping: false });
+  }
+});
+
 module.exports = {
   router,
   handleSocketIO
