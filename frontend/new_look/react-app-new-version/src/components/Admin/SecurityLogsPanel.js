@@ -13,8 +13,10 @@ const SecurityLogsPanel = () => {
   const [twoFASettings, setTwoFASettings] = useState({
     require2FAForAdmins: false,
     require2FAForVendors: false,
+    require2FAForUsers: false,
     sessionTimeout: 60,
-    failedLoginLockout: 5
+    failedLoginLockout: 5,
+    lockDurationMinutes: 30
   });
   const [adminList, setAdminList] = useState([]);
   const [flaggedItems, setFlaggedItems] = useState([]);
@@ -613,6 +615,21 @@ const SecurityLogsPanel = () => {
 
             <div className="setting-item">
               <div className="setting-info">
+                <h4>Require 2FA for Users</h4>
+                <p>Client/user accounts must use two-factor authentication</p>
+              </div>
+              <label className="toggle-switch">
+                <input 
+                  type="checkbox" 
+                  checked={twoFASettings.require2FAForUsers}
+                  onChange={(e) => setTwoFASettings(prev => ({ ...prev, require2FAForUsers: e.target.checked }))}
+                />
+                <span className="toggle-slider"></span>
+              </label>
+            </div>
+
+            <div className="setting-item">
+              <div className="setting-info">
                 <h4>Session Timeout</h4>
                 <p>Automatically log out inactive users after this period</p>
               </div>
@@ -640,6 +657,23 @@ const SecurityLogsPanel = () => {
                 <option value="3">3 attempts</option>
                 <option value="5">5 attempts</option>
                 <option value="10">10 attempts</option>
+              </select>
+            </div>
+
+            <div className="setting-item">
+              <div className="setting-info">
+                <h4>Lock Duration</h4>
+                <p>How long to lock account after failed attempts</p>
+              </div>
+              <select 
+                value={twoFASettings.lockDurationMinutes}
+                onChange={(e) => setTwoFASettings(prev => ({ ...prev, lockDurationMinutes: parseInt(e.target.value) }))}
+              >
+                <option value="15">15 minutes</option>
+                <option value="30">30 minutes</option>
+                <option value="60">1 hour</option>
+                <option value="120">2 hours</option>
+                <option value="1440">24 hours</option>
               </select>
             </div>
           </div>

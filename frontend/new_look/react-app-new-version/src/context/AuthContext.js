@@ -199,11 +199,16 @@ export function AuthProvider({ children }) {
     }
   }
 
-  async function logout() {
+  async function logout(reason = null) {
     localStorage.removeItem('token');
     localStorage.removeItem('userSession');
     setCurrentUser(null);
     window.currentUser = null;
+    
+    // Store logout reason for display on login page
+    if (reason) {
+      sessionStorage.setItem('logoutReason', reason);
+    }
     
     // Reset UI
     const profileBtn = document.getElementById('profile-btn');
@@ -211,6 +216,12 @@ export function AuthProvider({ children }) {
       profileBtn.textContent = 'S';
       profileBtn.style.backgroundColor = 'var(--primary)';
     }
+  }
+  
+  // Check for session timeout on API responses
+  function handleSessionExpired() {
+    logout('session_expired');
+    window.location.href = '/login?reason=session_expired';
   }
 
   function updateUser(updatedData) {
@@ -259,6 +270,7 @@ export function AuthProvider({ children }) {
     simulateLogin,
     handleGoogleLogin,
     logout,
+    handleSessionExpired,
     updateUser,
     getVendorProfileId,
     loading

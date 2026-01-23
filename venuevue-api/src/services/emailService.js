@@ -64,6 +64,7 @@ async function createInAppNotification(userId, type, title, message, relatedId =
  */
 async function notifyVendorOfNewRequest(requestId, userId, vendorProfileId, eventDetails = {}) {
   try {
+    console.log(`[NotificationService] notifyVendorOfNewRequest called - requestId: ${requestId}, userId: ${userId}, vendorProfileId: ${vendorProfileId}`);
     const pool = await poolPromise;
     
     // Get vendor and client details via stored procedure
@@ -72,7 +73,10 @@ async function notifyVendorOfNewRequest(requestId, userId, vendorProfileId, even
       .input('UserID', sql.Int, userId)
       .execute('email.sp_GetVendorForNewRequest');
     
-    if (result.recordset.length === 0) return;
+    if (result.recordset.length === 0) {
+      console.log(`[NotificationService] No vendor/client data found for vendorProfileId: ${vendorProfileId}, userId: ${userId} - email NOT sent`);
+      return;
+    }
     const data = result.recordset[0];
     
     // Format event date
@@ -100,6 +104,7 @@ async function notifyVendorOfNewRequest(requestId, userId, vendorProfileId, even
     }
     const timezone = eventDetails.timezone || null;
     
+    console.log(`[NotificationService] Sending booking request email to vendor: ${data.VendorEmail}`);
     await sendBookingRequestToVendor(
       data.VendorEmail,
       data.VendorBusinessName || data.VendorName,
@@ -115,6 +120,7 @@ async function notifyVendorOfNewRequest(requestId, userId, vendorProfileId, even
       null,
       timezone
     );
+    console.log(`[NotificationService] Booking request email sent successfully to ${data.VendorEmail}`);
     
     // Send push notification to vendor
     await pushService.notifyNewBookingRequest(data.VendorUserID, data.ClientName, serviceName);
@@ -129,6 +135,7 @@ async function notifyVendorOfNewRequest(requestId, userId, vendorProfileId, even
     );
   } catch (error) {
     console.error('[NotificationService] Failed to notify vendor of new request:', error.message);
+    console.error('[NotificationService] Full error:', error);
   }
 }
 
@@ -271,6 +278,7 @@ async function notifyClientOfRejection(requestId) {
  */
 async function notifyOfNewMessage(conversationId, senderId, content) {
   try {
+    console.log(`[NotificationService] notifyOfNewMessage called - conversationId: ${conversationId}, senderId: ${senderId}`);
     const pool = await poolPromise;
     
     // Get conversation details via stored procedure
@@ -278,7 +286,10 @@ async function notifyOfNewMessage(conversationId, senderId, content) {
       .input('ConversationID', sql.Int, conversationId)
       .execute('email.sp_GetConversationForMessage');
     
-    if (result.recordset.length === 0) return;
+    if (result.recordset.length === 0) {
+      console.log(`[NotificationService] No conversation data found for conversationId: ${conversationId} - email NOT sent`);
+      return;
+    }
     const conv = result.recordset[0];
     
     // Truncate message for preview
@@ -289,6 +300,7 @@ async function notifyOfNewMessage(conversationId, senderId, content) {
     if (senderId === conv.UserID) {
       // Client sending to vendor - use client's profile pic
       const senderProfilePic = conv.ClientProfilePic || null;
+      console.log(`[NotificationService] Sending message notification email to vendor: ${conv.VendorEmail}`);
       await sendMessageFromClient(
         conv.VendorEmail,
         conv.VendorName,
@@ -298,6 +310,7 @@ async function notifyOfNewMessage(conversationId, senderId, content) {
         conv.VendorUserID,
         senderProfilePic
       );
+      console.log(`[NotificationService] Message notification email sent to ${conv.VendorEmail}`);
       
       // Send push notification to vendor
       await pushService.notifyNewMessage(conv.VendorUserID, conv.ClientName, messagePreview);
@@ -313,6 +326,7 @@ async function notifyOfNewMessage(conversationId, senderId, content) {
     } else {
       // Vendor sending to client - use vendor's logo or profile pic
       const senderProfilePic = conv.VendorLogoUrl || conv.VendorProfilePic || null;
+      console.log(`[NotificationService] Sending message notification email to client: ${conv.ClientEmail}`);
       await sendMessageFromVendor(
         conv.ClientEmail,
         conv.ClientName,
@@ -322,6 +336,7 @@ async function notifyOfNewMessage(conversationId, senderId, content) {
         conv.UserID,
         senderProfilePic
       );
+      console.log(`[NotificationService] Message notification email sent to ${conv.ClientEmail}`);
       
       // Send push notification to client
       await pushService.notifyNewMessage(conv.UserID, conv.VendorName, messagePreview);
@@ -337,6 +352,7 @@ async function notifyOfNewMessage(conversationId, senderId, content) {
     }
   } catch (error) {
     console.error('[NotificationService] Failed to notify of new message:', error.message);
+    console.error('[NotificationService] Full error:', error);
   }
 }
 

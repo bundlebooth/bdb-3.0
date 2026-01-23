@@ -3028,8 +3028,10 @@ router.get('/security/2fa-settings', async (req, res) => {
         settings: {
           require2FAForAdmins: settings.require_2fa_admins === 'true',
           require2FAForVendors: settings.require_2fa_vendors === 'true',
+          require2FAForUsers: settings.require_2fa_users === 'true',
           sessionTimeout: parseInt(settings.session_timeout_minutes) || 60,
-          failedLoginLockout: parseInt(settings.failed_login_lockout) || 5
+          failedLoginLockout: parseInt(settings.failed_login_lockout) || 5,
+          lockDurationMinutes: parseInt(settings.lock_duration_minutes) || 30
         }
       });
     } catch (e) {
@@ -3039,8 +3041,10 @@ router.get('/security/2fa-settings', async (req, res) => {
         settings: {
           require2FAForAdmins: process.env.ENABLE_2FA === 'true',
           require2FAForVendors: false,
+          require2FAForUsers: false,
           sessionTimeout: 60,
-          failedLoginLockout: 5
+          failedLoginLockout: 5,
+          lockDurationMinutes: 30
         }
       });
     }
@@ -3053,15 +3057,17 @@ router.get('/security/2fa-settings', async (req, res) => {
 // POST /admin/security/2fa-settings - Update 2FA settings
 router.post('/security/2fa-settings', async (req, res) => {
   try {
-    const { require2FAForAdmins, require2FAForVendors, sessionTimeout, failedLoginLockout } = req.body;
+    const { require2FAForAdmins, require2FAForVendors, require2FAForUsers, sessionTimeout, failedLoginLockout, lockDurationMinutes } = req.body;
     const pool = await getPool();
     
     // Upsert settings using stored procedure
     const settings = [
       { key: 'require_2fa_admins', value: String(require2FAForAdmins) },
       { key: 'require_2fa_vendors', value: String(require2FAForVendors) },
+      { key: 'require_2fa_users', value: String(require2FAForUsers) },
       { key: 'session_timeout_minutes', value: String(sessionTimeout) },
-      { key: 'failed_login_lockout', value: String(failedLoginLockout) }
+      { key: 'failed_login_lockout', value: String(failedLoginLockout) },
+      { key: 'lock_duration_minutes', value: String(lockDurationMinutes || 30) }
     ];
     
     for (const setting of settings) {
@@ -3078,7 +3084,7 @@ router.post('/security/2fa-settings', async (req, res) => {
       logRequest.input('Email', sql.NVarChar(255), req.user?.email || 'admin');
       logRequest.input('Action', sql.NVarChar(100), 'Admin2FASettingsUpdated');
       logRequest.input('ActionStatus', sql.NVarChar(50), 'Success');
-      logRequest.input('Details', sql.NVarChar(sql.MAX), JSON.stringify({ require2FAForAdmins, require2FAForVendors, sessionTimeout, failedLoginLockout }));
+      logRequest.input('Details', sql.NVarChar(sql.MAX), JSON.stringify({ require2FAForAdmins, require2FAForVendors, require2FAForUsers, sessionTimeout, failedLoginLockout }));
       logRequest.input('IPAddress', sql.NVarChar(50), null);
       await logRequest.execute('admin.sp_LogSecurityEvent');
     } catch (logErr) { console.error('Failed to log admin action:', logErr.message); }

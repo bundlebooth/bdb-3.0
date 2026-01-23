@@ -25,9 +25,9 @@ BEGIN
     SELECT 
         vp.BusinessName AS VendorBusinessName,
         vu.UserID AS VendorUserID,
-        vu.Name AS VendorName,
+        COALESCE(vu.FirstName + ' ' + COALESCE(vu.LastName, ''), vu.FirstName, 'Vendor') AS VendorName,
         vu.Email AS VendorEmail,
-        u.Name AS ClientName,
+        COALESCE(u.FirstName + ' ' + COALESCE(u.LastName, ''), u.FirstName, 'Client') AS ClientName,
         u.Email AS ClientEmail
     FROM vendors.VendorProfiles vp
     INNER JOIN users.Users vu ON vp.UserID = vu.UserID

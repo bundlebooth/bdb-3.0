@@ -189,10 +189,25 @@ router.post('/login', async (req, res) => {
     // Verify password
     const isMatch = await bcrypt.compare(password, user.PasswordHash);
     if (!isMatch) {
+      // Get failed login lockout and lock duration settings from database
+      let maxAttempts = 5; // default
+      let lockDurationMinutes = 30; // default
+      try {
+        const lockoutResult = await pool.request().execute('users.sp_CheckSecuritySettings');
+        if (lockoutResult.recordset && lockoutResult.recordset.length > 0) {
+          const lockoutSetting = lockoutResult.recordset.find(s => s.SettingKey === 'failed_login_lockout');
+          if (lockoutSetting) {
+            maxAttempts = parseInt(lockoutSetting.SettingValue) || 5;
+          }
+          const durationSetting = lockoutResult.recordset.find(s => s.SettingKey === 'lock_duration_minutes');
+          if (durationSetting) {
+            lockDurationMinutes = parseInt(durationSetting.SettingValue) || 30;
+          }
+        }
+      } catch (e) { /* use default */ }
+      
       // Increment failed login attempts
       const failedAttempts = (user.FailedLoginAttempts || 0) + 1;
-      const maxAttempts = 3;
-      const lockDurationMinutes = 30;
       
       try {
         // Update failed attempts count
@@ -300,12 +315,25 @@ router.post('/login', async (req, res) => {
           settings[row.SettingKey] = row.SettingValue;
         });
         
-        // Enable 2FA if user is admin and admin 2FA is required, or if user is vendor and vendor 2FA is required
+        // Enable 2FA based on user type and corresponding setting
         const require2FAForAdmins = settings['require_2fa_admins'] === 'true';
         const require2FAForVendors = settings['require_2fa_vendors'] === 'true';
+        const require2FAForUsers = settings['require_2fa_users'] === 'true';
         
-        if ((user.IsAdmin && require2FAForAdmins) || (user.IsVendor && require2FAForVendors)) {
+        // Check admin first (highest priority)
+        if (user.IsAdmin && require2FAForAdmins) {
           enable2FA = true;
+        }
+        // Check vendor - require_2fa_vendors applies to vendors AND their clients
+        if (user.IsVendor && require2FAForVendors) {
+          enable2FA = true;
+        }
+        // Check regular users/clients - require_2fa_users applies to non-admin, non-vendor users
+        // Also enable if require_2fa_vendors is true (vendors setting covers clients too)
+        if (!user.IsAdmin && !user.IsVendor) {
+          if (require2FAForUsers || require2FAForVendors) {
+            enable2FA = true;
+          }
         }
       }
     } catch (settingsErr) { 
@@ -331,10 +359,22 @@ router.post('/login', async (req, res) => {
       );
       return res.json({ success: true, twoFactorRequired: true, tempToken, message: 'Verification code sent' });
     }
+    // Get session timeout from security settings
+    let sessionTimeoutMinutes = 60; // default 1 hour
+    try {
+      const timeoutResult = await pool.request().execute('users.sp_CheckSecuritySettings');
+      if (timeoutResult.recordset && timeoutResult.recordset.length > 0) {
+        const timeoutSetting = timeoutResult.recordset.find(s => s.SettingKey === 'session_timeout_minutes');
+        if (timeoutSetting) {
+          sessionTimeoutMinutes = parseInt(timeoutSetting.SettingValue) || 60;
+        }
+      }
+    } catch (e) { /* use default */ }
+    
     const token = jwt.sign(
       { id: user.UserID, email: user.Email, isVendor: user.IsVendor, isAdmin: user.IsAdmin },
       process.env.JWT_SECRET,
-      { expiresIn: '30d' }
+      { expiresIn: `${sessionTimeoutMinutes}m` }
     );
     // Log successful login
     try {
@@ -434,10 +474,23 @@ router.post('/login/verify-2fa', async (req, res) => {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
     const u = ures.recordset[0];
+    
+    // Get session timeout from security settings
+    let sessionTimeoutMinutes = 60; // default 1 hour
+    try {
+      const timeoutResult = await pool.request().execute('users.sp_CheckSecuritySettings');
+      if (timeoutResult.recordset && timeoutResult.recordset.length > 0) {
+        const timeoutSetting = timeoutResult.recordset.find(s => s.SettingKey === 'session_timeout_minutes');
+        if (timeoutSetting) {
+          sessionTimeoutMinutes = parseInt(timeoutSetting.SettingValue) || 60;
+        }
+      }
+    } catch (e) { /* use default */ }
+    
     const token = jwt.sign(
       { id: u.UserID, email: u.Email, isVendor: u.IsVendor, isAdmin: u.IsAdmin },
       process.env.JWT_SECRET,
-      { expiresIn: '30d' }
+      { expiresIn: `${sessionTimeoutMinutes}m` }
     );
     res.json({ success: true, userId: u.UserID, name: u.Name, email: u.Email, isVendor: u.IsVendor, isAdmin: u.IsAdmin, vendorProfileId: u.VendorProfileID || null, token });
   } catch (err) {

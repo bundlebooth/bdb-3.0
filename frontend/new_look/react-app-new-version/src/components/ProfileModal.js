@@ -25,17 +25,27 @@ function ProfileModal({ isOpen, onClose }) {
   const [googleAccountType, setGoogleAccountType] = useState('client');
   const [pendingGoogleCredential, setPendingGoogleCredential] = useState(null);
 
+  // Session timeout message state
+  const [sessionMessage, setSessionMessage] = useState('');
+
   useEffect(() => {
     if (isOpen) {
       if (currentUser) {
         setView('loggedIn');
       } else {
         setView('login');
+        // Check for session timeout message
+        const logoutReason = sessionStorage.getItem('logoutReason');
+        if (logoutReason === 'session_expired') {
+          setSessionMessage('Your session has expired due to inactivity. Please log in again.');
+          sessionStorage.removeItem('logoutReason');
+        }
       }
       // Prevent background scrolling when modal is open
       document.body.classList.add('modal-open');
     } else {
       document.body.classList.remove('modal-open');
+      setSessionMessage(''); // Clear message when modal closes
     }
     return () => {
       document.body.classList.remove('modal-open');
@@ -567,6 +577,22 @@ function ProfileModal({ isOpen, onClose }) {
           {/* Login Form */}
           {view === 'login' && (
             <form id="login-form" onSubmit={handleLogin}>
+              {/* Session timeout message */}
+              {sessionMessage && (
+                <div style={{
+                  backgroundColor: '#FEF3C7',
+                  border: '1px solid #F59E0B',
+                  borderRadius: '8px',
+                  padding: '12px 16px',
+                  marginBottom: '20px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px'
+                }}>
+                  <span style={{ fontSize: '18px' }}>⏰</span>
+                  <span style={{ color: '#92400E', fontSize: '14px' }}>{sessionMessage}</span>
+                </div>
+              )}
               <div style={{ marginBottom: '20px' }}>
                 <label style={{ 
                   display: 'block', 

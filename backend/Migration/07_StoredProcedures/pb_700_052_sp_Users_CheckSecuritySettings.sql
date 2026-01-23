@@ -1,22 +1,22 @@
 -- =============================================
--- Stored Procedure: admin.sp_Get2FASettings
--- Description: Gets 2FA security settings
+-- Stored Procedure: users.sp_CheckSecuritySettings
+-- Description: Gets security settings for 2FA enforcement during login
 -- Phase: 600 (Stored Procedures)
--- Schema: admin
+-- Schema: users
 -- =============================================
 SET QUOTED_IDENTIFIER ON;
 SET ANSI_NULLS ON;
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_Get2FASettings]'))
-    DROP PROCEDURE [admin].[sp_Get2FASettings];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[users].[sp_CheckSecuritySettings]'))
+    DROP PROCEDURE [users].[sp_CheckSecuritySettings];
 GO
 
-CREATE PROCEDURE [admin].[sp_Get2FASettings]
+CREATE PROCEDURE [users].[sp_CheckSecuritySettings]
 AS
 BEGIN
     SET NOCOUNT ON;
-    
+
     -- Return settings from admin.SecuritySettings key-value table
     SELECT SettingKey, SettingValue 
     FROM admin.SecuritySettings 
