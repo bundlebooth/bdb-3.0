@@ -899,39 +899,70 @@ router.post('/payment-intent', async (req, res) => {
     const stripeFeePercent = commissionSettings.stripeFeePercent / 100;
     const stripeFeeFixed = commissionSettings.stripeFeeFixed;
 
-    // Determine tax rate based on EVENT LOCATION province (location-based taxation)
-    let taxPercent = commissionSettings.taxPercent; // Default from settings
-    let taxInfo = { rate: taxPercent, type: 'HST', label: `HST ${taxPercent}%` };
-    let resolvedProvince = clientProvince;
+    // IMPORTANT: Fetch the actual booking amounts from the database
+    // This ensures payment matches what was calculated during booking creation
+    let subtotal, platformFee, taxAmount, processingFee, totalAmount, taxInfo, resolvedProvince;
     
-    // If clientProvince not provided, try to get it from the booking's event location
-    if (!resolvedProvince && bookingId) {
+    if (bookingId) {
       try {
-        const locationRequest = pool.request();
-        locationRequest.input('BookingID', sql.Int, bookingId);
-        const bookingRes = await locationRequest.execute('payments.sp_GetBookingEventLocation');
+        const bookingRequest = pool.request();
+        bookingRequest.input('BookingID', sql.Int, bookingId);
+        const bookingRes = await bookingRequest.query(`
+          SELECT 
+            b.TotalAmount AS Subtotal,
+            b.PlatformFee,
+            b.TaxAmount,
+            b.ProcessingFee,
+            b.GrandTotal,
+            b.EventLocation
+          FROM bookings.Bookings b
+          WHERE b.BookingID = @BookingID
+        `);
+        
         if (bookingRes.recordset.length > 0) {
-          const eventLocation = bookingRes.recordset[0].EventLocation || '';
+          const bookingData = bookingRes.recordset[0];
+          subtotal = parseFloat(bookingData.Subtotal) || 0;
+          platformFee = parseFloat(bookingData.PlatformFee) || 0;
+          taxAmount = parseFloat(bookingData.TaxAmount) || 0;
+          processingFee = parseFloat(bookingData.ProcessingFee) || 0;
+          totalAmount = parseFloat(bookingData.GrandTotal) || 0;
+          
+          // Get province for tax label
+          const eventLocation = bookingData.EventLocation || '';
           resolvedProvince = extractProvinceFromLocation(eventLocation);
-          console.log(`[PaymentIntent] Extracted province from booking event location: ${resolvedProvince}`);
+          taxInfo = getTaxInfoForProvince(resolvedProvince);
+          
+          console.log(`[PaymentIntent] Using booking amounts from DB: subtotal=$${subtotal}, platformFee=$${platformFee}, tax=$${taxAmount}, processing=$${processingFee}, total=$${totalAmount}`);
+        } else {
+          throw new Error('Booking not found in database');
         }
-      } catch (e) {
-        console.warn('[PaymentIntent] Could not fetch booking event location:', e.message);
+      } catch (dbErr) {
+        console.warn('[PaymentIntent] Could not fetch booking amounts, falling back to calculation:', dbErr?.message);
+        // Fall back to calculation if DB fetch fails
+        subtotal = Number(amount);
+        resolvedProvince = clientProvince;
+        if (!resolvedProvince) {
+          resolvedProvince = 'Ontario';
+        }
+        taxInfo = getTaxInfoForProvince(resolvedProvince);
+        const taxPercent = taxInfo.rate;
+        platformFee = Math.round(subtotal * platformFeePercent * 100) / 100;
+        taxAmount = Math.round((subtotal + platformFee) * (taxPercent / 100) * 100) / 100;
+        processingFee = Math.round((subtotal * stripeFeePercent + stripeFeeFixed) * 100) / 100;
+        totalAmount = Math.round((subtotal + platformFee + taxAmount + processingFee) * 100) / 100;
       }
-    }
-    
-    if (resolvedProvince) {
+    } else {
+      // No bookingId - use provided amount and calculate
+      subtotal = Number(amount);
+      resolvedProvince = clientProvince || 'Ontario';
       taxInfo = getTaxInfoForProvince(resolvedProvince);
-      taxPercent = taxInfo.rate;
-      console.log(`[PaymentIntent] Using province-based tax for ${resolvedProvince}: ${taxPercent}% (${taxInfo.label})`);
+      const taxPercent = taxInfo.rate;
+      platformFee = Math.round(subtotal * platformFeePercent * 100) / 100;
+      taxAmount = Math.round((subtotal + platformFee) * (taxPercent / 100) * 100) / 100;
+      processingFee = Math.round((subtotal * stripeFeePercent + stripeFeeFixed) * 100) / 100;
+      totalAmount = Math.round((subtotal + platformFee + taxAmount + processingFee) * 100) / 100;
     }
 
-    // Calculate totals with province-specific tax
-    const subtotal = Number(amount);
-    const platformFee = Math.round(subtotal * platformFeePercent * 100) / 100;
-    const taxAmount = Math.round((subtotal + platformFee) * (taxPercent / 100) * 100) / 100;
-    const processingFee = Math.round((subtotal * stripeFeePercent + stripeFeeFixed) * 100) / 100;
-    const totalAmount = Math.round((subtotal + platformFee + taxAmount + processingFee) * 100) / 100;
     const totalAmountCents = Math.round(totalAmount * 100);
     const applicationFeeCents = Math.round(platformFee * 100);
 
@@ -955,14 +986,14 @@ router.post('/payment-intent', async (req, res) => {
         request_id: requestId ? String(requestId) : '',
         vendor_profile_id: String(resolvedVendorProfileId),
         platform_fee_percent: String(commissionSettings.platformFeePercent),
-        client_province: clientProvince || '',
+        client_province: resolvedProvince || '',
         tax_type: taxInfo.type,
         subtotal_cents: String(Math.round(subtotal * 100)),
         platform_fee_cents: String(applicationFeeCents),
         tax_cents: String(Math.round(taxAmount * 100)),
         processing_fee_cents: String(Math.round(processingFee * 100)),
         total_cents: String(totalAmountCents),
-        tax_percent: String(taxPercent)
+        tax_percent: String(taxInfo.rate)
       }
     });
 
@@ -975,7 +1006,7 @@ router.post('/payment-intent', async (req, res) => {
         subtotal: subtotal,
         platformFee: platformFee,
         tax: taxAmount,
-        taxPercent: taxPercent,
+        taxPercent: taxInfo.rate,
         taxType: taxInfo.type,
         taxLabel: taxInfo.label,
         processingFee: processingFee,
