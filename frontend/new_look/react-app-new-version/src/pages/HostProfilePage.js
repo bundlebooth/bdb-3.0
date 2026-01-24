@@ -362,98 +362,71 @@ function HostProfilePage() {
           {/* Hero Section - Airbnb Style */}
           <div className="host-hero-section">
             
-            {/* Left - Profile Card - Airbnb Style */}
-            <div className="host-profile-card">
-              <div className="host-card-left">
-                <div className="host-card-avatar">
-                  <img 
-                    src={host.profileImage || 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png'}
-                    alt={host.name}
-                    onError={(e) => { e.target.src = 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png'; }}
-                  />
-                  {host.isVerified && (
-                    <span className="host-verified-badge">
-                      <i className="fas fa-shield-alt"></i>
+            {/* Left Column - Card + Report */}
+            <div>
+              {/* Profile Card - Horizontal Layout */}
+              <div className="host-profile-card">
+                <div className="host-card-left">
+                  <div className="host-card-avatar">
+                    <img 
+                      src={host.profileImage || 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png'}
+                      alt={host.name}
+                      onError={(e) => { e.target.src = 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png'; }}
+                    />
+                    {host.isVerified && (
+                      <span className="host-verified-badge">
+                        <i className="fas fa-shield-alt"></i>
+                      </span>
+                    )}
+                  </div>
+                  <h1 className="host-card-name">{host.name}</h1>
+                  {host.isSuperhost && (
+                    <span className="host-superhost-badge">
+                      <i className="fas fa-award"></i> Superhost
                     </span>
                   )}
                 </div>
-                <h1 className="host-card-name">{host.name}</h1>
-                {host.isSuperhost && (
-                  <span className="host-superhost-badge">
-                    <i className="fas fa-award"></i> Superhost
-                  </span>
-                )}
-              </div>
-              
-              <div className="host-card-right">
-                <div className="host-card-stat">
-                  <span className="host-card-stat-value">{reviews.length}</span>
-                  <span className="host-card-stat-label">Reviews</span>
-                </div>
-                <div className="host-card-stat-divider"></div>
-                <div className="host-card-stat">
-                  <span className="host-card-stat-value">{avgRating || '5.0'}<i className="fas fa-star"></i></span>
-                  <span className="host-card-stat-label">Rating</span>
-                </div>
-                <div className="host-card-stat-divider"></div>
-                <div className="host-card-stat">
-                  <span className="host-card-stat-value">{yearsHosting || 1}</span>
-                  <span className="host-card-stat-label">{yearsHosting === 1 ? 'Year hosting' : 'Years hosting'}</span>
+                
+                <div className="host-card-right">
+                  <div className="host-card-stat">
+                    <span className="host-card-stat-value">{reviews.length}</span>
+                    <span className="host-card-stat-label">Reviews</span>
+                  </div>
+                  <div className="host-card-stat-divider"></div>
+                  <div className="host-card-stat">
+                    <span className="host-card-stat-value">{avgRating || '5.0'}<i className="fas fa-star"></i></span>
+                    <span className="host-card-stat-label">Rating</span>
+                  </div>
+                  <div className="host-card-stat-divider"></div>
+                  <div className="host-card-stat">
+                    <span className="host-card-stat-value">{yearsHosting || 1}</span>
+                    <span className="host-card-stat-label">{yearsHosting === 1 ? 'Year hosting' : 'Years hosting'}</span>
+                  </div>
                 </div>
               </div>
               
-              {/* Action Buttons under card */}
-              <div style={{
-                display: 'flex',
-                gap: '12px',
-                marginTop: '1rem',
-                justifyContent: 'center'
-              }}>
-                {/* Message Button */}
-                {currentUser && currentUser.id !== parseInt(hostId) && (
-                  <button
-                    onClick={() => navigate(`/dashboard?section=messages&userId=${hostId}`)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      padding: '10px 20px',
-                      background: 'var(--primary)',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '8px',
-                      fontSize: '0.9rem',
-                      fontWeight: 500,
-                      cursor: 'pointer',
-                      transition: 'all 0.2s'
-                    }}
-                  >
-                    <i className="fas fa-envelope"></i>
-                    Message
-                  </button>
-                )}
-                {/* Report Button */}
-                <button
-                  onClick={() => setShowReportModal(true)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    padding: '10px 20px',
-                    background: 'transparent',
-                    color: '#717171',
-                    border: '1px solid #e0e0e0',
-                    borderRadius: '8px',
-                    fontSize: '0.9rem',
-                    fontWeight: 500,
-                    cursor: 'pointer',
-                    transition: 'all 0.2s'
-                  }}
-                >
-                  <i className="fas fa-flag"></i>
-                  Report
-                </button>
-              </div>
+              {/* Report Link - Outside the card */}
+              <button
+                onClick={() => setShowReportModal(true)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  marginTop: '1rem',
+                  background: 'none',
+                  border: 'none',
+                  color: '#717171',
+                  fontSize: '0.85rem',
+                  cursor: 'pointer',
+                  textDecoration: 'underline',
+                  padding: 0,
+                  justifyContent: 'center',
+                  width: '100%'
+                }}
+              >
+                <i className="fas fa-flag" style={{ fontSize: '0.75rem' }}></i>
+                Report
+              </button>
             </div>
 
             {/* Right - About Section */}

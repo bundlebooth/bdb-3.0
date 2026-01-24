@@ -2785,6 +2785,160 @@ function VendorProfilePage() {
           </div>
         </div>
       
+      {/* Meet Your Host Section - Full Width */}
+      {profile?.HostUserID && (
+        <section style={{
+          padding: '48px 0',
+          borderTop: '1px solid #ebebeb',
+          marginTop: '48px'
+        }}>
+          <h2 style={{
+            fontSize: '22px',
+            fontWeight: 600,
+            color: '#222',
+            marginBottom: '24px'
+          }}>Meet your host</h2>
+          
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '340px 1fr',
+            gap: '48px',
+            alignItems: 'start'
+          }}>
+            {/* Host Card - Horizontal Layout */}
+            <div style={{
+              background: '#fff',
+              border: '1px solid #ddd',
+              borderRadius: '24px',
+              padding: '24px',
+              boxShadow: '0 6px 16px rgba(0, 0, 0, 0.12)',
+              display: 'flex',
+              flexDirection: 'row',
+              alignItems: 'center'
+            }}>
+              {/* Left - Avatar and Name */}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingRight: '24px' }}>
+                <div 
+                  onClick={() => navigate(`/host/${profile.HostUserID}`)}
+                  style={{
+                    width: '128px',
+                    height: '128px',
+                    borderRadius: '50%',
+                    overflow: 'hidden',
+                    marginBottom: '16px',
+                    cursor: 'pointer',
+                    border: '4px solid #f0f0f0'
+                  }}
+                >
+                  <img 
+                    src={profile.HostProfileImage || profile.LogoURL || 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png'}
+                    alt={profile.HostName || 'Host'}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    onError={(e) => { e.target.src = 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png'; }}
+                  />
+                </div>
+                
+                <h3 
+                  onClick={() => navigate(`/host/${profile.HostUserID}`)}
+                  style={{
+                    fontSize: '26px',
+                    fontWeight: 600,
+                    color: '#222',
+                    margin: '0 0 8px',
+                    cursor: 'pointer',
+                    textAlign: 'center'
+                  }}
+                >
+                  {profile.HostName || profile.BusinessName?.split(' ')[0] || 'Host'}
+                </h3>
+                
+                {profile.IsSuperhost && (
+                  <span style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    fontSize: '12px',
+                    color: '#717171'
+                  }}>
+                    <i className="fas fa-award" style={{ color: 'var(--primary)' }}></i> Superhost
+                  </span>
+                )}
+              </div>
+              
+              {/* Right - Stats Column */}
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                paddingLeft: '24px',
+                borderLeft: '1px solid #ddd'
+              }}>
+                <div style={{ padding: '8px 0' }}>
+                  <div style={{ fontSize: '22px', fontWeight: 800, color: '#222' }}>{reviews.length}</div>
+                  <div style={{ fontSize: '11px', color: '#717171' }}>Reviews</div>
+                </div>
+                <div style={{ width: '100%', height: '1px', background: '#ddd', margin: '4px 0' }}></div>
+                <div style={{ padding: '8px 0' }}>
+                  <div style={{ fontSize: '22px', fontWeight: 800, color: '#222' }}>
+                    {profile.AverageRating?.toFixed(1) || '5.0'}<i className="fas fa-star" style={{ fontSize: '12px', marginLeft: '2px' }}></i>
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#717171' }}>Rating</div>
+                </div>
+                <div style={{ width: '100%', height: '1px', background: '#ddd', margin: '4px 0' }}></div>
+                <div style={{ padding: '8px 0' }}>
+                  <div style={{ fontSize: '22px', fontWeight: 800, color: '#222' }}>
+                    {profile.YearsHosting || Math.floor((new Date() - new Date(profile.CreatedAt)) / (1000 * 60 * 60 * 24 * 365)) || 1}
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#717171' }}>Years hosting</div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Host Details */}
+            <div>
+              {profile.IsSuperhost && (
+                <div style={{ marginBottom: '24px' }}>
+                  <h4 style={{ fontSize: '16px', fontWeight: 600, color: '#222', marginBottom: '8px' }}>
+                    {profile.HostName || profile.BusinessName?.split(' ')[0]} is a Superhost
+                  </h4>
+                  <p style={{ fontSize: '14px', color: '#717171', lineHeight: 1.5 }}>
+                    Superhosts are experienced, highly rated hosts who are committed to providing great stays for guests.
+                  </p>
+                </div>
+              )}
+              
+              <div style={{ marginBottom: '24px' }}>
+                <h4 style={{ fontSize: '16px', fontWeight: 600, color: '#222', marginBottom: '8px' }}>Host details</h4>
+                <p style={{ fontSize: '14px', color: '#717171', lineHeight: 1.5 }}>
+                  Response rate: {profile.ResponseRate || '100'}%<br />
+                  Responds within a few hours
+                </p>
+              </div>
+              
+              <button 
+                onClick={handleMessageVendor}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  padding: '14px 24px',
+                  border: '1px solid #222',
+                  borderRadius: '8px',
+                  background: 'white',
+                  color: '#222',
+                  fontWeight: 600,
+                  fontSize: '16px',
+                  cursor: 'pointer'
+                }}
+              >
+                Message host
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Recommendations Section */}
       {renderRecommendations()}
       </div>{/* End mobile-content-sheet */}
