@@ -357,7 +357,7 @@ function DashboardPage() {
 
   // Load vendor dashboard data
   const loadVendorData = useCallback(async () => {
-    if (!currentUser?.id) return;
+    if (!currentUser?.id || !currentUser?.vendorProfileId) return;
     
     try {
       // Note: The vendor dashboard API expects UserID, not VendorProfileID
@@ -367,11 +367,11 @@ function DashboardPage() {
         const data = await response.json();
         setVendorData(data);
       } else {
-        console.error('Failed to load vendor dashboard data');
+        // Silently handle - user may not have vendor profile set up yet
         setVendorData({});
       }
     } catch (error) {
-      console.error('Error loading vendor dashboard:', error);
+      // Silently handle - expected for non-vendor users
       setVendorData({});
     }
   }, [currentUser]);

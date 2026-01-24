@@ -580,8 +580,8 @@ function ProfileModal({ isOpen, onClose }) {
               {/* Session timeout message */}
               {sessionMessage && (
                 <div style={{
-                  backgroundColor: '#f0fdf4',
-                  border: '1px solid #166534',
+                  backgroundColor: '#fef3f2',
+                  border: '1px solid #fecaca',
                   borderRadius: '8px',
                   padding: '12px 16px',
                   marginBottom: '20px',
@@ -589,8 +589,8 @@ function ProfileModal({ isOpen, onClose }) {
                   alignItems: 'center',
                   gap: '10px'
                 }}>
-                  <i className="fas fa-clock" style={{ fontSize: '16px', color: '#166534' }}></i>
-                  <span style={{ color: '#166534', fontSize: '14px' }}>{sessionMessage}</span>
+                  <i className="fas fa-clock" style={{ fontSize: '16px', color: '#dc2626' }}></i>
+                  <span style={{ color: '#991b1b', fontSize: '14px' }}>{sessionMessage}</span>
                 </div>
               )}
               <div style={{ marginBottom: '20px' }}>

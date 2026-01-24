@@ -1912,6 +1912,28 @@ router.post('/cookie-consent', async (req, res) => {
 
 // ==================== USER PROFILES ENDPOINTS (Airbnb-style) ====================
 
+// Get available interest options (MUST be before /:id routes to avoid matching 'interest-options' as an ID)
+router.get('/interest-options', async (req, res) => {
+  try {
+    const pool = await poolPromise;
+    
+    const result = await pool.request()
+      .execute('users.sp_GetInterestOptions');
+    
+    // Group by category
+    const grouped = {};
+    (result.recordset || []).forEach(opt => {
+      if (!grouped[opt.Category]) grouped[opt.Category] = [];
+      grouped[opt.Category].push(opt);
+    });
+    
+    res.json({ success: true, options: result.recordset || [], grouped });
+  } catch (err) {
+    console.error('Get interest options error:', err);
+    res.status(500).json({ success: false, message: 'Failed to get interest options', error: err.message });
+  }
+});
+
 // Get user profile (from UserProfiles table)
 router.get('/:id/user-profile', async (req, res) => {
   try {
@@ -2032,28 +2054,6 @@ router.put('/:id/interests', async (req, res) => {
   } catch (err) {
     console.error('Update interests error:', err);
     res.status(500).json({ success: false, message: 'Failed to update interests', error: err.message });
-  }
-});
-
-// Get available interest options
-router.get('/interest-options', async (req, res) => {
-  try {
-    const pool = await poolPromise;
-    
-    const result = await pool.request()
-      .execute('users.sp_GetInterestOptions');
-    
-    // Group by category
-    const grouped = {};
-    (result.recordset || []).forEach(opt => {
-      if (!grouped[opt.Category]) grouped[opt.Category] = [];
-      grouped[opt.Category].push(opt);
-    });
-    
-    res.json({ success: true, options: result.recordset || [], grouped });
-  } catch (err) {
-    console.error('Get interest options error:', err);
-    res.status(500).json({ success: false, message: 'Failed to get interest options', error: err.message });
   }
 });
 

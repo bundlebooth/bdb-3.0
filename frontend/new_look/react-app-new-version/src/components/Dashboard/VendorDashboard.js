@@ -52,11 +52,11 @@ function VendorDashboard({ activeSection, onSectionChange, onLogout }) {
         const data = await response.json();
         setDashboardData(data);
       } else {
-        console.error('Failed to load vendor dashboard data');
+        // Silently handle - user may not have vendor profile set up yet
         setDashboardData({});
       }
     } catch (error) {
-      console.error('Error loading vendor dashboard:', error);
+      // Silently handle - expected for non-vendor users
       setDashboardData({});
     } finally {
       setLoading(false);

@@ -24,7 +24,7 @@ BEGIN
         u.ProfileImageURL, u.IsVendor, u.CreatedAt, u.EmailVerified,
         YEAR(u.CreatedAt) as JoinYear,
         (SELECT COUNT(*) FROM bookings.Bookings WHERE UserID = u.UserID AND Status = 'completed') as CompletedBookings,
-        (SELECT COUNT(*) FROM reviews.Reviews WHERE UserID = u.UserID) as ReviewsGiven
+        (SELECT COUNT(*) FROM vendors.Reviews WHERE UserID = u.UserID) as ReviewsGiven
     FROM users.Users u
     WHERE u.UserID = @UserID AND u.IsDeleted = 0;
     
