@@ -6,6 +6,7 @@ import { PageLayout } from '../components/PageWrapper';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import ProfileModal from '../components/ProfileModal';
+import VendorCard from '../components/VendorCard';
 import { showBanner } from '../utils/helpers';
 import './HostProfilePage.css';
 
@@ -451,26 +452,27 @@ function HostProfilePage() {
             {listings.filter(l => l.businessName).length > 0 && (
               <section className="host-section">
                 <h2 className="host-section-title">{firstName}'s listings</h2>
-                <div className="host-listings-grid">
+                <div style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: '16px'
+                }}>
                   {listings.filter(l => l.businessName).map((listing) => (
-                    <div key={listing.id} className="host-listing-card" onClick={() => navigate(`/vendor/${listing.id}`)}>
-                      <div className="host-listing-image">
-                        <img 
-                          src={listing.featuredImage || 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png'} 
-                          alt={listing.businessName} 
-                          onError={(e) => { e.target.src = 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png'; }} 
-                        />
-                      </div>
-                      <div className="host-listing-content">
-                        <div className="host-listing-rating">
-                          <i className="fas fa-star"></i>
-                          <span>{listing.rating?.toFixed(1) || '5.0'}</span>
-                          <span className="host-listing-reviews">({listing.reviewCount || 0})</span>
-                        </div>
-                        <h4>{listing.businessName}</h4>
-                        <p>{listing.city}{listing.state ? `, ${listing.state}` : ''}</p>
-                        {listing.category && <span className="host-listing-category">{listing.category}</span>}
-                      </div>
+                    <div key={listing.id} style={{ width: '180px', maxWidth: '180px' }}>
+                      <VendorCard
+                        vendor={{
+                          VendorProfileID: listing.id,
+                          BusinessName: listing.businessName,
+                          FeaturedImageURL: listing.featuredImage,
+                          City: listing.city,
+                          State: listing.state,
+                          AverageRating: listing.rating,
+                          TotalReviews: listing.reviewCount,
+                          PrimaryCategory: listing.category
+                        }}
+                        isFavorite={false}
+                        onToggleFavorite={() => {}}
+                      />
                     </div>
                   ))}
                 </div>
@@ -491,94 +493,242 @@ function HostProfilePage() {
                 </section>
               )}
 
-              {/* Reviews Section */}
+              {/* Reviews Section - Matching VendorProfilePage style exactly */}
               <section className="host-section">
-                <h2 className="host-section-title">
-                  <i className="fas fa-star"></i> {reviews.length} review{reviews.length !== 1 ? 's' : ''}
-                </h2>
+                <h2 style={{ marginBottom: '1.5rem' }}>Reviews for {firstName}</h2>
                 
-                {paginatedReviews.length > 0 ? (
+                {/* Rating with stars on same row */}
+                {reviews.length > 0 && (
                   <div style={{ 
-                    display: 'grid', 
-                    gridTemplateColumns: 'repeat(2, 1fr)', 
-                    gap: '2rem 3rem'
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center',
+                    marginBottom: '1.5rem',
+                    paddingBottom: '1rem',
+                    borderBottom: '1px solid var(--border)'
                   }}>
-                    {paginatedReviews.map((review, i) => (
-                      <div key={i}>
-                        {/* Reviewer Info */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+                    {/* Rating Display - Left side */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                      <div style={{ 
+                        fontSize: '2.5rem', 
+                        fontWeight: 700, 
+                        color: 'var(--text)', 
+                        lineHeight: 1
+                      }}>
+                        {avgRating || 'N/A'}
+                      </div>
+                      <div>
+                        <div style={{ 
+                          fontSize: '0.9rem', 
+                          color: 'var(--primary)',
+                          marginBottom: '0.125rem'
+                        }}>
+                          {'★'.repeat(Math.round(parseFloat(avgRating) || 5))}
+                        </div>
+                        <div style={{ 
+                          fontSize: '0.8rem', 
+                          color: 'var(--text-light)'
+                        }}>
+                          Based on {reviews.length} reviews
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Average Survey Ratings - Only show if reviews have survey data */}
+                {reviews.length > 0 && (() => {
+                  const surveyCategories = [
+                    { key: 'QualityRating', label: 'Quality of Service' },
+                    { key: 'CommunicationRating', label: 'Communication' },
+                    { key: 'ValueRating', label: 'Value for Money' },
+                    { key: 'PunctualityRating', label: 'Punctuality' },
+                    { key: 'ProfessionalismRating', label: 'Professionalism' }
+                  ];
+                  
+                  const averages = surveyCategories.map(cat => {
+                    const validRatings = reviews.filter(r => r[cat.key] != null && r[cat.key] > 0);
+                    if (validRatings.length === 0) return null;
+                    const avg = validRatings.reduce((sum, r) => sum + r[cat.key], 0) / validRatings.length;
+                    return { label: cat.label, value: avg };
+                  }).filter(Boolean);
+                  
+                  if (averages.length === 0) return null;
+                  
+                  return (
+                    <div style={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      gap: '12px 24px',
+                      padding: '20px',
+                      background: '#f9fafb',
+                      borderRadius: '12px',
+                      marginBottom: '1.5rem'
+                    }}>
+                      {averages.map(avg => (
+                        <div key={avg.label} style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: '180px' }}>
+                          <span style={{ fontSize: '13px', color: '#374151', whiteSpace: 'nowrap' }}>{avg.label}</span>
                           <div style={{ 
-                            width: '48px', 
-                            height: '48px', 
-                            borderRadius: '50%', 
-                            backgroundImage: review.ReviewerImage ? `url(${review.ReviewerImage})` : 'none',
-                            backgroundColor: review.ReviewerImage ? 'transparent' : '#222', 
-                            backgroundSize: 'cover',
-                            backgroundPosition: 'center',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: 'white',
-                            fontWeight: 600,
-                            fontSize: '1.1rem',
+                            width: '60px', 
+                            height: '6px', 
+                            background: '#e5e7eb', 
+                            borderRadius: '3px',
+                            overflow: 'hidden',
                             flexShrink: 0
                           }}>
-                            {!review.ReviewerImage && (review.ReviewerName?.charAt(0) || 'G')}
+                            <div style={{ 
+                              width: `${(avg.value / 5) * 100}%`, 
+                              height: '100%', 
+                              background: '#5e72e4',
+                              borderRadius: '3px'
+                            }} />
                           </div>
-                          <div>
-                            <div style={{ fontWeight: 600, color: '#222', fontSize: '1rem' }}>
-                              {review.ReviewerName || 'Guest'}
+                          <span style={{ fontSize: '13px', fontWeight: 600, color: '#111827' }}>
+                            {avg.value.toFixed(1)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+
+                {/* Review Content */}
+                <div>
+                  {paginatedReviews.length > 0 ? (
+                    <>
+                      {paginatedReviews.map((review, index) => (
+                        <div key={index} style={{ 
+                          padding: '1.5rem 0', 
+                          borderBottom: index < paginatedReviews.length - 1 ? '1px solid var(--border)' : 'none' 
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem' }}>
+                            {/* Reviewer Avatar */}
+                            <div style={{ 
+                              width: '40px', 
+                              height: '40px', 
+                              borderRadius: '50%', 
+                              backgroundImage: review.ReviewerAvatar || review.ReviewerImage 
+                                ? `url(${review.ReviewerAvatar || review.ReviewerImage})` 
+                                : 'none',
+                              backgroundColor: review.ReviewerAvatar || review.ReviewerImage 
+                                ? 'transparent' 
+                                : 'var(--primary)', 
+                              backgroundSize: 'cover',
+                              backgroundPosition: 'center',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              color: 'white',
+                              fontWeight: 600,
+                              fontSize: '0.9rem',
+                              flexShrink: 0
+                            }}>
+                              {!(review.ReviewerAvatar || review.ReviewerImage) && (review.ReviewerName?.charAt(0) || 'A')}
+                            </div>
+
+                            <div style={{ flex: 1 }}>
+                              {/* Reviewer Info */}
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                                <div style={{ fontWeight: 600, color: 'var(--text)', fontSize: '0.95rem' }}>
+                                  {review.ReviewerName || 'Anonymous'}
+                                </div>
+                                <span style={{ fontSize: '0.85rem', color: '#9ca3af' }}>
+                                  {(() => {
+                                    const rawDate = review.CreatedAt || review.createdAt || review.ReviewDate || review.created_at;
+                                    if (!rawDate) {
+                                      return 'recently';
+                                    }
+                                    const date = new Date(rawDate);
+                                    if (isNaN(date.getTime())) {
+                                      return 'recently';
+                                    }
+                                    
+                                    const now = new Date();
+                                    const diffMs = now - date;
+                                    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                                    const diffWeeks = Math.floor(diffDays / 7);
+                                    const diffMonths = Math.floor(diffDays / 30);
+                                    const diffYears = Math.floor(diffDays / 365);
+                                    
+                                    if (diffDays === 0) return 'today';
+                                    if (diffDays === 1) return 'yesterday';
+                                    if (diffDays < 7) return `${diffDays} days ago`;
+                                    if (diffWeeks === 1) return '1 week ago';
+                                    if (diffWeeks < 4) return `${diffWeeks} weeks ago`;
+                                    if (diffMonths === 1) return '1 month ago';
+                                    if (diffMonths < 12) return `${diffMonths} months ago`;
+                                    if (diffYears === 1) return '1 year ago';
+                                    return `${diffYears} years ago`;
+                                  })()}
+                                </span>
+                              </div>
+
+                              {/* Rating */}
+                              <div style={{ color: 'var(--primary)', fontSize: '0.9rem', marginBottom: '0.75rem' }}>
+                                {'★'.repeat(review.Rating || 5)}{'☆'.repeat(5 - (review.Rating || 5))}
+                              </div>
+
+                              {/* Review Text */}
+                              <div style={{ 
+                                color: 'var(--text)', 
+                                fontSize: '0.95rem', 
+                                lineHeight: 1.6
+                              }}>
+                                {review.Comment || review.ReviewText || 'Great experience!'}
+                              </div>
                             </div>
                           </div>
                         </div>
+                      ))}
 
-                        {/* Rating and Date */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                          <span style={{ color: '#222', fontSize: '0.85rem' }}>
-                            {'★'.repeat(review.Rating || 5)}
-                          </span>
-                          <span style={{ color: '#717171', fontSize: '0.85rem' }}>·</span>
-                          <span style={{ color: '#717171', fontSize: '0.85rem' }}>
-                            {review.CreatedAt ? (() => {
-                              const date = new Date(review.CreatedAt);
-                              const now = new Date();
-                              const diffMs = now - date;
-                              const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-                              if (diffDays < 7) return 'recently';
-                              if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
-                              if (diffDays < 365) return `${Math.floor(diffDays / 30)} months ago`;
-                              return `${Math.floor(diffDays / 365)} years ago`;
-                            })() : 'recently'}
-                          </span>
-                        </div>
-
-                        {/* Review Text */}
+                      {/* Pagination */}
+                      {totalPages > 1 && (
                         <div style={{ 
-                          color: '#222', 
-                          fontSize: '1rem', 
-                          lineHeight: 1.5,
-                          display: '-webkit-box',
-                          WebkitLineClamp: 4,
-                          WebkitBoxOrient: 'vertical',
-                          overflow: 'hidden'
+                          display: 'flex', 
+                          justifyContent: 'center', 
+                          alignItems: 'center',
+                          gap: '1rem',
+                          marginTop: '2rem',
+                          padding: '1.5rem 0',
+                          borderTop: '1px solid var(--border)'
                         }}>
-                          {review.Comment || review.ReviewText || 'Great experience!'}
+                          <button
+                            onClick={() => setCurrentReviewPage(Math.max(1, currentReviewPage - 1))}
+                            disabled={currentReviewPage === 1}
+                            className="btn btn-outline"
+                            style={{
+                              opacity: currentReviewPage === 1 ? 0.5 : 1,
+                              cursor: currentReviewPage === 1 ? 'not-allowed' : 'pointer'
+                            }}
+                          >
+                            <i className="fas fa-chevron-left"></i> Previous
+                          </button>
+                          
+                          <span style={{ fontSize: '0.9rem', color: 'var(--text-light)', fontWeight: 500 }}>
+                            Page {currentReviewPage} of {totalPages}
+                          </span>
+                          
+                          <button
+                            onClick={() => setCurrentReviewPage(Math.min(totalPages, currentReviewPage + 1))}
+                            disabled={currentReviewPage === totalPages}
+                            className="btn btn-outline"
+                            style={{
+                              opacity: currentReviewPage === totalPages ? 0.5 : 1,
+                              cursor: currentReviewPage === totalPages ? 'not-allowed' : 'pointer'
+                            }}
+                          >
+                            Next <i className="fas fa-chevron-right"></i>
+                          </button>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="host-no-reviews">
-                    <i className="fas fa-comment-slash"></i>
-                    <p>No reviews yet</p>
-                  </div>
-                )}
-                
-                {reviews.length > reviewsPerPage && (
-                  <button className="host-show-more-btn" onClick={() => setCurrentReviewPage(p => p < totalPages ? p + 1 : 1)}>
-                    Show all {reviews.length} reviews
-                  </button>
-                )}
+                      )}
+                    </>
+                  ) : (
+                    <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-light)' }}>
+                      <i className="fas fa-comment" style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.3 }}></i>
+                      <div style={{ fontSize: '0.9rem' }}>No reviews yet.</div>
+                    </div>
+                  )}
+                </div>
               </section>
 
             {/* Report Actions */}
