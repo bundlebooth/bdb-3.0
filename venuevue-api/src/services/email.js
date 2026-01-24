@@ -651,6 +651,24 @@ async function sendAccountReactivated(userEmail, userName, userId = null) {
   }, userId, null, null, 'admin', adminEmail);
 }
 
+// Send support message notification to user (when support team replies)
+// BCC to admin@planbeau.com for all support emails
+async function sendSupportMessageToUser(userEmail, userName, messagePreview, dashboardUrl, userId = null) {
+  const adminBcc = 'admin@planbeau.com';
+  return sendTemplatedEmail('support_message_received', userEmail, userName, {
+    userName, messagePreview, dashboardUrl
+  }, userId, null, null, 'support', adminBcc);
+}
+
+// Send new support message notification to support team (when user sends message)
+// BCC to admin@planbeau.com for all support emails
+async function sendNewSupportMessageToTeam(supportEmail, userName, userEmail, conversationId, messagePreview, adminUrl) {
+  const adminBcc = 'admin@planbeau.com';
+  return sendTemplatedEmail('new_support_message', supportEmail, 'Support Team', {
+    userName, userEmail, conversationId, messagePreview, adminUrl
+  }, null, null, null, 'support', adminBcc);
+}
+
 module.exports = {
   sendEmail,
   sendTemplatedEmail,
@@ -676,5 +694,7 @@ module.exports = {
   sendBookingActionReminder,
   sendAnalyticsSummary,
   sendAccountSuspended,
-  sendAccountReactivated
+  sendAccountReactivated,
+  sendSupportMessageToUser,
+  sendNewSupportMessageToTeam
 };

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { apiGet, apiPost } from '../../../utils/api';
-import { API_BASE_URL } from '../../../config';
+import { API_BASE_URL, GIPHY_API_KEY } from '../../../config';
 import { useUserOnlineStatus, useVendorOnlineStatus } from '../../../hooks/useOnlineStatus';
 import BookingDetailsModal from '../BookingDetailsModal';
 
@@ -29,7 +29,12 @@ function UnifiedMessagesSection({ onSectionChange }) {
   const [gifSearchQuery, setGifSearchQuery] = useState('');
   const [bookingInfo, setBookingInfo] = useState(null); // Booking info for current conversation
   const [selectedBookingForDetails, setSelectedBookingForDetails] = useState(null); // For More Info modal
+  const [hasNewMessages, setHasNewMessages] = useState(false); // New messages notification
+  const [isAtBottom, setIsAtBottom] = useState(true); // Track scroll position
+  const [otherUserTyping, setOtherUserTyping] = useState(false); // Typing indicator
   const messagesEndRef = useRef(null);
+  const chatContainerRef = useRef(null);
+  const typingTimeoutRef = useRef(null);
   const prevRoleRef = useRef(messageRole);
   
   // Get online status for the other party
@@ -89,8 +94,7 @@ function UnifiedMessagesSection({ onSectionChange }) {
     return allEmojis;
   };
   
-  // Giphy API key (public SDK key)
-  const GIPHY_API_KEY = 'GlVGYHkr3WSBnllca54iNt0yFbjz7L65';
+  // GIPHY_API_KEY imported from config.js
   
   // Fetch GIFs from Giphy API
   const fetchGifs = async (query = '') => {
@@ -220,12 +224,12 @@ function UnifiedMessagesSection({ onSectionChange }) {
   }, []);
 
   const scrollToBottom = useCallback((instant = false) => {
-    // Scroll within the messages container only, not the whole page
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ 
-        behavior: instant ? 'instant' : 'smooth', 
-        block: 'end' 
-      });
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    } else if (instant) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'instant' });
+    } else {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   }, []);
 
@@ -343,7 +347,7 @@ function UnifiedMessagesSection({ onSectionChange }) {
     }
   }, [currentUser?.id, vendorProfileId, isMobile, messageRole]);
 
-  const loadMessages = useCallback(async (conversationId, conversationType) => {
+  const loadMessages = useCallback(async (conversationId, conversationType, isPolling = false) => {
     if (!conversationId) return;
     
     try {
@@ -353,13 +357,47 @@ function UnifiedMessagesSection({ onSectionChange }) {
       if (!response.ok) throw new Error('Failed to load messages');
       
       const data = await response.json();
-      setMessages(data.messages || []);
-      // Scroll to bottom after messages are loaded - use instant for initial load, then smooth after delay
-      setTimeout(() => scrollToBottom(true), 50);
-      setTimeout(() => scrollToBottom(false), 300);
+      const newMessages = data.messages || [];
+      
+      // Get current scroll position
+      const chatContainer = chatContainerRef.current;
+      const atBottom = chatContainer 
+        ? chatContainer.scrollHeight - chatContainer.scrollTop - chatContainer.clientHeight < 50
+        : true;
+      
+      // Check if there are new messages and scroll if so
+      setMessages(prev => {
+        const prevIds = prev.map(m => m.MessageID).join(',');
+        const newIds = newMessages.map(m => m.MessageID).join(',');
+        
+        if (prevIds === newIds) {
+          return prev; // No change
+        }
+        
+        // New messages arrived during polling
+        const hasNew = newMessages.length > prev.length;
+        if (hasNew && isPolling) {
+          if (atBottom) {
+            setTimeout(() => scrollToBottom(false), 100);
+          } else {
+            setHasNewMessages(true);
+          }
+        }
+        
+        return newMessages;
+      });
+      
+      // Always scroll on initial load
+      if (!isPolling) {
+        setIsAtBottom(true);
+        setTimeout(() => scrollToBottom(true), 50);
+        setTimeout(() => scrollToBottom(false), 300);
+      }
     } catch (error) {
       console.error('Error loading messages:', error);
-      setMessages([]);
+      if (!isPolling) {
+        setMessages([]);
+      }
     }
   }, [currentUser?.id, scrollToBottom]);
 
@@ -516,12 +554,75 @@ function UnifiedMessagesSection({ onSectionChange }) {
     }
   }, [selectedConversation, loadMessages, isMobile]);
 
-  // Scroll to bottom when messages change (new messages arrive)
-  useEffect(() => {
-    if (messages.length > 0) {
-      setTimeout(() => scrollToBottom(false), 100);
+  // Send typing status to server
+  const sendTypingStatus = useCallback(async (isTyping) => {
+    if (!selectedConversation || !currentUser?.id) return;
+    try {
+      await fetch(`${API_BASE_URL}/messages/typing`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          conversationId: selectedConversation.id,
+          userId: currentUser.id,
+          isTyping
+        })
+      });
+    } catch (error) {
+      // Silently fail
     }
-  }, [messages.length, scrollToBottom]);
+  }, [selectedConversation, currentUser]);
+
+  // Check if other user is typing
+  const checkTypingStatus = useCallback(async () => {
+    if (!selectedConversation || !currentUser?.id) return;
+    try {
+      const response = await fetch(`${API_BASE_URL}/messages/typing/${selectedConversation.id}?userId=${currentUser.id}`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setOtherUserTyping(data.isTyping || false);
+      }
+    } catch (error) {
+      // Silently fail
+    }
+  }, [selectedConversation, currentUser]);
+
+  // Handle typing indicator
+  const handleTyping = useCallback(() => {
+    try {
+      sendTypingStatus(true);
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      typingTimeoutRef.current = setTimeout(() => {
+        sendTypingStatus(false);
+      }, 2000);
+    } catch (e) {
+      // Ignore
+    }
+  }, [sendTypingStatus]);
+
+  // Poll for new messages every 3 seconds when in active chat for real-time feel
+  useEffect(() => {
+    if (!selectedConversation) return;
+    
+    // Immediate check on conversation select
+    checkTypingStatus();
+    
+    const pollInterval = setInterval(() => {
+      // Silent polling - pass true to avoid loading state/scroll jump
+      loadMessages(selectedConversation.id, selectedConversation.type, true);
+      // Don't refresh conversation list on every poll - it causes glitchy re-renders
+      // Only check typing status
+      checkTypingStatus();
+    }, 3000);
+    
+    return () => clearInterval(pollInterval);
+  }, [selectedConversation, loadMessages, checkTypingStatus]);
   
   // Handle selecting a conversation
   const handleSelectConversation = (conv) => {
@@ -1064,12 +1165,23 @@ function UnifiedMessagesSection({ onSectionChange }) {
       )}
       
       {/* Messages container */}
-      <div style={{ 
-        flex: 1, 
-        padding: '20px 24px', 
-        overflowY: 'auto',
-        backgroundColor: '#fafafa'
-      }}>
+      <div 
+        ref={chatContainerRef}
+        onScroll={(e) => {
+          const { scrollTop, scrollHeight, clientHeight } = e.target;
+          const atBottom = scrollHeight - scrollTop - clientHeight < 50;
+          setIsAtBottom(atBottom);
+          if (atBottom) {
+            setHasNewMessages(false);
+          }
+        }}
+        style={{ 
+          flex: 1, 
+          padding: '20px 24px', 
+          overflowY: 'auto',
+          backgroundColor: '#fafafa',
+          position: 'relative'
+        }}>
         {!selectedConversation ? (
           <div style={{ 
             height: '100%', 
@@ -1089,10 +1201,75 @@ function UnifiedMessagesSection({ onSectionChange }) {
         ) : (
           <>
             {messages.map((message, index) => renderMessage(message, index, messages))}
+            
+            {/* Typing indicator */}
+            {otherUserTyping && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                marginBottom: '16px'
+              }}>
+                <div style={{
+                  padding: '12px 16px',
+                  borderRadius: '18px 18px 18px 4px',
+                  background: '#e5e7eb',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}>
+                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#9ca3af', animation: 'typingBounce 1.4s infinite ease-in-out', animationDelay: '0s' }}></div>
+                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#9ca3af', animation: 'typingBounce 1.4s infinite ease-in-out', animationDelay: '0.2s' }}></div>
+                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#9ca3af', animation: 'typingBounce 1.4s infinite ease-in-out', animationDelay: '0.4s' }}></div>
+                </div>
+              </div>
+            )}
+            
             <div ref={messagesEndRef} />
+            
+            {/* New messages notification */}
+            {hasNewMessages && !isAtBottom && (
+              <div 
+                onClick={() => {
+                  scrollToBottom(false);
+                  setHasNewMessages(false);
+                  setIsAtBottom(true);
+                }}
+                style={{
+                  position: 'sticky',
+                  bottom: '10px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  background: '#5e72e4',
+                  color: 'white',
+                  padding: '8px 16px',
+                  borderRadius: '20px',
+                  fontSize: '13px',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  zIndex: 10,
+                  width: 'fit-content',
+                  margin: '0 auto'
+                }}
+              >
+                <i className="fas fa-arrow-down" style={{ fontSize: '11px' }}></i>
+                New messages
+              </div>
+            )}
           </>
         )}
       </div>
+      
+      {/* CSS for typing animation */}
+      <style>{`
+        @keyframes typingBounce {
+          0%, 60%, 100% { transform: translateY(0); }
+          30% { transform: translateY(-4px); }
+        }
+      `}</style>
       
       {/* Message input */}
       {selectedConversation && (
@@ -1414,7 +1591,7 @@ function UnifiedMessagesSection({ onSectionChange }) {
               type="text" 
               placeholder="Type your message..." 
               value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
+              onChange={(e) => { setNewMessage(e.target.value); handleTyping(); }}
               onKeyPress={(e) => { if (e.key === 'Enter') handleSendMessage(); }}
               style={{ 
                 flex: 1, 

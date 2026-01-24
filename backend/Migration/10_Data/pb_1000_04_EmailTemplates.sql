@@ -208,5 +208,31 @@ BEGIN
             PRINT 'Added review_request template';
         END
     END
+
+    -- Add support_message_received template (sent to user when support team replies)
+    IF NOT EXISTS (SELECT 1 FROM [admin].[EmailTemplates] WHERE [TemplateKey] = 'support_message_received')
+    BEGIN
+        DECLARE @SupportReceivedBodyID INT;
+        SELECT @SupportReceivedBodyID = ComponentID FROM [admin].[EmailTemplateComponents] WHERE [ComponentName] = 'Support Message Received';
+        IF @SupportReceivedBodyID IS NOT NULL
+        BEGIN
+            INSERT [admin].[EmailTemplates] ([TemplateKey], [TemplateName], [HeaderComponentID], [BodyComponentID], [FooterComponentID], [Subject], [Category], [AvailableVariables], [IsActive], [CreatedAt], [UpdatedAt])
+            VALUES (N'support_message_received', N'Support Message Received', 1, @SupportReceivedBodyID, 2, N'New Message from Planbeau Support', N'support', N'["userName","messagePreview","dashboardUrl","platformName","platformUrl","currentYear","logoUrl"]', 1, GETDATE(), GETDATE());
+            PRINT 'Added support_message_received template';
+        END
+    END
+
+    -- Add new_support_message template (sent to support team when user sends message)
+    IF NOT EXISTS (SELECT 1 FROM [admin].[EmailTemplates] WHERE [TemplateKey] = 'new_support_message')
+    BEGIN
+        DECLARE @NewSupportBodyID INT;
+        SELECT @NewSupportBodyID = ComponentID FROM [admin].[EmailTemplateComponents] WHERE [ComponentName] = 'New Support Message';
+        IF @NewSupportBodyID IS NOT NULL
+        BEGIN
+            INSERT [admin].[EmailTemplates] ([TemplateKey], [TemplateName], [HeaderComponentID], [BodyComponentID], [FooterComponentID], [Subject], [Category], [AvailableVariables], [IsActive], [CreatedAt], [UpdatedAt])
+            VALUES (N'new_support_message', N'New Support Message Alert', 1, @NewSupportBodyID, 2, N'[SUPPORT] New Message from {{userName}}', N'support', N'["userName","userEmail","conversationId","messagePreview","adminUrl","platformName","platformUrl","currentYear","logoUrl"]', 1, GETDATE(), GETDATE());
+            PRINT 'Added new_support_message template';
+        END
+    END
 END
 GO

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { API_BASE_URL } from '../config';
+import { API_BASE_URL, GIPHY_API_KEY } from '../config';
 import { apiGet, apiPost, apiDelete } from '../utils/api';
 import { PageLayout, ContentWrapper } from '../components/PageWrapper';
 import Header from '../components/Header';
@@ -38,8 +38,7 @@ function ForumPostPage() {
     celebration: { icon: '🎉', name: 'Celebration', emojis: ['🎉', '🎊', '🎈', '🎁', '🎀', '🎂', '🍰', '🧁', '🥳', '🥂', '🍾', '✨', '🌟', '⭐', '💫', '🔥', '💥', '🎆', '🎇', '🏆', '🥇', '🥈', '🥉', '🏅', '🎖️', '🎗️', '🎯', '🎪', '🎭', '🎨'] }
   };
   
-  // Giphy API key
-  const GIPHY_API_KEY = 'GlVGYHkr3WSBnllca54iNt0yFbjz7L65';
+  // GIPHY_API_KEY imported from config.js
   
   // Fetch GIFs
   const fetchGifs = async (query = '') => {

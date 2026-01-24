@@ -327,26 +327,63 @@ router.post('/', async (req, res) => {
         let recipientId;
         let isVendorSending = false;
         
-        if (senderId === conversation.UserID) {
-          // Client is sending to vendor
-          const vendorReq = pool.request();
-          vendorReq.input('VendorProfileID', sql.Int, conversation.VendorProfileID);
-          const vendorRes = await vendorReq.execute('messages.sp_GetVendorUserID');
-          recipientId = vendorRes.recordset[0].UserID;
-          isVendorSending = false;
-        } else {
-          // Vendor is sending to client
-          recipientId = conversation.UserID;
-          isVendorSending = true;
-        }
+        // Check if this is a support conversation (VendorProfileID is NULL or 0)
+        const isSupportConversation = !conversation.VendorProfileID || conversation.VendorProfileID === 0;
         
-        // Emit to recipient
-        io.to(`user_${recipientId}`).emit('new-message', result.recordset[0]);
-        // Emit to sender
-        io.to(`user_${senderId}`).emit('new-message', result.recordset[0]);
+        if (isSupportConversation) {
+          // User sending message to support - notify support team via email
+          try {
+            // Get user info for the notification
+            const userInfoResult = await pool.request()
+              .input('UserID', sql.Int, senderId)
+              .query('SELECT FirstName, LastName, Email FROM users.Users WHERE UserID = @UserID');
+            
+            const userInfo = userInfoResult.recordset[0];
+            const userName = userInfo ? `${userInfo.FirstName || ''} ${userInfo.LastName || ''}`.trim() || 'User' : 'User';
+            const userEmail = userInfo?.Email || 'unknown';
+            const messagePreview = content.length > 100 ? content.substring(0, 100) + '...' : content;
+            
+            // Send email to support team (support@planbeau.com)
+            const { sendNewSupportMessageToTeam } = require('../services/email');
+            await sendNewSupportMessageToTeam(
+              'support@planbeau.com',
+              userName,
+              userEmail,
+              conversationId,
+              messagePreview,
+              'https://www.planbeau.com/admin'
+            );
+            
+            // Support team notified via email
+          } catch (supportNotifyErr) {
+            console.error('Failed to notify support team:', supportNotifyErr.message);
+          }
+          
+          // Emit to sender only (support team will see via polling)
+          io.to(`user_${senderId}`).emit('new-message', result.recordset[0]);
+        } else {
+          // Regular vendor-client conversation
+          if (senderId === conversation.UserID) {
+            // Client is sending to vendor
+            const vendorReq = pool.request();
+            vendorReq.input('VendorProfileID', sql.Int, conversation.VendorProfileID);
+            const vendorRes = await vendorReq.execute('messages.sp_GetVendorUserID');
+            recipientId = vendorRes.recordset[0].UserID;
+            isVendorSending = false;
+          } else {
+            // Vendor is sending to client
+            recipientId = conversation.UserID;
+            isVendorSending = true;
+          }
+          
+          // Emit to recipient
+          io.to(`user_${recipientId}`).emit('new-message', result.recordset[0]);
+          // Emit to sender
+          io.to(`user_${senderId}`).emit('new-message', result.recordset[0]);
 
-        // Send email notification (using centralized notification service)
-        notifyOfNewMessage(conversationId, senderId, content);
+          // Send email notification (using centralized notification service)
+          notifyOfNewMessage(conversationId, senderId, content);
+        }
       }
     }
 
@@ -644,7 +681,7 @@ router.post('/typing', async (req, res) => {
   try {
     const { conversationId, userId, isTyping } = req.body;
     
-    if (!conversationId || !userId) {
+    if (!conversationId || userId === undefined || userId === null) {
       return res.status(400).json({ success: false, message: 'conversationId and userId required' });
     }
     

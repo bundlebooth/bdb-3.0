@@ -45,10 +45,10 @@ const getApiMode = () => {
   return false;
 };
 
-const USE_PRODUCTION_API = getApiMode();
+const USE_PRODUCTION_API = false; // FORCED TO LOCALHOST FOR TESTING
 
 // Main API URL export - use this throughout the app
-export const API_BASE_URL = USE_PRODUCTION_API ? PRODUCTION_API_URL : LOCAL_API_URL;
+export const API_BASE_URL = LOCAL_API_URL; // FORCED TO LOCALHOST
 
 // Derive Socket base URL from API origin
 let SOCKET_BASE_URL = '';
@@ -81,6 +81,13 @@ if (typeof window !== 'undefined') {
 
 // Stripe Public Key - from .env
 export const STRIPE_PUBLIC_KEY = process.env.REACT_APP_STRIPE_PUBLIC_KEY || '';
+
+// ============================================================
+// GIPHY CONFIGURATION
+// ============================================================
+
+// Giphy API Key - from .env or fallback (public SDK key)
+export const GIPHY_API_KEY = process.env.REACT_APP_GIPHY_API_KEY || 'GlVGYHkr3WSBnllca54iNt0yFbjz7L65';
 
 // ============================================================
 // APP CONFIGURATION
@@ -155,6 +162,7 @@ if (typeof window !== 'undefined') {
     console.log('Google Maps Key:', GOOGLE_MAPS_API_KEY ? '✓ Set' : '✗ Not set');
     console.log('Google Client ID:', GOOGLE_CLIENT_ID ? '✓ Set' : '✗ Not set');
     console.log('Stripe Key:', STRIPE_PUBLIC_KEY ? '✓ Set' : '✗ Not set');
+    console.log('GIPHY Key:', GIPHY_API_KEY ? '✓ Set' : '✗ Not set');
     return ENV_CONFIG;
   };
 }

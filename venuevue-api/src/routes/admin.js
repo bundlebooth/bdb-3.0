@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { poolPromise, sql } = require('../config/db');
 const { authenticateToken, requireAdmin } = require('../middlewares/auth');
-const { sendEmail, sendAccountSuspended, sendAccountReactivated } = require('../services/email');
+const { sendEmail, sendAccountSuspended, sendAccountReactivated, sendSupportMessageToUser } = require('../services/email');
 const { serializeDates, serializeRecords } = require('../utils/helpers');
 
 // Helper to get pool
@@ -1864,17 +1864,35 @@ router.post('/support/conversations/:id/reply', async (req, res) => {
       .input('Content', sql.NVarChar(sql.MAX), content.trim())
       .execute('admin.sp_SendSupportReply');
     
-    // Send email notification to user (optional)
+    // Send email AND in-app notification to user
     if (result.recordset.length > 0) {
       const user = result.recordset[0];
+      const messagePreview = content.length > 100 ? content.substring(0, 100) + '...' : content;
+      
+      // 1. Send email notification (with BCC to admin@planbeau.com)
       try {
-        await sendEmail(user.Email, 'support_message_received', {
-          userName: user.Name || 'User',
-          messagePreview: content.length > 100 ? content.substring(0, 100) + '...' : content,
-          dashboardUrl: 'https://www.planbeau.com'
-        }, user.UserID);
+        await sendSupportMessageToUser(
+          user.Email,
+          user.Name || 'User',
+          messagePreview,
+          'https://www.planbeau.com',
+          user.UserID
+        );
       } catch (emailErr) {
-        console.error('Failed to send support reply notification:', emailErr.message);
+        console.error('Failed to send support reply email:', emailErr.message);
+      }
+      
+      // 2. Create in-app notification
+      try {
+        await pool.request()
+          .input('UserID', sql.Int, user.UserID)
+          .input('Type', sql.NVarChar(50), 'support_message')
+          .input('Message', sql.NVarChar(sql.MAX), `New message from Planbeau Support: "${messagePreview}"`)
+          .input('RelatedID', sql.Int, parseInt(id))
+          .input('RelatedType', sql.NVarChar(50), 'support_conversation')
+          .execute('bookings.sp_InsertNotification');
+      } catch (notifErr) {
+        console.error('Failed to create support notification:', notifErr.message);
       }
     }
     

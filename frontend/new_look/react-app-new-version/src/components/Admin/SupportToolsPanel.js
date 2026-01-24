@@ -1,9 +1,24 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { showBanner } from '../../utils/helpers';
 import { apiGet, apiPost } from '../../utils/api';
-import { API_BASE_URL } from '../../config';
+import { API_BASE_URL, GIPHY_API_KEY } from '../../config';
 import UniversalModal from '../UniversalModal';
 import { LoadingState, EmptyState } from '../common/AdminComponents';
+
+// Quick replies - SAME AS DASHBOARD
+const quickReplies = ['Hi! 👋', 'Hello!', 'Thanks!', 'Great! 👍', 'Sounds good!', 'Perfect!'];
+
+// Emoji categories - SAME AS DASHBOARD
+const emojiCategories = {
+  smileys: { icon: '😀', name: 'Smileys', emojis: ['😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '🙃', '😉', '😊', '😇', '🥰', '😍', '🤩', '😘', '😗', '☺️', '😚', '😙', '🥲', '😋', '😛', '😜', '🤪', '😝', '🤑', '🤗', '🤭', '🤫', '🤔', '🤐', '🤨', '😐', '😑', '😶', '😏', '😒', '🙄', '😬', '🤥', '😌', '😔', '😪', '🤤', '😴', '😷', '🤒', '🤕', '🤢', '🤮', '🤧', '🥵', '🥶', '🥴', '😵', '🤯', '🤠', '🥳', '🥸', '😎', '🤓', '🧐'] },
+  gestures: { icon: '👋', name: 'Gestures', emojis: ['👋', '🤚', '🖐️', '✋', '🖖', '👌', '🤌', '🤏', '✌️', '🤞', '🤟', '🤘', '🤙', '👈', '👉', '👆', '🖕', '👇', '☝️', '👍', '👎', '✊', '👊', '🤛', '🤜', '👏', '🙌', '👐', '🤲', '🤝', '🙏', '✍️', '💅', '🤳', '💪', '🦾', '🦿', '🦵', '🦶', '👂', '🦻', '👃', '🧠', '🫀', '🫁', '🦷', '🦴', '👀', '👁️', '👅', '👄'] },
+  hearts: { icon: '❤️', name: 'Hearts', emojis: ['❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💔', '❣️', '💕', '💞', '💓', '💗', '💖', '💘', '💝', '💟', '♥️', '💌', '💋', '😻', '😽', '🫶'] },
+  celebration: { icon: '🎉', name: 'Celebration', emojis: ['🎉', '🎊', '🎈', '🎁', '🎀', '🎂', '🍰', '🧁', '🥳', '🥂', '🍾', '✨', '🌟', '⭐', '💫', '🔥', '💥', '🎆', '🎇', '🏆', '🥇', '🥈', '🥉', '🏅', '🎖️', '🎗️', '🎯', '🎪', '🎭', '🎨'] },
+  nature: { icon: '🌸', name: 'Nature', emojis: ['🌸', '💮', '🏵️', '🌹', '🥀', '🌺', '🌻', '🌼', '🌷', '🌱', '🪴', '🌲', '🌳', '🌴', '🌵', '🌾', '🌿', '☘️', '🍀', '🍁', '🍂', '🍃', '🌍', '🌎', '🌏', '🌑', '🌒', '🌓', '🌔', '🌕', '🌖', '🌗', '🌘', '🌙', '🌚', '🌛', '🌜', '☀️', '🌝', '🌞', '⭐', '🌟', '🌠', '☁️', '⛅', '🌈', '☔', '❄️', '🌊'] },
+  food: { icon: '🍕', name: 'Food', emojis: ['🍕', '🍔', '🍟', '🌭', '🍿', '🧂', '🥓', '🥚', '🍳', '🧇', '🥞', '🧈', '🍞', '🥐', '🥖', '🥨', '🧀', '🥗', '🥙', '🥪', '🌮', '🌯', '🫔', '🥫', '🍝', '🍜', '🍲', '🍛', '🍣', '🍱', '🥟', '🍤', '🍙', '🍚', '🍘', '🍥', '🥠', '🍦', '🍧', '🍨', '🍩', '🍪', '🎂', '🍰', '🧁', '🥧', '🍫', '🍬', '🍭', '🍮', '☕', '🍵', '🧃', '🥤', '🍶', '🍺', '🍻', '🥂', '🍷', '🥃', '🍸', '🍹', '🧉'] }
+};
+
+// GIPHY_API_KEY imported from config.js
 
 const SupportToolsPanel = () => {
   const [activeTab, setActiveTab] = useState('messages'); // messages, impersonate, tickets, notes
@@ -21,6 +36,126 @@ const SupportToolsPanel = () => {
   const [supportReply, setSupportReply] = useState('');
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [sendingReply, setSendingReply] = useState(false);
+  const [hasNewMessages, setHasNewMessages] = useState(false);
+  const [isAtBottom, setIsAtBottom] = useState(true);
+  const [otherUserTyping, setOtherUserTyping] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showGifPicker, setShowGifPicker] = useState(false);
+  const [emojiCategory, setEmojiCategory] = useState('smileys');
+  const [emojiSearch, setEmojiSearch] = useState('');
+  const [gifs, setGifs] = useState([]);
+  const [gifsLoading, setGifsLoading] = useState(false);
+  const [gifSearchQuery, setGifSearchQuery] = useState('');
+  const messagesEndRef = useRef(null);
+  const chatContainerRef = useRef(null);
+  const typingTimeoutRef = useRef(null);
+  
+  // Get filtered emojis - SAME AS DASHBOARD
+  const getFilteredEmojis = () => {
+    if (!emojiSearch) return emojiCategories[emojiCategory].emojis;
+    const allEmojis = Object.values(emojiCategories).flatMap(cat => cat.emojis);
+    return allEmojis;
+  };
+  
+  // Fetch GIFs - SAME AS DASHBOARD
+  const fetchGifs = async (query = '') => {
+    setGifsLoading(true);
+    try {
+      const endpoint = query 
+        ? `https://api.giphy.com/v1/gifs/search?api_key=${GIPHY_API_KEY}&q=${encodeURIComponent(query)}&limit=24&rating=g`
+        : `https://api.giphy.com/v1/gifs/trending?api_key=${GIPHY_API_KEY}&limit=24&rating=g`;
+      const response = await fetch(endpoint);
+      const data = await response.json();
+      if (data.data && data.data.length > 0) {
+        setGifs(data.data.map(gif => ({
+          id: gif.id,
+          url: gif.images.fixed_height.url,
+          preview: gif.images.fixed_height_still?.url || gif.images.fixed_height.url,
+          alt: gif.title || 'GIF'
+        })));
+      } else {
+        setGifs([]);
+      }
+    } catch (error) {
+      console.error('Error fetching GIFs:', error);
+      setGifs([]);
+    }
+    setGifsLoading(false);
+  };
+  
+  // Load trending GIFs when picker opens - SAME AS DASHBOARD
+  useEffect(() => {
+    if (showGifPicker) {
+      fetchGifs();
+    }
+  }, [showGifPicker]);
+  
+  // Handle sending GIF - SAME AS DASHBOARD
+  const handleSendGif = async (gifUrl) => {
+    if (!selectedSupportConv) return;
+    setShowGifPicker(false);
+    
+    // Optimistic update
+    const newMsg = {
+      MessageID: Date.now(),
+      Content: gifUrl,
+      IsFromSupport: true,
+      CreatedAt: new Date().toISOString()
+    };
+    setSupportMessages(prev => [...prev, newMsg]);
+    setTimeout(() => scrollToBottom(), 100);
+    
+    try {
+      await apiPost(`/admin/support/conversations/${selectedSupportConv.ConversationID}/reply`, { content: gifUrl });
+    } catch (error) {
+      console.error('Error sending GIF:', error);
+    }
+  };
+  
+  // Handle quick reply - SAME AS DASHBOARD
+  const handleQuickReply = async (reply) => {
+    if (!selectedSupportConv) return;
+    
+    // Optimistic update
+    const newMsg = {
+      MessageID: Date.now(),
+      Content: reply,
+      IsFromSupport: true,
+      CreatedAt: new Date().toISOString()
+    };
+    setSupportMessages(prev => [...prev, newMsg]);
+    setTimeout(() => scrollToBottom(), 100);
+    
+    try {
+      await apiPost(`/admin/support/conversations/${selectedSupportConv.ConversationID}/reply`, { content: reply });
+    } catch (error) {
+      console.error('Error sending quick reply:', error);
+    }
+  };
+  
+  // Handle send message - SAME AS DASHBOARD (optimistic update, no refresh)
+  const handleSendMessage = async () => {
+    if (!supportReply.trim() || !selectedSupportConv) return;
+    
+    const content = supportReply.trim();
+    setSupportReply(''); // Clear input immediately
+    
+    // Optimistic update - add message to UI immediately
+    const newMsg = {
+      MessageID: Date.now(),
+      Content: content,
+      IsFromSupport: true,
+      CreatedAt: new Date().toISOString()
+    };
+    setSupportMessages(prev => [...prev, newMsg]);
+    setTimeout(() => scrollToBottom(), 100);
+    
+    try {
+      await apiPost(`/admin/support/conversations/${selectedSupportConv.ConversationID}/reply`, { content });
+    } catch (error) {
+      console.error('Error sending message:', error);
+    }
+  };
 
   useEffect(() => {
     if (activeTab === 'tickets') {
@@ -92,7 +227,116 @@ const SupportToolsPanel = () => {
   const handleSelectSupportConv = (conv) => {
     setSelectedSupportConv(conv);
     fetchSupportMessages(conv.ConversationID);
+    setHasNewMessages(false);
+    setIsAtBottom(true);
   };
+
+  // Scroll to bottom
+  const scrollToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, []);
+
+  // Send typing status
+  const sendTypingStatus = useCallback(async (isTyping) => {
+    if (!selectedSupportConv) return;
+    // Typing status sent silently
+    try {
+      const response = await fetch(`${API_BASE_URL}/messages/typing`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          conversationId: selectedSupportConv.ConversationID,
+          userId: 0, // Admin/support user
+          isTyping
+        })
+      });
+      await response.json();
+    } catch (error) {
+      console.error('[ADMIN TYPING] Error:', error);
+    }
+  }, [selectedSupportConv]);
+
+  // Check typing status
+  const checkTypingStatus = useCallback(async () => {
+    if (!selectedSupportConv) return;
+    try {
+      const response = await fetch(`${API_BASE_URL}/messages/typing/${selectedSupportConv.ConversationID}?userId=0`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setOtherUserTyping(data.isTyping || false);
+      }
+    } catch (error) {
+      // Silently fail
+    }
+  }, [selectedSupportConv]);
+
+  // Handle typing
+  const handleTyping = useCallback(() => {
+    try {
+      sendTypingStatus(true);
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      typingTimeoutRef.current = setTimeout(() => {
+        sendTypingStatus(false);
+      }, 2000);
+    } catch (e) {
+      // Ignore
+    }
+  }, [sendTypingStatus]);
+
+  // Poll for new messages and typing status - runs every 3 seconds
+  useEffect(() => {
+    if (!selectedSupportConv) return;
+    
+    // Immediate check on conversation select
+    checkTypingStatus();
+    
+    const pollInterval = setInterval(async () => {
+      // Check for new messages
+      try {
+        const response = await apiGet(`/admin/support/conversations/${selectedSupportConv.ConversationID}/messages`);
+        if (response.ok) {
+          const data = await response.json();
+          const newMessages = data.messages || [];
+          
+          // Check scroll position
+          const chatContainer = chatContainerRef.current;
+          const atBottom = chatContainer 
+            ? chatContainer.scrollHeight - chatContainer.scrollTop - chatContainer.clientHeight < 50
+            : true;
+          
+          setSupportMessages(prev => {
+            // Compare by message count and last message ID
+            const prevLastId = prev.length > 0 ? prev[prev.length - 1].MessageID : 0;
+            const newLastId = newMessages.length > 0 ? newMessages[newMessages.length - 1].MessageID : 0;
+            
+            if (newMessages.length > prev.length || newLastId !== prevLastId) {
+              // New messages arrived
+              if (atBottom) {
+                setTimeout(scrollToBottom, 100);
+              } else {
+                setHasNewMessages(true);
+              }
+            }
+            return newMessages;
+          });
+        }
+      } catch (error) {
+        // Silently fail
+      }
+      
+      // Check typing status
+      checkTypingStatus();
+    }, 3000);
+    
+    return () => clearInterval(pollInterval);
+  }, [selectedSupportConv, scrollToBottom, checkTypingStatus]);
 
   const handleSearch = async () => {
     if (!searchTerm.trim()) return;
@@ -290,7 +534,7 @@ const SupportToolsPanel = () => {
               </div>
             </div>
 
-            {/* Chat Area */}
+            {/* Chat Area - Using ChatView Component */}
             <div style={{ flex: 1, background: '#fff', borderRadius: '12px', border: '1px solid #e5e7eb', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
               {selectedSupportConv ? (
                 <>
@@ -320,81 +564,195 @@ const SupportToolsPanel = () => {
                     </div>
                   </div>
 
-                  {/* Messages */}
-                  <div style={{ flex: 1, overflowY: 'auto', padding: '16px', background: '#f9fafb' }}>
+                  {/* Messages container - EXACT SAME AS DASHBOARD */}
+                  <div 
+                    ref={chatContainerRef}
+                    onScroll={(e) => {
+                      const { scrollTop, scrollHeight, clientHeight } = e.target;
+                      const atBottom = scrollHeight - scrollTop - clientHeight < 50;
+                      setIsAtBottom(atBottom);
+                      if (atBottom) setHasNewMessages(false);
+                    }}
+                    style={{ flex: 1, padding: '20px 24px', overflowY: 'auto', backgroundColor: '#fafafa', position: 'relative' }}
+                  >
                     {messagesLoading ? (
-                      <div style={{ textAlign: 'center', padding: '40px' }}>
-                        <div className="spinner"></div>
-                      </div>
+                      <div style={{ textAlign: 'center', padding: '40px' }}><div className="spinner"></div></div>
                     ) : supportMessages.length === 0 ? (
-                      <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
-                        <p>No messages in this conversation</p>
+                      <div style={{ textAlign: 'center', color: '#888', padding: '40px' }}>
+                        <p style={{ margin: 0 }}>No messages yet. Start the conversation!</p>
                       </div>
                     ) : (
-                      supportMessages.map((msg, idx) => (
-                        <div
-                          key={idx}
-                          style={{
-                            display: 'flex',
-                            justifyContent: msg.IsFromSupport ? 'flex-end' : 'flex-start',
-                            marginBottom: '12px'
-                          }}
-                        >
-                          <div style={{
-                            maxWidth: '70%',
-                            padding: '12px 16px',
-                            borderRadius: msg.IsFromSupport ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-                            background: msg.IsFromSupport ? '#5e72e4' : 'white',
-                            color: msg.IsFromSupport ? 'white' : '#111',
-                            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-                          }}>
-                            <div style={{ fontSize: '14px', lineHeight: '1.5' }}>{msg.Content}</div>
-                            <div style={{ fontSize: '11px', marginTop: '6px', opacity: 0.7 }}>
-                              {new Date(msg.CreatedAt).toLocaleString()}
+                      <>
+                        {supportMessages.map((msg, index, allMsgs) => {
+                          const isSent = msg.IsFromSupport;
+                          const isGif = msg.Content && (msg.Content.includes('giphy.com') || msg.Content.match(/\.(gif)$/i));
+                          const currentDate = msg.CreatedAt ? new Date(msg.CreatedAt).toDateString() : '';
+                          const prevMessage = index > 0 ? allMsgs[index - 1] : null;
+                          const prevDate = prevMessage?.CreatedAt ? new Date(prevMessage.CreatedAt).toDateString() : '';
+                          const showDayDivider = currentDate && currentDate !== prevDate;
+                          
+                          const formatDayDivider = (dateStr) => {
+                            if (!dateStr) return '';
+                            const date = new Date(dateStr);
+                            if (isNaN(date.getTime())) return '';
+                            const today = new Date();
+                            const yesterday = new Date(today);
+                            yesterday.setDate(yesterday.getDate() - 1);
+                            if (date.toDateString() === today.toDateString()) return 'Today';
+                            if (date.toDateString() === yesterday.toDateString()) return 'Yesterday';
+                            return date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' });
+                          };
+                          
+                          return (
+                            <React.Fragment key={msg.MessageID || index}>
+                              {showDayDivider && (
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '16px 0', gap: '12px' }}>
+                                  <div style={{ flex: 1, height: '1px', backgroundColor: '#e5e7eb' }}></div>
+                                  <span style={{ fontSize: '11px', color: '#9ca3af', fontWeight: 500, padding: '4px 12px', backgroundColor: '#f3f4f6', borderRadius: '12px' }}>
+                                    {formatDayDivider(msg.CreatedAt)}
+                                  </span>
+                                  <div style={{ flex: 1, height: '1px', backgroundColor: '#e5e7eb' }}></div>
+                                </div>
+                              )}
+                              <div style={{ marginBottom: '10px', display: 'flex', justifyContent: isSent ? 'flex-end' : 'flex-start' }}>
+                                <div style={{
+                                  padding: isGif ? '4px' : '8px 12px',
+                                  borderRadius: isSent ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
+                                  backgroundColor: isGif ? 'transparent' : (isSent ? '#5e72e4' : '#f0f0f0'),
+                                  color: isSent ? 'white' : '#1a1a1a',
+                                  maxWidth: '70%',
+                                  boxShadow: isGif ? 'none' : '0 1px 2px rgba(0,0,0,0.08)'
+                                }}>
+                                  {isGif ? (
+                                    <img src={msg.Content} alt="GIF" style={{ maxWidth: '200px', maxHeight: '200px', borderRadius: '12px', display: 'block' }} />
+                                  ) : (
+                                    <div style={{ marginBottom: '3px', wordBreak: 'break-word', fontSize: '13px' }}>{msg.Content}</div>
+                                  )}
+                                  <div style={{ fontSize: '10px', opacity: 0.7, textAlign: isSent ? 'right' : 'left' }}>
+                                    {msg.CreatedAt ? new Date(msg.CreatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                                  </div>
+                                </div>
+                              </div>
+                            </React.Fragment>
+                          );
+                        })}
+                        
+                        {otherUserTyping && (
+                          <div style={{ display: 'flex', alignItems: 'flex-start', marginBottom: '16px' }}>
+                            <div style={{ padding: '12px 16px', borderRadius: '18px 18px 18px 4px', background: '#e5e7eb', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#9ca3af', animation: 'typingBounce 1.4s infinite ease-in-out', animationDelay: '0s' }}></div>
+                              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#9ca3af', animation: 'typingBounce 1.4s infinite ease-in-out', animationDelay: '0.2s' }}></div>
+                              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#9ca3af', animation: 'typingBounce 1.4s infinite ease-in-out', animationDelay: '0.4s' }}></div>
                             </div>
                           </div>
-                        </div>
-                      ))
+                        )}
+                        
+                        <div ref={messagesEndRef} />
+                        
+                        {hasNewMessages && !isAtBottom && (
+                          <div onClick={() => { scrollToBottom(); setHasNewMessages(false); setIsAtBottom(true); }}
+                            style={{ position: 'sticky', bottom: '10px', left: '50%', transform: 'translateX(-50%)', background: '#5e72e4', color: 'white', padding: '8px 16px', borderRadius: '20px', fontSize: '13px', fontWeight: 500, cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.15)', display: 'flex', alignItems: 'center', gap: '6px', zIndex: 10, width: 'fit-content', margin: '0 auto' }}>
+                            <i className="fas fa-arrow-down" style={{ fontSize: '11px' }}></i>
+                            New messages
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
-
-                  {/* Reply Input */}
-                  <div style={{ padding: '16px', borderTop: '1px solid #e5e7eb', background: 'white' }}>
-                    <div style={{ display: 'flex', gap: '12px' }}>
-                      <textarea
-                        value={supportReply}
-                        onChange={(e) => setSupportReply(e.target.value)}
-                        placeholder="Type your reply..."
-                        rows={2}
-                        style={{
-                          flex: 1,
-                          padding: '12px',
-                          border: '1px solid #e5e7eb',
-                          borderRadius: '8px',
-                          fontSize: '14px',
-                          resize: 'none',
-                          outline: 'none'
-                        }}
-                        onKeyPress={(e) => {
-                          if (e.key === 'Enter' && !e.shiftKey) {
-                            e.preventDefault();
-                            sendSupportReply();
-                          }
-                        }}
-                      />
-                      <button
-                        className="btn-primary"
-                        onClick={sendSupportReply}
-                        disabled={sendingReply || !supportReply.trim()}
-                        style={{ alignSelf: 'flex-end', padding: '12px 24px' }}
-                      >
-                        {sendingReply ? (
-                          <i className="fas fa-spinner fa-spin"></i>
-                        ) : (
-                          <>
-                            <i className="fas fa-paper-plane"></i> Send
-                          </>
-                        )}
+                  
+                  <style>{`@keyframes typingBounce { 0%, 60%, 100% { transform: translateY(0); } 30% { transform: translateY(-4px); } }`}</style>
+                  
+                  {/* Message input - EXACT SAME AS DASHBOARD */}
+                  <div style={{ padding: '12px 16px', borderTop: '1px solid #e5e5e5', backgroundColor: 'white', position: 'relative' }}>
+                    {/* Quick replies */}
+                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '10px' }}>
+                      {quickReplies.map((reply, idx) => (
+                        <button key={idx} onClick={() => handleQuickReply(reply)}
+                          style={{ padding: '5px 10px', borderRadius: '14px', border: '1px solid #e5e7eb', background: 'white', fontSize: '12px', color: '#374151', cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap' }}
+                          onMouseEnter={(e) => { e.currentTarget.style.background = '#f3f4f6'; e.currentTarget.style.borderColor = '#d1d5db'; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.background = 'white'; e.currentTarget.style.borderColor = '#e5e7eb'; }}
+                        >{reply}</button>
+                      ))}
+                    </div>
+                    
+                    {/* Emoji picker - EXACT SAME AS DASHBOARD */}
+                    {showEmojiPicker && (
+                      <div style={{ position: 'absolute', bottom: '100%', left: '16px', marginBottom: '8px', background: 'white', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '10px', boxShadow: '0 -4px 12px rgba(0,0,0,0.15)', zIndex: 100, width: '300px', maxWidth: 'calc(100vw - 48px)', overflow: 'hidden' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                          <span style={{ fontSize: '13px', fontWeight: 500, color: '#374151' }}>Emojis</span>
+                          <button onClick={() => setShowEmojiPicker(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', fontSize: '14px', padding: '4px' }}>
+                            <i className="fas fa-times"></i>
+                          </button>
+                        </div>
+                        <div style={{ display: 'flex', gap: '2px', marginBottom: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
+                          {Object.entries(emojiCategories).map(([key, cat]) => (
+                            <button key={key} onClick={() => setEmojiCategory(key)}
+                              style={{ padding: '4px 6px', border: 'none', background: emojiCategory === key ? '#e5e7eb' : 'transparent', borderRadius: '4px', cursor: 'pointer', fontSize: '16px' }}
+                              title={cat.name}>{cat.icon}</button>
+                          ))}
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: '2px', maxHeight: '180px', overflowY: 'auto' }}>
+                          {getFilteredEmojis().map((emoji, idx) => (
+                            <button key={idx} onClick={() => { setSupportReply(prev => prev + emoji); }}
+                              style={{ padding: '4px', border: 'none', background: 'transparent', fontSize: '18px', cursor: 'pointer', borderRadius: '4px', transition: 'background 0.15s', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                              onMouseEnter={(e) => e.currentTarget.style.background = '#f3f4f6'}
+                              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                            >{emoji}</button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* GIF picker - EXACT SAME AS DASHBOARD */}
+                    {showGifPicker && (
+                      <div style={{ position: 'absolute', bottom: '100%', left: '16px', marginBottom: '8px', background: 'white', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '12px', boxShadow: '0 -4px 12px rgba(0,0,0,0.15)', zIndex: 100, width: '340px', maxWidth: 'calc(100vw - 48px)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                          <span style={{ fontSize: '13px', fontWeight: 500, color: '#374151' }}>GIFs</span>
+                          <button onClick={() => setShowGifPicker(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', fontSize: '14px', padding: '4px' }}>
+                            <i className="fas fa-times"></i>
+                          </button>
+                        </div>
+                        <div style={{ display: 'flex', gap: '6px', marginBottom: '10px' }}>
+                          <input type="text" placeholder="Search GIFs..." value={gifSearchQuery} onChange={(e) => setGifSearchQuery(e.target.value)}
+                            onKeyPress={(e) => { if (e.key === 'Enter') fetchGifs(gifSearchQuery); }}
+                            style={{ flex: 1, padding: '8px 12px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} />
+                          <button onClick={() => fetchGifs(gifSearchQuery)} style={{ padding: '8px 12px', background: '#5e72e4', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '12px' }}>Search</button>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px', maxHeight: '280px', overflowY: 'auto', paddingRight: '4px' }}>
+                          {gifsLoading ? (
+                            <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px 20px', color: '#6b7280' }}>
+                              <i className="fas fa-spinner fa-spin" style={{ marginRight: '8px' }}></i>Loading GIFs...
+                            </div>
+                          ) : gifs.length > 0 ? (
+                            gifs.map((gif) => (
+                              <button key={gif.id} onClick={() => handleSendGif(gif.url)}
+                                style={{ padding: 0, border: '1px solid #e5e7eb', borderRadius: '8px', background: '#f9fafb', cursor: 'pointer', overflow: 'hidden', height: '100px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <img src={gif.url} alt={gif.alt} style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
+                              </button>
+                            ))
+                          ) : (
+                            <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '20px', color: '#6b7280' }}>No GIFs match your search</div>
+                          )}
+                        </div>
+                        <div style={{ marginTop: '8px', fontSize: '10px', color: '#9ca3af', textAlign: 'center' }}>Powered by GIPHY</div>
+                      </div>
+                    )}
+                    
+                    {/* Input row - EXACT SAME AS DASHBOARD */}
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <button onClick={() => { setShowEmojiPicker(!showEmojiPicker); setShowGifPicker(false); }}
+                        style={{ width: '36px', height: '36px', borderRadius: '50%', border: '1px solid #e5e7eb', backgroundColor: showEmojiPicker ? '#f3f4f6' : 'white', color: '#6b7280', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', flexShrink: 0 }}
+                        title="Emojis">😊</button>
+                      <button onClick={() => { setShowGifPicker(!showGifPicker); setShowEmojiPicker(false); }}
+                        style={{ width: '36px', height: '36px', borderRadius: '50%', border: '1px solid #e5e7eb', backgroundColor: showGifPicker ? '#f3f4f6' : 'white', color: '#6b7280', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 700, flexShrink: 0 }}
+                        title="GIFs">GIF</button>
+                      <input type="text" placeholder="Type your message..." value={supportReply}
+                        onChange={(e) => { setSupportReply(e.target.value); handleTyping(); }}
+                        onKeyPress={(e) => { if (e.key === 'Enter') handleSendMessage(); }}
+                        style={{ flex: 1, padding: '10px 14px', border: '1px solid #e5e5e5', borderRadius: '20px', outline: 'none', fontSize: '14px', minWidth: 0 }} />
+                      <button onClick={handleSendMessage} disabled={!supportReply.trim()}
+                        style={{ width: '36px', height: '36px', borderRadius: '50%', border: 'none', backgroundColor: supportReply.trim() ? '#5e72e4' : '#ddd', color: 'white', cursor: supportReply.trim() ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <i className="fas fa-paper-plane" style={{ fontSize: '14px' }}></i>
                       </button>
                     </div>
                   </div>

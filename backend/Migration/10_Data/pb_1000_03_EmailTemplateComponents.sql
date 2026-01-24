@@ -571,4 +571,38 @@ The {{platformName}} Team',
     );
     PRINT 'Added Review Request email component';
 END
+
+-- Support Message Received (to user when support team replies)
+IF NOT EXISTS (SELECT 1 FROM [admin].[EmailTemplateComponents] WHERE [ComponentName] = 'Support Message Received')
+BEGIN
+    INSERT [admin].[EmailTemplateComponents] ([ComponentType], [ComponentName], [HtmlContent], [TextContent], [Description], [IsActive], [CreatedAt], [UpdatedAt])
+    VALUES (
+        N'body', 
+        N'Support Message Received', 
+        N'<div style="padding:40px 20px;background:white"><h2 style="color:#667eea;margin:0 0 20px">New Message from Planbeau Support</h2><p style="color:#666;margin:0 0 20px">Hello {{userName}},</p><p style="color:#666;margin:0 0 30px">You have received a new message from our support team:</p><div style="background:#f0f4ff;padding:20px;border-radius:8px;border-left:4px solid #667eea;margin:0 0 30px"><p style="color:#333;margin:0;font-style:italic">"{{messagePreview}}"</p></div><p style="text-align:center;margin:0"><a href="{{dashboardUrl}}" style="display:inline-block;background:#222222;color:white;padding:14px 30px;text-decoration:none;border-radius:6px;font-weight:600">View Full Message</a></p></div>', 
+        N'Hello {{userName}}, You have a new message from Planbeau Support: "{{messagePreview}}". View at: {{dashboardUrl}}', 
+        N'Email sent to user when support team replies to their conversation', 
+        1, 
+        GETDATE(), 
+        GETDATE()
+    );
+    PRINT 'Added Support Message Received component';
+END
+
+-- New Support Message (to support team when user sends message)
+IF NOT EXISTS (SELECT 1 FROM [admin].[EmailTemplateComponents] WHERE [ComponentName] = 'New Support Message')
+BEGIN
+    INSERT [admin].[EmailTemplateComponents] ([ComponentType], [ComponentName], [HtmlContent], [TextContent], [Description], [IsActive], [CreatedAt], [UpdatedAt])
+    VALUES (
+        N'body', 
+        N'New Support Message', 
+        N'<div style="padding:40px 20px;background:white"><h2 style="color:#dc3545;margin:0 0 20px">New Support Message</h2><p style="color:#666;margin:0 0 30px">A user has sent a new message requiring attention.</p><div style="background:#fff3cd;padding:20px;border-radius:8px;border-left:4px solid #ffc107;margin:0 0 30px"><h3 style="color:#856404;margin:0 0 15px;font-size:16px">User Details</h3><p style="color:#856404;margin:5px 0"><strong>Name:</strong> {{userName}}</p><p style="color:#856404;margin:5px 0"><strong>Email:</strong> {{userEmail}}</p><p style="color:#856404;margin:5px 0"><strong>Conversation ID:</strong> {{conversationId}}</p></div><div style="background:#f8f9fa;padding:20px;border-radius:8px;border-left:4px solid #6c757d;margin:0 0 30px"><h3 style="color:#495057;margin:0 0 15px;font-size:16px">Message Preview</h3><p style="color:#333;margin:0;font-style:italic">"{{messagePreview}}"</p></div><p style="text-align:center;margin:0"><a href="{{adminUrl}}" style="display:inline-block;background:#dc3545;color:white;padding:14px 30px;text-decoration:none;border-radius:6px;font-weight:600">Respond Now</a></p></div>', 
+        N'New support message from {{userName}} ({{userEmail}}). Conversation ID: {{conversationId}}. Message: "{{messagePreview}}". Respond at: {{adminUrl}}', 
+        N'Email sent to support team when user sends a message', 
+        1, 
+        GETDATE(), 
+        GETDATE()
+    );
+    PRINT 'Added New Support Message component';
+END
 GO
