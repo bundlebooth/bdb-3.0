@@ -1,84 +1,21 @@
 /**
  * Invoice Generation Service
- * Generates PDF invoices using Puppeteer to render the SAME HTML template
- * used by the frontend, ensuring IDENTICAL visual appearance.
+ * Generates PDF invoices using PDFKit with styling matching the shared HTML template.
+ * 
+ * Note: Uses PDFKit for serverless/Render compatibility.
+ * The styling closely matches the shared HTML template used by the frontend.
  */
 
-const puppeteer = require('puppeteer');
-const { generateInvoiceHTML } = require('./sharedInvoiceTemplate');
-
-// Puppeteer browser instance (reused for performance)
-let browserInstance = null;
-
-/**
- * Get or create a Puppeteer browser instance
- */
-async function getBrowser() {
-  if (!browserInstance || !browserInstance.isConnected()) {
-    browserInstance = await puppeteer.launch({
-      headless: 'new',
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-gpu',
-        '--single-process'
-      ]
-    });
-  }
-  return browserInstance;
-}
+const PDFDocument = require('pdfkit');
 
 /**
  * Generate an invoice PDF as a Buffer
- * Uses Puppeteer to render the SAME HTML template as the frontend
- * This ensures the email PDF looks IDENTICAL to the frontend invoice
+ * Uses PDFKit with styling matching the shared HTML template
  * 
  * @param {Object} invoiceData - Invoice data (same structure as frontend Invoice.js expects)
  * @returns {Promise<Buffer>} - PDF buffer
  */
 async function generateInvoicePDF(invoiceData) {
-  let page = null;
-  try {
-    // Generate the HTML using the shared template (same as frontend)
-    const html = generateInvoiceHTML(invoiceData);
-    
-    // Get browser and create a new page
-    const browser = await getBrowser();
-    page = await browser.newPage();
-    
-    // Set the HTML content
-    await page.setContent(html, { waitUntil: 'networkidle0' });
-    
-    // Generate PDF with settings matching a nice invoice layout
-    const pdfBuffer = await page.pdf({
-      format: 'Letter',
-      printBackground: true,
-      margin: {
-        top: '0.5in',
-        right: '0.5in',
-        bottom: '0.5in',
-        left: '0.5in'
-      }
-    });
-    
-    await page.close();
-    return Buffer.from(pdfBuffer);
-  } catch (error) {
-    if (page) {
-      try { await page.close(); } catch (_) {}
-    }
-    console.error('[InvoiceService] Puppeteer PDF generation failed:', error.message);
-    // Fallback to PDFKit if Puppeteer fails
-    return generateInvoicePDFWithPDFKit(invoiceData);
-  }
-}
-
-/**
- * Fallback PDF generation using PDFKit (in case Puppeteer fails)
- */
-async function generateInvoicePDFWithPDFKit(invoiceData) {
-  const PDFDocument = require('pdfkit');
   return new Promise((resolve, reject) => {
     try {
       const doc = new PDFDocument({ 

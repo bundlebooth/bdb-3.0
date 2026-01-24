@@ -528,7 +528,86 @@ router.post('/admin/regenerate/:bookingId', async (req, res) => {
   }
 });
 
+// Upload invoice PDF from frontend (for pixel-perfect email attachments)
+router.post('/upload-pdf', async (req, res) => {
+  try {
+    const { bookingId, invoiceNumber, pdfBase64 } = req.body;
+    
+    if (!bookingId || !pdfBase64) {
+      return res.status(400).json({ success: false, message: 'bookingId and pdfBase64 are required' });
+    }
+    
+    const resolvedBookingId = resolveBookingId(bookingId);
+    if (!resolvedBookingId) {
+      return res.status(400).json({ success: false, message: 'Invalid booking ID' });
+    }
+    
+    const pool = await poolPromise;
+    
+    // Store the PDF in the database (or update if exists)
+    const request = pool.request();
+    request.input('BookingID', sql.Int, resolvedBookingId);
+    request.input('InvoiceNumber', sql.NVarChar(50), invoiceNumber || `INV-${resolvedBookingId}`);
+    request.input('PDFData', sql.VarBinary(sql.MAX), Buffer.from(pdfBase64, 'base64'));
+    request.input('CreatedAt', sql.DateTime, new Date());
+    
+    // Try to use stored procedure, fallback to direct query
+    try {
+      await request.execute('invoices.sp_UpsertInvoicePDF');
+    } catch (spErr) {
+      // Fallback: direct upsert using MERGE
+      await pool.request()
+        .input('BookingID', sql.Int, resolvedBookingId)
+        .input('InvoiceNumber', sql.NVarChar(50), invoiceNumber || `INV-${resolvedBookingId}`)
+        .input('PDFData', sql.VarBinary(sql.MAX), Buffer.from(pdfBase64, 'base64'))
+        .input('CreatedAt', sql.DateTime, new Date())
+        .query(`
+          MERGE INTO invoices.InvoicePDFs AS target
+          USING (SELECT @BookingID AS BookingID) AS source
+          ON target.BookingID = source.BookingID
+          WHEN MATCHED THEN
+            UPDATE SET PDFData = @PDFData, InvoiceNumber = @InvoiceNumber, UpdatedAt = @CreatedAt
+          WHEN NOT MATCHED THEN
+            INSERT (BookingID, InvoiceNumber, PDFData, CreatedAt)
+            VALUES (@BookingID, @InvoiceNumber, @PDFData, @CreatedAt);
+        `);
+    }
+    
+    console.log(`[Invoices] Stored PDF for booking ${resolvedBookingId}`);
+    res.json({ success: true, message: 'Invoice PDF uploaded successfully' });
+  } catch (err) {
+    console.error('Upload invoice PDF error:', err);
+    res.status(500).json({ success: false, message: 'Failed to upload invoice PDF', error: err.message });
+  }
+});
+
+// Get stored invoice PDF for a booking (returns base64)
+async function getStoredInvoicePDF(pool, bookingId) {
+  try {
+    const result = await pool.request()
+      .input('BookingID', sql.Int, bookingId)
+      .query(`
+        SELECT PDFData, InvoiceNumber 
+        FROM invoices.InvoicePDFs 
+        WHERE BookingID = @BookingID
+      `);
+    
+    if (result.recordset.length === 0) return null;
+    
+    const row = result.recordset[0];
+    return {
+      pdfBuffer: row.PDFData,
+      invoiceNumber: row.InvoiceNumber
+    };
+  } catch (err) {
+    // Table might not exist yet
+    console.warn('[Invoices] Could not retrieve stored PDF:', err.message);
+    return null;
+  }
+}
+
 // Expose helpers so other modules can access invoice functions
 router.upsertInvoiceForBooking = upsertInvoiceForBooking;
 router.getInvoiceByBooking = getInvoiceByBooking;
+router.getStoredInvoicePDF = getStoredInvoicePDF;
 module.exports = router;

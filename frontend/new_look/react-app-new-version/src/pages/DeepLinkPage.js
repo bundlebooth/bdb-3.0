@@ -305,6 +305,31 @@ function DeepLinkPage() {
         };
       }
 
+      case 'invoice': {
+        // Invoice view - redirect to invoice page where user can view/download PDF
+        try {
+          const res = await apiGet(`/invoices/validate/${resourceId}`);
+          const response = await res.json();
+          if (response.valid) {
+            return {
+              valid: true,
+              redirectUrl: `/invoice/booking/${resourceId}`
+            };
+          }
+          return {
+            valid: false,
+            errorTitle: 'Invoice Not Found',
+            errorMessage: 'This invoice could not be found or you do not have access to it.'
+          };
+        } catch (error) {
+          // If validation endpoint doesn't exist, just redirect anyway
+          return {
+            valid: true,
+            redirectUrl: `/invoice/booking/${resourceId}`
+          };
+        }
+      }
+
       default:
         return {
           valid: false,

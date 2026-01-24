@@ -505,19 +505,19 @@ async function sendMessageFromClient(vendorEmail, vendorName, clientName, messag
   }, vendorUserId, null, null, 'messages', adminEmail);
 }
 
-async function sendPaymentReceivedToVendor(vendorEmail, vendorName, clientName, amount, serviceName, eventDate, dashboardUrl, vendorUserId = null, bookingId = null, invoiceAttachment = null) {
+async function sendPaymentReceivedToVendor(vendorEmail, vendorName, clientName, amount, serviceName, eventDate, dashboardUrl, vendorUserId = null, bookingId = null, invoiceUrl = null) {
   const adminEmail = process.env.ADMIN_EMAIL || 'admin@planbeau.com';
   return sendTemplatedEmail('payment_received_vendor', vendorEmail, vendorName, {
-    vendorName, clientName, amount, serviceName, eventDate, dashboardUrl
-  }, vendorUserId, bookingId, null, 'payments', adminEmail, invoiceAttachment ? [invoiceAttachment] : null);
+    vendorName, clientName, amount, serviceName, eventDate, dashboardUrl, invoiceUrl: invoiceUrl || dashboardUrl
+  }, vendorUserId, bookingId, null, 'payments', adminEmail, null);
 }
 
-// Send payment confirmation to client with optional invoice attachment
-async function sendPaymentConfirmationToClient(clientEmail, clientName, vendorName, amount, serviceName, eventDate, dashboardUrl, userId = null, bookingId = null, invoiceAttachment = null) {
+// Send payment confirmation to client with invoice URL link
+async function sendPaymentConfirmationToClient(clientEmail, clientName, vendorName, amount, serviceName, eventDate, dashboardUrl, userId = null, bookingId = null, invoiceUrl = null) {
   const adminEmail = process.env.ADMIN_EMAIL || 'admin@planbeau.com';
   return sendTemplatedEmail('payment_confirmation_client', clientEmail, clientName, {
-    clientName, vendorName, amount, serviceName, eventDate, dashboardUrl
-  }, userId, bookingId, null, 'payments', adminEmail, invoiceAttachment ? [invoiceAttachment] : null);
+    clientName, vendorName, amount, serviceName, eventDate, dashboardUrl, invoiceUrl: invoiceUrl || dashboardUrl
+  }, userId, bookingId, null, 'payments', adminEmail, null);
 }
 
 // Send booking cancellation notification to client (when vendor cancels)
