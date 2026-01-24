@@ -7,6 +7,7 @@ import SecurityPanel from '../panels/SecurityPanel';
 import LocationPanel from '../panels/LocationPanel';
 import DeleteAccountPanel from '../panels/DeleteAccountPanel';
 import LanguageCurrencyPanel from '../panels/LanguageCurrencyPanel';
+import ProfileEditPanel from '../panels/ProfileEditPanel';
 
 function ClientSettingsSection() {
   const { currentUser } = useAuth();
@@ -19,6 +20,13 @@ function ClientSettingsSection() {
   }, [currentUser?.id]);
 
   const settingsCards = [
+    { 
+      id: 'profile-edit', 
+      icon: 'fa-id-card', 
+      title: 'Your Profile', 
+      description: 'Add personal details, interests, and fun facts to help others get to know you',
+      category: 'personal'
+    },
     { 
       id: 'personal-details', 
       icon: 'fa-user', 
@@ -68,6 +76,8 @@ function ClientSettingsSection() {
     const userId = currentUser?.id;
     
     switch (activePanel) {
+      case 'profile-edit':
+        return <ProfileEditPanel key={userId} onClose={() => setActivePanel(null)} onSave={() => setActivePanel(null)} />;
       case 'personal-details':
         return <PersonalDetailsPanel key={userId} onBack={() => setActivePanel(null)} />;
       case 'location':

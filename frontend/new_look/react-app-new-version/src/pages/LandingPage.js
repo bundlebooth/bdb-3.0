@@ -24,8 +24,10 @@ function LandingPage() {
   const [loading, setLoading] = useState(true);
   const [favorites, setFavorites] = useState([]);
   const [isScrolled, setIsScrolled] = useState(false);
-  // Check if we should show login modal (from deep link redirect)
-  const shouldShowLogin = location.state?.showLogin === true;
+  // Check if we should show login modal (from deep link redirect or session expiry)
+  const searchParams = new URLSearchParams(location.search);
+  const sessionExpired = searchParams.get('sessionExpired') === 'true';
+  const shouldShowLogin = location.state?.showLogin === true || sessionExpired;
   const [profileModalOpen, setProfileModalOpen] = useState(shouldShowLogin);
   const [activeSlide, setActiveSlide] = useState(0);
   const [visibleSections, setVisibleSections] = useState(new Set());

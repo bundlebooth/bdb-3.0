@@ -221,7 +221,8 @@ export function AuthProvider({ children }) {
   // Check for session timeout on API responses
   function handleSessionExpired() {
     logout('session_expired');
-    window.location.href = '/login?reason=session_expired';
+    sessionStorage.setItem('logoutReason', 'session_expired');
+    window.location.href = '/?sessionExpired=true';
   }
 
   function updateUser(updatedData) {

@@ -66,7 +66,9 @@ export function useSessionTimeout(enabled = true) {
         // Continue with redirect
       }
       
-      window.location.href = '/login?reason=session_expired';
+      // Set session storage for ProfileModal to display message
+      sessionStorage.setItem('logoutReason', 'session_expired');
+      window.location.href = '/?sessionExpired=true';
     }
   }, [currentUser, logout]);
 

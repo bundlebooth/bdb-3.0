@@ -5,9 +5,359 @@
 }
 
 .host-profile-container {
-  max-width: 800px;
+  max-width: 1120px;
   margin: 0 auto;
   padding: 2rem 1.5rem;
+}
+
+/* ==================== Airbnb-style Two Column Layout ==================== */
+.profile-layout {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 80px;
+  align-items: start;
+}
+
+/* Left Column - Profile Card */
+.profile-left-column {
+  position: sticky;
+  top: 100px;
+}
+
+.profile-card {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+}
+
+.profile-card-header {
+  text-align: center;
+  padding-bottom: 24px;
+  border-bottom: 1px solid #ebebeb;
+}
+
+.profile-avatar-large {
+  width: 128px;
+  height: 128px;
+  margin: 0 auto 16px;
+  position: relative;
+}
+
+.profile-avatar-large img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.superhost-badge-large {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  width: 36px;
+  height: 36px;
+  background: #ff385c;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 16px;
+  border: 3px solid white;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.profile-name {
+  font-size: 32px;
+  font-weight: 600;
+  color: #222;
+  margin: 0 0 4px 0;
+}
+
+.profile-title {
+  font-size: 14px;
+  color: #717171;
+  margin: 0;
+}
+
+.profile-card-stats {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 24px 0;
+  border-bottom: 1px solid #ebebeb;
+}
+
+.profile-stat-item {
+  text-align: center;
+  padding: 0 20px;
+}
+
+.profile-stat-item .stat-number {
+  display: block;
+  font-size: 22px;
+  font-weight: 600;
+  color: #222;
+}
+
+.profile-stat-item .stat-label {
+  display: block;
+  font-size: 12px;
+  color: #717171;
+  margin-top: 2px;
+}
+
+.profile-stat-divider {
+  width: 1px;
+  height: 40px;
+  background: #ddd;
+}
+
+.profile-verifications {
+  padding-top: 24px;
+}
+
+.profile-verifications h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #222;
+  margin: 0 0 16px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.profile-verifications h3 i {
+  color: #008489;
+}
+
+.verification-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.verification-list li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  font-size: 14px;
+  color: #484848;
+}
+
+.verification-list li i {
+  color: #008489;
+  font-size: 16px;
+}
+
+/* Right Column */
+.profile-right-column {
+  min-width: 0;
+}
+
+.profile-about-section {
+  padding-bottom: 32px;
+  border-bottom: 1px solid #ebebeb;
+  margin-bottom: 32px;
+}
+
+.profile-about-section h2 {
+  font-size: 26px;
+  font-weight: 600;
+  color: #222;
+  margin: 0 0 24px 0;
+}
+
+/* Quick Info Grid - Airbnb style */
+.profile-quick-info {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.profile-info-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 8px 0;
+}
+
+.profile-info-item i {
+  font-size: 24px;
+  color: #222;
+  width: 24px;
+  text-align: center;
+  margin-top: 2px;
+}
+
+.profile-info-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.profile-info-label {
+  font-size: 12px;
+  color: #717171;
+  margin-bottom: 2px;
+}
+
+.profile-info-value {
+  font-size: 16px;
+  color: #222;
+  font-weight: 400;
+}
+
+/* Bio */
+.profile-bio {
+  margin-bottom: 24px;
+}
+
+.profile-bio p {
+  font-size: 16px;
+  line-height: 1.6;
+  color: #484848;
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.profile-bio p.truncated {
+  display: -webkit-box;
+  -webkit-line-clamp: 6;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.show-more-btn {
+  background: none;
+  border: none;
+  color: #222;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  margin-top: 8px;
+  text-decoration: underline;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.show-more-btn:hover {
+  color: #000;
+}
+
+/* Quote */
+.profile-quote {
+  background: #f7f7f7;
+  border-left: 4px solid #222;
+  padding: 16px 20px;
+  margin: 24px 0;
+  font-style: italic;
+  font-size: 16px;
+  line-height: 1.6;
+  color: #484848;
+  border-radius: 0 8px 8px 0;
+}
+
+.profile-quote i {
+  color: #717171;
+  margin-right: 8px;
+}
+
+/* Interests */
+.profile-interests {
+  margin-top: 32px;
+}
+
+.profile-interests h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #222;
+  margin: 0 0 16px 0;
+}
+
+.interests-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.interest-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 16px;
+  background: #f7f7f7;
+  border: 1px solid #ddd;
+  border-radius: 20px;
+  font-size: 14px;
+  color: #222;
+  transition: all 0.2s;
+}
+
+.interest-tag:hover {
+  background: #ebebeb;
+}
+
+.interest-tag[data-category="Events"] {
+  background: #fff0f3;
+  border-color: #ffb8c6;
+}
+
+.interest-tag[data-category="Creative"] {
+  background: #f0f7ff;
+  border-color: #b8d4ff;
+}
+
+.interest-tag[data-category="Food & Drink"] {
+  background: #fff8f0;
+  border-color: #ffd9b8;
+}
+
+.interest-tag[data-category="Entertainment"] {
+  background: #f5f0ff;
+  border-color: #d4b8ff;
+}
+
+.interest-tag[data-category="Lifestyle"] {
+  background: #f0fff4;
+  border-color: #b8ffc9;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .profile-layout {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+  
+  .profile-left-column {
+    position: static;
+  }
+  
+  .profile-card {
+    max-width: 400px;
+    margin: 0 auto;
+  }
+  
+  .profile-quick-info {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .profile-card-stats {
+    flex-direction: column;
+    gap: 16px;
+  }
+  
+  .profile-stat-divider {
+    width: 60px;
+    height: 1px;
+  }
 }
 
 .host-profile-loading {

@@ -5,6 +5,7 @@ import { API_BASE_URL } from '../../config';
 import UniversalModal from '../UniversalModal';
 import { LoadingState, EmptyState } from '../common/AdminComponents';
 import { ActionButtonGroup, ActionButton as IconActionButton, ViewButton, EditButton, DeleteButton } from '../common/UIComponents';
+import RichTextEditor from './RichTextEditor';
 
 const ContentManagementPanel = () => {
   const [activeTab, setActiveTab] = useState('banners'); // banners, pages, announcements
@@ -514,14 +515,17 @@ const ContentModal = ({ type, item, onClose, onSave }) => {
                 type="text"
                 value={formData.Question}
                 onChange={e => setFormData({ ...formData, Question: e.target.value })}
+                placeholder="Enter the FAQ question"
               />
             </div>
             <div className="form-group">
               <label>Answer</label>
-              <textarea
-                value={formData.Answer}
-                onChange={e => setFormData({ ...formData, Answer: e.target.value })}
-                rows={6}
+              <RichTextEditor
+                value={formData.Answer || ''}
+                onChange={(html) => setFormData({ ...formData, Answer: html })}
+                placeholder="Write your answer here..."
+                minHeight={250}
+                maxHeight={400}
               />
             </div>
             <div className="form-row">
@@ -532,17 +536,29 @@ const ContentModal = ({ type, item, onClose, onSave }) => {
                   onChange={e => setFormData({ ...formData, Category: e.target.value })}
                 >
                   <option value="General">General</option>
+                  <option value="Getting Started">Getting Started</option>
                   <option value="Booking">Booking</option>
                   <option value="Payments">Payments</option>
+                  <option value="Cancellations">Cancellations</option>
                   <option value="Vendors">For Vendors</option>
+                  <option value="Account">Account</option>
+                  <option value="Reviews">Reviews</option>
+                  <option value="Messages">Messages</option>
+                  <option value="Technical">Technical</option>
+                  <option value="Safety">Safety</option>
+                  <option value="Planning Tips">Planning Tips</option>
+                  <option value="Accessibility">Accessibility</option>
+                  <option value="Seasonal">Seasonal</option>
+                  <option value="Photography">Photography</option>
+                  <option value="Corporate">Corporate</option>
                 </select>
               </div>
               <div className="form-group">
-                <label>Order</label>
+                <label>Display Order</label>
                 <input
                   type="number"
-                  value={formData.Order}
-                  onChange={e => setFormData({ ...formData, Order: parseInt(e.target.value) })}
+                  value={formData.Order || formData.DisplayOrder || 1}
+                  onChange={e => setFormData({ ...formData, Order: parseInt(e.target.value), DisplayOrder: parseInt(e.target.value) })}
                   min={1}
                 />
               </div>

@@ -4,6 +4,7 @@ import { apiGet, apiPost, apiPut, apiDelete } from '../../utils/api';
 import { API_BASE_URL } from '../../config';
 import { LoadingState, EmptyState, StatusBadge } from '../common/AdminComponents';
 import { ActionButtonGroup, ActionButton as IconActionButton, ViewButton, EditButton, DeleteButton } from '../common/UIComponents';
+import RichTextEditor from './RichTextEditor';
 
 const BlogManagementPanel = () => {
   const [blogs, setBlogs] = useState([]);
@@ -700,70 +701,14 @@ const BlogEditorModal = ({ blog, categories, onClose, onSave }) => {
 
               {/* Content Editor */}
               <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                  <label style={{ fontSize: '13px', fontWeight: '600', color: '#374151' }}>Content *</label>
-                  <div style={{ display: 'flex', gap: '4px' }}>
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab('visual')}
-                      style={{
-                        padding: '4px 12px',
-                        background: activeTab === 'visual' ? '#5e72e4' : '#f3f4f6',
-                        color: activeTab === 'visual' ? 'white' : '#374151',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: 'pointer',
-                        fontSize: '12px'
-                      }}
-                    >
-                      Visual
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab('html')}
-                      style={{
-                        padding: '4px 12px',
-                        background: activeTab === 'html' ? '#5e72e4' : '#f3f4f6',
-                        color: activeTab === 'html' ? 'white' : '#374151',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: 'pointer',
-                        fontSize: '12px'
-                      }}
-                    >
-                      HTML
-                    </button>
-                  </div>
-                </div>
-                
-                {activeTab === 'visual' && (
-                  <RichTextToolbar onFormat={handleFormat} onInsert={handleInsert} />
-                )}
-                
-                <textarea
-                  ref={contentRef}
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '600', color: '#374151' }}>Content *</label>
+                <RichTextEditor
                   value={formData.content}
-                  onChange={e => handleChange('content', e.target.value)}
-                  placeholder={activeTab === 'visual' 
-                    ? "Start typing your content... Use the toolbar above to format text."
-                    : "<h2>Introduction</h2>\n<p>Your content here...</p>"}
-                  rows={14}
-                  style={{ 
-                    width: '100%', 
-                    padding: '12px', 
-                    border: '1px solid #d1d5db', 
-                    borderRadius: activeTab === 'visual' ? '0 0 6px 6px' : '6px',
-                    fontSize: '14px',
-                    fontFamily: activeTab === 'html' ? 'monospace' : 'inherit',
-                    resize: 'vertical',
-                    lineHeight: '1.6'
-                  }}
+                  onChange={(html) => handleChange('content', html)}
+                  placeholder="Start writing your blog post..."
+                  minHeight={350}
+                  maxHeight={500}
                 />
-                {activeTab === 'visual' && (
-                  <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '8px', padding: '8px 12px', background: '#f9fafb', borderRadius: '6px' }}>
-                    <strong>Quick Tips:</strong> Select text and click a toolbar button to format it. Use H2/H3 for headings, lists for bullet points, and the quote button for testimonials.
-                  </div>
-                )}
               </div>
 
               {/* Author Info */}

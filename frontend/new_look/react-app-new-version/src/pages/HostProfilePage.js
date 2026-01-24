@@ -11,18 +11,41 @@ import ProfileModal from '../components/ProfileModal';
 import { showBanner, formatMonthYear } from '../utils/helpers';
 import './HostProfilePage.css';
 
+// Airbnb-style profile info item component
+const ProfileInfoItem = ({ icon, label, value }) => {
+  if (!value) return null;
+  return (
+    <div className="profile-info-item">
+      <i className={`fas fa-${icon}`}></i>
+      <div className="profile-info-content">
+        <span className="profile-info-label">{label}</span>
+        <span className="profile-info-value">{value}</span>
+      </div>
+    </div>
+  );
+};
+
+// Interest tag component
+const InterestTag = ({ interest, category }) => (
+  <span className="interest-tag" data-category={category}>
+    {interest}
+  </span>
+);
+
 function HostProfilePage() {
   const { hostId } = useParams();
   const navigate = useNavigate();
   const { currentUser } = useAuth();
 
   const [host, setHost] = useState(null);
+  const [enhancedProfile, setEnhancedProfile] = useState(null);
   const [listings, setListings] = useState([]);
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [currentReviewPage, setCurrentReviewPage] = useState(1);
-  const [isUserProfile, setIsUserProfile] = useState(false); // true = client profile, false = vendor host
+  const [isUserProfile, setIsUserProfile] = useState(false);
+  const [showAllAbout, setShowAllAbout] = useState(false);
   const reviewsPerPage = 5;
 
   // Load host profile data - fetches USER data, not vendor data
@@ -37,6 +60,22 @@ function HostProfilePage() {
         // User profile found - show client/user info
         const profileData = await profileResp.json();
         const userProfile = profileData.profile;
+        
+        // Try to get user profile data from UserProfiles table
+        let enhancedData = null;
+        try {
+          const userProfileResp = await fetch(`${API_BASE_URL}/users/${hostId}/user-profile`);
+          if (userProfileResp.ok) {
+            const userProfileJson = await userProfileResp.json();
+            enhancedData = {
+              ...userProfileJson.profile,
+              Interests: userProfileJson.interests || [],
+              MemberSince: userProfileJson.user?.JoinYear
+            };
+          }
+        } catch (e) {
+          console.warn('User profile not available:', e.message);
+        }
         
         // Load reviews given by this user
         const reviewsResp = await fetch(`${API_BASE_URL}/users/${hostId}/reviews`);
@@ -120,6 +159,7 @@ function HostProfilePage() {
         };
         
         setHost(hostInfo);
+        setEnhancedProfile(enhancedData);
         setReviews(displayReviews);
         setListings(allListings);
         setIsUserProfile(true);
@@ -241,196 +281,278 @@ function HostProfilePage() {
       
       <div className="host-profile-page">
         <div className="host-profile-container">
-          {/* Host Header */}
-          <div className="host-header">
-            <div className="host-avatar-section">
-              <div className="host-avatar">
-                <img 
-                  src={host.profileImage || 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png'}
-                  alt={host.name}
-                  onError={(e) => { e.target.src = 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png'; }}
-                />
-                {host.isSuperhost && (
-                  <div className="superhost-badge">
-                    <i className="fas fa-award"></i>
-                  </div>
-                )}
-              </div>
-            </div>
-            
-            <div className="host-info-section">
-              <div className="host-name-row">
-                <h1>{host.name}</h1>
-                {host.isSuperhost && (
-                  <span className="superhost-tag">
-                    <i className="fas fa-award"></i> Superhost
-                  </span>
-                )}
-              </div>
-              
-              <button className="share-btn">
-                <i className="fas fa-share-alt"></i> Share
-              </button>
-            </div>
-          </div>
-
-          {/* About Section */}
-          <div className="host-about-section">
-            <h2>About</h2>
-            <p className="host-bio">
-              {host.bio || `Welcome! I'm ${host.name}, and I'm passionate about helping create memorable events. Feel free to reach out with any questions about my listings.`}
-            </p>
-            
-            {/* Host Stats - Giggster style layout */}
-            <div className="host-stats">
-              <div className="host-stat">
-                <i className="fas fa-calendar-alt"></i>
-                <span>Member since: <strong>{formatDate(host.memberSince)}</strong></span>
-              </div>
-              <div className="host-stat">
-                <i className="fas fa-star"></i>
-                <span>Response rating: <strong>{host.responseRating || 'Excellent'}</strong></span>
-              </div>
-              <div className="host-stat">
-                <i className="fas fa-clock"></i>
-                <span>Response speed: <strong>{host.responseTime || 'A few hours'}</strong></span>
-              </div>
-              <div className="host-stat">
-                <i className="fas fa-comment"></i>
-                <span>Reviews: <strong>{host.reviewCount}</strong></span>
-              </div>
-            </div>
-
-            {/* Verification Badges */}
-            <div className="host-verifications">
-              {host.isEmailConfirmed && (
-                <div className="verification-badge">
-                  <i className="fas fa-check-circle"></i> Email confirmed
-                </div>
-              )}
-              {host.isPhoneConfirmed && (
-                <div className="verification-badge">
-                  <i className="fas fa-check-circle"></i> Phone confirmed
-                </div>
-              )}
-              {host.isVerified && (
-                <div className="verification-badge">
-                  <i className="fas fa-check-circle"></i> Identity verified
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Listings Section */}
-          <div className="host-listings-section">
-            <h2>{isUserProfile ? 'Vendors worked with' : `${host.name}'s ${listings.length} listing${listings.length !== 1 ? 's' : ''}`}</h2>
-            <div className="host-listings-grid">
-              {listings.map((listing) => (
-                <div 
-                  key={listing.id} 
-                  className="host-listing-card"
-                  onClick={() => navigate(`/vendor/${listing.id}`)}
-                >
-                  <div className="listing-image">
+          {/* Airbnb-style Two Column Layout */}
+          <div className="profile-layout">
+            {/* Left Column - Profile Card */}
+            <div className="profile-left-column">
+              <div className="profile-card">
+                <div className="profile-card-header">
+                  <div className="profile-avatar-large">
                     <img 
-                      src={listing.featuredImage || 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png'}
-                      alt={listing.businessName}
+                      src={host.profileImage || 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png'}
+                      alt={host.name}
                       onError={(e) => { e.target.src = 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png'; }}
                     />
+                    {host.isSuperhost && (
+                      <div className="superhost-badge-large">
+                        <i className="fas fa-award"></i>
+                      </div>
+                    )}
                   </div>
-                  <div className="listing-info">
-                    <h3>{listing.businessName}</h3>
-                    <p className="listing-location">{listing.city}, {listing.state}</p>
+                  <h1 className="profile-name">{host.name}</h1>
+                  {enhancedProfile?.BiographyTitle && (
+                    <p className="profile-title">{enhancedProfile.BiographyTitle}</p>
+                  )}
+                </div>
+                
+                <div className="profile-card-stats">
+                  <div className="profile-stat-item">
+                    <span className="stat-number">{host.reviewCount || 0}</span>
+                    <span className="stat-label">Reviews</span>
+                  </div>
+                  <div className="profile-stat-divider"></div>
+                  <div className="profile-stat-item">
+                    <span className="stat-number">{host.responseRating || '5.0'}</span>
+                    <span className="stat-label">Rating</span>
+                  </div>
+                  <div className="profile-stat-divider"></div>
+                  <div className="profile-stat-item">
+                    <span className="stat-number">{enhancedProfile?.MemberSince || new Date(host.memberSince).getFullYear()}</span>
+                    <span className="stat-label">Member since</span>
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
 
-          {/* Reviews Section */}
-          <div className="host-reviews-section">
-            <h2>{reviews.length} review{reviews.length !== 1 ? 's' : ''}</h2>
-            
-            {paginatedReviews.length > 0 ? (
-              <div className="host-reviews-list">
-                {paginatedReviews.map((review, index) => (
-                  <div key={index} className="host-review-item">
-                    <div className="review-header">
-                      <div className="reviewer-avatar">
+                {/* Verifications */}
+                <div className="profile-verifications">
+                  <h3><i className="fas fa-shield-alt"></i> {host.name}'s confirmed information</h3>
+                  <ul className="verification-list">
+                    {host.isEmailConfirmed && (
+                      <li><i className="fas fa-check"></i> Email address</li>
+                    )}
+                    {host.isPhoneConfirmed && (
+                      <li><i className="fas fa-check"></i> Phone number</li>
+                    )}
+                    {host.isVerified && (
+                      <li><i className="fas fa-check"></i> Identity</li>
+                    )}
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column - About & Details */}
+            <div className="profile-right-column">
+              {/* About Section */}
+              <div className="profile-about-section">
+                <h2>About {host.name}</h2>
+                
+                {/* Quick Info Grid - Airbnb style */}
+                <div className="profile-quick-info">
+                  <ProfileInfoItem 
+                    icon="briefcase" 
+                    label="My work" 
+                    value={enhancedProfile?.Work} 
+                  />
+                  <ProfileInfoItem 
+                    icon="map-marker-alt" 
+                    label="Lives in" 
+                    value={enhancedProfile?.City && enhancedProfile?.Country 
+                      ? `${enhancedProfile.City}, ${enhancedProfile.Country}` 
+                      : enhancedProfile?.City || enhancedProfile?.Country} 
+                  />
+                  <ProfileInfoItem 
+                    icon="globe" 
+                    label="Speaks" 
+                    value={enhancedProfile?.Languages} 
+                  />
+                  <ProfileInfoItem 
+                    icon="graduation-cap" 
+                    label="Where I went to school" 
+                    value={enhancedProfile?.School} 
+                  />
+                  <ProfileInfoItem 
+                    icon="birthday-cake" 
+                    label="Born in the" 
+                    value={enhancedProfile?.DecadeBorn} 
+                  />
+                  <ProfileInfoItem 
+                    icon="heart" 
+                    label="Obsessed with" 
+                    value={enhancedProfile?.ObsessedWith} 
+                  />
+                  <ProfileInfoItem 
+                    icon="paw" 
+                    label="Pets" 
+                    value={enhancedProfile?.Pets} 
+                  />
+                  <ProfileInfoItem 
+                    icon="clock" 
+                    label="I spend too much time" 
+                    value={enhancedProfile?.SpendTimeDoing} 
+                  />
+                  <ProfileInfoItem 
+                    icon="lightbulb" 
+                    label="Fun fact" 
+                    value={enhancedProfile?.FunFact} 
+                  />
+                  <ProfileInfoItem 
+                    icon="magic" 
+                    label="My most useless skill" 
+                    value={enhancedProfile?.UselessSkill} 
+                  />
+                </div>
+
+                {/* Bio */}
+                {(host.bio || enhancedProfile?.Bio) && (
+                  <div className="profile-bio">
+                    <p className={!showAllAbout && (host.bio || enhancedProfile?.Bio || '').length > 300 ? 'truncated' : ''}>
+                      {host.bio || enhancedProfile?.Bio || `Welcome! I'm ${host.name}, and I'm passionate about helping create memorable events.`}
+                    </p>
+                    {(host.bio || enhancedProfile?.Bio || '').length > 300 && (
+                      <button className="show-more-btn" onClick={() => setShowAllAbout(!showAllAbout)}>
+                        {showAllAbout ? 'Show less' : 'Show more'} <i className={`fas fa-chevron-${showAllAbout ? 'up' : 'down'}`}></i>
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {/* Favorite Quote */}
+                {enhancedProfile?.FavoriteQuote && (
+                  <blockquote className="profile-quote">
+                    <i className="fas fa-quote-left"></i>
+                    {enhancedProfile.FavoriteQuote}
+                  </blockquote>
+                )}
+
+                {/* Interests */}
+                {enhancedProfile?.Interests && enhancedProfile.Interests.length > 0 && (
+                  <div className="profile-interests">
+                    <h3>What {host.name} is into</h3>
+                    <div className="interests-grid">
+                      {enhancedProfile.Interests.map((interest, idx) => (
+                        <InterestTag 
+                          key={idx} 
+                          interest={interest.Interest || interest} 
+                          category={interest.Category} 
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Listings Section */}
+              <div className="host-listings-section">
+                <h2>{isUserProfile ? 'Vendors worked with' : `${host.name}'s ${listings.length} listing${listings.length !== 1 ? 's' : ''}`}</h2>
+                <div className="host-listings-grid">
+                  {listings.map((listing) => (
+                    <div 
+                      key={listing.id} 
+                      className="host-listing-card"
+                      onClick={() => navigate(`/vendor/${listing.id}`)}
+                    >
+                      <div className="listing-image">
                         <img 
-                          src={review.ReviewerImage || 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png'}
-                          alt={review.ReviewerName || 'Reviewer'}
+                          src={listing.featuredImage || 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png'}
+                          alt={listing.businessName}
                           onError={(e) => { e.target.src = 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png'; }}
                         />
                       </div>
-                      <div className="reviewer-info">
-                        <div className="reviewer-name">{review.ReviewerName || 'Anonymous'}</div>
-                        <div className="review-meta">
-                          <span className="review-rating">
-                            {[...Array(5)].map((_, i) => (
-                              <i 
-                                key={i} 
-                                className={`fas fa-star ${i < (review.Rating || 5) ? 'filled' : ''}`}
-                              ></i>
-                            ))}
-                          </span>
-                          <span className="review-date">
-                            {review.CreatedAt ? new Date(review.CreatedAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'Recently'}
-                          </span>
-                          {review.VendorName && (
-                            <span className="review-listing">• {review.VendorName}</span>
-                          )}
-                        </div>
+                      <div className="listing-info">
+                        <h3>{listing.businessName}</h3>
+                        <p className="listing-location">{listing.city}, {listing.state}</p>
                       </div>
                     </div>
-                    <p className="review-content">{review.Comment || review.ReviewText || 'Great experience!'}</p>
+                  ))}
+                </div>
+              </div>
+
+              {/* Reviews Section */}
+              <div className="host-reviews-section">
+                <h2>{reviews.length} review{reviews.length !== 1 ? 's' : ''}</h2>
+                
+                {paginatedReviews.length > 0 ? (
+                  <div className="host-reviews-list">
+                    {paginatedReviews.map((review, index) => (
+                      <div key={index} className="host-review-item">
+                        <div className="review-header">
+                          <div className="reviewer-avatar">
+                            <img 
+                              src={review.ReviewerImage || 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png'}
+                              alt={review.ReviewerName || 'Reviewer'}
+                              onError={(e) => { e.target.src = 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png'; }}
+                            />
+                          </div>
+                          <div className="reviewer-info">
+                            <div className="reviewer-name">{review.ReviewerName || 'Anonymous'}</div>
+                            <div className="review-meta">
+                              <span className="review-rating">
+                                {[...Array(5)].map((_, i) => (
+                                  <i 
+                                    key={i} 
+                                    className={`fas fa-star ${i < (review.Rating || 5) ? 'filled' : ''}`}
+                                  ></i>
+                                ))}
+                              </span>
+                              <span className="review-date">
+                                {review.CreatedAt ? new Date(review.CreatedAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'Recently'}
+                              </span>
+                              {review.VendorName && (
+                                <span className="review-listing">• {review.VendorName}</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <p className="review-content">{review.Comment || review.ReviewText || 'Great experience!'}</p>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            ) : (
-              <p className="no-reviews">No reviews yet.</p>
-            )}
-
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="reviews-pagination">
-                {[...Array(totalPages)].map((_, i) => (
-                  <button
-                    key={i}
-                    className={`pagination-btn ${currentReviewPage === i + 1 ? 'active' : ''}`}
-                    onClick={() => setCurrentReviewPage(i + 1)}
-                  >
-                    {i + 1}
-                  </button>
-                ))}
-                {totalPages > 5 && currentReviewPage < totalPages - 2 && (
-                  <>
-                    <span className="pagination-ellipsis">...</span>
-                    <button
-                      className="pagination-btn"
-                      onClick={() => setCurrentReviewPage(totalPages)}
-                    >
-                      {totalPages}
-                    </button>
-                  </>
+                ) : (
+                  <p className="no-reviews">No reviews yet.</p>
                 )}
-                {currentReviewPage < totalPages && (
-                  <button
-                    className="pagination-btn pagination-next"
-                    onClick={() => setCurrentReviewPage(prev => prev + 1)}
-                  >
-                    <i className="fas fa-chevron-right"></i>
-                  </button>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="reviews-pagination">
+                    {[...Array(totalPages)].map((_, i) => (
+                      <button
+                        key={i}
+                        className={`pagination-btn ${currentReviewPage === i + 1 ? 'active' : ''}`}
+                        onClick={() => setCurrentReviewPage(i + 1)}
+                      >
+                        {i + 1}
+                      </button>
+                    ))}
+                    {totalPages > 5 && currentReviewPage < totalPages - 2 && (
+                      <>
+                        <span className="pagination-ellipsis">...</span>
+                        <button
+                          className="pagination-btn"
+                          onClick={() => setCurrentReviewPage(totalPages)}
+                        >
+                          {totalPages}
+                        </button>
+                      </>
+                    )}
+                    {currentReviewPage < totalPages && (
+                      <button
+                        className="pagination-btn pagination-next"
+                        onClick={() => setCurrentReviewPage(prev => prev + 1)}
+                      >
+                        <i className="fas fa-chevron-right"></i>
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
-            )}
-          </div>
 
-          {/* Report Link */}
-          <div className="host-report-section">
-            <button className="report-link">
-              <i className="fas fa-flag"></i> Report user
-            </button>
+              {/* Report Link */}
+              <div className="host-report-section">
+                <button className="report-link">
+                  <i className="fas fa-flag"></i> Report user
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
