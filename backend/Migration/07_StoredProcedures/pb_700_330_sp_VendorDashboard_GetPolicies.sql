@@ -18,7 +18,7 @@ AS
 BEGIN
     SET NOCOUNT ON;
     
-    SELECT CancellationPolicy, ReschedulingPolicy
+    SELECT CancellationPolicy
     FROM vendors.VendorProfiles WHERE VendorProfileID = @VendorProfileID;
 END
 GO

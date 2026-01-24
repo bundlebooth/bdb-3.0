@@ -14,15 +14,13 @@ GO
 
 CREATE PROCEDURE [vendors].[sp_Dashboard_UpdatePolicies]
     @VendorProfileID INT,
-    @CancellationPolicy NVARCHAR(MAX),
-    @ReschedulingPolicy NVARCHAR(MAX)
+    @CancellationPolicy NVARCHAR(MAX)
 AS
 BEGIN
     SET NOCOUNT ON;
     
     UPDATE vendors.VendorProfiles SET 
         CancellationPolicy = @CancellationPolicy,
-        ReschedulingPolicy = @ReschedulingPolicy,
         UpdatedAt = GETDATE()
     WHERE VendorProfileID = @VendorProfileID;
     
