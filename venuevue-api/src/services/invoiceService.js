@@ -1,58 +1,197 @@
 /**
  * Invoice Generation Service
- * Generates PDF invoices using the SHARED invoice template
+ * Generates PDF invoices using PDFKit with styling matching the shared template
  * 
- * This service uses the EXACT SAME HTML template as the frontend dashboard
- * to ensure consistency between email PDF attachments and dashboard display.
+ * Note: Uses PDFKit instead of Puppeteer for serverless compatibility.
+ * The styling matches the shared HTML template used by the frontend.
  */
 
-const puppeteer = require('puppeteer');
+const PDFDocument = require('pdfkit');
 const { generateInvoiceHTML } = require('./sharedInvoiceTemplate');
 
 /**
  * Generate an invoice PDF as a Buffer
- * Uses the SHARED HTML template (same as frontend dashboard) rendered via Puppeteer
+ * Uses PDFKit with styling matching the shared HTML template
  * 
  * @param {Object} invoiceData - Invoice data (same structure as frontend Invoice.js expects)
  * @returns {Promise<Buffer>} - PDF buffer
  */
 async function generateInvoicePDF(invoiceData) {
-  let browser = null;
-  
-  try {
-    // Generate HTML using the SHARED template (same as frontend)
-    const html = generateInvoiceHTML(invoiceData);
-    
-    // Launch Puppeteer to render HTML to PDF
-    browser = await puppeteer.launch({
-      headless: 'new',
-      args: ['--no-sandbox', '--disable-setuid-sandbox']
-    });
-    
-    const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: 'networkidle0' });
-    
-    // Generate PDF with settings matching Letter size
-    const pdfBuffer = await page.pdf({
-      format: 'Letter',
-      margin: {
-        top: '0.5in',
-        right: '0.5in',
-        bottom: '0.5in',
-        left: '0.5in'
-      },
-      printBackground: true
-    });
-    
-    return pdfBuffer;
-  } catch (error) {
-    console.error('[InvoiceService] PDF generation error:', error);
-    throw error;
-  } finally {
-    if (browser) {
-      await browser.close();
+  return new Promise((resolve, reject) => {
+    try {
+      const doc = new PDFDocument({ 
+        size: 'LETTER',
+        margin: 50
+      });
+      
+      const chunks = [];
+      doc.on('data', chunk => chunks.push(chunk));
+      doc.on('end', () => resolve(Buffer.concat(chunks)));
+      doc.on('error', reject);
+      
+      // Extract data matching the shared template structure
+      const isPaid = invoiceData.Status === 'paid' || invoiceData.PaymentStatus === 'paid';
+      const booking = invoiceData.booking || {};
+      const subtotal = parseFloat(invoiceData.Subtotal || invoiceData.Amount || 0);
+      const platformFee = parseFloat(invoiceData.PlatformFee || 0);
+      const taxAmount = parseFloat(invoiceData.TaxAmount || 0);
+      const totalAmount = parseFloat(invoiceData.TotalAmount || invoiceData.Amount || 0);
+      
+      // Colors matching the shared template
+      const primaryGreen = '#166534';
+      const textDark = '#222222';
+      const textMuted = '#6b7280';
+      const borderColor = '#e5e7eb';
+      const bgLight = '#f9fafb';
+      
+      let yPos = 50;
+      
+      // Header
+      doc.fontSize(24).fillColor(primaryGreen).font('Helvetica-Bold').text('planbeau', 50, yPos);
+      doc.fontSize(10).fillColor(textMuted).font('Helvetica').text('Event Booking Platform', 50, yPos + 28);
+      
+      doc.fontSize(28).fillColor(textDark).font('Helvetica-Bold').text('INVOICE', 350, yPos, { align: 'right' });
+      doc.fontSize(10).fillColor(textMuted).font('Helvetica').text(`#${invoiceData.InvoiceNumber || `INV-${invoiceData.InvoiceID}`}`, 350, yPos + 32, { align: 'right' });
+      
+      // Status badge
+      yPos += 50;
+      const statusText = isPaid ? 'PAID' : 'PENDING';
+      const statusBg = isPaid ? '#dcfce7' : '#fef3c7';
+      const statusColor = isPaid ? primaryGreen : '#92400e';
+      
+      doc.roundedRect(480, yPos, 70, 22, 11).fill(statusBg);
+      doc.fontSize(10).fillColor(statusColor).font('Helvetica-Bold').text(statusText, 480, yPos + 6, { width: 70, align: 'center' });
+      
+      yPos += 50;
+      
+      // Bill To / Service Provider / Invoice Details
+      doc.fontSize(9).fillColor(textMuted).font('Helvetica-Bold')
+         .text('BILL TO', 50, yPos)
+         .text('SERVICE PROVIDER', 220, yPos)
+         .text('INVOICE DETAILS', 390, yPos);
+      
+      yPos += 18;
+      doc.fontSize(11).fillColor(textDark).font('Helvetica-Bold')
+         .text(booking.ClientName || invoiceData.ClientName || 'Client', 50, yPos)
+         .text(booking.VendorName || invoiceData.VendorName || 'Vendor', 220, yPos);
+      
+      const issueDate = invoiceData.IssueDate ? new Date(invoiceData.IssueDate).toLocaleDateString('en-CA') : new Date().toLocaleDateString('en-CA');
+      doc.fontSize(10).fillColor(textDark).font('Helvetica')
+         .text(`Issue Date: ${issueDate}`, 390, yPos)
+         .text(`Due Date: ${issueDate}`, 390, yPos + 14);
+      
+      yPos += 16;
+      if (booking.ClientEmail || invoiceData.ClientEmail) {
+        doc.fontSize(10).fillColor(textMuted).text(booking.ClientEmail || invoiceData.ClientEmail, 50, yPos);
+      }
+      
+      yPos += 40;
+      
+      // Event Details (if available)
+      if (booking.EventDate || booking.EventName || booking.EventLocation) {
+        doc.fontSize(11).fillColor(textDark).font('Helvetica-Bold').text('Event Details', 50, yPos);
+        yPos += 20;
+        doc.fontSize(10).font('Helvetica');
+        
+        if (booking.EventName) {
+          doc.fillColor(textMuted).text('Event:', 60, yPos);
+          doc.fillColor(primaryGreen).text(booking.EventName, 130, yPos);
+          yPos += 16;
+        }
+        if (booking.EventDate) {
+          doc.fillColor(textMuted).text('Date:', 60, yPos);
+          doc.fillColor(textDark).text(new Date(booking.EventDate).toLocaleDateString('en-CA', { year: 'numeric', month: 'long', day: 'numeric' }), 130, yPos);
+          yPos += 16;
+        }
+        if (booking.EventLocation) {
+          doc.fillColor(textMuted).text('Location:', 60, yPos);
+          doc.fillColor(primaryGreen).text(booking.EventLocation, 130, yPos, { width: 380 });
+          yPos += 16;
+        }
+        yPos += 20;
+      }
+      
+      // Services & Charges
+      doc.fontSize(11).fillColor(textDark).font('Helvetica-Bold').text('Services & Charges', 50, yPos);
+      yPos += 20;
+      
+      // Table header
+      doc.rect(50, yPos, 512, 25).fill(bgLight);
+      doc.fontSize(9).fillColor(textMuted).font('Helvetica-Bold')
+         .text('DESCRIPTION', 60, yPos + 8)
+         .text('QTY', 280, yPos + 8, { align: 'center', width: 50 })
+         .text('UNIT PRICE', 340, yPos + 8, { align: 'right', width: 80 })
+         .text('AMOUNT', 440, yPos + 8, { align: 'right', width: 80 });
+      
+      yPos += 35;
+      
+      // Service line item
+      const serviceName = booking.ServiceName || invoiceData.ServiceName || 'Service';
+      doc.fontSize(10).fillColor(textDark).font('Helvetica')
+         .text(serviceName, 60, yPos)
+         .text('1', 280, yPos, { align: 'center', width: 50 })
+         .text(`$${subtotal.toFixed(2)}`, 340, yPos, { align: 'right', width: 80 })
+         .text(`$${subtotal.toFixed(2)}`, 440, yPos, { align: 'right', width: 80 });
+      
+      yPos += 40;
+      doc.moveTo(50, yPos).lineTo(562, yPos).strokeColor(borderColor).stroke();
+      yPos += 20;
+      
+      // Totals
+      const totalsX = 380;
+      const valuesX = 480;
+      
+      doc.fontSize(10).fillColor(textMuted).font('Helvetica').text('Subtotal', totalsX, yPos);
+      doc.fillColor(textDark).text(`$${subtotal.toFixed(2)}`, valuesX, yPos, { align: 'right', width: 82 });
+      yPos += 18;
+      
+      if (platformFee > 0) {
+        doc.fillColor(textMuted).text('Platform Service Fee', totalsX, yPos);
+        doc.fillColor(textDark).text(`$${platformFee.toFixed(2)}`, valuesX, yPos, { align: 'right', width: 82 });
+        yPos += 18;
+      }
+      
+      if (taxAmount > 0) {
+        doc.fillColor(textMuted).text('Tax (HST 13%)', totalsX, yPos);
+        doc.fillColor(textDark).text(`$${taxAmount.toFixed(2)}`, valuesX, yPos, { align: 'right', width: 82 });
+        yPos += 25;
+      }
+      
+      doc.fontSize(11).fillColor(textDark).font('Helvetica-Bold')
+         .text('Total', totalsX, yPos)
+         .text(`$${totalAmount.toFixed(2)}`, valuesX, yPos, { align: 'right', width: 82 });
+      
+      if (isPaid) {
+        yPos += 20;
+        doc.fillColor(primaryGreen).text('Amount Paid', totalsX, yPos).text(`$${totalAmount.toFixed(2)}`, valuesX, yPos, { align: 'right', width: 82 });
+      }
+      
+      // Payment Information
+      yPos += 40;
+      if (invoiceData.TransactionID || invoiceData.PaymentMethod) {
+        doc.fontSize(11).fillColor(textDark).font('Helvetica-Bold').text('Payment Information', 50, yPos);
+        yPos += 18;
+        doc.fontSize(10).font('Helvetica').fillColor(textMuted);
+        if (invoiceData.PaymentMethod) {
+          doc.text(`Payment Method: ${invoiceData.PaymentMethod}`, 50, yPos);
+          yPos += 14;
+        }
+        if (invoiceData.TransactionID) {
+          doc.text(`Transaction ID: ${invoiceData.TransactionID}`, 50, yPos);
+        }
+      }
+      
+      // Footer
+      const footerY = doc.page.height - 60;
+      doc.fontSize(9).fillColor(textMuted)
+         .text('Thank you for using PlanBeau!', 50, footerY, { align: 'center', width: 512 })
+         .text('Questions? Contact us at support@planbeau.com', 50, footerY + 14, { align: 'center', width: 512 });
+      
+      doc.end();
+    } catch (error) {
+      reject(error);
     }
-  }
+  });
 }
 
 /**
