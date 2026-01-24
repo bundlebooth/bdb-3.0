@@ -53,6 +53,13 @@ BEGIN
 	[DeclinedReason] [nvarchar](max) NULL,
 	[ExpiredAt] [datetime] NULL,
 	[GroupID] [nvarchar](100) NULL CONSTRAINT [DF_Bookings_GroupID] DEFAULT (''),
+	[Subtotal] [decimal](10, 2) NULL,
+	[PlatformFee] [decimal](10, 2) NULL,
+	[TaxAmount] [decimal](10, 2) NULL,
+	[TaxPercent] [decimal](5, 3) NULL,
+	[TaxLabel] [nvarchar](50) NULL,
+	[ProcessingFee] [decimal](10, 2) NULL,
+	[GrandTotal] [decimal](10, 2) NULL,
 PRIMARY KEY CLUSTERED 
 (
 	[BookingID] ASC

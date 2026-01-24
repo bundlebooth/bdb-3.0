@@ -899,8 +899,8 @@ router.post('/payment-intent', async (req, res) => {
     const stripeFeePercent = commissionSettings.stripeFeePercent / 100;
     const stripeFeeFixed = commissionSettings.stripeFeeFixed;
 
-    // IMPORTANT: Fetch the actual booking amounts from the database
-    // This ensures payment matches what was calculated during booking creation
+    // Fetch booking fee breakdown from database (stored during booking creation)
+    // Falls back to calculation if columns are NULL (for older bookings)
     let subtotal, platformFee, taxAmount, processingFee, totalAmount, taxInfo, resolvedProvince;
     
     if (bookingId) {
@@ -909,41 +909,117 @@ router.post('/payment-intent', async (req, res) => {
         bookingRequest.input('BookingID', sql.Int, bookingId);
         const bookingRes = await bookingRequest.query(`
           SELECT 
-            b.TotalAmount AS Subtotal,
+            b.Subtotal,
             b.PlatformFee,
             b.TaxAmount,
+            b.TaxPercent,
+            b.TaxLabel,
             b.ProcessingFee,
             b.GrandTotal,
-            b.EventLocation
+            b.EventLocation,
+            b.TotalAmount,
+            b.EventTime,
+            b.EventEndTime,
+            b.Services
           FROM bookings.Bookings b
           WHERE b.BookingID = @BookingID
         `);
         
         if (bookingRes.recordset.length > 0) {
           const bookingData = bookingRes.recordset[0];
-          subtotal = parseFloat(bookingData.Subtotal) || 0;
-          platformFee = parseFloat(bookingData.PlatformFee) || 0;
-          taxAmount = parseFloat(bookingData.TaxAmount) || 0;
-          processingFee = parseFloat(bookingData.ProcessingFee) || 0;
-          totalAmount = parseFloat(bookingData.GrandTotal) || 0;
           
-          // Get province for tax label
+          // Get province for tax info
           const eventLocation = bookingData.EventLocation || '';
           resolvedProvince = extractProvinceFromLocation(eventLocation);
           taxInfo = getTaxInfoForProvince(resolvedProvince);
           
-          console.log(`[PaymentIntent] Using booking amounts from DB: subtotal=$${subtotal}, platformFee=$${platformFee}, tax=$${taxAmount}, processing=$${processingFee}, total=$${totalAmount}`);
+          // Use stored values if available (new bookings)
+          if (bookingData.GrandTotal != null && bookingData.Subtotal != null) {
+            subtotal = parseFloat(bookingData.Subtotal) || 0;
+            platformFee = parseFloat(bookingData.PlatformFee) || 0;
+            taxAmount = parseFloat(bookingData.TaxAmount) || 0;
+            processingFee = parseFloat(bookingData.ProcessingFee) || 0;
+            totalAmount = parseFloat(bookingData.GrandTotal) || 0;
+            
+            // Use stored tax info if available
+            if (bookingData.TaxPercent) {
+              taxInfo = {
+                rate: parseFloat(bookingData.TaxPercent),
+                label: bookingData.TaxLabel || taxInfo.label,
+                type: bookingData.TaxLabel ? bookingData.TaxLabel.split(' ')[0] : taxInfo.type
+              };
+            }
+            
+            console.log(`[PaymentIntent] Using stored booking amounts: subtotal=$${subtotal}, platformFee=$${platformFee}, tax=$${taxAmount}, processing=$${processingFee}, total=$${totalAmount}`);
+          } else {
+            // Fall back to calculation for older bookings without stored fees
+            // Calculate hours from event times
+            let totalHours = 0;
+            if (bookingData.EventTime && bookingData.EventEndTime) {
+              const startParts = bookingData.EventTime.toString().split(':');
+              const endParts = bookingData.EventEndTime.toString().split(':');
+              const startMinutes = parseInt(startParts[0]) * 60 + parseInt(startParts[1] || 0);
+              const endMinutes = parseInt(endParts[0]) * 60 + parseInt(endParts[1] || 0);
+              totalHours = (endMinutes - startMinutes) / 60;
+              if (totalHours < 0) totalHours += 24;
+            }
+            
+            // Parse services/packages and calculate subtotal
+            subtotal = 0;
+            try {
+              const services = bookingData.Services ? 
+                (typeof bookingData.Services === 'string' ? JSON.parse(bookingData.Services) : bookingData.Services) : [];
+              
+              if (Array.isArray(services) && services.length > 0) {
+                for (const svc of services) {
+                  const basePrice = parseFloat(svc.price || svc.Price || svc.BasePrice || svc.baseRate || 0);
+                  let pricingType = svc.pricingType || svc.PricingType || svc.pricingModel || svc.priceType || '';
+                  
+                  // Look up package pricing type if not in JSON
+                  if (!pricingType && svc.type === 'package' && svc.id) {
+                    try {
+                      const pkgRequest = pool.request();
+                      pkgRequest.input('PackageID', sql.Int, svc.id);
+                      const pkgRes = await pkgRequest.query('SELECT PriceType FROM vendors.Packages WHERE PackageID = @PackageID');
+                      if (pkgRes.recordset.length > 0) {
+                        pricingType = pkgRes.recordset[0].PriceType || '';
+                      }
+                    } catch (pkgErr) {
+                      console.warn('[PaymentIntent] Could not fetch package pricing type:', pkgErr.message);
+                    }
+                  }
+                  
+                  const isHourly = pricingType === 'hourly' || pricingType === 'time_based';
+                  if (isHourly && totalHours > 0) {
+                    subtotal += basePrice * totalHours;
+                  } else {
+                    subtotal += basePrice;
+                  }
+                }
+              }
+            } catch (parseErr) {
+              console.warn('[PaymentIntent] Could not parse services:', parseErr.message);
+            }
+            
+            if (subtotal === 0) {
+              subtotal = parseFloat(bookingData.TotalAmount) || 0;
+            }
+            
+            const taxPercent = taxInfo.rate;
+            platformFee = Math.round(subtotal * platformFeePercent * 100) / 100;
+            taxAmount = Math.round((subtotal + platformFee) * (taxPercent / 100) * 100) / 100;
+            processingFee = Math.round((subtotal * stripeFeePercent + stripeFeeFixed) * 100) / 100;
+            totalAmount = Math.round((subtotal + platformFee + taxAmount + processingFee) * 100) / 100;
+            
+            console.log(`[PaymentIntent] Calculated for legacy booking: hours=${totalHours}, subtotal=$${subtotal}, total=$${totalAmount}`);
+          }
         } else {
           throw new Error('Booking not found in database');
         }
       } catch (dbErr) {
-        console.warn('[PaymentIntent] Could not fetch booking amounts, falling back to calculation:', dbErr?.message);
-        // Fall back to calculation if DB fetch fails
+        console.warn('[PaymentIntent] Could not fetch booking, falling back to provided amount:', dbErr?.message);
         subtotal = Number(amount);
-        resolvedProvince = clientProvince;
-        if (!resolvedProvince) {
-          resolvedProvince = 'Ontario';
-        }
+        resolvedProvince = clientProvince || 'Ontario';
         taxInfo = getTaxInfoForProvince(resolvedProvince);
         const taxPercent = taxInfo.rate;
         platformFee = Math.round(subtotal * platformFeePercent * 100) / 100;

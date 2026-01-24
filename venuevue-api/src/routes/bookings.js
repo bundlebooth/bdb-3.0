@@ -11,6 +11,10 @@ const {
   notifyClientOfRejection,
   notifyOfBookingCancellation
 } = require('../services/emailService');
+const { 
+  getProvinceFromLocation, 
+  getTaxInfoForProvince 
+} = require('../utils/taxCalculations');
 
 // Helper to resolve booking ID (handles both public ID and numeric ID)
 function resolveBookingId(idParam) {
@@ -1270,7 +1274,18 @@ router.post('/confirmed', async (req, res) => {
     // Parse services from request to get actual service info
     let services = [];
     let primaryServiceId = null;
-    let totalAmount = requestData.Budget || 0;
+    let subtotal = 0;
+    
+    // Calculate hours from event times
+    let totalHours = 0;
+    if (requestData.EventTime && requestData.EventEndTime) {
+      const startParts = requestData.EventTime.toString().split(':');
+      const endParts = requestData.EventEndTime.toString().split(':');
+      const startMinutes = parseInt(startParts[0]) * 60 + parseInt(startParts[1] || 0);
+      const endMinutes = parseInt(endParts[0]) * 60 + parseInt(endParts[1] || 0);
+      totalHours = (endMinutes - startMinutes) / 60;
+      if (totalHours < 0) totalHours += 24; // Handle overnight events
+    }
     
     try {
       if (requestData.Services) {
@@ -1283,21 +1298,62 @@ router.post('/confirmed', async (req, res) => {
           const primaryService = services[0];
           primaryServiceId = primaryService.serviceId || primaryService.ServiceID || primaryService.id || null;
           
-          // Calculate total from services if available
-          const servicesTotal = services.reduce((sum, svc) => {
-            const price = parseFloat(svc.price || svc.Price || svc.BasePrice || 0);
-            const qty = parseInt(svc.quantity || svc.Quantity || 1, 10);
-            return sum + (price * qty);
-          }, 0);
-          
-          if (servicesTotal > 0) {
-            totalAmount = servicesTotal;
+          // Calculate subtotal with hourly pricing support
+          for (const svc of services) {
+            const basePrice = parseFloat(svc.price || svc.Price || svc.BasePrice || svc.baseRate || 0);
+            let pricingType = svc.pricingType || svc.PricingType || svc.pricingModel || svc.priceType || '';
+            
+            // Look up package pricing type if not in JSON
+            if (!pricingType && svc.type === 'package' && svc.id) {
+              try {
+                const pkgRequest = pool.request();
+                pkgRequest.input('PackageID', sql.Int, svc.id);
+                const pkgRes = await pkgRequest.query('SELECT PriceType FROM vendors.Packages WHERE PackageID = @PackageID');
+                if (pkgRes.recordset.length > 0) {
+                  pricingType = pkgRes.recordset[0].PriceType || '';
+                }
+              } catch (pkgErr) {
+                console.warn('[Booking] Could not fetch package pricing type:', pkgErr.message);
+              }
+            }
+            
+            const isHourly = pricingType === 'hourly' || pricingType === 'time_based';
+            if (isHourly && totalHours > 0) {
+              subtotal += basePrice * totalHours;
+            } else {
+              subtotal += basePrice;
+            }
           }
         }
       }
     } catch (parseErr) {
       console.warn('Could not parse services JSON:', parseErr.message);
     }
+    
+    // Fall back to Budget if no subtotal calculated
+    if (subtotal === 0) {
+      subtotal = parseFloat(requestData.Budget) || 0;
+    }
+    
+    // Calculate fee breakdown
+    const platformFeePercent = 0.05; // 5% platform fee
+    const stripeFeePercent = 0.029; // 2.9% Stripe fee
+    const stripeFeeFixed = 0.30; // $0.30 Stripe fixed fee
+    
+    // Get tax info from event location
+    const eventLocation = requestData.EventLocation || '';
+    const province = getProvinceFromLocation(eventLocation);
+    const taxInfo = getTaxInfoForProvince(province);
+    const taxPercent = taxInfo.rate;
+    
+    // Calculate fees
+    const platformFee = Math.round(subtotal * platformFeePercent * 100) / 100;
+    const taxableAmount = subtotal + platformFee;
+    const taxAmount = Math.round(taxableAmount * (taxPercent / 100) * 100) / 100;
+    const processingFee = Math.round((subtotal * stripeFeePercent + stripeFeeFixed) * 100) / 100;
+    const grandTotal = Math.round((subtotal + platformFee + taxAmount + processingFee) * 100) / 100;
+    
+    console.log(`[Booking] Fee breakdown: subtotal=$${subtotal}, platformFee=$${platformFee}, tax=$${taxAmount} (${taxInfo.label}), processing=$${processingFee}, total=$${grandTotal}`);
     
     // Create booking in Bookings table
     const request = pool.request();
@@ -1308,7 +1364,14 @@ router.post('/confirmed', async (req, res) => {
     request.input('Status', sql.NVarChar(20), 'confirmed');
     request.input('AttendeeCount', sql.Int, requestData.AttendeeCount || 1);
     request.input('SpecialRequests', sql.NVarChar(sql.MAX), requestData.SpecialRequests);
-    request.input('TotalAmount', sql.Decimal(10, 2), totalAmount);
+    request.input('TotalAmount', sql.Decimal(10, 2), subtotal); // Base subtotal for backward compatibility
+    request.input('Subtotal', sql.Decimal(10, 2), subtotal);
+    request.input('PlatformFee', sql.Decimal(10, 2), platformFee);
+    request.input('TaxAmount', sql.Decimal(10, 2), taxAmount);
+    request.input('TaxPercent', sql.Decimal(5, 3), taxPercent);
+    request.input('TaxLabel', sql.NVarChar(50), taxInfo.label);
+    request.input('ProcessingFee', sql.Decimal(10, 2), processingFee);
+    request.input('GrandTotal', sql.Decimal(10, 2), grandTotal);
 
     const result = await request.execute('bookings.sp_InsertConfirmedBooking');
 

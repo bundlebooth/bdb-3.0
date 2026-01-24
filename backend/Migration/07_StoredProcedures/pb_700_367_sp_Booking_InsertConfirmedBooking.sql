@@ -25,7 +25,14 @@ CREATE PROCEDURE [bookings].[sp_InsertConfirmedBooking]
     @EventName NVARCHAR(255) = NULL,
     @EventType NVARCHAR(100) = NULL,
     @TimeZone NVARCHAR(100) = NULL,
-    @StripePaymentIntentID NVARCHAR(100) = NULL
+    @StripePaymentIntentID NVARCHAR(100) = NULL,
+    @Subtotal DECIMAL(10,2) = NULL,
+    @PlatformFee DECIMAL(10,2) = NULL,
+    @TaxAmount DECIMAL(10,2) = NULL,
+    @TaxPercent DECIMAL(5,3) = NULL,
+    @TaxLabel NVARCHAR(50) = NULL,
+    @ProcessingFee DECIMAL(10,2) = NULL,
+    @GrandTotal DECIMAL(10,2) = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -33,13 +40,15 @@ BEGIN
     INSERT INTO bookings.Bookings (
         UserID, VendorProfileID, ServiceID, EventDate, EndDate, Status, 
         AttendeeCount, SpecialRequests, TotalAmount, EventLocation, 
-        EventName, EventType, TimeZone, StripePaymentIntentID, FullAmountPaid
+        EventName, EventType, TimeZone, StripePaymentIntentID, FullAmountPaid,
+        Subtotal, PlatformFee, TaxAmount, TaxPercent, TaxLabel, ProcessingFee, GrandTotal
     )
     OUTPUT INSERTED.BookingID
     VALUES (
         @UserID, @VendorProfileID, @ServiceID, @EventDate, @EndDate, 'confirmed', 
         @AttendeeCount, @SpecialRequests, @TotalAmount, @EventLocation,
-        @EventName, @EventType, @TimeZone, @StripePaymentIntentID, 1
+        @EventName, @EventType, @TimeZone, @StripePaymentIntentID, 1,
+        @Subtotal, @PlatformFee, @TaxAmount, @TaxPercent, @TaxLabel, @ProcessingFee, @GrandTotal
     );
 END
 GO
