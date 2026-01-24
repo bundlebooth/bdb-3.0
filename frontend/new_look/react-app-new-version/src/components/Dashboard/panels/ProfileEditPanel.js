@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { API_BASE_URL } from '../../../config';
 import { showBanner } from '../../../utils/helpers';
+import UniversalModal from '../../UniversalModal';
 import './ProfileEditPanel.css';
 
 /**
@@ -15,6 +16,13 @@ const ProfileEditPanel = ({ onClose, onSave }) => {
   const [editingField, setEditingField] = useState(null);
   const [interestOptions, setInterestOptions] = useState([]);
   const [showInterestsModal, setShowInterestsModal] = useState(false);
+  const [showLocationModal, setShowLocationModal] = useState(false);
+  const [showLanguagesModal, setShowLanguagesModal] = useState(false);
+  const [availableLanguages, setAvailableLanguages] = useState([]);
+  const [selectedLanguages, setSelectedLanguages] = useState([]);
+  const [locationSearch, setLocationSearch] = useState('');
+  const autocompleteRef = useRef(null);
+  const inputRef = useRef(null);
   
   const [formData, setFormData] = useState({
     firstName: '',
@@ -43,7 +51,37 @@ const ProfileEditPanel = ({ onClose, onSave }) => {
   useEffect(() => {
     loadProfile();
     loadInterestOptions();
+    loadLanguages();
   }, []);
+
+  // Initialize Google Places Autocomplete when location modal opens
+  useEffect(() => {
+    if (showLocationModal && inputRef.current && window.google?.maps?.places) {
+      autocompleteRef.current = new window.google.maps.places.Autocomplete(inputRef.current, {
+        types: ['(cities)']
+      });
+      
+      autocompleteRef.current.addListener('place_changed', () => {
+        const place = autocompleteRef.current.getPlace();
+        if (place.address_components) {
+          let city = '', state = '', country = '';
+          place.address_components.forEach(component => {
+            if (component.types.includes('locality')) city = component.long_name;
+            if (component.types.includes('administrative_area_level_1')) state = component.short_name;
+            if (component.types.includes('country')) country = component.long_name;
+          });
+          setFormData(prev => ({ ...prev, city, state, country }));
+          setLocationSearch(place.formatted_address || `${city}, ${state}, ${country}`);
+        }
+      });
+    }
+    
+    return () => {
+      if (autocompleteRef.current) {
+        window.google?.maps?.event?.clearInstanceListeners(autocompleteRef.current);
+      }
+    };
+  }, [showLocationModal]);
 
   const loadProfile = async () => {
     try {
@@ -80,11 +118,34 @@ const ProfileEditPanel = ({ onClose, onSave }) => {
         });
         
         setSelectedInterests(data.interests || []);
+        
+        // Parse languages from comma-separated string
+        if (profile.Languages) {
+          setSelectedLanguages(profile.Languages.split(',').map(l => l.trim()).filter(Boolean));
+        }
+        
+        // Set location search display
+        const locationParts = [profile.City, profile.State, profile.Country].filter(Boolean);
+        if (locationParts.length > 0) {
+          setLocationSearch(locationParts.join(', '));
+        }
       }
     } catch (error) {
       console.error('Error loading profile:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadLanguages = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/users/languages`);
+      if (response.ok) {
+        const data = await response.json();
+        setAvailableLanguages(data.languages || []);
+      }
+    } catch (error) {
+      console.error('Error loading languages:', error);
     }
   };
 
@@ -113,6 +174,29 @@ const ProfileEditPanel = ({ onClose, onSave }) => {
         return [...prev, { interest, category }];
       }
     });
+  };
+
+  const toggleLanguage = (langName) => {
+    setSelectedLanguages(prev => {
+      if (prev.includes(langName)) {
+        return prev.filter(l => l !== langName);
+      } else {
+        return [...prev, langName];
+      }
+    });
+  };
+
+  const saveLanguages = () => {
+    setFormData(prev => ({ ...prev, languages: selectedLanguages.join(', ') }));
+    setShowLanguagesModal(false);
+  };
+
+  const saveLocation = () => {
+    setShowLocationModal(false);
+  };
+
+  const viewProfile = () => {
+    window.open(`/host/${currentUser.id}`, '_blank');
   };
 
   const handleSave = async () => {
@@ -165,13 +249,29 @@ const ProfileEditPanel = ({ onClose, onSave }) => {
     { id: 'funFact', icon: 'lightbulb', label: 'My fun fact', placeholder: 'My fun fact' },
     { id: 'biographyTitle', icon: 'book', label: 'My biography title would be', placeholder: 'My biography title would be' },
     { id: 'obsessedWith', icon: 'heart', label: 'My obsession', placeholder: 'My obsession' },
-    { id: 'city', icon: 'globe', label: 'Where I live', placeholder: 'Where I live' },
-    { id: 'languages', icon: 'language', label: 'Languages I speak', placeholder: 'Languages I speak' },
+    { id: 'city', icon: 'globe', label: 'Where I live', placeholder: 'Where I live', modal: 'location' },
+    { id: 'languages', icon: 'language', label: 'Languages I speak', placeholder: 'Languages I speak', modal: 'languages' },
   ];
 
   const getFieldValue = (field) => {
+    if (field.id === 'city') {
+      return locationSearch || '';
+    }
+    if (field.id === 'languages') {
+      return selectedLanguages.length > 0 ? selectedLanguages.join(', ') : '';
+    }
     const actualField = field.field || field.id;
     return formData[actualField] || '';
+  };
+
+  const handleFieldClick = (field) => {
+    if (field.modal === 'location') {
+      setShowLocationModal(true);
+    } else if (field.modal === 'languages') {
+      setShowLanguagesModal(true);
+    } else {
+      setEditingField(field.id);
+    }
   };
 
   const setFieldValue = (field, value) => {
@@ -245,7 +345,7 @@ const ProfileEditPanel = ({ onClose, onSave }) => {
                   ) : (
                     <div 
                       className={`airbnb-field-display ${value ? 'has-value' : ''}`}
-                      onClick={() => setEditingField(field.id)}
+                      onClick={() => handleFieldClick(field)}
                     >
                       <i className={`fas fa-${field.icon}`}></i>
                       <span className={value ? 'field-value' : 'field-placeholder'}>
@@ -333,6 +433,9 @@ const ProfileEditPanel = ({ onClose, onSave }) => {
 
       {/* Footer */}
       <div className="airbnb-profile-footer">
+        <button className="airbnb-view-profile-btn" onClick={viewProfile}>
+          <i className="fas fa-external-link-alt"></i> View Profile
+        </button>
         <button className="airbnb-done-btn" onClick={handleSave} disabled={saving}>
           {saving ? 'Saving...' : 'Done'}
         </button>
@@ -349,32 +452,114 @@ const ProfileEditPanel = ({ onClose, onSave }) => {
               </button>
             </div>
             <div className="airbnb-modal-content">
-              {Object.entries(interestOptions).map(([category, interests]) => (
-                <div key={category} className="airbnb-interest-category">
-                  <h3>{category}</h3>
-                  <div className="airbnb-interest-options">
-                    {interests.map(opt => {
-                      const isSelected = selectedInterests.some(
-                        i => (i.Interest || i.interest || i) === opt.Interest
-                      );
-                      return (
-                        <button
-                          key={opt.InterestOptionID}
-                          type="button"
-                          className={`airbnb-interest-option ${isSelected ? 'selected' : ''}`}
-                          onClick={() => toggleInterest(opt.Interest, category)}
-                        >
-                          {opt.Icon && <i className={`fas fa-${opt.Icon}`}></i>}
-                          {opt.Interest}
-                        </button>
-                      );
-                    })}
+              {Object.keys(interestOptions).length === 0 ? (
+                <p className="no-options">Loading interests...</p>
+              ) : (
+                Object.entries(interestOptions).map(([category, interests]) => (
+                  <div key={category} className="airbnb-interest-category">
+                    <h3>{category}</h3>
+                    <div className="airbnb-interest-options">
+                      {interests.map(opt => {
+                        const isSelected = selectedInterests.some(
+                          i => (i.Interest || i.interest || i) === opt.Interest
+                        );
+                        return (
+                          <button
+                            key={opt.InterestOptionID}
+                            type="button"
+                            className={`airbnb-interest-option ${isSelected ? 'selected' : ''}`}
+                            onClick={() => toggleInterest(opt.Interest, category)}
+                          >
+                            {opt.Icon && <i className={`fas fa-${opt.Icon}`}></i>}
+                            {opt.Interest}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
             <div className="airbnb-modal-footer">
               <button className="airbnb-modal-done" onClick={() => setShowInterestsModal(false)}>
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Location Modal */}
+      {showLocationModal && (
+        <div className="airbnb-modal-overlay" onClick={() => setShowLocationModal(false)}>
+          <div className="airbnb-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="airbnb-modal-header">
+              <h2>Where do you live?</h2>
+              <button className="airbnb-modal-close" onClick={() => setShowLocationModal(false)}>
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+            <div className="airbnb-modal-content">
+              <div className="location-input-wrapper">
+                <i className="fas fa-search"></i>
+                <input
+                  ref={inputRef}
+                  type="text"
+                  placeholder="Search for a city..."
+                  value={locationSearch}
+                  onChange={(e) => setLocationSearch(e.target.value)}
+                  className="location-search-input"
+                />
+              </div>
+              {formData.city && (
+                <div className="location-preview">
+                  <i className="fas fa-map-marker-alt"></i>
+                  <span>{[formData.city, formData.state, formData.country].filter(Boolean).join(', ')}</span>
+                </div>
+              )}
+            </div>
+            <div className="airbnb-modal-footer">
+              <button className="airbnb-modal-done" onClick={saveLocation}>
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Languages Modal */}
+      {showLanguagesModal && (
+        <div className="airbnb-modal-overlay" onClick={() => setShowLanguagesModal(false)}>
+          <div className="airbnb-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="airbnb-modal-header">
+              <h2>Languages you speak</h2>
+              <button className="airbnb-modal-close" onClick={() => setShowLanguagesModal(false)}>
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+            <div className="airbnb-modal-content">
+              <div className="languages-grid">
+                {availableLanguages.map(lang => {
+                  const isSelected = selectedLanguages.includes(lang.Name);
+                  return (
+                    <button
+                      key={lang.LanguageID}
+                      type="button"
+                      className={`language-option ${isSelected ? 'selected' : ''}`}
+                      onClick={() => toggleLanguage(lang.Name)}
+                    >
+                      <span className="lang-name">{lang.Name}</span>
+                      {lang.NativeName && lang.NativeName !== lang.Name && (
+                        <span className="lang-native">{lang.NativeName}</span>
+                      )}
+                      {isSelected && <i className="fas fa-check"></i>}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="airbnb-modal-footer">
+              <button className="airbnb-modal-done" onClick={saveLanguages}>
                 Done
               </button>
             </div>

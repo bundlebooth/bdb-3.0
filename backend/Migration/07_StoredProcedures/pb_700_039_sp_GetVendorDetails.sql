@@ -103,7 +103,12 @@ BEGIN
          INNER JOIN messages.Conversations c ON c.ConversationID = m.ConversationID AND c.VendorProfileID = vp.VendorProfileID
          LEFT JOIN messages.Messages mr ON mr.ConversationID = m.ConversationID AND mr.SenderID = vp.UserID AND mr.CreatedAt > m.CreatedAt
          WHERE m.SenderID != vp.UserID
-        ) AS ResponseRating
+        ) AS ResponseRating,
+        -- Booking settings fields
+        vp.MinBookingHours,
+        vp.AdvanceNoticeHours,
+        vp.MaxCapacity,
+        vp.OffersHourlyRates
     FROM vendors.VendorProfiles vp
     LEFT JOIN users.Users u ON u.UserID = vp.UserID
     WHERE vp.VendorProfileID = @VendorProfileID;

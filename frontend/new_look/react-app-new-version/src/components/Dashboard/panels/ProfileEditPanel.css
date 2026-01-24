@@ -529,6 +529,127 @@
   background: #000;
 }
 
+/* View Profile Button */
+.airbnb-view-profile-btn {
+  padding: 12px 24px;
+  background: transparent;
+  border: 1px solid #222;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #222;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.airbnb-view-profile-btn:hover {
+  background: #f7f7f7;
+}
+
+.airbnb-profile-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+/* Location Modal Styles */
+.location-input-wrapper {
+  position: relative;
+  margin-bottom: 16px;
+}
+
+.location-input-wrapper i {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #717171;
+}
+
+.location-search-input {
+  width: 100%;
+  padding: 16px 16px 16px 44px;
+  border: 1px solid #b0b0b0;
+  border-radius: 8px;
+  font-size: 16px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.location-search-input:focus {
+  border-color: #222;
+}
+
+.location-preview {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: #f7f7f7;
+  border-radius: 8px;
+  color: #222;
+}
+
+.location-preview i {
+  color: #717171;
+}
+
+/* Languages Modal Styles */
+.languages-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.language-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  background: #fff;
+  border: 1px solid #ebebeb;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+}
+
+.language-option:hover {
+  border-color: #222;
+}
+
+.language-option.selected {
+  border-color: #222;
+  background: #f7f7f7;
+}
+
+.language-option .lang-name {
+  font-weight: 500;
+  color: #222;
+}
+
+.language-option .lang-native {
+  font-size: 12px;
+  color: #717171;
+  margin-left: 8px;
+}
+
+.language-option i {
+  color: #222;
+  font-size: 14px;
+}
+
+.no-options {
+  text-align: center;
+  color: #717171;
+  padding: 24px;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .airbnb-profile-layout {

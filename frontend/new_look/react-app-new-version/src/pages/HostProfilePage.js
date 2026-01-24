@@ -2,35 +2,12 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
-import { apiGet } from '../utils/api';
 import { PageLayout } from '../components/PageWrapper';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
-import VendorCard from '../components/VendorCard';
 import ProfileModal from '../components/ProfileModal';
-import { showBanner, formatMonthYear } from '../utils/helpers';
+import { showBanner } from '../utils/helpers';
 import './HostProfilePage.css';
-
-// Airbnb-style profile info item component
-const ProfileInfoItem = ({ icon, label, value }) => {
-  if (!value) return null;
-  return (
-    <div className="profile-info-item">
-      <i className={`fas fa-${icon}`}></i>
-      <div className="profile-info-content">
-        <span className="profile-info-label">{label}</span>
-        <span className="profile-info-value">{value}</span>
-      </div>
-    </div>
-  );
-};
-
-// Interest tag component
-const InterestTag = ({ interest, category }) => (
-  <span className="interest-tag" data-category={category}>
-    {interest}
-  </span>
-);
 
 function HostProfilePage() {
   const { hostId } = useParams();
@@ -46,6 +23,7 @@ function HostProfilePage() {
   const [currentReviewPage, setCurrentReviewPage] = useState(1);
   const [isUserProfile, setIsUserProfile] = useState(false);
   const [showAllAbout, setShowAllAbout] = useState(false);
+  const [showShareMenu, setShowShareMenu] = useState(false);
   const reviewsPerPage = 5;
 
   // Load host profile data - fetches USER data, not vendor data
@@ -119,25 +97,8 @@ function HostProfilePage() {
           }
         }
         
-        // Extract unique vendors from bookings (for clients who booked vendors)
-        const vendorMap = new Map();
-        (Array.isArray(bookingsData) ? bookingsData : []).forEach(booking => {
-          if (booking.VendorProfileID && !vendorMap.has(booking.VendorProfileID)) {
-            vendorMap.set(booking.VendorProfileID, {
-              id: booking.VendorProfileID,
-              businessName: booking.VendorBusinessName || booking.BusinessName,
-              featuredImage: booking.VendorImage || booking.FeaturedImageURL,
-              city: booking.VendorCity || booking.City,
-              state: booking.VendorState || booking.State,
-              category: booking.VendorCategory || booking.CategoryName,
-              rating: 5.0,
-              reviewCount: 0
-            });
-          }
-        });
-        
-        // Combine vendor listings with booked vendors
-        const allListings = [...vendorListings, ...Array.from(vendorMap.values())];
+        // Only show vendor listings the user OWNS (not booked vendors)
+        const allListings = [...vendorListings];
         
         // Use vendor reviews if user is a vendor, otherwise use reviews they gave
         const displayReviews = vendorReviews.length > 0 ? vendorReviews : (Array.isArray(reviewsData) ? reviewsData : []);
@@ -219,8 +180,6 @@ function HostProfilePage() {
     loadHostProfile();
   }, [loadHostProfile]);
 
-  const formatDate = formatMonthYear;
-
   // Pagination for reviews
   const totalPages = Math.ceil(reviews.length / reviewsPerPage);
   const paginatedReviews = reviews.slice(
@@ -265,6 +224,45 @@ function HostProfilePage() {
     );
   }
 
+  // Calculate years hosting
+  const getYearsHosting = () => {
+    if (!host.memberSince) return null;
+    const date = new Date(host.memberSince);
+    if (isNaN(date.getTime())) return null;
+    const years = Math.floor((new Date() - date) / (1000 * 60 * 60 * 24 * 365));
+    return years > 0 ? years : null;
+  };
+
+  const yearsHosting = getYearsHosting();
+
+  // Get average rating
+  const getAverageRating = () => {
+    if (reviews.length === 0) return null;
+    const sum = reviews.reduce((acc, r) => acc + (r.Rating || 5), 0);
+    return (sum / reviews.length).toFixed(1);
+  };
+
+  const avgRating = getAverageRating();
+
+  // Format member since date
+  const formatMemberSince = () => {
+    if (!host.memberSince) return null;
+    const date = new Date(host.memberSince);
+    if (isNaN(date.getTime())) return null;
+    return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  };
+
+  // Get first name
+  const firstName = host.name?.split(' ')[0] || 'User';
+
+  // Check if there are any "about" details to show
+  const hasAboutDetails = enhancedProfile && (
+    enhancedProfile.Work || enhancedProfile.BiographyTitle || enhancedProfile.Pets ||
+    enhancedProfile.School || enhancedProfile.SpendTimeDoing || enhancedProfile.Languages ||
+    enhancedProfile.DecadeBorn || enhancedProfile.ObsessedWith || enhancedProfile.FunFact ||
+    enhancedProfile.UselessSkill
+  );
+
   return (
     <PageLayout variant="fullWidth" pageClassName="host-profile-page-layout">
       <Header 
@@ -281,278 +279,315 @@ function HostProfilePage() {
       
       <div className="host-profile-page">
         <div className="host-profile-container">
-          {/* Airbnb-style Two Column Layout */}
-          <div className="profile-layout">
-            {/* Left Column - Profile Card */}
-            <div className="profile-left-column">
-              <div className="profile-card">
-                <div className="profile-card-header">
-                  <div className="profile-avatar-large">
-                    <img 
-                      src={host.profileImage || 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png'}
-                      alt={host.name}
-                      onError={(e) => { e.target.src = 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png'; }}
-                    />
-                    {host.isSuperhost && (
-                      <div className="superhost-badge-large">
-                        <i className="fas fa-award"></i>
-                      </div>
-                    )}
-                  </div>
-                  <h1 className="profile-name">{host.name}</h1>
-                  {enhancedProfile?.BiographyTitle && (
-                    <p className="profile-title">{enhancedProfile.BiographyTitle}</p>
+          
+          {/* Hero Section - Airbnb Style */}
+          <div className="host-hero-section">
+            
+            {/* Left - Profile Card - Airbnb Style */}
+            <div className="host-profile-card">
+              <div className="host-card-left">
+                <div className="host-card-avatar">
+                  <img 
+                    src={host.profileImage || 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png'}
+                    alt={host.name}
+                    onError={(e) => { e.target.src = 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png'; }}
+                  />
+                  {host.isVerified && (
+                    <span className="host-verified-badge">
+                      <i className="fas fa-shield-alt"></i>
+                    </span>
                   )}
                 </div>
-                
-                <div className="profile-card-stats">
-                  <div className="profile-stat-item">
-                    <span className="stat-number">{host.reviewCount || 0}</span>
-                    <span className="stat-label">Reviews</span>
-                  </div>
-                  <div className="profile-stat-divider"></div>
-                  <div className="profile-stat-item">
-                    <span className="stat-number">{host.responseRating || '5.0'}</span>
-                    <span className="stat-label">Rating</span>
-                  </div>
-                  <div className="profile-stat-divider"></div>
-                  <div className="profile-stat-item">
-                    <span className="stat-number">{enhancedProfile?.MemberSince || new Date(host.memberSince).getFullYear()}</span>
-                    <span className="stat-label">Member since</span>
-                  </div>
+                <h1 className="host-card-name">{host.name}</h1>
+                {host.isSuperhost && (
+                  <span className="host-superhost-badge">
+                    <i className="fas fa-award"></i> Superhost
+                  </span>
+                )}
+              </div>
+              
+              <div className="host-card-right">
+                <div className="host-card-stat">
+                  <span className="host-card-stat-value">{reviews.length}</span>
+                  <span className="host-card-stat-label">Reviews</span>
                 </div>
-
-                {/* Verifications */}
-                <div className="profile-verifications">
-                  <h3><i className="fas fa-shield-alt"></i> {host.name}'s confirmed information</h3>
-                  <ul className="verification-list">
-                    {host.isEmailConfirmed && (
-                      <li><i className="fas fa-check"></i> Email address</li>
-                    )}
-                    {host.isPhoneConfirmed && (
-                      <li><i className="fas fa-check"></i> Phone number</li>
-                    )}
-                    {host.isVerified && (
-                      <li><i className="fas fa-check"></i> Identity</li>
-                    )}
-                  </ul>
+                <div className="host-card-stat-divider"></div>
+                <div className="host-card-stat">
+                  <span className="host-card-stat-value">{avgRating || '5.0'}<i className="fas fa-star"></i></span>
+                  <span className="host-card-stat-label">Rating</span>
+                </div>
+                <div className="host-card-stat-divider"></div>
+                <div className="host-card-stat">
+                  <span className="host-card-stat-value">{yearsHosting || 1}</span>
+                  <span className="host-card-stat-label">{yearsHosting === 1 ? 'Year hosting' : 'Years hosting'}</span>
                 </div>
               </div>
             </div>
 
-            {/* Right Column - About & Details */}
-            <div className="profile-right-column">
-              {/* About Section */}
-              <div className="profile-about-section">
-                <h2>About {host.name}</h2>
-                
-                {/* Quick Info Grid - Airbnb style */}
-                <div className="profile-quick-info">
-                  <ProfileInfoItem 
-                    icon="briefcase" 
-                    label="My work" 
-                    value={enhancedProfile?.Work} 
-                  />
-                  <ProfileInfoItem 
-                    icon="map-marker-alt" 
-                    label="Lives in" 
-                    value={enhancedProfile?.City && enhancedProfile?.Country 
-                      ? `${enhancedProfile.City}, ${enhancedProfile.Country}` 
-                      : enhancedProfile?.City || enhancedProfile?.Country} 
-                  />
-                  <ProfileInfoItem 
-                    icon="globe" 
-                    label="Speaks" 
-                    value={enhancedProfile?.Languages} 
-                  />
-                  <ProfileInfoItem 
-                    icon="graduation-cap" 
-                    label="Where I went to school" 
-                    value={enhancedProfile?.School} 
-                  />
-                  <ProfileInfoItem 
-                    icon="birthday-cake" 
-                    label="Born in the" 
-                    value={enhancedProfile?.DecadeBorn} 
-                  />
-                  <ProfileInfoItem 
-                    icon="heart" 
-                    label="Obsessed with" 
-                    value={enhancedProfile?.ObsessedWith} 
-                  />
-                  <ProfileInfoItem 
-                    icon="paw" 
-                    label="Pets" 
-                    value={enhancedProfile?.Pets} 
-                  />
-                  <ProfileInfoItem 
-                    icon="clock" 
-                    label="I spend too much time" 
-                    value={enhancedProfile?.SpendTimeDoing} 
-                  />
-                  <ProfileInfoItem 
-                    icon="lightbulb" 
-                    label="Fun fact" 
-                    value={enhancedProfile?.FunFact} 
-                  />
-                  <ProfileInfoItem 
-                    icon="magic" 
-                    label="My most useless skill" 
-                    value={enhancedProfile?.UselessSkill} 
-                  />
-                </div>
-
-                {/* Bio */}
-                {(host.bio || enhancedProfile?.Bio) && (
-                  <div className="profile-bio">
-                    <p className={!showAllAbout && (host.bio || enhancedProfile?.Bio || '').length > 300 ? 'truncated' : ''}>
-                      {host.bio || enhancedProfile?.Bio || `Welcome! I'm ${host.name}, and I'm passionate about helping create memorable events.`}
-                    </p>
-                    {(host.bio || enhancedProfile?.Bio || '').length > 300 && (
-                      <button className="show-more-btn" onClick={() => setShowAllAbout(!showAllAbout)}>
-                        {showAllAbout ? 'Show less' : 'Show more'} <i className={`fas fa-chevron-${showAllAbout ? 'up' : 'down'}`}></i>
-                      </button>
-                    )}
+            {/* Right - About Section */}
+            <div className="host-about-section">
+              <h2 className="host-about-title">About {firstName}</h2>
+              
+              {/* Quick Info */}
+              <div className="host-quick-info">
+                {(enhancedProfile?.Work || enhancedProfile?.BiographyTitle) && (
+                  <div className="host-quick-item">
+                    <i className="fas fa-briefcase"></i>
+                    <span>My work: {enhancedProfile?.Work || enhancedProfile?.BiographyTitle}</span>
                   </div>
                 )}
-
-                {/* Favorite Quote */}
-                {enhancedProfile?.FavoriteQuote && (
-                  <blockquote className="profile-quote">
-                    <i className="fas fa-quote-left"></i>
-                    {enhancedProfile.FavoriteQuote}
-                  </blockquote>
+                {enhancedProfile?.Languages && (
+                  <div className="host-quick-item">
+                    <i className="fas fa-globe"></i>
+                    <span>Speaks {enhancedProfile.Languages}</span>
+                  </div>
                 )}
-
-                {/* Interests */}
-                {enhancedProfile?.Interests && enhancedProfile.Interests.length > 0 && (
-                  <div className="profile-interests">
-                    <h3>What {host.name} is into</h3>
-                    <div className="interests-grid">
-                      {enhancedProfile.Interests.map((interest, idx) => (
-                        <InterestTag 
-                          key={idx} 
-                          interest={interest.Interest || interest} 
-                          category={interest.Category} 
-                        />
-                      ))}
-                    </div>
+                {(enhancedProfile?.City || enhancedProfile?.Country) && (
+                  <div className="host-quick-item">
+                    <i className="fas fa-map-marker-alt"></i>
+                    <span>Lives in {[enhancedProfile?.City, enhancedProfile?.Country].filter(Boolean).join(', ')}</span>
+                  </div>
+                )}
+                {host.isVerified && (
+                  <div className="host-quick-item verified">
+                    <i className="fas fa-check-circle"></i>
+                    <span>Identity verified</span>
                   </div>
                 )}
               </div>
+              
+              {/* Bio */}
+              {(host.bio || enhancedProfile?.Bio) && (
+                <p className="host-bio">{host.bio || enhancedProfile?.Bio}</p>
+              )}
+            </div>
+          </div>
 
-              {/* Listings Section */}
-              <div className="host-listings-section">
-                <h2>{isUserProfile ? 'Vendors worked with' : `${host.name}'s ${listings.length} listing${listings.length !== 1 ? 's' : ''}`}</h2>
+          {/* Main Content */}
+          <div className="host-content">
+            
+            {/* More About Section */}
+            {hasAboutDetails && (
+              <section className="host-section">
+                <h2 className="host-section-title">More about {firstName}</h2>
+                <div className="host-more-grid">
+                  {enhancedProfile?.Pets && (
+                    <div className="host-more-card">
+                      <i className="fas fa-paw"></i>
+                      <div>
+                        <span className="host-more-label">Pets</span>
+                        <span className="host-more-value">{enhancedProfile.Pets}</span>
+                      </div>
+                    </div>
+                  )}
+                  {enhancedProfile?.School && (
+                    <div className="host-more-card">
+                      <i className="fas fa-graduation-cap"></i>
+                      <div>
+                        <span className="host-more-label">Where I went to school</span>
+                        <span className="host-more-value">{enhancedProfile.School}</span>
+                      </div>
+                    </div>
+                  )}
+                  {enhancedProfile?.SpendTimeDoing && (
+                    <div className="host-more-card">
+                      <i className="fas fa-hourglass-half"></i>
+                      <div>
+                        <span className="host-more-label">I spend too much time</span>
+                        <span className="host-more-value">{enhancedProfile.SpendTimeDoing}</span>
+                      </div>
+                    </div>
+                  )}
+                  {enhancedProfile?.DecadeBorn && (
+                    <div className="host-more-card">
+                      <i className="fas fa-birthday-cake"></i>
+                      <div>
+                        <span className="host-more-label">Born in the</span>
+                        <span className="host-more-value">{enhancedProfile.DecadeBorn}</span>
+                      </div>
+                    </div>
+                  )}
+                  {enhancedProfile?.ObsessedWith && (
+                    <div className="host-more-card">
+                      <i className="fas fa-heart"></i>
+                      <div>
+                        <span className="host-more-label">Obsessed with</span>
+                        <span className="host-more-value">{enhancedProfile.ObsessedWith}</span>
+                      </div>
+                    </div>
+                  )}
+                  {enhancedProfile?.FunFact && (
+                    <div className="host-more-card">
+                      <i className="fas fa-lightbulb"></i>
+                      <div>
+                        <span className="host-more-label">Fun fact</span>
+                        <span className="host-more-value">{enhancedProfile.FunFact}</span>
+                      </div>
+                    </div>
+                  )}
+                  {enhancedProfile?.UselessSkill && (
+                    <div className="host-more-card">
+                      <i className="fas fa-magic"></i>
+                      <div>
+                        <span className="host-more-label">My most useless skill</span>
+                        <span className="host-more-value">{enhancedProfile.UselessSkill}</span>
+                      </div>
+                    </div>
+                  )}
+                  {enhancedProfile?.FavoriteQuote && (
+                    <div className="host-more-card quote-card">
+                      <i className="fas fa-quote-left"></i>
+                      <div>
+                        <span className="host-more-label">Favorite quote</span>
+                        <span className="host-more-value">"{enhancedProfile.FavoriteQuote}"</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </section>
+            )}
+
+            {/* Listings Section */}
+            {listings.filter(l => l.businessName).length > 0 && (
+              <section className="host-section">
+                <h2 className="host-section-title">{firstName}'s listings</h2>
                 <div className="host-listings-grid">
-                  {listings.map((listing) => (
-                    <div 
-                      key={listing.id} 
-                      className="host-listing-card"
-                      onClick={() => navigate(`/vendor/${listing.id}`)}
-                    >
-                      <div className="listing-image">
+                  {listings.filter(l => l.businessName).map((listing) => (
+                    <div key={listing.id} className="host-listing-card" onClick={() => navigate(`/vendor/${listing.id}`)}>
+                      <div className="host-listing-image">
                         <img 
-                          src={listing.featuredImage || 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png'}
-                          alt={listing.businessName}
-                          onError={(e) => { e.target.src = 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png'; }}
+                          src={listing.featuredImage || 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png'} 
+                          alt={listing.businessName} 
+                          onError={(e) => { e.target.src = 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png'; }} 
                         />
                       </div>
-                      <div className="listing-info">
-                        <h3>{listing.businessName}</h3>
-                        <p className="listing-location">{listing.city}, {listing.state}</p>
+                      <div className="host-listing-content">
+                        <div className="host-listing-rating">
+                          <i className="fas fa-star"></i>
+                          <span>{listing.rating?.toFixed(1) || '5.0'}</span>
+                          <span className="host-listing-reviews">({listing.reviewCount || 0})</span>
+                        </div>
+                        <h4>{listing.businessName}</h4>
+                        <p>{listing.city}{listing.state ? `, ${listing.state}` : ''}</p>
+                        {listing.category && <span className="host-listing-category">{listing.category}</span>}
                       </div>
                     </div>
                   ))}
                 </div>
-              </div>
+              </section>
+            )}
+
+              {/* Interests Section */}
+              {enhancedProfile?.Interests && enhancedProfile.Interests.length > 0 && (
+                <section className="host-section">
+                  <h2 className="host-section-title">Ask {firstName} about</h2>
+                  <div className="host-interests">
+                    {enhancedProfile.Interests.map((interest, i) => (
+                      <span key={i} className="host-interest-tag">
+                        {interest.Interest || interest}
+                      </span>
+                    ))}
+                  </div>
+                </section>
+              )}
 
               {/* Reviews Section */}
-              <div className="host-reviews-section">
-                <h2>{reviews.length} review{reviews.length !== 1 ? 's' : ''}</h2>
+              <section className="host-section">
+                <h2 className="host-section-title">
+                  <i className="fas fa-star"></i> {reviews.length} review{reviews.length !== 1 ? 's' : ''}
+                </h2>
                 
                 {paginatedReviews.length > 0 ? (
-                  <div className="host-reviews-list">
-                    {paginatedReviews.map((review, index) => (
-                      <div key={index} className="host-review-item">
-                        <div className="review-header">
-                          <div className="reviewer-avatar">
-                            <img 
-                              src={review.ReviewerImage || 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png'}
-                              alt={review.ReviewerName || 'Reviewer'}
-                              onError={(e) => { e.target.src = 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png'; }}
-                            />
+                  <div style={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: 'repeat(2, 1fr)', 
+                    gap: '2rem 3rem'
+                  }}>
+                    {paginatedReviews.map((review, i) => (
+                      <div key={i}>
+                        {/* Reviewer Info */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+                          <div style={{ 
+                            width: '48px', 
+                            height: '48px', 
+                            borderRadius: '50%', 
+                            backgroundImage: review.ReviewerImage ? `url(${review.ReviewerImage})` : 'none',
+                            backgroundColor: review.ReviewerImage ? 'transparent' : '#222', 
+                            backgroundSize: 'cover',
+                            backgroundPosition: 'center',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: 'white',
+                            fontWeight: 600,
+                            fontSize: '1.1rem',
+                            flexShrink: 0
+                          }}>
+                            {!review.ReviewerImage && (review.ReviewerName?.charAt(0) || 'G')}
                           </div>
-                          <div className="reviewer-info">
-                            <div className="reviewer-name">{review.ReviewerName || 'Anonymous'}</div>
-                            <div className="review-meta">
-                              <span className="review-rating">
-                                {[...Array(5)].map((_, i) => (
-                                  <i 
-                                    key={i} 
-                                    className={`fas fa-star ${i < (review.Rating || 5) ? 'filled' : ''}`}
-                                  ></i>
-                                ))}
-                              </span>
-                              <span className="review-date">
-                                {review.CreatedAt ? new Date(review.CreatedAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'Recently'}
-                              </span>
-                              {review.VendorName && (
-                                <span className="review-listing">• {review.VendorName}</span>
-                              )}
+                          <div>
+                            <div style={{ fontWeight: 600, color: '#222', fontSize: '1rem' }}>
+                              {review.ReviewerName || 'Guest'}
                             </div>
                           </div>
                         </div>
-                        <p className="review-content">{review.Comment || review.ReviewText || 'Great experience!'}</p>
+
+                        {/* Rating and Date */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                          <span style={{ color: '#222', fontSize: '0.85rem' }}>
+                            {'★'.repeat(review.Rating || 5)}
+                          </span>
+                          <span style={{ color: '#717171', fontSize: '0.85rem' }}>·</span>
+                          <span style={{ color: '#717171', fontSize: '0.85rem' }}>
+                            {review.CreatedAt ? (() => {
+                              const date = new Date(review.CreatedAt);
+                              const now = new Date();
+                              const diffMs = now - date;
+                              const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                              if (diffDays < 7) return 'recently';
+                              if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+                              if (diffDays < 365) return `${Math.floor(diffDays / 30)} months ago`;
+                              return `${Math.floor(diffDays / 365)} years ago`;
+                            })() : 'recently'}
+                          </span>
+                        </div>
+
+                        {/* Review Text */}
+                        <div style={{ 
+                          color: '#222', 
+                          fontSize: '1rem', 
+                          lineHeight: 1.5,
+                          display: '-webkit-box',
+                          WebkitLineClamp: 4,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden'
+                        }}>
+                          {review.Comment || review.ReviewText || 'Great experience!'}
+                        </div>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="no-reviews">No reviews yet.</p>
-                )}
-
-                {/* Pagination */}
-                {totalPages > 1 && (
-                  <div className="reviews-pagination">
-                    {[...Array(totalPages)].map((_, i) => (
-                      <button
-                        key={i}
-                        className={`pagination-btn ${currentReviewPage === i + 1 ? 'active' : ''}`}
-                        onClick={() => setCurrentReviewPage(i + 1)}
-                      >
-                        {i + 1}
-                      </button>
-                    ))}
-                    {totalPages > 5 && currentReviewPage < totalPages - 2 && (
-                      <>
-                        <span className="pagination-ellipsis">...</span>
-                        <button
-                          className="pagination-btn"
-                          onClick={() => setCurrentReviewPage(totalPages)}
-                        >
-                          {totalPages}
-                        </button>
-                      </>
-                    )}
-                    {currentReviewPage < totalPages && (
-                      <button
-                        className="pagination-btn pagination-next"
-                        onClick={() => setCurrentReviewPage(prev => prev + 1)}
-                      >
-                        <i className="fas fa-chevron-right"></i>
-                      </button>
-                    )}
+                  <div className="host-no-reviews">
+                    <i className="fas fa-comment-slash"></i>
+                    <p>No reviews yet</p>
                   </div>
                 )}
-              </div>
+                
+                {reviews.length > reviewsPerPage && (
+                  <button className="host-show-more-btn" onClick={() => setCurrentReviewPage(p => p < totalPages ? p + 1 : 1)}>
+                    Show all {reviews.length} reviews
+                  </button>
+                )}
+              </section>
 
-              {/* Report Link */}
-              <div className="host-report-section">
-                <button className="report-link">
-                  <i className="fas fa-flag"></i> Report user
-                </button>
-              </div>
+            {/* Report Actions */}
+            <div className="host-report-section">
+              <button className="host-report-btn">
+                <i className="fas fa-flag"></i> Report this profile
+              </button>
             </div>
+
           </div>
         </div>
       </div>

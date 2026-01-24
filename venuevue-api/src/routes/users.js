@@ -1912,6 +1912,18 @@ router.post('/cookie-consent', async (req, res) => {
 
 // ==================== USER PROFILES ENDPOINTS (Airbnb-style) ====================
 
+// Get available languages (MUST be before /:id routes)
+router.get('/languages', async (req, res) => {
+  try {
+    const pool = await poolPromise;
+    const result = await pool.request().execute('admin.sp_GetLanguages');
+    res.json({ success: true, languages: result.recordset || [] });
+  } catch (err) {
+    console.error('Get languages error:', err);
+    res.status(500).json({ success: false, message: 'Failed to get languages', error: err.message });
+  }
+});
+
 // Get available interest options (MUST be before /:id routes to avoid matching 'interest-options' as an ID)
 router.get('/interest-options', async (req, res) => {
   try {
