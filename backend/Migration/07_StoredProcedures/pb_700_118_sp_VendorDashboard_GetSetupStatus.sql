@@ -21,7 +21,7 @@ BEGIN
     -- Get vendor profile
     SELECT 
         VendorProfileID, BusinessName, BusinessEmail, BusinessPhone, Address, LogoURL,
-        DepositRequirements, PaymentMethods, PaymentTerms, LicenseNumber, InsuranceVerified,
+        LicenseNumber, InsuranceVerified,
         IsVerified, IsCompleted, AcceptingBookings, GooglePlaceID,
         IsPremium, IsEcoFriendly, IsAwardWinning, IsLastMinute, IsCertified, IsInsured,
         StripeAccountID

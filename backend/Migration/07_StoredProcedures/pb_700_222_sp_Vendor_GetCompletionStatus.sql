@@ -29,8 +29,6 @@ BEGIN
         vp.State,
         vp.GooglePlaceId,
         vp.CancellationPolicy,
-        vp.DepositRequirements,
-        vp.PaymentTerms,
         (SELECT TOP 1 Category FROM vendors.VendorCategories WHERE VendorProfileID = @VendorProfileID AND IsPrimary = 1) AS PrimaryCategory,
         (SELECT COUNT(*) FROM vendors.VendorSelectedServices WHERE VendorProfileID = @VendorProfileID) AS ServiceCount,
         (SELECT COUNT(*) FROM vendors.VendorFeatures WHERE VendorProfileID = @VendorProfileID) AS FeatureCount,

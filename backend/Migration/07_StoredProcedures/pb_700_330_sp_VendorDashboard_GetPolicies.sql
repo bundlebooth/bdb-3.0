@@ -18,7 +18,7 @@ AS
 BEGIN
     SET NOCOUNT ON;
     
-    SELECT DepositRequirements, CancellationPolicy, ReschedulingPolicy, PaymentMethods, PaymentTerms
+    SELECT CancellationPolicy, ReschedulingPolicy
     FROM vendors.VendorProfiles WHERE VendorProfileID = @VendorProfileID;
 END
 GO

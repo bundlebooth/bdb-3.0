@@ -14,21 +14,15 @@ GO
 
 CREATE PROCEDURE [vendors].[sp_UpdatePolicies]
     @VendorProfileID INT,
-    @DepositRequirements NVARCHAR(MAX) = NULL,
     @CancellationPolicy NVARCHAR(MAX) = NULL,
-    @ReschedulingPolicy NVARCHAR(MAX) = NULL,
-    @PaymentMethods NVARCHAR(MAX) = NULL,
-    @PaymentTerms NVARCHAR(MAX) = NULL
+    @ReschedulingPolicy NVARCHAR(MAX) = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
     
     UPDATE vendors.VendorProfiles 
-    SET DepositRequirements = @DepositRequirements,
-        CancellationPolicy = @CancellationPolicy,
+    SET CancellationPolicy = @CancellationPolicy,
         ReschedulingPolicy = @ReschedulingPolicy,
-        PaymentMethods = @PaymentMethods,
-        PaymentTerms = @PaymentTerms,
         UpdatedAt = GETDATE()
     WHERE VendorProfileID = @VendorProfileID;
     

@@ -19,7 +19,7 @@ BEGIN
     SET NOCOUNT ON;
     
     SELECT VendorProfileID, BusinessName, BusinessEmail, BusinessPhone, Address, LogoURL,
-           DepositRequirements, PaymentMethods, PaymentTerms, LicenseNumber, InsuranceVerified,
+           LicenseNumber, InsuranceVerified,
            IsVerified, IsCompleted, AcceptingBookings, GooglePlaceID,
            IsPremium, IsEcoFriendly, IsAwardWinning, IsLastMinute, IsCertified, IsInsured
     FROM vendors.VendorProfiles WHERE UserID = @UserID;
