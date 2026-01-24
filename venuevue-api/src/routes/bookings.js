@@ -904,9 +904,6 @@ router.post('/requests/send', async (req, res) => {
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + 24);
 
-    // Use budget (calculated subtotal from frontend) or package price as fallback
-    const finalBudget = budget || packagePrice || null;
-    
     // Build services JSON - include both services and package if selected
     let allItems = [];
     if (services && Array.isArray(services) && services.length > 0) {
@@ -929,6 +926,69 @@ router.post('/requests/send', async (req, res) => {
     }
     const servicesJson = allItems.length > 0 ? JSON.stringify(allItems) : null;
 
+    // Calculate hours from event times
+    let totalHours = 0;
+    if (eventTime && eventEndTime) {
+      const startParts = eventTime.split(':');
+      const endParts = eventEndTime.split(':');
+      const startMinutes = parseInt(startParts[0]) * 60 + parseInt(startParts[1] || 0);
+      const endMinutes = parseInt(endParts[0]) * 60 + parseInt(endParts[1] || 0);
+      totalHours = (endMinutes - startMinutes) / 60;
+      if (totalHours < 0) totalHours += 24; // Handle overnight events
+    }
+
+    // Calculate subtotal with hourly pricing support
+    let subtotal = 0;
+    for (const item of allItems) {
+      const basePrice = parseFloat(item.price || 0);
+      let pricingType = item.pricingModel || item.pricingType || '';
+      
+      // Look up package pricing type if not provided
+      if (!pricingType && item.type === 'package' && item.id) {
+        try {
+          const pkgRequest = pool.request();
+          pkgRequest.input('PackageID', sql.Int, item.id);
+          const pkgRes = await pkgRequest.query('SELECT PriceType FROM vendors.Packages WHERE PackageID = @PackageID');
+          if (pkgRes.recordset.length > 0) {
+            pricingType = pkgRes.recordset[0].PriceType || '';
+          }
+        } catch (pkgErr) {
+          console.warn('[BookingRequest] Could not fetch package pricing type:', pkgErr.message);
+        }
+      }
+      
+      const isHourly = pricingType === 'hourly' || pricingType === 'time_based';
+      if (isHourly && totalHours > 0) {
+        subtotal += basePrice * totalHours;
+      } else {
+        subtotal += basePrice;
+      }
+    }
+
+    // Fall back to budget if no subtotal calculated
+    if (subtotal === 0) {
+      subtotal = parseFloat(budget) || parseFloat(packagePrice) || 0;
+    }
+
+    // Calculate fee breakdown
+    const platformFeePercent = 0.05; // 5% platform fee
+    const stripeFeePercent = 0.029; // 2.9% Stripe fee
+    const stripeFeeFixed = 0.30; // $0.30 Stripe fixed fee
+
+    // Get tax info from event location
+    const province = getProvinceFromLocation(eventLocation || '');
+    const taxInfo = getTaxInfoForProvince(province);
+    const taxPercent = taxInfo.rate;
+
+    // Calculate fees
+    const platformFee = Math.round(subtotal * platformFeePercent * 100) / 100;
+    const taxableAmount = subtotal + platformFee;
+    const taxAmount = Math.round(taxableAmount * (taxPercent / 100) * 100) / 100;
+    const processingFee = Math.round((subtotal * stripeFeePercent + stripeFeeFixed) * 100) / 100;
+    const grandTotal = Math.round((subtotal + platformFee + taxAmount + processingFee) * 100) / 100;
+
+    console.log(`[BookingRequest] Fee breakdown: subtotal=$${subtotal}, platformFee=$${platformFee}, tax=$${taxAmount} (${taxInfo.label}), processing=$${processingFee}, total=$${grandTotal}`);
+
     request.input('UserID', sql.Int, userId);
     request.input('VendorProfileID', sql.Int, vendorProfileId);
     request.input('EventDate', sql.VarChar(10), eventDate || '');
@@ -936,7 +996,7 @@ router.post('/requests/send', async (req, res) => {
     request.input('EventEndTime', sql.VarChar(8), eventEndTime || '');
     request.input('EventLocation', sql.NVarChar(500), eventLocation || '');
     request.input('AttendeeCount', sql.Int, attendeeCount || 1);
-    request.input('Budget', sql.Decimal(10, 2), finalBudget);
+    request.input('Budget', sql.Decimal(10, 2), subtotal);
     request.input('Services', sql.NVarChar(sql.MAX), servicesJson || '[]');
     request.input('EventName', sql.NVarChar(255), eventName || 'Booking');
     request.input('EventType', sql.NVarChar(100), eventType || '');
@@ -944,6 +1004,13 @@ router.post('/requests/send', async (req, res) => {
     request.input('Status', sql.NVarChar(50), 'pending');
     request.input('ExpiresAt', sql.DateTime, expiresAt);
     request.input('SpecialRequests', sql.NVarChar(sql.MAX), specialRequestText || '');
+    request.input('Subtotal', sql.Decimal(10, 2), subtotal);
+    request.input('PlatformFee', sql.Decimal(10, 2), platformFee);
+    request.input('TaxAmount', sql.Decimal(10, 2), taxAmount);
+    request.input('TaxPercent', sql.Decimal(5, 3), taxPercent);
+    request.input('TaxLabel', sql.NVarChar(50), taxInfo.label);
+    request.input('ProcessingFee', sql.Decimal(10, 2), processingFee);
+    request.input('GrandTotal', sql.Decimal(10, 2), grandTotal);
 
     const result = await request.execute('bookings.sp_InsertRequest');
 

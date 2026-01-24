@@ -30,7 +30,14 @@ CREATE PROCEDURE [bookings].[sp_InsertRequest]
     @EventType NVARCHAR(100),
     @TimeZone NVARCHAR(100),
     @Status NVARCHAR(50) = 'pending',
-    @ExpiresAt DATETIME = NULL
+    @ExpiresAt DATETIME = NULL,
+    @Subtotal DECIMAL(10,2) = NULL,
+    @PlatformFee DECIMAL(10,2) = NULL,
+    @TaxAmount DECIMAL(10,2) = NULL,
+    @TaxPercent DECIMAL(5,3) = NULL,
+    @TaxLabel NVARCHAR(50) = NULL,
+    @ProcessingFee DECIMAL(10,2) = NULL,
+    @GrandTotal DECIMAL(10,2) = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -104,7 +111,8 @@ BEGIN
         BookingDate, EventDate, EventTime, EventEndTime,
         EventLocation, EventName, EventType, TimeZone,
         AttendeeCount, Budget, TotalAmount, Services, SpecialRequests,
-        Status, ExpiresAt, GroupID, CreatedAt, UpdatedAt
+        Status, ExpiresAt, GroupID, CreatedAt, UpdatedAt,
+        Subtotal, PlatformFee, TaxAmount, TaxPercent, TaxLabel, ProcessingFee, GrandTotal
     )
     VALUES (
         @UserID, @VendorProfileID, NULL,
@@ -118,14 +126,15 @@ BEGIN
         @TimeZone,
         @AttendeeCount,
         @Budget,
-        @Budget,
+        @Subtotal,
         @Services,
         @SpecialRequests,
         @Status,
         @ExpiresAt,
         '',
         GETDATE(),
-        GETDATE()
+        GETDATE(),
+        @Subtotal, @PlatformFee, @TaxAmount, @TaxPercent, @TaxLabel, @ProcessingFee, @GrandTotal
     );
 
     SET @BookingID = SCOPE_IDENTITY();
