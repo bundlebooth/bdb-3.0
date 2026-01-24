@@ -1074,7 +1074,7 @@ router.post('/requests/send', async (req, res) => {
       notifyVendorOfNewRequest(newRequest.RequestID, userId, vendorProfileId, {
         eventDate,
         location: eventLocation,
-        budget: finalBudget,
+        budget: subtotal,
         serviceName,
         startTime: eventTime,
         endTime: eventEndTime,
