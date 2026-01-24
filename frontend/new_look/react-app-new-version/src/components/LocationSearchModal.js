@@ -273,6 +273,23 @@ const LocationSearchModal = ({ isOpen, onClose, onApply, onUseCurrentLocation, i
   };
 
   const handleApply = () => {
+    // Save the user-selected location to localStorage for session persistence
+    // This ensures the location persists on page refresh until user opts to use IP lookup again
+    if (location && coordinates) {
+      const locationData = {
+        city: location,
+        lat: coordinates.lat,
+        lng: coordinates.lng,
+        radius: radius,
+        source: 'user_search', // Mark as user-selected (not IP lookup)
+        savedAt: new Date().toISOString(),
+        // Set expiration to 24 hours from now (or use admin-configured value)
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+      };
+      localStorage.setItem('userSelectedLocation', JSON.stringify(locationData));
+      console.log('[LocationSearchModal] Saved user location to localStorage:', locationData);
+    }
+    
     onApply({
       location,
       radius,

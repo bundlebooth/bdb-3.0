@@ -31,6 +31,8 @@ import CookieConsent from './components/CookieConsent';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LocalizationProvider } from './context/LocalizationContext';
 import { useHeartbeat } from './hooks/useOnlineStatus';
+import { useSessionTimeout } from './hooks/useSessionTimeout';
+import SessionTimeoutProvider from './components/SessionTimeoutProvider';
 import './styles/MapControls.css';
 
 // Global initMap callback for Google Maps
@@ -51,6 +53,9 @@ function HomeRoute() {
   
   // Send heartbeat to track online status
   useHeartbeat();
+  
+  // Track session timeout based on admin settings
+  useSessionTimeout(!!currentUser);
   
   // Show loading while checking auth status
   if (loading) {
@@ -147,9 +152,10 @@ function App() {
   return (
     <LocalizationProvider>
       <AuthProvider>
-        <Router>
-          <ScrollToTop />
-          <Routes>
+        <SessionTimeoutProvider>
+          <Router>
+            <ScrollToTop />
+            <Routes>
           <Route path="/" element={<HomeRoute />} />
           <Route path="/explore" element={<IndexPage />} />
           {/* Support both old format (/vendor/138) and new format (/vendor/business-name-138) */}
@@ -191,9 +197,10 @@ function App() {
           <Route path="/email-preferences/:token" element={<EmailPreferencesPage />} />
           <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-        <CookieConsent />
-        </Router>
+            </Routes>
+            <CookieConsent />
+          </Router>
+        </SessionTimeoutProvider>
       </AuthProvider>
     </LocalizationProvider>
   );
