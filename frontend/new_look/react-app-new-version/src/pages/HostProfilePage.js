@@ -26,7 +26,10 @@ function HostProfilePage() {
   const [isUserProfile, setIsUserProfile] = useState(false);
   const [showAllAbout, setShowAllAbout] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState(false);
-  const [activeTab, setActiveTab] = useState('about'); // 'about', 'activity', 'reviews'
+  const [activeTab, setActiveTab] = useState('activity'); // 'activity', 'about', 'listings'
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportForm, setReportForm] = useState({ reason: '', details: '' });
+  const [reportSubmitting, setReportSubmitting] = useState(false);
   const [activities, setActivities] = useState([]);
   const [activitySummary, setActivitySummary] = useState(null);
   const [activitiesLoading, setActivitiesLoading] = useState(false);
@@ -238,10 +241,41 @@ function HostProfilePage() {
         <Header onSearch={() => {}} onProfileClick={() => setProfileModalOpen(true)} />
         <div className="host-profile-page">
           <div className="host-profile-container">
-            <div className="host-profile-loading">
-              <div className="skeleton" style={{ width: '120px', height: '120px', borderRadius: '50%', margin: '0 auto 1rem' }}></div>
-              <div className="skeleton" style={{ width: '200px', height: '28px', margin: '0 auto 0.5rem' }}></div>
-              <div className="skeleton" style={{ width: '150px', height: '20px', margin: '0 auto' }}></div>
+            {/* Hero Section Skeleton */}
+            <div className="host-hero-section">
+              {/* Profile Card Skeleton */}
+              <div className="host-profile-card">
+                <div className="host-card-left">
+                  <div className="skeleton" style={{ width: '120px', height: '120px', borderRadius: '50%', margin: '0 auto 1rem' }}></div>
+                  <div className="skeleton" style={{ width: '150px', height: '24px', margin: '0 auto 0.5rem' }}></div>
+                  <div className="skeleton" style={{ width: '100px', height: '18px', margin: '0 auto' }}></div>
+                </div>
+                <div className="host-card-right">
+                  <div className="skeleton" style={{ width: '60px', height: '40px' }}></div>
+                  <div className="skeleton" style={{ width: '60px', height: '40px' }}></div>
+                  <div className="skeleton" style={{ width: '60px', height: '40px' }}></div>
+                </div>
+              </div>
+              {/* About Section Skeleton */}
+              <div className="host-about-section">
+                <div className="skeleton" style={{ width: '180px', height: '28px', marginBottom: '1rem' }}></div>
+                <div className="skeleton" style={{ width: '100%', height: '16px', marginBottom: '0.5rem' }}></div>
+                <div className="skeleton" style={{ width: '100%', height: '16px', marginBottom: '0.5rem' }}></div>
+                <div className="skeleton" style={{ width: '80%', height: '16px', marginBottom: '1rem' }}></div>
+                <div className="skeleton" style={{ width: '100%', height: '60px' }}></div>
+              </div>
+            </div>
+            {/* Tab Navigation Skeleton */}
+            <div style={{ display: 'flex', gap: '1rem', borderBottom: '1px solid var(--border)', marginBottom: '2rem', padding: '1rem 0' }}>
+              <div className="skeleton" style={{ width: '100px', height: '36px' }}></div>
+              <div className="skeleton" style={{ width: '100px', height: '36px' }}></div>
+              <div className="skeleton" style={{ width: '100px', height: '36px' }}></div>
+            </div>
+            {/* Content Skeleton */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div className="skeleton" style={{ width: '100%', height: '80px' }}></div>
+              <div className="skeleton" style={{ width: '100%', height: '80px' }}></div>
+              <div className="skeleton" style={{ width: '100%', height: '80px' }}></div>
             </div>
           </div>
         </div>
@@ -367,6 +401,59 @@ function HostProfilePage() {
                   <span className="host-card-stat-label">{yearsHosting === 1 ? 'Year hosting' : 'Years hosting'}</span>
                 </div>
               </div>
+              
+              {/* Action Buttons under card */}
+              <div style={{
+                display: 'flex',
+                gap: '12px',
+                marginTop: '1rem',
+                justifyContent: 'center'
+              }}>
+                {/* Message Button */}
+                {currentUser && currentUser.id !== parseInt(hostId) && (
+                  <button
+                    onClick={() => navigate(`/dashboard?section=messages&userId=${hostId}`)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '10px 20px',
+                      background: 'var(--primary)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontSize: '0.9rem',
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    <i className="fas fa-envelope"></i>
+                    Message
+                  </button>
+                )}
+                {/* Report Button */}
+                <button
+                  onClick={() => setShowReportModal(true)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '10px 20px',
+                    background: 'transparent',
+                    color: '#717171',
+                    border: '1px solid #e0e0e0',
+                    borderRadius: '8px',
+                    fontSize: '0.9rem',
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  <i className="fas fa-flag"></i>
+                  Report
+                </button>
+              </div>
             </div>
 
             {/* Right - About Section */}
@@ -440,30 +527,13 @@ function HostProfilePage() {
           {/* Main Content */}
           <div className="host-content">
             
-            {/* Tab Navigation */}
+            {/* Tab Navigation - Order: Activity, About More, Listings */}
             <div style={{
               display: 'flex',
               gap: '0',
               borderBottom: '1px solid var(--border)',
               marginBottom: '2rem'
             }}>
-              <button
-                onClick={() => setActiveTab('about')}
-                style={{
-                  padding: '1rem 1.5rem',
-                  background: 'none',
-                  border: 'none',
-                  borderBottom: activeTab === 'about' ? '2px solid var(--primary)' : '2px solid transparent',
-                  color: activeTab === 'about' ? 'var(--primary)' : 'var(--text-light)',
-                  fontWeight: activeTab === 'about' ? 600 : 400,
-                  fontSize: '0.95rem',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s'
-                }}
-              >
-                <i className="fas fa-user" style={{ marginRight: '8px' }}></i>
-                About
-              </button>
               <button
                 onClick={() => setActiveTab('activity')}
                 style={{
@@ -493,22 +563,39 @@ function HostProfilePage() {
                 )}
               </button>
               <button
-                onClick={() => setActiveTab('reviews')}
+                onClick={() => setActiveTab('about')}
                 style={{
                   padding: '1rem 1.5rem',
                   background: 'none',
                   border: 'none',
-                  borderBottom: activeTab === 'reviews' ? '2px solid var(--primary)' : '2px solid transparent',
-                  color: activeTab === 'reviews' ? 'var(--primary)' : 'var(--text-light)',
-                  fontWeight: activeTab === 'reviews' ? 600 : 400,
+                  borderBottom: activeTab === 'about' ? '2px solid var(--primary)' : '2px solid transparent',
+                  color: activeTab === 'about' ? 'var(--primary)' : 'var(--text-light)',
+                  fontWeight: activeTab === 'about' ? 600 : 400,
                   fontSize: '0.95rem',
                   cursor: 'pointer',
                   transition: 'all 0.2s'
                 }}
               >
-                <i className="fas fa-star" style={{ marginRight: '8px' }}></i>
-                Reviews
-                {reviews.length > 0 && (
+                <i className="fas fa-user" style={{ marginRight: '8px' }}></i>
+                About More
+              </button>
+              <button
+                onClick={() => setActiveTab('listings')}
+                style={{
+                  padding: '1rem 1.5rem',
+                  background: 'none',
+                  border: 'none',
+                  borderBottom: activeTab === 'listings' ? '2px solid var(--primary)' : '2px solid transparent',
+                  color: activeTab === 'listings' ? 'var(--primary)' : 'var(--text-light)',
+                  fontWeight: activeTab === 'listings' ? 600 : 400,
+                  fontSize: '0.95rem',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+              >
+                <i className="fas fa-store" style={{ marginRight: '8px' }}></i>
+                Listings
+                {listings.length > 0 && (
                   <span style={{
                     marginLeft: '6px',
                     background: 'var(--bg-light)',
@@ -516,13 +603,13 @@ function HostProfilePage() {
                     borderRadius: '12px',
                     fontSize: '0.75rem'
                   }}>
-                    {reviews.length}
+                    {listings.length}
                   </span>
                 )}
               </button>
             </div>
 
-            {/* About Tab Content */}
+            {/* Activity Tab Content */}
             {activeTab === 'about' && (
               <>
                 {/* More About Section */}
@@ -602,37 +689,6 @@ function HostProfilePage() {
                       </div>
                     </div>
                   )}
-                </div>
-              </section>
-            )}
-
-            {/* Listings Section */}
-            {listings.filter(l => l.businessName).length > 0 && (
-              <section className="host-section">
-                <h2 className="host-section-title">{firstName}'s listings</h2>
-                <div style={{
-                  display: 'flex',
-                  flexWrap: 'wrap',
-                  gap: '16px'
-                }}>
-                  {listings.filter(l => l.businessName).map((listing) => (
-                    <div key={listing.id} style={{ width: '180px', maxWidth: '180px' }}>
-                      <VendorCard
-                        vendor={{
-                          VendorProfileID: listing.id,
-                          BusinessName: listing.businessName,
-                          FeaturedImageURL: listing.featuredImage,
-                          City: listing.city,
-                          State: listing.state,
-                          AverageRating: listing.rating,
-                          TotalReviews: listing.reviewCount,
-                          PrimaryCategory: listing.category
-                        }}
-                        isFavorite={false}
-                        onToggleFavorite={() => {}}
-                      />
-                    </div>
-                  ))}
                 </div>
               </section>
             )}
@@ -852,8 +908,46 @@ function HostProfilePage() {
               </section>
             )}
 
-            {/* Reviews Tab Content */}
-            {activeTab === 'reviews' && (
+            {/* Listings Tab Content */}
+            {activeTab === 'listings' && (
+              <section className="host-section">
+                <h2 className="host-section-title">{firstName}'s Listings</h2>
+                {listings.filter(l => l.businessName).length > 0 ? (
+                  <div style={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: '16px'
+                  }}>
+                    {listings.filter(l => l.businessName).map((listing) => (
+                      <div key={listing.id} style={{ width: '200px', maxWidth: '200px' }}>
+                        <VendorCard
+                          vendor={{
+                            VendorProfileID: listing.id,
+                            BusinessName: listing.businessName,
+                            FeaturedImageURL: listing.featuredImage,
+                            City: listing.city,
+                            State: listing.state,
+                            AverageRating: listing.rating,
+                            TotalReviews: listing.reviewCount,
+                            PrimaryCategory: listing.category
+                          }}
+                          isFavorite={false}
+                          onToggleFavorite={() => {}}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-light)' }}>
+                    <i className="fas fa-store" style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.3 }}></i>
+                    <div style={{ fontSize: '0.9rem' }}>No listings yet.</div>
+                  </div>
+                )}
+              </section>
+            )}
+
+            {/* Reviews Tab Content - Hidden, reviews shown in About section */}
+            {activeTab === 'reviews_hidden' && (
               <section className="host-section">
                 <h2 style={{ marginBottom: '1.5rem' }}>Reviews for {firstName}</h2>
                 
@@ -1092,16 +1186,148 @@ function HostProfilePage() {
               </section>
             )}
 
-            {/* Report Actions */}
-            <div className="host-report-section">
-              <button className="host-report-btn">
-                <i className="fas fa-flag"></i> Report this profile
-              </button>
-            </div>
-
           </div>
         </div>
       </div>
+
+      {/* Report Profile Modal */}
+      {showReportModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: '20px'
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: '12px',
+            maxWidth: '480px',
+            width: '100%',
+            maxHeight: '90vh',
+            overflow: 'auto'
+          }}>
+            <div style={{
+              padding: '16px 20px',
+              borderBottom: '1px solid #ebebeb',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>Report this profile</h3>
+              <button
+                onClick={() => { setShowReportModal(false); setReportForm({ reason: '', details: '' }); }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px', color: '#717171' }}
+              >
+                ×
+              </button>
+            </div>
+            
+            <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, marginBottom: '8px', color: '#222' }}>
+                  Why are you reporting this profile?
+                </label>
+                <select
+                  value={reportForm.reason}
+                  onChange={(e) => setReportForm({ ...reportForm, reason: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    border: '1px solid #e0e0e0',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    background: 'white'
+                  }}
+                >
+                  <option value="">Select a reason</option>
+                  <option value="fake">Fake or misleading profile</option>
+                  <option value="inappropriate">Inappropriate content</option>
+                  <option value="harassment">Harassment or bullying</option>
+                  <option value="spam">Spam or scam</option>
+                  <option value="impersonation">Impersonation</option>
+                  <option value="offensive">Offensive content</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              
+              <div>
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, marginBottom: '8px', color: '#222' }}>
+                  Additional details (optional)
+                </label>
+                <textarea
+                  value={reportForm.details}
+                  onChange={(e) => setReportForm({ ...reportForm, details: e.target.value })}
+                  placeholder="Please provide any additional information..."
+                  rows={4}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    border: '1px solid #e0e0e0',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    resize: 'vertical',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+              
+              <button
+                onClick={async () => {
+                  if (!reportForm.reason) {
+                    showBanner('Please select a reason for reporting', 'error');
+                    return;
+                  }
+                  setReportSubmitting(true);
+                  try {
+                    const response = await fetch(`${API_BASE_URL}/users/report`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        reportedUserId: hostId,
+                        reason: reportForm.reason,
+                        details: reportForm.details,
+                        reportedBy: currentUser?.id || null
+                      })
+                    });
+                    if (response.ok) {
+                      showBanner('Thank you for your report. We will review it shortly.', 'success');
+                      setShowReportModal(false);
+                      setReportForm({ reason: '', details: '' });
+                    } else {
+                      showBanner('Failed to submit report. Please try again.', 'error');
+                    }
+                  } catch (error) {
+                    showBanner('Failed to submit report. Please try again.', 'error');
+                  } finally {
+                    setReportSubmitting(false);
+                  }
+                }}
+                disabled={reportSubmitting || !reportForm.reason}
+                style={{
+                  width: '100%',
+                  padding: '14px',
+                  background: reportSubmitting || !reportForm.reason ? '#ccc' : '#222',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '15px',
+                  fontWeight: 600,
+                  cursor: reportSubmitting || !reportForm.reason ? 'not-allowed' : 'pointer'
+                }}
+              >
+                {reportSubmitting ? 'Submitting...' : 'Submit Report'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       
       <Footer />
     </PageLayout>

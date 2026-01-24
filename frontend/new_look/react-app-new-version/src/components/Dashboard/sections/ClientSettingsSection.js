@@ -8,6 +8,7 @@ import LocationPanel from '../panels/LocationPanel';
 import DeleteAccountPanel from '../panels/DeleteAccountPanel';
 import LanguageCurrencyPanel from '../panels/LanguageCurrencyPanel';
 import ProfileEditPanel from '../panels/ProfileEditPanel';
+import PrivacySettingsPanel from '../panels/PrivacySettingsPanel';
 
 function ClientSettingsSection() {
   const { currentUser } = useAuth();
@@ -56,6 +57,13 @@ function ClientSettingsSection() {
       category: 'personal'
     },
     { 
+      id: 'privacy-settings', 
+      icon: 'fa-eye-slash', 
+      title: 'Privacy Settings', 
+      description: 'Control what activities are visible on your public profile',
+      category: 'personal'
+    },
+    { 
       id: 'security', 
       icon: 'fa-shield-alt', 
       title: t('settings.security'), 
@@ -90,6 +98,8 @@ function ClientSettingsSection() {
         return <DeleteAccountPanel key={userId} onBack={() => setActivePanel(null)} />;
       case 'language-currency':
         return <LanguageCurrencyPanel key={userId} onBack={() => setActivePanel(null)} />;
+      case 'privacy-settings':
+        return <PrivacySettingsPanel key={userId} onBack={() => setActivePanel(null)} />;
       default:
         return null;
     }
