@@ -2069,4 +2069,84 @@ router.put('/:id/interests', async (req, res) => {
   }
 });
 
+// ============================================
+// PUBLIC USER ACTIVITIES ENDPOINT
+// ============================================
+
+// GET /api/users/:id/activities - Get public activities for a user profile
+router.get('/:id/activities', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { limit = 50 } = req.query;
+
+    const pool = await poolPromise;
+    const result = await pool.request()
+      .input('UserID', sql.Int, parseInt(id))
+      .input('Limit', sql.Int, Math.min(parseInt(limit) || 50, 100))
+      .execute('users.sp_GetUserPublicActivities');
+
+    res.json({ 
+      success: true, 
+      activities: result.recordset || [],
+      count: result.recordset?.length || 0
+    });
+  } catch (err) {
+    console.error('Get user activities error:', err);
+    res.status(500).json({ success: false, message: 'Failed to get user activities', error: err.message });
+  }
+});
+
+// GET /api/users/:id/activity-summary - Get activity counts summary for a user
+router.get('/:id/activity-summary', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pool = await poolPromise;
+
+    // Get counts for each activity type
+    const reviewsResult = await pool.request()
+      .input('UserID', sql.Int, parseInt(id))
+      .query('SELECT COUNT(*) as count FROM vendors.Reviews WHERE UserID = @UserID');
+    
+    let forumPostsCount = 0;
+    let forumCommentsCount = 0;
+    let favoritesCount = 0;
+
+    // Check if forum tables exist and get counts
+    try {
+      const forumPostsResult = await pool.request()
+        .input('UserID', sql.Int, parseInt(id))
+        .query('SELECT COUNT(*) as count FROM forum.ForumPosts WHERE AuthorID = @UserID AND IsDeleted = 0');
+      forumPostsCount = forumPostsResult.recordset[0]?.count || 0;
+    } catch (e) { /* Forum table may not exist */ }
+
+    try {
+      const forumCommentsResult = await pool.request()
+        .input('UserID', sql.Int, parseInt(id))
+        .query('SELECT COUNT(*) as count FROM forum.ForumComments WHERE AuthorID = @UserID AND IsDeleted = 0');
+      forumCommentsCount = forumCommentsResult.recordset[0]?.count || 0;
+    } catch (e) { /* Forum table may not exist */ }
+
+    try {
+      const favoritesResult = await pool.request()
+        .input('UserID', sql.Int, parseInt(id))
+        .query('SELECT COUNT(*) as count FROM users.Favorites WHERE UserID = @UserID');
+      favoritesCount = favoritesResult.recordset[0]?.count || 0;
+    } catch (e) { /* Favorites table may not exist */ }
+
+    res.json({
+      success: true,
+      summary: {
+        reviews: reviewsResult.recordset[0]?.count || 0,
+        forumPosts: forumPostsCount,
+        forumComments: forumCommentsCount,
+        favorites: favoritesCount,
+        total: (reviewsResult.recordset[0]?.count || 0) + forumPostsCount + forumCommentsCount + favoritesCount
+      }
+    });
+  } catch (err) {
+    console.error('Get activity summary error:', err);
+    res.status(500).json({ success: false, message: 'Failed to get activity summary', error: err.message });
+  }
+});
+
 module.exports = router;

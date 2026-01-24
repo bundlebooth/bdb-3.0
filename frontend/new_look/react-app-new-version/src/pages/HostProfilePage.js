@@ -8,6 +8,7 @@ import Footer from '../components/Footer';
 import ProfileModal from '../components/ProfileModal';
 import VendorCard from '../components/VendorCard';
 import { showBanner } from '../utils/helpers';
+import { useUserOnlineStatus } from '../hooks/useOnlineStatus';
 import './HostProfilePage.css';
 
 function HostProfilePage() {
@@ -25,7 +26,18 @@ function HostProfilePage() {
   const [isUserProfile, setIsUserProfile] = useState(false);
   const [showAllAbout, setShowAllAbout] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState(false);
+  const [activeTab, setActiveTab] = useState('about'); // 'about', 'activity', 'reviews'
+  const [activities, setActivities] = useState([]);
+  const [activitySummary, setActivitySummary] = useState(null);
+  const [activitiesLoading, setActivitiesLoading] = useState(false);
   const reviewsPerPage = 5;
+
+  // Get online status for this user
+  const { statuses: onlineStatuses } = useUserOnlineStatus(
+    hostId ? [hostId] : [],
+    { enabled: !!hostId, refreshInterval: 60000 } // 1 minute refresh
+  );
+  const userOnlineStatus = hostId ? onlineStatuses[hostId] : null;
 
   // Load host profile data - fetches USER data, not vendor data
   const loadHostProfile = useCallback(async () => {
@@ -181,6 +193,38 @@ function HostProfilePage() {
     loadHostProfile();
   }, [loadHostProfile]);
 
+  // Load user activities
+  const loadActivities = useCallback(async () => {
+    if (!hostId) return;
+    try {
+      setActivitiesLoading(true);
+      const [activitiesResp, summaryResp] = await Promise.all([
+        fetch(`${API_BASE_URL}/users/${hostId}/activities?limit=50`),
+        fetch(`${API_BASE_URL}/users/${hostId}/activity-summary`)
+      ]);
+      
+      if (activitiesResp.ok) {
+        const data = await activitiesResp.json();
+        setActivities(data.activities || []);
+      }
+      
+      if (summaryResp.ok) {
+        const data = await summaryResp.json();
+        setActivitySummary(data.summary || null);
+      }
+    } catch (err) {
+      console.error('Error loading activities:', err);
+    } finally {
+      setActivitiesLoading(false);
+    }
+  }, [hostId]);
+
+  useEffect(() => {
+    if (activeTab === 'activity') {
+      loadActivities();
+    }
+  }, [activeTab, loadActivities]);
+
   // Pagination for reviews
   const totalPages = Math.ceil(reviews.length / reviewsPerPage);
   const paginatedReviews = reviews.slice(
@@ -327,7 +371,36 @@ function HostProfilePage() {
 
             {/* Right - About Section */}
             <div className="host-about-section">
-              <h2 className="host-about-title">About {firstName}</h2>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                <h2 className="host-about-title" style={{ marginBottom: 0 }}>About {firstName}</h2>
+                {/* Online Status Indicator */}
+                {userOnlineStatus && (
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '6px 12px',
+                    borderRadius: '20px',
+                    background: userOnlineStatus.isOnline ? '#f0fdf4' : '#f9fafb',
+                    border: userOnlineStatus.isOnline ? '1px solid #bbf7d0' : '1px solid #e5e7eb'
+                  }}>
+                    <span style={{
+                      width: '8px',
+                      height: '8px',
+                      borderRadius: '50%',
+                      backgroundColor: userOnlineStatus.isOnline ? '#22c55e' : '#9ca3af',
+                      boxShadow: userOnlineStatus.isOnline ? '0 0 0 2px rgba(34, 197, 94, 0.2)' : 'none'
+                    }} />
+                    <span style={{ 
+                      fontSize: '0.8rem',
+                      color: userOnlineStatus.isOnline ? '#166534' : '#6b7280',
+                      fontWeight: 500
+                    }}>
+                      {userOnlineStatus.isOnline ? 'Online now' : (userOnlineStatus.lastActiveText || 'Offline')}
+                    </span>
+                  </div>
+                )}
+              </div>
               
               {/* Quick Info */}
               <div className="host-quick-info">
@@ -367,8 +440,93 @@ function HostProfilePage() {
           {/* Main Content */}
           <div className="host-content">
             
-            {/* More About Section */}
-            {hasAboutDetails && (
+            {/* Tab Navigation */}
+            <div style={{
+              display: 'flex',
+              gap: '0',
+              borderBottom: '1px solid var(--border)',
+              marginBottom: '2rem'
+            }}>
+              <button
+                onClick={() => setActiveTab('about')}
+                style={{
+                  padding: '1rem 1.5rem',
+                  background: 'none',
+                  border: 'none',
+                  borderBottom: activeTab === 'about' ? '2px solid var(--primary)' : '2px solid transparent',
+                  color: activeTab === 'about' ? 'var(--primary)' : 'var(--text-light)',
+                  fontWeight: activeTab === 'about' ? 600 : 400,
+                  fontSize: '0.95rem',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+              >
+                <i className="fas fa-user" style={{ marginRight: '8px' }}></i>
+                About
+              </button>
+              <button
+                onClick={() => setActiveTab('activity')}
+                style={{
+                  padding: '1rem 1.5rem',
+                  background: 'none',
+                  border: 'none',
+                  borderBottom: activeTab === 'activity' ? '2px solid var(--primary)' : '2px solid transparent',
+                  color: activeTab === 'activity' ? 'var(--primary)' : 'var(--text-light)',
+                  fontWeight: activeTab === 'activity' ? 600 : 400,
+                  fontSize: '0.95rem',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+              >
+                <i className="fas fa-stream" style={{ marginRight: '8px' }}></i>
+                Activity
+                {activitySummary?.total > 0 && (
+                  <span style={{
+                    marginLeft: '6px',
+                    background: 'var(--bg-light)',
+                    padding: '2px 8px',
+                    borderRadius: '12px',
+                    fontSize: '0.75rem'
+                  }}>
+                    {activitySummary.total}
+                  </span>
+                )}
+              </button>
+              <button
+                onClick={() => setActiveTab('reviews')}
+                style={{
+                  padding: '1rem 1.5rem',
+                  background: 'none',
+                  border: 'none',
+                  borderBottom: activeTab === 'reviews' ? '2px solid var(--primary)' : '2px solid transparent',
+                  color: activeTab === 'reviews' ? 'var(--primary)' : 'var(--text-light)',
+                  fontWeight: activeTab === 'reviews' ? 600 : 400,
+                  fontSize: '0.95rem',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+              >
+                <i className="fas fa-star" style={{ marginRight: '8px' }}></i>
+                Reviews
+                {reviews.length > 0 && (
+                  <span style={{
+                    marginLeft: '6px',
+                    background: 'var(--bg-light)',
+                    padding: '2px 8px',
+                    borderRadius: '12px',
+                    fontSize: '0.75rem'
+                  }}>
+                    {reviews.length}
+                  </span>
+                )}
+              </button>
+            </div>
+
+            {/* About Tab Content */}
+            {activeTab === 'about' && (
+              <>
+                {/* More About Section */}
+                {hasAboutDetails && (
               <section className="host-section">
                 <h2 className="host-section-title">More about {firstName}</h2>
                 <div className="host-more-grid">
@@ -492,8 +650,210 @@ function HostProfilePage() {
                   </div>
                 </section>
               )}
+              </>
+            )}
 
-              {/* Reviews Section - Matching VendorProfilePage style exactly */}
+            {/* Activity Tab Content */}
+            {activeTab === 'activity' && (
+              <section className="host-section">
+                <h2 className="host-section-title">{firstName}'s Activity</h2>
+                
+                {/* Activity Summary */}
+                {activitySummary && (
+                  <div style={{
+                    display: 'flex',
+                    gap: '1.5rem',
+                    marginBottom: '2rem',
+                    flexWrap: 'wrap'
+                  }}>
+                    {activitySummary.reviews > 0 && (
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        padding: '12px 16px',
+                        background: '#f0fdf4',
+                        borderRadius: '8px',
+                        color: '#166534'
+                      }}>
+                        <i className="fas fa-star"></i>
+                        <span><strong>{activitySummary.reviews}</strong> reviews given</span>
+                      </div>
+                    )}
+                    {activitySummary.forumPosts > 0 && (
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        padding: '12px 16px',
+                        background: '#eff6ff',
+                        borderRadius: '8px',
+                        color: '#1e40af'
+                      }}>
+                        <i className="fas fa-comments"></i>
+                        <span><strong>{activitySummary.forumPosts}</strong> discussions started</span>
+                      </div>
+                    )}
+                    {activitySummary.forumComments > 0 && (
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        padding: '12px 16px',
+                        background: '#faf5ff',
+                        borderRadius: '8px',
+                        color: '#6b21a8'
+                      }}>
+                        <i className="fas fa-reply"></i>
+                        <span><strong>{activitySummary.forumComments}</strong> forum replies</span>
+                      </div>
+                    )}
+                    {activitySummary.favorites > 0 && (
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        padding: '12px 16px',
+                        background: '#fef2f2',
+                        borderRadius: '8px',
+                        color: '#991b1b'
+                      }}>
+                        <i className="fas fa-heart"></i>
+                        <span><strong>{activitySummary.favorites}</strong> vendors favorited</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Activity Feed */}
+                {activitiesLoading ? (
+                  <div style={{ textAlign: 'center', padding: '3rem' }}>
+                    <div className="skeleton" style={{ width: '100%', height: '80px', marginBottom: '1rem' }}></div>
+                    <div className="skeleton" style={{ width: '100%', height: '80px', marginBottom: '1rem' }}></div>
+                    <div className="skeleton" style={{ width: '100%', height: '80px' }}></div>
+                  </div>
+                ) : activities.length > 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
+                    {activities.map((activity, index) => (
+                      <div 
+                        key={`${activity.ActivityType}-${activity.ActivityID}`}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'flex-start',
+                          gap: '1rem',
+                          padding: '1.25rem 0',
+                          borderBottom: index < activities.length - 1 ? '1px solid var(--border)' : 'none',
+                          cursor: activity.TargetURL ? 'pointer' : 'default'
+                        }}
+                        onClick={() => activity.TargetURL && navigate(activity.TargetURL)}
+                      >
+                        {/* Activity Icon */}
+                        <div style={{
+                          width: '40px',
+                          height: '40px',
+                          borderRadius: '50%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0,
+                          background: activity.ActivityType === 'review' ? '#fef3c7' :
+                                     activity.ActivityType === 'forum_post' ? '#dbeafe' :
+                                     activity.ActivityType === 'forum_comment' ? '#e9d5ff' :
+                                     activity.ActivityType === 'favorite' ? '#fce7f3' : '#f3f4f6',
+                          color: activity.ActivityType === 'review' ? '#d97706' :
+                                activity.ActivityType === 'forum_post' ? '#2563eb' :
+                                activity.ActivityType === 'forum_comment' ? '#7c3aed' :
+                                activity.ActivityType === 'favorite' ? '#db2777' : '#6b7280'
+                        }}>
+                          <i className={`fas ${
+                            activity.ActivityType === 'review' ? 'fa-star' :
+                            activity.ActivityType === 'forum_post' ? 'fa-comments' :
+                            activity.ActivityType === 'forum_comment' ? 'fa-reply' :
+                            activity.ActivityType === 'favorite' ? 'fa-heart' : 'fa-circle'
+                          }`}></i>
+                        </div>
+
+                        {/* Activity Content */}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ 
+                            fontWeight: 600, 
+                            color: 'var(--text)', 
+                            fontSize: '0.95rem',
+                            marginBottom: '4px'
+                          }}>
+                            {activity.Title}
+                          </div>
+                          {activity.Description && (
+                            <div style={{ 
+                              color: 'var(--text-light)', 
+                              fontSize: '0.875rem',
+                              lineHeight: 1.5,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              display: '-webkit-box',
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: 'vertical'
+                            }}>
+                              {activity.Description}
+                            </div>
+                          )}
+                          {activity.Rating && (
+                            <div style={{ color: '#fbbf24', fontSize: '0.85rem', marginTop: '4px' }}>
+                              {'★'.repeat(activity.Rating)}{'☆'.repeat(5 - activity.Rating)}
+                            </div>
+                          )}
+                          <div style={{ 
+                            color: '#9ca3af', 
+                            fontSize: '0.8rem',
+                            marginTop: '6px'
+                          }}>
+                            {(() => {
+                              const date = new Date(activity.CreatedAt);
+                              if (isNaN(date.getTime())) return '';
+                              const now = new Date();
+                              const diffMs = now - date;
+                              const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                              if (diffDays === 0) return 'Today';
+                              if (diffDays === 1) return 'Yesterday';
+                              if (diffDays < 7) return `${diffDays} days ago`;
+                              if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+                              if (diffDays < 365) return `${Math.floor(diffDays / 30)} months ago`;
+                              return `${Math.floor(diffDays / 365)} years ago`;
+                            })()}
+                          </div>
+                        </div>
+
+                        {/* Activity Image */}
+                        {activity.ImageURL && (
+                          <div style={{
+                            width: '60px',
+                            height: '60px',
+                            borderRadius: '8px',
+                            overflow: 'hidden',
+                            flexShrink: 0
+                          }}>
+                            <img 
+                              src={activity.ImageURL} 
+                              alt=""
+                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                              onError={(e) => { e.target.style.display = 'none'; }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-light)' }}>
+                    <i className="fas fa-stream" style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.3 }}></i>
+                    <div style={{ fontSize: '0.9rem' }}>No public activity yet.</div>
+                  </div>
+                )}
+              </section>
+            )}
+
+            {/* Reviews Tab Content */}
+            {activeTab === 'reviews' && (
               <section className="host-section">
                 <h2 style={{ marginBottom: '1.5rem' }}>Reviews for {firstName}</h2>
                 
@@ -730,6 +1090,7 @@ function HostProfilePage() {
                   )}
                 </div>
               </section>
+            )}
 
             {/* Report Actions */}
             <div className="host-report-section">
