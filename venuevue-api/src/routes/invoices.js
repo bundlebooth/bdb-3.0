@@ -528,6 +528,7 @@ router.post('/admin/regenerate/:bookingId', async (req, res) => {
   }
 });
 
-// Expose helper so Stripe payments webhook can regenerate invoices
+// Expose helpers so other modules can access invoice functions
 router.upsertInvoiceForBooking = upsertInvoiceForBooking;
+router.getInvoiceByBooking = getInvoiceByBooking;
 module.exports = router;

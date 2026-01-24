@@ -45,10 +45,10 @@ const getApiMode = () => {
   return false;
 };
 
-const USE_PRODUCTION_API = false; // FORCED TO LOCALHOST FOR TESTING
+const USE_PRODUCTION_API = getApiMode();
 
 // Main API URL export - use this throughout the app
-export const API_BASE_URL = LOCAL_API_URL; // FORCED TO LOCALHOST
+export const API_BASE_URL = USE_PRODUCTION_API ? PRODUCTION_API_URL : LOCAL_API_URL;
 
 // Derive Socket base URL from API origin
 let SOCKET_BASE_URL = '';

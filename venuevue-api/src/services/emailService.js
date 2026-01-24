@@ -26,6 +26,15 @@ const {
 } = require('./email');
 const { generateInvoicePDF, formatInvoiceData } = require('./invoiceService');
 const pushService = require('./pushNotificationService');
+
+// Lazy-load invoices router to avoid circular dependency
+let invoicesRouter = null;
+function getInvoicesRouter() {
+  if (!invoicesRouter) {
+    invoicesRouter = require('../routes/invoices');
+  }
+  return invoicesRouter;
+}
 const { encodeBookingId } = require('../utils/hashIds');
 
 // ALWAYS use production URL for email links - never localhost
@@ -383,31 +392,50 @@ async function notifyVendorOfPayment(bookingId, amountCents, currency = 'CAD', t
         })
       : 'Upcoming event';
     
-    // Generate invoice PDF
+    // Generate invoice PDF from actual database invoice (ensures consistency with frontend)
     let invoiceAttachment = null;
     try {
-      const invoiceData = formatInvoiceData({
-        bookingId,
-        vendorName: data.VendorName,
-        vendorEmail: data.VendorEmail,
-        vendorPhone: data.VendorPhone || '',
-        clientName: data.ClientName,
-        clientEmail: data.ClientEmail,
-        clientPhone: data.ClientPhone || '',
-        serviceName: data.ServiceName,
-        eventDate,
-        eventLocation: data.EventLocation || '',
-        amount: totalAmount,
-        taxRate: 0.13,
-        transactionId: transactionId || `TXN-${bookingId}-${Date.now()}`
-      });
+      // Fetch the actual invoice from database - this has correct PriceAtBooking values
+      const invoicesRouter = getInvoicesRouter();
+      let invoiceData = null;
       
-      const pdfBuffer = await generateInvoicePDF(invoiceData);
-      invoiceAttachment = {
-        name: `Invoice-${invoiceData.invoiceNumber}.pdf`,
-        content: pdfBuffer.toString('base64')
-      };
-      console.log(`[NotificationService] Generated invoice PDF: ${invoiceAttachment.name}`);
+      if (invoicesRouter && typeof invoicesRouter.getInvoiceByBooking === 'function') {
+        invoiceData = await invoicesRouter.getInvoiceByBooking(pool, bookingId, true);
+      }
+      
+      if (invoiceData) {
+        // Use the actual invoice data from database
+        const pdfBuffer = await generateInvoicePDF(invoiceData);
+        invoiceAttachment = {
+          name: `Invoice-${invoiceData.InvoiceNumber || `INV-${bookingId}`}.pdf`,
+          content: pdfBuffer.toString('base64')
+        };
+        console.log(`[NotificationService] Generated invoice PDF from database: ${invoiceAttachment.name}`);
+      } else {
+        // Fallback: generate from booking data if invoice not found
+        console.warn(`[NotificationService] Invoice not found for booking ${bookingId}, using fallback`);
+        const fallbackData = formatInvoiceData({
+          bookingId,
+          vendorName: data.VendorName,
+          vendorEmail: data.VendorEmail,
+          vendorPhone: data.VendorPhone || '',
+          clientName: data.ClientName,
+          clientEmail: data.ClientEmail,
+          clientPhone: data.ClientPhone || '',
+          serviceName: data.ServiceName,
+          eventDate,
+          eventLocation: data.EventLocation || '',
+          amount: totalAmount,
+          taxRate: 0.13,
+          transactionId: transactionId || `TXN-${bookingId}-${Date.now()}`
+        });
+        
+        const pdfBuffer = await generateInvoicePDF(fallbackData);
+        invoiceAttachment = {
+          name: `Invoice-${fallbackData.InvoiceNumber}.pdf`,
+          content: pdfBuffer.toString('base64')
+        };
+      }
     } catch (pdfError) {
       console.error('[NotificationService] Failed to generate invoice PDF:', pdfError.message);
       // Continue without attachment
@@ -558,31 +586,50 @@ async function notifyClientOfPayment(bookingId, amountCents, currency = 'CAD', t
         })
       : 'Upcoming event';
     
-    // Generate invoice PDF for client
+    // Generate invoice PDF from actual database invoice (ensures consistency with frontend)
     let invoiceAttachment = null;
     try {
-      const invoiceData = formatInvoiceData({
-        bookingId,
-        vendorName: data.VendorName,
-        vendorEmail: data.VendorEmail,
-        vendorPhone: data.VendorPhone || '',
-        clientName: data.ClientName,
-        clientEmail: data.ClientEmail,
-        clientPhone: data.ClientPhone || '',
-        serviceName: data.ServiceName || 'Service',
-        eventDate,
-        eventLocation: data.EventLocation || '',
-        amount: totalAmount,
-        taxRate: 0.13,
-        transactionId: transactionId || `TXN-${bookingId}-${Date.now()}`
-      });
+      // Fetch the actual invoice from database - this has correct PriceAtBooking values
+      const invoicesRouter = getInvoicesRouter();
+      let invoiceData = null;
       
-      const pdfBuffer = await generateInvoicePDF(invoiceData);
-      invoiceAttachment = {
-        name: `Invoice-${invoiceData.invoiceNumber}.pdf`,
-        content: pdfBuffer.toString('base64')
-      };
-      console.log(`[NotificationService] Generated invoice PDF for client: ${invoiceAttachment.name}`);
+      if (invoicesRouter && typeof invoicesRouter.getInvoiceByBooking === 'function') {
+        invoiceData = await invoicesRouter.getInvoiceByBooking(pool, bookingId, true);
+      }
+      
+      if (invoiceData) {
+        // Use the actual invoice data from database
+        const pdfBuffer = await generateInvoicePDF(invoiceData);
+        invoiceAttachment = {
+          name: `Invoice-${invoiceData.InvoiceNumber || `INV-${bookingId}`}.pdf`,
+          content: pdfBuffer.toString('base64')
+        };
+        console.log(`[NotificationService] Generated invoice PDF for client from database: ${invoiceAttachment.name}`);
+      } else {
+        // Fallback: generate from booking data if invoice not found
+        console.warn(`[NotificationService] Invoice not found for booking ${bookingId}, using fallback for client`);
+        const fallbackData = formatInvoiceData({
+          bookingId,
+          vendorName: data.VendorName,
+          vendorEmail: data.VendorEmail,
+          vendorPhone: data.VendorPhone || '',
+          clientName: data.ClientName,
+          clientEmail: data.ClientEmail,
+          clientPhone: data.ClientPhone || '',
+          serviceName: data.ServiceName || 'Service',
+          eventDate,
+          eventLocation: data.EventLocation || '',
+          amount: totalAmount,
+          taxRate: 0.13,
+          transactionId: transactionId || `TXN-${bookingId}-${Date.now()}`
+        });
+        
+        const pdfBuffer = await generateInvoicePDF(fallbackData);
+        invoiceAttachment = {
+          name: `Invoice-${fallbackData.InvoiceNumber}.pdf`,
+          content: pdfBuffer.toString('base64')
+        };
+      }
     } catch (pdfError) {
       console.error('[NotificationService] Failed to generate invoice PDF for client:', pdfError.message);
       // Continue without attachment

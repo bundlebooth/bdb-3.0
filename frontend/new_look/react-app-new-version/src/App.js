@@ -31,7 +31,6 @@ import CookieConsent from './components/CookieConsent';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LocalizationProvider } from './context/LocalizationContext';
 import { useHeartbeat } from './hooks/useOnlineStatus';
-import { useSessionTimeout } from './hooks/useSessionTimeout';
 import SessionTimeoutProvider from './components/SessionTimeoutProvider';
 import './styles/MapControls.css';
 
@@ -54,8 +53,7 @@ function HomeRoute() {
   // Send heartbeat to track online status
   useHeartbeat();
   
-  // Track session timeout based on admin settings
-  useSessionTimeout(!!currentUser);
+  // Session timeout is handled globally by SessionTimeoutProvider
   
   // Show loading while checking auth status
   if (loading) {
@@ -197,8 +195,8 @@ function App() {
           <Route path="/email-preferences/:token" element={<EmailPreferencesPage />} />
           <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-            <CookieConsent />
+          </Routes>
+          <CookieConsent />
           </Router>
         </SessionTimeoutProvider>
       </AuthProvider>

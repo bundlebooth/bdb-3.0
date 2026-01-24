@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL, GOOGLE_MAPS_API_KEY } from '../config';
 import { apiGet, apiPost, apiDelete } from '../utils/api';
@@ -16,6 +16,7 @@ import './LandingPage.css';
 
 function LandingPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { currentUser } = useAuth();
   const { t } = useTranslation();
   
@@ -23,7 +24,9 @@ function LandingPage() {
   const [loading, setLoading] = useState(true);
   const [favorites, setFavorites] = useState([]);
   const [isScrolled, setIsScrolled] = useState(false);
-  const [profileModalOpen, setProfileModalOpen] = useState(false);
+  // Check if we should show login modal (from deep link redirect)
+  const shouldShowLogin = location.state?.showLogin === true;
+  const [profileModalOpen, setProfileModalOpen] = useState(shouldShowLogin);
   const [activeSlide, setActiveSlide] = useState(0);
   const [visibleSections, setVisibleSections] = useState(new Set());
   const observerRef = useRef(null);

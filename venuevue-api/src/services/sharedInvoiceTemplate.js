@@ -213,12 +213,17 @@ function generateInvoiceHTML(invoice) {
               <span style="color: #222; font-weight: 500;">${formatCurrency(platformFee)}</span>
             </div>
           ` : ''}
-          ${taxAmount > 0 ? `
+          ${taxAmount > 0 ? (() => {
+            const taxableAmount = subtotal + platformFee;
+            const taxPercent = taxableAmount > 0 ? Math.round((taxAmount / taxableAmount) * 100) : 13;
+            const taxLabel = taxPercent === 13 ? 'Tax (HST 13%)' : `Tax (${taxPercent}%)`;
+            return `
             <div style="display: flex; justify-content: space-between; padding: 8px 0; font-size: 14px;">
-              <span style="color: #6b7280;">Tax (HST 13%)</span>
+              <span style="color: #6b7280;">${taxLabel}</span>
               <span style="color: #222; font-weight: 500;">${formatCurrency(taxAmount)}</span>
             </div>
-          ` : ''}
+          `;
+          })() : ''}
           <div style="display: flex; justify-content: space-between; padding: 12px 0; font-size: 16px; font-weight: 600; border-top: 2px solid #e5e7eb; margin-top: 8px;">
             <span>Total</span>
             <span>${formatCurrency(totalAmount)}</span>

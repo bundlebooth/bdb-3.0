@@ -8,13 +8,10 @@ import React from 'react';
 import { useSessionTimeout } from '../hooks/useSessionTimeout';
 import { useAuth } from '../context/AuthContext';
 
-/**
- * Provider component that enables session timeout tracking globally
- */
 export function SessionTimeoutProvider({ children }) {
-  const { currentUser } = useAuth();
+  const auth = useAuth();
+  const currentUser = auth?.currentUser;
   
-  // Enable session timeout tracking when user is logged in
   useSessionTimeout(!!currentUser);
   
   return <>{children}</>;

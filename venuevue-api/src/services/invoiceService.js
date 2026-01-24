@@ -1,22 +1,84 @@
 /**
  * Invoice Generation Service
- * Generates PDF invoices using PDFKit with styling matching the shared template
- * 
- * Note: Uses PDFKit instead of Puppeteer for serverless compatibility.
- * The styling matches the shared HTML template used by the frontend.
+ * Generates PDF invoices using Puppeteer to render the SAME HTML template
+ * used by the frontend, ensuring IDENTICAL visual appearance.
  */
 
-const PDFDocument = require('pdfkit');
+const puppeteer = require('puppeteer');
 const { generateInvoiceHTML } = require('./sharedInvoiceTemplate');
+
+// Puppeteer browser instance (reused for performance)
+let browserInstance = null;
+
+/**
+ * Get or create a Puppeteer browser instance
+ */
+async function getBrowser() {
+  if (!browserInstance || !browserInstance.isConnected()) {
+    browserInstance = await puppeteer.launch({
+      headless: 'new',
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu',
+        '--single-process'
+      ]
+    });
+  }
+  return browserInstance;
+}
 
 /**
  * Generate an invoice PDF as a Buffer
- * Uses PDFKit with styling matching the shared HTML template
+ * Uses Puppeteer to render the SAME HTML template as the frontend
+ * This ensures the email PDF looks IDENTICAL to the frontend invoice
  * 
  * @param {Object} invoiceData - Invoice data (same structure as frontend Invoice.js expects)
  * @returns {Promise<Buffer>} - PDF buffer
  */
 async function generateInvoicePDF(invoiceData) {
+  let page = null;
+  try {
+    // Generate the HTML using the shared template (same as frontend)
+    const html = generateInvoiceHTML(invoiceData);
+    
+    // Get browser and create a new page
+    const browser = await getBrowser();
+    page = await browser.newPage();
+    
+    // Set the HTML content
+    await page.setContent(html, { waitUntil: 'networkidle0' });
+    
+    // Generate PDF with settings matching a nice invoice layout
+    const pdfBuffer = await page.pdf({
+      format: 'Letter',
+      printBackground: true,
+      margin: {
+        top: '0.5in',
+        right: '0.5in',
+        bottom: '0.5in',
+        left: '0.5in'
+      }
+    });
+    
+    await page.close();
+    return Buffer.from(pdfBuffer);
+  } catch (error) {
+    if (page) {
+      try { await page.close(); } catch (_) {}
+    }
+    console.error('[InvoiceService] Puppeteer PDF generation failed:', error.message);
+    // Fallback to PDFKit if Puppeteer fails
+    return generateInvoicePDFWithPDFKit(invoiceData);
+  }
+}
+
+/**
+ * Fallback PDF generation using PDFKit (in case Puppeteer fails)
+ */
+async function generateInvoicePDFWithPDFKit(invoiceData) {
+  const PDFDocument = require('pdfkit');
   return new Promise((resolve, reject) => {
     try {
       const doc = new PDFDocument({ 
@@ -125,15 +187,35 @@ async function generateInvoicePDF(invoiceData) {
       
       yPos += 35;
       
-      // Service line item
-      const serviceName = booking.ServiceName || invoiceData.ServiceName || 'Service';
-      doc.fontSize(10).fillColor(textDark).font('Helvetica')
-         .text(serviceName, 60, yPos)
-         .text('1', 280, yPos, { align: 'center', width: 50 })
-         .text(`$${subtotal.toFixed(2)}`, 340, yPos, { align: 'right', width: 80 })
-         .text(`$${subtotal.toFixed(2)}`, 440, yPos, { align: 'right', width: 80 });
+      // Render invoice items if available (from database invoice)
+      const items = invoiceData.items || [];
+      if (items.length > 0) {
+        for (const item of items) {
+          const itemName = item.Title || item.ServiceName || 'Service';
+          const qty = parseFloat(item.Quantity || 1);
+          const unitPrice = parseFloat(item.UnitPrice || item.Amount || 0);
+          const lineAmount = parseFloat(item.Amount || (qty * unitPrice));
+          
+          doc.fontSize(10).fillColor(textDark).font('Helvetica')
+             .text(itemName, 60, yPos, { width: 200 })
+             .text(qty % 1 === 0 ? qty.toString() : qty.toFixed(1), 280, yPos, { align: 'center', width: 50 })
+             .text(`$${unitPrice.toFixed(2)}`, 340, yPos, { align: 'right', width: 80 })
+             .text(`$${lineAmount.toFixed(2)}`, 440, yPos, { align: 'right', width: 80 });
+          
+          yPos += 20;
+        }
+      } else {
+        // Fallback: single service line item
+        const serviceName = booking.ServiceName || invoiceData.ServiceName || 'Service';
+        doc.fontSize(10).fillColor(textDark).font('Helvetica')
+           .text(serviceName, 60, yPos)
+           .text('1', 280, yPos, { align: 'center', width: 50 })
+           .text(`$${subtotal.toFixed(2)}`, 340, yPos, { align: 'right', width: 80 })
+           .text(`$${subtotal.toFixed(2)}`, 440, yPos, { align: 'right', width: 80 });
+        yPos += 20;
+      }
       
-      yPos += 40;
+      yPos += 20;
       doc.moveTo(50, yPos).lineTo(562, yPos).strokeColor(borderColor).stroke();
       yPos += 20;
       
@@ -152,7 +234,11 @@ async function generateInvoicePDF(invoiceData) {
       }
       
       if (taxAmount > 0) {
-        doc.fillColor(textMuted).text('Tax (HST 13%)', totalsX, yPos);
+        // Calculate tax percentage from amounts for display
+        const taxableAmount = subtotal + platformFee;
+        const taxPercent = taxableAmount > 0 ? Math.round((taxAmount / taxableAmount) * 100) : 13;
+        const taxLabel = taxPercent === 13 ? 'Tax (HST 13%)' : `Tax (${taxPercent}%)`;
+        doc.fillColor(textMuted).text(taxLabel, totalsX, yPos);
         doc.fillColor(textDark).text(`$${taxAmount.toFixed(2)}`, valuesX, yPos, { align: 'right', width: 82 });
         yPos += 25;
       }

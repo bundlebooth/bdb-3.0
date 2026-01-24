@@ -1950,15 +1950,14 @@ const webhook = async (req, res) => {
                 .input('StripePaymentIntentID', sql.NVarChar(100), paymentIntent.id)
                 .execute('payments.sp_ConfirmBookingRequest');
 
-              // Send payment received email to vendor (using centralized notification service)
+              // Send payment and booking confirmation emails
+              // Only send from payment_intent.succeeded to avoid duplicates
+              // (checkout.session.completed and charge.succeeded also fire for the same payment)
               const paidAmount = paymentIntent.amount_received || paymentIntent.amount || 0;
               notifyVendorOfPayment(bookingId, paidAmount, paymentIntent.currency || 'cad');
-              
-              // Send payment confirmation email to client
               notifyClientOfPayment(bookingId, paidAmount, paymentIntent.currency || 'cad');
-              
-              // Send booking confirmation emails to both parties
               notifyOfBookingConfirmation(bookingId);
+              console.log(`[Webhook PI] Sent payment/booking emails for booking ${bookingId}`);
             }
           }
         } catch (piErr) {
@@ -1994,11 +1993,9 @@ const webhook = async (req, res) => {
                   .input('StripePaymentIntentID', sql.NVarChar(100), paymentIntentId)
                   .execute('payments.sp_ConfirmBookingRequest');
                 
-                // Send payment and booking confirmation emails
-                const paidAmount = pi.amount_received || pi.amount || session.amount_total || 0;
-                notifyVendorOfPayment(bookingId, paidAmount, pi.currency || 'cad');
-                notifyClientOfPayment(bookingId, paidAmount, pi.currency || 'cad');
-                notifyOfBookingConfirmation(bookingId);
+                // Skip sending emails here - payment_intent.succeeded already handles this
+                // This prevents duplicate emails when both events fire for the same payment
+                console.log(`[Webhook checkout.session.completed] Booking ${bookingId} confirmed, emails handled by payment_intent.succeeded`);
               }
             }
           }
@@ -2070,11 +2067,9 @@ const webhook = async (req, res) => {
                 .input('StripePaymentIntentID', sql.NVarChar(100), charge.payment_intent || null)
                 .execute('payments.sp_ConfirmBookingRequest');
               
-              // Send payment and booking confirmation emails
-              const paidAmount = charge.amount || 0;
-              notifyVendorOfPayment(bookingIdFromCharge, paidAmount, charge.currency || 'cad');
-              notifyClientOfPayment(bookingIdFromCharge, paidAmount, charge.currency || 'cad');
-              notifyOfBookingConfirmation(bookingIdFromCharge);
+              // Skip sending emails here - payment_intent.succeeded already handles this
+              // This prevents duplicate emails when both events fire for the same payment
+              console.log(`[Webhook charge.succeeded] Booking ${bookingIdFromCharge} confirmed, emails handled by payment_intent.succeeded`);
             }
           }
         } catch (chErr) {

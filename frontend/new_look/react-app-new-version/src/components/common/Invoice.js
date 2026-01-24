@@ -14,10 +14,8 @@ import { generateInvoiceHTML } from '../../utils/sharedInvoiceTemplate';
 const Invoice = ({ invoice }) => {
   if (!invoice) return null;
 
-  // Generate HTML using the SHARED template (same code as backend PDF)
   const invoiceHTML = generateInvoiceHTML(invoice);
 
-  // Render the shared HTML template
   return (
     <div 
       className="invoice-content"
