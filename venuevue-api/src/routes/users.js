@@ -1910,4 +1910,338 @@ router.post('/cookie-consent', async (req, res) => {
   }
 });
 
+// ==================== USER PROFILES ENDPOINTS (Airbnb-style) ====================
+
+// Get user profile (from UserProfiles table)
+router.get('/:id/user-profile', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pool = await poolPromise;
+    
+    // Get user basic info
+    const userResult = await pool.request()
+      .input('UserID', sql.Int, parseInt(id))
+      .query(`
+        SELECT 
+          u.UserID, u.FirstName, u.LastName, u.Email, u.Phone,
+          u.ProfileImageURL, u.IsVendor, u.CreatedAt, u.EmailVerified,
+          YEAR(u.CreatedAt) as JoinYear,
+          (SELECT COUNT(*) FROM bookings.Bookings WHERE ClientUserID = u.UserID AND Status = 'completed') as CompletedBookings,
+          (SELECT COUNT(*) FROM reviews.Reviews WHERE UserID = u.UserID) as ReviewsGiven
+        FROM users.Users u
+        WHERE u.UserID = @UserID AND u.IsDeleted = 0
+      `);
+    
+    if (userResult.recordset.length === 0) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+    
+    const user = userResult.recordset[0];
+    
+    // Get user profile from UserProfiles table
+    let userProfile = null;
+    const profileResult = await pool.request()
+      .input('UserID', sql.Int, parseInt(id))
+      .query(`
+        SELECT * FROM users.UserProfiles WHERE UserID = @UserID
+      `);
+    
+    if (profileResult.recordset.length > 0) {
+      userProfile = profileResult.recordset[0];
+    }
+    
+    // Get user interests
+    let interests = [];
+    if (userProfile) {
+      const interestsResult = await pool.request()
+        .input('UserProfileID', sql.Int, userProfile.UserProfileID)
+        .query(`
+          SELECT Interest, Category, DisplayOrder
+          FROM users.UserInterests
+          WHERE UserProfileID = @UserProfileID
+          ORDER BY DisplayOrder
+        `);
+      interests = interestsResult.recordset || [];
+    }
+    
+    // Get vendor profile if user is a vendor
+    let vendorProfile = null;
+    if (user.IsVendor) {
+      const vendorResult = await pool.request()
+        .input('UserID', sql.Int, parseInt(id))
+        .query(`
+          SELECT VendorProfileID, BusinessName, ResponseRate, AverageResponseTime as ResponseTime, AvgRating as AverageRating, TotalReviews as ReviewCount
+          FROM vendors.VendorProfiles
+          WHERE UserID = @UserID AND IsVisible = 1
+        `);
+      if (vendorResult.recordset.length > 0) {
+        vendorProfile = vendorResult.recordset[0];
+      }
+    }
+    
+    res.json({
+      success: true,
+      user: {
+        ...user,
+        Name: [user.FirstName, user.LastName].filter(Boolean).join(' ')
+      },
+      profile: userProfile,
+      interests: interests,
+      vendorProfile: vendorProfile,
+      verifications: {
+        email: user.EmailVerified || false,
+        phone: !!user.Phone,
+        identity: false
+      }
+    });
+  } catch (err) {
+    console.error('Get user profile error:', err);
+    res.status(500).json({ success: false, message: 'Failed to get profile', error: err.message });
+  }
+});
+
+// Create or update user profile
+router.put('/:id/user-profile', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      displayName, biographyTitle, bio, profileImageURL,
+      city, state, country, work, school, languages, decadeBorn,
+      obsessedWith, pets, spendTimeDoing, funFact, uselessSkill, favoriteQuote
+    } = req.body;
+    
+    const pool = await poolPromise;
+    
+    // Check if profile exists
+    const existingProfile = await pool.request()
+      .input('UserID', sql.Int, parseInt(id))
+      .query('SELECT UserProfileID FROM users.UserProfiles WHERE UserID = @UserID');
+    
+    let userProfileId;
+    
+    if (existingProfile.recordset.length > 0) {
+      // Update existing profile
+      userProfileId = existingProfile.recordset[0].UserProfileID;
+      
+      await pool.request()
+        .input('UserProfileID', sql.Int, userProfileId)
+        .input('DisplayName', sql.NVarChar(100), displayName || null)
+        .input('BiographyTitle', sql.NVarChar(100), biographyTitle || null)
+        .input('Bio', sql.NVarChar(sql.MAX), bio || null)
+        .input('ProfileImageURL', sql.NVarChar(500), profileImageURL || null)
+        .input('City', sql.NVarChar(100), city || null)
+        .input('State', sql.NVarChar(100), state || null)
+        .input('Country', sql.NVarChar(100), country || null)
+        .input('Work', sql.NVarChar(200), work || null)
+        .input('School', sql.NVarChar(200), school || null)
+        .input('Languages', sql.NVarChar(500), languages || null)
+        .input('DecadeBorn', sql.NVarChar(20), decadeBorn || null)
+        .input('ObsessedWith', sql.NVarChar(200), obsessedWith || null)
+        .input('Pets', sql.NVarChar(200), pets || null)
+        .input('SpendTimeDoing', sql.NVarChar(200), spendTimeDoing || null)
+        .input('FunFact', sql.NVarChar(300), funFact || null)
+        .input('UselessSkill', sql.NVarChar(200), uselessSkill || null)
+        .input('FavoriteQuote', sql.NVarChar(500), favoriteQuote || null)
+        .query(`
+          UPDATE users.UserProfiles SET
+            DisplayName = @DisplayName,
+            BiographyTitle = @BiographyTitle,
+            Bio = @Bio,
+            ProfileImageURL = COALESCE(@ProfileImageURL, ProfileImageURL),
+            City = @City,
+            State = @State,
+            Country = @Country,
+            Work = @Work,
+            School = @School,
+            Languages = @Languages,
+            DecadeBorn = @DecadeBorn,
+            ObsessedWith = @ObsessedWith,
+            Pets = @Pets,
+            SpendTimeDoing = @SpendTimeDoing,
+            FunFact = @FunFact,
+            UselessSkill = @UselessSkill,
+            FavoriteQuote = @FavoriteQuote,
+            UpdatedAt = GETDATE()
+          WHERE UserProfileID = @UserProfileID
+        `);
+    } else {
+      // Create new profile
+      const insertResult = await pool.request()
+        .input('UserID', sql.Int, parseInt(id))
+        .input('DisplayName', sql.NVarChar(100), displayName || null)
+        .input('BiographyTitle', sql.NVarChar(100), biographyTitle || null)
+        .input('Bio', sql.NVarChar(sql.MAX), bio || null)
+        .input('ProfileImageURL', sql.NVarChar(500), profileImageURL || null)
+        .input('City', sql.NVarChar(100), city || null)
+        .input('State', sql.NVarChar(100), state || null)
+        .input('Country', sql.NVarChar(100), country || null)
+        .input('Work', sql.NVarChar(200), work || null)
+        .input('School', sql.NVarChar(200), school || null)
+        .input('Languages', sql.NVarChar(500), languages || null)
+        .input('DecadeBorn', sql.NVarChar(20), decadeBorn || null)
+        .input('ObsessedWith', sql.NVarChar(200), obsessedWith || null)
+        .input('Pets', sql.NVarChar(200), pets || null)
+        .input('SpendTimeDoing', sql.NVarChar(200), spendTimeDoing || null)
+        .input('FunFact', sql.NVarChar(300), funFact || null)
+        .input('UselessSkill', sql.NVarChar(200), uselessSkill || null)
+        .input('FavoriteQuote', sql.NVarChar(500), favoriteQuote || null)
+        .query(`
+          INSERT INTO users.UserProfiles (
+            UserID, DisplayName, BiographyTitle, Bio, ProfileImageURL,
+            City, State, Country, Work, School, Languages, DecadeBorn,
+            ObsessedWith, Pets, SpendTimeDoing, FunFact, UselessSkill, FavoriteQuote
+          ) OUTPUT INSERTED.UserProfileID VALUES (
+            @UserID, @DisplayName, @BiographyTitle, @Bio, @ProfileImageURL,
+            @City, @State, @Country, @Work, @School, @Languages, @DecadeBorn,
+            @ObsessedWith, @Pets, @SpendTimeDoing, @FunFact, @UselessSkill, @FavoriteQuote
+          )
+        `);
+      userProfileId = insertResult.recordset[0].UserProfileID;
+    }
+    
+    // Calculate and update profile completeness
+    const completenessResult = await pool.request()
+      .input('UserProfileID', sql.Int, userProfileId)
+      .query(`
+        SELECT 
+          CASE WHEN DisplayName IS NOT NULL AND DisplayName != '' THEN 10 ELSE 0 END +
+          CASE WHEN Bio IS NOT NULL AND Bio != '' THEN 15 ELSE 0 END +
+          CASE WHEN ProfileImageURL IS NOT NULL AND ProfileImageURL != '' THEN 15 ELSE 0 END +
+          CASE WHEN Work IS NOT NULL AND Work != '' THEN 10 ELSE 0 END +
+          CASE WHEN City IS NOT NULL AND City != '' THEN 10 ELSE 0 END +
+          CASE WHEN Languages IS NOT NULL AND Languages != '' THEN 10 ELSE 0 END +
+          CASE WHEN School IS NOT NULL AND School != '' THEN 5 ELSE 0 END +
+          CASE WHEN ObsessedWith IS NOT NULL AND ObsessedWith != '' THEN 5 ELSE 0 END +
+          CASE WHEN FunFact IS NOT NULL AND FunFact != '' THEN 5 ELSE 0 END +
+          CASE WHEN BiographyTitle IS NOT NULL AND BiographyTitle != '' THEN 5 ELSE 0 END +
+          CASE WHEN FavoriteQuote IS NOT NULL AND FavoriteQuote != '' THEN 5 ELSE 0 END +
+          CASE WHEN Pets IS NOT NULL AND Pets != '' THEN 5 ELSE 0 END
+          as Completeness
+        FROM users.UserProfiles WHERE UserProfileID = @UserProfileID
+      `);
+    
+    const completeness = Math.min(completenessResult.recordset[0]?.Completeness || 0, 100);
+    await pool.request()
+      .input('UserProfileID', sql.Int, userProfileId)
+      .input('Completeness', sql.Int, completeness)
+      .query('UPDATE users.UserProfiles SET ProfileCompleteness = @Completeness WHERE UserProfileID = @UserProfileID');
+    
+    res.json({ success: true, message: 'Profile updated', userProfileId, profileCompleteness: completeness });
+  } catch (err) {
+    console.error('Update user profile error:', err);
+    res.status(500).json({ success: false, message: 'Failed to update profile', error: err.message });
+  }
+});
+
+// Get user interests
+router.get('/:id/interests', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pool = await poolPromise;
+    
+    // First get the UserProfileID
+    const profileResult = await pool.request()
+      .input('UserID', sql.Int, parseInt(id))
+      .query('SELECT UserProfileID FROM users.UserProfiles WHERE UserID = @UserID');
+    
+    if (profileResult.recordset.length === 0) {
+      return res.json({ success: true, interests: [] });
+    }
+    
+    const userProfileId = profileResult.recordset[0].UserProfileID;
+    
+    const result = await pool.request()
+      .input('UserProfileID', sql.Int, userProfileId)
+      .query(`
+        SELECT UserInterestID, Interest, Category, DisplayOrder
+        FROM users.UserInterests
+        WHERE UserProfileID = @UserProfileID
+        ORDER BY DisplayOrder
+      `);
+    
+    res.json({ success: true, interests: result.recordset || [] });
+  } catch (err) {
+    console.error('Get interests error:', err);
+    res.status(500).json({ success: false, message: 'Failed to get interests', error: err.message });
+  }
+});
+
+// Update user interests
+router.put('/:id/interests', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { interests } = req.body;
+    
+    const pool = await poolPromise;
+    
+    // Get or create UserProfile
+    let profileResult = await pool.request()
+      .input('UserID', sql.Int, parseInt(id))
+      .query('SELECT UserProfileID FROM users.UserProfiles WHERE UserID = @UserID');
+    
+    let userProfileId;
+    if (profileResult.recordset.length === 0) {
+      // Create profile first
+      const insertResult = await pool.request()
+        .input('UserID', sql.Int, parseInt(id))
+        .query('INSERT INTO users.UserProfiles (UserID) OUTPUT INSERTED.UserProfileID VALUES (@UserID)');
+      userProfileId = insertResult.recordset[0].UserProfileID;
+    } else {
+      userProfileId = profileResult.recordset[0].UserProfileID;
+    }
+    
+    // Delete existing interests
+    await pool.request()
+      .input('UserProfileID', sql.Int, userProfileId)
+      .query('DELETE FROM users.UserInterests WHERE UserProfileID = @UserProfileID');
+    
+    // Insert new interests
+    if (interests && interests.length > 0) {
+      for (let i = 0; i < interests.length; i++) {
+        await pool.request()
+          .input('UserProfileID', sql.Int, userProfileId)
+          .input('Interest', sql.NVarChar(100), interests[i].interest || interests[i])
+          .input('Category', sql.NVarChar(50), interests[i].category || 'General')
+          .input('DisplayOrder', sql.Int, i)
+          .query(`
+            INSERT INTO users.UserInterests (UserProfileID, Interest, Category, DisplayOrder)
+            VALUES (@UserProfileID, @Interest, @Category, @DisplayOrder)
+          `);
+      }
+    }
+    
+    res.json({ success: true, message: 'Interests updated' });
+  } catch (err) {
+    console.error('Update interests error:', err);
+    res.status(500).json({ success: false, message: 'Failed to update interests', error: err.message });
+  }
+});
+
+// Get available interest options
+router.get('/interest-options', async (req, res) => {
+  try {
+    const pool = await poolPromise;
+    
+    const result = await pool.request()
+      .query(`
+        SELECT InterestOptionID, Interest, Category, Icon
+        FROM users.InterestOptions
+        WHERE IsActive = 1
+        ORDER BY Category, Interest
+      `);
+    
+    // Group by category
+    const grouped = {};
+    (result.recordset || []).forEach(opt => {
+      if (!grouped[opt.Category]) grouped[opt.Category] = [];
+      grouped[opt.Category].push(opt);
+    });
+    
+    res.json({ success: true, options: result.recordset || [], grouped });
+  } catch (err) {
+    console.error('Get interest options error:', err);
+    res.status(500).json({ success: false, message: 'Failed to get interest options', error: err.message });
+  }
+});
+
 module.exports = router;
