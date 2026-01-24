@@ -154,12 +154,12 @@ function formatInvoiceData(paymentData) {
   };
 }
 
-// Also export the shared template functions for use elsewhere
-const { generateInvoiceHTML, generateInvoiceContent } = require('./sharedInvoiceTemplate');
+// Re-export the shared template functions for use elsewhere
+const sharedTemplate = require('./sharedInvoiceTemplate');
 
 module.exports = {
   generateInvoicePDF,
   formatInvoiceData,
-  generateInvoiceHTML,
-  generateInvoiceContent
+  generateInvoiceHTML: sharedTemplate.generateInvoiceHTML,
+  generateInvoiceContent: sharedTemplate.generateInvoiceContent
 };

@@ -55,8 +55,9 @@ function generateInvoiceHTML(invoice) {
 
   // Build items HTML
   let itemsHTML = '';
-  if (invoice.items && invoice.items.length > 0) {
-    itemsHTML = invoice.items.map(item => `
+  const items = invoice.items || [];
+  if (items.length > 0) {
+    itemsHTML = items.map(item => `
       <tr>
         <td style="padding: 16px; font-size: 14px; color: #374151; border-bottom: 1px solid #e5e7eb;">
           <div style="font-weight: 500; color: #222;">${item.Title || item.ServiceName || 'Service'}</div>
