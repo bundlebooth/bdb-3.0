@@ -2659,16 +2659,12 @@ router.get('/:id', async (req, res) => {
           -- Calculate rating from reviews table
           (SELECT AVG(CAST(r.Rating AS FLOAT)) FROM vendors.Reviews r WHERE r.VendorProfileID = vp.VendorProfileID) as AvgRating,
           (SELECT COUNT(*) FROM vendors.Reviews r WHERE r.VendorProfileID = vp.VendorProfileID) as ReviewCount,
-          -- Booking count in last 30 days (same as main page)
+          -- Booking count in last 30 days
           (SELECT COUNT(*) FROM bookings.Bookings b 
            WHERE b.VendorProfileID = vp.VendorProfileID 
            AND b.CreatedAt >= DATEADD(day, -30, GETDATE())) as BookingCount,
-          -- Favorite count (same as main page)
-          (SELECT COUNT(*) FROM users.Favorites f WHERE f.VendorProfileID = vp.VendorProfileID) as FavoriteCount,
-          -- View count from analytics (same source as sp_Search)
-          COALESCE((SELECT SUM(va.ViewCount) FROM vendors.VendorAnalytics va 
-           WHERE va.VendorProfileID = vp.VendorProfileID 
-           AND va.AnalyticsDate >= DATEADD(day, -7, GETDATE())), 0) as ViewCount7Days
+          -- Favorite count
+          (SELECT COUNT(*) FROM users.Favorites f WHERE f.VendorProfileID = vp.VendorProfileID) as FavoriteCount
         FROM vendors.VendorProfiles vp
         WHERE vp.VendorProfileID = @VendorProfileID
       `);
@@ -2681,21 +2677,15 @@ router.get('/:id', async (req, res) => {
           BookingCount: v.BookingCount,
           FavoriteCount: v.FavoriteCount,
           ReviewCount: v.ReviewCount,
-          ViewCount7Days: v.ViewCount7Days,
           AvgRating: v.AvgRating,
           CreatedAt: v.CreatedAt
         });
         
-        // TRENDING - same formula as main page: (bookings * 3) + (favorites * 2) + (reviews * 1) + (views * 1)
-        const trendingScore = ((v.BookingCount || 0) * 3) + ((v.FavoriteCount || 0) * 2) + ((v.ReviewCount || 0) * 1) + ((v.ViewCount7Days || 0) * 1);
+        // TRENDING - formula: (bookings * 3) + (favorites * 2) + (reviews * 1)
+        const trendingScore = ((v.BookingCount || 0) * 3) + ((v.FavoriteCount || 0) * 2) + ((v.ReviewCount || 0) * 1);
         if (trendingScore > 0) {
           discoveryFlags.isTrending = true;
-          // Same badge logic as main page
-          if (v.ViewCount7Days > 0) {
-            discoveryFlags.trendingBadge = `${v.ViewCount7Days} view${v.ViewCount7Days !== 1 ? 's' : ''}`;
-          } else {
-            discoveryFlags.trendingBadge = 'Trending now';
-          }
+          discoveryFlags.trendingBadge = 'Trending now';
         }
         
         // MOST BOOKED - same logic: bookingCount > 0
