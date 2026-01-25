@@ -2657,8 +2657,8 @@ router.get('/:id', async (req, res) => {
           vp.VendorProfileID,
           vp.CreatedAt,
           -- Calculate rating from reviews table
-          (SELECT AVG(CAST(r.Rating AS FLOAT)) FROM reviews.Reviews r WHERE r.VendorProfileID = vp.VendorProfileID) as AvgRating,
-          (SELECT COUNT(*) FROM reviews.Reviews r WHERE r.VendorProfileID = vp.VendorProfileID) as ReviewCount,
+          (SELECT AVG(CAST(r.Rating AS FLOAT)) FROM vendors.Reviews r WHERE r.VendorProfileID = vp.VendorProfileID) as AvgRating,
+          (SELECT COUNT(*) FROM vendors.Reviews r WHERE r.VendorProfileID = vp.VendorProfileID) as ReviewCount,
           -- Booking count in last 30 days (same as main page)
           (SELECT COUNT(*) FROM bookings.Bookings b 
            WHERE b.VendorProfileID = vp.VendorProfileID 
