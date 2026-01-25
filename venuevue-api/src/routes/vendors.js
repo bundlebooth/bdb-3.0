@@ -7161,8 +7161,53 @@ router.get('/:id/badges', async (req, res) => {
     request.input('VendorProfileID', sql.Int, vendorProfileId);
     
     const result = await request.execute('vendors.sp_GetVendorBadges');
+    let badges = result.recordset || [];
     
-    res.json({ success: true, badges: result.recordset || [] });
+    // Badge image mapping - images stored in /images/badges/
+    const badgeImages = {
+      'new_vendor': '/images/badges/new_vendor_2026.png',
+      'featured': '/images/badges/featured_2026.png',
+      'verified': '/images/badges/verified_2026.png',
+      'choice_award': '/images/badges/choice_award_2026.png',
+      'top_rated': '/images/badges/top_rated_2026.png'
+    };
+    
+    // Add image URLs to badges if not already set
+    badges = badges.map(badge => ({
+      ...badge,
+      ImageURL: badge.ImageURL || badgeImages[badge.BadgeType?.toLowerCase()] || null
+    }));
+    
+    // Check if vendor is new (joined within 90 days) and doesn't already have new_vendor badge
+    const hasNewVendorBadge = badges.some(b => b.BadgeType?.toLowerCase() === 'new_vendor');
+    if (!hasNewVendorBadge) {
+      const createdAtRequest = new sql.Request(pool);
+      createdAtRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+      const createdAtResult = await createdAtRequest.query(`
+        SELECT CreatedAt FROM vendors.VendorProfiles WHERE VendorProfileID = @VendorProfileID
+      `);
+      
+      if (createdAtResult.recordset && createdAtResult.recordset.length > 0) {
+        const createdAt = createdAtResult.recordset[0].CreatedAt;
+        if (createdAt) {
+          const daysSinceCreated = Math.floor((new Date() - new Date(createdAt)) / (1000 * 60 * 60 * 24));
+          if (daysSinceCreated <= 90) {
+            // Auto-add new vendor badge
+            badges.push({
+              BadgeID: 0, // Virtual badge, not in database
+              BadgeType: 'new_vendor',
+              BadgeName: 'New Vendor',
+              Year: new Date().getFullYear(),
+              ImageURL: badgeImages['new_vendor'],
+              Description: 'Recently joined our platform',
+              IsAutomatic: true
+            });
+          }
+        }
+      }
+    }
+    
+    res.json({ success: true, badges });
   } catch (err) {
     console.error('Get vendor badges error:', err);
     res.status(500).json({ success: false, message: 'Failed to get vendor badges', error: err.message });
