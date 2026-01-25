@@ -2655,9 +2655,10 @@ router.get('/:id', async (req, res) => {
       const discoveryResult = await discoveryRequest.query(`
         SELECT 
           vp.VendorProfileID,
-          vp.AverageRating,
-          vp.TotalReviews,
           vp.CreatedAt,
+          -- Calculate rating from reviews table
+          (SELECT AVG(CAST(r.Rating AS FLOAT)) FROM reviews.Reviews r WHERE r.VendorProfileID = vp.VendorProfileID) as AvgRating,
+          (SELECT COUNT(*) FROM reviews.Reviews r WHERE r.VendorProfileID = vp.VendorProfileID) as ReviewCount,
           -- Booking count in last 30 days (same as main page)
           (SELECT COUNT(*) FROM bookings.Bookings b 
            WHERE b.VendorProfileID = vp.VendorProfileID 
@@ -2679,14 +2680,14 @@ router.get('/:id', async (req, res) => {
         console.log('Discovery data for vendor', vendorProfileId, ':', {
           BookingCount: v.BookingCount,
           FavoriteCount: v.FavoriteCount,
-          TotalReviews: v.TotalReviews,
+          ReviewCount: v.ReviewCount,
           ViewCount7Days: v.ViewCount7Days,
-          AverageRating: v.AverageRating,
+          AvgRating: v.AvgRating,
           CreatedAt: v.CreatedAt
         });
         
         // TRENDING - same formula as main page: (bookings * 3) + (favorites * 2) + (reviews * 1) + (views * 1)
-        const trendingScore = ((v.BookingCount || 0) * 3) + ((v.FavoriteCount || 0) * 2) + ((v.TotalReviews || 0) * 1) + ((v.ViewCount7Days || 0) * 1);
+        const trendingScore = ((v.BookingCount || 0) * 3) + ((v.FavoriteCount || 0) * 2) + ((v.ReviewCount || 0) * 1) + ((v.ViewCount7Days || 0) * 1);
         if (trendingScore > 0) {
           discoveryFlags.isTrending = true;
           // Same badge logic as main page
@@ -2707,9 +2708,9 @@ router.get('/:id', async (req, res) => {
         // This would need a separate query to calculate from message response times
         
         // TOP RATED - same logic: has reviews
-        if (v.TotalReviews > 0) {
+        if (v.ReviewCount > 0) {
           discoveryFlags.isTopRated = true;
-          discoveryFlags.ratingBadge = `${(v.AverageRating || 5.0).toFixed(1)} rating (${v.TotalReviews} reviews)`;
+          discoveryFlags.ratingBadge = `${(v.AvgRating || 5.0).toFixed(1)} rating (${v.ReviewCount} reviews)`;
         }
         
         // NEW VENDOR - joined within last 90 days
