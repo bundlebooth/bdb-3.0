@@ -2658,14 +2658,16 @@ router.get('/:id', async (req, res) => {
           vp.AverageRating,
           vp.TotalReviews,
           vp.CreatedAt,
-          vp.AvgResponseMinutes,
-          vp.ProfileViews,
           -- Booking count in last 30 days (same as main page)
           (SELECT COUNT(*) FROM bookings.Bookings b 
            WHERE b.VendorProfileID = vp.VendorProfileID 
            AND b.CreatedAt >= DATEADD(day, -30, GETDATE())) as BookingCount,
           -- Favorite count (same as main page)
-          (SELECT COUNT(*) FROM users.Favorites f WHERE f.VendorProfileID = vp.VendorProfileID) as FavoriteCount
+          (SELECT COUNT(*) FROM users.Favorites f WHERE f.VendorProfileID = vp.VendorProfileID) as FavoriteCount,
+          -- View count from analytics (same source as sp_Search)
+          COALESCE((SELECT SUM(va.ViewCount) FROM vendors.VendorAnalytics va 
+           WHERE va.VendorProfileID = vp.VendorProfileID 
+           AND va.AnalyticsDate >= DATEADD(day, -7, GETDATE())), 0) as ViewCount7Days
         FROM vendors.VendorProfiles vp
         WHERE vp.VendorProfileID = @VendorProfileID
       `);
@@ -2678,19 +2680,18 @@ router.get('/:id', async (req, res) => {
           BookingCount: v.BookingCount,
           FavoriteCount: v.FavoriteCount,
           TotalReviews: v.TotalReviews,
-          ProfileViews: v.ProfileViews,
-          AvgResponseMinutes: v.AvgResponseMinutes,
+          ViewCount7Days: v.ViewCount7Days,
           AverageRating: v.AverageRating,
           CreatedAt: v.CreatedAt
         });
         
         // TRENDING - same formula as main page: (bookings * 3) + (favorites * 2) + (reviews * 1) + (views * 1)
-        const trendingScore = ((v.BookingCount || 0) * 3) + ((v.FavoriteCount || 0) * 2) + ((v.TotalReviews || 0) * 1) + ((v.ProfileViews || 0) * 1);
+        const trendingScore = ((v.BookingCount || 0) * 3) + ((v.FavoriteCount || 0) * 2) + ((v.TotalReviews || 0) * 1) + ((v.ViewCount7Days || 0) * 1);
         if (trendingScore > 0) {
           discoveryFlags.isTrending = true;
           // Same badge logic as main page
-          if (v.ProfileViews > 0) {
-            discoveryFlags.trendingBadge = `${v.ProfileViews} view${v.ProfileViews !== 1 ? 's' : ''}`;
+          if (v.ViewCount7Days > 0) {
+            discoveryFlags.trendingBadge = `${v.ViewCount7Days} view${v.ViewCount7Days !== 1 ? 's' : ''}`;
           } else {
             discoveryFlags.trendingBadge = 'Trending now';
           }
@@ -2702,22 +2703,8 @@ router.get('/:id', async (req, res) => {
           discoveryFlags.bookingsBadge = `${v.BookingCount} booking${v.BookingCount > 1 ? 's' : ''} this month`;
         }
         
-        // QUICK RESPONDER - same logic: has AvgResponseMinutes data
-        if (v.AvgResponseMinutes != null && v.AvgResponseMinutes >= 0) {
-          discoveryFlags.isQuickResponder = true;
-          const mins = v.AvgResponseMinutes;
-          // Same response text logic as main page
-          if (mins === 0) {
-            discoveryFlags.responseBadge = 'Replies instantly';
-          } else if (mins < 60) {
-            discoveryFlags.responseBadge = `Replies in ~${mins} min`;
-          } else if (mins < 1440) {
-            const hours = Math.round(mins / 60);
-            discoveryFlags.responseBadge = `Replies in ~${hours} hr${hours > 1 ? 's' : ''}`;
-          } else {
-            discoveryFlags.responseBadge = 'Replies within a day';
-          }
-        }
+        // QUICK RESPONDER - skipped for now (AvgResponseMinutes not tracked in VendorProfiles)
+        // This would need a separate query to calculate from message response times
         
         // TOP RATED - same logic: has reviews
         if (v.TotalReviews > 0) {
