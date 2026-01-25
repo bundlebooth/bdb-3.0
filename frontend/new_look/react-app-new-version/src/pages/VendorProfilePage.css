@@ -325,6 +325,8 @@
     top: 80px; /* Account for header height */
     align-self: start;
     z-index: 50;
+    max-height: calc(100vh - 100px);
+    overflow-y: auto;
 }
 
 /* Section Styles */
@@ -422,40 +424,48 @@
     font-size: 1.25rem;
 }
 
-/* Review Cards */
+/* Review Cards - Clean Airbnb style */
 .review-card {
-    background-color: white;
-    border-radius: var(--radius);
-    padding: 1.5rem;
-    border: 1px solid var(--border);
-    margin-bottom: 1rem;
+    background-color: transparent;
+    border-radius: 0;
+    padding: 24px 0;
+    border: none;
+    border-bottom: 1px solid #ebebeb;
+    margin-bottom: 0;
+}
+
+.review-card:last-child {
+    border-bottom: none;
 }
 
 .review-header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.75rem;
+    align-items: flex-start;
+    margin-bottom: 8px;
 }
 
 .reviewer-name {
     font-weight: 600;
-    color: var(--text);
+    font-size: 16px;
+    color: #222;
 }
 
 .review-rating {
-    color: #fbbf24;
+    color: #222;
+    font-size: 14px;
 }
 
 .review-comment {
-    color: var(--text-light);
-    line-height: 1.6;
+    color: #222;
+    font-size: 16px;
+    line-height: 1.5;
 }
 
 .review-date {
-    font-size: 0.85rem;
-    color: var(--text-light);
-    margin-top: 0.5rem;
+    font-size: 14px;
+    color: #717171;
+    margin-top: 4px;
 }
 
 /* Venue Recommendations Section */

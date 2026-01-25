@@ -1,3 +1,4 @@
+// Force recompile - Airbnb style updates
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -10,6 +11,7 @@ import VendorCard from '../components/VendorCard';
 import SkeletonLoader from '../components/SkeletonLoader';
 import { ServiceCard, PackageCard, PackageServiceTabs, PackageServiceEmpty, PackageServiceList } from '../components/PackageServiceCard';
 import ProfileModal from '../components/ProfileModal';
+import UniversalModal from '../components/UniversalModal';
 import Footer from '../components/Footer';
 import MobileBottomNav from '../components/MobileBottomNav';
 import Breadcrumb from '../components/Breadcrumb';
@@ -91,6 +93,12 @@ function VendorProfilePage() {
 
   // Cancellation policy state
   const [cancellationPolicy, setCancellationPolicy] = useState(null);
+  
+  // Amenities/Features modal state
+  const [showAmenitiesModal, setShowAmenitiesModal] = useState(false);
+  
+  // Services/Packages modal state  
+  const [showServicesModal, setShowServicesModal] = useState(false);
 
   // Get online status for this vendor
   const { statuses: onlineStatuses } = useVendorOnlineStatus(
@@ -770,24 +778,86 @@ function VendorProfilePage() {
       categorizedFeatures[category].push(feature);
     });
 
+    // Flatten all features for 2-column display
+    const allFeatures = vendorFeatures.slice(0, 10); // Show first 10
+    const hasMore = vendorFeatures.length > 10;
+
     return (
       <div className="content-section">
         <h2>What this place offers</h2>
-        <div>
-          {Object.keys(categorizedFeatures).map((categoryName, index) => (
-            <div key={index} style={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: '2rem', padding: '1.5rem 0', borderBottom: '1px solid #ebebeb', alignItems: 'start' }} className="vendor-feature-row">
-              <div style={{ fontSize: '1rem', fontWeight: 600, color: '#222' }}>{categoryName}</div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem 1.5rem' }} className="vendor-feature-grid">
-                {categorizedFeatures[categoryName].map((feature, idx) => (
-                  <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
-                    <i className={`fas fa-${getFeatureIcon(feature.FeatureName, categoryName)}`} style={{ width: '14px', height: '14px', fontSize: '0.75rem', color: '#717171', flexShrink: 0 }}></i>
-                    <span style={{ fontSize: '0.9375rem', color: '#222', lineHeight: 1.4 }}>{feature.FeatureName}</span>
-                  </div>
-                ))}
-              </div>
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(2, 1fr)', 
+          gap: '16px',
+          marginTop: '24px'
+        }}>
+          {allFeatures.map((feature, idx) => (
+            <div key={idx} style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '16px',
+              padding: '8px 0'
+            }}>
+              <i className={`fas fa-${getFeatureIcon(feature.FeatureName, feature.CategoryName)}`} style={{ 
+                fontSize: '24px', 
+                color: '#222', 
+                width: '24px',
+                textAlign: 'center'
+              }}></i>
+              <span style={{ fontSize: '16px', color: '#222' }}>{feature.FeatureName}</span>
             </div>
           ))}
         </div>
+        {hasMore && (
+          <button 
+            onClick={() => setShowAmenitiesModal(true)}
+            style={{
+              marginTop: '24px',
+              padding: '14px 24px',
+              border: '1px solid #222',
+              borderRadius: '8px',
+              background: 'white',
+              color: '#222',
+              fontSize: '16px',
+              fontWeight: 600,
+              cursor: 'pointer'
+            }}>
+            Show all {vendorFeatures.length} amenities
+          </button>
+        )}
+        
+        {/* Amenities Modal */}
+        <UniversalModal
+          isOpen={showAmenitiesModal}
+          onClose={() => setShowAmenitiesModal(false)}
+          title="What this place offers"
+          size="medium"
+        >
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(2, 1fr)', 
+            gap: '16px',
+            padding: '8px 0'
+          }}>
+            {vendorFeatures.map((feature, idx) => (
+              <div key={idx} style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '16px',
+                padding: '12px 0',
+                borderBottom: idx < vendorFeatures.length - 1 ? '1px solid #f0f0f0' : 'none'
+              }}>
+                <i className={`fas fa-${getFeatureIcon(feature.FeatureName, feature.CategoryName)}`} style={{ 
+                  fontSize: '24px', 
+                  color: '#222', 
+                  width: '24px',
+                  textAlign: 'center'
+                }}></i>
+                <span style={{ fontSize: '16px', color: '#222' }}>{feature.FeatureName}</span>
+              </div>
+            ))}
+          </div>
+        </UniversalModal>
       </div>
     );
   };
@@ -804,58 +874,53 @@ function VendorProfilePage() {
       <div className="content-section" id="location-section">
         <h2>Where you'll find us</h2>
         
-        {/* Google Maps - Show if we have coordinates OR address */}
+        {/* Google Maps - Clean map with custom blue marker overlay */}
         {(hasLocation || hasAddress) && (
-          <div style={{ marginBottom: '2rem' }}>
-            <div style={{ 
-              position: 'relative',
-              borderRadius: '12px',
-              overflow: 'hidden',
-              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
-            }}>
+          <div style={{ marginBottom: '1.5rem' }}>
+            <div 
+              onClick={() => {
+                const url = hasLocation 
+                  ? `https://www.google.com/maps?q=${profile.Latitude},${profile.Longitude}`
+                  : `https://www.google.com/maps?q=${encodeURIComponent([profile.Address, profile.City, profile.State].filter(Boolean).join(', '))}`;
+                window.open(url, '_blank');
+              }}
+              style={{ 
+                position: 'relative',
+                borderRadius: '16px',
+                overflow: 'hidden',
+                height: '320px',
+                background: '#f5f5f5',
+                cursor: 'pointer'
+              }}
+            >
+              {/* Map iframe using view mode - clean without place info */}
               <iframe
+                title="Location map"
                 width="100%"
-                height="400"
+                height="100%"
                 frameBorder="0"
-                style={{ border: 0, display: 'block' }}
-                referrerPolicy="no-referrer-when-downgrade"
+                style={{ border: 0, pointerEvents: 'none' }}
                 src={hasLocation 
-                  ? `https://maps.google.com/maps?q=${profile.Latitude},${profile.Longitude}&hl=en&z=15&output=embed`
-                  : `https://maps.google.com/maps?q=${encodeURIComponent([profile.Address, profile.City, profile.State].filter(Boolean).join(', '))}&hl=en&z=15&output=embed`
+                  ? `https://www.google.com/maps/embed/v1/view?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&center=${profile.Latitude},${profile.Longitude}&zoom=14&maptype=roadmap`
+                  : `https://www.google.com/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&q=${encodeURIComponent([profile.Address, profile.City, profile.State].filter(Boolean).join(', '))}&zoom=14`
                 }
-                allowFullScreen
                 loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
               ></iframe>
               
-              {/* Address overlay */}
-              <div style={{ 
+              {/* Custom Blue Pin Marker Overlay - centered on map */}
+              <div style={{
                 position: 'absolute',
-                bottom: '0',
-                left: '0',
-                right: '0',
-                background: 'linear-gradient(to top, rgba(0,0,0,0.8), rgba(0,0,0,0.4), transparent)',
-                color: 'white',
-                padding: '1.5rem 1rem 1rem',
-                backdropFilter: 'blur(4px)'
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -100%)',
+                zIndex: 10,
+                pointerEvents: 'none'
               }}>
-                <div style={{ 
-                  fontSize: '0.875rem', 
-                  opacity: 0.9,
-                  marginBottom: '0.25rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem'
-                }}>
-                  <i className="fas fa-map-marker-alt"></i>
-                  <span>Business Location</span>
-                </div>
-                <div style={{ 
-                  fontSize: '1rem', 
-                  fontWeight: '500',
-                  lineHeight: '1.4'
-                }}>
-                  {[profile.Address, profile.City, profile.State, profile.PostalCode, profile.Country].filter(Boolean).join(', ') || 'Address available upon booking'}
-                </div>
+                <svg width="40" height="48" viewBox="0 0 24 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 0C5.373 0 0 5.373 0 12c0 9 12 20 12 20s12-11 12-20c0-6.627-5.373-12-12-12z" fill="#4285F4"/>
+                  <circle cx="12" cy="12" r="5" fill="white"/>
+                </svg>
               </div>
             </div>
           </div>
@@ -914,51 +979,39 @@ function VendorProfilePage() {
     );
   };
 
-  // Render portfolio albums - Airbnb style horizontal scroll on mobile, grid on desktop
+  // Render portfolio albums - Airbnb "Where you'll sleep" style
   const renderPortfolioAlbums = () => {
     if (!portfolioAlbums || portfolioAlbums.length === 0) return null;
 
     return (
       <div className="content-section">
-        <h2>Portfolio</h2>
-        {/* Mobile: Horizontal scroll with side-by-side cards */}
-        <div 
-          className="portfolio-albums-container"
-          style={{ 
-            display: 'flex',
-            gap: '12px',
-            marginTop: '1rem',
-            overflowX: 'auto',
-            scrollSnapType: 'x mandatory',
-            WebkitOverflowScrolling: 'touch',
-            paddingBottom: '8px',
-            marginLeft: '-16px',
-            marginRight: '-16px',
-            paddingLeft: '16px',
-            paddingRight: '16px'
-          }}
-        >
+        <h2>Our work</h2>
+        <div style={{ 
+          display: 'flex',
+          gap: '16px',
+          marginTop: '24px',
+          overflowX: 'auto',
+          paddingBottom: '8px',
+          scrollSnapType: 'x mandatory'
+        }}>
           {portfolioAlbums.map((album, index) => (
             <div 
               key={index} 
               onClick={() => loadAlbumImages(album)}
               style={{
                 cursor: 'pointer',
-                borderRadius: '12px',
-                overflow: 'hidden',
-                flex: '0 0 calc(50% - 6px)',
-                minWidth: '150px',
-                maxWidth: '200px',
+                flex: '0 0 200px',
                 scrollSnapAlign: 'start'
               }}
             >
               {/* Album Cover Image */}
               <div style={{ 
-                position: 'relative', 
-                aspectRatio: '1/1',
-                background: '#f3f4f6',
+                width: '200px',
+                height: '140px',
+                background: '#f7f7f7',
                 borderRadius: '12px',
-                overflow: 'hidden'
+                overflow: 'hidden',
+                border: '1px solid #ebebeb'
               }}>
                 {album.CoverImageURL ? (
                   <img 
@@ -977,29 +1030,25 @@ function VendorProfilePage() {
                     display: 'flex', 
                     alignItems: 'center', 
                     justifyContent: 'center',
-                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                    background: '#f7f7f7'
                   }}>
-                    <i className="fas fa-images" style={{ fontSize: '2rem', color: 'white', opacity: 0.8 }}></i>
+                    <i className="fas fa-images" style={{ fontSize: '2rem', color: '#717171' }}></i>
                   </div>
                 )}
               </div>
               
               {/* Album Info - Below image */}
-              <div style={{ padding: '8px 0 0 0' }}>
+              <div style={{ padding: '12px 0 0 0' }}>
                 <h4 style={{ 
-                  fontSize: '0.9rem', 
+                  fontSize: '14px', 
                   fontWeight: 600, 
                   color: '#222', 
-                  margin: '0 0 2px 0',
-                  lineHeight: 1.3,
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis'
+                  margin: '0 0 4px 0'
                 }}>
                   {album.AlbumName}
                 </h4>
                 <p style={{ 
-                  fontSize: '0.8rem', 
+                  fontSize: '14px', 
                   color: '#717171', 
                   margin: 0
                 }}>
@@ -1009,61 +1058,37 @@ function VendorProfilePage() {
             </div>
           ))}
         </div>
-        <style>{`
-          @media (min-width: 768px) {
-            .portfolio-albums-container {
-              display: grid !important;
-              grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)) !important;
-              gap: 1.5rem !important;
-              overflow-x: visible !important;
-              margin-left: 0 !important;
-              margin-right: 0 !important;
-              padding-left: 0 !important;
-              padding-right: 0 !important;
-            }
-            .portfolio-albums-container > div {
-              flex: none !important;
-              min-width: unset !important;
-              max-width: unset !important;
-            }
-          }
-        `}</style>
       </div>
     );
   };
 
-  // Render vendor badges section - Subtle pastel style with rounded corners
+  // Render vendor badges section - Using badge images from /images/badges/
   const renderVendorBadges = () => {
     if (!vendorBadges || vendorBadges.length === 0) return null;
 
     const getBadgeStyle = (badgeType) => {
       const styles = {
-        'new_vendor': { bg: '#e0f2fe', iconBg: 'white', iconColor: '#0369a1', textColor: '#0369a1', icon: 'fa-sparkles', label: 'New Vendor' },
-        'top_rated': { bg: '#fef3c7', iconBg: 'white', iconColor: '#d97706', textColor: '#d97706', icon: 'fa-star', label: 'Top Rated' },
-        'choice_award': { bg: '#fee2e2', iconBg: 'white', iconColor: '#dc2626', textColor: '#dc2626', icon: 'fa-award', label: 'Choice Award' },
-        'premium': { bg: '#f3e8ff', iconBg: 'white', iconColor: '#7c3aed', textColor: '#7c3aed', icon: 'fa-crown', label: 'Premium' },
-        'verified': { bg: '#d1fae5', iconBg: 'white', iconColor: '#059669', textColor: '#059669', icon: 'fa-check-circle', label: 'Verified' },
-        'featured': { bg: '#fce7f3', iconBg: 'white', iconColor: '#db2777', textColor: '#db2777', icon: 'fa-fire', label: 'Featured' }
+        'new_vendor': { bg: '#e0f2fe', textColor: '#0369a1', label: 'New Vendor' },
+        'top_rated': { bg: '#fef3c7', textColor: '#d97706', label: 'Top Rated' },
+        'choice_award': { bg: '#fee2e2', textColor: '#dc2626', label: 'Choice Award' },
+        'premium': { bg: '#f3e8ff', textColor: '#7c3aed', label: 'Premium' },
+        'verified': { bg: '#d1fae5', textColor: '#059669', label: 'Verified' },
+        'featured': { bg: '#fce7f3', textColor: '#db2777', label: 'Featured' }
       };
-      return styles[badgeType] || { bg: '#f3f4f6', iconBg: 'white', iconColor: '#6b7280', textColor: '#6b7280', icon: 'fa-certificate', label: badgeType };
+      return styles[badgeType?.toLowerCase()] || { bg: '#f3f4f6', textColor: '#6b7280', label: badgeType };
     };
 
     return (
-      <div className="content-section" style={{ paddingTop: '1.5rem', borderTop: '1px solid #ebebeb' }}>
-        <h2 style={{ fontSize: '1.375rem', fontWeight: 600, marginBottom: '1rem' }}>Badges</h2>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
+      <div className="content-section" style={{ paddingTop: '1rem', paddingBottom: '1rem', borderTop: '1px solid #ebebeb' }}>
+        <h2 style={{ fontSize: '1.375rem', fontWeight: 600, marginBottom: '0.75rem' }}>Badges</h2>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
           {vendorBadges.map((badge, index) => {
             const style = getBadgeStyle(badge.BadgeType || badge.badgeType);
             return (
               <div 
                 key={index}
                 style={{
-                  width: '110px',
-                  padding: '1rem 0.75rem',
-                  borderRadius: '16px',
-                  background: style.bg,
                   display: 'flex',
-                  flexDirection: 'column',
                   alignItems: 'center',
                   justifyContent: 'center',
                   userSelect: 'none',
@@ -1072,73 +1097,58 @@ function VendorProfilePage() {
                   msUserSelect: 'none'
                 }}
               >
-                {/* Icon circle with favicon overlay */}
-                <div style={{
-                  width: '48px',
-                  height: '48px',
-                  borderRadius: '50%',
-                  background: style.iconBg,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginBottom: '0.5rem',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-                  position: 'relative'
-                }}>
-                  {badge.ImageURL ? (
-                    <img 
-                      src={badge.ImageURL} 
-                      alt={badge.BadgeName || style.label}
-                      style={{ width: '28px', height: '28px', objectFit: 'contain', pointerEvents: 'auto' }}
-                    />
-                  ) : (
-                    <i className={`fas ${style.icon}`} style={{ 
-                      fontSize: '1.25rem', 
-                      color: style.iconColor
-                    }}></i>
-                  )}
-                  {/* Planbeau favicon logo - positioned at bottom right of icon circle */}
+                {/* Badge image only - no background */}
+                {badge.ImageURL ? (
                   <img 
-                    src="/planbeau_fav_icon.png" 
-                    alt="Planbeau"
-                    style={{ 
-                      position: 'absolute',
-                      bottom: '-2px',
-                      right: '-2px',
-                      width: '18px', 
-                      height: '18px', 
-                      objectFit: 'contain',
-                      background: 'white',
-                      borderRadius: '50%',
-                      padding: '2px',
-                      boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
-                      pointerEvents: 'auto'
-                    }}
+                    src={badge.ImageURL} 
+                    alt={badge.BadgeName || style.label}
+                    style={{ width: '150px', height: '150px', objectFit: 'contain' }}
                   />
-                </div>
-                
-                {/* Badge name */}
-                <span style={{ 
-                  fontSize: '0.75rem', 
-                  fontWeight: 600, 
-                  color: style.textColor,
-                  textAlign: 'center',
-                  lineHeight: 1.2
-                }}>
-                  {badge.BadgeName || style.label}
-                </span>
-                
-                {/* Year */}
-                {badge.Year && (
-                  <span style={{ 
-                    fontSize: '0.7rem', 
-                    fontWeight: 500,
-                    color: style.textColor,
-                    opacity: 0.7,
-                    marginTop: '2px'
+                ) : (
+                  <div style={{
+                    width: '100px',
+                    padding: '1rem 0.75rem',
+                    borderRadius: '16px',
+                    background: style.bg,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center'
                   }}>
-                    {badge.Year}
-                  </span>
+                    <div style={{
+                      width: '48px',
+                      height: '48px',
+                      borderRadius: '50%',
+                      background: 'white',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                      marginBottom: '0.5rem'
+                    }}>
+                      <i className="fas fa-certificate" style={{ fontSize: '1.25rem', color: style.textColor }}></i>
+                    </div>
+                    <span style={{ 
+                      fontSize: '0.75rem', 
+                      fontWeight: 600, 
+                      color: style.textColor,
+                      textAlign: 'center',
+                      lineHeight: 1.2
+                    }}>
+                      {badge.BadgeName || style.label}
+                    </span>
+                    {badge.Year && (
+                      <span style={{ 
+                        fontSize: '0.7rem', 
+                        fontWeight: 500,
+                        color: style.textColor,
+                        opacity: 0.7,
+                        marginTop: '2px'
+                      }}>
+                        {badge.Year}
+                      </span>
+                    )}
+                  </div>
                 )}
               </div>
             );
@@ -1218,49 +1228,85 @@ function VendorProfilePage() {
       return null;
     };
 
+    // Combine all offerings for display
+    const allOfferings = [
+      ...packages.map(pkg => ({ type: 'package', data: pkg })),
+      ...services.map(svc => ({ type: 'service', data: svc }))
+    ];
+    const displayOfferings = allOfferings.slice(0, 3);
+    const hasMoreOfferings = allOfferings.length > 3;
+
     return (
       <div className="content-section">
         <h2>{t('vendorProfile.whatWeOffer', 'What we offer')}</h2>
         
-        {/* Tab Toggle - only show if both exist */}
-        {hasPackages && hasServices && (
-          <PackageServiceTabs 
-            activeTab={offeringsTab}
-            onTabChange={setOfferingsTab}
-            packagesCount={packages.length}
-            servicesCount={services.length}
-          />
-        )}
-        
-        {/* Packages Tab */}
-        {(offeringsTab === 'packages' || !hasServices) && hasPackages && (
-          <PackageServiceList>
-            {packages.map((pkg) => (
+        {/* Show first 3 offerings without tabs */}
+        <PackageServiceList>
+          {displayOfferings.map((item, index) => (
+            item.type === 'package' ? (
               <PackageCard
-                key={pkg.PackageID}
-                pkg={pkg}
-                onClick={() => { setSelectedPackage(pkg); setPackageModalOpen(true); }}
+                key={item.data.PackageID}
+                pkg={item.data}
+                onClick={() => { setSelectedPackage(item.data); setPackageModalOpen(true); }}
                 selectable={false}
               />
-            ))}
-          </PackageServiceList>
+            ) : (
+              <ServiceCard
+                key={item.data.ServiceID || item.data.VendorServiceID || item.data.VendorSelectedServiceID || `service-${index}`}
+                service={item.data}
+                onClick={() => { setSelectedService(item.data); setServiceModalOpen(true); }}
+                selectable={false}
+              />
+            )
+          ))}
+        </PackageServiceList>
+        
+        {/* Show more button */}
+        {hasMoreOfferings && (
+          <button 
+            onClick={() => setShowServicesModal(true)}
+            style={{
+              marginTop: '24px',
+              padding: '14px 24px',
+              border: '1px solid #222',
+              borderRadius: '8px',
+              background: 'white',
+              color: '#222',
+              fontSize: '16px',
+              fontWeight: 600,
+              cursor: 'pointer'
+            }}>
+            Show all {allOfferings.length} offerings
+          </button>
         )}
         
-        {/* Services Tab */}
-        {(offeringsTab === 'services' || !hasPackages) && hasServices && (
+        {/* Services/Packages Modal */}
+        <UniversalModal
+          isOpen={showServicesModal}
+          onClose={() => setShowServicesModal(false)}
+          title="What we offer"
+          size="large"
+        >
           <PackageServiceList>
-            {services.map((service, index) => (
-              <ServiceCard
-                key={service.ServiceID || service.VendorServiceID || service.VendorSelectedServiceID || `service-${index}`}
-                service={service}
-                onClick={() => { setSelectedService(service); setServiceModalOpen(true); }}
-                selectable={false}
-              />
+            {allOfferings.map((item, index) => (
+              item.type === 'package' ? (
+                <PackageCard
+                  key={item.data.PackageID}
+                  pkg={item.data}
+                  onClick={() => { setSelectedPackage(item.data); setPackageModalOpen(true); setShowServicesModal(false); }}
+                  selectable={false}
+                />
+              ) : (
+                <ServiceCard
+                  key={item.data.ServiceID || item.data.VendorServiceID || item.data.VendorSelectedServiceID || `service-modal-${index}`}
+                  service={item.data}
+                  onClick={() => { setSelectedService(item.data); setServiceModalOpen(true); setShowServicesModal(false); }}
+                  selectable={false}
+                />
+              )
             ))}
           </PackageServiceList>
-        )}
-
-        {/* Cancellation Policy removed from here - now shown in booking widget only */}
+        </UniversalModal>
       </div>
     );
   };
@@ -1787,7 +1833,7 @@ function VendorProfilePage() {
           );
         })()}
 
-        {/* Review Content */}
+        {/* Review Content - Airbnb 2-column grid */}
         <div>
           {googleReviewsLoading ? (
             <div style={{ textAlign: 'center', padding: '3rem' }}>
@@ -1795,115 +1841,114 @@ function VendorProfilePage() {
             </div>
           ) : displayedReviews.length > 0 ? (
             <>
-              {displayedReviews.map((review, index) => (
-                <div key={index} style={{ 
-                  padding: '1.5rem 0', 
-                  borderBottom: index < displayedReviews.length - 1 ? '1px solid var(--border)' : 'none' 
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem' }}>
-                    {/* Reviewer Avatar */}
-                    <div style={{ 
-                      width: '40px', 
-                      height: '40px', 
-                      borderRadius: '50%', 
-                      backgroundImage: showGoogleReviews 
-                        ? (review.profile_photo_url ? `url(${review.profile_photo_url})` : 'none')
-                        : (review.ReviewerAvatar ? `url(${review.ReviewerAvatar})` : 'none'),
-                      backgroundColor: showGoogleReviews 
-                        ? (review.profile_photo_url ? 'transparent' : 'var(--primary)')
-                        : (review.ReviewerAvatar ? 'transparent' : 'var(--primary)'), 
-                      backgroundSize: 'cover',
-                      backgroundPosition: 'center',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: 'white',
-                      fontWeight: 600,
-                      fontSize: '0.9rem',
-                      flexShrink: 0
-                    }}>
-                      {showGoogleReviews 
-                        ? (!review.profile_photo_url && (review.author_name?.charAt(0) || '?'))
-                        : (!review.ReviewerAvatar && (review.ReviewerName?.charAt(0) || 'A'))
-                      }
-                    </div>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(2, 1fr)',
+                gap: '40px 48px'
+              }}>
+                {displayedReviews.map((review, index) => {
+                  const reviewerName = showGoogleReviews ? (review.author_name || 'Anonymous') : (review.ReviewerName || 'Anonymous');
+                  const reviewerLocation = showGoogleReviews ? '' : (review.ReviewerLocation || 'Canada');
+                  const reviewerAvatar = showGoogleReviews ? review.profile_photo_url : review.ReviewerAvatar;
+                  const rating = showGoogleReviews ? (review.rating || 5) : (review.Rating || 5);
+                  const reviewText = showGoogleReviews ? (review.text || '') : (review.Comment || '');
+                  const maxLength = 180;
+                  const isLongText = reviewText.length > maxLength;
+                  const displayText = isLongText ? reviewText.substring(0, maxLength) + '...' : reviewText;
+                  
+                  // Format date like "October 2025 · Stayed a few nights"
+                  const formatReviewDate = () => {
+                    if (showGoogleReviews) {
+                      return review.relative_time_description || '';
+                    }
+                    const rawDate = review.CreatedAt || review.createdAt || review.ReviewDate || review.created_at;
+                    if (!rawDate) return '';
+                    const date = new Date(rawDate);
+                    if (isNaN(date.getTime())) return '';
+                    const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+                    return `${months[date.getMonth()]} ${date.getFullYear()}`;
+                  };
 
-                    <div style={{ flex: 1 }}>
-                      {/* Reviewer Info */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                        <div style={{ fontWeight: 600, color: 'var(--text)', fontSize: '0.95rem' }}>
-                          {showGoogleReviews ? (review.author_name || 'Anonymous') : (review.ReviewerName || 'Anonymous')}
+                  return (
+                    <div key={index}>
+                      {/* Reviewer Header - Avatar + Name + Location */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                        {/* Avatar */}
+                        <div style={{ 
+                          width: '48px', 
+                          height: '48px', 
+                          borderRadius: '50%', 
+                          backgroundImage: reviewerAvatar ? `url(${reviewerAvatar})` : 'none',
+                          backgroundColor: reviewerAvatar ? 'transparent' : '#222', 
+                          backgroundSize: 'cover',
+                          backgroundPosition: 'center',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: 'white',
+                          fontWeight: 600,
+                          fontSize: '18px',
+                          flexShrink: 0
+                        }}>
+                          {!reviewerAvatar && reviewerName.charAt(0)}
                         </div>
-                        <span style={{ fontSize: '0.85rem', color: '#9ca3af' }}>
-                          {showGoogleReviews 
-                            ? (review.relative_time_description || '')
-                            : (() => {
-                                const rawDate = review.CreatedAt || review.createdAt || review.ReviewDate || review.created_at;
-                                if (!rawDate) {
-                                  return 'recently';
-                                }
-                                const date = new Date(rawDate);
-                                if (isNaN(date.getTime())) {
-                                  return 'recently';
-                                }
-                                
-                                const now = new Date();
-                                const diffMs = now - date;
-                                const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-                                const diffWeeks = Math.floor(diffDays / 7);
-                                const diffMonths = Math.floor(diffDays / 30);
-                                const diffYears = Math.floor(diffDays / 365);
-                                
-                                if (diffDays === 0) return 'today';
-                                if (diffDays === 1) return 'yesterday';
-                                if (diffDays < 7) return `${diffDays} days ago`;
-                                if (diffWeeks === 1) return '1 week ago';
-                                if (diffWeeks < 4) return `${diffWeeks} weeks ago`;
-                                if (diffMonths === 1) return '1 month ago';
-                                if (diffMonths < 12) return `${diffMonths} months ago`;
-                                if (diffYears === 1) return '1 year ago';
-                                return `${diffYears} years ago`;
-                              })()
-                          }
-                        </span>
+                        <div>
+                          <div style={{ fontWeight: 600, fontSize: '16px', color: '#222' }}>
+                            {reviewerName}
+                          </div>
+                          {reviewerLocation && (
+                            <div style={{ fontSize: '14px', color: '#717171' }}>
+                              {reviewerLocation}
+                            </div>
+                          )}
+                        </div>
                       </div>
 
-                      {/* Rating */}
-                      <div style={{ color: 'var(--primary)', fontSize: '0.9rem', marginBottom: '0.75rem' }}>
-                        {'★'.repeat(showGoogleReviews ? (review.rating || 0) : review.Rating)}{'☆'.repeat(5 - (showGoogleReviews ? (review.rating || 0) : review.Rating))}
+                      {/* Rating + Date Row */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                        {/* Star Rating */}
+                        <div style={{ display: 'flex', gap: '2px' }}>
+                          {[1,2,3,4,5].map(i => (
+                            <svg key={i} width="12" height="12" viewBox="0 0 32 32" fill={i <= rating ? '#222' : '#e0e0e0'}>
+                              <path d="M15.1 1.58l-4.13 8.88-9.86 1.27a1 1 0 0 0-.54 1.74l7.3 6.57-1.97 9.85a1 1 0 0 0 1.48 1.06l8.62-5 8.63 5a1 1 0 0 0 1.48-1.06l-1.97-9.85 7.3-6.57a1 1 0 0 0-.55-1.73l-9.86-1.28-4.12-8.88a1 1 0 0 0-1.82 0z"/>
+                            </svg>
+                          ))}
+                        </div>
+                        <span style={{ fontSize: '14px', color: '#222' }}>·</span>
+                        <span style={{ fontSize: '14px', color: '#717171' }}>
+                          {formatReviewDate()}
+                        </span>
                       </div>
 
                       {/* Review Text */}
                       <div style={{ 
-                        color: 'var(--text)', 
-                        fontSize: '0.95rem', 
-                        lineHeight: 1.6
+                        fontSize: '16px', 
+                        color: '#222',
+                        lineHeight: 1.5
                       }}>
-                        {showGoogleReviews ? (
-                          <>
-                            {review.text && (review.text.length > 300 ? `${review.text.substring(0, 300)}...` : review.text)}
-                            {review.text && review.text.length > 300 && (
-                              <button style={{ 
-                                background: 'none', 
-                                border: 'none', 
-                                color: 'var(--primary)', 
-                                cursor: 'pointer', 
-                                textDecoration: 'underline',
-                                marginLeft: '0.5rem',
-                                fontWeight: 500
-                              }}>
-                                Read more
-                              </button>
-                            )}
-                          </>
-                        ) : (
-                          review.Comment
-                        )}
+                        {displayText}
                       </div>
+
+                      {/* Show more link */}
+                      {isLongText && (
+                        <button style={{ 
+                          background: 'none', 
+                          border: 'none', 
+                          padding: 0,
+                          marginTop: '8px',
+                          color: '#222', 
+                          cursor: 'pointer', 
+                          textDecoration: 'underline',
+                          fontWeight: 600,
+                          fontSize: '14px'
+                        }}>
+                          Show more
+                        </button>
+                      )}
                     </div>
-                  </div>
-                </div>
-              ))}
+                  );
+                })}
+              </div>
 
               {/* Pagination */}
               {totalPages > 1 && (
@@ -2586,14 +2631,162 @@ function VendorProfilePage() {
                 </div>
               </div>
 
-              {/* Social Media Icons */}
-              <div style={{ paddingTop: '0.75rem', borderTop: '1px solid #ebebeb' }}>
-                {renderSocialMediaIcons()}
+            </div>
+
+            {/* Airbnb-style Guest Favourite + Hosted By Row */}
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'space-between',
+              padding: '24px 0',
+              borderBottom: '1px solid #ebebeb',
+              marginTop: '8px'
+            }}>
+              {/* Guest Favourite Badge */}
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '16px',
+                padding: '16px 24px',
+                border: '1px solid #e0e0e0',
+                borderRadius: '12px',
+                background: 'linear-gradient(135deg, #fff 0%, #fafafa 100%)'
+              }}>
+                {/* Laurel Left */}
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style={{ color: '#222' }}>
+                  <path d="M12 2C9.5 5 7 8 7 12C7 16 9.5 19 12 22" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                  <path d="M7 6C5 7 3 9 3 12C3 15 5 17 7 18" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                </svg>
+                
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '14px', fontWeight: 600, color: '#222' }}>Guest</div>
+                  <div style={{ fontSize: '14px', fontWeight: 600, color: '#222' }}>favourite</div>
+                </div>
+                
+                <div style={{ 
+                  width: '1px', 
+                  height: '40px', 
+                  background: '#e0e0e0'
+                }}></div>
+                
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '22px', fontWeight: 600, color: '#222' }}>
+                    {reviews.length > 0 ? '4.9' : '5.0'}
+                  </div>
+                  <div style={{ display: 'flex', gap: '2px', justifyContent: 'center' }}>
+                    {[1,2,3,4,5].map(i => (
+                      <svg key={i} width="10" height="10" viewBox="0 0 32 32" fill="#222">
+                        <path d="M15.1 1.58l-4.13 8.88-9.86 1.27a1 1 0 0 0-.54 1.74l7.3 6.57-1.97 9.85a1 1 0 0 0 1.48 1.06l8.62-5 8.63 5a1 1 0 0 0 1.48-1.06l-1.97-9.85 7.3-6.57a1 1 0 0 0-.55-1.73l-9.86-1.28-4.12-8.88a1 1 0 0 0-1.82 0z"/>
+                      </svg>
+                    ))}
+                  </div>
+                </div>
+                
+                <div style={{ 
+                  width: '1px', 
+                  height: '40px', 
+                  background: '#e0e0e0'
+                }}></div>
+                
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '22px', fontWeight: 600, color: '#222' }}>
+                    {reviews.length || 0}
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#717171', textDecoration: 'underline', cursor: 'pointer' }}>
+                    Reviews
+                  </div>
+                </div>
+                
+                {/* Laurel Right */}
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style={{ color: '#222', transform: 'scaleX(-1)' }}>
+                  <path d="M12 2C9.5 5 7 8 7 12C7 16 9.5 19 12 22" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                  <path d="M7 6C5 7 3 9 3 12C3 15 5 17 7 18" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                </svg>
+              </div>
+            </div>
+
+            {/* Key Features - Dynamic discovery badges based on vendor stats */}
+            <div style={{ padding: '24px 0', borderBottom: '1px solid #ebebeb' }}>
+              {/* Discovery Badges - Show based on vendor's discovery flags */}
+              {vendor.discoveryFlags?.isTrending && (
+                <div style={{ display: 'flex', gap: '16px', marginBottom: '24px' }}>
+                  <i className="fas fa-fire-flame-curved" style={{ fontSize: '24px', color: '#FF6B35', width: '32px' }}></i>
+                  <div>
+                    <div style={{ fontSize: '16px', fontWeight: 600, color: '#222' }}>Trending</div>
+                    <div style={{ fontSize: '14px', color: '#717171' }}>
+                      {vendor.discoveryFlags.trendingBadge || 'Popular with guests right now'}
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {vendor.discoveryFlags?.isMostBooked && (
+                <div style={{ display: 'flex', gap: '16px', marginBottom: '24px' }}>
+                  <i className="fas fa-calendar-check" style={{ fontSize: '24px', color: '#EC4899', width: '32px' }}></i>
+                  <div>
+                    <div style={{ fontSize: '16px', fontWeight: 600, color: '#222' }}>Most Booked</div>
+                    <div style={{ fontSize: '14px', color: '#717171' }}>
+                      {vendor.discoveryFlags.bookingsBadge || 'Frequently booked by guests'}
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {vendor.discoveryFlags?.isQuickResponder && (
+                <div style={{ display: 'flex', gap: '16px', marginBottom: '24px' }}>
+                  <i className="fas fa-bolt" style={{ fontSize: '24px', color: '#10B981', width: '32px' }}></i>
+                  <div>
+                    <div style={{ fontSize: '16px', fontWeight: 600, color: '#222' }}>Quick Responder</div>
+                    <div style={{ fontSize: '14px', color: '#717171' }}>
+                      {vendor.discoveryFlags.responseBadge || 'Responds quickly to inquiries'}
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {vendor.discoveryFlags?.isTopRated && (
+                <div style={{ display: 'flex', gap: '16px', marginBottom: '24px' }}>
+                  <i className="fas fa-star" style={{ fontSize: '24px', color: '#FFB400', width: '32px' }}></i>
+                  <div>
+                    <div style={{ fontSize: '16px', fontWeight: 600, color: '#222' }}>Top Rated</div>
+                    <div style={{ fontSize: '14px', color: '#717171' }}>
+                      {vendor.discoveryFlags.ratingBadge || 'Highly rated by guests'}
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {vendor.discoveryFlags?.isNewVendor && (
+                <div style={{ display: 'flex', gap: '16px', marginBottom: '24px', alignItems: 'center' }}>
+                  <img 
+                    src="/images/badges/new_vendor_2026.png" 
+                    alt="New Vendor 2026" 
+                    style={{ width: '32px', height: '32px', objectFit: 'contain' }}
+                  />
+                  <div>
+                    <div style={{ fontSize: '16px', fontWeight: 600, color: '#222' }}>New on Planbeau</div>
+                    <div style={{ fontSize: '14px', color: '#717171' }}>Recently joined our platform</div>
+                  </div>
+                </div>
+              )}
+              
+              {/* Cancellation Policy - Always shown */}
+              <div style={{ display: 'flex', gap: '16px' }}>
+                <i className="fas fa-calendar-xmark" style={{ fontSize: '24px', color: '#222', width: '32px' }}></i>
+                <div>
+                  <div style={{ fontSize: '16px', fontWeight: 600, color: '#222' }}>Free cancellation</div>
+                  <div style={{ fontSize: '14px', color: '#717171' }}>
+                    {cancellationPolicy?.Description || 
+                     (cancellationPolicy?.CancellationDays 
+                       ? `Free cancellation up to ${cancellationPolicy.CancellationDays} days before the event`
+                       : 'Flexible cancellation policy')}
+                  </div>
+                </div>
               </div>
             </div>
 
             {/* Main Content */}
-            <div style={{ marginTop: '1.9rem', paddingTop: '1.9rem', borderTop: '1px solid #ebebeb' }}>
+            <div style={{ paddingTop: '24px' }}>
           {/* 1. About This Vendor - with Show More for long descriptions */}
           <div className="content-section">
             <h2>About this vendor</h2>
@@ -2650,16 +2843,13 @@ function VendorProfilePage() {
           {/* 7. Where You'll Find Us (Map + Cities Served) */}
           {renderLocationAndServiceAreas()}
 
-          {/* 8. Reviews */}
-          {renderReviewsSection()}
-
           {/* Team Section - optional at bottom */}
               {renderTeam()}
             </div>
           </div>
 
           {/* Right Column - Sidebar */}
-          <div className="vendor-sidebar">
+          <div className="vendor-sidebar" id="vendor-sidebar">
           {/* 1. Booking Widget with Calendar */}
           <ProfileVendorWidget
             vendorId={vendorId}
@@ -2784,8 +2974,16 @@ function VendorProfilePage() {
 
           </div>
         </div>
+        
+        {/* Divider between map and reviews */}
+        <div style={{ borderTop: '1px solid #ebebeb', marginTop: '48px' }}></div>
+        
+        {/* 8. Reviews - Full Width Section (outside grid) */}
+        <div style={{ marginTop: '48px' }}>
+          {renderReviewsSection()}
+        </div>
       
-      {/* Meet Your Host Section - Full Width */}
+      {/* Meet Your Host Section - Matching HostProfilePage Card Style */}
       {profile?.HostUserID && (
         <section style={{
           padding: '48px 0',
@@ -2796,131 +2994,187 @@ function VendorProfilePage() {
             fontSize: '22px',
             fontWeight: 600,
             color: '#222',
-            marginBottom: '24px'
+            marginBottom: '32px'
           }}>Meet your host</h2>
           
           <div style={{
             display: 'grid',
             gridTemplateColumns: '340px 1fr',
-            gap: '48px',
+            gap: '64px',
             alignItems: 'start'
           }}>
-            {/* Host Card - Horizontal Layout */}
-            <div style={{
-              background: '#fff',
-              border: '1px solid #ddd',
-              borderRadius: '24px',
-              padding: '24px',
-              boxShadow: '0 6px 16px rgba(0, 0, 0, 0.12)',
-              display: 'flex',
-              flexDirection: 'row',
-              alignItems: 'center'
-            }}>
-              {/* Left - Avatar and Name */}
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingRight: '24px' }}>
-                <div 
-                  onClick={() => navigate(`/host/${profile.HostUserID}`)}
-                  style={{
+            {/* Left Column - Card + Report */}
+            <div>
+              {/* Profile Card - Horizontal Layout (matching HostProfilePage) */}
+              <div 
+                onClick={() => navigate(`/host/${profile.HostUserID}`)}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'row',
+                  background: '#fff',
+                  border: '1px solid #ddd',
+                  borderRadius: '24px',
+                  padding: '24px',
+                  boxShadow: '0 6px 16px rgba(0, 0, 0, 0.12)',
+                  cursor: 'pointer'
+                }}
+              >
+                {/* Left - Avatar and Name */}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingRight: '24px' }}>
+                  <div style={{
+                    position: 'relative',
                     width: '128px',
                     height: '128px',
-                    borderRadius: '50%',
-                    overflow: 'hidden',
-                    marginBottom: '16px',
-                    cursor: 'pointer',
-                    border: '4px solid #f0f0f0'
-                  }}
-                >
-                  <img 
-                    src={profile.HostProfileImage || profile.LogoURL || 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png'}
-                    alt={profile.HostName || 'Host'}
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    onError={(e) => { e.target.src = 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png'; }}
-                  />
-                </div>
-                
-                <h3 
-                  onClick={() => navigate(`/host/${profile.HostUserID}`)}
-                  style={{
+                    marginBottom: '16px'
+                  }}>
+                    <img 
+                      src={profile.HostProfileImage || profile.LogoURL || 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png'}
+                      alt={profile.HostName || 'Host'}
+                      style={{ 
+                        width: '128px', 
+                        height: '128px', 
+                        borderRadius: '50%', 
+                        objectFit: 'cover',
+                        border: '4px solid #f0f0f0'
+                      }}
+                      onError={(e) => { e.target.src = 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png'; }}
+                    />
+                    {profile.HostIsVerified && (
+                      <span style={{
+                        position: 'absolute',
+                        bottom: 0,
+                        right: 0,
+                        width: '28px',
+                        height: '28px',
+                        background: '#E31C5F',
+                        borderRadius: '50%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#fff',
+                        fontSize: '12px',
+                        border: '3px solid #fff'
+                      }}>
+                        <i className="fas fa-shield-alt"></i>
+                      </span>
+                    )}
+                  </div>
+                  <h3 style={{
                     fontSize: '26px',
                     fontWeight: 600,
                     color: '#222',
                     margin: '0 0 8px',
-                    cursor: 'pointer',
+                    lineHeight: 1.2,
                     textAlign: 'center'
-                  }}
-                >
-                  {profile.HostName || profile.BusinessName?.split(' ')[0] || 'Host'}
-                </h3>
-                
-                {profile.IsSuperhost && (
-                  <span style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    fontSize: '12px',
-                    color: '#717171'
                   }}>
-                    <i className="fas fa-award" style={{ color: 'var(--primary)' }}></i> Superhost
-                  </span>
-                )}
-              </div>
-              
-              {/* Right - Stats Column */}
-              <div style={{
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'center',
-                paddingLeft: '24px',
-                borderLeft: '1px solid #ddd'
-              }}>
-                <div style={{ padding: '8px 0' }}>
-                  <div style={{ fontSize: '22px', fontWeight: 800, color: '#222' }}>{reviews.length}</div>
-                  <div style={{ fontSize: '11px', color: '#717171' }}>Reviews</div>
-                </div>
-                <div style={{ width: '100%', height: '1px', background: '#ddd', margin: '4px 0' }}></div>
-                <div style={{ padding: '8px 0' }}>
-                  <div style={{ fontSize: '22px', fontWeight: 800, color: '#222' }}>
-                    {profile.AverageRating?.toFixed(1) || '5.0'}<i className="fas fa-star" style={{ fontSize: '12px', marginLeft: '2px' }}></i>
+                    {profile.HostName || profile.BusinessName?.split(' ')[0] || 'Host'}
+                  </h3>
+                  {profile.IsSuperhost && (
+                    <span style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      fontSize: '12px',
+                      color: '#717171'
+                    }}>
+                      <i className="fas fa-award" style={{ fontSize: '10px', color: 'var(--primary)' }}></i> Superhost
+                    </span>
+                  )}
+                  
+                  {/* Quick Info in Card */}
+                  <div style={{ marginTop: '12px', textAlign: 'center' }}>
+                    {profile.HostWork && (
+                      <p style={{ fontSize: '12px', color: '#717171', margin: '4px 0', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                        <i className="fas fa-briefcase" style={{ fontSize: '10px' }}></i>
+                        {profile.HostWork}
+                      </p>
+                    )}
+                    {profile.HostLanguages && (
+                      <p style={{ fontSize: '12px', color: '#717171', margin: '4px 0', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                        <i className="fas fa-globe" style={{ fontSize: '10px' }}></i>
+                        {profile.HostLanguages}
+                      </p>
+                    )}
+                    {profile.HostLocation && (
+                      <p style={{ fontSize: '12px', color: '#717171', margin: '4px 0', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                        <i className="fas fa-map-marker-alt" style={{ fontSize: '10px' }}></i>
+                        {profile.HostLocation}
+                      </p>
+                    )}
                   </div>
-                  <div style={{ fontSize: '11px', color: '#717171' }}>Rating</div>
                 </div>
-                <div style={{ width: '100%', height: '1px', background: '#ddd', margin: '4px 0' }}></div>
-                <div style={{ padding: '8px 0' }}>
-                  <div style={{ fontSize: '22px', fontWeight: 800, color: '#222' }}>
-                    {profile.YearsHosting || Math.floor((new Date() - new Date(profile.CreatedAt)) / (1000 * 60 * 60 * 24 * 365)) || 1}
+                
+                {/* Right - Stats Column */}
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'center',
+                  paddingLeft: '24px',
+                  borderLeft: '1px solid #ddd'
+                }}>
+                  <div style={{ padding: '8px 0' }}>
+                    <span style={{ fontSize: '22px', fontWeight: 800, color: '#222', lineHeight: 1.2 }}>{reviews.length}</span>
+                    <span style={{ display: 'block', fontSize: '11px', color: '#717171' }}>Reviews</span>
                   </div>
-                  <div style={{ fontSize: '11px', color: '#717171' }}>Years hosting</div>
+                  <div style={{ width: '100%', height: '1px', background: '#ddd', margin: '4px 0' }}></div>
+                  <div style={{ padding: '8px 0' }}>
+                    <span style={{ fontSize: '22px', fontWeight: 800, color: '#222', lineHeight: 1.2 }}>
+                      {profile.AverageRating?.toFixed(1) || '5.0'}<i className="fas fa-star" style={{ fontSize: '12px', marginLeft: '2px' }}></i>
+                    </span>
+                    <span style={{ display: 'block', fontSize: '11px', color: '#717171' }}>Rating</span>
+                  </div>
+                  <div style={{ width: '100%', height: '1px', background: '#ddd', margin: '4px 0' }}></div>
+                  <div style={{ padding: '8px 0' }}>
+                    <span style={{ fontSize: '22px', fontWeight: 800, color: '#222', lineHeight: 1.2 }}>
+                      {profile.YearsHosting || (profile.HostCreatedAt ? Math.max(1, Math.floor((new Date() - new Date(profile.HostCreatedAt)) / (1000 * 60 * 60 * 24 * 365))) : 1)}
+                    </span>
+                    <span style={{ display: 'block', fontSize: '11px', color: '#717171' }}>Years hosting</span>
+                  </div>
                 </div>
               </div>
             </div>
-            
-            {/* Host Details */}
+
+            {/* Right - About Section */}
             <div>
-              {profile.IsSuperhost && (
-                <div style={{ marginBottom: '24px' }}>
-                  <h4 style={{ fontSize: '16px', fontWeight: 600, color: '#222', marginBottom: '8px' }}>
-                    {profile.HostName || profile.BusinessName?.split(' ')[0]} is a Superhost
-                  </h4>
-                  <p style={{ fontSize: '14px', color: '#717171', lineHeight: 1.5 }}>
-                    Superhosts are experienced, highly rated hosts who are committed to providing great stays for guests.
-                  </p>
-                </div>
-              )}
+              <h3 style={{ fontSize: '22px', fontWeight: 500, color: '#222', margin: '0 0 16px' }}>
+                About {profile.HostName || profile.BusinessName?.split(' ')[0] || 'Host'}
+              </h3>
               
-              <div style={{ marginBottom: '24px' }}>
-                <h4 style={{ fontSize: '16px', fontWeight: 600, color: '#222', marginBottom: '8px' }}>Host details</h4>
-                <p style={{ fontSize: '14px', color: '#717171', lineHeight: 1.5 }}>
-                  Response rate: {profile.ResponseRate || '100'}%<br />
-                  Responds within a few hours
-                </p>
+              {/* Quick Info */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px' }}>
+                {profile.HostWork && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '16px', color: '#222' }}>
+                    <i className="fas fa-briefcase" style={{ width: '24px', fontSize: '20px', color: '#717171', textAlign: 'center' }}></i>
+                    My work: {profile.HostWork}
+                  </div>
+                )}
+                {profile.HostLanguages && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '16px', color: '#222' }}>
+                    <i className="fas fa-globe" style={{ width: '24px', fontSize: '20px', color: '#717171', textAlign: 'center' }}></i>
+                    Speaks {profile.HostLanguages}
+                  </div>
+                )}
+                {profile.HostLocation && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '16px', color: '#222' }}>
+                    <i className="fas fa-map-marker-alt" style={{ width: '24px', fontSize: '20px', color: '#717171', textAlign: 'center' }}></i>
+                    Lives in {profile.HostLocation}
+                  </div>
+                )}
               </div>
               
+              {/* Bio */}
+              {profile.HostBio && (
+                <p style={{ fontSize: '16px', color: '#222', lineHeight: 1.6, margin: '0 0 24px' }}>
+                  {profile.HostBio.length > 300 ? profile.HostBio.substring(0, 300) + '...' : profile.HostBio}
+                </p>
+              )}
+              
+              {/* Message Button */}
               <button 
-                onClick={handleMessageVendor}
+                onClick={(e) => { e.stopPropagation(); handleMessageVendor(); }}
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
-                  justifyContent: 'center',
                   gap: '8px',
                   padding: '14px 24px',
                   border: '1px solid #222',
@@ -2932,8 +3186,21 @@ function VendorProfilePage() {
                   cursor: 'pointer'
                 }}
               >
-                Message host
+                Message Host
               </button>
+              
+              {/* Safety Notice */}
+              <div style={{ 
+                marginTop: '24px',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '8px'
+              }}>
+                <i className="fas fa-shield-alt" style={{ color: 'var(--primary)', fontSize: '16px', marginTop: '2px' }}></i>
+                <p style={{ fontSize: '12px', color: '#717171', margin: 0, lineHeight: 1.5 }}>
+                  To protect your payment, never transfer money or communicate outside of the PlanBeau website.
+                </p>
+              </div>
             </div>
           </div>
         </section>

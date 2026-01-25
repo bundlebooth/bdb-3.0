@@ -64,9 +64,6 @@ export const ServiceCard = ({
   const regularPrice = service.OriginalPrice || service.originalPrice || getRegularPrice();
   const isOnSale = salePrice && parseFloat(salePrice) > 0 && regularPrice && parseFloat(regularPrice) > parseFloat(salePrice) && pricingModel !== 'time_based';
   
-  // Calculate discount percentage for ribbon
-  const discountPercent = isOnSale ? Math.round(((parseFloat(regularPrice) - parseFloat(salePrice)) / parseFloat(regularPrice)) * 100) : 0;
-  
   // Get pricing info - check all possible field names from different API endpoints
   const getPricing = () => {
     // Check for different pricing formats from various API responses
@@ -150,12 +147,6 @@ export const ServiceCard = ({
       onClick={onClick}
       style={{ position: 'relative', overflow: 'visible' }}
     >
-      {/* Sale Ribbon */}
-      {isOnSale && (
-        <div className="psc-sale-ribbon">
-          <span>{discountPercent}% OFF</span>
-        </div>
-      )}
       <div className="psc-card-content">
         {/* Image/Icon */}
         <div className="psc-card-image">
@@ -292,9 +283,6 @@ export const PackageCard = ({
   const salePrice = (pkg.SalePrice || pkg.salePrice) ? parseFloat(pkg.SalePrice || pkg.salePrice) : null;
   const isOnSale = salePrice && salePrice > 0 && salePrice < price && priceType !== 'time_based';
   
-  // Calculate discount percentage for ribbon
-  const discountPercent = isOnSale ? Math.round(((price - salePrice) / price) * 100) : 0;
-  
   // Get price suffix based on pricing model (removed guest count text - icon shows it)
   const getPriceSuffix = () => {
     if (priceType === 'time_based') {
@@ -326,12 +314,6 @@ export const PackageCard = ({
       onClick={onClick}
       style={{ position: 'relative', overflow: 'visible' }}
     >
-      {/* Sale Ribbon */}
-      {isOnSale && (
-        <div className="psc-sale-ribbon">
-          <span>{discountPercent}% OFF</span>
-        </div>
-      )}
       <div className="psc-card-content">
         {/* Image/Icon */}
         <div className="psc-card-image">

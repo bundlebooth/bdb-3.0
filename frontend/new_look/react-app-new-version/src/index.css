@@ -2165,11 +2165,16 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
 }
 
 .review-card {
-    background-color: white;
-    border-radius: var(--radius);
-    padding: 1.5rem;
-    margin-bottom: 1rem;
-    border: 1px solid var(--border);
+    background-color: transparent;
+    border-radius: 0;
+    padding: 24px 0;
+    margin-bottom: 0;
+    border: none;
+    border-bottom: 1px solid #ebebeb;
+}
+
+.review-card:last-child {
+    border-bottom: none;
 }
 
 .review-header {
@@ -9757,7 +9762,14 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
     
     .review-card {
         padding: 1rem 0 !important;
+        border: none !important;
         border-bottom: 1px solid #ebebeb !important;
+        background: transparent !important;
+        box-shadow: none !important;
+    }
+    
+    .review-card:last-child {
+        border-bottom: none !important;
     }
     
     /* Map section */

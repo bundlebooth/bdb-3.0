@@ -7164,19 +7164,32 @@ router.get('/:id/badges', async (req, res) => {
     let badges = result.recordset || [];
     
     // Badge image mapping - images stored in /images/badges/
+    // Include variations of badge type names
     const badgeImages = {
       'new_vendor': '/images/badges/new_vendor_2026.png',
+      'newvendor': '/images/badges/new_vendor_2026.png',
+      'new vendor': '/images/badges/new_vendor_2026.png',
       'featured': '/images/badges/featured_2026.png',
       'verified': '/images/badges/verified_2026.png',
       'choice_award': '/images/badges/choice_award_2026.png',
-      'top_rated': '/images/badges/top_rated_2026.png'
+      'choiceaward': '/images/badges/choice_award_2026.png',
+      'choice award': '/images/badges/choice_award_2026.png',
+      'top_rated': '/images/badges/top_rated_2026.png',
+      'toprated': '/images/badges/top_rated_2026.png',
+      'top rated': '/images/badges/top_rated_2026.png'
     };
     
     // Add image URLs to badges if not already set
-    badges = badges.map(badge => ({
-      ...badge,
-      ImageURL: badge.ImageURL || badgeImages[badge.BadgeType?.toLowerCase()] || null
-    }));
+    console.log('Raw badges from DB:', badges.map(b => ({ BadgeType: b.BadgeType, ImageURL: b.ImageURL })));
+    badges = badges.map(badge => {
+      const badgeType = badge.BadgeType?.toLowerCase()?.replace(/\s+/g, '_') || '';
+      const imageUrl = badge.ImageURL || badgeImages[badgeType] || badgeImages[badge.BadgeType?.toLowerCase()] || null;
+      console.log(`Badge ${badge.BadgeType} -> imageUrl: ${imageUrl}`);
+      return {
+        ...badge,
+        ImageURL: imageUrl
+      };
+    });
     
     // Check if vendor is new (joined within 90 days) and doesn't already have new_vendor badge
     const hasNewVendorBadge = badges.some(b => b.BadgeType?.toLowerCase() === 'new_vendor');

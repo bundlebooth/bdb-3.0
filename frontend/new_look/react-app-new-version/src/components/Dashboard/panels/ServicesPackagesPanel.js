@@ -1132,7 +1132,7 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
                       onChange={(e) => setEditForm({ ...editForm, salePrice: e.target.value })}
                       min="0"
                       step="0.01"
-                      placeholder="Enter sale price to show discount ribbon"
+                      placeholder="Enter sale price (optional)"
                       style={{
                         width: '100%',
                         padding: '12px 14px',
@@ -1143,7 +1143,7 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
                       }}
                     />
                     <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#92400e' }}>
-                      Set a sale price lower than the regular price to display a discount ribbon on the service card.
+                      Set a sale price lower than the regular price to show the discounted price with strikethrough.
                     </p>
                   </div>
                 )}
