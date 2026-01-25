@@ -2634,7 +2634,8 @@ router.get('/:id', async (req, res) => {
     // Extract timezone from business hours (all days should have same timezone)
     const timezone = businessHours.length > 0 ? businessHours[0].Timezone : null;
 
-    // Get discovery flags for this vendor (trending, most booked, quick responder, top rated)
+    // Get discovery flags by checking if this vendor appears in discovery sections
+    // Uses the SAME data source as the main page discovery sections
     let discoveryFlags = {
       isTrending: false,
       isMostBooked: false,
@@ -2648,65 +2649,85 @@ router.get('/:id', async (req, res) => {
     };
     
     try {
+      // Query the same fields used by the main vendors endpoint for discovery sections
       const discoveryRequest = new sql.Request(pool);
       discoveryRequest.input('VendorProfileID', sql.Int, vendorProfileId);
       const discoveryResult = await discoveryRequest.query(`
-        -- Get vendor stats for discovery flags
         SELECT 
           vp.VendorProfileID,
           vp.AverageRating,
           vp.TotalReviews,
           vp.CreatedAt,
-          COALESCE(vp.AvgResponseMinutes, 999) as AvgResponseMinutes,
-          -- Count bookings in last 30 days
+          vp.AvgResponseMinutes,
+          vp.ProfileViews,
+          -- Booking count in last 30 days (same as main page)
           (SELECT COUNT(*) FROM bookings.Bookings b 
            WHERE b.VendorProfileID = vp.VendorProfileID 
-           AND b.CreatedAt >= DATEADD(day, -30, GETDATE())) as BookingCount30Days,
-          -- Count profile views in last 7 days
-          COALESCE(vp.ProfileViews, 0) as ProfileViews,
-          -- Count favorites
+           AND b.CreatedAt >= DATEADD(day, -30, GETDATE())) as BookingCount,
+          -- Favorite count (same as main page)
           (SELECT COUNT(*) FROM users.Favorites f WHERE f.VendorProfileID = vp.VendorProfileID) as FavoriteCount
         FROM vendors.VendorProfiles vp
         WHERE vp.VendorProfileID = @VendorProfileID
       `);
       
       if (discoveryResult.recordset && discoveryResult.recordset.length > 0) {
-        const stats = discoveryResult.recordset[0];
+        const v = discoveryResult.recordset[0];
         
-        // Calculate trending score (views + bookings + favorites)
-        const trendingScore = (stats.ProfileViews || 0) + ((stats.BookingCount30Days || 0) * 10) + ((stats.FavoriteCount || 0) * 5);
+        // Log discovery data for debugging
+        console.log('Discovery data for vendor', vendorProfileId, ':', {
+          BookingCount: v.BookingCount,
+          FavoriteCount: v.FavoriteCount,
+          TotalReviews: v.TotalReviews,
+          ProfileViews: v.ProfileViews,
+          AvgResponseMinutes: v.AvgResponseMinutes,
+          AverageRating: v.AverageRating,
+          CreatedAt: v.CreatedAt
+        });
         
-        // Trending: high engagement score
-        if (trendingScore >= 50) {
+        // TRENDING - same formula as main page: (bookings * 3) + (favorites * 2) + (reviews * 1) + (views * 1)
+        const trendingScore = ((v.BookingCount || 0) * 3) + ((v.FavoriteCount || 0) * 2) + ((v.TotalReviews || 0) * 1) + ((v.ProfileViews || 0) * 1);
+        if (trendingScore > 0) {
           discoveryFlags.isTrending = true;
-          discoveryFlags.trendingBadge = `${stats.ProfileViews || 0} views this week`;
-        }
-        
-        // Most Booked: 3+ bookings in last 30 days
-        if (stats.BookingCount30Days >= 3) {
-          discoveryFlags.isMostBooked = true;
-          discoveryFlags.bookingsBadge = `${stats.BookingCount30Days} bookings this month`;
-        }
-        
-        // Quick Responder: responds within 60 minutes on average
-        if (stats.AvgResponseMinutes && stats.AvgResponseMinutes <= 60) {
-          discoveryFlags.isQuickResponder = true;
-          if (stats.AvgResponseMinutes < 15) {
-            discoveryFlags.responseBadge = 'Responds within minutes';
-          } else if (stats.AvgResponseMinutes < 60) {
-            discoveryFlags.responseBadge = 'Responds within an hour';
+          // Same badge logic as main page
+          if (v.ProfileViews > 0) {
+            discoveryFlags.trendingBadge = `${v.ProfileViews} view${v.ProfileViews !== 1 ? 's' : ''}`;
+          } else {
+            discoveryFlags.trendingBadge = 'Trending now';
           }
         }
         
-        // Top Rated: 4.5+ rating with at least 3 reviews
-        if (stats.AverageRating >= 4.5 && stats.TotalReviews >= 3) {
-          discoveryFlags.isTopRated = true;
-          discoveryFlags.ratingBadge = `${stats.AverageRating.toFixed(1)} rating (${stats.TotalReviews} reviews)`;
+        // MOST BOOKED - same logic: bookingCount > 0
+        if (v.BookingCount > 0) {
+          discoveryFlags.isMostBooked = true;
+          discoveryFlags.bookingsBadge = `${v.BookingCount} booking${v.BookingCount > 1 ? 's' : ''} this month`;
         }
         
-        // New Vendor: joined within last 90 days
-        if (stats.CreatedAt) {
-          const daysSinceCreated = Math.floor((new Date() - new Date(stats.CreatedAt)) / (1000 * 60 * 60 * 24));
+        // QUICK RESPONDER - same logic: has AvgResponseMinutes data
+        if (v.AvgResponseMinutes != null && v.AvgResponseMinutes >= 0) {
+          discoveryFlags.isQuickResponder = true;
+          const mins = v.AvgResponseMinutes;
+          // Same response text logic as main page
+          if (mins === 0) {
+            discoveryFlags.responseBadge = 'Replies instantly';
+          } else if (mins < 60) {
+            discoveryFlags.responseBadge = `Replies in ~${mins} min`;
+          } else if (mins < 1440) {
+            const hours = Math.round(mins / 60);
+            discoveryFlags.responseBadge = `Replies in ~${hours} hr${hours > 1 ? 's' : ''}`;
+          } else {
+            discoveryFlags.responseBadge = 'Replies within a day';
+          }
+        }
+        
+        // TOP RATED - same logic: has reviews
+        if (v.TotalReviews > 0) {
+          discoveryFlags.isTopRated = true;
+          discoveryFlags.ratingBadge = `${(v.AverageRating || 5.0).toFixed(1)} rating (${v.TotalReviews} reviews)`;
+        }
+        
+        // NEW VENDOR - joined within last 90 days
+        if (v.CreatedAt) {
+          const daysSinceCreated = Math.floor((new Date() - new Date(v.CreatedAt)) / (1000 * 60 * 60 * 24));
           if (daysSinceCreated <= 90) {
             discoveryFlags.isNewVendor = true;
           }
