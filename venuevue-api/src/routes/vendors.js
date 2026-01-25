@@ -2583,6 +2583,37 @@ router.get('/:id', async (req, res) => {
       serviceAreas = [];
     }
 
+    // Get host user profile information if UserID exists
+    let hostProfile = null;
+    const vendorUserID = profileRecordset[0]?.UserID;
+    if (vendorUserID) {
+      try {
+        const hostRequest = new sql.Request(pool);
+        hostRequest.input('UserID', sql.Int, vendorUserID);
+        const hostResult = await hostRequest.query(`
+          SELECT 
+            u.UserID as HostUserID,
+            COALESCE(up.DisplayName, u.FirstName + ' ' + u.LastName) as HostName,
+            COALESCE(up.ProfileImageURL, u.ProfileImageURL) as HostProfileImage,
+            up.Bio as HostBio,
+            up.Work as HostWork,
+            up.Languages as HostLanguages,
+            up.City as HostLocation,
+            u.EmailVerified as HostIsVerified,
+            u.CreatedAt as HostCreatedAt,
+            0 as IsSuperhost
+          FROM users.Users u
+          LEFT JOIN users.UserProfiles up ON u.UserID = up.UserID
+          WHERE u.UserID = @UserID
+        `);
+        if (hostResult.recordset && hostResult.recordset.length > 0) {
+          hostProfile = hostResult.recordset[0];
+        }
+      } catch (hostError) {
+        console.warn('Host profile query failed:', hostError.message);
+      }
+    }
+
     // Format time values - SQL Server returns TIME as Date objects
     const formatTime = (timeValue) => {
       if (!timeValue) return null;
@@ -2603,10 +2634,94 @@ router.get('/:id', async (req, res) => {
     // Extract timezone from business hours (all days should have same timezone)
     const timezone = businessHours.length > 0 ? businessHours[0].Timezone : null;
 
+    // Get discovery flags for this vendor (trending, most booked, quick responder, top rated)
+    let discoveryFlags = {
+      isTrending: false,
+      isMostBooked: false,
+      isQuickResponder: false,
+      isTopRated: false,
+      isNewVendor: false,
+      trendingBadge: null,
+      bookingsBadge: null,
+      responseBadge: null,
+      ratingBadge: null
+    };
+    
+    try {
+      const discoveryRequest = new sql.Request(pool);
+      discoveryRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+      const discoveryResult = await discoveryRequest.query(`
+        -- Get vendor stats for discovery flags
+        SELECT 
+          vp.VendorProfileID,
+          vp.AverageRating,
+          vp.TotalReviews,
+          vp.CreatedAt,
+          COALESCE(vp.AvgResponseMinutes, 999) as AvgResponseMinutes,
+          -- Count bookings in last 30 days
+          (SELECT COUNT(*) FROM bookings.Bookings b 
+           WHERE b.VendorProfileID = vp.VendorProfileID 
+           AND b.CreatedAt >= DATEADD(day, -30, GETDATE())) as BookingCount30Days,
+          -- Count profile views in last 7 days
+          COALESCE(vp.ProfileViews, 0) as ProfileViews,
+          -- Count favorites
+          (SELECT COUNT(*) FROM users.Favorites f WHERE f.VendorProfileID = vp.VendorProfileID) as FavoriteCount
+        FROM vendors.VendorProfiles vp
+        WHERE vp.VendorProfileID = @VendorProfileID
+      `);
+      
+      if (discoveryResult.recordset && discoveryResult.recordset.length > 0) {
+        const stats = discoveryResult.recordset[0];
+        
+        // Calculate trending score (views + bookings + favorites)
+        const trendingScore = (stats.ProfileViews || 0) + ((stats.BookingCount30Days || 0) * 10) + ((stats.FavoriteCount || 0) * 5);
+        
+        // Trending: high engagement score
+        if (trendingScore >= 50) {
+          discoveryFlags.isTrending = true;
+          discoveryFlags.trendingBadge = `${stats.ProfileViews || 0} views this week`;
+        }
+        
+        // Most Booked: 3+ bookings in last 30 days
+        if (stats.BookingCount30Days >= 3) {
+          discoveryFlags.isMostBooked = true;
+          discoveryFlags.bookingsBadge = `${stats.BookingCount30Days} bookings this month`;
+        }
+        
+        // Quick Responder: responds within 60 minutes on average
+        if (stats.AvgResponseMinutes && stats.AvgResponseMinutes <= 60) {
+          discoveryFlags.isQuickResponder = true;
+          if (stats.AvgResponseMinutes < 15) {
+            discoveryFlags.responseBadge = 'Responds within minutes';
+          } else if (stats.AvgResponseMinutes < 60) {
+            discoveryFlags.responseBadge = 'Responds within an hour';
+          }
+        }
+        
+        // Top Rated: 4.5+ rating with at least 3 reviews
+        if (stats.AverageRating >= 4.5 && stats.TotalReviews >= 3) {
+          discoveryFlags.isTopRated = true;
+          discoveryFlags.ratingBadge = `${stats.AverageRating.toFixed(1)} rating (${stats.TotalReviews} reviews)`;
+        }
+        
+        // New Vendor: joined within last 90 days
+        if (stats.CreatedAt) {
+          const daysSinceCreated = Math.floor((new Date() - new Date(stats.CreatedAt)) / (1000 * 60 * 60 * 24));
+          if (daysSinceCreated <= 90) {
+            discoveryFlags.isNewVendor = true;
+          }
+        }
+      }
+    } catch (discoveryError) {
+      console.warn('Discovery flags query failed:', discoveryError.message);
+    }
+
     const vendorDetails = {
       profile: {
         ...profileRecordset[0],
-        TimeZone: timezone || profileRecordset[0].TimeZone || profileRecordset[0].Timezone
+        TimeZone: timezone || profileRecordset[0].TimeZone || profileRecordset[0].Timezone,
+        // Add host profile info
+        ...(hostProfile || {})
       },
       categories: categoriesRecordset,
       services: servicesRecordset,
@@ -2620,7 +2735,8 @@ router.get('/:id', async (req, res) => {
       categoryAnswers: categoryAnswersRecordset,
       isFavorite: isFavoriteRecordset && isFavoriteRecordset.length > 0 ? isFavoriteRecordset[0].IsFavorite : false,
       availableSlots: availableSlotsRecordset,
-      serviceAreas: serviceAreas
+      serviceAreas: serviceAreas,
+      discoveryFlags: discoveryFlags
     };
 
     res.json({
