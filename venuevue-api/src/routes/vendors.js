@@ -2685,7 +2685,12 @@ router.get('/:id', async (req, res) => {
         const trendingScore = ((v.BookingCount || 0) * 3) + ((v.FavoriteCount || 0) * 2) + ((v.ReviewCount || 0) * 1);
         if (trendingScore > 0) {
           discoveryFlags.isTrending = true;
-          discoveryFlags.trendingBadge = 'Trending now';
+          // Show actual analytics
+          const parts = [];
+          if (v.BookingCount > 0) parts.push(`${v.BookingCount} booking${v.BookingCount > 1 ? 's' : ''}`);
+          if (v.FavoriteCount > 0) parts.push(`${v.FavoriteCount} favorite${v.FavoriteCount > 1 ? 's' : ''}`);
+          if (v.ReviewCount > 0) parts.push(`${v.ReviewCount} review${v.ReviewCount > 1 ? 's' : ''}`);
+          discoveryFlags.trendingBadge = parts.length > 0 ? parts.join(', ') + ' this month' : 'Popular with guests right now';
         }
         
         // MOST BOOKED - same logic: bookingCount > 0

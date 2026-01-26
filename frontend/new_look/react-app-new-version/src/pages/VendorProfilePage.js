@@ -2633,11 +2633,10 @@ function VendorProfilePage() {
 
             </div>
 
-            {/* Airbnb-style Guest Favourite + Hosted By Row */}
+            {/* Airbnb-style Guest Favourite Row */}
             <div style={{ 
               display: 'flex', 
               alignItems: 'center', 
-              justifyContent: 'space-between',
               padding: '24px 0',
               borderBottom: '1px solid #ebebeb',
               marginTop: '8px'
@@ -2646,34 +2645,58 @@ function VendorProfilePage() {
               <div style={{ 
                 display: 'flex', 
                 alignItems: 'center', 
-                gap: '16px',
-                padding: '16px 24px',
+                gap: '12px',
+                padding: '12px 20px',
                 border: '1px solid #e0e0e0',
                 borderRadius: '12px',
-                background: 'linear-gradient(135deg, #fff 0%, #fafafa 100%)'
+                width: '100%',
+                justifyContent: 'space-between'
               }}>
-                {/* Laurel Left */}
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style={{ color: '#222' }}>
-                  <path d="M12 2C9.5 5 7 8 7 12C7 16 9.5 19 12 22" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                  <path d="M7 6C5 7 3 9 3 12C3 15 5 17 7 18" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                </svg>
+                {/* Guest Favourite with crowns grouped together */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  {/* Crown Left */}
+                  <img 
+                    src="/images/planbeau-platform-assets/circular_crown_left.avif" 
+                    alt="" 
+                    style={{ width: '40px', height: '40px', objectFit: 'contain' }}
+                  />
+                  
+                  <div style={{ textAlign: 'center', padding: '0 4px' }}>
+                    <div style={{ fontSize: '16px', fontWeight: 600, color: '#222' }}>Guest</div>
+                    <div style={{ fontSize: '16px', fontWeight: 600, color: '#222' }}>favourite</div>
+                  </div>
+                  
+                  {/* Crown Right */}
+                  <img 
+                    src="/images/planbeau-platform-assets/circular_crown_right.avif" 
+                    alt="" 
+                    style={{ width: '40px', height: '40px', objectFit: 'contain' }}
+                  />
+                </div>
                 
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '14px', fontWeight: 600, color: '#222' }}>Guest</div>
-                  <div style={{ fontSize: '14px', fontWeight: 600, color: '#222' }}>favourite</div>
+                {/* Description text */}
+                <div style={{ 
+                  fontSize: '14px', 
+                  color: '#222', 
+                  maxWidth: '180px',
+                  lineHeight: 1.4,
+                  marginLeft: '8px'
+                }}>
+                  One of the most loved vendors on Planbeau, according to guests
                 </div>
                 
                 <div style={{ 
                   width: '1px', 
                   height: '40px', 
-                  background: '#e0e0e0'
+                  background: '#dddddd',
+                  margin: '0 8px'
                 }}></div>
                 
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '22px', fontWeight: 600, color: '#222' }}>
-                    {reviews.length > 0 ? '4.9' : '5.0'}
+                <div style={{ textAlign: 'center', minWidth: '50px' }}>
+                  <div style={{ fontSize: '20px', fontWeight: 600, color: '#222' }}>
+                    {reviews.length > 0 ? (reviews.reduce((sum, r) => sum + (r.Rating || 5), 0) / reviews.length).toFixed(2) : '5.0'}
                   </div>
-                  <div style={{ display: 'flex', gap: '2px', justifyContent: 'center' }}>
+                  <div style={{ display: 'flex', gap: '1px', justifyContent: 'center' }}>
                     {[1,2,3,4,5].map(i => (
                       <svg key={i} width="10" height="10" viewBox="0 0 32 32" fill="#222">
                         <path d="M15.1 1.58l-4.13 8.88-9.86 1.27a1 1 0 0 0-.54 1.74l7.3 6.57-1.97 9.85a1 1 0 0 0 1.48 1.06l8.62-5 8.63 5a1 1 0 0 0 1.48-1.06l-1.97-9.85 7.3-6.57a1 1 0 0 0-.55-1.73l-9.86-1.28-4.12-8.88a1 1 0 0 0-1.82 0z"/>
@@ -2685,23 +2708,18 @@ function VendorProfilePage() {
                 <div style={{ 
                   width: '1px', 
                   height: '40px', 
-                  background: '#e0e0e0'
+                  background: '#dddddd',
+                  margin: '0 8px'
                 }}></div>
                 
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '22px', fontWeight: 600, color: '#222' }}>
+                <div style={{ textAlign: 'center', minWidth: '50px' }}>
+                  <div style={{ fontSize: '20px', fontWeight: 600, color: '#222' }}>
                     {reviews.length || 0}
                   </div>
-                  <div style={{ fontSize: '12px', color: '#717171', textDecoration: 'underline', cursor: 'pointer' }}>
+                  <div style={{ fontSize: '12px', color: '#222', textDecoration: 'underline', cursor: 'pointer' }}>
                     Reviews
                   </div>
                 </div>
-                
-                {/* Laurel Right */}
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style={{ color: '#222', transform: 'scaleX(-1)' }}>
-                  <path d="M12 2C9.5 5 7 8 7 12C7 16 9.5 19 12 22" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                  <path d="M7 6C5 7 3 9 3 12C3 15 5 17 7 18" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                </svg>
               </div>
             </div>
 
@@ -2774,12 +2792,13 @@ function VendorProfilePage() {
               <div style={{ display: 'flex', gap: '16px' }}>
                 <i className="fas fa-calendar-xmark" style={{ fontSize: '24px', color: '#222', width: '32px' }}></i>
                 <div>
-                  <div style={{ fontSize: '16px', fontWeight: 600, color: '#222' }}>Free cancellation</div>
+                  <div style={{ fontSize: '16px', fontWeight: 600, color: '#222' }}>
+                    {cancellationPolicy?.Name || 'Free cancellation'}
+                  </div>
                   <div style={{ fontSize: '14px', color: '#717171' }}>
-                    {cancellationPolicy?.Description || 
-                     (cancellationPolicy?.CancellationDays 
-                       ? `Free cancellation up to ${cancellationPolicy.CancellationDays} days before the event`
-                       : 'Flexible cancellation policy')}
+                    {cancellationPolicy?.CancellationDays 
+                      ? `Free cancellation up to ${cancellationPolicy.CancellationDays} days before the event`
+                      : cancellationPolicy?.Description || 'Flexible cancellation policy'}
                   </div>
                 </div>
               </div>
