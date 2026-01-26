@@ -127,6 +127,82 @@
   color: #000;
 }
 
+/* Settings Category */
+.settings-category {
+  margin-bottom: 48px;
+}
+
+.settings-category-title {
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #222;
+  margin: 0 0 24px 0;
+}
+
+/* Settings Grid */
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+/* Settings Card */
+.settings-card {
+  background: #fff;
+  border: 1px solid #EBEBEB;
+  border-radius: 12px;
+  padding: 24px;
+  transition: box-shadow 0.2s, border-color 0.2s;
+}
+
+.settings-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  border-color: #ddd;
+}
+
+.settings-card.danger:hover {
+  border-color: #ef4444;
+}
+
+.settings-card-icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.settings-card-icon i {
+  font-size: 24px;
+  color: #5086E8;
+}
+
+.settings-card.danger .settings-card-icon i {
+  color: #ef4444;
+}
+
+.settings-card-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #222;
+  margin: 0 0 8px 0;
+}
+
+.settings-card-description {
+  font-size: 14px;
+  color: #717171;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.settings-card-description a {
+  color: #222;
+  text-decoration: underline;
+}
+
 /* Mobile */
 @media (max-width: 768px) {
   .settings-page-container {
@@ -175,5 +251,19 @@
   
   .settings-field {
     padding: 16px 0;
+  }
+  
+  /* Settings grid mobile */
+  .settings-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  
+  .settings-category {
+    margin-bottom: 32px;
+  }
+  
+  .settings-card {
+    padding: 20px;
   }
 }

@@ -187,7 +187,7 @@ const BookingCard = ({
         <img 
           src={profilePic} 
           alt={profileName}
-          style={{ width: `${size}px`, height: `${size}px`, borderRadius: '50%', objectFit: 'cover', border: '2px solid #10b981' }}
+          style={{ width: `${size}px`, height: `${size}px`, borderRadius: '50%', objectFit: 'cover', border: '2px solid #e5e7eb' }}
         />
       );
     }
@@ -196,7 +196,7 @@ const BookingCard = ({
         width: `${size}px`, 
         height: `${size}px`, 
         borderRadius: '50%', 
-        background: '#10b981', 
+        background: '#6b7280', 
         display: 'flex', 
         alignItems: 'center', 
         justifyContent: 'center', 
@@ -321,7 +321,7 @@ const BookingCard = ({
                   {renderAvatar(32)}
                   {!isVendorView ? (
                     <span 
-                      style={{ fontSize: '14px', color: '#10b981', fontWeight: 500, cursor: 'pointer', textDecoration: 'underline' }}
+                      style={{ fontSize: '14px', color: '#5086E8', fontWeight: 500, cursor: 'pointer', textDecoration: 'underline' }}
                       onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleViewProfile(); }}
                       role="button"
                       tabIndex={0}

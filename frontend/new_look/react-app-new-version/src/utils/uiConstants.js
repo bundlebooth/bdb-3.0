@@ -35,8 +35,8 @@ export const COLORS = {
   error: '#ef4444',
   errorBg: 'rgba(239, 68, 68, 0.08)',
   
-  info: '#3b82f6',
-  infoBg: 'rgba(59, 130, 246, 0.08)',
+  info: '#5086E8',
+  infoBg: 'rgba(80, 134, 232, 0.08)',
   
   neutral: '#6b7280',
   neutralBg: 'rgba(107, 114, 128, 0.08)',

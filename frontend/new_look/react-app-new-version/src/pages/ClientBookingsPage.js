@@ -18,6 +18,12 @@ function ClientBookingsPage() {
     { path: '/client/settings', label: 'Settings', icon: 'fas fa-cog' },
   ];
 
+  // Handle Pay Now - navigate to payment page
+  const handlePayNow = (booking) => {
+    const bookingId = booking.BookingID || booking.RequestID;
+    navigate(`/payment/${bookingId}`);
+  };
+
   return (
     <div className="client-page">
       <Header />
@@ -39,7 +45,7 @@ function ClientBookingsPage() {
         </aside>
         <main className="client-page-main">
           <div className="client-page-content">
-            <ClientBookingsSection />
+            <ClientBookingsSection onPayNow={handlePayNow} />
           </div>
         </main>
       </div>

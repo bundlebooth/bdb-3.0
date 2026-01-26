@@ -310,7 +310,8 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
             {t('footer.becomeVendor')}
           </button>
         )}
-        {currentUser && !vendorCheckLoading && hasVendorProfile && !isVendorMode && (
+        {/* Show Switch to hosting ONLY on explore page (/ or /explore) */}
+        {currentUser && !vendorCheckLoading && hasVendorProfile && (location.pathname === '/' || location.pathname === '/explore') && (
           <button 
             className="switch-to-hosting-btn"
             onClick={() => {
@@ -336,7 +337,8 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
             Switch to hosting
           </button>
         )}
-        {currentUser && hasVendorProfile && isVendorMode && (
+        {/* Show Switch to exploring on dashboard pages */}
+        {currentUser && hasVendorProfile && location.pathname.startsWith('/dashboard') && (
           <button 
             className="switch-to-exploring-btn"
             onClick={() => {

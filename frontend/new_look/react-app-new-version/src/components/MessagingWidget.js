@@ -926,8 +926,8 @@ function MessagingWidget() {
         e.currentTarget.style.transform = 'scale(1)';
         e.currentTarget.style.boxShadow = '0 4px 16px rgba(94, 114, 228, 0.3), 0 2px 6px rgba(0,0,0,0.1)';
       }}>
-        {/* Chat Icon using Font Awesome */}
-        <i className="fas fa-comment" style={{ 
+        {/* Support Icon using Font Awesome */}
+        <i className="fas fa-headset" style={{ 
           fontSize: '24px', 
           color: 'white'
         }}></i>

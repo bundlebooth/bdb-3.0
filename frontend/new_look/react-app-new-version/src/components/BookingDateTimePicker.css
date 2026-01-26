@@ -42,7 +42,7 @@
 }
 
 .bdtp-month-title .bdtp-month-name {
-  color: #3b82f6;
+  color: #5086E8;
 }
 
 .bdtp-calendar-grid {
@@ -269,7 +269,7 @@
   position: absolute;
   top: 0;
   height: 100%;
-  background: #3b82f6;
+  background: #5086E8;
   border-radius: 5px;
   z-index: 2;
 }
@@ -316,5 +316,5 @@
 }
 
 .bdtp-legend-dot.selected {
-  background: #3b82f6;
+  background: #5086E8;
 }

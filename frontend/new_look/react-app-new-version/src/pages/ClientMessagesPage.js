@@ -19,7 +19,7 @@ function ClientMessagesPage() {
   ];
 
   return (
-    <div className="client-page">
+    <div className="client-page messages-page">
       <Header />
       <div className="client-page-container">
         <aside className="client-page-sidebar">

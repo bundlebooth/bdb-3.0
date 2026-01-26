@@ -2572,12 +2572,12 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
 }
 
 .booking-tab.active {
-    color: #3b82f6;
-    border-bottom-color: #3b82f6;
+    color: #5086E8;
+    border-bottom-color: #5086E8;
 }
 
 .booking-tab:hover {
-    color: #3b82f6;
+    color: #5086E8;
 }
 
 .booking-tab-content {
@@ -2741,7 +2741,7 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
     display: inline-block;
     width: 6px;
     height: 6px;
-    background: #3b82f6;
+    background: #5086E8;
     border-radius: 9999px;
     margin-left: 8px;
 }
@@ -2771,7 +2771,7 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
     background: none;
     border: none;
     padding: 0;
-    color: #3b82f6;
+    color: #5086E8;
     font-size: 13px;
     font-weight: 500;
     cursor: pointer;
@@ -2812,7 +2812,7 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
 .link-btn {
     background: transparent;
     border: none;
-    color: #3b82f6;
+    color: #5086E8;
     padding: 4px 8px; /* reduced from 8x12 */
     border-radius: 6px; /* reduced from 8px */
     font-size: 13px; /* reduced from 14px */
@@ -2993,8 +2993,8 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
 .app-banner--error { border-color: #ef4444; background: #fef2f2; color: #991b1b; }
 .app-banner--error .app-banner__icon { color: #ef4444; }
 .app-banner--error .app-banner__title { color: #991b1b; }
-.app-banner--info, .app-banner--notice { border-color: #3b82f6; background: #eff6ff; color: #1e40af; }
-.app-banner--info .app-banner__icon, .app-banner--notice .app-banner__icon { color: #3b82f6; }
+.app-banner--info, .app-banner--notice { border-color: #5086E8; background: #eff6ff; color: #1e40af; }
+.app-banner--info .app-banner__icon, .app-banner--notice .app-banner__icon { color: #5086E8; }
 .app-banner--info .app-banner__title, .app-banner--notice .app-banner__title { color: #1e40af; }
 .app-banner--favorite { border-color: #ef4444; background: #fef2f2; color: #991b1b; }
 .app-banner--favorite .app-banner__icon { color: #ef4444; }

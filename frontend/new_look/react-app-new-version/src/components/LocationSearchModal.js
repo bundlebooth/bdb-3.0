@@ -77,9 +77,9 @@ const LocationSearchModal = ({ isOpen, onClose, onApply, onUseCurrentLocation, i
         map: map,
         center: center,
         radius: radius * 1000, // Convert km to meters
-        fillColor: '#3b82f6',
+        fillColor: '#5086E8',
         fillOpacity: 0.1,
-        strokeColor: '#3b82f6',
+        strokeColor: '#5086E8',
         strokeOpacity: 0.3,
         strokeWeight: 2
       });

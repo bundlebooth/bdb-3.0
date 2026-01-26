@@ -370,15 +370,15 @@ function ProfileSidebar({ isOpen, onClose }) {
         
         {/* Menu Items */}
         <div className="profile-sidebar-menu">
-          {/* Bookings - visible on desktop */}
-          <button className="profile-sidebar-menu-item desktop-only" onClick={() => handleNavigate('/client/bookings')}>
+          {/* Bookings */}
+          <button className="profile-sidebar-menu-item" onClick={() => handleNavigate('/client/bookings')}>
             <i className="fas fa-suitcase"></i>
             <span>Bookings</span>
             <i className="fas fa-chevron-right menu-item-arrow"></i>
           </button>
           
-          {/* Messages - visible on desktop */}
-          <button className="profile-sidebar-menu-item desktop-only" onClick={() => handleNavigate('/client/messages')}>
+          {/* Messages */}
+          <button className="profile-sidebar-menu-item" onClick={() => handleNavigate('/client/messages')}>
             <i className="fas fa-envelope"></i>
             <span>Messages</span>
             {notificationCounts.unreadMessages > 0 && (
@@ -387,14 +387,14 @@ function ProfileSidebar({ isOpen, onClose }) {
             <i className="fas fa-chevron-right menu-item-arrow"></i>
           </button>
           
-          {/* Favorites - visible on desktop */}
-          <button className="profile-sidebar-menu-item desktop-only" onClick={() => handleNavigate('/client/favorites')}>
+          {/* Favorites */}
+          <button className="profile-sidebar-menu-item" onClick={() => handleNavigate('/client/favorites')}>
             <i className="fas fa-heart"></i>
             <span>Favorites</span>
             <i className="fas fa-chevron-right menu-item-arrow"></i>
           </button>
           
-          <div className="profile-sidebar-menu-divider desktop-only"></div>
+          <div className="profile-sidebar-menu-divider"></div>
           
           {/* View Profile */}
           <button className="profile-sidebar-menu-item" onClick={() => handleNavigate(`/host/${currentUser?.id}`)}>
@@ -419,10 +419,27 @@ function ProfileSidebar({ isOpen, onClose }) {
           
           <div className="profile-sidebar-menu-divider"></div>
           
+          {/* Forums */}
+          <button className="profile-sidebar-menu-item" onClick={() => handleNavigate('/forum')}>
+            <i className="fas fa-comments"></i>
+            <span>Forums</span>
+            <i className="fas fa-chevron-right menu-item-arrow"></i>
+          </button>
+          
+          {/* Blogs */}
+          <button className="profile-sidebar-menu-item" onClick={() => handleNavigate('/blog')}>
+            <i className="fas fa-blog"></i>
+            <span>Blog</span>
+            <i className="fas fa-chevron-right menu-item-arrow"></i>
+          </button>
+          
+          <div className="profile-sidebar-menu-divider"></div>
+          
           {/* Log out */}
-          <button className="profile-sidebar-menu-item logout" onClick={handleLogout}>
+          <button className="profile-sidebar-menu-item" onClick={handleLogout}>
             <i className="fas fa-sign-out-alt"></i>
             <span>Log out</span>
+            <i className="fas fa-chevron-right menu-item-arrow"></i>
           </button>
         </div>
         

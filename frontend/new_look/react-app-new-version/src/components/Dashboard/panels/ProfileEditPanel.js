@@ -15,6 +15,7 @@ const ProfileEditPanel = ({ onClose, onSave }) => {
   const [saving, setSaving] = useState(false);
   const [editingField, setEditingField] = useState(null);
   const [interestOptions, setInterestOptions] = useState([]);
+  const [interestsLoading, setInterestsLoading] = useState(true);
   const [showInterestsModal, setShowInterestsModal] = useState(false);
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [showLanguagesModal, setShowLanguagesModal] = useState(false);
@@ -150,6 +151,7 @@ const ProfileEditPanel = ({ onClose, onSave }) => {
   };
 
   const loadInterestOptions = async () => {
+    setInterestsLoading(true);
     try {
       const response = await fetch(`${API_BASE_URL}/users/interest-options`);
       if (response.ok) {
@@ -158,6 +160,8 @@ const ProfileEditPanel = ({ onClose, onSave }) => {
       }
     } catch (error) {
       console.error('Error loading interest options:', error);
+    } finally {
+      setInterestsLoading(false);
     }
   };
 
@@ -452,8 +456,12 @@ const ProfileEditPanel = ({ onClose, onSave }) => {
               </button>
             </div>
             <div className="airbnb-modal-content">
-              {Object.keys(interestOptions).length === 0 ? (
-                <p className="no-options">Loading interests...</p>
+              {interestsLoading ? (
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '40px' }}>
+                  <div className="spinner" style={{ width: '32px', height: '32px' }}></div>
+                </div>
+              ) : Object.keys(interestOptions).length === 0 ? (
+                <p className="no-options">No interests available</p>
               ) : (
                 Object.entries(interestOptions).map(([category, interests]) => (
                   <div key={category} className="airbnb-interest-category">

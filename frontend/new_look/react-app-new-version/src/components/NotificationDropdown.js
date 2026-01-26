@@ -133,8 +133,8 @@ function NotificationDropdown({ isOpen, onClose, anchorEl, onBadgeCountChange })
   const getNotificationBadge = (type) => {
     const badges = {
       // Booking notifications
-      'booking_request': { text: 'booking', color: '#3b82f6', icon: 'fa-calendar-plus' },
-      'new_booking_request': { text: 'booking', color: '#3b82f6', icon: 'fa-calendar-plus' },
+      'booking_request': { text: 'booking', color: '#5086E8', icon: 'fa-calendar-plus' },
+      'new_booking_request': { text: 'booking', color: '#5086E8', icon: 'fa-calendar-plus' },
       'booking_approved': { text: 'approved', color: '#10b981', icon: 'fa-check-circle' },
       'booking_confirmed': { text: 'confirmed', color: '#10b981', icon: 'fa-check-circle' },
       'booking_declined': { text: 'declined', color: '#ef4444', icon: 'fa-times-circle' },
@@ -375,7 +375,7 @@ function NotificationDropdown({ isOpen, onClose, anchorEl, onBadgeCountChange })
                         width: '8px',
                         height: '8px',
                         borderRadius: '50%',
-                        backgroundColor: '#3b82f6',
+                        backgroundColor: '#5086E8',
                         flexShrink: 0,
                         marginLeft: '8px',
                         marginTop: '4px'

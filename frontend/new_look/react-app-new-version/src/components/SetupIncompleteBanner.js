@@ -37,7 +37,7 @@ function SetupIncompleteBanner({
   const [dismissed, setDismissed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [fetchedProfileStatus, setFetchedProfileStatus] = useState('draft');
-  const [completedCollapsed, setCompletedCollapsed] = useState(false);
+  const [completedCollapsed, setCompletedCollapsed] = useState(true);
   const [incompleteCollapsed, setIncompleteCollapsed] = useState(false);
   const fetchStartedRef = useRef(false);
 
@@ -479,16 +479,19 @@ function SetupIncompleteBanner({
     bannerMessage = 'Your profile has been submitted for review. Our team will review it shortly and notify you once approved.';
     bannerIcon = 'fa-clock';
   } else if (currentProfileStatus === 'approved') {
-    // Profile approved - show green success style
+    // Profile approved - show light green style
+    const hasIncomplete = incompleteSteps.length > 0;
     bannerStyles = {
       background: '#f0fdf4',
-      border: '1px solid #86efac',
+      border: '1px solid #bbf7d0',
       iconColor: '#16a34a',
       titleColor: '#166534',
       textColor: '#166534'
     };
     bannerTitle = 'Profile Live';
-    bannerMessage = 'Your profile is live and visible to clients. You can continue to update your information anytime.';
+    bannerMessage = hasIncomplete 
+      ? `Your profile is live and visible to clients. You can continue to update your information anytime. There ${incompleteSteps.length === 1 ? 'is' : 'are'} ${incompleteSteps.length} optional ${incompleteSteps.length === 1 ? 'section' : 'sections'} you may want to complete to improve your profile.`
+      : 'Your profile is live and visible to clients. You can continue to update your information anytime.';
     bannerIcon = 'fa-circle-check';
   } else if (currentProfileStatus === 'rejected') {
     // Profile rejected - show red warning style

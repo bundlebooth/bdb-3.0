@@ -98,7 +98,7 @@
 
 .location-input-group:focus-within,
 .radius-selector:focus-within {
-  border-color: #3b82f6;
+  border-color: #5086E8;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
@@ -234,7 +234,7 @@
 }
 
 .apply-btn {
-  background: #3b82f6;
+  background: #5086E8;
   color: white;
   border: none;
   padding: 0.75rem 2rem;

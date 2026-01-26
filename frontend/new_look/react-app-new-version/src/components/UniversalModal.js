@@ -134,7 +134,7 @@ export const ConfirmationModal = ({
     warning: <i className="fas fa-exclamation-triangle" style={{ color: '#f59e0b', fontSize: '28px' }}></i>,
     danger: <i className="fas fa-exclamation-circle" style={{ color: '#ef4444', fontSize: '28px' }}></i>,
     success: <i className="fas fa-check-circle" style={{ color: '#10b981', fontSize: '28px' }}></i>,
-    info: <i className="fas fa-info-circle" style={{ color: '#3b82f6', fontSize: '28px' }}></i>
+    info: <i className="fas fa-info-circle" style={{ color: '#5086E8', fontSize: '28px' }}></i>
   };
 
   const variantColors = {
@@ -283,7 +283,7 @@ export const AlertModal = ({
     warning: <i className="fas fa-exclamation-triangle" style={{ color: '#f59e0b', fontSize: '28px' }}></i>,
     danger: <i className="fas fa-exclamation-circle" style={{ color: '#ef4444', fontSize: '28px' }}></i>,
     success: <i className="fas fa-check-circle" style={{ color: '#10b981', fontSize: '28px' }}></i>,
-    info: <i className="fas fa-info-circle" style={{ color: '#3b82f6', fontSize: '28px' }}></i>
+    info: <i className="fas fa-info-circle" style={{ color: '#5086E8', fontSize: '28px' }}></i>
   };
 
   const variantColors = {

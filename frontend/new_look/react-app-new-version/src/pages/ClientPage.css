@@ -2,6 +2,8 @@
 .client-page {
   min-height: 100vh;
   background: #fff;
+  display: flex;
+  flex-direction: column;
 }
 
 .client-page-container {
@@ -10,6 +12,40 @@
   padding: 48px 80px 80px;
   display: flex;
   gap: 80px;
+  flex: 1;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Messages page specific - no page scroll, internal scroll only */
+.client-page.messages-page {
+  height: 100vh;
+  overflow: hidden;
+}
+
+.client-page.messages-page .client-page-container {
+  height: calc(100vh - 80px); /* Account for header */
+  overflow: hidden;
+  padding-bottom: 24px;
+}
+
+.client-page.messages-page .client-page-main {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.client-page.messages-page .client-page-content {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.client-page.messages-page .unified-messages-section {
+  flex: 1;
+  height: 100% !important;
+  min-height: 0;
 }
 
 /* Left Sidebar */
@@ -95,6 +131,11 @@
     flex-direction: column;
     padding: 24px 16px 100px;
     gap: 32px;
+  }
+  
+  .client-page.messages-page .client-page-container {
+    height: calc(100vh - 140px); /* Account for header and bottom nav */
+    padding-bottom: 16px;
   }
   
   .client-page-sidebar {

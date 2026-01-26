@@ -300,7 +300,7 @@
   position: absolute;
   top: 0;
   height: 100%;
-  background: #3b82f6;
+  background: #5086E8;
   border-radius: 6px;
   z-index: 2;
 }
@@ -347,7 +347,7 @@
 }
 
 .gbw-legend-dot.selected {
-  background: #3b82f6;
+  background: #5086E8;
 }
 
 /* Right Side - Time Selection */

@@ -573,7 +573,7 @@
 }
 
 .browse-map-toggle input:checked + .toggle-slider {
-  background-color: #3b82f6;
+  background-color: #5086E8;
 }
 
 .browse-map-toggle .toggle-slider::before {

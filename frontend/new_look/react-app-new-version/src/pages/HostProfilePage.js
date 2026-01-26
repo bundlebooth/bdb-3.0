@@ -243,39 +243,59 @@ function HostProfilePage() {
           <div className="host-profile-container">
             {/* Hero Section Skeleton */}
             <div className="host-hero-section">
-              {/* Profile Card Skeleton */}
-              <div className="host-profile-card">
-                <div className="host-card-left">
-                  <div className="skeleton" style={{ width: '120px', height: '120px', borderRadius: '50%', margin: '0 auto 1rem' }}></div>
-                  <div className="skeleton" style={{ width: '150px', height: '24px', margin: '0 auto 0.5rem' }}></div>
-                  <div className="skeleton" style={{ width: '100px', height: '18px', margin: '0 auto' }}></div>
-                </div>
-                <div className="host-card-right">
-                  <div className="skeleton" style={{ width: '60px', height: '40px' }}></div>
-                  <div className="skeleton" style={{ width: '60px', height: '40px' }}></div>
-                  <div className="skeleton" style={{ width: '60px', height: '40px' }}></div>
+              {/* Profile Card Skeleton - matches actual card layout */}
+              <div>
+                <div className="host-profile-card" style={{ background: '#fff' }}>
+                  <div className="host-card-left" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <div className="skeleton" style={{ width: '110px', height: '110px', borderRadius: '50%', marginBottom: '16px' }}></div>
+                    <div className="skeleton" style={{ width: '120px', height: '24px', marginBottom: '8px', borderRadius: '6px' }}></div>
+                  </div>
+                  <div className="host-card-right" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <div className="skeleton" style={{ width: '40px', height: '32px', borderRadius: '4px' }}></div>
+                      <div className="skeleton" style={{ width: '60px', height: '16px', borderRadius: '4px' }}></div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <div className="skeleton" style={{ width: '40px', height: '32px', borderRadius: '4px' }}></div>
+                      <div className="skeleton" style={{ width: '50px', height: '16px', borderRadius: '4px' }}></div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <div className="skeleton" style={{ width: '30px', height: '32px', borderRadius: '4px' }}></div>
+                      <div className="skeleton" style={{ width: '80px', height: '16px', borderRadius: '4px' }}></div>
+                    </div>
+                  </div>
                 </div>
               </div>
               {/* About Section Skeleton */}
-              <div className="host-about-section">
-                <div className="skeleton" style={{ width: '180px', height: '28px', marginBottom: '1rem' }}></div>
-                <div className="skeleton" style={{ width: '100%', height: '16px', marginBottom: '0.5rem' }}></div>
-                <div className="skeleton" style={{ width: '100%', height: '16px', marginBottom: '0.5rem' }}></div>
-                <div className="skeleton" style={{ width: '80%', height: '16px', marginBottom: '1rem' }}></div>
-                <div className="skeleton" style={{ width: '100%', height: '60px' }}></div>
+              <div className="host-about-section" style={{ flex: 1 }}>
+                <div className="skeleton" style={{ width: '160px', height: '28px', marginBottom: '16px', borderRadius: '6px' }}></div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div className="skeleton" style={{ width: '20px', height: '20px', borderRadius: '4px' }}></div>
+                    <div className="skeleton" style={{ width: '140px', height: '16px', borderRadius: '4px' }}></div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div className="skeleton" style={{ width: '20px', height: '20px', borderRadius: '4px' }}></div>
+                    <div className="skeleton" style={{ width: '100px', height: '16px', borderRadius: '4px' }}></div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div className="skeleton" style={{ width: '20px', height: '20px', borderRadius: '4px' }}></div>
+                    <div className="skeleton" style={{ width: '120px', height: '16px', borderRadius: '4px' }}></div>
+                  </div>
+                </div>
+                <div className="skeleton" style={{ width: '100%', height: '80px', borderRadius: '8px' }}></div>
               </div>
             </div>
             {/* Tab Navigation Skeleton */}
-            <div style={{ display: 'flex', gap: '1rem', borderBottom: '1px solid var(--border)', marginBottom: '2rem', padding: '1rem 0' }}>
-              <div className="skeleton" style={{ width: '100px', height: '36px' }}></div>
-              <div className="skeleton" style={{ width: '100px', height: '36px' }}></div>
-              <div className="skeleton" style={{ width: '100px', height: '36px' }}></div>
+            <div style={{ display: 'flex', gap: '24px', borderBottom: '1px solid #ebebeb', marginBottom: '2rem', paddingBottom: '16px' }}>
+              <div className="skeleton" style={{ width: '80px', height: '20px', borderRadius: '4px' }}></div>
+              <div className="skeleton" style={{ width: '100px', height: '20px', borderRadius: '4px' }}></div>
+              <div className="skeleton" style={{ width: '70px', height: '20px', borderRadius: '4px' }}></div>
             </div>
             {/* Content Skeleton */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div className="skeleton" style={{ width: '100%', height: '80px' }}></div>
-              <div className="skeleton" style={{ width: '100%', height: '80px' }}></div>
-              <div className="skeleton" style={{ width: '100%', height: '80px' }}></div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div className="skeleton" style={{ width: '100%', height: '100px', borderRadius: '12px' }}></div>
+              <div className="skeleton" style={{ width: '100%', height: '100px', borderRadius: '12px' }}></div>
             </div>
           </div>
         </div>
@@ -359,13 +379,41 @@ function HostProfilePage() {
       <div className="host-profile-page">
         <div className="host-profile-container">
           
+          {/* Edit Profile Button - Top of page for own profile */}
+          {currentUser && (String(currentUser.id) === String(hostId) || String(currentUser.userId) === String(hostId)) && (
+            <div style={{ marginBottom: '24px' }}>
+              <button
+                onClick={() => navigate('/client/settings/profile')}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '12px 24px',
+                  background: '#222',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'background 0.2s'
+                }}
+                onMouseEnter={(e) => e.target.style.background = '#000'}
+                onMouseLeave={(e) => e.target.style.background = '#222'}
+              >
+                <i className="fas fa-pen"></i>
+                Edit profile
+              </button>
+            </div>
+          )}
+          
           {/* Hero Section - Airbnb Style */}
           <div className="host-hero-section">
             
             {/* Left Column - Card + Report */}
             <div>
               {/* Profile Card - Horizontal Layout */}
-              <div className="host-profile-card">
+              <div className="host-profile-card card-animate-in">
                 <div className="host-card-left">
                   <div className="host-card-avatar">
                     <img 
@@ -380,31 +428,6 @@ function HostProfilePage() {
                     )}
                   </div>
                   <h1 className="host-card-name">{host.name}</h1>
-                  {currentUser && (String(currentUser.id) === String(hostId) || String(currentUser.userId) === String(hostId)) && (
-                    <button
-                      onClick={() => navigate('/client/settings/profile')}
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        marginTop: '12px',
-                        padding: '10px 20px',
-                        background: '#222',
-                        color: '#fff',
-                        border: 'none',
-                        borderRadius: '8px',
-                        fontSize: '14px',
-                        fontWeight: '600',
-                        cursor: 'pointer',
-                        transition: 'background 0.2s'
-                      }}
-                      onMouseEnter={(e) => e.target.style.background = '#000'}
-                      onMouseLeave={(e) => e.target.style.background = '#222'}
-                    >
-                      <i className="fas fa-pen"></i>
-                      Edit profile
-                    </button>
-                  )}
                   {host.isSuperhost && (
                     <span className="host-superhost-badge">
                       <i className="fas fa-award"></i> Superhost
