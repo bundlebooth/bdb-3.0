@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { API_BASE_URL } from '../../../config';
 import { useAuth } from '../../../context/AuthContext';
 import { apiGet } from '../../../utils/api';
 import BookingCard from '../BookingCard';
 
 function ClientDashboardSection({ data, loading, onSectionChange, onPayNow }) {
+  const navigate = useNavigate();
   const { currentUser } = useAuth();
   const [messages, setMessages] = useState([]);
   const [loadingMessages, setLoadingMessages] = useState(true);
@@ -214,6 +216,55 @@ function ClientDashboardSection({ data, loading, onSectionChange, onPayNow }) {
 
   return (
     <div id="dashboard-section">
+      {/* Client Dashboard Header */}
+      <div className="client-dashboard-header" style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: '24px',
+        flexWrap: 'wrap',
+        gap: '12px'
+      }}>
+        <div>
+          <h1 style={{ 
+            fontSize: '28px', 
+            fontWeight: '700', 
+            color: '#222', 
+            margin: 0,
+            letterSpacing: '-0.5px'
+          }}>
+            Welcome back{currentUser?.name ? `, ${currentUser.name.split(' ')[0]}` : ''}
+          </h1>
+          <p style={{ 
+            fontSize: '14px', 
+            color: '#717171', 
+            margin: '4px 0 0 0' 
+          }}>
+            Here's what's happening with your bookings
+          </p>
+        </div>
+        <button
+          onClick={() => navigate('/')}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '12px 20px',
+            backgroundColor: 'var(--primary, #3B82F6)',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '50px',
+            fontSize: '14px',
+            fontWeight: '600',
+            cursor: 'pointer',
+            transition: 'background 0.15s, transform 0.1s'
+          }}
+        >
+          <i className="fas fa-compass" style={{ fontSize: '14px' }}></i>
+          Explore Vendors
+        </button>
+      </div>
+      
       <div className="vendor-stats stats-top-grid" id="client-stats">
         <div className="kpi-grid two-col">
           <div 

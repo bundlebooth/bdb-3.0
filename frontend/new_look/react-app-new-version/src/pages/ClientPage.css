@@ -1,0 +1,122 @@
+/* Client Page - Airbnb Account Settings Style */
+.client-page {
+  min-height: 100vh;
+  background: #fff;
+}
+
+.client-page-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 48px 80px 80px;
+  display: flex;
+  gap: 80px;
+}
+
+/* Left Sidebar */
+.client-page-sidebar {
+  width: 280px;
+  flex-shrink: 0;
+}
+
+.client-page-sidebar-title {
+  font-size: 32px;
+  font-weight: 600;
+  color: #222;
+  margin: 0 0 32px 0;
+}
+
+.client-page-sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.client-page-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 16px;
+  color: #222;
+  font-size: 15px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  transition: background 0.15s;
+}
+
+.client-page-nav-item:hover {
+  background: #F7F7F7;
+}
+
+.client-page-nav-item.active {
+  background: #F7F7F7;
+  font-weight: 600;
+}
+
+.client-page-nav-item i {
+  width: 24px;
+  font-size: 20px;
+  color: #717171;
+}
+
+.client-page-nav-item.active i {
+  color: #222;
+}
+
+/* Main Content */
+.client-page-main {
+  flex: 1;
+  min-width: 0;
+  border-left: 1px solid #EBEBEB;
+  padding-left: 48px;
+}
+
+.client-page-header {
+  display: none;
+}
+
+.client-page-content {
+  width: 100%;
+}
+
+/* Remove shadow/border from dashboard cards in client pages */
+.client-page .dashboard-card {
+  box-shadow: none;
+  border: none;
+  background: transparent;
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .client-page-container {
+    flex-direction: column;
+    padding: 24px 16px 100px;
+    gap: 32px;
+  }
+  
+  .client-page-sidebar {
+    width: 100%;
+  }
+  
+  .client-page-sidebar-title {
+    font-size: 24px;
+    margin-bottom: 16px;
+  }
+  
+  .client-page-sidebar-nav {
+    display: none;
+  }
+  
+  .client-page-main {
+    width: 100%;
+    border-left: none;
+    padding-left: 0;
+  }
+  
+  .client-page-content {
+    padding: 0;
+  }
+}

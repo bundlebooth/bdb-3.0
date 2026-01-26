@@ -1,6 +1,14 @@
 ﻿/* Import shared modal styles */
 @import './styles/shared-modal.css';
 
+/* Global body scroll lock - used when modals/sidebars are open */
+body.no-scroll {
+    overflow: hidden !important;
+    position: fixed !important;
+    width: 100% !important;
+    height: 100% !important;
+}
+
 :root {
     --primary: #4F86E8;
     --primary-dark: #3A6FD4;

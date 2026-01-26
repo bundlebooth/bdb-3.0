@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
 import { useTranslation } from '../hooks/useTranslation';
+import { ICONS } from '../utils/sidebarIcons';
 
 function MobileBottomNav({ onOpenDashboard, onOpenProfile, onOpenMessages, onOpenMap, onCloseDashboard }) {
   const navigate = useNavigate();
@@ -58,9 +59,9 @@ function MobileBottomNav({ onOpenDashboard, onOpenProfile, onOpenMessages, onOpe
   }, [currentUser?.id]);
 
   // Pages where bottom nav should be visible
-  const allowedPaths = ['/', '/explore', '/forum'];
+  const allowedPaths = ['/', '/explore', '/forum', '/client'];
   const isAllowedPage = allowedPaths.some(path => 
-    location.pathname === path || location.pathname.startsWith('/forum')
+    location.pathname === path || location.pathname.startsWith('/forum') || location.pathname.startsWith('/client')
   );
 
   // Listen for map open/close events from IndexPage
@@ -166,13 +167,8 @@ function MobileBottomNav({ onOpenDashboard, onOpenProfile, onOpenMessages, onOpe
     window.dispatchEvent(new CustomEvent('closeMobileMap'));
     if (currentUser) {
       setActiveTab('messages');
-      // Open messaging widget instead of dashboard
-      if (onOpenMessages) {
-        onOpenMessages();
-      } else {
-        // Fallback: dispatch event to open messaging widget
-        window.dispatchEvent(new CustomEvent('openMessagingWidget', { detail: { showHome: true } }));
-      }
+      // Navigate to dedicated messages page
+      navigate('/client/messages');
     } else {
       setActiveTab(null);
       if (onOpenProfile) {
@@ -227,45 +223,79 @@ function MobileBottomNav({ onOpenDashboard, onOpenProfile, onOpenMessages, onOpe
     return null;
   }
 
+  // Handle bookings click - navigate to dedicated bookings page
+  const handleBookingsClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setMobileMapOpen(false);
+    window.dispatchEvent(new CustomEvent('closeMessagingWidget'));
+    window.dispatchEvent(new CustomEvent('closeMobileMap'));
+    if (currentUser) {
+      setActiveTab('bookings');
+      navigate('/client/bookings');
+    } else {
+      if (onOpenProfile) onOpenProfile();
+    }
+  };
+
+  // Handle favorites click - navigate to dedicated favorites page
+  const handleFavoritesClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setMobileMapOpen(false);
+    window.dispatchEvent(new CustomEvent('closeMessagingWidget'));
+    window.dispatchEvent(new CustomEvent('closeMobileMap'));
+    if (currentUser) {
+      setActiveTab('favorites');
+      navigate('/client/favorites');
+    } else {
+      if (onOpenProfile) onOpenProfile();
+    }
+  };
+
   return (
     <nav className={`mobile-bottom-nav ${isVisible ? 'visible' : 'hidden'}`} onClick={(e) => e.stopPropagation()}>
+      {/* Explore */}
       <button 
         type="button"
         className={`mobile-nav-item ${isActive(['/', '/explore']) && !activeTab && !mobileMapOpen ? 'active' : ''}`}
         onClick={handleExploreClick}
       >
-        <i className="fas fa-compass"></i>
+        <i className={ICONS.explore}></i>
         <span className="nav-label">{t('nav.explore')}</span>
       </button>
       
-      {/* Map button - always visible on all allowed pages */}
+      {/* My Bookings */}
       <button 
         type="button"
-        className={`mobile-nav-item ${mobileMapOpen ? 'active' : ''}`}
-        onClick={handleMapClick}
+        className={`mobile-nav-item ${activeTab === 'bookings' ? 'active' : ''}`}
+        onClick={handleBookingsClick}
       >
-        <i className="fas fa-map"></i>
-        <span className="nav-label">{t('common.map', 'Map')}</span>
+        <i className={ICONS.bookings}></i>
+        <span className="nav-label">Bookings</span>
       </button>
       
-      <button 
-        type="button"
-        className={`mobile-nav-item ${isActive('/forum') && !activeTab && !mobileMapOpen ? 'active' : ''}`}
-        onClick={handleForumClick}
-      >
-        <i className="fas fa-comments"></i>
-        <span className="nav-label">{t('common.forum', 'Forum')}</span>
-      </button>
-      
+      {/* Messages */}
       <button 
         type="button"
         className={`mobile-nav-item ${activeTab === 'messages' && !mobileMapOpen ? 'active' : ''}`}
         onClick={handleMessagesClick}
       >
-        <i className="fas fa-envelope"></i>
+        <i className={ICONS.messages}></i>
         <span className="nav-label">{t('sidebar.messages')}</span>
       </button>
       
+      {/* Favorites */}
+      <button 
+        type="button"
+        className={`mobile-nav-item ${activeTab === 'favorites' ? 'active' : ''}`}
+        onClick={handleFavoritesClick}
+      >
+        <i className={ICONS.favorites}></i>
+        <span className="nav-label">Favorites</span>
+      </button>
+      
+      {/* Profile - Opens Sidebar */}
       <button 
         type="button"
         className={`mobile-nav-item ${activeTab === 'account' && !mobileMapOpen ? 'active' : ''}`}
@@ -293,7 +323,7 @@ function MobileBottomNav({ onOpenDashboard, onOpenProfile, onOpenMessages, onOpe
         ) : (
           <i className="fas fa-user"></i>
         )}
-        <span className="nav-label">{currentUser ? t('nav.account') : t('nav.logIn')}</span>
+        <span className="nav-label">{currentUser ? 'Profile' : t('nav.logIn')}</span>
       </button>
     </nav>
   );

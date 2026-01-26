@@ -5,7 +5,7 @@ import { apiGet } from '../utils/api';
 import NotificationDropdown from './NotificationDropdown';
 import EnhancedSearchBar from './EnhancedSearchBar';
 import WhatsNewSidebar from './WhatsNewSidebar';
-import UnifiedSidebar from './UnifiedSidebar';
+import ProfileSidebar from './ProfileSidebar';
 import { getUnreadNotificationCount, updatePageTitle } from '../utils/notifications';
 import { buildBecomeVendorUrl } from '../utils/urlHelpers';
 import { useTranslation } from '../hooks/useTranslation';
@@ -29,6 +29,7 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
   const [announcementCount, setAnnouncementCount] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [hasVendorProfile, setHasVendorProfile] = useState(false);
+  const [vendorCheckLoading, setVendorCheckLoading] = useState(true);
   const [vendorLogoUrl, setVendorLogoUrl] = useState(null);
   const notificationBtnRef = useRef(null);
   
@@ -132,6 +133,7 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
     }
     
     const checkVendorProfile = async () => {
+      setVendorCheckLoading(true);
       try {
         const response = await apiGet(`/vendors/profile?userId=${currentUser.id}`);
         if (response.ok) {
@@ -146,6 +148,8 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
         }
       } catch (error) {
         console.error('Failed to check vendor profile:', error);
+      } finally {
+        setVendorCheckLoading(false);
       }
     };
     
@@ -275,7 +279,13 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
       )}
 
       <div className="user-nav">
-        {!currentUser?.isVendor && (
+        {/* Show "Become a Vendor" for non-vendors, "Switch to hosting" for vendors */}
+        {currentUser && vendorCheckLoading && (
+          <div style={{ marginRight: '0.5rem', display: 'flex', alignItems: 'center' }}>
+            <div className="spinner" style={{ width: 20, height: 20, borderWidth: 2 }}></div>
+          </div>
+        )}
+        {currentUser && !vendorCheckLoading && !hasVendorProfile && (
           <button 
             className="become-vendor-btn"
             onClick={() => {
@@ -298,6 +308,58 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
             onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
           >
             {t('footer.becomeVendor')}
+          </button>
+        )}
+        {currentUser && !vendorCheckLoading && hasVendorProfile && !isVendorMode && (
+          <button 
+            className="switch-to-hosting-btn"
+            onClick={() => {
+              localStorage.setItem('viewMode', 'vendor');
+              window.dispatchEvent(new CustomEvent('viewModeChanged', { detail: { mode: 'vendor' } }));
+              navigate('/dashboard?section=vendor-dashboard');
+            }}
+            style={{
+              padding: '0.5rem 1rem',
+              backgroundColor: 'transparent',
+              color: 'var(--text)',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '0.95rem',
+              fontWeight: '500',
+              cursor: 'pointer',
+              transition: 'background-color 0.2s',
+              marginRight: '0.5rem'
+            }}
+            onMouseEnter={(e) => e.target.style.backgroundColor = '#f7f7f7'}
+            onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+          >
+            Switch to hosting
+          </button>
+        )}
+        {currentUser && hasVendorProfile && isVendorMode && (
+          <button 
+            className="switch-to-exploring-btn"
+            onClick={() => {
+              localStorage.setItem('viewMode', 'client');
+              window.dispatchEvent(new CustomEvent('viewModeChanged', { detail: { mode: 'client' } }));
+              navigate('/');
+            }}
+            style={{
+              padding: '0.5rem 1rem',
+              backgroundColor: 'transparent',
+              color: 'var(--text)',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '0.95rem',
+              fontWeight: '500',
+              cursor: 'pointer',
+              transition: 'background-color 0.2s',
+              marginRight: '0.5rem'
+            }}
+            onMouseEnter={(e) => e.target.style.backgroundColor = '#f7f7f7'}
+            onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+          >
+            Switch to exploring
           </button>
         )}
         {(currentUser?.isAdmin === true || currentUser?.isAdmin === 1 || currentUser?.IsAdmin === true || currentUser?.IsAdmin === 1) && (
@@ -353,38 +415,7 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
           )}
         </div>
         {/* Heart and Chat icons removed as per user request */}
-        <div 
-          ref={notificationBtnRef}
-          className="nav-icon" 
-          id="notifications-btn" 
-          onClick={handleNotificationClick}
-          style={{ cursor: 'pointer', position: 'relative', overflow: 'visible' }}
-        >
-          <i className="fas fa-bell"></i>
-          {notificationsBadge > 0 && (
-            <span
-              style={{
-                background: '#ef4444',
-                color: 'white',
-                fontSize: '11px',
-                fontWeight: 600,
-                minWidth: '18px',
-                height: '18px',
-                borderRadius: '9px',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '0 5px',
-                marginLeft: '4px',
-                position: 'absolute',
-                top: '-8px',
-                right: '-10px'
-              }}
-            >
-              {notificationsBadge > 99 ? '99+' : notificationsBadge}
-            </span>
-          )}
-        </div>
+        {/* Notification bell removed as per user request */}
         {/* User menu button - hamburger + avatar like dashboard - hidden on mobile via CSS */}
         <div
           className="user-menu-button"
@@ -481,8 +512,8 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
       />
     </header>
     
-    {/* Unified Sidebar Component */}
-    <UnifiedSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+    {/* Airbnb-Style Profile Sidebar */}
+    <ProfileSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
     
     {/* What's New Sidebar - Rendered outside header for proper z-index */}
     <WhatsNewSidebar 

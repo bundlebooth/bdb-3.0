@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { apiGet } from '../../../utils/api';
 import { useAuth } from '../../../context/AuthContext';
 import CardRow from '../CardRow';
 
 function VendorDashboardSection({ data, loading, onSectionChange }) {
+  const navigate = useNavigate();
   const { currentUser } = useAuth();
   const [messages, setMessages] = useState([]);
   const [loadingMessages, setLoadingMessages] = useState(true);
@@ -15,6 +17,13 @@ function VendorDashboardSection({ data, loading, onSectionChange }) {
   const day = now.getDate();
   const year = now.getFullYear();
   const weekday = now.toLocaleString('en-US', { weekday: 'long' });
+
+  // Handle switching to explore (client) mode
+  const handleSwitchToExplore = () => {
+    localStorage.setItem('viewMode', 'client');
+    window.dispatchEvent(new CustomEvent('viewModeChanged', { detail: { mode: 'client' } }));
+    navigate('/');
+  };
 
   // Fetch KPI data and recent bookings
   useEffect(() => {
@@ -222,6 +231,28 @@ function VendorDashboardSection({ data, loading, onSectionChange }) {
 
   return (
     <div id="vendor-dashboard-section">
+      {/* Vendor Dashboard Header */}
+      <div className="vendor-dashboard-header" style={{
+        marginBottom: '24px'
+      }}>
+        <h1 style={{ 
+          fontSize: '28px', 
+          fontWeight: '700', 
+          color: '#222', 
+          margin: 0,
+          letterSpacing: '-0.5px'
+        }}>
+          Vendor Dashboard
+        </h1>
+        <p style={{ 
+          fontSize: '14px', 
+          color: '#717171', 
+          margin: '4px 0 0 0' 
+        }}>
+          Manage your business and bookings
+        </p>
+      </div>
+      
       <div className="vendor-stats stats-top-grid" id="vendor-stats">
         <div className="kpi-grid two-col">
           <div 

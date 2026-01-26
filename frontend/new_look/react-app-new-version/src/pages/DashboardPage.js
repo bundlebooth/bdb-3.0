@@ -27,7 +27,7 @@ import VendorReviewsSection from '../components/Dashboard/sections/VendorReviews
 import VendorAnalyticsSection from '../components/Dashboard/sections/VendorAnalyticsSection';
 import VendorSettingsSection from '../components/Dashboard/sections/VendorSettingsSection';
 
-import UnifiedSidebar from '../components/UnifiedSidebar';
+import ProfileSidebar from '../components/ProfileSidebar';
 
 import './DashboardPage.css';
 import '../index.css';
@@ -610,8 +610,8 @@ function DashboardPage() {
         </div>
       </nav>
       
-      {/* Unified Sidebar Component */}
-      <UnifiedSidebar isOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
+      {/* Airbnb-Style Profile Sidebar */}
+      <ProfileSidebar isOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
 
       {/* Main Content */}
       <main className="dashboard-page-content">

@@ -20,6 +20,20 @@ import ForumPage from './pages/ForumPage';
 import ForumPostPage from './pages/ForumPostPage';
 import BrowsePage from './pages/BrowsePage';
 import DashboardPage from './pages/DashboardPage';
+import ClientBookingsPage from './pages/ClientBookingsPage';
+import ClientMessagesPage from './pages/ClientMessagesPage';
+import ClientFavoritesPage from './pages/ClientFavoritesPage';
+import ClientReviewsPage from './pages/ClientReviewsPage';
+import ClientInvoicesPage from './pages/ClientInvoicesPage';
+import ClientSettingsPage from './pages/ClientSettingsPage';
+import ClientSettingsProfilePage from './pages/ClientSettingsProfilePage';
+import ClientSettingsPersonalPage from './pages/ClientSettingsPersonalPage';
+import ClientSettingsLocationPage from './pages/ClientSettingsLocationPage';
+import ClientSettingsCommunicationPage from './pages/ClientSettingsCommunicationPage';
+import ClientSettingsLanguagePage from './pages/ClientSettingsLanguagePage';
+import ClientSettingsPrivacyPage from './pages/ClientSettingsPrivacyPage';
+import ClientSettingsSecurityPage from './pages/ClientSettingsSecurityPage';
+import ClientSettingsDeletePage from './pages/ClientSettingsDeletePage';
 import BlogPage from './components/BlogPage';
 import UnsubscribePage from './pages/UnsubscribePage';
 import EmailPreferencesPage from './pages/EmailPreferencesPage';
@@ -186,6 +200,21 @@ function App() {
           <Route path="/forum/:slug" element={<ForumPage />} />
           <Route path="/forum/post/:slug" element={<ForumPostPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
+          {/* Dedicated Client Pages with vertical sidebar navigation */}
+          <Route path="/client/bookings" element={<ClientBookingsPage />} />
+          <Route path="/client/messages" element={<ClientMessagesPage />} />
+          <Route path="/client/favorites" element={<ClientFavoritesPage />} />
+          <Route path="/client/reviews" element={<ClientReviewsPage />} />
+          <Route path="/client/invoices" element={<ClientInvoicesPage />} />
+          <Route path="/client/settings" element={<ClientSettingsPage />} />
+          <Route path="/client/settings/profile" element={<ClientSettingsProfilePage />} />
+          <Route path="/client/settings/personal" element={<ClientSettingsPersonalPage />} />
+          <Route path="/client/settings/location" element={<ClientSettingsLocationPage />} />
+          <Route path="/client/settings/communication" element={<ClientSettingsCommunicationPage />} />
+          <Route path="/client/settings/language" element={<ClientSettingsLanguagePage />} />
+          <Route path="/client/settings/privacy" element={<ClientSettingsPrivacyPage />} />
+          <Route path="/client/settings/security" element={<ClientSettingsSecurityPage />} />
+          <Route path="/client/settings/delete" element={<ClientSettingsDeletePage />} />
           <Route path="/blog" element={<BlogPage />} />
           <Route path="/blog/:slug" element={<BlogPage />} />
           {/* Browse page routes for category/city/discovery filtering */}

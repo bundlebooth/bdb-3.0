@@ -380,6 +380,31 @@ function HostProfilePage() {
                     )}
                   </div>
                   <h1 className="host-card-name">{host.name}</h1>
+                  {currentUser && (String(currentUser.id) === String(hostId) || String(currentUser.userId) === String(hostId)) && (
+                    <button
+                      onClick={() => navigate('/client/settings/profile')}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        marginTop: '12px',
+                        padding: '10px 20px',
+                        background: '#222',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        transition: 'background 0.2s'
+                      }}
+                      onMouseEnter={(e) => e.target.style.background = '#000'}
+                      onMouseLeave={(e) => e.target.style.background = '#222'}
+                    >
+                      <i className="fas fa-pen"></i>
+                      Edit profile
+                    </button>
+                  )}
                   {host.isSuperhost && (
                     <span className="host-superhost-badge">
                       <i className="fas fa-award"></i> Superhost

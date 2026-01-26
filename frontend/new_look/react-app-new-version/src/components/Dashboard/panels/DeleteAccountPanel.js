@@ -13,8 +13,8 @@ function DeleteAccountPanel({ onBack }) {
   const [loading, setLoading] = useState(false);
 
   const handleDeleteAccount = async () => {
-    if (confirmText !== 'DELETE') {
-      showBanner('Please type DELETE to confirm', 'error');
+    if (confirmText !== 'DELETE MY ACCOUNT') {
+      showBanner('Please type DELETE MY ACCOUNT to confirm', 'error');
       return;
     }
 
@@ -255,13 +255,13 @@ function DeleteAccountPanel({ onBack }) {
               fontWeight: '500',
               color: '#374151'
             }}>
-              Type <strong style={{ color: '#dc2626' }}>DELETE</strong> to confirm
+              To confirm, type <strong style={{ color: '#dc2626' }}>DELETE MY ACCOUNT</strong> in the textbox below
             </label>
             <input
               type="text"
               value={confirmText}
               onChange={(e) => setConfirmText(e.target.value.toUpperCase())}
-              placeholder="Type DELETE"
+              placeholder="Type DELETE MY ACCOUNT to confirm"
               style={{
                 width: '100%',
                 padding: '12px',
@@ -297,17 +297,17 @@ function DeleteAccountPanel({ onBack }) {
             </button>
             <button
               onClick={handleDeleteAccount}
-              disabled={loading || confirmText !== 'DELETE' || !password}
+              disabled={loading || confirmText !== 'DELETE MY ACCOUNT' || !password}
               style={{
                 flex: 1,
                 padding: '14px',
-                background: confirmText === 'DELETE' && password ? '#dc2626' : '#9ca3af',
+                background: confirmText === 'DELETE MY ACCOUNT' && password ? '#dc2626' : '#fecaca',
                 color: 'white',
                 border: 'none',
                 borderRadius: '8px',
                 fontSize: '14px',
                 fontWeight: '500',
-                cursor: confirmText === 'DELETE' && password ? 'pointer' : 'not-allowed'
+                cursor: confirmText === 'DELETE MY ACCOUNT' && password ? 'pointer' : 'not-allowed'
               }}
             >
               {loading ? 'Deleting...' : 'Delete Account Forever'}
