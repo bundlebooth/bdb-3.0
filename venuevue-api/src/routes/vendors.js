@@ -5221,9 +5221,51 @@ router.get('/category-questions/:category', async (req, res) => {
       });
     }
 
+    // Map display names to database category keys
+    const categoryKeyMap = {
+      'Photography': 'photo',
+      'Photography & Videography': 'photo',
+      'Photo & Video': 'photo',
+      'Videography': 'photo',
+      'Venues': 'venue',
+      'Venue': 'venue',
+      'Music': 'music',
+      'Music & Entertainment': 'music',
+      'DJ': 'music',
+      'Band': 'music',
+      'Catering': 'catering',
+      'Catering & Bar': 'catering',
+      'Food & Beverage': 'catering',
+      'Entertainment': 'entertainment',
+      'Experiences': 'experiences',
+      'Decor': 'decor',
+      'Decoration': 'decor',
+      'Floral': 'decor',
+      'Flowers': 'decor',
+      'Beauty': 'beauty',
+      'Beauty & Fashion': 'beauty',
+      'Hair & Makeup': 'beauty',
+      'Cake': 'cake',
+      'Bakery': 'cake',
+      'Cakes & Desserts': 'cake',
+      'Transportation': 'transport',
+      'Transport': 'transport',
+      'Planner': 'planner',
+      'Planning': 'planner',
+      'Event Planning': 'planner',
+      'Wedding Planner': 'planner',
+      'Fashion': 'fashion',
+      'Attire': 'fashion',
+      'Stationery': 'stationery',
+      'Invitations': 'stationery'
+    };
+
+    // Use mapped key or original value (lowercase)
+    const categoryKey = categoryKeyMap[category] || category.toLowerCase();
+
     const pool = await poolPromise;
     const request = new sql.Request(pool);
-    request.input('Category', sql.NVarChar(50), category);
+    request.input('Category', sql.NVarChar(50), categoryKey);
     
     const result = await request.execute('vendors.sp_GetCategoryQuestions');
     
