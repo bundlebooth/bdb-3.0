@@ -517,6 +517,10 @@ router.get('/', async (req, res) => {
       dayOfWeek, // Day of week (e.g., 'Monday', 'Tuesday')
       startTime, // Start time (HH:MM format)
       endTime, // End time (HH:MM format)
+      // New attribute filters
+      instantBookingOnly, // Filter for instant booking vendors
+      eventTypes, // Comma-separated event type IDs
+      cultures, // Comma-separated culture IDs
       // Discovery sections - when true, returns categorized sections from same query
       includeDiscoverySections
     } = req.query;
@@ -635,8 +639,55 @@ router.get('/', async (req, res) => {
       googlePlaceId: vendor.GooglePlaceId || vendor.GooglePlaceID || null
     }));
 
-    // City filtering is now handled by the stored procedure
-    // No post-query filtering needed
+    // Apply post-query filters for new attributes (instant booking, event types, cultures)
+    if (instantBookingOnly === 'true' || eventTypes || cultures) {
+      // Get vendor IDs that match the filters
+      const vendorIds = formattedVendors.map(v => v.vendorProfileId);
+      
+      if (vendorIds.length > 0) {
+        // Filter by instant booking
+        if (instantBookingOnly === 'true') {
+          const instantBookingRequest = new sql.Request(pool);
+          const instantResult = await instantBookingRequest.query(`
+            SELECT VendorProfileID FROM vendors.VendorProfiles 
+            WHERE VendorProfileID IN (${vendorIds.join(',')}) 
+            AND InstantBookingEnabled = 1
+          `);
+          const instantBookingIds = new Set(instantResult.recordset.map(r => r.VendorProfileID));
+          formattedVendors = formattedVendors.filter(v => instantBookingIds.has(v.vendorProfileId));
+        }
+        
+        // Filter by event types
+        if (eventTypes) {
+          const eventTypeIds = eventTypes.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
+          if (eventTypeIds.length > 0) {
+            const eventTypeRequest = new sql.Request(pool);
+            const eventTypeResult = await eventTypeRequest.query(`
+              SELECT DISTINCT VendorProfileID FROM vendors.VendorEventTypes 
+              WHERE VendorProfileID IN (${formattedVendors.map(v => v.vendorProfileId).join(',')}) 
+              AND EventTypeID IN (${eventTypeIds.join(',')})
+            `);
+            const eventTypeVendorIds = new Set(eventTypeResult.recordset.map(r => r.VendorProfileID));
+            formattedVendors = formattedVendors.filter(v => eventTypeVendorIds.has(v.vendorProfileId));
+          }
+        }
+        
+        // Filter by cultures
+        if (cultures) {
+          const cultureIds = cultures.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
+          if (cultureIds.length > 0) {
+            const cultureRequest = new sql.Request(pool);
+            const cultureResult = await cultureRequest.query(`
+              SELECT DISTINCT VendorProfileID FROM vendors.VendorCultures 
+              WHERE VendorProfileID IN (${formattedVendors.map(v => v.vendorProfileId).join(',')}) 
+              AND CultureID IN (${cultureIds.join(',')})
+            `);
+            const cultureVendorIds = new Set(cultureResult.recordset.map(r => r.VendorProfileID));
+            formattedVendors = formattedVendors.filter(v => cultureVendorIds.has(v.vendorProfileId));
+          }
+        }
+      }
+    }
 
     // Enhance with Cloudinary images if requested (default: true for better UX)
     if (includeImages !== 'false') {
@@ -7593,6 +7644,73 @@ router.put('/:id/booking-settings', async (req, res) => {
   } catch (err) {
     console.error('Update vendor booking settings error:', err);
     res.status(500).json({ success: false, message: 'Failed to update booking settings', error: err.message });
+  }
+});
+
+// GET /api/vendors/:id/category-answers - Get vendor's category answers
+router.get('/:id/category-answers', async (req, res) => {
+  try {
+    const vendorProfileId = resolveVendorIdParam(req.params.id);
+    if (!vendorProfileId) {
+      return res.status(400).json({ success: false, message: 'Invalid vendor profile ID' });
+    }
+
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
+    
+    const result = await request.query(`
+      SELECT vca.AnswerID, vca.QuestionID, vca.Answer, cq.QuestionText, cq.Category
+      FROM vendors.VendorCategoryAnswers vca
+      JOIN vendors.CategoryQuestions cq ON vca.QuestionID = cq.QuestionID
+      WHERE vca.VendorProfileID = @VendorProfileID
+    `);
+    
+    res.json({ success: true, answers: result.recordset || [] });
+  } catch (err) {
+    console.error('Get vendor category answers error:', err);
+    res.status(500).json({ success: false, message: 'Failed to get category answers', error: err.message });
+  }
+});
+
+// PUT /api/vendors/:id/category-answers - Save vendor's category answers
+router.put('/:id/category-answers', async (req, res) => {
+  try {
+    const vendorProfileId = resolveVendorIdParam(req.params.id);
+    if (!vendorProfileId) {
+      return res.status(400).json({ success: false, message: 'Invalid vendor profile ID' });
+    }
+
+    const { answers } = req.body;
+    if (!Array.isArray(answers)) {
+      return res.status(400).json({ success: false, message: 'Answers must be an array' });
+    }
+
+    const pool = await poolPromise;
+    
+    // Process each answer - upsert pattern
+    for (const answer of answers) {
+      const request = new sql.Request(pool);
+      request.input('VendorProfileID', sql.Int, vendorProfileId);
+      request.input('QuestionID', sql.Int, answer.questionId);
+      request.input('Answer', sql.NVarChar(sql.MAX), answer.answer || '');
+      
+      await request.query(`
+        MERGE vendors.VendorCategoryAnswers AS target
+        USING (SELECT @VendorProfileID AS VendorProfileID, @QuestionID AS QuestionID) AS source
+        ON target.VendorProfileID = source.VendorProfileID AND target.QuestionID = source.QuestionID
+        WHEN MATCHED THEN
+          UPDATE SET Answer = @Answer, UpdatedAt = GETUTCDATE()
+        WHEN NOT MATCHED THEN
+          INSERT (VendorProfileID, QuestionID, Answer, CreatedAt, UpdatedAt)
+          VALUES (@VendorProfileID, @QuestionID, @Answer, GETUTCDATE(), GETUTCDATE());
+      `);
+    }
+    
+    res.json({ success: true, message: 'Category answers saved successfully' });
+  } catch (err) {
+    console.error('Save vendor category answers error:', err);
+    res.status(500).json({ success: false, message: 'Failed to save category answers', error: err.message });
   }
 });
 
