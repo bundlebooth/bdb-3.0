@@ -223,6 +223,203 @@ router.delete('/service-image/:publicId', async (req, res) => {
 
 // ===== END SERVICE IMAGE UPLOAD ROUTES =====
 
+// ===== LOOKUP ENDPOINTS FOR VENDOR ONBOARDING & FILTERS =====
+
+// Get all event types
+router.get('/lookup/event-types', async (req, res) => {
+  try {
+    const pool = await poolPromise;
+    const result = await pool.request()
+      .input('IncludeInactive', sql.Bit, 0)
+      .execute('vendors.sp_GetEventTypes');
+    
+    res.json({ 
+      success: true, 
+      eventTypes: result.recordset 
+    });
+  } catch (error) {
+    console.error('Error fetching event types:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch event types' });
+  }
+});
+
+// Get all cultures
+router.get('/lookup/cultures', async (req, res) => {
+  try {
+    const pool = await poolPromise;
+    const result = await pool.request()
+      .input('IncludeInactive', sql.Bit, 0)
+      .execute('vendors.sp_GetCultures');
+    
+    res.json({ 
+      success: true, 
+      cultures: result.recordset 
+    });
+  } catch (error) {
+    console.error('Error fetching cultures:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch cultures' });
+  }
+});
+
+// Get subcategories (optionally filtered by category)
+router.get('/lookup/subcategories', async (req, res) => {
+  try {
+    const { category } = req.query;
+    const pool = await poolPromise;
+    const result = await pool.request()
+      .input('Category', sql.NVarChar(50), category || null)
+      .input('IncludeInactive', sql.Bit, 0)
+      .execute('vendors.sp_GetSubcategories');
+    
+    res.json({ 
+      success: true, 
+      subcategories: result.recordset 
+    });
+  } catch (error) {
+    console.error('Error fetching subcategories:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch subcategories' });
+  }
+});
+
+// Get experience ranges (static lookup)
+router.get('/lookup/experience-ranges', async (req, res) => {
+  try {
+    const experienceRanges = [
+      { key: '0-1', label: 'Less than 1 year', minYears: 0, maxYears: 1 },
+      { key: '1-3', label: '1-3 years', minYears: 1, maxYears: 3 },
+      { key: '3-5', label: '3-5 years', minYears: 3, maxYears: 5 },
+      { key: '5-10', label: '5-10 years', minYears: 5, maxYears: 10 },
+      { key: '10+', label: '10+ years', minYears: 10, maxYears: null }
+    ];
+    res.json({ success: true, experienceRanges });
+  } catch (error) {
+    console.error('Error fetching experience ranges:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch experience ranges' });
+  }
+});
+
+// Get service locations (static lookup)
+router.get('/lookup/service-locations', async (req, res) => {
+  try {
+    const serviceLocations = [
+      { key: 'Local', label: 'Local', description: 'Within your city/region' },
+      { key: 'National', label: 'National', description: 'Anywhere in the country' },
+      { key: 'International', label: 'International', description: 'Willing to travel internationally' }
+    ];
+    res.json({ success: true, serviceLocations });
+  } catch (error) {
+    console.error('Error fetching service locations:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch service locations' });
+  }
+});
+
+// Get lead time options (static lookup)
+router.get('/lookup/lead-times', async (req, res) => {
+  try {
+    const leadTimes = [
+      { hours: 0, label: 'No minimum lead time' },
+      { hours: 24, label: '24 hours (1 day)' },
+      { hours: 48, label: '48 hours (2 days)' },
+      { hours: 72, label: '72 hours (3 days)' },
+      { hours: 168, label: '7 days (1 week)' },
+      { hours: 336, label: '14 days (2 weeks)' },
+      { hours: 720, label: '30 days (1 month)' }
+    ];
+    res.json({ success: true, leadTimes });
+  } catch (error) {
+    console.error('Error fetching lead times:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch lead times' });
+  }
+});
+
+// Get affordability/price levels (static lookup)
+router.get('/lookup/price-levels', async (req, res) => {
+  try {
+    const priceLevels = [
+      { key: '$', label: 'Budget-Friendly', description: 'Affordable options' },
+      { key: '$$', label: 'Moderate', description: 'Mid-range pricing' },
+      { key: '$$$', label: 'Premium', description: 'Higher-end services' },
+      { key: '$$$$', label: 'Luxury', description: 'Top-tier luxury services' }
+    ];
+    res.json({ success: true, priceLevels });
+  } catch (error) {
+    console.error('Error fetching price levels:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch price levels' });
+  }
+});
+
+// Get filterable questions by category (for dynamic filter modal)
+router.get('/lookup/filterable-questions', async (req, res) => {
+  try {
+    const { category } = req.query;
+    const pool = await poolPromise;
+    const result = await pool.request()
+      .input('Category', sql.NVarChar(50), category || null)
+      .execute('vendors.sp_GetFilterableQuestionsByCategory');
+    
+    res.json({ 
+      success: true, 
+      questions: result.recordset 
+    });
+  } catch (error) {
+    console.error('Error fetching filterable questions:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch filterable questions' });
+  }
+});
+
+// Get all lookups in one call (for initial page load optimization)
+router.get('/lookup/all', async (req, res) => {
+  try {
+    const pool = await poolPromise;
+    
+    // Fetch all lookups in parallel
+    const [eventTypesResult, culturesResult, subcategoriesResult] = await Promise.all([
+      pool.request().input('IncludeInactive', sql.Bit, 0).execute('vendors.sp_GetEventTypes'),
+      pool.request().input('IncludeInactive', sql.Bit, 0).execute('vendors.sp_GetCultures'),
+      pool.request().input('Category', sql.NVarChar(50), null).input('IncludeInactive', sql.Bit, 0).execute('vendors.sp_GetSubcategories')
+    ]);
+    
+    res.json({
+      success: true,
+      eventTypes: eventTypesResult.recordset,
+      cultures: culturesResult.recordset,
+      subcategories: subcategoriesResult.recordset,
+      experienceRanges: [
+        { key: '0-1', label: 'Less than 1 year', minYears: 0, maxYears: 1 },
+        { key: '1-3', label: '1-3 years', minYears: 1, maxYears: 3 },
+        { key: '3-5', label: '3-5 years', minYears: 3, maxYears: 5 },
+        { key: '5-10', label: '5-10 years', minYears: 5, maxYears: 10 },
+        { key: '10+', label: '10+ years', minYears: 10, maxYears: null }
+      ],
+      serviceLocations: [
+        { key: 'Local', label: 'Local', description: 'Within your city/region' },
+        { key: 'National', label: 'National', description: 'Anywhere in the country' },
+        { key: 'International', label: 'International', description: 'Willing to travel internationally' }
+      ],
+      leadTimes: [
+        { hours: 0, label: 'No minimum lead time' },
+        { hours: 24, label: '24 hours (1 day)' },
+        { hours: 48, label: '48 hours (2 days)' },
+        { hours: 72, label: '72 hours (3 days)' },
+        { hours: 168, label: '7 days (1 week)' },
+        { hours: 336, label: '14 days (2 weeks)' },
+        { hours: 720, label: '30 days (1 month)' }
+      ],
+      priceLevels: [
+        { key: '$', label: 'Budget-Friendly' },
+        { key: '$$', label: 'Moderate' },
+        { key: '$$$', label: 'Premium' },
+        { key: '$$$$', label: 'Luxury' }
+      ]
+    });
+  } catch (error) {
+    console.error('Error fetching all lookups:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch lookups' });
+  }
+});
+
+// ===== END LOOKUP ENDPOINTS =====
+
 // Get all predefined services grouped by category
 router.get('/predefined-services', async (req, res) => {
   try {
@@ -5249,6 +5446,103 @@ router.get('/category-questions/:category', async (req, res) => {
   }
 });
 
+// Get vendor's category answers
+router.get('/:vendorProfileId/category-answers', async (req, res) => {
+  try {
+    const vendorProfileId = parseVendorProfileId(req.params.vendorProfileId, req);
+    if (!vendorProfileId) {
+      return res.status(400).json({ success: false, message: 'Invalid vendor profile ID' });
+    }
+
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
+    
+    const result = await request.query(`
+      SELECT 
+        vca.AnswerID,
+        vca.QuestionID,
+        vca.Answer,
+        cq.QuestionText,
+        cq.QuestionType,
+        cq.Category,
+        cq.IsFilterable,
+        cq.FilterLabel
+      FROM [vendors].[VendorCategoryAnswers] vca
+      INNER JOIN [vendors].[CategoryQuestions] cq ON vca.QuestionID = cq.QuestionID
+      WHERE vca.VendorProfileID = @VendorProfileID
+        AND cq.IsActive = 1
+      ORDER BY cq.Category, cq.DisplayOrder
+    `);
+    
+    res.json({ success: true, answers: result.recordset || [] });
+  } catch (error) {
+    console.error('Error fetching vendor category answers:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch category answers', error: error.message });
+  }
+});
+
+// Save vendor's category answers (bulk upsert)
+router.put('/:vendorProfileId/category-answers', async (req, res) => {
+  try {
+    const vendorProfileId = parseVendorProfileId(req.params.vendorProfileId, req);
+    if (!vendorProfileId) {
+      return res.status(400).json({ success: false, message: 'Invalid vendor profile ID' });
+    }
+
+    const { answers } = req.body; // Array of { questionId, answer }
+    if (!answers || !Array.isArray(answers)) {
+      return res.status(400).json({ success: false, message: 'Answers array is required' });
+    }
+
+    const pool = await poolPromise;
+    const transaction = new sql.Transaction(pool);
+    await transaction.begin();
+
+    try {
+      // Get the categories for the questions being answered
+      const questionIds = answers.map(a => a.questionId).filter(Boolean);
+      if (questionIds.length === 0) {
+        await transaction.commit();
+        return res.json({ success: true, message: 'No answers to save' });
+      }
+
+      // Delete existing answers for these questions
+      const deleteRequest = new sql.Request(transaction);
+      deleteRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+      await deleteRequest.query(`
+        DELETE FROM [vendors].[VendorCategoryAnswers] 
+        WHERE VendorProfileID = @VendorProfileID 
+          AND QuestionID IN (${questionIds.join(',')})
+      `);
+
+      // Insert new answers
+      for (const answer of answers) {
+        if (answer.questionId && answer.answer !== undefined && answer.answer !== '') {
+          const insertRequest = new sql.Request(transaction);
+          insertRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+          insertRequest.input('QuestionID', sql.Int, answer.questionId);
+          insertRequest.input('Answer', sql.NVarChar(sql.MAX), String(answer.answer));
+          
+          await insertRequest.query(`
+            INSERT INTO [vendors].[VendorCategoryAnswers] (VendorProfileID, QuestionID, Answer, CreatedAt, UpdatedAt)
+            VALUES (@VendorProfileID, @QuestionID, @Answer, GETDATE(), GETDATE())
+          `);
+        }
+      }
+
+      await transaction.commit();
+      res.json({ success: true, message: 'Category answers saved successfully' });
+    } catch (innerError) {
+      await transaction.rollback();
+      throw innerError;
+    }
+  } catch (error) {
+    console.error('Error saving vendor category answers:', error);
+    res.status(500).json({ success: false, message: 'Failed to save category answers', error: error.message });
+  }
+});
+
 // Upload vendor logo
 router.post('/:vendorProfileId/logo', upload.single('logo'), async (req, res) => {
   try {
@@ -5814,6 +6108,173 @@ router.put('/:id/filters', async (req, res) => {
     res.status(500).json({ success: false, message: 'Failed to save filters', error: error.message });
   }
 });
+
+// ===== VENDOR ATTRIBUTES ENDPOINTS =====
+
+// Get vendor attributes (event types, cultures, subcategories, booking settings)
+router.get('/:id/attributes', async (req, res) => {
+  try {
+    const vendorProfileId = parseVendorProfileId(req.params.id);
+    if (!vendorProfileId) {
+      return res.status(400).json({ success: false, message: 'Invalid vendor ID' });
+    }
+    
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
+    
+    const result = await request.execute('vendors.sp_Vendor_GetAttributes');
+    
+    // Parse multiple recordsets
+    const profile = result.recordsets[0]?.[0] || {};
+    const categories = result.recordsets[1] || [];
+    const eventTypes = result.recordsets[2] || [];
+    const cultures = result.recordsets[3] || [];
+    const subcategories = result.recordsets[4] || [];
+    
+    res.json({
+      success: true,
+      attributes: {
+        instantBookingEnabled: profile.InstantBookingEnabled || false,
+        minBookingLeadTimeHours: profile.MinBookingLeadTimeHours || 24,
+        serviceLocationScope: profile.ServiceLocationScope || 'Local',
+        yearsOfExperienceRange: profile.YearsOfExperienceRange || '',
+        priceLevel: profile.PriceLevel || '',
+        categories,
+        eventTypes,
+        cultures,
+        subcategories
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching vendor attributes:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch vendor attributes', error: error.message });
+  }
+});
+
+// Update vendor booking settings (instant booking, lead time)
+router.put('/:id/booking-settings', async (req, res) => {
+  try {
+    const vendorProfileId = parseVendorProfileId(req.params.id);
+    if (!vendorProfileId) {
+      return res.status(400).json({ success: false, message: 'Invalid vendor ID' });
+    }
+    
+    const { instantBookingEnabled, minBookingLeadTimeHours } = req.body;
+    const pool = await poolPromise;
+    
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
+    request.input('InstantBookingEnabled', sql.Bit, instantBookingEnabled || false);
+    request.input('MinBookingLeadTimeHours', sql.Int, minBookingLeadTimeHours || 24);
+    
+    await request.execute('vendors.sp_Vendor_UpdateBookingSettings');
+    
+    res.json({ success: true, message: 'Booking settings updated successfully' });
+  } catch (error) {
+    console.error('Error updating booking settings:', error);
+    res.status(500).json({ success: false, message: 'Failed to update booking settings', error: error.message });
+  }
+});
+
+// Update vendor attributes (service location, experience range)
+router.put('/:id/vendor-attributes', async (req, res) => {
+  try {
+    const vendorProfileId = parseVendorProfileId(req.params.id);
+    if (!vendorProfileId) {
+      return res.status(400).json({ success: false, message: 'Invalid vendor ID' });
+    }
+    
+    const { serviceLocationScope, yearsOfExperienceRange } = req.body;
+    const pool = await poolPromise;
+    
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
+    request.input('ServiceLocationScope', sql.NVarChar(50), serviceLocationScope || 'Local');
+    request.input('YearsOfExperienceRange', sql.NVarChar(20), yearsOfExperienceRange || null);
+    
+    await request.execute('vendors.sp_Vendor_UpdateAttributes');
+    
+    res.json({ success: true, message: 'Vendor attributes updated successfully' });
+  } catch (error) {
+    console.error('Error updating vendor attributes:', error);
+    res.status(500).json({ success: false, message: 'Failed to update vendor attributes', error: error.message });
+  }
+});
+
+// Update vendor event types
+router.put('/:id/event-types', async (req, res) => {
+  try {
+    const vendorProfileId = parseVendorProfileId(req.params.id);
+    if (!vendorProfileId) {
+      return res.status(400).json({ success: false, message: 'Invalid vendor ID' });
+    }
+    
+    const { eventTypeIds } = req.body;
+    const pool = await poolPromise;
+    
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
+    request.input('EventTypeIDs', sql.NVarChar(sql.MAX), Array.isArray(eventTypeIds) ? eventTypeIds.join(',') : '');
+    
+    await request.execute('vendors.sp_Vendor_UpdateEventTypes');
+    
+    res.json({ success: true, message: 'Event types updated successfully' });
+  } catch (error) {
+    console.error('Error updating event types:', error);
+    res.status(500).json({ success: false, message: 'Failed to update event types', error: error.message });
+  }
+});
+
+// Update vendor cultures
+router.put('/:id/cultures', async (req, res) => {
+  try {
+    const vendorProfileId = parseVendorProfileId(req.params.id);
+    if (!vendorProfileId) {
+      return res.status(400).json({ success: false, message: 'Invalid vendor ID' });
+    }
+    
+    const { cultureIds } = req.body;
+    const pool = await poolPromise;
+    
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
+    request.input('CultureIDs', sql.NVarChar(sql.MAX), Array.isArray(cultureIds) ? cultureIds.join(',') : '');
+    
+    await request.execute('vendors.sp_Vendor_UpdateCultures');
+    
+    res.json({ success: true, message: 'Cultures updated successfully' });
+  } catch (error) {
+    console.error('Error updating cultures:', error);
+    res.status(500).json({ success: false, message: 'Failed to update cultures', error: error.message });
+  }
+});
+
+// Update vendor subcategories
+router.put('/:id/subcategories', async (req, res) => {
+  try {
+    const vendorProfileId = parseVendorProfileId(req.params.id);
+    if (!vendorProfileId) {
+      return res.status(400).json({ success: false, message: 'Invalid vendor ID' });
+    }
+    
+    const { subcategoryIds } = req.body;
+    const pool = await poolPromise;
+    
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
+    request.input('SubcategoryIDs', sql.NVarChar(sql.MAX), Array.isArray(subcategoryIds) ? subcategoryIds.join(',') : '');
+    
+    await request.execute('vendors.sp_Vendor_UpdateSubcategories');
+    
+    res.json({ success: true, message: 'Subcategories updated successfully' });
+  } catch (error) {
+    console.error('Error updating subcategories:', error);
+    res.status(500).json({ success: false, message: 'Failed to update subcategories', error: error.message });
+  }
+});
+
+// ===== END VENDOR ATTRIBUTES ENDPOINTS =====
 
 // Get vendor FAQs
 router.get('/:id/faqs', async (req, res) => {
