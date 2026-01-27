@@ -7288,4 +7288,296 @@ router.delete('/:id/badges/:badgeId', async (req, res) => {
   }
 });
 
+// =============================================
+// VENDOR ATTRIBUTES & BOOKING SETTINGS ROUTES
+// =============================================
+
+// GET /api/vendors/lookup/event-types - Get all event types
+router.get('/lookup/event-types', async (req, res) => {
+  try {
+    const pool = await poolPromise;
+    const result = await pool.request().execute('vendors.sp_GetEventTypes');
+    res.json({ success: true, eventTypes: result.recordset || [] });
+  } catch (err) {
+    console.error('Get event types error:', err);
+    res.status(500).json({ success: false, message: 'Failed to get event types', error: err.message });
+  }
+});
+
+// GET /api/vendors/lookup/cultures - Get all cultures
+router.get('/lookup/cultures', async (req, res) => {
+  try {
+    const pool = await poolPromise;
+    const result = await pool.request().execute('vendors.sp_GetCultures');
+    res.json({ success: true, cultures: result.recordset || [] });
+  } catch (err) {
+    console.error('Get cultures error:', err);
+    res.status(500).json({ success: false, message: 'Failed to get cultures', error: err.message });
+  }
+});
+
+// GET /api/vendors/lookup/experience-ranges - Get experience range options (static)
+router.get('/lookup/experience-ranges', async (req, res) => {
+  res.json({
+    success: true,
+    experienceRanges: [
+      { key: '0-1', label: 'Less than 1 year' },
+      { key: '1-2', label: '1-2 years' },
+      { key: '2-5', label: '2-5 years' },
+      { key: '5-10', label: '5-10 years' },
+      { key: '10-15', label: '10-15 years' },
+      { key: '15+', label: '15+ years' }
+    ]
+  });
+});
+
+// GET /api/vendors/lookup/service-locations - Get service location options (static)
+router.get('/lookup/service-locations', async (req, res) => {
+  res.json({
+    success: true,
+    serviceLocations: [
+      { key: 'Local', label: 'Local (within city)' },
+      { key: 'Regional', label: 'Regional (within province)' },
+      { key: 'National', label: 'National (across Canada)' },
+      { key: 'International', label: 'International' }
+    ]
+  });
+});
+
+// GET /api/vendors/lookup/lead-times - Get lead time options (static)
+router.get('/lookup/lead-times', async (req, res) => {
+  res.json({
+    success: true,
+    leadTimes: [
+      { hours: 0, label: 'No minimum' },
+      { hours: 24, label: '24 hours (1 day)' },
+      { hours: 48, label: '48 hours (2 days)' },
+      { hours: 72, label: '72 hours (3 days)' },
+      { hours: 168, label: '1 week' },
+      { hours: 336, label: '2 weeks' },
+      { hours: 504, label: '3 weeks' },
+      { hours: 720, label: '1 month' },
+      { hours: 1440, label: '2 months' }
+    ]
+  });
+});
+
+// GET /api/vendors/lookup/affordability-levels - Get affordability level options (static)
+router.get('/lookup/affordability-levels', async (req, res) => {
+  res.json({
+    success: true,
+    affordabilityLevels: [
+      { key: 'Inexpensive', label: '$ - Inexpensive', symbol: '$' },
+      { key: 'Moderate', label: '$$ - Moderate', symbol: '$$' },
+      { key: 'Premium', label: '$$$ - Premium', symbol: '$$$' },
+      { key: 'Luxury', label: '$$$$ - Luxury', symbol: '$$$$' }
+    ]
+  });
+});
+
+// GET /api/vendors/lookup/price-types - Get price type options (static)
+router.get('/lookup/price-types', async (req, res) => {
+  res.json({
+    success: true,
+    priceTypes: [
+      { key: 'Hourly', label: 'Hourly Rate' },
+      { key: 'Fixed', label: 'Fixed Price' },
+      { key: 'StartingFrom', label: 'Starting From' },
+      { key: 'CustomQuote', label: 'Custom Quote' }
+    ]
+  });
+});
+
+// GET /api/vendors/subcategories/:category - Get subcategories for a category
+router.get('/subcategories/:category', async (req, res) => {
+  try {
+    const { category } = req.params;
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('Category', sql.NVarChar(50), decodeURIComponent(category));
+    
+    const result = await request.execute('vendors.sp_GetSubcategories');
+    res.json({ success: true, subcategories: result.recordset || [] });
+  } catch (err) {
+    console.error('Get subcategories error:', err);
+    res.status(500).json({ success: false, message: 'Failed to get subcategories', error: err.message });
+  }
+});
+
+// GET /api/vendors/:id/subcategories - Get vendor's selected subcategories
+router.get('/:id/subcategories', async (req, res) => {
+  try {
+    const vendorProfileId = resolveVendorIdParam(req.params.id);
+    if (!vendorProfileId) {
+      return res.status(400).json({ success: false, message: 'Invalid vendor profile ID' });
+    }
+
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
+    
+    const result = await request.execute('vendors.sp_Vendor_GetSubcategories');
+    res.json({ success: true, subcategories: result.recordset || [] });
+  } catch (err) {
+    console.error('Get vendor subcategories error:', err);
+    res.status(500).json({ success: false, message: 'Failed to get vendor subcategories', error: err.message });
+  }
+});
+
+// PUT /api/vendors/:id/subcategories - Update vendor's subcategories
+router.put('/:id/subcategories', async (req, res) => {
+  try {
+    const vendorProfileId = resolveVendorIdParam(req.params.id);
+    if (!vendorProfileId) {
+      return res.status(400).json({ success: false, message: 'Invalid vendor profile ID' });
+    }
+
+    const { subcategoryIds } = req.body;
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
+    request.input('SubcategoryIDs', sql.NVarChar(sql.MAX), Array.isArray(subcategoryIds) ? subcategoryIds.join(',') : (subcategoryIds || ''));
+    
+    await request.execute('vendors.sp_Vendor_UpdateSubcategories');
+    res.json({ success: true, message: 'Subcategories updated successfully' });
+  } catch (err) {
+    console.error('Update vendor subcategories error:', err);
+    res.status(500).json({ success: false, message: 'Failed to update subcategories', error: err.message });
+  }
+});
+
+// GET /api/vendors/:id/attributes - Get vendor's attributes (event types, cultures, settings)
+router.get('/:id/attributes', async (req, res) => {
+  try {
+    const vendorProfileId = resolveVendorIdParam(req.params.id);
+    if (!vendorProfileId) {
+      return res.status(400).json({ success: false, message: 'Invalid vendor profile ID' });
+    }
+
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
+    
+    const result = await request.execute('vendors.sp_Vendor_GetAttributes');
+    
+    // Parse multiple result sets
+    const profile = result.recordsets[0]?.[0] || {};
+    const eventTypes = result.recordsets[1] || [];
+    const cultures = result.recordsets[2] || [];
+    const subcategories = result.recordsets[3] || [];
+    
+    res.json({
+      success: true,
+      attributes: {
+        instantBookingEnabled: profile.InstantBookingEnabled || false,
+        minBookingLeadTimeHours: profile.MinBookingLeadTimeHours || 24,
+        serviceLocationScope: profile.ServiceLocationScope || 'Local',
+        yearsOfExperienceRange: profile.YearsOfExperienceRange || '',
+        affordabilityLevel: profile.AffordabilityLevel || '',
+        priceType: profile.PriceType || '',
+        basePrice: profile.BasePrice || null,
+        eventTypes,
+        cultures,
+        subcategories
+      }
+    });
+  } catch (err) {
+    console.error('Get vendor attributes error:', err);
+    res.status(500).json({ success: false, message: 'Failed to get vendor attributes', error: err.message });
+  }
+});
+
+// PUT /api/vendors/:id/event-types - Update vendor's event types
+router.put('/:id/event-types', async (req, res) => {
+  try {
+    const vendorProfileId = resolveVendorIdParam(req.params.id);
+    if (!vendorProfileId) {
+      return res.status(400).json({ success: false, message: 'Invalid vendor profile ID' });
+    }
+
+    const { eventTypeIds } = req.body;
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
+    request.input('EventTypeIDs', sql.NVarChar(sql.MAX), Array.isArray(eventTypeIds) ? eventTypeIds.join(',') : (eventTypeIds || ''));
+    
+    await request.execute('vendors.sp_Vendor_UpdateEventTypes');
+    res.json({ success: true, message: 'Event types updated successfully' });
+  } catch (err) {
+    console.error('Update vendor event types error:', err);
+    res.status(500).json({ success: false, message: 'Failed to update event types', error: err.message });
+  }
+});
+
+// PUT /api/vendors/:id/cultures - Update vendor's cultures
+router.put('/:id/cultures', async (req, res) => {
+  try {
+    const vendorProfileId = resolveVendorIdParam(req.params.id);
+    if (!vendorProfileId) {
+      return res.status(400).json({ success: false, message: 'Invalid vendor profile ID' });
+    }
+
+    const { cultureIds } = req.body;
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
+    request.input('CultureIDs', sql.NVarChar(sql.MAX), Array.isArray(cultureIds) ? cultureIds.join(',') : (cultureIds || ''));
+    
+    await request.execute('vendors.sp_Vendor_UpdateCultures');
+    res.json({ success: true, message: 'Cultures updated successfully' });
+  } catch (err) {
+    console.error('Update vendor cultures error:', err);
+    res.status(500).json({ success: false, message: 'Failed to update cultures', error: err.message });
+  }
+});
+
+// PUT /api/vendors/:id/booking-settings - Update vendor's booking settings
+router.put('/:id/booking-settings', async (req, res) => {
+  try {
+    const vendorProfileId = resolveVendorIdParam(req.params.id);
+    if (!vendorProfileId) {
+      return res.status(400).json({ success: false, message: 'Invalid vendor profile ID' });
+    }
+
+    const { instantBookingEnabled, minBookingLeadTimeHours } = req.body;
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
+    request.input('InstantBookingEnabled', sql.Bit, instantBookingEnabled ? 1 : 0);
+    request.input('MinBookingLeadTimeHours', sql.Int, minBookingLeadTimeHours || 24);
+    
+    await request.execute('vendors.sp_Vendor_UpdateBookingSettings');
+    res.json({ success: true, message: 'Booking settings updated successfully' });
+  } catch (err) {
+    console.error('Update vendor booking settings error:', err);
+    res.status(500).json({ success: false, message: 'Failed to update booking settings', error: err.message });
+  }
+});
+
+// PUT /api/vendors/:id/vendor-attributes - Update vendor's profile attributes
+router.put('/:id/vendor-attributes', async (req, res) => {
+  try {
+    const vendorProfileId = resolveVendorIdParam(req.params.id);
+    if (!vendorProfileId) {
+      return res.status(400).json({ success: false, message: 'Invalid vendor profile ID' });
+    }
+
+    const { serviceLocationScope, yearsOfExperienceRange, affordabilityLevel, priceType, basePrice } = req.body;
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
+    request.input('ServiceLocationScope', sql.NVarChar(20), serviceLocationScope || null);
+    request.input('YearsOfExperienceRange', sql.NVarChar(20), yearsOfExperienceRange || null);
+    request.input('AffordabilityLevel', sql.NVarChar(20), affordabilityLevel || null);
+    request.input('PriceType', sql.NVarChar(20), priceType || null);
+    request.input('BasePrice', sql.Decimal(10, 2), basePrice || null);
+    
+    await request.execute('vendors.sp_Vendor_UpdateAttributes');
+    res.json({ success: true, message: 'Vendor attributes updated successfully' });
+  } catch (err) {
+    console.error('Update vendor attributes error:', err);
+    res.status(500).json({ success: false, message: 'Failed to update vendor attributes', error: err.message });
+  }
+});
+
 module.exports = router;
