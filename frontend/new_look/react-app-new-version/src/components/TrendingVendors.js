@@ -39,7 +39,8 @@ function TrendingVendors({ onViewVendor }) {
     if (currentIndex > 0) {
       const newIndex = currentIndex - 1;
       setCurrentIndex(newIndex);
-      const cardWidth = 276; // 260px width + 16px gap
+      // Mobile: (100vw - 44px) / 2.35 + 10px gap, Desktop: 260px + 16px gap
+      const cardWidth = isMobile ? (window.innerWidth - 44) / 2.35 + 10 : 276;
       if (carouselRef.current) {
         carouselRef.current.scrollTo({ left: newIndex * cardWidth, behavior: 'smooth' });
       }
@@ -50,7 +51,8 @@ function TrendingVendors({ onViewVendor }) {
     if (currentIndex < trendingVendors.length - 1) {
       const newIndex = currentIndex + 1;
       setCurrentIndex(newIndex);
-      const cardWidth = 276; // 260px width + 16px gap
+      // Mobile: (100vw - 44px) / 2.35 + 10px gap, Desktop: 260px + 16px gap
+      const cardWidth = isMobile ? (window.innerWidth - 44) / 2.35 + 10 : 276;
       if (carouselRef.current) {
         carouselRef.current.scrollTo({ left: newIndex * cardWidth, behavior: 'smooth' });
       }
@@ -130,7 +132,8 @@ function TrendingVendors({ onViewVendor }) {
       </div>
       <div style={{ 
         position: 'relative', 
-        margin: isMobile ? '0 -16px' : '0 -24px' 
+        margin: isMobile ? '0 calc(-1 * (100vw - 100%) / 2)' : '0 -24px',
+        width: isMobile ? '100vw' : 'auto'
       }}>
         <div 
           ref={carouselRef}
@@ -142,23 +145,26 @@ function TrendingVendors({ onViewVendor }) {
             scrollbarWidth: 'none',
             msOverflowStyle: 'none',
             WebkitOverflowScrolling: 'touch',
-            padding: isMobile ? '0 16px' : '0 24px'
+            padding: isMobile ? '0 12px' : '0 24px',
+            scrollSnapType: isMobile ? 'x mandatory' : 'none',
+            scrollPaddingLeft: isMobile ? '12px' : '0'
           }}
         >
           {loading ? (
             Array.from({ length: 5 }).map((_, index) => (
               <div key={index} style={{ 
-                flex: isMobile ? '0 0 44%' : '0 0 auto',
-                width: isMobile ? '44%' : '260px',
-                minWidth: isMobile ? '44%' : '260px',
+                flex: isMobile ? '0 0 calc((100vw - 44px) / 2.35)' : '0 0 auto',
+                width: isMobile ? 'calc((100vw - 44px) / 2.35)' : '260px',
+                minWidth: isMobile ? 'calc((100vw - 44px) / 2.35)' : '260px',
                 background: '#f8f9fa', 
                 borderRadius: '12px', 
                 padding: '1rem', 
-                height: '320px',
+                height: '280px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: '#6c757d'
+                color: '#6c757d',
+                scrollSnapAlign: isMobile ? 'start' : 'none'
               }}>
                 <i className="fas fa-spinner fa-spin"></i>
                 <span style={{ marginLeft: '0.5rem' }}>Loading...</span>
@@ -184,9 +190,10 @@ function TrendingVendors({ onViewVendor }) {
                 <div 
                   key={vendor.VendorProfileID || vendor.id} 
                   style={{ 
-                    flex: isMobile ? '0 0 44%' : '0 0 auto', 
-                    width: isMobile ? '44%' : '260px',
-                    minWidth: isMobile ? '44%' : '260px'
+                    flex: isMobile ? '0 0 calc((100vw - 44px) / 2.35)' : '0 0 auto', 
+                    width: isMobile ? 'calc((100vw - 44px) / 2.35)' : '260px',
+                    minWidth: isMobile ? 'calc((100vw - 44px) / 2.35)' : '260px',
+                    scrollSnapAlign: isMobile ? 'start' : 'none'
                   }}
                 >
                   <VendorCard

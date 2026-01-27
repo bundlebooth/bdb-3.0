@@ -48,6 +48,14 @@ function IndexPage() {
   const [sortBy, setSortBy] = useState('recommended');
   const [mobileMapOpen, setMobileMapOpen] = useState(false); // Mobile fullscreen map
   const [locationModalOpen, setLocationModalOpen] = useState(false); // Location search modal
+  const [isMobileView, setIsMobileView] = useState(window.innerWidth <= 768);
+
+  // Track mobile view for conditional rendering
+  useEffect(() => {
+    const handleResize = () => setIsMobileView(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Prevent background scrolling when mobile map overlay is open
   useEffect(() => {
@@ -1115,10 +1123,98 @@ function IndexPage() {
           />
         </div>
       </div>
+      
+      {/* Mobile Filter Buttons - BEFORE discovery sections */}
+      {isMobileView && !loading && (
+        <div className="mobile-filter-bar" style={{ 
+          width: '100%', 
+          padding: '10px 16px', 
+          display: 'flex', 
+          gap: '10px',
+          backgroundColor: 'white'
+        }}>
+          <button 
+            className="filter-btn" 
+            onClick={() => setFilterModalOpen(true)}
+            style={{
+              flex: 1,
+              padding: '10px 16px',
+              borderRadius: '8px',
+              border: '1px solid #ddd',
+              backgroundColor: 'white',
+              fontSize: '14px',
+              color: '#222',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              fontWeight: 500
+            }}
+          >
+            <i className="fas fa-sliders-h"></i>
+            <span>Filters</span>
+          </button>
+          <select 
+            value={sortBy} 
+            onChange={handleSortChange} 
+            style={{ 
+              flex: 1,
+              padding: '10px 12px', 
+              borderRadius: '8px', 
+              border: '1px solid #ddd', 
+              backgroundColor: 'white', 
+              fontSize: '14px', 
+              color: '#222', 
+              cursor: 'pointer' 
+            }}
+          >
+            <option value="recommended">Recommended</option>
+            <option value="price-low">Price: Low to High</option>
+            <option value="price-high">Price: High to Low</option>
+            <option value="nearest">Nearest to Me</option>
+            <option value="rating">Highest Rated</option>
+          </select>
+        </div>
+      )}
+      
+      {/* Vendor Discovery Sections - MOBILE ONLY (outside page-wrapper for full-width) */}
+      {isMobileView && (filteredVendors.length > 0 || loading) && (
+      <div className="vendor-discovery-sections-mobile" style={{ width: '100%', padding: 0, margin: 0 }}>
+        {loadingDiscovery ? (
+          <>
+            <VendorSectionSkeleton />
+            <VendorSectionSkeleton />
+          </>
+        ) : (
+          discoverySections.length > 0 && discoverySections.map((section, index) => (
+            <React.Fragment key={`mobile-${section.id}`}>
+              <VendorSection
+                title={section.title}
+                description={section.description}
+                vendors={section.vendors}
+                favorites={favorites}
+                onToggleFavorite={handleToggleFavorite}
+                onViewVendor={handleViewVendor}
+                onHighlightVendor={handleHighlightVendor}
+                showViewCount={section.showViewCount || false}
+                showResponseTime={section.showResponseTime || false}
+                showAnalyticsBadge={section.showAnalyticsBadge || false}
+                analyticsBadgeType={section.analyticsBadgeType || null}
+                sectionType={section.type || section.id}
+                cityFilter={detectedCity || filters.location}
+                categoryFilter={currentCategory}
+              />
+            </React.Fragment>
+          ))
+        )}
+      </div>
+      )}
+      
       <div className="page-wrapper" style={{ paddingTop: 0, paddingBottom: 0 }}>
       <div className={`app-container sidebar-collapsed ${mapActive ? 'map-active' : ''}`} id="app-container" style={{ display: 'flex', flexDirection: 'column', width: '100%', overflow: 'visible' }}>
         <div className="content-wrapper" style={{ display: 'flex', width: '100%', flex: 1, overflow: 'visible' }}>
-          <main className="main-content" style={{ width: mapActive ? '65%' : '100%', overflowY: 'auto', overflowX: 'visible', transition: 'width 0.3s ease', padding: '2rem 1.5rem 2rem 0' }}>
+          <main className="main-content index-main-content" style={{ width: mapActive ? '65%' : '100%', overflowY: 'auto', overflowX: 'visible', transition: 'width 0.3s ease', padding: '2rem 1.5rem 2rem 0' }}>
           {/* Only show setup banner for users who are vendors with a vendor profile */}
           {currentUser?.isVendor && currentUser?.vendorProfileId && (
             <>
@@ -1211,18 +1307,16 @@ function IndexPage() {
           </div>
           <div className="map-overlay"></div>
           
-          {/* Vendor Discovery Sections - Only show when there are vendors in main grid */}
-          {(filteredVendors.length > 0 || loading) && (
+          {/* Vendor Discovery Sections - DESKTOP ONLY (inside page-wrapper) */}
+          {!isMobileView && (filteredVendors.length > 0 || loading) && (
           <div className="vendor-discovery-sections">
             {loadingDiscovery ? (
-              // Show skeleton loaders while discovery sections are loading
               <>
                 <VendorSectionSkeleton />
                 <VendorSectionSkeleton />
                 <VendorSectionSkeleton />
               </>
             ) : (
-              // Show actual discovery sections when loaded
               discoverySections.length > 0 && discoverySections.map((section, index) => (
                 <React.Fragment key={section.id}>
                   <VendorSection

@@ -240,7 +240,7 @@
 @media (max-width: 768px) {
   /* Remove gap between sections on mobile */
   .vendor-section {
-    margin-bottom: 0 !important;
+    margin-bottom: 0.75rem !important;
   }
   
   .vendor-discovery-sections {
@@ -270,47 +270,47 @@
     display: flex;
   }
   
-  /* MOBILE: Full viewport width carousel with peek on both sides */
+  /* =============================================
+     MOBILE CAROUSEL - FULL WIDTH EDGE-TO-EDGE
+     ============================================= */
   .vendor-section-scroll-container {
     overflow-x: scroll !important;
     overflow-y: hidden !important;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
     -ms-overflow-style: none;
-    width: 100% !important;
+    width: 100vw !important;
     margin: 0 !important;
     padding: 0 !important;
     box-sizing: border-box !important;
-    /* Scroll snap for consistent display */
-    scroll-snap-type: x proximity !important;
+    scroll-snap-type: x mandatory !important;
   }
   
   .vendor-section-scroll-container::-webkit-scrollbar {
     display: none;
   }
   
-  /* Flex carousel on mobile - padding matches main-content (1rem) for alignment */
+  /* Carousel track - NO padding/margin */
   .vendor-section-grid-row,
   .vendor-section-carousel {
     display: flex !important;
     grid-template-columns: none !important;
     flex-wrap: nowrap !important;
-    gap: 12px !important;
+    gap: 8px !important;
     transform: none !important;
-    padding-left: 1rem !important;
-    padding-right: 1rem !important;
+    padding: 0 !important;
+    margin: 0 !important;
     width: max-content !important;
   }
   
-  /* Card width: 2 full cards + peek visible */
-  /* (100vw - 2rem padding - 12px gap) / 2.15 = 2 cards + peek */
+  /* Card sizing: 44vw = 2 cards + peek of third */
   .vendor-section-grid-row > div,
   .vendor-section-carousel > div,
   .vendor-section-card-item {
-    flex: 0 0 calc((100vw - 2rem - 12px) / 2.15) !important;
-    width: calc((100vw - 2rem - 12px) / 2.15) !important;
-    min-width: calc((100vw - 2rem - 12px) / 2.15) !important;
-    max-width: calc((100vw - 2rem - 12px) / 2.15) !important;
+    flex: 0 0 44vw !important;
+    width: 44vw !important;
+    min-width: 44vw !important;
+    max-width: 44vw !important;
     scroll-snap-align: start !important;
   }
 }
@@ -335,16 +335,26 @@
     font-size: 0.7rem;
   }
   
-  .vendor-section-carousel {
+  /* Carousel track - no padding */
+  .vendor-section-carousel,
+  .vendor-section-grid-row {
     gap: 8px !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
   }
   
-  /* Same sizing for smaller screens - with padding for alignment */
-  .vendor-section-carousel > div {
-    flex: 0 0 calc((100vw - 1.5rem - 8px) / 2.15) !important;
-    width: calc((100vw - 1.5rem - 8px) / 2.15) !important;
-    min-width: calc((100vw - 1.5rem - 8px) / 2.15) !important;
-    max-width: calc((100vw - 1.5rem - 8px) / 2.15) !important;
+  .vendor-section-scroll-container {
+    scroll-padding-left: 0 !important;
+  }
+  
+  /* 44vw cards = 2 visible + peek */
+  .vendor-section-carousel > div,
+  .vendor-section-grid-row > div,
+  .vendor-section-card-item {
+    flex: 0 0 44vw !important;
+    width: 44vw !important;
+    min-width: 44vw !important;
+    max-width: 44vw !important;
   }
 }
 

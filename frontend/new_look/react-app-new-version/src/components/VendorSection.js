@@ -121,11 +121,11 @@ function VendorSection({
   const computedCanScrollRight = displayIndex < maxIndex;
 
   const scroll = (direction) => {
-    // On mobile, scroll by one card width
+    // On mobile, scroll by one card width (matches CSS: 44vw + 8px gap)
     if (isMobile && scrollContainerRef.current) {
       const container = scrollContainerRef.current;
-      // Card width: (100vw - 2rem - 12px) / 2.15 + 12px gap
-      const cardWidth = (window.innerWidth - 32 - 12) / 2.15 + 12;
+      // Card width: 44vw + 8px gap
+      const cardWidth = (window.innerWidth * 0.44) + 8;
       const scrollAmount = direction === 'left' ? -cardWidth : cardWidth;
       container.scrollBy({ left: scrollAmount, behavior: 'smooth' });
       return;

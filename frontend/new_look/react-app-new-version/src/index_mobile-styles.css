@@ -3550,7 +3550,7 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
     cursor: not-allowed;
 }
 
-/* Trending Vendors Carousel - Mobile Only */
+/* Trending Vendors Carousel - Mobile Only - 2 cards + peek on both sides */
 @media (max-width: 767px) {
     #trending-vendors-carousel,
     #trending-vendors-carousel-main {
@@ -3561,9 +3561,11 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
         scroll-snap-type: x mandatory;
         scroll-behavior: smooth;
         -webkit-overflow-scrolling: touch;
-        gap: 0 !important;
+        gap: 10px !important;
+        padding: 0 12px !important;
         scrollbar-width: none; /* Firefox */
         -ms-overflow-style: none; /* IE/Edge */
+        scroll-padding-left: 12px;
     }
     
     #trending-vendors-carousel::-webkit-scrollbar,
@@ -3573,11 +3575,13 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
     
     #trending-vendors-carousel .trending-vendor-card,
     #trending-vendors-carousel-main .trending-vendor-card {
-        flex: 0 0 100%;
-        width: 100%;
-        max-width: 100%;
+        /* 2 cards + peek on both sides */
+        flex: 0 0 calc((100vw - 44px) / 2.35) !important;
+        width: calc((100vw - 44px) / 2.35) !important;
+        min-width: calc((100vw - 44px) / 2.35) !important;
+        max-width: calc((100vw - 44px) / 2.35) !important;
         scroll-snap-align: start;
-        scroll-snap-stop: always;
+        scroll-snap-stop: normal;
     }
     
     /* Navigation Buttons */
@@ -8767,19 +8771,23 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
 }
 
 /* ============================================
-   7. VENDOR SECTION CARDS - Mobile 2-Column Grid (Same as main grid)
+   7. VENDOR SECTION CARDS - Mobile Horizontal Carousel with Peek on Both Sides
    ============================================ */
 @media screen and (max-width: 768px) {
     .vendor-section {
-        margin-bottom: 1.5rem !important;
-        padding: 0.75rem !important;
+        margin-bottom: 1rem !important;
+        padding: 0 !important;
+        padding-left: 12px !important;
+        padding-right: 0 !important;
         background: transparent !important;
         border: none !important;
         box-shadow: none !important;
+        overflow: visible !important;
     }
     
     .vendor-section-header {
         padding: 0 !important;
+        padding-right: 12px !important;
         margin-bottom: 0.75rem !important;
         flex-wrap: nowrap !important;
         gap: 0.5rem !important;
@@ -8833,43 +8841,67 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
         font-size: 0.75rem !important;
     }
     
+    /* MOBILE CAROUSEL: Edge-to-edge with peek on BOTH sides */
     .vendor-section-scroll-container {
-        overflow: visible !important;
-        width: 100% !important;
+        overflow-x: scroll !important;
+        overflow-y: hidden !important;
+        -webkit-overflow-scrolling: touch !important;
+        scrollbar-width: none !important;
+        -ms-overflow-style: none !important;
+        width: 100vw !important;
+        margin-left: -12px !important;
+        padding: 0 !important;
+        /* SNAPPY scroll snap - mandatory for firm snapping */
+        scroll-snap-type: x mandatory !important;
+        scroll-padding-left: 12px !important;
     }
     
-    /* FORCE 2-COLUMN GRID */
-    .vendor-section .vendor-section-scroll-container .vendor-section-grid {
-        display: grid !important;
-        grid-template-columns: repeat(2, 1fr) !important;
-        gap: 0.75rem !important;
-        width: 100% !important;
-        transform: none !important;
-        flex-wrap: wrap !important;
-    }
-    
-    /* FORCE Cards to fill grid cells */
-    .vendor-section .vendor-section-grid .vendor-section-card-wrapper {
-        width: 100% !important;
-        min-width: 0 !important;
-        max-width: 100% !important;
-        flex: unset !important;
-        display: block !important;
-    }
-    
-    /* Limit to 4 cards visible (2 rows) */
-    .vendor-section .vendor-section-grid .vendor-section-card-wrapper:nth-child(n+5) {
+    .vendor-section-scroll-container::-webkit-scrollbar {
         display: none !important;
     }
     
-    /* FORCE vendor cards to fill wrapper */
+    /* HORIZONTAL CAROUSEL - not grid */
+    .vendor-section .vendor-section-scroll-container .vendor-section-grid,
+    .vendor-section .vendor-section-scroll-container .vendor-section-carousel {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        gap: 10px !important;
+        width: max-content !important;
+        transform: none !important;
+        grid-template-columns: unset !important;
+        /* Small padding for peek effect */
+        padding-left: 12px !important;
+        padding-right: 12px !important;
+    }
+    
+    /* Card sizing: 2 full cards + peek on BOTH sides */
+    .vendor-section .vendor-section-grid .vendor-section-card-wrapper,
+    .vendor-section .vendor-section-carousel > div,
+    .vendor-section .vendor-section-grid > div {
+        /* (100vw - 12px left - 12px right - 10px gap) / 2.35 = 2 cards + peeks */
+        flex: 0 0 calc((100vw - 44px) / 2.35) !important;
+        width: calc((100vw - 44px) / 2.35) !important;
+        min-width: calc((100vw - 44px) / 2.35) !important;
+        max-width: calc((100vw - 44px) / 2.35) !important;
+        display: block !important;
+        scroll-snap-align: start !important;
+        scroll-snap-stop: normal !important;
+    }
+    
+    /* Show ALL cards - no hiding */
+    .vendor-section .vendor-section-grid .vendor-section-card-wrapper:nth-child(n+5) {
+        display: block !important;
+    }
+    
+    /* Vendor cards fill their wrapper */
     .vendor-section-card-wrapper > .vendor-card,
     .vendor-section-card-wrapper > div {
         width: 100% !important;
         max-width: 100% !important;
     }
     
-    /* Match vendor card image to main grid - use aspect-ratio instead of fixed height */
+    /* Card image aspect ratio */
     .vendor-section-card-wrapper .vendor-card > div:first-child {
         aspect-ratio: 3 / 2 !important;
         height: auto !important;
