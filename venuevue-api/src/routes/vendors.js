@@ -659,8 +659,11 @@ router.get('/', async (req, res) => {
     // Filter by event types if specified (requires additional query)
     if (eventTypes) {
       const eventTypeIds = eventTypes.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
+      console.log('[vendors] Event type filter - eventTypeIds:', eventTypeIds);
       if (eventTypeIds.length > 0) {
-        const vendorIds = formattedVendors.map(v => v.vendorProfileId || v.id).filter(Boolean);
+        // Ensure vendorIds are integers for proper SQL query
+        const vendorIds = formattedVendors.map(v => parseInt(v.vendorProfileId || v.id)).filter(id => !isNaN(id) && id > 0);
+        console.log('[vendors] Event type filter - vendorIds to check:', vendorIds);
         if (vendorIds.length > 0) {
           try {
             const eventTypeQuery = `
@@ -669,9 +672,26 @@ router.get('/', async (req, res) => {
               WHERE EventTypeID IN (${eventTypeIds.join(',')})
               AND VendorProfileID IN (${vendorIds.join(',')})
             `;
+            console.log('[vendors] Event type query:', eventTypeQuery);
             const etResult = await pool.request().query(eventTypeQuery);
-            const matchingVendorIds = new Set(etResult.recordset.map(r => r.VendorProfileID));
-            formattedVendors = formattedVendors.filter(v => matchingVendorIds.has(v.vendorProfileId || v.id));
+            console.log('[vendors] Event type query result:', etResult.recordset);
+            // Convert to Set of integers for proper comparison
+            const matchingVendorIds = new Set(etResult.recordset.map(r => parseInt(r.VendorProfileID)));
+            console.log('[vendors] Matching vendor IDs:', [...matchingVendorIds]);
+            
+            // Also check what's in VendorEventTypes table for debugging
+            const debugQuery = `SELECT TOP 20 * FROM vendors.VendorEventTypes`;
+            const debugResult = await pool.request().query(debugQuery);
+            console.log('[vendors] DEBUG - VendorEventTypes table sample:', debugResult.recordset);
+            
+            // Use parseInt for comparison to avoid type mismatch
+            formattedVendors = formattedVendors.filter(v => {
+              const vid = parseInt(v.vendorProfileId || v.id);
+              const matches = matchingVendorIds.has(vid);
+              console.log('[vendors] Checking vendor', vid, 'matches:', matches);
+              return matches;
+            });
+            console.log('[vendors] After event type filter - vendors remaining:', formattedVendors.length);
           } catch (etErr) {
             console.warn('Event type filtering failed:', etErr.message);
           }
@@ -683,7 +703,7 @@ router.get('/', async (req, res) => {
     if (cultures) {
       const cultureIds = cultures.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
       if (cultureIds.length > 0) {
-        const vendorIds = formattedVendors.map(v => v.vendorProfileId || v.id).filter(Boolean);
+        const vendorIds = formattedVendors.map(v => parseInt(v.vendorProfileId || v.id)).filter(id => !isNaN(id) && id > 0);
         if (vendorIds.length > 0) {
           try {
             const cultureQuery = `
@@ -693,8 +713,8 @@ router.get('/', async (req, res) => {
               AND VendorProfileID IN (${vendorIds.join(',')})
             `;
             const cResult = await pool.request().query(cultureQuery);
-            const matchingVendorIds = new Set(cResult.recordset.map(r => r.VendorProfileID));
-            formattedVendors = formattedVendors.filter(v => matchingVendorIds.has(v.vendorProfileId || v.id));
+            const matchingVendorIds = new Set(cResult.recordset.map(r => parseInt(r.VendorProfileID)));
+            formattedVendors = formattedVendors.filter(v => matchingVendorIds.has(parseInt(v.vendorProfileId || v.id)));
           } catch (cErr) {
             console.warn('Culture filtering failed:', cErr.message);
           }
@@ -7618,6 +7638,7 @@ router.get('/:id/attributes', async (req, res) => {
 router.put('/:id/event-types', async (req, res) => {
   try {
     const vendorProfileId = resolveVendorIdParam(req.params.id);
+    console.log('[event-types] Saving event types for vendor:', vendorProfileId, 'eventTypeIds:', req.body.eventTypeIds);
     if (!vendorProfileId) {
       return res.status(400).json({ success: false, message: 'Invalid vendor profile ID' });
     }
@@ -7626,9 +7647,17 @@ router.put('/:id/event-types', async (req, res) => {
     const pool = await poolPromise;
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, vendorProfileId);
-    request.input('EventTypeIDs', sql.NVarChar(sql.MAX), Array.isArray(eventTypeIds) ? eventTypeIds.join(',') : (eventTypeIds || ''));
+    const eventTypeIdsStr = Array.isArray(eventTypeIds) ? eventTypeIds.join(',') : (eventTypeIds || '');
+    request.input('EventTypeIDs', sql.NVarChar(sql.MAX), eventTypeIdsStr);
     
+    console.log('[event-types] Calling sp_Vendor_UpdateEventTypes with VendorProfileID:', vendorProfileId, 'EventTypeIDs:', eventTypeIdsStr);
     await request.execute('vendors.sp_Vendor_UpdateEventTypes');
+    
+    // Verify the save worked
+    const verifyQuery = `SELECT * FROM vendors.VendorEventTypes WHERE VendorProfileID = ${vendorProfileId}`;
+    const verifyResult = await pool.request().query(verifyQuery);
+    console.log('[event-types] Verification - saved event types:', verifyResult.recordset);
+    
     res.json({ success: true, message: 'Event types updated successfully' });
   } catch (err) {
     console.error('Update vendor event types error:', err);
@@ -7914,22 +7943,28 @@ router.post('/filter-count', async (req, res) => {
     
     // Filter by event types if specified
     if (eventTypes && eventTypes.length > 0) {
-      const eventTypeIds = Array.isArray(eventTypes) ? eventTypes : eventTypes.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
-      console.log('[filter-count] Filtering by eventTypes:', eventTypeIds);
-      if (eventTypeIds.length > 0) {
-        const vendorIds = vendors.map(v => v.VendorProfileID || v.id).filter(Boolean);
+      const eventTypeIds = Array.isArray(eventTypes) ? eventTypes.map(id => parseInt(id)) : eventTypes.split(',').map(id => parseInt(id.trim()));
+      const validEventTypeIds = eventTypeIds.filter(id => !isNaN(id) && id > 0);
+      console.log('[filter-count] Filtering by eventTypes:', validEventTypeIds);
+      if (validEventTypeIds.length > 0) {
+        // Ensure vendorIds are integers
+        const vendorIds = vendors.map(v => parseInt(v.VendorProfileID || v.id)).filter(id => !isNaN(id) && id > 0);
+        console.log('[filter-count] Vendor IDs to check:', vendorIds);
         if (vendorIds.length > 0) {
           try {
             const eventTypeQuery = `
               SELECT DISTINCT VendorProfileID 
               FROM vendors.VendorEventTypes 
-              WHERE EventTypeID IN (${eventTypeIds.join(',')})
+              WHERE EventTypeID IN (${validEventTypeIds.join(',')})
               AND VendorProfileID IN (${vendorIds.join(',')})
             `;
+            console.log('[filter-count] Event type query:', eventTypeQuery);
             const etResult = await pool.request().query(eventTypeQuery);
-            const matchingVendorIds = new Set(etResult.recordset.map(r => r.VendorProfileID));
-            console.log('[filter-count] Vendors matching event types:', matchingVendorIds.size);
-            vendors = vendors.filter(v => matchingVendorIds.has(v.VendorProfileID || v.id));
+            console.log('[filter-count] Event type query result:', etResult.recordset);
+            // Convert to Set of integers for proper comparison
+            const matchingVendorIds = new Set(etResult.recordset.map(r => parseInt(r.VendorProfileID)));
+            console.log('[filter-count] Vendors matching event types:', matchingVendorIds.size, [...matchingVendorIds]);
+            vendors = vendors.filter(v => matchingVendorIds.has(parseInt(v.VendorProfileID || v.id)));
           } catch (etErr) {
             console.warn('[filter-count] Event type filtering failed:', etErr.message);
           }
@@ -7941,20 +7976,21 @@ router.post('/filter-count', async (req, res) => {
     
     // Filter by cultures if specified
     if (cultures && cultures.length > 0) {
-      const cultureIds = Array.isArray(cultures) ? cultures : cultures.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
-      if (cultureIds.length > 0) {
-        const vendorIds = vendors.map(v => v.VendorProfileID || v.id).filter(Boolean);
+      const cultureIdsParsed = Array.isArray(cultures) ? cultures.map(id => parseInt(id)) : cultures.split(',').map(id => parseInt(id.trim()));
+      const validCultureIds = cultureIdsParsed.filter(id => !isNaN(id) && id > 0);
+      if (validCultureIds.length > 0) {
+        const vendorIds = vendors.map(v => parseInt(v.VendorProfileID || v.id)).filter(id => !isNaN(id) && id > 0);
         if (vendorIds.length > 0) {
           try {
             const cultureQuery = `
               SELECT DISTINCT VendorProfileID 
               FROM vendors.VendorCultures 
-              WHERE CultureID IN (${cultureIds.join(',')})
+              WHERE CultureID IN (${validCultureIds.join(',')})
               AND VendorProfileID IN (${vendorIds.join(',')})
             `;
             const cResult = await pool.request().query(cultureQuery);
-            const matchingVendorIds = new Set(cResult.recordset.map(r => r.VendorProfileID));
-            vendors = vendors.filter(v => matchingVendorIds.has(v.VendorProfileID || v.id));
+            const matchingVendorIds = new Set(cResult.recordset.map(r => parseInt(r.VendorProfileID)));
+            vendors = vendors.filter(v => matchingVendorIds.has(parseInt(v.VendorProfileID || v.id)));
           } catch (cErr) {
             console.warn('[filter-count] Culture filtering failed:', cErr.message);
           }
