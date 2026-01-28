@@ -2,7 +2,7 @@
     Migration Script: Create Table [CategoryQuestions]
     Phase: 100 - Tables
     Script: cu_100_38_dbo.CategoryQuestions.sql
-    Description: Creates the [vendors].[CategoryQuestions] table
+    Description: Creates the [admin].[CategoryQuestions] table (admin-managed reference data)
     
     Execution Order: 38
 */
@@ -10,12 +10,12 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating table [vendors].[CategoryQuestions]...';
+PRINT 'Creating table [admin].[CategoryQuestions]...';
 GO
 
-IF NOT EXISTS (SELECT 1 FROM sys.objects WHERE object_id = OBJECT_ID(N'[vendors].[CategoryQuestions]') AND type in (N'U'))
+IF NOT EXISTS (SELECT 1 FROM sys.objects WHERE object_id = OBJECT_ID(N'[admin].[CategoryQuestions]') AND type in (N'U'))
 BEGIN
-    CREATE TABLE [vendors].[CategoryQuestions](
+    CREATE TABLE [admin].[CategoryQuestions](
 	[QuestionID] [int] IDENTITY(1,1) NOT NULL,
 	[Category] [nvarchar](50) NOT NULL,
 	[QuestionText] [nvarchar](500) NOT NULL,
@@ -26,15 +26,19 @@ BEGIN
 	[IsActive] [bit] NOT NULL,
 	[CreatedAt] [datetime2](7) NOT NULL,
 	[UpdatedAt] [datetime2](7) NOT NULL,
+	-- Enhanced question metadata (added for vendor enhancements)
+	[IsFilterable] [bit] CONSTRAINT DF_CategoryQuestions_IsFilterable DEFAULT 0 NOT NULL,
+	[HelpText] [nvarchar](500) NULL,
+	[AnswerDisplayType] [nvarchar](20) CONSTRAINT DF_CategoryQuestions_AnswerDisplayType DEFAULT 'text' NULL,
 PRIMARY KEY CLUSTERED 
 (
 	[QuestionID] ASC
 )WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
     );
-    PRINT 'Table [vendors].[CategoryQuestions] created successfully.';
+    PRINT 'Table [admin].[CategoryQuestions] created successfully.';
 END
 ELSE
 BEGIN
-    PRINT 'Table [vendors].[CategoryQuestions] already exists. Skipping.';
+    PRINT 'Table [admin].[CategoryQuestions] already exists. Skipping.';
 END
 GO

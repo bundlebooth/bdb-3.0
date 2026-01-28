@@ -53,13 +53,10 @@ BEGIN
         vp.IsCertified,
         vp.IsInsured,
         vp.PriceLevel,
-        vp.Capacity,
-        vp.Rooms,
         vp.LogoURL,
         vp.StripeAccountID,
         -- Google Reviews Integration fields
         vp.GooglePlaceId,
-        vp.GoogleBusinessUrl,
         -- Profile review status fields
         vp.ProfileStatus,
         vp.RejectionReason,
@@ -108,7 +105,15 @@ BEGIN
         vp.MinBookingHours,
         vp.AdvanceNoticeHours,
         vp.MaxCapacity,
-        vp.OffersHourlyRates
+        vp.OffersHourlyRates,
+        -- New vendor enhancement fields
+        vp.InstantBookingEnabled,
+        vp.MinBookingLeadTimeHours,
+        vp.ServiceLocationScope,
+        vp.YearsOfExperienceRange,
+        vp.AffordabilityLevel,
+        vp.PriceType,
+        vp.BasePrice
     FROM vendors.VendorProfiles vp
     LEFT JOIN users.Users u ON u.UserID = vp.UserID
     WHERE vp.VendorProfileID = @VendorProfileID;
@@ -164,7 +169,7 @@ BEGIN
     
     -- Vendor portfolio (recordset 4)
     SELECT PortfolioID, Title, Description, ImageURL, ProjectDate, DisplayOrder
-    FROM VendorPortfolio
+    FROM vendors.VendorPortfolio
     WHERE VendorProfileID = @VendorProfileID
     ORDER BY DisplayOrder;
 
@@ -176,15 +181,19 @@ BEGIN
 
     -- Vendor FAQs (recordset 6)
     SELECT FAQID, Question, Answer, AnswerType, AnswerOptions, DisplayOrder, IsActive
-    FROM VendorFAQs
+    FROM vendors.VendorFAQs
     WHERE VendorProfileID = @VendorProfileID AND IsActive = 1
     ORDER BY DisplayOrder;
 
-    -- Vendor team (recordset 7)
-    SELECT TeamID, Name, Role, Bio, ImageURL, DisplayOrder
-    FROM VendorTeam
-    WHERE VendorProfileID = @VendorProfileID
-    ORDER BY DisplayOrder;
+    -- Vendor team (recordset 7) - Return empty result as table doesn't exist yet
+    SELECT 
+        CAST(NULL AS INT) AS TeamID, 
+        CAST(NULL AS NVARCHAR(100)) AS Name, 
+        CAST(NULL AS NVARCHAR(100)) AS Role, 
+        CAST(NULL AS NVARCHAR(MAX)) AS Bio, 
+        CAST(NULL AS NVARCHAR(500)) AS ImageURL, 
+        CAST(NULL AS INT) AS DisplayOrder
+    WHERE 1 = 0;
 
     -- Vendor social media (recordset 8)
     SELECT SocialID, Platform, URL, DisplayOrder
@@ -206,8 +215,8 @@ BEGIN
 
     -- Category-specific questions and answers (recordset 11)
     SELECT cq.QuestionText, vad.Answer
-    FROM VendorCategoryAnswers vad
-    JOIN CategoryQuestions cq ON vad.QuestionID = cq.QuestionID
+    FROM vendors.VendorCategoryAnswers vad
+    JOIN vendors.CategoryQuestions cq ON vad.QuestionID = cq.QuestionID
     WHERE vad.VendorProfileID = @VendorProfileID;
 
     -- Is favorite for current user (recordset 12)

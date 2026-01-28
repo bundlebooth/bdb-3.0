@@ -1,8 +1,11 @@
 -- =============================================
 -- Stored Procedure: vendors.sp_InsertCategoryByName
--- Description: Inserts a category for a vendor using Category column
+-- Description: Sets the single primary category for a vendor (replaces any existing)
 -- Phase: 600 (Stored Procedures)
 -- Schema: vendors
+-- 
+-- UPDATED: Now enforces single category per vendor (no additional categories)
+-- Always deletes existing categories and inserts the new one as primary
 -- =============================================
 SET QUOTED_IDENTIFIER ON;
 SET ANSI_NULLS ON;
@@ -15,23 +18,31 @@ GO
 CREATE PROCEDURE [vendors].[sp_InsertCategoryByName]
     @VendorProfileID INT,
     @Category NVARCHAR(50),
-    @IsPrimary BIT = 0
+    @IsPrimary BIT = 1  -- Default to primary since we only allow one category now
 AS
 BEGIN
     SET NOCOUNT ON;
     
-    -- If this is primary, clear any existing primary flag for this vendor
-    IF @IsPrimary = 1
-    BEGIN
-        UPDATE vendors.VendorCategories 
-        SET IsPrimary = 0 
-        WHERE VendorProfileID = @VendorProfileID AND IsPrimary = 1;
-    END
-    
-    INSERT INTO vendors.VendorCategories (VendorProfileID, Category, IsPrimary)
-    VALUES (@VendorProfileID, @Category, @IsPrimary);
-    
-    SELECT SCOPE_IDENTITY() AS CategoryID;
+    BEGIN TRY
+        BEGIN TRANSACTION;
+        
+        -- Delete ALL existing categories for this vendor (single category model)
+        DELETE FROM vendors.VendorCategories 
+        WHERE VendorProfileID = @VendorProfileID;
+        
+        -- Insert the new category as primary
+        INSERT INTO vendors.VendorCategories (VendorProfileID, Category, IsPrimary)
+        VALUES (@VendorProfileID, @Category, 1);  -- Always primary
+        
+        COMMIT TRANSACTION;
+        
+        SELECT SCOPE_IDENTITY() AS CategoryID;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0
+            ROLLBACK TRANSACTION;
+        THROW;
+    END CATCH
 END
 GO
 

@@ -1,0 +1,38 @@
+/*
+    Migration Script: Create Table [EventTypes]
+    Phase: 100 - Tables
+    Script: pb_100_87_EventTypes.sql
+    Description: Creates the [admin].[EventTypes] lookup table (admin-managed reference data)
+    
+    Execution Order: 87
+*/
+
+SET NOCOUNT ON;
+GO
+
+PRINT 'Creating table [admin].[EventTypes]...';
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.objects WHERE object_id = OBJECT_ID(N'[admin].[EventTypes]') AND type in (N'U'))
+BEGIN
+    CREATE TABLE [admin].[EventTypes](
+        [EventTypeID] [int] IDENTITY(1,1) NOT NULL,
+        [EventTypeKey] [nvarchar](50) NOT NULL,
+        [EventTypeName] [nvarchar](100) NOT NULL,
+        [DisplayOrder] [int] NOT NULL DEFAULT 0,
+        [IsActive] [bit] NOT NULL DEFAULT 1,
+        [CreatedAt] [datetime2](7) NOT NULL DEFAULT GETUTCDATE(),
+        [UpdatedAt] [datetime2](7) NOT NULL DEFAULT GETUTCDATE(),
+    PRIMARY KEY CLUSTERED 
+    (
+        [EventTypeID] ASC
+    )WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY],
+    CONSTRAINT [UQ_EventTypes_Key] UNIQUE NONCLUSTERED ([EventTypeKey])
+    );
+    PRINT 'Table [admin].[EventTypes] created successfully.';
+END
+ELSE
+BEGIN
+    PRINT 'Table [admin].[EventTypes] already exists. Skipping.';
+END
+GO

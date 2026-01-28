@@ -81,6 +81,19 @@ BEGIN
 	[ReviewedAt] [datetime] NULL,
 	[RejectionReason] [nvarchar](max) NULL,
 	[IsVisible] [bit] NOT NULL,
+	-- Booking Settings (added for vendor enhancements)
+	[MinBookingHours] [int] NULL,
+	[AdvanceNoticeHours] [int] NULL,
+	[MaxCapacity] [int] NULL,
+	[OffersHourlyRates] [bit] CONSTRAINT DF_VendorProfiles_OffersHourlyRates DEFAULT 0 NULL,
+	[InstantBookingEnabled] [bit] CONSTRAINT DF_VendorProfiles_InstantBookingEnabled DEFAULT 0 NULL,
+	[MinBookingLeadTimeHours] [int] CONSTRAINT DF_VendorProfiles_MinBookingLeadTimeHours DEFAULT 24 NULL,
+	-- Service Attributes (added for vendor enhancements)
+	[ServiceLocationScope] [nvarchar](50) NULL,
+	[YearsOfExperienceRange] [nvarchar](20) NULL,
+	[AffordabilityLevel] [nvarchar](20) NULL,
+	[PriceType] [nvarchar](20) NULL,
+	[BasePrice] [decimal](10, 2) NULL,
 PRIMARY KEY CLUSTERED 
 (
 	[VendorProfileID] ASC

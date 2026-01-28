@@ -2,7 +2,7 @@
     Migration Script: Create Stored Procedure [sp_GetCategoryQuestions]
     Phase: 600 - Stored Procedures
     Script: cu_600_033_dbo.sp_GetCategoryQuestions.sql
-    Description: Creates the [vendors].[sp_GetCategoryQuestions] stored procedure
+    Description: Creates the [admin].[sp_GetCategoryQuestions] stored procedure
     
     Execution Order: 33
 */
@@ -10,18 +10,18 @@
 SET NOCOUNT ON;
 GO
 
-PRINT 'Creating stored procedure [vendors].[sp_GetCategoryQuestions]...';
+PRINT 'Creating stored procedure [admin].[sp_GetCategoryQuestions]...';
 GO
 
 SET QUOTED_IDENTIFIER ON;
 SET ANSI_NULLS ON;
 GO
 
-IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[vendors].[sp_GetCategoryQuestions]'))
-    DROP PROCEDURE [vendors].[sp_GetCategoryQuestions];
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[admin].[sp_GetCategoryQuestions]'))
+    DROP PROCEDURE [admin].[sp_GetCategoryQuestions];
 GO
 
-CREATE   PROCEDURE [vendors].[sp_GetCategoryQuestions]
+CREATE   PROCEDURE [admin].[sp_GetCategoryQuestions]
     @Category NVARCHAR(50)
 AS
 BEGIN
@@ -35,12 +35,12 @@ BEGIN
         Options,
         IsRequired,
         DisplayOrder
-    FROM CategoryQuestions 
+    FROM [admin].[CategoryQuestions] 
     WHERE Category = @Category AND IsActive = 1
     ORDER BY DisplayOrder ASC;
 END;
 
 GO
 
-PRINT 'Stored procedure [vendors].[sp_GetCategoryQuestions] created successfully.';
+PRINT 'Stored procedure [admin].[sp_GetCategoryQuestions] created successfully.';
 GO

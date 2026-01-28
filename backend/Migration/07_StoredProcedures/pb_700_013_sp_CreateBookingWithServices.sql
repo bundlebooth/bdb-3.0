@@ -33,7 +33,17 @@ CREATE   PROCEDURE [bookings].[sp_CreateWithServices]
     @EventLocation NVARCHAR(500) = NULL,
     @EventName NVARCHAR(255) = NULL,
     @EventType NVARCHAR(100) = NULL,
-    @TimeZone NVARCHAR(100) = NULL
+    @TimeZone NVARCHAR(100) = NULL,
+    @IsInstantBooking BIT = 0,
+    @TotalAmount DECIMAL(10, 2) = NULL,
+    -- Financial details
+    @Subtotal DECIMAL(10, 2) = NULL,
+    @PlatformFee DECIMAL(10, 2) = NULL,
+    @TaxAmount DECIMAL(10, 2) = NULL,
+    @TaxPercent DECIMAL(5, 3) = NULL,
+    @TaxLabel NVARCHAR(50) = NULL,
+    @ProcessingFee DECIMAL(10, 2) = NULL,
+    @GrandTotal DECIMAL(10, 2) = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -41,9 +51,10 @@ BEGIN
     BEGIN TRY
         BEGIN TRANSACTION;
         
-        DECLARE @TotalAmount DECIMAL(10, 2) = 0;
+        DECLARE @CalcTotalAmount DECIMAL(10, 2) = 0;
         DECLARE @DepositAmount DECIMAL(10, 2) = 0;
         DECLARE @MaxDepositPercentage DECIMAL(5, 2) = 0;
+        DECLARE @BookingStatus NVARCHAR(50) = CASE WHEN @IsInstantBooking = 1 THEN 'confirmed' ELSE 'pending' END;
         
         -- Parse services JSON
         DECLARE @Services TABLE (
@@ -70,13 +81,17 @@ BEGIN
             DepositPercentage DECIMAL(5, 2) '$.depositPercentage'
         );
         
-        -- Calculate totals
+        -- Calculate totals from services if not provided
         SELECT 
-            @TotalAmount = SUM(Price * Quantity),
-            @MaxDepositPercentage = MAX(DepositPercentage)
+            @CalcTotalAmount = ISNULL(SUM(Price * Quantity), 0),
+            @MaxDepositPercentage = ISNULL(MAX(DepositPercentage), 0)
         FROM @Services;
         
-        SET @DepositAmount = @TotalAmount * (@MaxDepositPercentage / 100);
+        -- Use provided TotalAmount if available, otherwise use calculated
+        IF @TotalAmount IS NOT NULL AND @TotalAmount > 0
+            SET @CalcTotalAmount = @TotalAmount;
+        
+        SET @DepositAmount = @CalcTotalAmount * (@MaxDepositPercentage / 100);
         
         -- Create booking
         INSERT INTO bookings.Bookings (
@@ -93,15 +108,23 @@ BEGIN
             EventLocation,
             EventName,
             EventType,
-            TimeZone
+            TimeZone,
+            FullAmountPaid,
+            Subtotal,
+            PlatformFee,
+            TaxAmount,
+            TaxPercent,
+            TaxLabel,
+            ProcessingFee,
+            GrandTotal
         )
         VALUES (
             @UserID,
             @VendorProfileID,
             @EventDate,
             @EndDate,
-            'pending',
-            @TotalAmount,
+            @BookingStatus,
+            @CalcTotalAmount,
             @DepositAmount,
             @AttendeeCount,
             @SpecialRequests,
@@ -109,7 +132,15 @@ BEGIN
             @EventLocation,
             @EventName,
             @EventType,
-            @TimeZone
+            @TimeZone,
+            CASE WHEN @IsInstantBooking = 1 THEN 1 ELSE 0 END,
+            @Subtotal,
+            @PlatformFee,
+            @TaxAmount,
+            @TaxPercent,
+            @TaxLabel,
+            @ProcessingFee,
+            @GrandTotal
         );
         
         DECLARE @BookingID INT = SCOPE_IDENTITY();
@@ -141,30 +172,46 @@ BEGIN
         )
         VALUES (
             @BookingID,
-            'pending',
+            @BookingStatus,
             @UserID,
-            'Booking created by customer'
+            CASE WHEN @IsInstantBooking = 1 THEN 'Instant booking confirmed with payment' ELSE 'Booking request created by customer' END
         );
         
-        -- Create conversation
+        -- Get or create conversation
         DECLARE @ConversationID INT;
         
-        INSERT INTO messages.Conversations (
-            UserID,
-            VendorProfileID,
-            BookingID,
-            Subject,
-            LastMessageAt
-        )
-        VALUES (
-            @UserID,
-            @VendorProfileID,
-            @BookingID,
-            'Booking #' + CAST(@BookingID AS NVARCHAR(10)),
-            GETDATE()
-        );
+        -- Check if conversation already exists
+        SELECT @ConversationID = ConversationID 
+        FROM messages.Conversations 
+        WHERE UserID = @UserID AND VendorProfileID = @VendorProfileID;
         
-        SET @ConversationID = SCOPE_IDENTITY();
+        IF @ConversationID IS NULL
+        BEGIN
+            INSERT INTO messages.Conversations (
+                UserID,
+                VendorProfileID,
+                BookingID,
+                Subject,
+                LastMessageAt
+            )
+            VALUES (
+                @UserID,
+                @VendorProfileID,
+                @BookingID,
+                'Booking #' + CAST(@BookingID AS NVARCHAR(10)),
+                GETDATE()
+            );
+            
+            SET @ConversationID = SCOPE_IDENTITY();
+        END
+        ELSE
+        BEGIN
+            -- Update existing conversation with new booking
+            UPDATE messages.Conversations 
+            SET BookingID = @BookingID, 
+                LastMessageAt = GETDATE()
+            WHERE ConversationID = @ConversationID;
+        END
         
         -- Create initial message
         INSERT INTO messages.Messages (
@@ -192,8 +239,11 @@ BEGIN
         VALUES (
             (SELECT UserID FROM vendors.VendorProfiles WHERE VendorProfileID = @VendorProfileID),
             'booking',
-            'New Booking Request',
-            'You have a new booking request for ' + CONVERT(NVARCHAR(20), @EventDate, 107),
+            CASE WHEN @IsInstantBooking = 1 THEN 'New Confirmed Booking' ELSE 'New Booking Request' END,
+            CASE WHEN @IsInstantBooking = 1 
+                THEN 'You have a new confirmed booking (paid) for ' + CONVERT(NVARCHAR(20), @EventDate, 107)
+                ELSE 'You have a new booking request for ' + CONVERT(NVARCHAR(20), @EventDate, 107)
+            END,
             @BookingID,
             'booking',
             '/vendor/bookings/' + CAST(@BookingID AS NVARCHAR(10))
