@@ -7863,7 +7863,7 @@ router.post('/filter-count', async (req, res) => {
     let query = `
       SELECT COUNT(DISTINCT vp.VendorProfileID) AS TotalCount
       FROM vendors.VendorProfiles vp
-      WHERE vp.IsActive = 1
+      WHERE vp.IsVisible = 1
     `;
     
     const request = new sql.Request(pool);
@@ -7990,7 +7990,7 @@ router.post('/filter-availability', async (req, res) => {
     const pool = await poolPromise;
     
     // Build base query with current filters
-    let baseConditions = `vp.IsActive = 1`;
+    let baseConditions = `vp.IsVisible = 1`;
     const request = new sql.Request(pool);
     
     if (category && category !== 'all') {
