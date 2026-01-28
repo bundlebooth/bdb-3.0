@@ -83,8 +83,12 @@ router.post('/', async (req, res) => {
     request.input('SpecialRequests', sql.NVarChar(sql.MAX), specialRequests || specialRequestText || null);
     request.input('ServicesJSON', sql.NVarChar(sql.MAX), JSON.stringify(services || []));
     request.input('PaymentIntentID', sql.NVarChar(100), paymentIntentId || null);
+    request.input('EventLocation', sql.NVarChar(500), eventLocation || null);
+    request.input('EventName', sql.NVarChar(255), eventName || null);
+    request.input('EventType', sql.NVarChar(100), eventType || null);
+    request.input('TimeZone', sql.NVarChar(100), timeZone || null);
 
-    const result = await request.execute('bookings.sp_CreateBookingWithServices');
+    const result = await request.execute('bookings.sp_CreateWithServices');
     
     const bookingId = result.recordset[0].BookingID;
     const conversationId = result.recordset[0].ConversationID;
