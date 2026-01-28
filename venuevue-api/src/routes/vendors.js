@@ -5372,7 +5372,7 @@ router.get('/category-questions/:category', async (req, res) => {
     const request = new sql.Request(pool);
     request.input('Category', sql.NVarChar(50), categoryKey);
     
-    const result = await request.execute('vendors.sp_GetCategoryQuestions');
+    const result = await request.execute('admin.sp_GetCategoryQuestions');
     
     if (result.recordset) {
       res.json({ 
@@ -7443,7 +7443,7 @@ router.delete('/:id/badges/:badgeId', async (req, res) => {
 router.get('/lookup/event-types', async (req, res) => {
   try {
     const pool = await poolPromise;
-    const result = await pool.request().execute('vendors.sp_GetEventTypes');
+    const result = await pool.request().execute('admin.sp_GetEventTypes');
     res.json({ success: true, eventTypes: result.recordset || [] });
   } catch (err) {
     console.error('Get event types error:', err);
@@ -7455,7 +7455,7 @@ router.get('/lookup/event-types', async (req, res) => {
 router.get('/lookup/cultures', async (req, res) => {
   try {
     const pool = await poolPromise;
-    const result = await pool.request().execute('vendors.sp_GetCultures');
+    const result = await pool.request().execute('admin.sp_GetCultures');
     res.json({ success: true, cultures: result.recordset || [] });
   } catch (err) {
     console.error('Get cultures error:', err);
@@ -7543,7 +7543,7 @@ router.get('/subcategories/:category', async (req, res) => {
     const request = new sql.Request(pool);
     request.input('Category', sql.NVarChar(50), decodeURIComponent(category));
     
-    const result = await request.execute('vendors.sp_GetSubcategories');
+    const result = await request.execute('admin.sp_GetSubcategories');
     res.json({ success: true, subcategories: result.recordset || [] });
   } catch (err) {
     console.error('Get subcategories error:', err);
@@ -7725,7 +7725,7 @@ router.get('/:id/category-answers', async (req, res) => {
     const result = await request.query(`
       SELECT vca.AnswerID, vca.QuestionID, vca.Answer, cq.QuestionText, cq.Category
       FROM vendors.VendorCategoryAnswers vca
-      JOIN vendors.CategoryQuestions cq ON vca.QuestionID = cq.QuestionID
+      JOIN admin.CategoryQuestions cq ON vca.QuestionID = cq.QuestionID
       WHERE vca.VendorProfileID = @VendorProfileID
     `);
     
@@ -7815,8 +7815,8 @@ router.get('/filter-options', async (req, res) => {
 
     // Get all lookup data in parallel for performance
     const [eventTypesRes, culturesRes, experienceRes, locationsRes, affordabilityRes] = await Promise.all([
-      pool.request().execute('vendors.sp_GetEventTypes'),
-      pool.request().execute('vendors.sp_GetCultures'),
+      pool.request().execute('admin.sp_GetEventTypes'),
+      pool.request().execute('admin.sp_GetCultures'),
       Promise.resolve({ 
         recordset: [
           { key: '0-1', label: 'Less than 1 year' },
@@ -8079,7 +8079,7 @@ router.post('/filter-availability', async (req, res) => {
     // Get counts for each event type
     const eventTypeCountsQuery = `
       SELECT et.EventTypeID, et.EventTypeName, COUNT(DISTINCT vp.VendorProfileID) AS VendorCount
-      FROM vendors.EventTypes et
+      FROM admin.EventTypes et
       LEFT JOIN vendors.VendorEventTypes vet ON et.EventTypeID = vet.EventTypeID
       LEFT JOIN vendors.VendorProfiles vp ON vet.VendorProfileID = vp.VendorProfileID AND ${baseConditions}
       GROUP BY et.EventTypeID, et.EventTypeName
@@ -8089,7 +8089,7 @@ router.post('/filter-availability', async (req, res) => {
     // Get counts for each culture
     const cultureCountsQuery = `
       SELECT c.CultureID, c.CultureName, COUNT(DISTINCT vp.VendorProfileID) AS VendorCount
-      FROM vendors.Cultures c
+      FROM admin.Cultures c
       LEFT JOIN vendors.VendorCultures vc ON c.CultureID = vc.CultureID
       LEFT JOIN vendors.VendorProfiles vp ON vc.VendorProfileID = vp.VendorProfileID AND ${baseConditions}
       GROUP BY c.CultureID, c.CultureName
