@@ -7940,66 +7940,118 @@ router.post('/filter-count', async (req, res) => {
       minPrice,
       maxPrice,
       instantBookingOnly,
-      minRating
+      minRating,
+      // NEW: Enhanced filter parameters
+      minReviewCount,
+      freshListingsDays,
+      hasGoogleReviews,
+      availabilityDate,
+      availabilityDayOfWeek
     } = req.body;
 
     const pool = await poolPromise;
     
-    // Use the same sp_Search stored procedure as the main vendor search for consistency
-    // This ensures geographic filtering works the same as "Search as I move the map"
+    // Use the enhanced sp_SearchEnhanced stored procedure for filter count
     const request = new sql.Request(pool);
+    
+    // Parse event types and cultures
+    const eventTypeIdsStr = eventTypes && eventTypes.length > 0 
+      ? (Array.isArray(eventTypes) ? eventTypes.join(',') : eventTypes)
+      : null;
+    const cultureIdsStr = cultures && cultures.length > 0 
+      ? (Array.isArray(cultures) ? cultures.join(',') : cultures)
+      : null;
     
     request.input('SearchTerm', sql.NVarChar(100), null);
     request.input('Category', sql.NVarChar(50), (category && category !== 'all') ? category : null);
     request.input('City', sql.NVarChar(100), city || null);
     request.input('MinPrice', sql.Decimal(10, 2), minPrice ? parseFloat(minPrice) : null);
-    request.input('MaxPrice', sql.Decimal(10, 2), (maxPrice && maxPrice < 5000) ? parseFloat(maxPrice) : null);
+    request.input('MaxPrice', sql.Decimal(10, 2), (maxPrice && maxPrice < 10000) ? parseFloat(maxPrice) : null);
     request.input('MinRating', sql.Decimal(2, 1), minRating ? parseFloat(minRating) : null);
     request.input('IsPremium', sql.Bit, null);
     request.input('IsEcoFriendly', sql.Bit, null);
     request.input('IsAwardWinning', sql.Bit, null);
-    request.input('IsLastMinute', sql.Bit, null);
-    request.input('IsCertified', sql.Bit, null);
-    request.input('IsInsured', sql.Bit, null);
-    request.input('IsLocal', sql.Bit, null);
-    request.input('IsMobile', sql.Bit, null);
     request.input('Latitude', sql.Decimal(10, 8), latitude ? parseFloat(latitude) : null);
     request.input('Longitude', sql.Decimal(11, 8), longitude ? parseFloat(longitude) : null);
-    request.input('RadiusMiles', sql.Int, radiusMiles ? parseInt(radiusMiles) : 100); // Default 100 miles for filter count
+    request.input('RadiusMiles', sql.Int, radiusMiles ? parseInt(radiusMiles) : 100);
     request.input('PageNumber', sql.Int, 1);
-    request.input('PageSize', sql.Int, 500); // Get all results for counting
+    request.input('PageSize', sql.Int, 500);
     request.input('SortBy', sql.NVarChar(50), 'recommended');
-    request.input('BudgetType', sql.NVarChar(20), null);
-    request.input('PricingModelFilter', sql.NVarChar(20), null);
-    request.input('FixedPricingTypeFilter', sql.NVarChar(20), null);
-    request.input('Region', sql.NVarChar(50), null);
-    request.input('PriceLevel', sql.NVarChar(10), null);
-    request.input('EventDateRaw', sql.NVarChar(50), null);
-    request.input('EventStartRaw', sql.NVarChar(20), null);
-    request.input('EventEndRaw', sql.NVarChar(20), null);
-    request.input('EventDate', sql.Date, null);
-    request.input('DayOfWeek', sql.NVarChar(10), null);
-    request.input('StartTime', sql.VarChar(8), null);
-    request.input('EndTime', sql.VarChar(8), null);
+    // NEW: Enhanced filter parameters
+    request.input('MinReviewCount', sql.Int, minReviewCount ? parseInt(minReviewCount) : null);
+    request.input('InstantBookingOnly', sql.Bit, (instantBookingOnly === true || instantBookingOnly === 'true') ? 1 : null);
+    request.input('FreshListingsDays', sql.Int, freshListingsDays ? parseInt(freshListingsDays) : null);
+    request.input('HasGoogleReviews', sql.Bit, (hasGoogleReviews === true || hasGoogleReviews === 'true') ? 1 : null);
+    request.input('AvailabilityDate', sql.Date, availabilityDate || null);
+    request.input('AvailabilityDayOfWeek', sql.Int, availabilityDayOfWeek ? parseInt(availabilityDayOfWeek) : null);
+    request.input('EventTypeIDs', sql.NVarChar(sql.MAX), eventTypeIdsStr);
+    request.input('CultureIDs', sql.NVarChar(sql.MAX), cultureIdsStr);
+    request.input('FeatureIDs', sql.NVarChar(sql.MAX), null);
+    request.input('QuestionFilters', sql.NVarChar(sql.MAX), null);
+    request.input('IsCertified', sql.Bit, null);
+    request.input('IsInsured', sql.Bit, null);
+    request.input('ExperienceRange', sql.NVarChar(20), experienceRange || null);
+    request.input('ServiceLocation', sql.NVarChar(50), serviceLocation || null);
 
-    const result = await request.execute('vendors.sp_Search');
+    let result;
+    try {
+      result = await request.execute('vendors.sp_SearchEnhanced');
+      console.log('[filter-count] sp_SearchEnhanced returned:', result.recordset?.length || 0, 'vendors');
+    } catch (spErr) {
+      console.warn('[filter-count] sp_SearchEnhanced failed, falling back to sp_Search:', spErr.message);
+      // Fallback to old stored procedure
+      const fallbackRequest = new sql.Request(pool);
+      fallbackRequest.input('SearchTerm', sql.NVarChar(100), null);
+      fallbackRequest.input('Category', sql.NVarChar(50), (category && category !== 'all') ? category : null);
+      fallbackRequest.input('City', sql.NVarChar(100), city || null);
+      fallbackRequest.input('MinPrice', sql.Decimal(10, 2), minPrice ? parseFloat(minPrice) : null);
+      fallbackRequest.input('MaxPrice', sql.Decimal(10, 2), (maxPrice && maxPrice < 10000) ? parseFloat(maxPrice) : null);
+      fallbackRequest.input('MinRating', sql.Decimal(2, 1), minRating ? parseFloat(minRating) : null);
+      fallbackRequest.input('IsPremium', sql.Bit, null);
+      fallbackRequest.input('IsEcoFriendly', sql.Bit, null);
+      fallbackRequest.input('IsAwardWinning', sql.Bit, null);
+      fallbackRequest.input('IsLastMinute', sql.Bit, null);
+      fallbackRequest.input('IsCertified', sql.Bit, null);
+      fallbackRequest.input('IsInsured', sql.Bit, null);
+      fallbackRequest.input('IsLocal', sql.Bit, null);
+      fallbackRequest.input('IsMobile', sql.Bit, null);
+      fallbackRequest.input('Latitude', sql.Decimal(10, 8), latitude ? parseFloat(latitude) : null);
+      fallbackRequest.input('Longitude', sql.Decimal(11, 8), longitude ? parseFloat(longitude) : null);
+      fallbackRequest.input('RadiusMiles', sql.Int, radiusMiles ? parseInt(radiusMiles) : 100);
+      fallbackRequest.input('PageNumber', sql.Int, 1);
+      fallbackRequest.input('PageSize', sql.Int, 500);
+      fallbackRequest.input('SortBy', sql.NVarChar(50), 'recommended');
+      fallbackRequest.input('BudgetType', sql.NVarChar(20), null);
+      fallbackRequest.input('PricingModelFilter', sql.NVarChar(20), null);
+      fallbackRequest.input('FixedPricingTypeFilter', sql.NVarChar(20), null);
+      fallbackRequest.input('Region', sql.NVarChar(50), null);
+      fallbackRequest.input('PriceLevel', sql.NVarChar(10), null);
+      fallbackRequest.input('EventDateRaw', sql.NVarChar(50), null);
+      fallbackRequest.input('EventStartRaw', sql.NVarChar(20), null);
+      fallbackRequest.input('EventEndRaw', sql.NVarChar(20), null);
+      fallbackRequest.input('EventDate', sql.Date, null);
+      fallbackRequest.input('DayOfWeek', sql.NVarChar(10), null);
+      fallbackRequest.input('StartTime', sql.VarChar(8), null);
+      fallbackRequest.input('EndTime', sql.VarChar(8), null);
+      result = await fallbackRequest.execute('vendors.sp_Search');
+    }
+    
     let vendors = result.recordset || [];
+    console.log('[filter-count] Final vendor count:', vendors.length);
     
-    console.log('[filter-count] sp_Search returned:', vendors.length, 'vendors');
-    
-    // Apply attribute-based filters (post-query filtering for attributes not in SP)
-    if (instantBookingOnly === true || instantBookingOnly === 'true') {
+    // Post-query filtering only needed for fallback (sp_SearchEnhanced handles these)
+    if (!result.recordset?.[0]?.HasGoogleReviews && (instantBookingOnly === true || instantBookingOnly === 'true')) {
       vendors = vendors.filter(v => v.InstantBookingEnabled);
     }
-    if (experienceRange) {
+    if (!result.recordset?.[0]?.HasGoogleReviews && experienceRange) {
       vendors = vendors.filter(v => v.YearsOfExperienceRange === experienceRange);
     }
-    if (serviceLocation) {
+    if (!result.recordset?.[0]?.HasGoogleReviews && serviceLocation) {
       vendors = vendors.filter(v => v.ServiceLocationScope === serviceLocation);
     }
     
-    // Filter by event types if specified
-    if (eventTypes && eventTypes.length > 0) {
+    // Event type and culture filtering only needed for fallback
+    if (!result.recordset?.[0]?.HasGoogleReviews && eventTypes && eventTypes.length > 0) {
       const eventTypeIds = Array.isArray(eventTypes) ? eventTypes.map(id => parseInt(id)) : eventTypes.split(',').map(id => parseInt(id.trim()));
       const validEventTypeIds = eventTypeIds.filter(id => !isNaN(id) && id > 0);
       console.log('[filter-count] Filtering by eventTypes:', validEventTypeIds);
@@ -8031,8 +8083,8 @@ router.post('/filter-count', async (req, res) => {
       }
     }
     
-    // Filter by cultures if specified
-    if (cultures && cultures.length > 0) {
+    // Filter by cultures if specified (only for fallback)
+    if (!result.recordset?.[0]?.HasGoogleReviews && cultures && cultures.length > 0) {
       const cultureIdsParsed = Array.isArray(cultures) ? cultures.map(id => parseInt(id)) : cultures.split(',').map(id => parseInt(id.trim()));
       const validCultureIds = cultureIdsParsed.filter(id => !isNaN(id) && id > 0);
       if (validCultureIds.length > 0) {
@@ -8070,11 +8122,16 @@ router.post('/filter-count', async (req, res) => {
         cultures,
         experienceRange,
         serviceLocation,
-        affordabilityLevel,
         minPrice,
         maxPrice,
         instantBookingOnly,
-        minRating
+        minRating,
+        // NEW: Enhanced filter parameters
+        minReviewCount,
+        freshListingsDays,
+        hasGoogleReviews,
+        availabilityDate,
+        availabilityDayOfWeek
       }
     });
   } catch (err) {
