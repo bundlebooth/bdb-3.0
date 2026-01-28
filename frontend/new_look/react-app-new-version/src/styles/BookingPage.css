@@ -76,32 +76,94 @@
 }
 
 /* ============================================
-   STEP HEADER
+   ACCORDION STEP CARDS (Airbnb Style)
    ============================================ */
 
+.accordion-step {
+    border: 1px solid #DDDDDD;
+    border-radius: 12px;
+    margin-bottom: 12px;
+    background: white;
+    overflow: hidden;
+    transition: box-shadow 0.2s ease;
+}
+
+.accordion-step:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.accordion-step.active {
+    border-color: #DDDDDD;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.accordion-step-header {
+    display: flex;
+    align-items: center;
+    padding: 20px 24px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.accordion-step-header:hover {
+    background: #fafafa;
+}
+
+.accordion-step.active .accordion-step-header {
+    border-bottom: 1px solid #ebebeb;
+    background: white;
+}
+
+.accordion-step-number {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #222;
+    margin-right: 8px;
+}
+
+.accordion-step-title {
+    font-size: 1rem;
+    font-weight: 500;
+    color: #222;
+    flex: 1;
+}
+
+.accordion-step.completed .accordion-step-title {
+    color: #717171;
+}
+
+.accordion-step-content {
+    padding: 24px;
+    display: none;
+}
+
+.accordion-step.active .accordion-step-content {
+    display: block;
+}
+
+.accordion-step-footer {
+    padding: 16px 24px;
+    border-top: 1px solid #ebebeb;
+    display: flex;
+    justify-content: flex-end;
+}
+
+/* Legacy step header - keep for compatibility */
 .step-header {
     display: flex;
     align-items: center;
     gap: 1rem;
     margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #ebebeb;
 }
 
 .step-number-circle {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background-color: var(--text-primary);
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 600;
-    font-size: 1.125rem;
-    flex-shrink: 0;
+    display: none;
 }
 
 .step-title {
-    font-size: 1.5rem;
+    font-size: 1.125rem;
     font-weight: 600;
     margin: 0;
     color: var(--text-primary);

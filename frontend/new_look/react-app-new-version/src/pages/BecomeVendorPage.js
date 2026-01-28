@@ -865,6 +865,25 @@ const BecomeVendorPage = () => {
         storedUser.isVendor = true;
         localStorage.setItem('user', JSON.stringify(storedUser));
         
+        // Save subcategories to dedicated endpoint if any are selected
+        if (formData.selectedSubcategories && formData.selectedSubcategories.length > 0) {
+          try {
+            const subcategoriesResponse = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/subcategories`, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+              },
+              body: JSON.stringify({ subcategoryIds: formData.selectedSubcategories })
+            });
+            if (!subcategoriesResponse.ok) {
+              console.error('[Save] Failed to save subcategories:', await subcategoriesResponse.text());
+            }
+          } catch (subcategoriesError) {
+            console.error('[Save] Error saving subcategories:', subcategoriesError);
+          }
+        }
+
         // Also save features to dedicated endpoint if any are selected
         if (formData.selectedFeatures && formData.selectedFeatures.length > 0) {
           try {

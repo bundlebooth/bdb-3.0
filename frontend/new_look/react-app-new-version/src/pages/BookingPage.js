@@ -1190,13 +1190,13 @@ function BookingPage() {
       if (confirmError) {
         setPaymentError(confirmError.message || 'Payment failed. Please try again.');
         setPaymentProcessing(false);
-        throw new Error(confirmError.message);
+        return;
       }
 
       if (paymentIntent.status !== 'succeeded') {
         setPaymentError('Payment requires additional verification.');
         setPaymentProcessing(false);
-        throw new Error('Payment requires additional verification.');
+        return;
       }
 
       // Get tax info for the booking
@@ -1454,373 +1454,356 @@ function BookingPage() {
             
             <h1 className="booking-title">{isInstantBookingEnabled ? 'Book & Pay' : 'Request to book'}</h1>
             
-            
-            {/* Step 1: Event Information */}
-            {currentStep === 1 && (
-            <div style={{ display: 'block', width: '100%', padding: '20px', backgroundColor: '#ffffff' }}>
-              <div className="booking-step" id="step-1" style={{ display: 'block', width: '100%' }}>
-                <div className="step-header" style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
-                  <div className="step-number-circle" style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#222', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '600' }}>1</div>
-                  <h2 className="step-title" style={{ fontSize: '1.5rem', fontWeight: '600', margin: '0', color: '#222' }}>Your Event Details</h2>
-                </div>
-                
-                <div className="form-group" style={{ marginBottom: '1.5rem' }}>
-                  <label htmlFor="event-name" className="form-label" style={{ display: 'block', fontWeight: '600', marginBottom: '0.5rem', color: '#222' }}>
-                    Event Name <span className="required-asterisk" style={{ color: '#ef4444' }}>*</span>
-                  </label>
-                  <input
-                    type="text"
-                    id="event-name"
-                    className="form-input"
-                    style={{ width: '100%', padding: '0.75rem 1rem', border: '1px solid #ddd', borderRadius: '8px', fontSize: '1rem', display: 'block', backgroundColor: 'white' }}
-                    placeholder="e.g., Sarah & John's Wedding"
-                    value={bookingData.eventName}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-
-                <div className="form-group" style={{ marginBottom: '1.5rem' }}>
-                  <label htmlFor="event-type" className="form-label" style={{ display: 'block', fontWeight: '600', marginBottom: '0.5rem', color: '#222' }}>
-                    Event Type <span className="required-asterisk" style={{ color: '#ef4444' }}>*</span>
-                  </label>
-                  <select
-                    id="event-type"
-                    className="form-input"
-                    style={{ width: '100%', padding: '0.75rem 1rem', border: '1px solid #ddd', borderRadius: '8px', fontSize: '1rem', display: 'block', backgroundColor: 'white' }}
-                    value={bookingData.eventType}
-                    onChange={handleInputChange}
-                  >
-                    <option value="">Select event type</option>
-                    <option value="wedding">Wedding</option>
-                    <option value="birthday">Birthday Party</option>
-                    <option value="corporate">Corporate Event</option>
-                    <option value="anniversary">Anniversary</option>
-                    <option value="graduation">Graduation</option>
-                    <option value="baby-shower">Baby Shower</option>
-                    <option value="engagement">Engagement Party</option>
-                    <option value="other">Other</option>
-                  </select>
-                </div>
-
-                {/* Event Date & Time - Shared Calendar Component */}
-                <div className="form-group" style={{ marginBottom: '1.5rem' }}>
-                  <label className="form-label" style={{ display: 'block', fontWeight: '600', marginBottom: '0.5rem', color: '#222' }}>
-                    Event Date & Time <span className="required-asterisk" style={{ color: '#ef4444' }}>*</span>
-                  </label>
-                  <SharedDateTimePicker
-                    vendorId={vendorId}
-                    businessHours={vendorData?.businessHours || vendorAvailability?.businessHours || []}
-                    timezone={vendorData?.profile?.Timezone || null}
-                    minBookingLeadTimeHours={vendorData?.profile?.MinBookingLeadTimeHours || vendorAvailability?.minBookingLeadTimeHours || 0}
-                    selectedDate={bookingData.eventDate}
-                    selectedStartTime={bookingData.eventTime}
-                    selectedEndTime={bookingData.eventEndTime}
-                    onDateChange={(date) => {
-                      setBookingData(prev => ({ ...prev, eventDate: date, eventTime: '', eventEndTime: '' }));
-                    }}
-                    onStartTimeChange={(time) => {
-                      setBookingData(prev => ({ ...prev, eventTime: time || '', eventEndTime: '' }));
-                    }}
-                    onEndTimeChange={(time) => {
-                      setBookingData(prev => ({ ...prev, eventEndTime: time || '' }));
-                    }}
-                    showSaveDeleteButtons={false}
-                    inline={true}
-                  />
-                </div>
-
-                {/* Number of Guests */}
-                <div className="form-group" style={{ marginBottom: '1.5rem' }}>
-                  <label htmlFor="attendee-count" className="form-label" style={{ display: 'block', fontWeight: '600', marginBottom: '0.5rem', color: '#222' }}>
-                    Number of Guests <span className="required-asterisk" style={{ color: '#ef4444' }}>*</span>
-                  </label>
-                  <input
-                    type="number"
-                    id="attendee-count"
-                    className="form-input"
-                    style={{ width: '100%', padding: '0.75rem 1rem', border: '1px solid #ddd', borderRadius: '8px', fontSize: '1rem', display: 'block', backgroundColor: 'white' }}
-                    placeholder="50"
-                    min="1"
-                    value={bookingData.attendeeCount}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-
-                <div className="form-group" style={{ marginBottom: '1.5rem' }}>
-                  <label htmlFor="event-location" className="form-label" style={{ display: 'block', fontWeight: '600', marginBottom: '0.5rem', color: '#222' }}>
-                    Event Location <span className="required-asterisk" style={{ color: '#ef4444' }}>*</span>
-                  </label>
-                  <input
-                    ref={locationInputRef}
-                    type="text"
-                    id="event-location"
-                    className="form-input"
-                    style={{ width: '100%', padding: '0.75rem 1rem', border: '1px solid #ddd', borderRadius: '8px', fontSize: '1rem', display: 'block', backgroundColor: 'white' }}
-                    placeholder="Enter address or city (Canada only)"
-                    value={bookingData.eventLocation}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-                
-                {/* Upcoming Steps Preview */}
-                <div className="upcoming-steps">
-                  <div className="overview-step" data-step="2">
-                    <div className="overview-number">2</div>
-                    <div className="overview-title">Choose Services</div>
-                  </div>
-                  <div className="overview-step" data-step="3">
-                    <div className="overview-number">3</div>
-                    <div className="overview-title">{isInstantBookingEnabled ? 'Review & Pay' : 'Review your request'}</div>
-                  </div>
-                </div>
+            {/* Accordion Step 1: Event Details */}
+            <div 
+              className={`accordion-step ${currentStep === 1 ? 'active' : ''} ${currentStep > 1 ? 'completed' : ''}`}
+              onClick={() => { if (currentStep > 1) { setCurrentStep(1); window.scrollTo({ top: 0, behavior: 'smooth' }); } }}
+            >
+              <div className="accordion-step-header">
+                <span className="accordion-step-number">1.</span>
+                <span className="accordion-step-title">
+                  {currentStep > 1 && bookingData.eventName 
+                    ? `${bookingData.eventName} · ${bookingData.eventDate ? formatDate(bookingData.eventDate) : ''}`
+                    : 'Your event details'
+                  }
+                </span>
               </div>
-            </div>
-            )}
+              {currentStep === 1 && (
+                <div className="accordion-step-content">
+                  <div className="form-group">
+                    <label htmlFor="event-name" className="form-label">Event Name</label>
+                    <input
+                      type="text"
+                      id="event-name"
+                      className="form-input"
+                      placeholder="e.g., Sarah & John's Wedding"
+                      value={bookingData.eventName}
+                      onChange={handleInputChange}
+                    />
+                  </div>
 
-            {/* Step 2: Package/Service Selection */}
-            {currentStep === 2 && (
-              <div className="booking-step" id="step-2" style={{ display: 'block', width: '100%', padding: '20px', backgroundColor: '#ffffff' }}>
-                <div className="step-header" style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
-                  <div className="step-number-circle" style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#222', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '600' }}>2</div>
-                  <h2 className="step-title" style={{ fontSize: '1.5rem', fontWeight: '600', margin: '0', color: '#222' }}>Choose a Package or Service</h2>
+                  <div className="form-group">
+                    <label htmlFor="event-type" className="form-label">Event Type</label>
+                    <select
+                      id="event-type"
+                      className="form-input"
+                      value={bookingData.eventType}
+                      onChange={handleInputChange}
+                    >
+                      <option value="">Select event type</option>
+                      <option value="wedding">Wedding</option>
+                      <option value="birthday">Birthday Party</option>
+                      <option value="corporate">Corporate Event</option>
+                      <option value="anniversary">Anniversary</option>
+                      <option value="graduation">Graduation</option>
+                      <option value="baby-shower">Baby Shower</option>
+                      <option value="engagement">Engagement Party</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Event Date & Time</label>
+                    <SharedDateTimePicker
+                      vendorId={vendorId}
+                      businessHours={vendorData?.businessHours || vendorAvailability?.businessHours || []}
+                      timezone={vendorData?.profile?.Timezone || null}
+                      minBookingLeadTimeHours={vendorData?.profile?.MinBookingLeadTimeHours || vendorAvailability?.minBookingLeadTimeHours || 0}
+                      selectedDate={bookingData.eventDate}
+                      selectedStartTime={bookingData.eventTime}
+                      selectedEndTime={bookingData.eventEndTime}
+                      onDateChange={(date) => {
+                        setBookingData(prev => ({ ...prev, eventDate: date, eventTime: '', eventEndTime: '' }));
+                      }}
+                      onStartTimeChange={(time) => {
+                        setBookingData(prev => ({ ...prev, eventTime: time || '', eventEndTime: '' }));
+                      }}
+                      onEndTimeChange={(time) => {
+                        setBookingData(prev => ({ ...prev, eventEndTime: time || '' }));
+                      }}
+                      showSaveDeleteButtons={false}
+                      inline={true}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="attendee-count" className="form-label">Number of Guests</label>
+                    <input
+                      type="number"
+                      id="attendee-count"
+                      className="form-input"
+                      placeholder="50"
+                      min="1"
+                      value={bookingData.attendeeCount}
+                      onChange={handleInputChange}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="event-location" className="form-label">Event Location</label>
+                    <input
+                      ref={locationInputRef}
+                      type="text"
+                      id="event-location"
+                      className="form-input"
+                      placeholder="Enter address or city (Canada only)"
+                      value={bookingData.eventLocation}
+                      onChange={handleInputChange}
+                    />
+                  </div>
+                  
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); nextStep(); }}
+                      style={{
+                        padding: '12px 24px',
+                        background: '#222',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '8px',
+                        fontSize: '1rem',
+                        fontWeight: 500,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Next
+                    </button>
+                  </div>
                 </div>
-                <p className="step-description" style={{ color: '#717171', marginBottom: '1.5rem' }}>Select a package or individual service you'd like to book</p>
-                
-                {/* Tab Toggle */}
-                <PackageServiceTabs 
-                  activeTab={step2Tab}
-                  onTabChange={setStep2Tab}
-                  packagesCount={packages.length}
-                  servicesCount={services.length}
-                />
-                
-                {/* Packages Tab */}
-                {step2Tab === 'packages' && (
-                <PackageServiceList>
-                  {loadingPackages ? (
-                    <SkeletonLoader variant="service-card" count={3} />
-                  ) : packages.length === 0 ? (
-                    <PackageServiceEmpty type="packages" message="No packages available. Check the Services tab or send a custom request." />
-                  ) : (
-                    packages.map((pkg) => (
-                      <PackageCard
-                        key={pkg.PackageID}
-                        pkg={pkg}
-                        isSelected={selectedPackage?.PackageID === pkg.PackageID}
-                        onClick={() => selectPackage(pkg)}
-                        selectable={true}
-                      />
-                    ))
-                  )}
-                </PackageServiceList>
-                )}
-                
-                {/* Services Tab */}
-                {step2Tab === 'services' && (
-                <PackageServiceList>
-                  {loadingServices ? (
-                    <SkeletonLoader variant="service-card" count={3} />
-                  ) : services.length === 0 ? (
-                    <PackageServiceEmpty type="services" message="No individual services available. Check the Packages tab or send a custom request." />
-                  ) : (
-                    services.map((service, index) => {
-                      // Use multiple fields to create a unique identifier
-                      const serviceId = service.VendorServiceID || service.ServiceID || service.id || `service-${index}`;
-                      const serviceName = service.ServiceName || service.name || '';
-                      const serviceDuration = service.DurationMinutes || service.VendorDurationMinutes || service.baseDuration || service.vendorDuration || null;
-                      
-                      // Check selection by both ID and name to ensure uniqueness
-                      const isSelected = selectedServices.some(s => {
-                        const sId = s.VendorServiceID || s.ServiceID || s.id;
-                        const sName = s.ServiceName || s.name || '';
-                        return sId === serviceId || (sName && sName === serviceName);
-                      });
-                      
-                      // Check if duration fits in time slot
-                      const durationCheck = checkDurationFits(serviceDuration);
-                      
-                      return (
-                        <ServiceCard
-                          key={`${serviceId}-${serviceName}-${index}`}
-                          service={service}
-                          isSelected={isSelected}
-                          onClick={() => {
-                            if (isSelected) {
-                              // Allow deselection
-                              setSelectedServices(selectedServices.filter(s => {
-                                const sId = s.VendorServiceID || s.ServiceID || s.id;
-                                const sName = s.ServiceName || s.name || '';
-                                return sId !== serviceId && sName !== serviceName;
-                              }));
-                            } else {
-                              // Check duration before selecting
-                              if (!durationCheck.fits) {
-                                setDurationWarning({
-                                  type: 'service',
-                                  name: serviceName,
-                                  itemDuration: durationCheck.itemDuration,
-                                  slotDuration: durationCheck.slotDuration
-                                });
-                              } else {
-                                // Check attendee limits for per_attendee pricing
-                                const attendeeCheck = checkAttendeeFits(service);
-                                if (!attendeeCheck.fits) {
-                                  setAttendeeWarning({
-                                    type: 'service',
-                                    name: serviceName,
-                                    min: attendeeCheck.min,
-                                    max: attendeeCheck.max,
-                                    current: attendeeCheck.current,
-                                    reason: attendeeCheck.reason
-                                  });
-                                } else {
-                                  setSelectedServices([...selectedServices, service]);
-                                }
-                              }
-                            }
-                          }}
+              )}
+            </div>
+
+            {/* Accordion Step 2: Choose Services */}
+            <div 
+              className={`accordion-step ${currentStep === 2 ? 'active' : ''} ${currentStep > 2 ? 'completed' : ''}`}
+              onClick={() => { if (currentStep > 2) { setCurrentStep(2); window.scrollTo({ top: 0, behavior: 'smooth' }); } }}
+            >
+              <div className="accordion-step-header">
+                <span className="accordion-step-number">2.</span>
+                <span className="accordion-step-title">
+                  {currentStep > 2 && (selectedPackage || selectedServices.length > 0)
+                    ? selectedPackage 
+                      ? selectedPackage.PackageName || selectedPackage.name
+                      : `${selectedServices.length} service${selectedServices.length > 1 ? 's' : ''} selected`
+                    : 'Choose a package or service'
+                  }
+                </span>
+              </div>
+              {currentStep === 2 && (
+                <div className="accordion-step-content">
+                  <PackageServiceTabs 
+                    activeTab={step2Tab}
+                    onTabChange={setStep2Tab}
+                    packagesCount={packages.length}
+                    servicesCount={services.length}
+                  />
+                  
+                  {step2Tab === 'packages' && (
+                  <PackageServiceList>
+                    {loadingPackages ? (
+                      <SkeletonLoader variant="service-card" count={3} />
+                    ) : packages.length === 0 ? (
+                      <PackageServiceEmpty type="packages" message="No packages available. Check the Services tab." />
+                    ) : (
+                      packages.map((pkg) => (
+                        <PackageCard
+                          key={pkg.PackageID}
+                          pkg={pkg}
+                          isSelected={selectedPackage?.PackageID === pkg.PackageID}
+                          onClick={() => selectPackage(pkg)}
                           selectable={true}
                         />
-                      );
-                    })
+                      ))
+                    )}
+                  </PackageServiceList>
                   )}
-                </PackageServiceList>
-                )}
-                
-                {/* Upcoming Steps Preview */}
-                <div className="upcoming-steps">
-                  <div className="overview-step" data-step="3">
-                    <div className="overview-number">3</div>
-                    <div className="overview-title">Review your request</div>
+                  
+                  {step2Tab === 'services' && (
+                  <PackageServiceList>
+                    {loadingServices ? (
+                      <SkeletonLoader variant="service-card" count={3} />
+                    ) : services.length === 0 ? (
+                      <PackageServiceEmpty type="services" message="No individual services available." />
+                    ) : (
+                      services.map((service, index) => {
+                        const serviceId = service.VendorServiceID || service.ServiceID || service.id || `service-${index}`;
+                        const serviceName = service.ServiceName || service.name || '';
+                        const serviceDuration = service.DurationMinutes || service.VendorDurationMinutes || service.baseDuration || service.vendorDuration || null;
+                        
+                        const isSelected = selectedServices.some(s => {
+                          const sId = s.VendorServiceID || s.ServiceID || s.id;
+                          const sName = s.ServiceName || s.name || '';
+                          return sId === serviceId || (sName && sName === serviceName);
+                        });
+                        
+                        const durationCheck = checkDurationFits(serviceDuration);
+                        
+                        return (
+                          <ServiceCard
+                            key={`${serviceId}-${serviceName}-${index}`}
+                            service={service}
+                            isSelected={isSelected}
+                            onClick={() => {
+                              if (isSelected) {
+                                setSelectedServices(selectedServices.filter(s => {
+                                  const sId = s.VendorServiceID || s.ServiceID || s.id;
+                                  const sName = s.ServiceName || s.name || '';
+                                  return sId !== serviceId && sName !== serviceName;
+                                }));
+                              } else {
+                                if (!durationCheck.fits) {
+                                  setDurationWarning({
+                                    type: 'service',
+                                    name: serviceName,
+                                    itemDuration: durationCheck.itemDuration,
+                                    slotDuration: durationCheck.slotDuration
+                                  });
+                                } else {
+                                  const attendeeCheck = checkAttendeeFits(service);
+                                  if (!attendeeCheck.fits) {
+                                    setAttendeeWarning({
+                                      type: 'service',
+                                      name: serviceName,
+                                      min: attendeeCheck.min,
+                                      max: attendeeCheck.max,
+                                      current: attendeeCheck.current,
+                                      reason: attendeeCheck.reason
+                                    });
+                                  } else {
+                                    setSelectedServices([...selectedServices, service]);
+                                  }
+                                }
+                              }
+                            }}
+                            selectable={true}
+                          />
+                        );
+                      })
+                    )}
+                  </PackageServiceList>
+                  )}
+                  
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); nextStep(); }}
+                      disabled={!selectedPackage && selectedServices.length === 0}
+                      style={{
+                        padding: '12px 24px',
+                        background: (!selectedPackage && selectedServices.length === 0) ? '#ccc' : '#222',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '8px',
+                        fontSize: '1rem',
+                        fontWeight: 500,
+                        cursor: (!selectedPackage && selectedServices.length === 0) ? 'not-allowed' : 'pointer'
+                      }}
+                    >
+                      Next
+                    </button>
                   </div>
                 </div>
+              )}
+            </div>
+
+            {/* Accordion Step 3: Review & Pay */}
+            <div 
+              className={`accordion-step ${currentStep === 3 ? 'active' : ''}`}
+            >
+              <div 
+                className="accordion-step-header"
+                onClick={() => currentStep >= 3 && setCurrentStep(3)}
+              >
+                <span className="accordion-step-number">3.</span>
+                <span className="accordion-step-title">
+                  {isInstantBookingEnabled ? 'Review & pay' : 'Write a message to the host'}
+                </span>
               </div>
-            )}
+              {currentStep === 3 && (
+                <div className="accordion-step-content">
+                  <div className="form-group">
+                    <label htmlFor="special-requests" className="form-label">
+                      Message to vendor (optional)
+                    </label>
+                    <textarea
+                      id="special-requests"
+                      className="form-textarea"
+                      rows="4"
+                      placeholder="Add any special requests, dietary restrictions, or questions..."
+                      value={bookingData.specialRequests}
+                      onChange={handleInputChange}
+                    ></textarea>
+                  </div>
 
-            {/* Step 3: Review & Complete Booking */}
-            {currentStep === 3 && (
-              <div className="booking-step" id="step-3" style={{ display: 'block', width: '100%', padding: '20px', backgroundColor: '#ffffff' }}>
-                <div className="step-header" style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
-                  <div className="step-number-circle" style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#222', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '600' }}>3</div>
-                  <h2 className="step-title" style={{ fontSize: '1.5rem', fontWeight: '600', margin: '0', color: '#222' }}>{isInstantBookingEnabled ? 'Review & Pay' : 'Review your request'}</h2>
-                </div>
-
-                {/* Special Requests */}
-                <div className="form-group" style={{ marginBottom: '1.5rem' }}>
-                  <label htmlFor="special-requests" className="form-label" style={{ display: 'block', fontWeight: '600', marginBottom: '0.5rem', color: '#222' }}>
-                    Special Requests or Questions (Optional)
-                  </label>
-                  <textarea
-                    id="special-requests"
-                    className="form-textarea"
-                    rows="4"
-                    style={{ width: '100%', padding: '0.75rem 1rem', border: '1px solid #ddd', borderRadius: '8px', fontSize: '1rem', resize: 'vertical' }}
-                    placeholder="Add any special requests, dietary restrictions, or questions for the vendor..."
-                    value={bookingData.specialRequests}
-                    onChange={handleInputChange}
-                  ></textarea>
-                </div>
-
-                {/* Booking Options */}
-                {isInstantBookingEnabled ? (
-                  <>
-                    {/* Option 1: Pay Now (Instant Booking) */}
-                    <div style={{ 
-                      padding: '20px', 
-                      border: '2px solid #5086E8', 
-                      borderRadius: '12px', 
-                      backgroundColor: '#f0f7ff',
-                      marginBottom: '16px'
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: '16px' }}>
-                        <div style={{ width: '20px', height: '20px', borderRadius: '50%', border: '2px solid #5086E8', backgroundColor: '#5086E8', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '2px' }}>
-                          <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'white' }}></div>
+                  {isInstantBookingEnabled ? (
+                    <>
+                      <div style={{ 
+                        padding: '20px', 
+                        border: '1px solid #ddd', 
+                        borderRadius: '12px', 
+                        backgroundColor: '#fff',
+                        marginBottom: '16px'
+                      }}>
+                        <div style={{ fontWeight: '600', color: '#222', marginBottom: '8px' }}>Pay in full</div>
+                        <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '16px' }}>
+                          Pay ${calculateBookingTotals().total?.toFixed(2)} CAD now and your booking is confirmed instantly.
                         </div>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: '600', color: '#222', marginBottom: '4px' }}>Pay in full</div>
-                          <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                            Pay the total ${calculateBookingTotals().total?.toFixed(2)} CAD now and your booking is confirmed instantly.
-                          </div>
-                        </div>
+                        
+                        <Elements stripe={stripePromise}>
+                          <InlinePaymentForm 
+                            onSubmit={handlePaymentSubmit}
+                            isProcessing={paymentProcessing}
+                            error={paymentError}
+                            totalAmount={calculateBookingTotals().total}
+                            currentUser={currentUser}
+                            onLoginRequired={() => setProfileModalOpen(true)}
+                          />
+                        </Elements>
                       </div>
-                      
-                      {/* Inline Payment Form */}
-                      <Elements stripe={stripePromise}>
-                        <InlinePaymentForm 
-                          onSubmit={handlePaymentSubmit}
-                          isProcessing={paymentProcessing}
-                          error={paymentError}
-                          totalAmount={calculateBookingTotals().total}
-                          currentUser={currentUser}
-                          onLoginRequired={() => setProfileModalOpen(true)}
-                        />
-                      </Elements>
-                    </div>
 
-                    {/* Divider */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px', margin: '20px 0' }}>
-                      <div style={{ flex: 1, height: '1px', backgroundColor: '#e5e7eb' }}></div>
-                      <span style={{ fontSize: '0.875rem', color: '#9ca3af', fontWeight: '500' }}>OR</span>
-                      <div style={{ flex: 1, height: '1px', backgroundColor: '#e5e7eb' }}></div>
-                    </div>
-
-                    {/* Option 2: Request Booking */}
-                    <div style={{ 
-                      padding: '20px', 
-                      border: '1px solid #e5e7eb', 
-                      borderRadius: '12px', 
-                      backgroundColor: '#fff'
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: '16px' }}>
-                        <div style={{ width: '20px', height: '20px', borderRadius: '50%', border: '2px solid #d1d5db', marginTop: '2px' }}></div>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: '600', color: '#222', marginBottom: '4px' }}>Request to book</div>
-                          <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                            Send a booking request. The vendor will review and respond within 24-48 hours.
-                          </div>
-                        </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', margin: '20px 0' }}>
+                        <div style={{ flex: 1, height: '1px', backgroundColor: '#e5e7eb' }}></div>
+                        <span style={{ fontSize: '0.875rem', color: '#9ca3af' }}>OR</span>
+                        <div style={{ flex: 1, height: '1px', backgroundColor: '#e5e7eb' }}></div>
                       </div>
-                      
-                      <button
-                        onClick={() => {
-                          if (!currentUser || !currentUser.id) {
-                            setProfileModalOpen(true);
-                            return;
-                          }
-                          submitBookingRequest();
-                        }}
-                        disabled={submitting}
-                        style={{
-                          width: '100%',
-                          padding: '14px 24px',
-                          background: '#222',
-                          color: '#fff',
-                          border: 'none',
-                          borderRadius: '8px',
-                          fontSize: '1rem',
-                          fontWeight: 600,
-                          cursor: submitting ? 'not-allowed' : 'pointer',
-                          opacity: submitting ? 0.7 : 1
-                        }}
-                      >
-                        {submitting ? 'Sending Request...' : 'Send Booking Request'}
-                      </button>
-                    </div>
-                  </>
-                ) : (
-                  /* Non-instant booking - just show request button */
-                  <div style={{ 
-                    padding: '20px', 
-                    border: '1px solid #e5e7eb', 
-                    borderRadius: '12px', 
-                    backgroundColor: '#f9fafb'
-                  }}>
-                    <p style={{ fontSize: '0.9rem', color: '#6b7280', marginBottom: '16px' }}>
-                      Send a booking request to the vendor. They will review your request and respond within 24-48 hours.
-                    </p>
+
+                      <div style={{ 
+                        padding: '20px', 
+                        border: '1px solid #ddd', 
+                        borderRadius: '12px', 
+                        backgroundColor: '#fff'
+                      }}>
+                        <div style={{ fontWeight: '600', color: '#222', marginBottom: '8px' }}>Request to book</div>
+                        <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '16px' }}>
+                          The vendor will review and respond within 24-48 hours.
+                        </div>
+                        
+                        <button
+                          onClick={() => {
+                            if (!currentUser || !currentUser.id) {
+                              setProfileModalOpen(true);
+                              return;
+                            }
+                            submitBookingRequest();
+                          }}
+                          disabled={submitting}
+                          style={{
+                            width: '100%',
+                            padding: '14px 24px',
+                            background: '#222',
+                            color: '#fff',
+                            border: 'none',
+                            borderRadius: '8px',
+                            fontSize: '1rem',
+                            fontWeight: 500,
+                            cursor: submitting ? 'not-allowed' : 'pointer',
+                            opacity: submitting ? 0.7 : 1
+                          }}
+                        >
+                          {submitting ? 'Sending...' : 'Send Booking Request'}
+                        </button>
+                      </div>
+                    </>
+                  ) : (
                     <button
                       onClick={() => {
                         if (!currentUser || !currentUser.id) {
@@ -1838,93 +1821,18 @@ function BookingPage() {
                         border: 'none',
                         borderRadius: '8px',
                         fontSize: '1rem',
-                        fontWeight: 600,
+                        fontWeight: 500,
                         cursor: submitting ? 'not-allowed' : 'pointer',
                         opacity: submitting ? 0.7 : 1
                       }}
                     >
-                      {submitting ? 'Sending Request...' : 'Send Booking Request'}
+                      {submitting ? 'Sending...' : 'Send Booking Request'}
                     </button>
-                  </div>
-                )}
-
-              </div>
-            )}
-
-            {/* Navigation Buttons */}
-            <div className="form-actions">
-              {currentStep > 1 && (
-                <button 
-                  onClick={previousStep}
-                  style={{
-                    padding: '0.75rem 1.5rem',
-                    background: '#fff',
-                    color: '#222',
-                    border: '1px solid #222',
-                    borderRadius: '8px',
-                    fontSize: '1rem',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem'
-                  }}
-                >
-                  Back
-                </button>
-              )}
-              {currentStep < 3 ? (
-                <button 
-                  onClick={nextStep}
-                  style={{
-                    padding: '0.75rem 2rem',
-                    background: '#222',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: '8px',
-                    fontSize: '1rem',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem'
-                  }}
-                >
-                  Next
-                </button>
-              ) : isInstantBookingEnabled ? (
-                // Payment button is now embedded in the form above - show nothing here
-                null
-              ) : (
-                <button
-                  onClick={submitBookingRequest}
-                  disabled={submitting}
-                  style={{
-                    padding: '0.75rem 2rem',
-                    background: '#222',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: '8px',
-                    fontSize: '1rem',
-                    fontWeight: 600,
-                    cursor: submitting ? 'not-allowed' : 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    opacity: submitting ? 0.7 : 1
-                  }}
-                >
-                  {submitting ? (
-                    <>
-                      <svg className="animate-spin" style={{ width: '18px', height: '18px', marginRight: '0.5rem' }} viewBox="0 0 24 24" fill="none">
-                        <circle cx="12" cy="12" r="10" stroke="#3b82f6" strokeWidth="3" strokeLinecap="round" strokeDasharray="31.4 31.4" />
-                      </svg>
-                      Sending...
-                    </>
-                  ) : 'Send Request'}
-                </button>
+                  )}
+                </div>
               )}
             </div>
+
           </div>
         </div>
 
@@ -1971,50 +1879,86 @@ function BookingPage() {
 
             <div className="summary-divider"></div>
 
-            {/* Giggster-style Date/Time Display */}
-            {(bookingData.eventDate || bookingData.eventTime) && (
-              <div style={{ padding: '16px 0' }}>
-                <div style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'space-between',
-                  flexWrap: 'wrap',
-                  gap: '8px'
-                }}>
-                  {bookingData.eventDate && (
-                    <span style={{ fontSize: '0.95rem', color: '#222', fontWeight: 500 }}>
-                      {formatDate(bookingData.eventDate)}
-                    </span>
-                  )}
+            {/* Enhanced Event Details Display */}
+            <div style={{ padding: '16px 0' }}>
+              {/* Event Name */}
+              {bookingData.eventName && (
+                <div style={{ marginBottom: '12px' }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#717171', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
+                    Event
+                  </div>
+                  <div style={{ fontSize: '1rem', color: '#222', fontWeight: 500 }}>
+                    {bookingData.eventName}
+                  </div>
+                </div>
+              )}
+
+              {/* Event Type */}
+              {bookingData.eventType && (
+                <div style={{ marginBottom: '12px' }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#717171', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
+                    Type
+                  </div>
+                  <div style={{ fontSize: '0.95rem', color: '#222' }}>
+                    {bookingData.eventType.charAt(0).toUpperCase() + bookingData.eventType.slice(1).replace('-', ' ')}
+                  </div>
+                </div>
+              )}
+
+              {/* Date & Time */}
+              {bookingData.eventDate && (
+                <div style={{ marginBottom: '12px' }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#717171', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
+                    Date & Time
+                  </div>
+                  <div style={{ fontSize: '0.95rem', color: '#222', fontWeight: 500 }}>
+                    {formatDate(bookingData.eventDate)}
+                  </div>
                   {bookingData.eventTime && bookingData.eventEndTime && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontSize: '0.95rem', color: '#222' }}>{formatTime(bookingData.eventTime)}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+                      <span style={{ fontSize: '0.9rem', color: '#222' }}>{formatTime(bookingData.eventTime)}</span>
                       <span style={{ color: '#9ca3af' }}>→</span>
-                      <span style={{ fontSize: '0.95rem', color: '#222' }}>{formatTime(bookingData.eventEndTime)}</span>
+                      <span style={{ fontSize: '0.9rem', color: '#222' }}>{formatTime(bookingData.eventEndTime)}</span>
+                      {(() => {
+                        const start = new Date(`2000-01-01T${bookingData.eventTime}`);
+                        const end = new Date(`2000-01-01T${bookingData.eventEndTime}`);
+                        const diffMs = end - start;
+                        const totalHours = diffMs > 0 ? diffMs / (1000 * 60 * 60) : 0;
+                        return totalHours > 0 ? (
+                          <span style={{ fontSize: '0.85rem', color: '#6b7280', marginLeft: '8px' }}>
+                            ({totalHours % 1 === 0 ? totalHours : totalHours.toFixed(1)} hrs)
+                          </span>
+                        ) : null;
+                      })()}
                     </div>
                   )}
                 </div>
-                {bookingData.eventTime && bookingData.eventEndTime && (() => {
-                  const start = new Date(`2000-01-01T${bookingData.eventTime}`);
-                  const end = new Date(`2000-01-01T${bookingData.eventEndTime}`);
-                  const diffMs = end - start;
-                  const totalHours = diffMs > 0 ? diffMs / (1000 * 60 * 60) : 0;
-                  return totalHours > 0 ? (
-                    <div style={{ textAlign: 'right', marginTop: '4px' }}>
-                      <span style={{ fontSize: '0.85rem', color: '#6b7280' }}>
-                        Total hours: {totalHours % 1 === 0 ? totalHours : totalHours.toFixed(1)}
-                      </span>
-                    </div>
-                  ) : null;
-                })()}
-                {bookingData.attendeeCount && (
-                  <div style={{ marginTop: '8px', fontSize: '0.9rem', color: '#6b7280' }}>
-                    <i className="fas fa-users" style={{ marginRight: '6px', fontSize: '0.8rem' }}></i>
+              )}
+
+              {/* Guest Count */}
+              {bookingData.attendeeCount && (
+                <div style={{ marginBottom: '12px' }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#717171', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
+                    Guests
+                  </div>
+                  <div style={{ fontSize: '0.95rem', color: '#222' }}>
                     {bookingData.attendeeCount} guests
                   </div>
-                )}
-              </div>
-            )}
+                </div>
+              )}
+
+              {/* Event Location */}
+              {bookingData.eventLocation && (
+                <div>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#717171', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
+                    Location
+                  </div>
+                  <div style={{ fontSize: '0.9rem', color: '#222' }}>
+                    {bookingData.eventLocation}
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Giggster-style Price Breakdown - Only show when items selected */}
             {(selectedServices.length > 0 || selectedPackage) && (
@@ -2245,125 +2189,53 @@ function BookingPage() {
               </>
             )}
 
-            {isInstantBookingEnabled ? (
-              <div className="info-notice" style={{ background: '#eff6ff', borderColor: '#5086E8' }}>
-                <i className="fas fa-bolt" style={{ color: '#5086E8' }}></i>
-                <p style={{ color: '#1e40af' }}>
-                  <strong>Instant Booking</strong> - Book and pay now without waiting for vendor approval.
-                </p>
-              </div>
-            ) : (
-              <div className="info-notice">
-                <i className="fas fa-shield-alt"></i>
-                <p>This is a free request. You won't be charged until you confirm with the vendor.</p>
-              </div>
-            )}
-
-            {/* Cancellation Policy */}
-            {cancellationPolicy && (() => {
-              const policyType = cancellationPolicy.PolicyType || 'flexible';
-              const policyInfo = {
-                flexible: { title: 'Flexible', color: '#065f46', bg: '#d1fae5', icon: 'fa-shield-alt' },
-                moderate: { title: 'Moderate', color: '#92400e', bg: '#fef3c7', icon: 'fa-shield-alt' },
-                strict: { title: 'Strict', color: '#991b1b', bg: '#fee2e2', icon: 'fa-shield-alt' },
-                custom: { title: 'Custom', color: '#3730a3', bg: '#e0e7ff', icon: 'fa-shield-alt' }
-              };
-              const info = policyInfo[policyType] || policyInfo.flexible;
-              
-              return (
-                <div style={{ 
-                  marginTop: '1rem', 
-                  padding: '16px', 
-                  background: 'linear-gradient(135deg, #f8f9fa 0%, #fff 100%)',
-                  border: '1px solid #e9ecef',
-                  borderRadius: '12px'
-                }}>
-                  {/* Header with badge */}
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-                    <span style={{ fontWeight: 600, fontSize: '0.9rem', color: '#222' }}>Cancellation Policy</span>
-                    <span style={{ 
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      background: info.bg,
-                      color: info.color,
-                      padding: '4px 10px',
-                      borderRadius: '12px',
-                      fontSize: '0.75rem',
-                      fontWeight: 600
-                    }}>
-                      <i className={`fas ${info.icon}`} style={{ fontSize: '0.7rem' }}></i>
-                      {info.title}
-                    </span>
-                  </div>
-                  
-                  {/* Policy details */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {policyType === 'custom' ? (
-                      <>
-                        {cancellationPolicy.FullRefundDays > 0 && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <i className="fas fa-check" style={{ color: '#28a745', fontSize: '0.75rem', width: '16px' }}></i>
-                            <span style={{ color: '#484848', fontSize: '0.8rem' }}>
-                              Full refund {cancellationPolicy.FullRefundDays}+ days before
-                            </span>
-                          </div>
-                        )}
-                        {cancellationPolicy.PartialRefundDays > 0 && cancellationPolicy.PartialRefundPercent > 0 && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <i className="fas fa-percentage" style={{ color: '#856404', fontSize: '0.75rem', width: '16px' }}></i>
-                            <span style={{ color: '#484848', fontSize: '0.8rem' }}>
-                              {cancellationPolicy.PartialRefundPercent}% refund {cancellationPolicy.PartialRefundDays}-{cancellationPolicy.FullRefundDays - 1} days before
-                            </span>
-                          </div>
-                        )}
-                        {cancellationPolicy.NoRefundDays > 0 && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <i className="fas fa-times" style={{ color: '#dc3545', fontSize: '0.75rem', width: '16px' }}></i>
-                            <span style={{ color: '#484848', fontSize: '0.8rem' }}>
-                              No refund within {cancellationPolicy.NoRefundDays} days
-                            </span>
-                          </div>
-                        )}
-                      </>
-                    ) : (
-                      <>
-                        {policyType === 'flexible' && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <i className="fas fa-check" style={{ color: '#28a745', fontSize: '0.75rem', width: '16px' }}></i>
-                            <span style={{ color: '#484848', fontSize: '0.8rem' }}>Full refund if cancelled 24+ hours before</span>
-                          </div>
-                        )}
-                        {policyType === 'moderate' && (
-                          <>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <i className="fas fa-check" style={{ color: '#28a745', fontSize: '0.75rem', width: '16px' }}></i>
-                              <span style={{ color: '#484848', fontSize: '0.8rem' }}>Full refund 7+ days before</span>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <i className="fas fa-percentage" style={{ color: '#856404', fontSize: '0.75rem', width: '16px' }}></i>
-                              <span style={{ color: '#484848', fontSize: '0.8rem' }}>50% refund 3-7 days before</span>
-                            </div>
-                          </>
-                        )}
-                        {policyType === 'strict' && (
-                          <>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <i className="fas fa-percentage" style={{ color: '#856404', fontSize: '0.75rem', width: '16px' }}></i>
-                              <span style={{ color: '#484848', fontSize: '0.8rem' }}>50% refund 14+ days before</span>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <i className="fas fa-times" style={{ color: '#dc3545', fontSize: '0.75rem', width: '16px' }}></i>
-                              <span style={{ color: '#484848', fontSize: '0.8rem' }}>No refund within 14 days</span>
-                            </div>
-                          </>
-                        )}
-                      </>
-                    )}
+            {/* Booking Info Section - Instant Booking, Cancellation, Lead Time */}
+            <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #ebebeb' }}>
+              {/* Instant Booking */}
+              {isInstantBookingEnabled && (
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: '16px' }}>
+                  <i className="fas fa-bolt" style={{ fontSize: '16px', color: '#222', width: '20px', marginTop: '2px' }}></i>
+                  <div>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 500, color: '#222' }}>Instant Booking</div>
+                    <div style={{ fontSize: '0.8rem', color: '#717171' }}>Book and pay now without waiting for vendor approval</div>
                   </div>
                 </div>
-              );
-            })()}
+              )}
+
+              {/* Cancellation Policy */}
+              {cancellationPolicy && (
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: '16px' }}>
+                  <i className="fas fa-calendar-check" style={{ fontSize: '16px', color: '#222', width: '20px', marginTop: '2px' }}></i>
+                  <div>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 500, color: '#222' }}>
+                      {cancellationPolicy.Name || 'Free cancellation'}
+                    </div>
+                    <div style={{ fontSize: '0.8rem', color: '#717171' }}>
+                      {cancellationPolicy.CancellationDays 
+                        ? `Free cancellation up to ${cancellationPolicy.CancellationDays} days before`
+                        : cancellationPolicy.Description || 'Flexible cancellation policy'}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Lead Time */}
+              {vendorData?.profile?.MinBookingLeadTimeHours > 0 && (
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                  <i className="fas fa-clock" style={{ fontSize: '16px', color: '#222', width: '20px', marginTop: '2px' }}></i>
+                  <div>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 500, color: '#222' }}>Advance notice required</div>
+                    <div style={{ fontSize: '0.8rem', color: '#717171' }}>
+                      {vendorData.profile.MinBookingLeadTimeHours >= 168 
+                        ? `Book at least ${Math.floor(vendorData.profile.MinBookingLeadTimeHours / 168)} week${Math.floor(vendorData.profile.MinBookingLeadTimeHours / 168) > 1 ? 's' : ''} in advance`
+                        : vendorData.profile.MinBookingLeadTimeHours >= 24 
+                          ? `Book at least ${Math.floor(vendorData.profile.MinBookingLeadTimeHours / 24)} day${Math.floor(vendorData.profile.MinBookingLeadTimeHours / 24) > 1 ? 's' : ''} in advance`
+                          : `Book at least ${vendorData.profile.MinBookingLeadTimeHours} hours in advance`}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

@@ -326,7 +326,7 @@
     align-self: start;
     z-index: 50;
     max-height: calc(100vh - 100px);
-    overflow-y: auto;
+    overflow: visible; /* Allow dropdowns/calendars to extend beyond sidebar */
 }
 
 /* Section Styles */

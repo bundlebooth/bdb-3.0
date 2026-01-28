@@ -107,6 +107,50 @@ const ProfileVendorWidget = ({
     fetchAvailabilityExceptions();
   }, [fetchVendorBookings, fetchAvailabilityExceptions]);
 
+  // Auto-select first available date based on lead time when picker opens
+  useEffect(() => {
+    if (showDatePicker && !selectedDate) {
+      // Calculate first available date based on lead time
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      let firstAvailableDate = new Date(today);
+      
+      // Add lead time hours
+      if (minBookingLeadTimeHours > 0) {
+        const leadTimeMs = minBookingLeadTimeHours * 60 * 60 * 1000;
+        firstAvailableDate = new Date(Date.now() + leadTimeMs);
+        firstAvailableDate.setHours(0, 0, 0, 0);
+        // If we're past midnight after adding lead time, move to next day
+        if (new Date(Date.now() + leadTimeMs).getDate() !== today.getDate()) {
+          firstAvailableDate.setDate(firstAvailableDate.getDate() + 1);
+        }
+      }
+      
+      // Find the first day that's actually available (checking business hours)
+      let daysChecked = 0;
+      const maxDaysToCheck = 60; // Don't check more than 60 days ahead
+      
+      while (daysChecked < maxDaysToCheck) {
+        const dayOfWeek = firstAvailableDate.getDay();
+        const dayHours = businessHours?.find(bh => bh.DayOfWeek === dayOfWeek);
+        const isAvailable = dayHours?.IsAvailable === true || dayHours?.IsAvailable === 1;
+        
+        // If no business hours defined, assume available
+        if (!businessHours || businessHours.length === 0 || isAvailable) {
+          break;
+        }
+        
+        firstAvailableDate.setDate(firstAvailableDate.getDate() + 1);
+        daysChecked++;
+      }
+      
+      // Set the selected date and update current month to show it
+      setSelectedDate(firstAvailableDate);
+      setCurrentMonth(new Date(firstAvailableDate.getFullYear(), firstAvailableDate.getMonth(), 1));
+    }
+  }, [showDatePicker, selectedDate, minBookingLeadTimeHours, businessHours]);
+
   // Get days in month for calendar
   const getDaysInMonth = (date) => {
     const year = date.getFullYear();

@@ -48,6 +48,7 @@ function VendorProfilePage() {
     navigate('/?map=true');
   };
   const [vendorFeatures, setVendorFeatures] = useState([]);
+  const [vendorSubcategories, setVendorSubcategories] = useState([]);
   const [portfolioAlbums, setPortfolioAlbums] = useState([]);
   const [recommendations, setRecommendations] = useState({ similar: [], nearby: [], popular: [] });
   const [activeRecommendationTab, setActiveRecommendationTab] = useState('similar');
@@ -129,6 +130,7 @@ function VendorProfilePage() {
       // Load additional data
       if (vendorDetails.profile?.VendorProfileID) {
         loadVendorFeatures(vendorDetails.profile.VendorProfileID);
+        loadVendorSubcategories(vendorDetails.profile.VendorProfileID);
         loadPortfolioAlbums(vendorDetails.profile.VendorProfileID);
         loadRecommendations(vendorId, vendorDetails);
         loadReviewsWithSurvey(vendorDetails.profile.VendorProfileID);
@@ -176,6 +178,19 @@ function VendorProfilePage() {
       }
     } catch (error) {
       console.error('Error loading vendor features:', error);
+    }
+  }, []);
+
+  // Load vendor subcategories
+  const loadVendorSubcategories = useCallback(async (vendorProfileId) => {
+    try {
+      const response = await apiGet(`/vendors/${vendorProfileId}/subcategories`);
+      if (response.ok) {
+        const data = await response.json();
+        setVendorSubcategories(data.subcategories || []);
+      }
+    } catch (error) {
+      console.error('Error loading vendor subcategories:', error);
     }
   }, []);
 
@@ -1056,6 +1071,37 @@ function VendorProfilePage() {
                 </p>
               </div>
             </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  // Render vendor subcategories section
+  const renderVendorSubcategories = () => {
+    if (!vendorSubcategories || vendorSubcategories.length === 0) return null;
+
+    return (
+      <div className="content-section" style={{ paddingTop: '1rem', paddingBottom: '1rem', borderTop: '1px solid #ebebeb' }}>
+        <h2 style={{ fontSize: '1.375rem', fontWeight: 600, marginBottom: '0.75rem' }}>Services Offered</h2>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+          {vendorSubcategories.map((subcategory, index) => (
+            <span 
+              key={index}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                padding: '8px 16px',
+                backgroundColor: '#f0f7ff',
+                color: '#5086E8',
+                borderRadius: '20px',
+                fontSize: '0.875rem',
+                fontWeight: 500,
+                border: '1px solid #5086E8'
+              }}
+            >
+              {subcategory.SubcategoryName || subcategory.subcategoryName}
+            </span>
           ))}
         </div>
       </div>
@@ -2041,191 +2087,66 @@ function VendorProfilePage() {
     );
   };
 
-  // Render recommendations section as full-width carousel with arrows
+  // Render recommendations section - simple grid layout
   const renderRecommendations = () => {
-    const currentRecs = recommendations[activeRecommendationTab] || [];
-    const itemWidth = 220;
-    const gap = 16;
-    const scrollAmount = (itemWidth + gap) * 3; // Scroll 3 cards at a time
+    // Combine similar and nearby vendors, deduplicate by VendorProfileID
+    const similarVendors = recommendations.similar || [];
+    const nearbyVendors = recommendations.nearby || [];
+    const seenIds = new Set();
+    const combinedRecs = [];
+    
+    similarVendors.forEach(v => {
+      const id = v.VendorProfileID || v.id;
+      if (!seenIds.has(id)) {
+        seenIds.add(id);
+        combinedRecs.push(v);
+      }
+    });
+    
+    nearbyVendors.forEach(v => {
+      const id = v.VendorProfileID || v.id;
+      if (!seenIds.has(id)) {
+        seenIds.add(id);
+        combinedRecs.push(v);
+      }
+    });
+    
+    // Limit to 4 vendors for clean grid
+    const currentRecs = combinedRecs.slice(0, 4);
 
-    const handleTabChange = (tab) => {
-      setActiveRecommendationTab(tab);
-      setCarouselIndex(0);
-    };
-
-    const scrollLeft = () => {
-      setCarouselIndex(prev => Math.max(prev - scrollAmount, 0));
-    };
-
-    const scrollRight = () => {
-      const maxScroll = Math.max(0, currentRecs.length * (itemWidth + gap) - (typeof window !== 'undefined' ? window.innerWidth - 160 : 1000));
-      setCarouselIndex(prev => Math.min(prev + scrollAmount, maxScroll));
-    };
-
-    const canScrollLeft = carouselIndex > 0;
-    const canScrollRight = currentRecs.length > 4;
+    if (currentRecs.length === 0) return null;
 
     return (
       <div style={{ 
         padding: '3rem 0 2rem 0', 
         marginTop: '2rem',
-        width: '100vw',
-        marginLeft: 'calc(-50vw + 50%)',
-        background: '#fafafa'
+        borderTop: '1px solid #ebebeb'
       }}>
-        <div style={{ 
-          maxWidth: '100%', 
-          padding: '0 4rem',
-          position: 'relative'
+        <h2 style={{ 
+          fontSize: '1.375rem', 
+          fontWeight: '600', 
+          color: '#222222',
+          margin: 0,
+          marginBottom: '1.5rem'
         }}>
-          {/* Header with title and navigation arrows */}
-          <div style={{ 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'center',
-            marginBottom: '1.5rem'
-          }}>
-            <div>
-              <h2 style={{ 
-                fontSize: '1.375rem', 
-                fontWeight: '600', 
-                color: '#222222',
-                marginBottom: '0.75rem'
-              }}>
-                {activeRecommendationTab === 'similar' && 'Similar vendors'}
-                {activeRecommendationTab === 'nearby' && 'Nearby vendors'}
-                {activeRecommendationTab === 'popular' && 'Popular vendors'}
-              </h2>
-              
-              {/* Tab buttons */}
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <button 
-                  onClick={() => handleTabChange('similar')}
-                  style={{
-                    padding: '0.375rem 0.75rem',
-                    borderRadius: '16px',
-                    border: '1px solid #dddddd',
-                    backgroundColor: activeRecommendationTab === 'similar' ? '#222222' : '#ffffff',
-                    color: activeRecommendationTab === 'similar' ? '#ffffff' : '#222222',
-                    fontWeight: '500',
-                    fontSize: '0.8rem',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Similar
-                </button>
-                <button 
-                  onClick={() => handleTabChange('nearby')}
-                  style={{
-                    padding: '0.375rem 0.75rem',
-                    borderRadius: '16px',
-                    border: '1px solid #dddddd',
-                    backgroundColor: activeRecommendationTab === 'nearby' ? '#222222' : '#ffffff',
-                    color: activeRecommendationTab === 'nearby' ? '#ffffff' : '#222222',
-                    fontWeight: '500',
-                    fontSize: '0.8rem',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Nearby
-                </button>
-                <button 
-                  onClick={() => handleTabChange('popular')}
-                  style={{
-                    padding: '0.375rem 0.75rem',
-                    borderRadius: '16px',
-                    border: '1px solid #dddddd',
-                    backgroundColor: activeRecommendationTab === 'popular' ? '#222222' : '#ffffff',
-                    color: activeRecommendationTab === 'popular' ? '#ffffff' : '#222222',
-                    fontWeight: '500',
-                    fontSize: '0.8rem',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Popular
-                </button>
-              </div>
-            </div>
-            
-            {/* Navigation arrows at top right */}
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button
-                onClick={scrollLeft}
-                disabled={!canScrollLeft}
-                style={{
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '50%',
-                  border: '1px solid #222',
-                  backgroundColor: '#fff',
-                  cursor: canScrollLeft ? 'pointer' : 'not-allowed',
-                  opacity: canScrollLeft ? 1 : 0.3,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-              >
-                <i className="fas fa-chevron-left" style={{ fontSize: '12px' }}></i>
-              </button>
-              <button
-                onClick={scrollRight}
-                disabled={!canScrollRight}
-                style={{
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '50%',
-                  border: '1px solid #222',
-                  backgroundColor: '#fff',
-                  cursor: canScrollRight ? 'pointer' : 'not-allowed',
-                  opacity: canScrollRight ? 1 : 0.3,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-              >
-                <i className="fas fa-chevron-right" style={{ fontSize: '12px' }}></i>
-              </button>
-            </div>
-          </div>
-          
-          {/* Horizontal Carousel - Single Row */}
-          <div style={{ overflow: 'hidden' }}>
-            <div style={{
-              display: 'flex',
-              transform: `translateX(-${carouselIndex}px)`,
-              transition: 'transform 0.3s ease-in-out',
-              gap: `${gap}px`
-            }}>
-              {currentRecs.length > 0 ? (
-                currentRecs.map((venue, index) => (
-                  <div
-                    key={venue.VendorProfileID || venue.id || index}
-                    style={{
-                      flex: `0 0 ${itemWidth}px`,
-                      width: `${itemWidth}px`
-                    }}
-                  >
-                    <VendorCard
-                      vendor={venue}
-                      isFavorite={favorites.some(fav => fav.vendorProfileId === (venue.VendorProfileID || venue.id))}
-                      onToggleFavorite={(vendorId) => handleRecommendationFavorite(vendorId)}
-                      onView={(vendorId) => navigate(`/vendor/${vendorId}`)}
-                    />
-                  </div>
-                ))
-              ) : (
-                <div style={{
-                  width: '100%',
-                  textAlign: 'center',
-                  padding: '3rem',
-                  color: '#6b7280'
-                }}>
-                  <i className="fas fa-search" style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.3 }}></i>
-                  <div>Loading recommendations...</div>
-                </div>
-              )}
-            </div>
-          </div>
+          Similar vendors
+        </h2>
+        
+        {/* Simple 4-column grid */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(4, 1fr)',
+          gap: '16px'
+        }}>
+          {currentRecs.map((venue, index) => (
+            <VendorCard
+              key={venue.VendorProfileID || venue.id || index}
+              vendor={venue}
+              isFavorite={favorites.some(fav => fav.vendorProfileId === (venue.VendorProfileID || venue.id))}
+              onToggleFavorite={(vendorId) => handleRecommendationFavorite(vendorId)}
+              onView={(vendorId) => navigate(`/vendor/${vendorId}`)}
+            />
+          ))}
         </div>
       </div>
     );
@@ -2799,25 +2720,8 @@ function VendorProfilePage() {
                 </div>
               )}
 
-              {/* Minimum Lead Time Info */}
-              {profile?.MinBookingLeadTimeHours > 0 && (
-                <div style={{ display: 'flex', gap: '16px', marginBottom: '24px' }}>
-                  <i className="fas fa-clock" style={{ fontSize: '24px', color: '#5086E8', width: '32px' }}></i>
-                  <div>
-                    <div style={{ fontSize: '16px', fontWeight: 600, color: '#222' }}>Advance Notice Required</div>
-                    <div style={{ fontSize: '14px', color: '#717171' }}>
-                      {profile.MinBookingLeadTimeHours >= 168 
-                        ? `Book at least ${Math.floor(profile.MinBookingLeadTimeHours / 168)} week${Math.floor(profile.MinBookingLeadTimeHours / 168) > 1 ? 's' : ''} in advance`
-                        : profile.MinBookingLeadTimeHours >= 24 
-                          ? `Book at least ${Math.floor(profile.MinBookingLeadTimeHours / 24)} day${Math.floor(profile.MinBookingLeadTimeHours / 24) > 1 ? 's' : ''} in advance`
-                          : `Book at least ${profile.MinBookingLeadTimeHours} hours in advance`}
-                    </div>
-                  </div>
-                </div>
-              )}
-              
               {/* Cancellation Policy - Always shown */}
-              <div style={{ display: 'flex', gap: '16px' }}>
+              <div style={{ display: 'flex', gap: '16px', marginBottom: profile?.MinBookingLeadTimeHours > 0 ? '24px' : 0 }}>
                 <i className="fas fa-calendar-xmark" style={{ fontSize: '24px', color: '#222', width: '32px' }}></i>
                 <div>
                   <div style={{ fontSize: '16px', fontWeight: 600, color: '#222' }}>
@@ -2830,6 +2734,23 @@ function VendorProfilePage() {
                   </div>
                 </div>
               </div>
+
+              {/* Minimum Lead Time Info - styled like cancellation policy */}
+              {profile?.MinBookingLeadTimeHours > 0 && (
+                <div style={{ display: 'flex', gap: '16px' }}>
+                  <i className="fas fa-clock" style={{ fontSize: '24px', color: '#222', width: '32px' }}></i>
+                  <div>
+                    <div style={{ fontSize: '16px', fontWeight: 600, color: '#222' }}>Advance notice required</div>
+                    <div style={{ fontSize: '14px', color: '#717171' }}>
+                      {profile.MinBookingLeadTimeHours >= 168 
+                        ? `Book at least ${Math.floor(profile.MinBookingLeadTimeHours / 168)} week${Math.floor(profile.MinBookingLeadTimeHours / 168) > 1 ? 's' : ''} in advance`
+                        : profile.MinBookingLeadTimeHours >= 24 
+                          ? `Book at least ${Math.floor(profile.MinBookingLeadTimeHours / 24)} day${Math.floor(profile.MinBookingLeadTimeHours / 24) > 1 ? 's' : ''} in advance`
+                          : `Book at least ${profile.MinBookingLeadTimeHours} hours in advance`}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Main Content */}
@@ -2870,10 +2791,13 @@ function VendorProfilePage() {
             })()}
           </div>
 
-          {/* 2. Badges Section */}
+          {/* 2. Services Offered (Subcategories) */}
+          {renderVendorSubcategories()}
+
+          {/* 3. Badges Section */}
           {renderVendorBadges()}
 
-          {/* 3. What This Place Offers (Questionnaire of Services) */}
+          {/* 4. What This Place Offers (Questionnaire of Services) */}
           {renderVendorFeatures()}
 
           {/* 4. What We Offer (Service Pricing) */}

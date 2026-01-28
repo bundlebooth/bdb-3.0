@@ -102,6 +102,11 @@ export const SUPPORT_EMAIL = 'support@planbeau.com';
 export const APP_URL = process.env.REACT_APP_URL || 'https://www.planbeau.com';
 
 // ============================================================
+// UNSPLASH API CONFIGURATION
+// ============================================================
+export const UNSPLASH_ACCESS_KEY = process.env.REACT_APP_UNSPLASH_ACCESS_KEY || 'fDJokb1XWuN-cquNUgCRsn_Gk1UjRV-JltG9sfPozB8';
+
+// ============================================================
 // HASHID CONFIGURATION
 // ============================================================
 

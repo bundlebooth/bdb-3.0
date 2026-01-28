@@ -93,6 +93,54 @@ function IndexPage() {
   const vendorsPerPage = 12;
   const serverPageSize = 200;
 
+  // Category metadata for category-based carousels
+  const categoryMeta = useMemo(() => ({
+    'venue': { label: 'Venues', icon: 'fa-building', color: '#a855f7' },
+    'photo': { label: 'Photographers & Videographers', icon: 'fa-camera', color: '#06b6d4' },
+    'music': { label: 'DJs & Musicians', icon: 'fa-music', color: '#10b981' },
+    'catering': { label: 'Caterers', icon: 'fa-utensils', color: '#f59e0b' },
+    'entertainment': { label: 'Entertainment', icon: 'fa-theater-masks', color: '#ef4444' },
+    'experiences': { label: 'Experiences', icon: 'fa-star', color: '#f97316' },
+    'decor': { label: 'Decorators', icon: 'fa-palette', color: '#ec4899' },
+    'beauty': { label: 'Beauty & Makeup', icon: 'fa-cut', color: '#be185d' },
+    'cake': { label: 'Cakes & Desserts', icon: 'fa-birthday-cake', color: '#a855f7' },
+    'transport': { label: 'Transportation', icon: 'fa-car', color: '#3b82f6' },
+    'planner': { label: 'Event Planners', icon: 'fa-clipboard-list', color: '#64748b' },
+    'fashion': { label: 'Fashion & Attire', icon: 'fa-tshirt', color: '#7c3aed' },
+    'stationery': { label: 'Stationery & Invitations', icon: 'fa-envelope', color: '#8b5cf6' }
+  }), []);
+
+  // Group vendors by category for category-based carousels
+  const categorySections = useMemo(() => {
+    if (!vendors || vendors.length === 0) return [];
+    
+    // Group vendors by their category
+    const grouped = {};
+    vendors.forEach(vendor => {
+      const cat = (vendor.category || vendor.type || 'other').toLowerCase();
+      if (!grouped[cat]) {
+        grouped[cat] = [];
+      }
+      grouped[cat].push(vendor);
+    });
+    
+    // Convert to array of sections, sorted by vendor count (most vendors first)
+    // Only include categories with at least 1 vendor
+    const sections = Object.entries(grouped)
+      .filter(([cat, vendorList]) => vendorList.length > 0 && categoryMeta[cat])
+      .map(([cat, vendorList]) => ({
+        id: `category-${cat}`,
+        category: cat,
+        title: categoryMeta[cat]?.label || cat.charAt(0).toUpperCase() + cat.slice(1),
+        icon: categoryMeta[cat]?.icon || 'fa-store',
+        color: categoryMeta[cat]?.color || '#6366f1',
+        vendors: vendorList.slice(0, 12) // Limit to 12 per category carousel
+      }))
+      .sort((a, b) => b.vendors.length - a.vendors.length);
+    
+    return sections;
+  }, [vendors, categoryMeta]);
+
   // Filters state - location and vendor attributes (initialize from URL)
   const [filters, setFilters] = useState(() => {
     const params = new URLSearchParams(window.location.search);
@@ -1329,6 +1377,48 @@ function IndexPage() {
             </React.Fragment>
           ))
         )}
+        
+        {/* Category-based carousels - MOBILE */}
+        {!loadingDiscovery && categorySections.length > 0 && currentCategory === 'all' && (
+          <>
+            {categorySections.map((section) => (
+              <React.Fragment key={`mobile-${section.id}`}>
+                <VendorSection
+                  title={section.title}
+                  description=""
+                  vendors={section.vendors}
+                  favorites={favorites}
+                  onToggleFavorite={handleToggleFavorite}
+                  onViewVendor={handleViewVendor}
+                  onHighlightVendor={handleHighlightVendor}
+                  icon={section.icon}
+                  sectionType={section.category}
+                  cityFilter={detectedCity || filters.location}
+                  categoryFilter={section.category}
+                />
+              </React.Fragment>
+            ))}
+          </>  
+        )}
+        
+        {/* "Explore All" Carousel - MOBILE */}
+        {!loadingDiscovery && currentVendors.length > 0 && (
+          <>
+            <VendorSection
+              title="Explore All Vendors"
+              description={`${serverTotalCount} vendors available`}
+              vendors={currentVendors.slice(0, 12)}
+              favorites={favorites}
+              onToggleFavorite={handleToggleFavorite}
+              onViewVendor={handleViewVendor}
+              onHighlightVendor={handleHighlightVendor}
+              icon="fa-store"
+              sectionType="all"
+              cityFilter={detectedCity || filters.location}
+              categoryFilter={currentCategory}
+            />
+          </>
+        )}
       </div>
       )}
       
@@ -1476,82 +1566,45 @@ function IndexPage() {
           </div>
           )}
           
-          {/* Divider between discovery sections and main vendor grid */}
-          {(filteredVendors.length > 0 || loading) && !loadingDiscovery && discoverySections.length > 0 && (
-            <div className="section-divider" style={{
-              maxWidth: '100%',
-              margin: '40px 0',
-              height: '1px',
-              background: 'linear-gradient(to right, transparent, rgba(0, 0, 0, 0.08), transparent)'
-            }}></div>
+          {/* Category-based carousels - DESKTOP */}
+          {!isMobileView && !loadingDiscovery && categorySections.length > 0 && currentCategory === 'all' && (
+            <div className="vendor-category-sections" style={{ marginTop: discoverySections.length > 0 ? '16px' : '0' }}>
+              {categorySections.map((section) => (
+                <React.Fragment key={`desktop-${section.id}`}>
+                  <VendorSection
+                    title={section.title}
+                    description=""
+                    vendors={section.vendors}
+                    favorites={favorites}
+                    onToggleFavorite={handleToggleFavorite}
+                    onViewVendor={handleViewVendor}
+                    onHighlightVendor={handleHighlightVendor}
+                    icon={section.icon}
+                    sectionType={section.category}
+                    cityFilter={detectedCity || filters.location}
+                    categoryFilter={section.category}
+                  />
+                </React.Fragment>
+              ))}
+            </div>
           )}
           
-          {/* Main Vendor Grid */}
-          <VendorGrid vendors={currentVendors} loading={loading} loadingMore={loadingMore} favorites={favorites} onToggleFavorite={handleToggleFavorite} onViewVendor={handleViewVendor} onHighlightVendor={handleHighlightVendor} />
-          {showLoadMore && (
-            <div id="load-more-wrapper" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', margin: '3rem 0 2rem 0', position: 'relative' }}>
-              {/* Loading overlay with spinner */}
-              {loadingMore && (
-                <div style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: '2rem',
-                  marginBottom: '1rem'
-                }}>
-                  <div style={{
-                    width: '48px',
-                    height: '48px',
-                    border: '4px solid #e5e7eb',
-                    borderTop: '4px solid #5e72e4',
-                    borderRadius: '50%',
-                    animation: 'spin 1s linear infinite'
-                  }}></div>
-                  <style>{`
-                    @keyframes spin {
-                      0% { transform: rotate(0deg); }
-                      100% { transform: rotate(360deg); }
-                    }
-                  `}</style>
-                </div>
-              )}
-              {!loadingMore && (
-                <button 
-                  className="btn" 
-                  id="load-more-btn"
-                  onClick={() => loadVendors(true)}
-                  disabled={loadingMore}
-                  style={{ 
-                    backgroundColor: '#5e72e4', 
-                    color: 'white', 
-                    border: 'none', 
-                    padding: '0.875rem 2.5rem', 
-                    fontSize: '1rem', 
-                    fontWeight: 500, 
-                    borderRadius: '8px', 
-                    cursor: 'pointer', 
-                    boxShadow: '0 2px 8px rgba(94, 114, 228, 0.2)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    transition: 'all 0.2s ease'
-                  }}
-                  onMouseOver={(e) => {
-                    e.currentTarget.style.backgroundColor = '#4a5acf';
-                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(94, 114, 228, 0.3)';
-                    e.currentTarget.style.transform = 'translateY(-1px)';
-                  }}
-                  onMouseOut={(e) => {
-                    e.currentTarget.style.backgroundColor = '#5e72e4';
-                    e.currentTarget.style.boxShadow = '0 2px 8px rgba(94, 114, 228, 0.2)';
-                    e.currentTarget.style.transform = 'translateY(0)';
-                  }}
-                >
-                  <span id="load-more-text">Load More</span>
-                  <i className="fas fa-chevron-down"></i>
-                </button>
-              )}
+          {/* "Explore All" Carousel - shows a sample of all vendors */}
+          {!isMobileView && !loadingDiscovery && currentVendors.length > 0 && (
+            <div className="vendor-all-section" style={{ marginTop: '16px' }}>
+              <VendorSection
+                title="Explore All Vendors"
+                description={`${serverTotalCount} vendors available ${detectedCity || filters.location ? `near ${detectedCity || filters.location}` : 'near you'}`}
+                vendors={currentVendors.slice(0, 12)}
+                favorites={favorites}
+                onToggleFavorite={handleToggleFavorite}
+                onViewVendor={handleViewVendor}
+                onHighlightVendor={handleHighlightVendor}
+                icon="fa-store"
+                sectionType="all"
+                cityFilter={detectedCity || filters.location}
+                categoryFilter={currentCategory}
+              />
             </div>
           )}
           </main>
