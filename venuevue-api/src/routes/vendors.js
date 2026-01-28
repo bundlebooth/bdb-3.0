@@ -1096,6 +1096,10 @@ router.get('/search-by-categories', async (req, res) => {
       dayOfWeek,            // Day of week (e.g., 'Monday', 'Tuesday')
       startTime,            // Start time (HH:MM format)
       endTime,              // End time (HH:MM format)
+      // attribute filters
+      instantBookingOnly,   // Filter for instant booking vendors
+      eventTypes,           // Comma-separated event type IDs
+      cultures,             // Comma-separated culture IDs
       includeDiscoverySections // Include discovery sections in response
     } = req.query;
 
@@ -1247,7 +1251,56 @@ router.get('/search-by-categories', async (req, res) => {
     const sections = await Promise.all(categoryList.map(fetchCategory));
 
     // Combine all vendors from all sections for discovery sections
-    const allVendors = sections.flatMap(s => s.vendors || []);
+    let allVendors = sections.flatMap(s => s.vendors || []);
+    
+    // Apply post-query filters for new attributes (instant booking, event types, cultures)
+    if (instantBookingOnly === 'true' || eventTypes || cultures) {
+      const vendorIds = allVendors.map(v => v.vendorProfileId);
+      
+      if (vendorIds.length > 0) {
+        // Filter by instant booking
+        if (instantBookingOnly === 'true') {
+          const instantBookingRequest = new sql.Request(pool);
+          const instantResult = await instantBookingRequest.query(`
+            SELECT VendorProfileID FROM vendors.VendorProfiles 
+            WHERE VendorProfileID IN (${vendorIds.join(',')}) 
+            AND InstantBookingEnabled = 1
+          `);
+          const instantBookingIds = new Set(instantResult.recordset.map(r => r.VendorProfileID));
+          allVendors = allVendors.filter(v => instantBookingIds.has(v.vendorProfileId));
+        }
+        
+        // Filter by event types
+        if (eventTypes) {
+          const eventTypeIds = eventTypes.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
+          if (eventTypeIds.length > 0 && allVendors.length > 0) {
+            const eventTypeRequest = new sql.Request(pool);
+            const eventTypeResult = await eventTypeRequest.query(`
+              SELECT DISTINCT VendorProfileID FROM vendors.VendorEventTypes 
+              WHERE VendorProfileID IN (${allVendors.map(v => v.vendorProfileId).join(',')}) 
+              AND EventTypeID IN (${eventTypeIds.join(',')})
+            `);
+            const eventTypeVendorIds = new Set(eventTypeResult.recordset.map(r => r.VendorProfileID));
+            allVendors = allVendors.filter(v => eventTypeVendorIds.has(v.vendorProfileId));
+          }
+        }
+        
+        // Filter by cultures
+        if (cultures) {
+          const cultureIds = cultures.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
+          if (cultureIds.length > 0 && allVendors.length > 0) {
+            const cultureRequest = new sql.Request(pool);
+            const cultureResult = await cultureRequest.query(`
+              SELECT DISTINCT VendorProfileID FROM vendors.VendorCultures 
+              WHERE VendorProfileID IN (${allVendors.map(v => v.vendorProfileId).join(',')}) 
+              AND CultureID IN (${cultureIds.join(',')})
+            `);
+            const cultureVendorIds = new Set(cultureResult.recordset.map(r => r.VendorProfileID));
+            allVendors = allVendors.filter(v => cultureVendorIds.has(v.vendorProfileId));
+          }
+        }
+      }
+    }
     
     // Build discovery sections if requested
     let discoverySections = null;
@@ -1407,10 +1460,25 @@ router.get('/search-by-categories', async (req, res) => {
       }
     }
 
+    // If attribute filters were applied, update sections with filtered vendors
+    let finalSections = sections;
+    if (instantBookingOnly === 'true' || eventTypes || cultures) {
+      // Create a set of filtered vendor IDs for quick lookup
+      const filteredVendorIds = new Set(allVendors.map(v => v.vendorProfileId));
+      // Update each section to only include filtered vendors
+      finalSections = sections.map(section => ({
+        ...section,
+        vendors: section.vendors.filter(v => filteredVendorIds.has(v.vendorProfileId)),
+        totalCount: section.vendors.filter(v => filteredVendorIds.has(v.vendorProfileId)).length
+      }));
+    }
+
     res.json({
       success: true,
-      sections,
+      sections: finalSections,
       categories: categoryList,
+      // Include total filtered count for the filter modal preview
+      totalCount: allVendors.length,
       // Discovery sections - only included when requested
       ...(discoverySections && { discoverySections, totalSections: discoverySections.length })
     });
