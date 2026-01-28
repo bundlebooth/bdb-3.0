@@ -33,23 +33,55 @@ router.post('/', async (req, res) => {
       userId, 
       vendorProfileId, 
       eventDate, 
+      eventTime,
+      eventEndTime,
       endDate, 
       attendeeCount, 
-      specialRequests, 
+      specialRequests,
+      specialRequestText,
       services,
-      paymentIntentId
+      paymentIntentId,
+      eventName,
+      eventType,
+      eventLocation,
+      packageId,
+      packageName,
+      packagePrice,
+      budget,
+      timeZone,
+      isInstantBooking
     } = req.body;
 
     const pool = await poolPromise;
     const request = new sql.Request(pool);
     
+    // Build start datetime from eventDate + eventTime
+    let startDateTime = new Date(eventDate);
+    if (eventTime) {
+      const [hours, minutes] = eventTime.split(':');
+      startDateTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+    }
+    
+    // Build end datetime from eventDate + eventEndTime (or use endDate if provided)
+    let endDateTime;
+    if (endDate) {
+      endDateTime = new Date(endDate);
+    } else if (eventEndTime) {
+      endDateTime = new Date(eventDate);
+      const [hours, minutes] = eventEndTime.split(':');
+      endDateTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+    } else {
+      // Default to same as start if no end time provided
+      endDateTime = new Date(startDateTime);
+    }
+    
     request.input('UserID', sql.Int, userId);
     request.input('VendorProfileID', sql.Int, vendorProfileId);
-    request.input('EventDate', sql.DateTime, new Date(eventDate));
-    request.input('EndDate', sql.DateTime, new Date(endDate));
+    request.input('EventDate', sql.DateTime, startDateTime);
+    request.input('EndDate', sql.DateTime, endDateTime);
     request.input('AttendeeCount', sql.Int, attendeeCount || 1);
-    request.input('SpecialRequests', sql.NVarChar(sql.MAX), specialRequests || null);
-    request.input('ServicesJSON', sql.NVarChar(sql.MAX), JSON.stringify(services));
+    request.input('SpecialRequests', sql.NVarChar(sql.MAX), specialRequests || specialRequestText || null);
+    request.input('ServicesJSON', sql.NVarChar(sql.MAX), JSON.stringify(services || []));
     request.input('PaymentIntentID', sql.NVarChar(100), paymentIntentId || null);
 
     const result = await request.execute('bookings.sp_CreateBookingWithServices');
@@ -58,13 +90,23 @@ router.post('/', async (req, res) => {
     const conversationId = result.recordset[0].ConversationID;
 
     res.json({
+      success: true,
       bookingId,
-      conversationId
+      conversationId,
+      data: {
+        BookingID: bookingId,
+        ConversationID: conversationId,
+        EventName: eventName,
+        EventDate: eventDate,
+        TotalAmount: budget || packagePrice || 0,
+        isInstantBooking: isInstantBooking || false
+      }
     });
 
   } catch (err) {
     console.error('Database error:', err);
     res.status(500).json({ 
+      success: false,
       message: 'Database operation failed',
       error: err.message 
     });
