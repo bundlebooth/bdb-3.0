@@ -87,6 +87,8 @@ router.post('/', async (req, res) => {
     request.input('EventName', sql.NVarChar(255), eventName || null);
     request.input('EventType', sql.NVarChar(100), eventType || null);
     request.input('TimeZone', sql.NVarChar(100), timeZone || null);
+    request.input('IsInstantBooking', sql.Bit, isInstantBooking ? 1 : 0);
+    request.input('TotalAmount', sql.Decimal(10, 2), budget || packagePrice || 0);
 
     const result = await request.execute('bookings.sp_CreateWithServices');
     
