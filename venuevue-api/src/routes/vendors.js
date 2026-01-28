@@ -521,6 +521,8 @@ router.get('/', async (req, res) => {
       instantBookingOnly, // Filter for instant booking vendors
       eventTypes, // Comma-separated event type IDs
       cultures, // Comma-separated culture IDs
+      experienceRange, // Years of experience range (e.g., '5-10')
+      serviceLocation, // Service location scope (e.g., 'Local', 'Regional')
       // Discovery sections - when true, returns categorized sections from same query
       includeDiscoverySections
     } = req.query;
@@ -636,54 +638,65 @@ router.get('/', async (req, res) => {
       avgResponseMinutes: vendor.AvgResponseMinutes || null,
       profileViews: vendor.ProfileViews || 0,
       // Google reviews data
-      googlePlaceId: vendor.GooglePlaceId || vendor.GooglePlaceID || null
+      googlePlaceId: vendor.GooglePlaceId || vendor.GooglePlaceID || null,
+      // Vendor attributes for filtering
+      instantBookingEnabled: vendor.InstantBookingEnabled || false,
+      yearsOfExperienceRange: vendor.YearsOfExperienceRange || null,
+      serviceLocationScope: vendor.ServiceLocationScope || null
     }));
 
-    // Apply post-query filters for new attributes (instant booking, event types, cultures)
-    if (instantBookingOnly === 'true' || eventTypes || cultures) {
-      // Get vendor IDs that match the filters
-      const vendorIds = formattedVendors.map(v => v.vendorProfileId);
-      
-      if (vendorIds.length > 0) {
-        // Filter by instant booking
-        if (instantBookingOnly === 'true') {
-          const instantBookingRequest = new sql.Request(pool);
-          const instantResult = await instantBookingRequest.query(`
-            SELECT VendorProfileID FROM vendors.VendorProfiles 
-            WHERE VendorProfileID IN (${vendorIds.join(',')}) 
-            AND InstantBookingEnabled = 1
-          `);
-          const instantBookingIds = new Set(instantResult.recordset.map(r => r.VendorProfileID));
-          formattedVendors = formattedVendors.filter(v => instantBookingIds.has(v.vendorProfileId));
-        }
-        
-        // Filter by event types
-        if (eventTypes) {
-          const eventTypeIds = eventTypes.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
-          if (eventTypeIds.length > 0) {
-            const eventTypeRequest = new sql.Request(pool);
-            const eventTypeResult = await eventTypeRequest.query(`
-              SELECT DISTINCT VendorProfileID FROM vendors.VendorEventTypes 
-              WHERE VendorProfileID IN (${formattedVendors.map(v => v.vendorProfileId).join(',')}) 
-              AND EventTypeID IN (${eventTypeIds.join(',')})
-            `);
-            const eventTypeVendorIds = new Set(eventTypeResult.recordset.map(r => r.VendorProfileID));
-            formattedVendors = formattedVendors.filter(v => eventTypeVendorIds.has(v.vendorProfileId));
+    // Apply attribute-based filters (post-query filtering for attributes not in SP)
+    if (instantBookingOnly === 'true') {
+      formattedVendors = formattedVendors.filter(v => v.instantBookingEnabled);
+    }
+    if (experienceRange) {
+      formattedVendors = formattedVendors.filter(v => v.yearsOfExperienceRange === experienceRange);
+    }
+    if (serviceLocation) {
+      formattedVendors = formattedVendors.filter(v => v.serviceLocationScope === serviceLocation);
+    }
+
+    // Filter by event types if specified (requires additional query)
+    if (eventTypes) {
+      const eventTypeIds = eventTypes.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
+      if (eventTypeIds.length > 0) {
+        const vendorIds = formattedVendors.map(v => v.vendorProfileId || v.id).filter(Boolean);
+        if (vendorIds.length > 0) {
+          try {
+            const eventTypeQuery = `
+              SELECT DISTINCT VendorProfileID 
+              FROM vendors.VendorEventTypes 
+              WHERE EventTypeID IN (${eventTypeIds.join(',')})
+              AND VendorProfileID IN (${vendorIds.join(',')})
+            `;
+            const etResult = await pool.request().query(eventTypeQuery);
+            const matchingVendorIds = new Set(etResult.recordset.map(r => r.VendorProfileID));
+            formattedVendors = formattedVendors.filter(v => matchingVendorIds.has(v.vendorProfileId || v.id));
+          } catch (etErr) {
+            console.warn('Event type filtering failed:', etErr.message);
           }
         }
-        
-        // Filter by cultures
-        if (cultures) {
-          const cultureIds = cultures.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
-          if (cultureIds.length > 0) {
-            const cultureRequest = new sql.Request(pool);
-            const cultureResult = await cultureRequest.query(`
-              SELECT DISTINCT VendorProfileID FROM vendors.VendorCultures 
-              WHERE VendorProfileID IN (${formattedVendors.map(v => v.vendorProfileId).join(',')}) 
-              AND CultureID IN (${cultureIds.join(',')})
-            `);
-            const cultureVendorIds = new Set(cultureResult.recordset.map(r => r.VendorProfileID));
-            formattedVendors = formattedVendors.filter(v => cultureVendorIds.has(v.vendorProfileId));
+      }
+    }
+
+    // Filter by cultures if specified (requires additional query)
+    if (cultures) {
+      const cultureIds = cultures.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
+      if (cultureIds.length > 0) {
+        const vendorIds = formattedVendors.map(v => v.vendorProfileId || v.id).filter(Boolean);
+        if (vendorIds.length > 0) {
+          try {
+            const cultureQuery = `
+              SELECT DISTINCT VendorProfileID 
+              FROM vendors.VendorCultures 
+              WHERE CultureID IN (${cultureIds.join(',')})
+              AND VendorProfileID IN (${vendorIds.join(',')})
+            `;
+            const cResult = await pool.request().query(cultureQuery);
+            const matchingVendorIds = new Set(cResult.recordset.map(r => r.VendorProfileID));
+            formattedVendors = formattedVendors.filter(v => matchingVendorIds.has(v.vendorProfileId || v.id));
+          } catch (cErr) {
+            console.warn('Culture filtering failed:', cErr.message);
           }
         }
       }
@@ -889,10 +902,8 @@ router.get('/', async (req, res) => {
       
     }
 
-    // Use filtered count if attribute filters were applied, otherwise use SP count
-    const filteredCount = (instantBookingOnly === 'true' || eventTypes || cultures) 
-      ? formattedVendors.length 
-      : (result.recordset.length > 0 ? result.recordset[0].TotalCount : 0);
+    // Use SP count for total
+    const filteredCount = result.recordset.length > 0 ? result.recordset[0].TotalCount : formattedVendors.length;
 
     res.json({
       success: true,
@@ -1258,55 +1269,6 @@ router.get('/search-by-categories', async (req, res) => {
     // Combine all vendors from all sections for discovery sections
     let allVendors = sections.flatMap(s => s.vendors || []);
     
-    // Apply post-query filters for new attributes (instant booking, event types, cultures)
-    if (instantBookingOnly === 'true' || eventTypes || cultures) {
-      const vendorIds = allVendors.map(v => v.vendorProfileId);
-      
-      if (vendorIds.length > 0) {
-        // Filter by instant booking
-        if (instantBookingOnly === 'true') {
-          const instantBookingRequest = new sql.Request(pool);
-          const instantResult = await instantBookingRequest.query(`
-            SELECT VendorProfileID FROM vendors.VendorProfiles 
-            WHERE VendorProfileID IN (${vendorIds.join(',')}) 
-            AND InstantBookingEnabled = 1
-          `);
-          const instantBookingIds = new Set(instantResult.recordset.map(r => r.VendorProfileID));
-          allVendors = allVendors.filter(v => instantBookingIds.has(v.vendorProfileId));
-        }
-        
-        // Filter by event types
-        if (eventTypes) {
-          const eventTypeIds = eventTypes.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
-          if (eventTypeIds.length > 0 && allVendors.length > 0) {
-            const eventTypeRequest = new sql.Request(pool);
-            const eventTypeResult = await eventTypeRequest.query(`
-              SELECT DISTINCT VendorProfileID FROM vendors.VendorEventTypes 
-              WHERE VendorProfileID IN (${allVendors.map(v => v.vendorProfileId).join(',')}) 
-              AND EventTypeID IN (${eventTypeIds.join(',')})
-            `);
-            const eventTypeVendorIds = new Set(eventTypeResult.recordset.map(r => r.VendorProfileID));
-            allVendors = allVendors.filter(v => eventTypeVendorIds.has(v.vendorProfileId));
-          }
-        }
-        
-        // Filter by cultures
-        if (cultures) {
-          const cultureIds = cultures.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
-          if (cultureIds.length > 0 && allVendors.length > 0) {
-            const cultureRequest = new sql.Request(pool);
-            const cultureResult = await cultureRequest.query(`
-              SELECT DISTINCT VendorProfileID FROM vendors.VendorCultures 
-              WHERE VendorProfileID IN (${allVendors.map(v => v.vendorProfileId).join(',')}) 
-              AND CultureID IN (${cultureIds.join(',')})
-            `);
-            const cultureVendorIds = new Set(cultureResult.recordset.map(r => r.VendorProfileID));
-            allVendors = allVendors.filter(v => cultureVendorIds.has(v.vendorProfileId));
-          }
-        }
-      }
-    }
-    
     // Build discovery sections if requested
     let discoverySections = null;
     if (includeDiscoverySections === 'true' && allVendors.length > 0) {
@@ -1465,22 +1427,9 @@ router.get('/search-by-categories', async (req, res) => {
       }
     }
 
-    // If attribute filters were applied, update sections with filtered vendors
-    let finalSections = sections;
-    if (instantBookingOnly === 'true' || eventTypes || cultures) {
-      // Create a set of filtered vendor IDs for quick lookup
-      const filteredVendorIds = new Set(allVendors.map(v => v.vendorProfileId));
-      // Update each section to only include filtered vendors
-      finalSections = sections.map(section => ({
-        ...section,
-        vendors: section.vendors.filter(v => filteredVendorIds.has(v.vendorProfileId)),
-        totalCount: section.vendors.filter(v => filteredVendorIds.has(v.vendorProfileId)).length
-      }));
-    }
-
     res.json({
       success: true,
-      sections: finalSections,
+      sections: sections,
       categories: categoryList,
       // Include total filtered count for the filter modal preview
       totalCount: allVendors.length,
@@ -7822,6 +7771,287 @@ router.put('/:id/vendor-attributes', async (req, res) => {
   } catch (err) {
     console.error('Update vendor attributes error:', err);
     res.status(500).json({ success: false, message: 'Failed to update vendor attributes', error: err.message });
+  }
+});
+
+// =============================================
+// VENDOR FILTER OPTIONS & COUNT PREVIEW
+// =============================================
+
+// GET /api/vendors/filter-options - Get all filter options with counts for the filter modal
+router.get('/filter-options', async (req, res) => {
+  try {
+    const { category, city, latitude, longitude, radiusMiles } = req.query;
+    const pool = await poolPromise;
+
+    // Get all lookup data in parallel for performance
+    const [eventTypesRes, culturesRes, experienceRes, locationsRes, affordabilityRes] = await Promise.all([
+      pool.request().execute('vendors.sp_GetEventTypes'),
+      pool.request().execute('vendors.sp_GetCultures'),
+      Promise.resolve({ 
+        recordset: [
+          { key: '0-1', label: 'Less than 1 year' },
+          { key: '1-2', label: '1-2 years' },
+          { key: '2-5', label: '2-5 years' },
+          { key: '5-10', label: '5-10 years' },
+          { key: '10-15', label: '10-15 years' },
+          { key: '15+', label: '15+ years' }
+        ]
+      }),
+      Promise.resolve({
+        recordset: [
+          { key: 'Local', label: 'Local (within city)' },
+          { key: 'Regional', label: 'Regional (within province)' },
+          { key: 'National', label: 'National (across Canada)' },
+          { key: 'International', label: 'International' }
+        ]
+      }),
+      Promise.resolve({
+        recordset: [
+          { key: 'Inexpensive', label: '$ - Inexpensive', symbol: '$' },
+          { key: 'Moderate', label: '$$ - Moderate', symbol: '$$' },
+          { key: 'Premium', label: '$$$ - Premium', symbol: '$$$' },
+          { key: 'Luxury', label: '$$$$ - Luxury', symbol: '$$$$' }
+        ]
+      })
+    ]);
+
+    res.json({
+      success: true,
+      filterOptions: {
+        eventTypes: eventTypesRes.recordset || [],
+        cultures: culturesRes.recordset || [],
+        experienceRanges: experienceRes.recordset || [],
+        serviceLocations: locationsRes.recordset || [],
+        affordabilityLevels: affordabilityRes.recordset || [],
+        priceRange: { min: 0, max: 5000 },
+        instantBooking: [
+          { key: 'any', label: 'Any' },
+          { key: 'instant', label: 'Instant Booking Only' }
+        ]
+      }
+    });
+  } catch (err) {
+    console.error('Get filter options error:', err);
+    res.status(500).json({ success: false, message: 'Failed to get filter options', error: err.message });
+  }
+});
+
+// POST /api/vendors/filter-count - Get count of vendors matching filters (for live count updates)
+router.post('/filter-count', async (req, res) => {
+  try {
+    const {
+      category,
+      city,
+      latitude,
+      longitude,
+      radiusMiles,
+      eventTypes,
+      cultures,
+      experienceRange,
+      serviceLocation,
+      affordabilityLevel,
+      minPrice,
+      maxPrice,
+      instantBookingOnly,
+      minRating
+    } = req.body;
+
+    const pool = await poolPromise;
+    
+    // Build dynamic query for count with filters
+    let query = `
+      SELECT COUNT(DISTINCT vp.VendorProfileID) AS TotalCount
+      FROM vendors.VendorProfiles vp
+      WHERE vp.IsActive = 1 AND vp.IsApproved = 1
+    `;
+    
+    const request = new sql.Request(pool);
+    
+    // Category filter
+    if (category && category !== 'all') {
+      query += ` AND EXISTS (
+        SELECT 1 FROM vendors.VendorCategories vc 
+        WHERE vc.VendorProfileID = vp.VendorProfileID 
+        AND vc.Category LIKE '%' + @Category + '%'
+      )`;
+      request.input('Category', sql.NVarChar(50), category);
+    }
+    
+    // City filter
+    if (city) {
+      query += ` AND vp.City LIKE '%' + @City + '%'`;
+      request.input('City', sql.NVarChar(100), city);
+    }
+    
+    // Event types filter (comma-separated IDs)
+    if (eventTypes && eventTypes.length > 0) {
+      const eventTypeIds = Array.isArray(eventTypes) ? eventTypes : eventTypes.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
+      if (eventTypeIds.length > 0) {
+        query += ` AND EXISTS (
+          SELECT 1 FROM vendors.VendorEventTypes vet 
+          WHERE vet.VendorProfileID = vp.VendorProfileID 
+          AND vet.EventTypeID IN (${eventTypeIds.join(',')})
+        )`;
+      }
+    }
+    
+    // Cultures filter (comma-separated IDs)
+    if (cultures && cultures.length > 0) {
+      const cultureIds = Array.isArray(cultures) ? cultures : cultures.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
+      if (cultureIds.length > 0) {
+        query += ` AND EXISTS (
+          SELECT 1 FROM vendors.VendorCultures vc 
+          WHERE vc.VendorProfileID = vp.VendorProfileID 
+          AND vc.CultureID IN (${cultureIds.join(',')})
+        )`;
+      }
+    }
+    
+    // Experience range filter
+    if (experienceRange) {
+      query += ` AND vp.YearsOfExperienceRange = @ExperienceRange`;
+      request.input('ExperienceRange', sql.NVarChar(20), experienceRange);
+    }
+    
+    // Service location filter
+    if (serviceLocation) {
+      query += ` AND vp.ServiceLocationScope = @ServiceLocation`;
+      request.input('ServiceLocation', sql.NVarChar(20), serviceLocation);
+    }
+    
+    // Affordability level filter
+    if (affordabilityLevel) {
+      query += ` AND vp.AffordabilityLevel = @AffordabilityLevel`;
+      request.input('AffordabilityLevel', sql.NVarChar(20), affordabilityLevel);
+    }
+    
+    // Price range filter
+    if (minPrice !== undefined && minPrice !== null) {
+      query += ` AND COALESCE(vp.BasePrice, 0) >= @MinPrice`;
+      request.input('MinPrice', sql.Decimal(10, 2), parseFloat(minPrice));
+    }
+    if (maxPrice !== undefined && maxPrice !== null && maxPrice < 5000) {
+      query += ` AND COALESCE(vp.BasePrice, 0) <= @MaxPrice`;
+      request.input('MaxPrice', sql.Decimal(10, 2), parseFloat(maxPrice));
+    }
+    
+    // Instant booking filter
+    if (instantBookingOnly === true || instantBookingOnly === 'true') {
+      query += ` AND vp.InstantBookingEnabled = 1`;
+    }
+    
+    // Minimum rating filter
+    if (minRating) {
+      query += ` AND COALESCE(vp.AverageRating, 0) >= @MinRating`;
+      request.input('MinRating', sql.Decimal(2, 1), parseFloat(minRating));
+    }
+
+    const result = await request.query(query);
+    const count = result.recordset[0]?.TotalCount || 0;
+
+    res.json({
+      success: true,
+      count,
+      filters: {
+        category,
+        city,
+        eventTypes,
+        cultures,
+        experienceRange,
+        serviceLocation,
+        affordabilityLevel,
+        minPrice,
+        maxPrice,
+        instantBookingOnly,
+        minRating
+      }
+    });
+  } catch (err) {
+    console.error('Filter count error:', err);
+    res.status(500).json({ success: false, message: 'Failed to get filter count', error: err.message });
+  }
+});
+
+// POST /api/vendors/filter-availability - Get which filter options are available given current selections
+router.post('/filter-availability', async (req, res) => {
+  try {
+    const {
+      category,
+      city,
+      eventTypes,
+      cultures,
+      experienceRange,
+      serviceLocation,
+      affordabilityLevel,
+      instantBookingOnly
+    } = req.body;
+
+    const pool = await poolPromise;
+    
+    // Build base query with current filters
+    let baseConditions = `vp.IsActive = 1 AND vp.IsApproved = 1`;
+    const request = new sql.Request(pool);
+    
+    if (category && category !== 'all') {
+      baseConditions += ` AND EXISTS (
+        SELECT 1 FROM vendors.VendorCategories vc 
+        WHERE vc.VendorProfileID = vp.VendorProfileID 
+        AND vc.Category LIKE '%' + @Category + '%'
+      )`;
+      request.input('Category', sql.NVarChar(50), category);
+    }
+    
+    if (city) {
+      baseConditions += ` AND vp.City LIKE '%' + @City + '%'`;
+      request.input('City', sql.NVarChar(100), city);
+    }
+
+    // Get counts for each event type
+    const eventTypeCountsQuery = `
+      SELECT et.EventTypeID, et.EventTypeName, COUNT(DISTINCT vp.VendorProfileID) AS VendorCount
+      FROM vendors.EventTypes et
+      LEFT JOIN vendors.VendorEventTypes vet ON et.EventTypeID = vet.EventTypeID
+      LEFT JOIN vendors.VendorProfiles vp ON vet.VendorProfileID = vp.VendorProfileID AND ${baseConditions}
+      GROUP BY et.EventTypeID, et.EventTypeName
+      ORDER BY et.EventTypeName
+    `;
+
+    // Get counts for each culture
+    const cultureCountsQuery = `
+      SELECT c.CultureID, c.CultureName, COUNT(DISTINCT vp.VendorProfileID) AS VendorCount
+      FROM vendors.Cultures c
+      LEFT JOIN vendors.VendorCultures vc ON c.CultureID = vc.CultureID
+      LEFT JOIN vendors.VendorProfiles vp ON vc.VendorProfileID = vp.VendorProfileID AND ${baseConditions}
+      GROUP BY c.CultureID, c.CultureName
+      ORDER BY c.CultureName
+    `;
+
+    const [eventTypeCounts, cultureCounts] = await Promise.all([
+      request.query(eventTypeCountsQuery),
+      pool.request().query(cultureCountsQuery.replace('@Category', `'${category || ''}'`).replace('@City', `'${city || ''}'`))
+    ]);
+
+    res.json({
+      success: true,
+      availability: {
+        eventTypes: eventTypeCounts.recordset.map(et => ({
+          id: et.EventTypeID,
+          name: et.EventTypeName,
+          count: et.VendorCount,
+          available: et.VendorCount > 0
+        })),
+        cultures: cultureCounts.recordset.map(c => ({
+          id: c.CultureID,
+          name: c.CultureName,
+          count: c.VendorCount,
+          available: c.VendorCount > 0
+        }))
+      }
+    });
+  } catch (err) {
+    console.error('Filter availability error:', err);
+    res.status(500).json({ success: false, message: 'Failed to get filter availability', error: err.message });
   }
 });
 
