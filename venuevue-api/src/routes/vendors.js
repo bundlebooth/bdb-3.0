@@ -523,6 +523,14 @@ router.get('/', async (req, res) => {
       cultures, // Comma-separated culture IDs
       experienceRange, // Years of experience range (e.g., '5-10')
       serviceLocation, // Service location scope (e.g., 'Local', 'Regional')
+      // NEW: Enhanced filter parameters
+      minReviewCount, // Minimum number of reviews
+      freshListingsDays, // Show vendors created within X days (e.g., 30)
+      hasGoogleReviews, // Filter vendors with Google Place ID
+      availabilityDate, // Filter by availability on specific date (YYYY-MM-DD)
+      availabilityDayOfWeek, // Filter by day of week (0=Sunday, 1=Monday, etc.)
+      featureIds, // Comma-separated feature IDs
+      questionFilters, // JSON array of question filters [{questionId, answer}]
       // Discovery sections - when true, returns categorized sections from same query
       includeDiscoverySections
     } = req.query;
@@ -590,7 +598,49 @@ router.get('/', async (req, res) => {
       request.input('StartTime', sql.VarChar(8), formattedStartTime);
       request.input('EndTime', sql.VarChar(8), formattedEndTime);
 
-      result = await request.execute('vendors.sp_Search');
+      // Try enhanced stored procedure first
+      try {
+        const enhancedRequest = new sql.Request(pool);
+        enhancedRequest.input('SearchTerm', sql.NVarChar(100), searchTerm || null);
+        enhancedRequest.input('Category', sql.NVarChar(50), category || null);
+        enhancedRequest.input('City', sql.NVarChar(100), city || null);
+        enhancedRequest.input('Region', sql.NVarChar(50), region || null);
+        enhancedRequest.input('MinPrice', sql.Decimal(10, 2), minPrice ? parseFloat(minPrice) : null);
+        enhancedRequest.input('MaxPrice', sql.Decimal(10, 2), maxPrice ? parseFloat(maxPrice) : null);
+        enhancedRequest.input('MinRating', sql.Decimal(2, 1), minRating ? parseFloat(minRating) : null);
+        enhancedRequest.input('MinReviewCount', sql.Int, minReviewCount ? parseInt(minReviewCount) : null);
+        enhancedRequest.input('IsPremium', sql.Bit, isPremium === 'true' ? 1 : null);
+        enhancedRequest.input('IsEcoFriendly', sql.Bit, isEcoFriendly === 'true' ? 1 : null);
+        enhancedRequest.input('IsAwardWinning', sql.Bit, isAwardWinning === 'true' ? 1 : null);
+        enhancedRequest.input('IsLastMinute', sql.Bit, isLastMinute === 'true' ? 1 : null);
+        enhancedRequest.input('IsCertified', sql.Bit, isCertified === 'true' ? 1 : null);
+        enhancedRequest.input('IsInsured', sql.Bit, isInsured === 'true' ? 1 : null);
+        enhancedRequest.input('IsLocal', sql.Bit, isLocal === 'true' ? 1 : null);
+        enhancedRequest.input('IsMobile', sql.Bit, isMobile === 'true' ? 1 : null);
+        enhancedRequest.input('InstantBookingOnly', sql.Bit, instantBookingOnly === 'true' ? 1 : null);
+        enhancedRequest.input('FreshListingsDays', sql.Int, freshListingsDays ? parseInt(freshListingsDays) : null);
+        enhancedRequest.input('HasGoogleReviews', sql.Bit, hasGoogleReviews === 'true' ? 1 : null);
+        enhancedRequest.input('AvailabilityDate', sql.Date, availabilityDate ? new Date(availabilityDate) : null);
+        enhancedRequest.input('AvailabilityDayOfWeek', sql.TinyInt, availabilityDayOfWeek ? parseInt(availabilityDayOfWeek) : null);
+        enhancedRequest.input('Latitude', sql.Decimal(10, 8), latitude ? parseFloat(latitude) : null);
+        enhancedRequest.input('Longitude', sql.Decimal(11, 8), longitude ? parseFloat(longitude) : null);
+        enhancedRequest.input('RadiusMiles', sql.Int, radiusMiles ? parseInt(radiusMiles) : 25);
+        enhancedRequest.input('EventTypeIDs', sql.NVarChar(500), eventTypes || null);
+        enhancedRequest.input('CultureIDs', sql.NVarChar(500), cultures || null);
+        enhancedRequest.input('QuestionFilters', sql.NVarChar(sql.MAX), questionFilters || null);
+        enhancedRequest.input('FeatureIDs', sql.NVarChar(500), featureIds || null);
+        enhancedRequest.input('ExperienceRange', sql.NVarChar(20), experienceRange || null);
+        enhancedRequest.input('ServiceLocation', sql.NVarChar(50), serviceLocation || null);
+        enhancedRequest.input('PageNumber', sql.Int, pageNumber ? parseInt(pageNumber) : 1);
+        enhancedRequest.input('PageSize', sql.Int, pageSize ? parseInt(pageSize) : 10);
+        enhancedRequest.input('SortBy', sql.NVarChar(50), sortBy || 'recommended');
+        
+        result = await enhancedRequest.execute('vendors.sp_SearchEnhanced');
+        console.log('[vendors] Using sp_SearchEnhanced');
+      } catch (enhancedError) {
+        console.log('[vendors] sp_SearchEnhanced not available, falling back to sp_Search:', enhancedError.message);
+        result = await request.execute('vendors.sp_Search');
+      }
     } catch (spError) {
       console.error('sp_SearchVendors failed:', spError.message);
       throw spError;
@@ -639,10 +689,17 @@ router.get('/', async (req, res) => {
       profileViews: vendor.ProfileViews || 0,
       // Google reviews data
       googlePlaceId: vendor.GooglePlaceId || vendor.GooglePlaceID || null,
+      hasGoogleReviews: vendor.HasGoogleReviews || (vendor.GooglePlaceId ? true : false),
       // Vendor attributes for filtering
       instantBookingEnabled: vendor.InstantBookingEnabled || false,
       yearsOfExperienceRange: vendor.YearsOfExperienceRange || null,
-      serviceLocationScope: vendor.ServiceLocationScope || null
+      serviceLocationScope: vendor.ServiceLocationScope || null,
+      // NEW: Enhanced filter fields
+      isFreshListing: vendor.IsFreshListing || false,
+      isCertified: vendor.IsCertified || false,
+      isInsured: vendor.IsInsured || false,
+      isMobile: vendor.IsMobile || false,
+      yearsInBusiness: vendor.YearsInBusiness || null
     }));
 
     // Apply attribute-based filters (post-query filtering for attributes not in SP)
