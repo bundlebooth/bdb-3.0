@@ -111,7 +111,6 @@ BEGIN
         vp.MinBookingLeadTimeHours,
         vp.ServiceLocationScope,
         vp.YearsOfExperienceRange,
-        vp.AffordabilityLevel,
         vp.PriceType,
         vp.BasePrice
     FROM vendors.VendorProfiles vp
@@ -216,7 +215,7 @@ BEGIN
     -- Category-specific questions and answers (recordset 11)
     SELECT cq.QuestionText, vad.Answer
     FROM vendors.VendorCategoryAnswers vad
-    JOIN vendors.CategoryQuestions cq ON vad.QuestionID = cq.QuestionID
+    JOIN admin.CategoryQuestions cq ON vad.QuestionID = cq.QuestionID
     WHERE vad.VendorProfileID = @VendorProfileID;
 
     -- Is favorite for current user (recordset 12)

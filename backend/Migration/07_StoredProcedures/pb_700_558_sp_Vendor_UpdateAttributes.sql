@@ -21,7 +21,6 @@ CREATE PROCEDURE [vendors].[sp_Vendor_UpdateAttributes]
     @VendorProfileID INT,
     @ServiceLocationScope NVARCHAR(20) = NULL,
     @YearsOfExperienceRange NVARCHAR(20) = NULL,
-    @AffordabilityLevel NVARCHAR(20) = NULL,
     @PriceType NVARCHAR(20) = NULL,
     @BasePrice DECIMAL(10,2) = NULL
 AS
@@ -32,7 +31,6 @@ BEGIN
     SET 
         ServiceLocationScope = COALESCE(@ServiceLocationScope, ServiceLocationScope),
         YearsOfExperienceRange = COALESCE(@YearsOfExperienceRange, YearsOfExperienceRange),
-        AffordabilityLevel = COALESCE(@AffordabilityLevel, AffordabilityLevel),
         PriceType = COALESCE(@PriceType, PriceType),
         BasePrice = COALESCE(@BasePrice, BasePrice),
         UpdatedAt = GETUTCDATE()

@@ -99,7 +99,7 @@ GO
 
 -- FK constraint 18 for [VendorAdditionalDetails]
 ALTER TABLE [vendors].[VendorAdditionalDetails]  WITH CHECK ADD FOREIGN KEY([QuestionID])
-REFERENCES [vendors].[CategoryQuestions] ([QuestionID])
+REFERENCES [admin].[CategoryQuestions] ([QuestionID])
 ON DELETE CASCADE
 GO
 
@@ -215,7 +215,7 @@ GO
 
 -- FK constraint 40 for [VendorCategoryAnswers]
 ALTER TABLE [vendors].[VendorCategoryAnswers]  WITH CHECK ADD FOREIGN KEY([QuestionID])
-REFERENCES [vendors].[CategoryQuestions] ([QuestionID])
+REFERENCES [admin].[CategoryQuestions] ([QuestionID])
 GO
 
 -- FK constraint 41 for [VendorCategoryAnswers]

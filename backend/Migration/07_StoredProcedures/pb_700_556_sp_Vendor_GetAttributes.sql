@@ -30,7 +30,6 @@ BEGIN
         vp.MinBookingLeadTimeHours,
         vp.ServiceLocationScope,
         vp.YearsOfExperienceRange,
-        vp.AffordabilityLevel,
         vp.PriceType,
         vp.BasePrice,
         vp.YearsInBusiness

@@ -7677,7 +7677,6 @@ router.get('/:id/attributes', async (req, res) => {
         minBookingLeadTimeHours: profile.MinBookingLeadTimeHours || 24,
         serviceLocationScope: profile.ServiceLocationScope || 'Local',
         yearsOfExperienceRange: profile.YearsOfExperienceRange || '',
-        affordabilityLevel: profile.AffordabilityLevel || '',
         priceType: profile.PriceType || '',
         basePrice: profile.BasePrice || null,
         eventTypes,
@@ -7842,13 +7841,12 @@ router.put('/:id/vendor-attributes', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid vendor profile ID' });
     }
 
-    const { serviceLocationScope, yearsOfExperienceRange, affordabilityLevel, priceType, basePrice } = req.body;
+    const { serviceLocationScope, yearsOfExperienceRange, priceType, basePrice } = req.body;
     const pool = await poolPromise;
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, vendorProfileId);
     request.input('ServiceLocationScope', sql.NVarChar(20), serviceLocationScope || null);
     request.input('YearsOfExperienceRange', sql.NVarChar(20), yearsOfExperienceRange || null);
-    request.input('AffordabilityLevel', sql.NVarChar(20), affordabilityLevel || null);
     request.input('PriceType', sql.NVarChar(20), priceType || null);
     request.input('BasePrice', sql.Decimal(10, 2), basePrice || null);
     

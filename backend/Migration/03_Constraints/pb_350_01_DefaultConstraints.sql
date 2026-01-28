@@ -671,27 +671,27 @@ ALTER TABLE [vendors].[VendorSelectedServices] ADD  DEFAULT (getdate()) FOR [Upd
 GO
 
 -- Default constraint 164 for [CategoryQuestions]
-ALTER TABLE [vendors].[CategoryQuestions] ADD  DEFAULT ('YesNo') FOR [QuestionType]
+ALTER TABLE [admin].[CategoryQuestions] ADD  DEFAULT ('YesNo') FOR [QuestionType]
 GO
 
 -- Default constraint 165 for [CategoryQuestions]
-ALTER TABLE [vendors].[CategoryQuestions] ADD  DEFAULT ((1)) FOR [IsRequired]
+ALTER TABLE [admin].[CategoryQuestions] ADD  DEFAULT ((1)) FOR [IsRequired]
 GO
 
 -- Default constraint 166 for [CategoryQuestions]
-ALTER TABLE [vendors].[CategoryQuestions] ADD  DEFAULT ((0)) FOR [DisplayOrder]
+ALTER TABLE [admin].[CategoryQuestions] ADD  DEFAULT ((0)) FOR [DisplayOrder]
 GO
 
 -- Default constraint 167 for [CategoryQuestions]
-ALTER TABLE [vendors].[CategoryQuestions] ADD  DEFAULT ((1)) FOR [IsActive]
+ALTER TABLE [admin].[CategoryQuestions] ADD  DEFAULT ((1)) FOR [IsActive]
 GO
 
 -- Default constraint 168 for [CategoryQuestions]
-ALTER TABLE [vendors].[CategoryQuestions] ADD  DEFAULT (getdate()) FOR [CreatedAt]
+ALTER TABLE [admin].[CategoryQuestions] ADD  DEFAULT (getdate()) FOR [CreatedAt]
 GO
 
 -- Default constraint 169 for [CategoryQuestions]
-ALTER TABLE [vendors].[CategoryQuestions] ADD  DEFAULT (getdate()) FOR [UpdatedAt]
+ALTER TABLE [admin].[CategoryQuestions] ADD  DEFAULT (getdate()) FOR [UpdatedAt]
 GO
 
 -- Default constraint 170 for [VendorCategoryAnswers]

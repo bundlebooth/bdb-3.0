@@ -12,9 +12,9 @@ PRINT 'Inserting interest options data...';
 GO
 
 -- Only insert if table is empty
-IF NOT EXISTS (SELECT 1 FROM [users].[InterestOptions])
+IF NOT EXISTS (SELECT 1 FROM [admin].[InterestOptions])
 BEGIN
-    INSERT INTO [users].[InterestOptions] ([Interest], [Category], [Icon]) VALUES
+    INSERT INTO [admin].[InterestOptions] ([Interest], [Category], [Icon]) VALUES
     -- Events & Celebrations
     (N'Weddings', N'Events', N'ring'),
     (N'Birthday Parties', N'Events', N'birthday-cake'),
