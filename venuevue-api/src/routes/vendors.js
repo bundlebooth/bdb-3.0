@@ -889,10 +889,15 @@ router.get('/', async (req, res) => {
       
     }
 
+    // Use filtered count if attribute filters were applied, otherwise use SP count
+    const filteredCount = (instantBookingOnly === 'true' || eventTypes || cultures) 
+      ? formattedVendors.length 
+      : (result.recordset.length > 0 ? result.recordset[0].TotalCount : 0);
+
     res.json({
       success: true,
       vendors: formattedVendors,
-      totalCount: result.recordset.length > 0 ? result.recordset[0].TotalCount : 0,
+      totalCount: filteredCount,
       pageNumber: parseInt(pageNumber) || 1,
       pageSize: parseInt(pageSize) || 10,
       hasImages: includeImages !== 'false',
