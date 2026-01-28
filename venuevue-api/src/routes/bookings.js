@@ -49,7 +49,15 @@ router.post('/', async (req, res) => {
       packagePrice,
       budget,
       timeZone,
-      isInstantBooking
+      isInstantBooking,
+      // Financial details for instant booking
+      subtotal,
+      platformFee,
+      taxAmount,
+      taxPercent,
+      taxLabel,
+      processingFee,
+      grandTotal
     } = req.body;
 
     const pool = await poolPromise;
@@ -88,12 +96,42 @@ router.post('/', async (req, res) => {
     request.input('EventType', sql.NVarChar(100), eventType || null);
     request.input('TimeZone', sql.NVarChar(100), timeZone || null);
     request.input('IsInstantBooking', sql.Bit, isInstantBooking ? 1 : 0);
-    request.input('TotalAmount', sql.Decimal(10, 2), budget || packagePrice || 0);
+    request.input('TotalAmount', sql.Decimal(10, 2), grandTotal || budget || packagePrice || 0);
+    // Financial details
+    request.input('Subtotal', sql.Decimal(10, 2), subtotal || 0);
+    request.input('PlatformFee', sql.Decimal(10, 2), platformFee || 0);
+    request.input('TaxAmount', sql.Decimal(10, 2), taxAmount || 0);
+    request.input('TaxPercent', sql.Decimal(5, 3), taxPercent || 0);
+    request.input('TaxLabel', sql.NVarChar(50), taxLabel || null);
+    request.input('ProcessingFee', sql.Decimal(10, 2), processingFee || 0);
+    request.input('GrandTotal', sql.Decimal(10, 2), grandTotal || 0);
 
     const result = await request.execute('bookings.sp_CreateWithServices');
     
     const bookingId = result.recordset[0].BookingID;
     const conversationId = result.recordset[0].ConversationID;
+
+    // For instant bookings, generate invoice automatically
+    if (isInstantBooking && bookingId) {
+      try {
+        const invoiceRequest = new sql.Request(pool);
+        invoiceRequest.input('BookingID', sql.Int, bookingId);
+        invoiceRequest.input('Subtotal', sql.Decimal(10, 2), subtotal || 0);
+        invoiceRequest.input('PlatformFee', sql.Decimal(10, 2), platformFee || 0);
+        invoiceRequest.input('TaxAmount', sql.Decimal(10, 2), taxAmount || 0);
+        invoiceRequest.input('TaxPercent', sql.Decimal(5, 3), taxPercent || 0);
+        invoiceRequest.input('TaxLabel', sql.NVarChar(50), taxLabel || 'HST 13%');
+        invoiceRequest.input('ProcessingFee', sql.Decimal(10, 2), processingFee || 0);
+        invoiceRequest.input('GrandTotal', sql.Decimal(10, 2), grandTotal || 0);
+        invoiceRequest.input('PaymentIntentID', sql.NVarChar(100), paymentIntentId || null);
+        
+        await invoiceRequest.execute('invoices.sp_CreateInstantBookingInvoice');
+        console.log(`Invoice created for instant booking ${bookingId}`);
+      } catch (invoiceErr) {
+        console.error('Failed to create invoice for instant booking:', invoiceErr.message);
+        // Don't fail the booking creation if invoice fails
+      }
+    }
 
     res.json({
       success: true,
@@ -104,7 +142,7 @@ router.post('/', async (req, res) => {
         ConversationID: conversationId,
         EventName: eventName,
         EventDate: eventDate,
-        TotalAmount: budget || packagePrice || 0,
+        TotalAmount: grandTotal || budget || packagePrice || 0,
         isInstantBooking: isInstantBooking || false
       }
     });
