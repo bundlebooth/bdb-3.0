@@ -2540,6 +2540,16 @@ router.get('/:id/availability', async (req, res) => {
     exceptionsRequest.input('VendorProfileID', sql.Int, vendorProfileId);
     const exceptionsResult = await exceptionsRequest.execute('vendors.sp_GetAvailabilityExceptions');
     
+    // Get booking settings (instant booking and lead time)
+    const settingsRequest = new sql.Request(pool);
+    settingsRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+    const settingsResult = await settingsRequest.query(`
+      SELECT InstantBookingEnabled, MinBookingLeadTimeHours 
+      FROM vendors.VendorProfiles 
+      WHERE VendorProfileID = @VendorProfileID
+    `);
+    const settings = settingsResult.recordset[0] || {};
+    
     // Format time values - SQL Server returns TIME as Date objects
     const formatTime = (timeValue) => {
       if (!timeValue) return null;
@@ -2559,7 +2569,9 @@ router.get('/:id/availability', async (req, res) => {
     
     res.json({
       businessHours: businessHours,
-      exceptions: exceptionsResult.recordset
+      exceptions: exceptionsResult.recordset,
+      instantBookingEnabled: settings.InstantBookingEnabled || false,
+      minBookingLeadTimeHours: settings.MinBookingLeadTimeHours || 0
     });
   } catch (error) {
     console.error('Error fetching vendor availability:', error);
