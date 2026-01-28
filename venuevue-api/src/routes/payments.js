@@ -850,11 +850,19 @@ router.post('/payment-intent', async (req, res) => {
       });
     }
 
-    // Either bookingId or requestId is required, plus amount
-    if ((!bookingId && !requestId) || !amount) {
+    // For instant booking: vendorProfileId + amount is sufficient
+    // For regular booking: bookingId or requestId + amount is required
+    if (!amount) {
       return res.status(400).json({
         success: false,
-        message: 'Missing required payment information'
+        message: 'Missing required payment amount'
+      });
+    }
+    
+    if (!bookingId && !requestId && !vendorProfileId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required payment information (bookingId, requestId, or vendorProfileId)'
       });
     }
 
