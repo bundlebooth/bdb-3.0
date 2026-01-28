@@ -3,7 +3,17 @@ import './Calendar.css';
 
 // Simple calendar component - NO useEffects to avoid infinite loops
 const BookingCalendar = ({ selectedDate, onDateSelect, onClose, vendorAvailability }) => {
-  const [currentMonth, setCurrentMonth] = useState(new Date());
+  // Initialize calendar to the first available date based on lead time
+  const getInitialMonth = () => {
+    if (vendorAvailability?.minBookingLeadTimeHours) {
+      const leadTimeMs = vendorAvailability.minBookingLeadTimeHours * 60 * 60 * 1000;
+      const minBookingDate = new Date(Date.now() + leadTimeMs);
+      return minBookingDate;
+    }
+    return new Date();
+  };
+  
+  const [currentMonth, setCurrentMonth] = useState(getInitialMonth);
 
   const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'];
@@ -25,6 +35,15 @@ const BookingCalendar = ({ selectedDate, onDateSelect, onClose, vendorAvailabili
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     if (date < today) return true;
+    
+    // Check minimum booking lead time (advance notice requirement)
+    if (vendorAvailability?.minBookingLeadTimeHours) {
+      const leadTimeMs = vendorAvailability.minBookingLeadTimeHours * 60 * 60 * 1000;
+      const minBookingDate = new Date(Date.now() + leadTimeMs);
+      minBookingDate.setHours(0, 0, 0, 0);
+      if (date < minBookingDate) return true;
+    }
+    
     if (!vendorAvailability?.businessHours) return false;
     
     const dayOfWeek = date.getDay();
@@ -89,7 +108,13 @@ const BookingCalendar = ({ selectedDate, onDateSelect, onClose, vendorAvailabili
         {vendorAvailability && (
           <div style={{ marginTop: '1rem', padding: '0.75rem', backgroundColor: '#f0f9ff', borderRadius: '8px', fontSize: '0.85rem', color: '#0369a1' }}>
             <i className="fas fa-info-circle" style={{ marginRight: '0.5rem' }}></i>
-            Only dates when vendor is available are shown
+            {vendorAvailability.minBookingLeadTimeHours > 0 
+              ? `Bookings require ${vendorAvailability.minBookingLeadTimeHours >= 168 
+                  ? `${Math.floor(vendorAvailability.minBookingLeadTimeHours / 168)} week${Math.floor(vendorAvailability.minBookingLeadTimeHours / 168) > 1 ? 's' : ''}` 
+                  : vendorAvailability.minBookingLeadTimeHours >= 24 
+                    ? `${Math.floor(vendorAvailability.minBookingLeadTimeHours / 24)} day${Math.floor(vendorAvailability.minBookingLeadTimeHours / 24) > 1 ? 's' : ''}` 
+                    : `${vendorAvailability.minBookingLeadTimeHours} hours`} advance notice`
+              : 'Only dates when vendor is available are shown'}
           </div>
         )}
       </div>

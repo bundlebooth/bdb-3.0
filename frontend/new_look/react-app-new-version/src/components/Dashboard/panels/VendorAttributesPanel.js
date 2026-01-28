@@ -1,0 +1,396 @@
+import React, { useState, useEffect } from 'react';
+import { API_BASE_URL } from '../../../config';
+import { showBanner } from '../../../utils/helpers';
+
+function VendorAttributesPanel({ onBack, vendorProfileId }) {
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  
+  // Lookup data
+  const [eventTypesOptions, setEventTypesOptions] = useState([]);
+  const [culturesOptions, setCulturesOptions] = useState([]);
+  const [experienceRanges, setExperienceRanges] = useState([]);
+  const [serviceLocations, setServiceLocations] = useState([]);
+  const [leadTimeOptions, setLeadTimeOptions] = useState([]);
+  const [subcategoriesOptions, setSubcategoriesOptions] = useState([]);
+  
+  // Selected values
+  const [selectedEventTypes, setSelectedEventTypes] = useState([]);
+  const [selectedCultures, setSelectedCultures] = useState([]);
+  const [selectedSubcategories, setSelectedSubcategories] = useState([]);
+  const [serviceLocationScope, setServiceLocationScope] = useState('Local');
+  const [yearsOfExperienceRange, setYearsOfExperienceRange] = useState('');
+  const [instantBookingEnabled, setInstantBookingEnabled] = useState(false);
+  const [minBookingLeadTimeHours, setMinBookingLeadTimeHours] = useState(24);
+  const [primaryCategory, setPrimaryCategory] = useState('');
+
+  useEffect(() => {
+    loadData();
+  }, [vendorProfileId]);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      
+      // Load all lookup data in parallel
+      const [eventTypesRes, culturesRes, experienceRes, locationsRes, leadTimesRes, attributesRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/vendors/lookup/event-types`, { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(`${API_BASE_URL}/vendors/lookup/cultures`, { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(`${API_BASE_URL}/vendors/lookup/experience-ranges`, { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(`${API_BASE_URL}/vendors/lookup/service-locations`, { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(`${API_BASE_URL}/vendors/lookup/lead-times`, { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/attributes`, { headers: { 'Authorization': `Bearer ${token}` } })
+      ]);
+      
+      if (eventTypesRes.ok) {
+        const data = await eventTypesRes.json();
+        setEventTypesOptions(data.eventTypes || []);
+      }
+      
+      if (culturesRes.ok) {
+        const data = await culturesRes.json();
+        setCulturesOptions(data.cultures || []);
+      }
+      
+      if (experienceRes.ok) {
+        const data = await experienceRes.json();
+        setExperienceRanges(data.experienceRanges || []);
+      }
+      
+      if (locationsRes.ok) {
+        const data = await locationsRes.json();
+        setServiceLocations(data.serviceLocations || []);
+      }
+      
+      if (leadTimesRes.ok) {
+        const data = await leadTimesRes.json();
+        setLeadTimeOptions(data.leadTimes || []);
+      }
+      
+      if (attributesRes.ok) {
+        const data = await attributesRes.json();
+        const attrs = data.attributes || {};
+        setSelectedEventTypes(attrs.eventTypes?.map(et => et.EventTypeID) || []);
+        setSelectedCultures(attrs.cultures?.map(c => c.CultureID) || []);
+        setSelectedSubcategories(attrs.subcategories?.map(s => s.SubcategoryID) || []);
+        setServiceLocationScope(attrs.serviceLocationScope || 'Local');
+        setYearsOfExperienceRange(attrs.yearsOfExperienceRange || '');
+        setInstantBookingEnabled(attrs.instantBookingEnabled || false);
+        setMinBookingLeadTimeHours(attrs.minBookingLeadTimeHours || 24);
+        
+        // Get primary category from categories
+        const primaryCat = attrs.categories?.find(c => c.IsPrimary)?.Category || attrs.categories?.[0]?.Category || '';
+        setPrimaryCategory(primaryCat);
+        
+        // Load subcategories for the primary category
+        if (primaryCat) {
+          const subcatRes = await fetch(`${API_BASE_URL}/vendors/lookup/subcategories?category=${encodeURIComponent(primaryCat)}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (subcatRes.ok) {
+            const subcatData = await subcatRes.json();
+            setSubcategoriesOptions(subcatData.subcategories || []);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error loading vendor attributes:', error);
+      showBanner('Failed to load vendor attributes', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggleEventType = (eventTypeId) => {
+    setSelectedEventTypes(prev => 
+      prev.includes(eventTypeId) 
+        ? prev.filter(id => id !== eventTypeId)
+        : [...prev, eventTypeId]
+    );
+  };
+
+  const toggleCulture = (cultureId) => {
+    setSelectedCultures(prev => 
+      prev.includes(cultureId) 
+        ? prev.filter(id => id !== cultureId)
+        : [...prev, cultureId]
+    );
+  };
+
+  const toggleSubcategory = (subcategoryId) => {
+    setSelectedSubcategories(prev => 
+      prev.includes(subcategoryId) 
+        ? prev.filter(id => id !== subcategoryId)
+        : [...prev, subcategoryId]
+    );
+  };
+
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+      const token = localStorage.getItem('token');
+      
+      // Save all attributes in parallel
+      const [attrRes, eventTypesRes, culturesRes, subcatRes, bookingRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/vendor-attributes`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ serviceLocationScope, yearsOfExperienceRange })
+        }),
+        fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/event-types`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ eventTypeIds: selectedEventTypes })
+        }),
+        fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/cultures`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ cultureIds: selectedCultures })
+        }),
+        fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/subcategories`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ subcategoryIds: selectedSubcategories })
+        }),
+        fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/booking-settings`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ instantBookingEnabled, minBookingLeadTimeHours })
+        })
+      ]);
+      
+      if (attrRes.ok && eventTypesRes.ok && culturesRes.ok && subcatRes.ok && bookingRes.ok) {
+        showBanner('Vendor attributes saved successfully!', 'success');
+      } else {
+        throw new Error('Failed to save some attributes');
+      }
+    } catch (error) {
+      console.error('Error saving vendor attributes:', error);
+      showBanner('Failed to save vendor attributes', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div>
+        <button className="btn btn-outline back-to-menu-btn" style={{ marginBottom: '1rem' }} onClick={onBack}>
+          <i className="fas fa-arrow-left"></i> Back to Business Profile Menu
+        </button>
+        <div className="dashboard-card">
+          <div style={{ textAlign: 'center', padding: '3rem' }}>
+            <div className="spinner" style={{ margin: '0 auto' }}></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <button className="btn btn-outline back-to-menu-btn" style={{ marginBottom: '1rem' }} onClick={onBack}>
+        <i className="fas fa-arrow-left"></i> Back to Business Profile Menu
+      </button>
+      <div className="dashboard-card">
+        <h2 className="dashboard-card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <i className="fas fa-sliders-h" style={{ color: 'var(--primary)' }}></i>
+          Vendor Attributes
+        </h2>
+        <p style={{ color: 'var(--text-light)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
+          Configure your service attributes to help clients find you based on event types, cultures served, and more.
+        </p>
+        <hr style={{ border: 'none', borderTop: '1px solid #e5e7eb', margin: '1.5rem 0' }} />
+        {/* Subcategories */}
+        {primaryCategory && subcategoriesOptions.length > 0 && (
+          <div style={{ marginBottom: '2rem' }}>
+            <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem', fontWeight: 600, color: '#111827' }}>
+              Subcategories
+              {selectedSubcategories.length > 0 && (
+                <span style={{
+                  background: '#5086E8',
+                  color: 'white',
+                  fontSize: '0.75rem',
+                  fontWeight: '600',
+                  padding: '2px 8px',
+                  borderRadius: '12px',
+                  marginLeft: '0.5rem'
+                }}>
+                  {selectedSubcategories.length} selected
+                </span>
+              )}
+            </h3>
+            <p style={{ margin: '0 0 1rem 0', color: '#6b7280', fontSize: '0.875rem' }}>
+              Select the specific services you offer within {primaryCategory}
+            </p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+              {subcategoriesOptions.map(sub => (
+                <button
+                  key={sub.SubcategoryID}
+                  onClick={() => toggleSubcategory(sub.SubcategoryID)}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    borderRadius: '20px',
+                    border: selectedSubcategories.includes(sub.SubcategoryID) ? '2px solid #5086E8' : '1px solid #d1d5db',
+                    background: selectedSubcategories.includes(sub.SubcategoryID) ? '#eff6ff' : 'white',
+                    color: selectedSubcategories.includes(sub.SubcategoryID) ? '#5086E8' : '#374151',
+                    fontWeight: selectedSubcategories.includes(sub.SubcategoryID) ? 600 : 400,
+                    cursor: 'pointer',
+                    fontSize: '0.875rem',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  {sub.SubcategoryName}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Event Types */}
+        <div style={{ marginBottom: '2rem' }}>
+          <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem', fontWeight: 600, color: '#111827' }}>
+            Event Types
+          </h3>
+          <p style={{ margin: '0 0 1rem 0', color: '#6b7280', fontSize: '0.875rem' }}>
+            Select the types of events you serve
+          </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+            {eventTypesOptions.map(et => (
+              <button
+                key={et.EventTypeID}
+                onClick={() => toggleEventType(et.EventTypeID)}
+                style={{
+                  padding: '0.5rem 1rem',
+                  borderRadius: '20px',
+                  border: selectedEventTypes.includes(et.EventTypeID) ? '2px solid #5086E8' : '1px solid #d1d5db',
+                  background: selectedEventTypes.includes(et.EventTypeID) ? '#eff6ff' : 'white',
+                  color: selectedEventTypes.includes(et.EventTypeID) ? '#5086E8' : '#374151',
+                  fontWeight: selectedEventTypes.includes(et.EventTypeID) ? 600 : 400,
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                  transition: 'all 0.2s'
+                }}
+              >
+                {et.EventTypeName}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Cultures Served */}
+        <div style={{ marginBottom: '2rem' }}>
+          <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem', fontWeight: 600, color: '#111827' }}>
+            Cultures Served
+          </h3>
+          <p style={{ margin: '0 0 1rem 0', color: '#6b7280', fontSize: '0.875rem' }}>
+            Select the cultural communities you specialize in serving
+          </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+            {culturesOptions.map(culture => (
+              <button
+                key={culture.CultureID}
+                onClick={() => toggleCulture(culture.CultureID)}
+                style={{
+                  padding: '0.5rem 1rem',
+                  borderRadius: '20px',
+                  border: selectedCultures.includes(culture.CultureID) ? '2px solid #5086E8' : '1px solid #d1d5db',
+                  background: selectedCultures.includes(culture.CultureID) ? '#eff6ff' : 'white',
+                  color: selectedCultures.includes(culture.CultureID) ? '#5086E8' : '#374151',
+                  fontWeight: selectedCultures.includes(culture.CultureID) ? 600 : 400,
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                  transition: 'all 0.2s'
+                }}
+              >
+                {culture.CultureName}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Service Location Scope */}
+        <div style={{ marginBottom: '2rem' }}>
+          <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem', fontWeight: 600, color: '#111827' }}>
+            Service Location
+          </h3>
+          <p style={{ margin: '0 0 1rem 0', color: '#6b7280', fontSize: '0.875rem' }}>
+            Choose where you are willing to provide your services
+          </p>
+          <div style={{ display: 'flex', gap: '1rem' }}>
+            {serviceLocations.map(loc => (
+              <label
+                key={loc.key}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  padding: '1rem 1.5rem',
+                  borderRadius: '8px',
+                  border: serviceLocationScope === loc.key ? '2px solid #5086E8' : '1px solid #d1d5db',
+                  background: serviceLocationScope === loc.key ? '#eff6ff' : 'white',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+              >
+                <input
+                  type="radio"
+                  name="serviceLocation"
+                  value={loc.key}
+                  checked={serviceLocationScope === loc.key}
+                  onChange={(e) => setServiceLocationScope(e.target.value)}
+                  style={{ accentColor: '#5086E8' }}
+                />
+                <span style={{ fontWeight: serviceLocationScope === loc.key ? 600 : 400 }}>
+                  {loc.label}
+                </span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        {/* Years of Experience */}
+        <div style={{ marginBottom: '2rem' }}>
+          <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem', fontWeight: 600, color: '#111827' }}>
+            Years of Experience
+          </h3>
+          <p style={{ margin: '0 0 1rem 0', color: '#6b7280', fontSize: '0.875rem' }}>
+            How long have you been in business?
+          </p>
+          <select
+            value={yearsOfExperienceRange}
+            onChange={(e) => setYearsOfExperienceRange(e.target.value)}
+            style={{
+              width: '100%',
+              maxWidth: '300px',
+              padding: '0.75rem 1rem',
+              borderRadius: '8px',
+              border: '1px solid #d1d5db',
+              fontSize: '1rem',
+              background: 'white'
+            }}
+          >
+            <option value="">Select experience range</option>
+            {experienceRanges.map(range => (
+              <option key={range.key} value={range.key}>
+                {range.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Save Button */}
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="btn btn-primary"
+        >
+          {saving ? 'Saving...' : 'Save'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export default VendorAttributesPanel;

@@ -12,6 +12,9 @@ import StripeSetupPanel from '../panels/StripeSetupPanel';
 import PopularFiltersPanel from '../panels/PopularFiltersPanel';
 import GoogleReviewsPanel from '../panels/GoogleReviewsPanel';
 import CancellationPolicyPanel from '../panels/CancellationPolicyPanel';
+import CategoryQuestionsPanel from '../panels/CategoryQuestionsPanel';
+import VendorAttributesPanel from '../panels/VendorAttributesPanel';
+import BookingSettingsPanel from '../panels/BookingSettingsPanel';
 
 function VendorBusinessProfileSection() {
   const { currentUser } = useAuth();
@@ -43,6 +46,9 @@ function VendorBusinessProfileSection() {
   const profileCards = [
     { id: 'vendor-profile-panel', icon: 'fa-building', title: 'Business Information', description: 'Update your business details, categories, and description' },
     { id: 'vendor-location-panel', icon: 'fa-map-marker-alt', title: 'Location & Service Areas', description: 'Set your business address and areas you serve' },
+    { id: 'vendor-attributes-panel', icon: 'fa-sliders-h', title: 'Service Details & Attributes', description: 'Set event types, cultures served, experience, service location, and pricing' },
+    { id: 'vendor-booking-settings-panel', icon: 'fa-bolt', title: 'Booking Settings', description: 'Configure instant booking and minimum lead time' },
+    { id: 'vendor-category-questions-panel', icon: 'fa-clipboard-list', title: 'Category Questions', description: 'Answer questions specific to your service category' },
     { id: 'vendor-additional-details-panel', icon: 'fa-clipboard-check', title: 'Vendor Setup Questionnaire', description: 'Select features that describe your services' },
     { id: 'vendor-services-panel', icon: 'fa-briefcase', title: 'Services & Packages', description: 'Manage your offerings and service packages' },
     { id: 'vendor-photos-panel', icon: 'fa-images', title: 'Gallery & Media', description: 'Manage business photos and organize into albums' },
@@ -82,6 +88,12 @@ function VendorBusinessProfileSection() {
         return <PopularFiltersPanel key={vendorProfileId} onBack={() => setActivePanel(null)} vendorProfileId={vendorProfileId} />;
       case 'vendor-cancellation-panel':
         return <CancellationPolicyPanel key={vendorProfileId} onBack={() => setActivePanel(null)} vendorProfileId={vendorProfileId} />;
+      case 'vendor-category-questions-panel':
+        return <CategoryQuestionsPanel key={vendorProfileId} onBack={() => setActivePanel(null)} vendorProfileId={vendorProfileId} />;
+      case 'vendor-attributes-panel':
+        return <VendorAttributesPanel key={vendorProfileId} onBack={() => setActivePanel(null)} vendorProfileId={vendorProfileId} />;
+      case 'vendor-booking-settings-panel':
+        return <BookingSettingsPanel key={vendorProfileId} onBack={() => setActivePanel(null)} vendorProfileId={vendorProfileId} />;
       default:
         return null;
     }

@@ -461,27 +461,6 @@ function BusinessInformationPanel({ onBack, vendorProfileId }) {
           <div className="form-row">
             <div className="form-col">
               <div className="form-group">
-                <label>Additional Categories</label>
-                <div id="vendor-additional-categories" style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', padding: '0.5rem', border: '1px solid var(--border)', borderRadius: 'var(--radius)', background: '#fafbfc', maxHeight: '180px', overflowY: 'auto' }}>
-                  {categories.map(cat => (
-                    <label key={cat.id} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.4rem 0.5rem', background: 'white', border: '1px solid var(--border)', borderRadius: 'var(--radius)', cursor: 'pointer', transition: 'all 0.2s' }}>
-                      <input
-                        type="checkbox"
-                        checked={formData.additionalCategories.includes(cat.id)}
-                        onChange={() => handleCategoryToggle(cat.id)}
-                        style={{ width: '16px', height: '16px', cursor: 'pointer' }}
-                      />
-                      <span style={{ fontSize: '0.875rem', color: 'var(--text)' }}>{cat.name}</span>
-                    </label>
-                  ))}
-                </div>
-                <small style={{ color: 'var(--text-light)', fontSize: '0.85rem', display: 'block', marginTop: '0.5rem' }}>
-                  Select all categories that apply to your business
-                </small>
-              </div>
-            </div>
-            <div className="form-col">
-              <div className="form-group">
                 <label htmlFor="vendor-price-level">Price Range <span style={{ color: 'red' }}>*</span></label>
                 <select
                   id="vendor-price-level"

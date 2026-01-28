@@ -19,3 +19,4 @@ export { default as StripeStep } from './StripeStep';
 export { default as GoogleReviewsStep } from './GoogleReviewsStep';
 export { default as PoliciesStep } from './PoliciesStep';
 export { default as ReviewStep } from './ReviewStep';
+export { default as VendorAttributesStep } from './VendorAttributesStep';

@@ -14,6 +14,10 @@ import MessagingWidget from '../components/MessagingWidget';
 import Breadcrumb from '../components/Breadcrumb';
 import BookingCalendar from '../components/BookingCalendar';
 import SharedDateTimePicker from '../components/SharedDateTimePicker';
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements, CardElement, CardNumberElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import { API_BASE_URL } from '../config';
+
 import { extractVendorIdFromSlug, parseQueryParams, trackPageView, buildVendorProfileUrl } from '../utils/urlHelpers';
 import { formatDateWithWeekday } from '../utils/helpers';
 import { getProvinceFromLocation, getTaxInfoForProvince, PROVINCE_TAX_RATES } from '../utils/taxCalculations';
@@ -21,6 +25,242 @@ import { useLocalization } from '../context/LocalizationContext';
 import { useTranslation } from '../hooks/useTranslation';
 import '../styles/BookingPage.css';
 import '../components/Calendar.css';
+
+// Initialize Stripe outside component to avoid recreating on each render
+const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY);
+
+// Card Element styling
+const CARD_ELEMENT_OPTIONS = {
+  style: {
+    base: {
+      fontSize: '16px',
+      color: '#424770',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      '::placeholder': {
+        color: '#aab7c4',
+      },
+      padding: '12px',
+    },
+    invalid: {
+      color: '#dc2626',
+      iconColor: '#dc2626',
+    },
+  },
+};
+
+// Embedded Payment Form Component using CardElement (simpler, no payment intent needed upfront)
+function EmbeddedPaymentForm({ onSubmit, isProcessing, error, totalAmount }) {
+  const stripe = useStripe();
+  const elements = useElements();
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!stripe || !elements) return;
+    onSubmit(stripe, elements);
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <div style={{ 
+        marginBottom: '1rem', 
+        padding: '1rem', 
+        border: '1px solid #e5e7eb', 
+        borderRadius: '8px',
+        backgroundColor: '#fff'
+      }}>
+        <CardElement options={CARD_ELEMENT_OPTIONS} />
+      </div>
+      
+      {error && (
+        <div style={{ 
+          padding: '0.75rem 1rem', 
+          backgroundColor: '#fef2f2', 
+          border: '1px solid #fecaca', 
+          borderRadius: '8px', 
+          color: '#dc2626',
+          marginBottom: '1rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem'
+        }}>
+          <i className="fas fa-exclamation-circle"></i>
+          {error}
+        </div>
+      )}
+      
+      <button
+        type="submit"
+        disabled={!stripe || isProcessing}
+        style={{
+          width: '100%',
+          padding: '1rem',
+          background: isProcessing ? '#9ca3af' : '#5086E8',
+          color: '#fff',
+          border: 'none',
+          borderRadius: '8px',
+          fontSize: '1rem',
+          fontWeight: 600,
+          cursor: isProcessing ? 'not-allowed' : 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '0.5rem'
+        }}
+      >
+        {isProcessing ? (
+          <>
+            <svg className="animate-spin" style={{ width: '20px', height: '20px' }} viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeDasharray="31.4 31.4" />
+            </svg>
+            Processing Payment...
+          </>
+        ) : (
+          <>
+            <i className="fas fa-lock"></i>
+            Pay & Confirm Booking
+          </>
+        )}
+      </button>
+      
+      <p style={{ fontSize: '0.8rem', color: '#6b7280', textAlign: 'center', marginTop: '1rem' }}>
+        <i className="fas fa-shield-alt" style={{ marginRight: '0.25rem' }}></i>
+        Secure payment powered by Stripe
+      </p>
+    </form>
+  );
+}
+
+// Inline Payment Form Component (Giggster-style, not modal)
+function InlinePaymentForm({ onSubmit, isProcessing, error, totalAmount, currentUser, onLoginRequired }) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [nameOnCard, setNameOnCard] = useState('');
+  const [country, setCountry] = useState('Canada');
+  const [postalCode, setPostalCode] = useState('');
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!stripe || !elements) return;
+    
+    if (!currentUser || !currentUser.id) {
+      onLoginRequired();
+      return;
+    }
+    
+    onSubmit(stripe, elements, { nameOnCard, country, postalCode });
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <div style={{ marginBottom: '16px' }}>
+        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>
+          Card number
+        </label>
+        <div style={{ padding: '12px 14px', border: '1px solid #d1d5db', borderRadius: '8px', backgroundColor: '#fff' }}>
+          <CardElement options={CARD_ELEMENT_OPTIONS} />
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
+        <div style={{ flex: 1 }}>
+          <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>
+            Country
+          </label>
+          <select 
+            value={country} 
+            onChange={e => setCountry(e.target.value)}
+            style={{ width: '100%', padding: '12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', backgroundColor: '#fff' }}
+          >
+            <option value="Canada">Canada</option>
+            <option value="United States">United States</option>
+          </select>
+        </div>
+        <div style={{ flex: 1 }}>
+          <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>
+            Postal code
+          </label>
+          <input 
+            type="text" 
+            value={postalCode}
+            onChange={e => setPostalCode(e.target.value)}
+            placeholder="M5V 1T4"
+            style={{ width: '100%', padding: '12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px' }}
+          />
+        </div>
+      </div>
+
+      <div style={{ marginBottom: '16px' }}>
+        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>
+          Name on card
+        </label>
+        <input 
+          type="text" 
+          value={nameOnCard}
+          onChange={e => setNameOnCard(e.target.value)}
+          placeholder="Full name as shown on card"
+          style={{ width: '100%', padding: '12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px' }}
+        />
+      </div>
+
+      <p style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '16px', lineHeight: 1.5 }}>
+        By providing your card information, you allow Planbeau Canada Inc. to charge your card for this booking in accordance with our terms.
+      </p>
+
+      {error && (
+        <div style={{ 
+          padding: '12px 16px', 
+          backgroundColor: '#fef2f2', 
+          border: '1px solid #fecaca', 
+          borderRadius: '8px', 
+          color: '#dc2626',
+          marginBottom: '16px',
+          fontSize: '0.9rem'
+        }}>
+          {error}
+        </div>
+      )}
+
+      <button
+        type="submit"
+        disabled={!stripe || isProcessing}
+        style={{
+          width: '100%',
+          padding: '14px 24px',
+          background: isProcessing ? '#9ca3af' : '#5086E8',
+          color: '#fff',
+          border: 'none',
+          borderRadius: '8px',
+          fontSize: '1rem',
+          fontWeight: 600,
+          cursor: isProcessing ? 'not-allowed' : 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '8px'
+        }}
+      >
+        {isProcessing ? (
+          <>
+            <svg className="animate-spin" style={{ width: '20px', height: '20px' }} viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeDasharray="31.4 31.4" />
+            </svg>
+            Processing...
+          </>
+        ) : (
+          <>
+            <i className="fas fa-lock"></i>
+            Pay ${totalAmount?.toFixed(2)} CAD
+          </>
+        )}
+      </button>
+
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginTop: '12px' }}>
+        <i className="fas fa-shield-alt" style={{ fontSize: '0.75rem', color: '#9ca3af' }}></i>
+        <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>Secure payment powered by Stripe</span>
+      </div>
+    </form>
+  );
+}
 
 function BookingPage() {
   const { vendorSlug } = useParams();
@@ -53,6 +293,8 @@ function BookingPage() {
   const [commissionSettings, setCommissionSettings] = useState({ platformFeePercent: 5 });
   const [provinceTaxRates, setProvinceTaxRates] = useState({});
   const [activeTooltip, setActiveTooltip] = useState(null);
+  const [paymentError, setPaymentError] = useState('');
+  const [paymentProcessing, setPaymentProcessing] = useState(false);
   const locationInputRef = useRef(null);
   const autocompleteRef = useRef(null);
 
@@ -196,18 +438,39 @@ function BookingPage() {
     }
   }, [vendorId]);
 
-  // Load vendor availability (business hours and exceptions)
+  // Load vendor availability (business hours, exceptions, lead time, AND bookings)
   const loadVendorAvailability = useCallback(async () => {
     try {
       const response = await apiGet(`/vendors/${vendorId}/availability`);
       if (response.ok) {
         const data = await response.json();
+        // Also get lead time from vendor profile if not in availability response
+        if (!data.minBookingLeadTimeHours && vendorData?.profile) {
+          data.minBookingLeadTimeHours = vendorData.profile.MinBookingLeadTimeHours || 0;
+        }
+        
+        // Also fetch vendor bookings for overlap validation
+        try {
+          const bookingsResponse = await fetch(`${API_BASE_URL}/bookings/vendor/${vendorId}`);
+          if (bookingsResponse.ok) {
+            const bookingsData = await bookingsResponse.json();
+            const activeBookings = (bookingsData.bookings || []).filter(b => {
+              const status = (b.Status || '').toLowerCase();
+              return status === 'confirmed' || status === 'pending' || status === 'paid' || status === 'approved';
+            });
+            data.bookings = activeBookings;
+          }
+        } catch (bookingsError) {
+          console.error('Error fetching vendor bookings:', bookingsError);
+          data.bookings = [];
+        }
+        
         setVendorAvailability(data);
       }
     } catch (error) {
       console.error('❌ Error loading vendor availability:', error);
     }
-  }, [vendorId]);
+  }, [vendorId, vendorData]);
 
   // Load cancellation policy
   const loadCancellationPolicy = useCallback(async () => {
@@ -608,6 +871,47 @@ function BookingPage() {
         alert('Please select an end time');
         return false;
       }
+      
+      // Check for booking overlap with existing bookings
+      if (vendorAvailability?.bookings && vendorAvailability.bookings.length > 0) {
+        const selectedDate = bookingData.eventDate;
+        const selectedStart = bookingData.eventTime;
+        const selectedEnd = bookingData.eventEndTime;
+        
+        const [startH, startM] = selectedStart.split(':').map(Number);
+        const [endH, endM] = selectedEnd.split(':').map(Number);
+        const selectedStartMins = startH * 60 + startM;
+        const selectedEndMins = endH * 60 + endM;
+        
+        for (const booking of vendorAvailability.bookings) {
+          if (!booking.EventDate || !booking.EventTime) continue;
+          
+          const status = (booking.Status || '').toLowerCase();
+          const isActive = status === 'confirmed' || status === 'pending' || status === 'paid' || status === 'approved';
+          if (!isActive) continue;
+          
+          const bookingDate = new Date(booking.EventDate).toISOString().split('T')[0];
+          if (bookingDate !== selectedDate) continue;
+          
+          // Parse booking times
+          const bookingStartTime = booking.EventTime || '';
+          const bookingEndTime = booking.EventEndTime || booking.EndTime || '';
+          
+          if (bookingStartTime && bookingEndTime) {
+            const [bStartH, bStartM] = bookingStartTime.split(':').map(Number);
+            const [bEndH, bEndM] = bookingEndTime.split(':').map(Number);
+            const bookingStartMins = bStartH * 60 + (bStartM || 0);
+            const bookingEndMins = bEndH * 60 + (bEndM || 0);
+            
+            // Check for overlap: new booking starts before existing ends AND new booking ends after existing starts
+            if (selectedStartMins < bookingEndMins && selectedEndMins > bookingStartMins) {
+              alert(`This time slot overlaps with an existing booking (${bookingStartTime.substring(0,5)} - ${bookingEndTime.substring(0,5)}). Please select a different time.`);
+              return false;
+            }
+          }
+        }
+      }
+      
       if (!bookingData.attendeeCount || bookingData.attendeeCount < 1) {
         alert('Please enter the number of guests');
         return false;
@@ -699,10 +1003,86 @@ function BookingPage() {
     }
   };
 
-  // Submit booking
+  // Check if vendor has instant booking enabled
+  const isInstantBookingEnabled = vendorAvailability?.instantBookingEnabled || vendorData?.profile?.InstantBookingEnabled || false;
+
+  // Calculate booking totals (shared between request and instant booking)
+  // Uses the SAME logic as the sidebar price breakdown
+  const calculateBookingTotals = () => {
+    // Calculate total hours
+    let totalHours = 0;
+    if (bookingData.eventTime && bookingData.eventEndTime) {
+      const start = new Date(`2000-01-01T${bookingData.eventTime}`);
+      const end = new Date(`2000-01-01T${bookingData.eventEndTime}`);
+      const diffMs = end - start;
+      totalHours = diffMs > 0 ? diffMs / (1000 * 60 * 60) : 0;
+    }
+
+    // Calculate services subtotal (with hourly multiplier if applicable)
+    const servicesSubtotal = selectedServices.reduce((sum, s) => {
+      const price = parseFloat(s.VendorPrice || s.Price || s.BasePrice || s.baseRate || s.fixedPrice || s.price || 0);
+      const pricingModel = s.PricingModel || s.pricingModel || '';
+      const isHourly = pricingModel === 'time_based' || pricingModel === 'hourly';
+      return sum + (isHourly && totalHours > 0 ? price * totalHours : price);
+    }, 0);
+
+    // Calculate package price (SAME logic as sidebar)
+    const packagePriceType = selectedPackage?.PriceType || selectedPackage?.priceType || 'fixed_price';
+    const isPackageHourly = packagePriceType === 'time_based' || packagePriceType === 'hourly';
+    const packageBasePrice = selectedPackage 
+      ? (selectedPackage.SalePrice && parseFloat(selectedPackage.SalePrice) < parseFloat(selectedPackage.Price) 
+          ? parseFloat(selectedPackage.SalePrice) 
+          : parseFloat(selectedPackage.BaseRate || selectedPackage.baseRate || selectedPackage.Price || selectedPackage.price || 0))
+      : 0;
+    const packagePriceCalc = isPackageHourly && totalHours > 0 ? packageBasePrice * totalHours : packageBasePrice;
+
+    // Subtotal before fees
+    const subtotal = servicesSubtotal + packagePriceCalc;
+
+    // Platform Service Fee (from admin console settings)
+    const platformFeePercent = (commissionSettings?.platformFeePercent || 5) / 100;
+    const platformFee = subtotal * platformFeePercent;
+
+    // Get province and tax info from event location
+    const eventProvince = getProvinceFromLocation(bookingData.eventLocation);
+    const taxInfo = getTaxInfoForProvince(eventProvince);
+    const taxPercent = taxInfo.rate / 100;
+    const taxableAmount = subtotal + platformFee;
+    const taxAmount = taxableAmount * taxPercent;
+
+    // Payment Processing Fee (Stripe: 2.9% + $0.30)
+    const stripePercent = 0.029;
+    const stripeFixed = 0.30;
+    const processingFee = (subtotal * stripePercent) + stripeFixed;
+
+    // Total (SAME as sidebar)
+    const total = subtotal + platformFee + taxAmount + processingFee;
+
+    const servicesWithPrices = selectedServices.map(s => {
+      const price = parseFloat(s.VendorPrice || s.Price || s.BasePrice || s.baseRate || s.fixedPrice || s.price || 0);
+      const pricingModel = s.PricingModel || s.pricingModel || '';
+      const isHourly = pricingModel === 'time_based' || pricingModel === 'hourly';
+      const calculatedPrice = isHourly && totalHours > 0 ? price * totalHours : price;
+      return { ...s, calculatedPrice, hours: isHourly ? totalHours : null };
+    });
+
+    return { 
+      totalHours, 
+      servicesSubtotal, 
+      packagePriceCalc, 
+      subtotal, 
+      servicesWithPrices, 
+      platformFee, 
+      taxAmount, 
+      taxLabel: taxInfo.label,
+      processingFee, 
+      total 
+    };
+  };
+
+  // Submit booking request (for non-instant booking vendors)
   const submitBookingRequest = async () => {
     if (!currentUser || !currentUser.id) {
-      // Open profile modal for login instead of redirecting
       setProfileModalOpen(true);
       return;
     }
@@ -710,45 +1090,7 @@ function BookingPage() {
     setSubmitting(true);
 
     try {
-      // Calculate total hours for hourly services
-      let totalHours = 0;
-      if (bookingData.eventTime && bookingData.eventEndTime) {
-        const start = new Date(`2000-01-01T${bookingData.eventTime}`);
-        const end = new Date(`2000-01-01T${bookingData.eventEndTime}`);
-        const diffMs = end - start;
-        totalHours = diffMs > 0 ? diffMs / (1000 * 60 * 60) : 0;
-      }
-
-      // Calculate services subtotal (with hourly multiplier if applicable)
-      const servicesSubtotal = selectedServices.reduce((sum, s) => {
-        const price = parseFloat(s.VendorPrice || s.Price || s.BasePrice || s.baseRate || s.fixedPrice || s.price || 0);
-        const pricingModel = s.PricingModel || s.pricingModel || '';
-        const isHourly = pricingModel === 'time_based' || pricingModel === 'hourly';
-        return sum + (isHourly && totalHours > 0 ? price * totalHours : price);
-      }, 0);
-
-      // Calculate package price
-      const packagePriceCalc = selectedPackage 
-        ? (selectedPackage.SalePrice && parseFloat(selectedPackage.SalePrice) < parseFloat(selectedPackage.Price) 
-            ? parseFloat(selectedPackage.SalePrice) 
-            : parseFloat(selectedPackage.Price || selectedPackage.price || 0))
-        : 0;
-
-      // Subtotal before fees
-      const subtotal = servicesSubtotal + packagePriceCalc;
-
-      // Add services with calculated prices to the request
-      const servicesWithPrices = selectedServices.map(s => {
-        const price = parseFloat(s.VendorPrice || s.Price || s.BasePrice || s.baseRate || s.fixedPrice || s.price || 0);
-        const pricingModel = s.PricingModel || s.pricingModel || '';
-        const isHourly = pricingModel === 'time_based' || pricingModel === 'hourly';
-        const calculatedPrice = isHourly && totalHours > 0 ? price * totalHours : price;
-        return {
-          ...s,
-          calculatedPrice,
-          hours: isHourly ? totalHours : null
-        };
-      });
+      const { subtotal, servicesWithPrices, packagePriceCalc } = calculateBookingTotals();
 
       const requestData = {
         userId: currentUser.id,
@@ -764,13 +1106,12 @@ function BookingPage() {
         packageId: selectedPackage?.PackageID || null,
         packageName: selectedPackage?.PackageName || null,
         packagePrice: packagePriceCalc || null,
-        budget: subtotal, // Send the calculated subtotal as budget
+        budget: subtotal,
         specialRequestText: bookingData.specialRequests,
         timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
       };
 
       const response = await apiPost('/bookings/requests/send', requestData);
-
       const result = await response.json();
 
       if (!response.ok || !result.success) {
@@ -783,6 +1124,142 @@ function BookingPage() {
       alert('Failed to send booking request: ' + error.message);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  // Handle payment submission (called from PaymentCheckoutModal)
+  const handlePaymentSubmit = async (stripe, elements, billingDetails = {}) => {
+    if (!stripe || !elements) return;
+
+    // Check if user is logged in
+    if (!currentUser || !currentUser.id) {
+      setProfileModalOpen(true);
+      return;
+    }
+
+    setPaymentProcessing(true);
+    setPaymentError('');
+
+    try {
+      const { subtotal, total, servicesWithPrices, packagePriceCalc } = calculateBookingTotals();
+      const clientProvince = getProvinceFromLocation(bookingData.eventLocation);
+
+      // Step 1: Create payment intent on backend
+      const paymentIntentResponse = await fetch(`${API_BASE_URL}/payments/payment-intent`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          amount: total,
+          vendorProfileId: parseInt(vendorId),
+          clientProvince: clientProvince,
+          metadata: {
+            eventName: bookingData.eventName,
+            eventDate: bookingData.eventDate,
+            vendorId: vendorId
+          }
+        })
+      });
+
+      const paymentIntentData = await paymentIntentResponse.json();
+      
+      if (!paymentIntentResponse.ok || !paymentIntentData.clientSecret) {
+        throw new Error(paymentIntentData.message || 'Failed to create payment intent');
+      }
+
+      // Step 2: Confirm payment with card (supports both CardElement and CardNumberElement)
+      const cardElement = elements.getElement(CardNumberElement) || elements.getElement(CardElement);
+      const { error: confirmError, paymentIntent } = await stripe.confirmCardPayment(
+        paymentIntentData.clientSecret,
+        {
+          payment_method: {
+            card: cardElement,
+            billing_details: {
+              name: billingDetails.nameOnCard || currentUser?.name || currentUser?.email || 'Customer',
+              address: {
+                postal_code: billingDetails.postalCode || '',
+                country: billingDetails.country === 'Canada' ? 'CA' : 'US'
+              }
+            },
+          },
+        }
+      );
+
+      if (confirmError) {
+        setPaymentError(confirmError.message || 'Payment failed. Please try again.');
+        setPaymentProcessing(false);
+        throw new Error(confirmError.message);
+      }
+
+      if (paymentIntent.status !== 'succeeded') {
+        setPaymentError('Payment requires additional verification.');
+        setPaymentProcessing(false);
+        throw new Error('Payment requires additional verification.');
+      }
+
+      // Get tax info for the booking
+      const taxInfo = getTaxInfoForProvince(clientProvince);
+      const taxRate = taxInfo?.totalRate || 0.13;
+      const taxLabel = taxInfo?.label || 'HST 13%';
+      const platformFeePercent = commissionSettings?.platformFeePercent || 5;
+      const platformFee = subtotal * (platformFeePercent / 100);
+      const taxAmount = subtotal * taxRate;
+      const processingFee = (subtotal + platformFee + taxAmount) * 0.029 + 0.30;
+
+      // Step 3: Create booking with payment intent ID
+      const bookingResponse = await fetch(`${API_BASE_URL}/bookings`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          userId: currentUser.id,
+          vendorProfileId: parseInt(vendorId),
+          eventName: bookingData.eventName,
+          eventType: bookingData.eventType,
+          eventDate: bookingData.eventDate,
+          eventTime: bookingData.eventTime + ':00',
+          eventEndTime: bookingData.eventEndTime ? bookingData.eventEndTime + ':00' : null,
+          eventLocation: bookingData.eventLocation,
+          attendeeCount: parseInt(bookingData.attendeeCount),
+          services: servicesWithPrices,
+          packageId: selectedPackage?.PackageID || null,
+          packageName: selectedPackage?.PackageName || null,
+          packagePrice: packagePriceCalc || null,
+          budget: total,
+          specialRequestText: bookingData.specialRequests,
+          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          isInstantBooking: true,
+          paymentIntentId: paymentIntent.id,
+          // Financial details
+          subtotal: subtotal,
+          platformFee: platformFee,
+          taxAmount: taxAmount,
+          taxPercent: taxRate * 100,
+          taxLabel: taxLabel,
+          processingFee: processingFee,
+          grandTotal: total
+        })
+      });
+
+      const bookingResult = await bookingResponse.json();
+      
+      if (!bookingResponse.ok || !bookingResult.success) {
+        throw new Error(bookingResult.message || 'Failed to create booking');
+      }
+
+      // Success!
+      setShowSuccessModal(true);
+      setPaymentProcessing(false);
+
+    } catch (error) {
+      console.error('Payment error:', error);
+      setPaymentError(error.message || 'Payment failed. Please try again.');
+      setPaymentProcessing(false);
+      throw error; // Re-throw so the modal can handle it
     }
   };
 
@@ -975,7 +1452,7 @@ function BookingPage() {
             )}
 
             
-            <h1 className="booking-title">Request to book</h1>
+            <h1 className="booking-title">{isInstantBookingEnabled ? 'Book & Pay' : 'Request to book'}</h1>
             
             
             {/* Step 1: Event Information */}
@@ -995,15 +1472,7 @@ function BookingPage() {
                     type="text"
                     id="event-name"
                     className="form-input"
-                    style={{ 
-                      width: '100%', 
-                      padding: '0.75rem 1rem', 
-                      border: '1px solid #ddd', 
-                      borderRadius: '8px', 
-                      fontSize: '1rem',
-                      display: 'block',
-                      backgroundColor: 'white'
-                    }}
+                    style={{ width: '100%', padding: '0.75rem 1rem', border: '1px solid #ddd', borderRadius: '8px', fontSize: '1rem', display: 'block', backgroundColor: 'white' }}
                     placeholder="e.g., Sarah & John's Wedding"
                     value={bookingData.eventName}
                     onChange={handleInputChange}
@@ -1018,15 +1487,7 @@ function BookingPage() {
                   <select
                     id="event-type"
                     className="form-input"
-                    style={{ 
-                      width: '100%', 
-                      padding: '0.75rem 1rem', 
-                      border: '1px solid #ddd', 
-                      borderRadius: '8px', 
-                      fontSize: '1rem',
-                      display: 'block',
-                      backgroundColor: 'white'
-                    }}
+                    style={{ width: '100%', padding: '0.75rem 1rem', border: '1px solid #ddd', borderRadius: '8px', fontSize: '1rem', display: 'block', backgroundColor: 'white' }}
                     value={bookingData.eventType}
                     onChange={handleInputChange}
                   >
@@ -1051,6 +1512,7 @@ function BookingPage() {
                     vendorId={vendorId}
                     businessHours={vendorData?.businessHours || vendorAvailability?.businessHours || []}
                     timezone={vendorData?.profile?.Timezone || null}
+                    minBookingLeadTimeHours={vendorData?.profile?.MinBookingLeadTimeHours || vendorAvailability?.minBookingLeadTimeHours || 0}
                     selectedDate={bookingData.eventDate}
                     selectedStartTime={bookingData.eventTime}
                     selectedEndTime={bookingData.eventEndTime}
@@ -1077,15 +1539,7 @@ function BookingPage() {
                     type="number"
                     id="attendee-count"
                     className="form-input"
-                    style={{ 
-                      width: '100%', 
-                      padding: '0.75rem 1rem', 
-                      border: '1px solid #ddd', 
-                      borderRadius: '8px', 
-                      fontSize: '1rem',
-                      display: 'block',
-                      backgroundColor: 'white'
-                    }}
+                    style={{ width: '100%', padding: '0.75rem 1rem', border: '1px solid #ddd', borderRadius: '8px', fontSize: '1rem', display: 'block', backgroundColor: 'white' }}
                     placeholder="50"
                     min="1"
                     value={bookingData.attendeeCount}
@@ -1093,7 +1547,6 @@ function BookingPage() {
                     required
                   />
                 </div>
-
 
                 <div className="form-group" style={{ marginBottom: '1.5rem' }}>
                   <label htmlFor="event-location" className="form-label" style={{ display: 'block', fontWeight: '600', marginBottom: '0.5rem', color: '#222' }}>
@@ -1104,15 +1557,7 @@ function BookingPage() {
                     type="text"
                     id="event-location"
                     className="form-input"
-                    style={{ 
-                      width: '100%', 
-                      padding: '0.75rem 1rem', 
-                      border: '1px solid #ddd', 
-                      borderRadius: '8px', 
-                      fontSize: '1rem',
-                      display: 'block',
-                      backgroundColor: 'white'
-                    }}
+                    style={{ width: '100%', padding: '0.75rem 1rem', border: '1px solid #ddd', borderRadius: '8px', fontSize: '1rem', display: 'block', backgroundColor: 'white' }}
                     placeholder="Enter address or city (Canada only)"
                     value={bookingData.eventLocation}
                     onChange={handleInputChange}
@@ -1128,7 +1573,7 @@ function BookingPage() {
                   </div>
                   <div className="overview-step" data-step="3">
                     <div className="overview-number">3</div>
-                    <div className="overview-title">Review your request</div>
+                    <div className="overview-title">{isInstantBookingEnabled ? 'Review & Pay' : 'Review your request'}</div>
                   </div>
                 </div>
               </div>
@@ -1245,7 +1690,6 @@ function BookingPage() {
                 </PackageServiceList>
                 )}
                 
-                
                 {/* Upcoming Steps Preview */}
                 <div className="upcoming-steps">
                   <div className="overview-step" data-step="3">
@@ -1256,90 +1700,153 @@ function BookingPage() {
               </div>
             )}
 
-            {/* Step 3: Additional Details & Review */}
+            {/* Step 3: Review & Complete Booking */}
             {currentStep === 3 && (
               <div className="booking-step" id="step-3" style={{ display: 'block', width: '100%', padding: '20px', backgroundColor: '#ffffff' }}>
                 <div className="step-header" style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
                   <div className="step-number-circle" style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#222', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '600' }}>3</div>
-                  <h2 className="step-title" style={{ fontSize: '1.5rem', fontWeight: '600', margin: '0', color: '#222' }}>Review your request</h2>
-                </div>
-                
-                <div className="review-section" style={{ marginBottom: '2rem', padding: '1.5rem', backgroundColor: '#f7f7f7', borderRadius: '12px' }}>
-                  <h3 className="review-subtitle" style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '1rem', color: '#222' }}>Event Details</h3>
-                  <div className="review-item" style={{ display: 'flex', justifyContent: 'space-between', padding: '0.75rem 0', borderBottom: '1px solid #ddd' }}>
-                    <span className="review-label" style={{ color: '#717171', fontWeight: '500' }}>Event:</span>
-                    <span className="review-value" style={{ color: '#222', fontWeight: '600', textAlign: 'right' }}>{bookingData.eventName}</span>
-                  </div>
-                  <div className="review-item" style={{ display: 'flex', justifyContent: 'space-between', padding: '0.75rem 0', borderBottom: '1px solid #ddd' }}>
-                    <span className="review-label" style={{ color: '#717171', fontWeight: '500' }}>Type:</span>
-                    <span className="review-value">
-                      {bookingData.eventType.charAt(0).toUpperCase() + bookingData.eventType.slice(1).replace('-', ' ')}
-                    </span>
-                  </div>
-                  <div className="review-item">
-                    <span className="review-label">Date & Time:</span>
-                    <span className="review-value">
-                      {formatDate(bookingData.eventDate)} at {formatTime(bookingData.eventTime)}
-                      {bookingData.eventEndTime && ` - ${formatTime(bookingData.eventEndTime)}`}
-                    </span>
-                  </div>
-                  <div className="review-item">
-                    <span className="review-label">Guests:</span>
-                    <span className="review-value">{bookingData.attendeeCount} guests</span>
-                  </div>
-                  <div className="review-item">
-                    <span className="review-label">Location:</span>
-                    <span className="review-value">{bookingData.eventLocation}</span>
-                  </div>
+                  <h2 className="step-title" style={{ fontSize: '1.5rem', fontWeight: '600', margin: '0', color: '#222' }}>{isInstantBookingEnabled ? 'Review & Pay' : 'Review your request'}</h2>
                 </div>
 
-                <div className="review-section">
-                  <h3 className="review-subtitle">Selected Package</h3>
-                  <div id="review-package" className="review-services">
-                    {selectedPackage ? (
-                      <div style={{ 
-                        padding: '1rem', 
-                        background: '#f9fafb', 
-                        borderRadius: '8px',
-                        border: '1px solid #e5e7eb'
-                      }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                          <i className="fas fa-check-circle" style={{ color: '#22c55e' }}></i>
-                          <span style={{ fontWeight: 600, color: '#222' }}>{selectedPackage.PackageName}</span>
-                        </div>
-                        <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#222', marginBottom: '0.5rem' }}>
-                          {selectedPackage.SalePrice && parseFloat(selectedPackage.SalePrice) < parseFloat(selectedPackage.Price) 
-                            ? formatCurrency(parseFloat(selectedPackage.SalePrice), null, { showCents: false }) 
-                            : formatCurrency(parseFloat(selectedPackage.Price), null, { showCents: false })}
-                          <span style={{ fontSize: '0.85rem', fontWeight: 400, color: '#6b7280', marginLeft: '0.25rem' }}>
-                            / {selectedPackage.PriceType === 'per_person' ? 'person' : 'package'}
-                          </span>
-                        </div>
-                        {selectedPackage.IncludedServices && selectedPackage.IncludedServices.length > 0 && (
-                          <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>
-                            Includes: {selectedPackage.IncludedServices.map(s => s.name || s.ServiceName).join(', ')}
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <p style={{ color: 'var(--text-secondary)' }}>No package selected</p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="special-requests" className="form-label">
+                {/* Special Requests */}
+                <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+                  <label htmlFor="special-requests" className="form-label" style={{ display: 'block', fontWeight: '600', marginBottom: '0.5rem', color: '#222' }}>
                     Special Requests or Questions (Optional)
                   </label>
                   <textarea
                     id="special-requests"
                     className="form-textarea"
                     rows="4"
+                    style={{ width: '100%', padding: '0.75rem 1rem', border: '1px solid #ddd', borderRadius: '8px', fontSize: '1rem', resize: 'vertical' }}
                     placeholder="Add any special requests, dietary restrictions, or questions for the vendor..."
                     value={bookingData.specialRequests}
                     onChange={handleInputChange}
                   ></textarea>
                 </div>
+
+                {/* Booking Options */}
+                {isInstantBookingEnabled ? (
+                  <>
+                    {/* Option 1: Pay Now (Instant Booking) */}
+                    <div style={{ 
+                      padding: '20px', 
+                      border: '2px solid #5086E8', 
+                      borderRadius: '12px', 
+                      backgroundColor: '#f0f7ff',
+                      marginBottom: '16px'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: '16px' }}>
+                        <div style={{ width: '20px', height: '20px', borderRadius: '50%', border: '2px solid #5086E8', backgroundColor: '#5086E8', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '2px' }}>
+                          <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'white' }}></div>
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: '600', color: '#222', marginBottom: '4px' }}>Pay in full</div>
+                          <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                            Pay the total ${calculateBookingTotals().total?.toFixed(2)} CAD now and your booking is confirmed instantly.
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Inline Payment Form */}
+                      <Elements stripe={stripePromise}>
+                        <InlinePaymentForm 
+                          onSubmit={handlePaymentSubmit}
+                          isProcessing={paymentProcessing}
+                          error={paymentError}
+                          totalAmount={calculateBookingTotals().total}
+                          currentUser={currentUser}
+                          onLoginRequired={() => setProfileModalOpen(true)}
+                        />
+                      </Elements>
+                    </div>
+
+                    {/* Divider */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px', margin: '20px 0' }}>
+                      <div style={{ flex: 1, height: '1px', backgroundColor: '#e5e7eb' }}></div>
+                      <span style={{ fontSize: '0.875rem', color: '#9ca3af', fontWeight: '500' }}>OR</span>
+                      <div style={{ flex: 1, height: '1px', backgroundColor: '#e5e7eb' }}></div>
+                    </div>
+
+                    {/* Option 2: Request Booking */}
+                    <div style={{ 
+                      padding: '20px', 
+                      border: '1px solid #e5e7eb', 
+                      borderRadius: '12px', 
+                      backgroundColor: '#fff'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: '16px' }}>
+                        <div style={{ width: '20px', height: '20px', borderRadius: '50%', border: '2px solid #d1d5db', marginTop: '2px' }}></div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: '600', color: '#222', marginBottom: '4px' }}>Request to book</div>
+                          <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                            Send a booking request. The vendor will review and respond within 24-48 hours.
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <button
+                        onClick={() => {
+                          if (!currentUser || !currentUser.id) {
+                            setProfileModalOpen(true);
+                            return;
+                          }
+                          submitBookingRequest();
+                        }}
+                        disabled={submitting}
+                        style={{
+                          width: '100%',
+                          padding: '14px 24px',
+                          background: '#222',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: '8px',
+                          fontSize: '1rem',
+                          fontWeight: 600,
+                          cursor: submitting ? 'not-allowed' : 'pointer',
+                          opacity: submitting ? 0.7 : 1
+                        }}
+                      >
+                        {submitting ? 'Sending Request...' : 'Send Booking Request'}
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  /* Non-instant booking - just show request button */
+                  <div style={{ 
+                    padding: '20px', 
+                    border: '1px solid #e5e7eb', 
+                    borderRadius: '12px', 
+                    backgroundColor: '#f9fafb'
+                  }}>
+                    <p style={{ fontSize: '0.9rem', color: '#6b7280', marginBottom: '16px' }}>
+                      Send a booking request to the vendor. They will review your request and respond within 24-48 hours.
+                    </p>
+                    <button
+                      onClick={() => {
+                        if (!currentUser || !currentUser.id) {
+                          setProfileModalOpen(true);
+                          return;
+                        }
+                        submitBookingRequest();
+                      }}
+                      disabled={submitting}
+                      style={{
+                        width: '100%',
+                        padding: '14px 24px',
+                        background: '#222',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '8px',
+                        fontSize: '1rem',
+                        fontWeight: 600,
+                        cursor: submitting ? 'not-allowed' : 'pointer',
+                        opacity: submitting ? 0.7 : 1
+                      }}
+                    >
+                      {submitting ? 'Sending Request...' : 'Send Booking Request'}
+                    </button>
+                  </div>
+                )}
 
               </div>
             )}
@@ -1385,6 +1892,9 @@ function BookingPage() {
                 >
                   Next
                 </button>
+              ) : isInstantBookingEnabled ? (
+                // Payment button is now embedded in the form above - show nothing here
+                null
               ) : (
                 <button
                   onClick={submitBookingRequest}
@@ -1735,10 +2245,19 @@ function BookingPage() {
               </>
             )}
 
-            <div className="info-notice">
-              <i className="fas fa-shield-alt"></i>
-              <p>This is a free request. You won't be charged until you confirm with the vendor.</p>
-            </div>
+            {isInstantBookingEnabled ? (
+              <div className="info-notice" style={{ background: '#eff6ff', borderColor: '#5086E8' }}>
+                <i className="fas fa-bolt" style={{ color: '#5086E8' }}></i>
+                <p style={{ color: '#1e40af' }}>
+                  <strong>Instant Booking</strong> - Book and pay now without waiting for vendor approval.
+                </p>
+              </div>
+            ) : (
+              <div className="info-notice">
+                <i className="fas fa-shield-alt"></i>
+                <p>This is a free request. You won't be charged until you confirm with the vendor.</p>
+              </div>
+            )}
 
             {/* Cancellation Policy */}
             {cancellationPolicy && (() => {
@@ -1979,15 +2498,21 @@ function BookingPage() {
             }}>
               <i className="fas fa-check" style={{ fontSize: '28px', color: 'white' }}></i>
             </div>
-            <h2 style={{ marginBottom: '0.5rem' }}>Request Sent Successfully!</h2>
-            <p style={{ color: '#6b7280', marginBottom: '1.5rem' }}>Your booking request has been sent to the vendor.</p>
+            <h2 style={{ marginBottom: '0.5rem' }}>{isInstantBookingEnabled ? 'Booking Confirmed!' : 'Request Sent Successfully!'}</h2>
+            <p style={{ color: '#6b7280', marginBottom: '1.5rem' }}>
+              {isInstantBookingEnabled 
+                ? 'Your booking has been confirmed and payment processed successfully.' 
+                : 'Your booking request has been sent to the vendor.'}
+            </p>
             
             <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '1rem', marginBottom: '2rem', textAlign: 'left' }}>
               <div style={{ fontWeight: 600, color: '#374151', marginBottom: '0.5rem', fontSize: '0.95rem' }}>
                 What happens next?
               </div>
               <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem', lineHeight: 1.6 }}>
-                The vendor will review your request and respond within 24 hours. You'll receive a notification when they respond.
+                {isInstantBookingEnabled 
+                  ? 'The vendor has been notified of your booking. You can view your booking details and communicate with the vendor from your dashboard.'
+                  : 'The vendor will review your request and respond within 24 hours. You\'ll receive a notification when they respond.'}
               </p>
             </div>
             
@@ -2040,6 +2565,7 @@ function BookingPage() {
         isOpen={profileModalOpen} 
         onClose={() => setProfileModalOpen(false)} 
       />
+
       
       {/* Messaging Widget */}
       <MessagingWidget />

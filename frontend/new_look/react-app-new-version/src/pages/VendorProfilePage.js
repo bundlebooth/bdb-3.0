@@ -2787,6 +2787,34 @@ function VendorProfilePage() {
                   </div>
                 </div>
               )}
+
+              {/* Instant Booking Badge */}
+              {profile?.InstantBookingEnabled && (
+                <div style={{ display: 'flex', gap: '16px', marginBottom: '24px' }}>
+                  <i className="fas fa-bolt" style={{ fontSize: '24px', color: '#5086E8', width: '32px' }}></i>
+                  <div>
+                    <div style={{ fontSize: '16px', fontWeight: 600, color: '#222' }}>Instant Booking</div>
+                    <div style={{ fontSize: '14px', color: '#717171' }}>Book and pay instantly without waiting for approval</div>
+                  </div>
+                </div>
+              )}
+
+              {/* Minimum Lead Time Info */}
+              {profile?.MinBookingLeadTimeHours > 0 && (
+                <div style={{ display: 'flex', gap: '16px', marginBottom: '24px' }}>
+                  <i className="fas fa-clock" style={{ fontSize: '24px', color: '#5086E8', width: '32px' }}></i>
+                  <div>
+                    <div style={{ fontSize: '16px', fontWeight: 600, color: '#222' }}>Advance Notice Required</div>
+                    <div style={{ fontSize: '14px', color: '#717171' }}>
+                      {profile.MinBookingLeadTimeHours >= 168 
+                        ? `Book at least ${Math.floor(profile.MinBookingLeadTimeHours / 168)} week${Math.floor(profile.MinBookingLeadTimeHours / 168) > 1 ? 's' : ''} in advance`
+                        : profile.MinBookingLeadTimeHours >= 24 
+                          ? `Book at least ${Math.floor(profile.MinBookingLeadTimeHours / 24)} day${Math.floor(profile.MinBookingLeadTimeHours / 24) > 1 ? 's' : ''} in advance`
+                          : `Book at least ${profile.MinBookingLeadTimeHours} hours in advance`}
+                    </div>
+                  </div>
+                </div>
+              )}
               
               {/* Cancellation Policy - Always shown */}
               <div style={{ display: 'flex', gap: '16px' }}>
@@ -2881,6 +2909,8 @@ function VendorProfilePage() {
             minBookingHours={profile?.MinBookingHours || 1}
             timezone={profile?.TimeZone || profile?.Timezone}
             cancellationPolicy={cancellationPolicy}
+            instantBookingEnabled={profile?.InstantBookingEnabled || false}
+            minBookingLeadTimeHours={profile?.MinBookingLeadTimeHours || 0}
             onReserve={handleRequestBooking}
             onMessage={handleMessageVendor}
           />

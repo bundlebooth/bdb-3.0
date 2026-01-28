@@ -10,7 +10,6 @@ import VendorCard from '../components/VendorCard';
 import VendorGrid from '../components/VendorGrid';
 import VendorSection from '../components/VendorSection';
 import VendorSectionSkeleton from '../components/VendorSectionSkeleton';
-import FilterModal from '../components/FilterModal';
 import ProfileModal from '../components/ProfileModal';
 import MapView from '../components/MapView';
 import Footer from '../components/Footer';
@@ -233,17 +232,13 @@ function BrowsePage() {
   const [favorites, setFavorites] = useState([]);
   const [totalCount, setTotalCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
-  const [filterModalOpen, setFilterModalOpen] = useState(false);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [sortBy, setSortBy] = useState('recommended');
   const [mapActive, setMapActive] = useState(false);
   const [showFullGrid, setShowFullGrid] = useState(false);
   const [selectedVendorId, setSelectedVendorId] = useState(null);
   const [filters, setFilters] = useState({
-    location: cityFilter || '',
-    priceLevel: '',
-    minRating: '',
-    tags: []
+    location: cityFilter || ''
   });
 
   const pageSize = 24;
@@ -899,13 +894,6 @@ function BrowsePage() {
       />
 
       <ProfileModal isOpen={profileModalOpen} onClose={() => setProfileModalOpen(false)} />
-      <FilterModal 
-        isOpen={filterModalOpen} 
-        onClose={() => setFilterModalOpen(false)}
-        filters={filters}
-        onFilterChange={handleFilterChange}
-        vendorCount={totalCount}
-      />
 
       <div className="browse-container">
         {/* Giggster-style Hero Section */}

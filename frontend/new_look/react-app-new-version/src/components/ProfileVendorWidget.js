@@ -15,6 +15,8 @@ const ProfileVendorWidget = ({
   minBookingHours = 1,
   timezone = null,
   cancellationPolicy = null,
+  instantBookingEnabled = false,
+  minBookingLeadTimeHours = 0,
   onReserve,
   onMessage
 }) => {
@@ -126,12 +128,21 @@ const ProfileVendorWidget = ({
     return days;
   };
 
-  // Check if a date is in the past
+  // Check if a date is in the past or within lead time
   const isDatePast = (date) => {
     if (!date) return true;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    return date < today;
+    if (date < today) return true;
+    
+    // Check lead time requirement
+    if (minBookingLeadTimeHours > 0) {
+      const leadTimeMs = minBookingLeadTimeHours * 60 * 60 * 1000;
+      const minBookingDate = new Date(Date.now() + leadTimeMs);
+      minBookingDate.setHours(0, 0, 0, 0);
+      if (date < minBookingDate) return true;
+    }
+    return false;
   };
 
   // Check if vendor is available on a specific day of week
@@ -359,6 +370,14 @@ const ProfileVendorWidget = ({
 
   const allTimeOptions = generateTimeOptions();
 
+  // Format lead time for display
+  const formatLeadTime = (hours) => {
+    if (!hours || hours <= 0) return null;
+    if (hours >= 168) return `${Math.floor(hours / 168)} week${Math.floor(hours / 168) > 1 ? 's' : ''} advance notice`;
+    if (hours >= 24) return `${Math.floor(hours / 24)} day${Math.floor(hours / 24) > 1 ? 's' : ''} advance notice`;
+    return `${hours} hours advance notice`;
+  };
+
   return (
     <div className={`giggster-booking-widget ${showDatePicker ? 'picker-open' : ''}`} ref={widgetRef}>
       {/* Price Header */}
@@ -373,7 +392,43 @@ const ProfileVendorWidget = ({
             <span className="gbw-price">Request a Quote</span>
           )}
         </div>
+        {/* Instant Booking Badge */}
+        {instantBookingEnabled && (
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            background: '#e0f2fe',
+            color: '#0369a1',
+            padding: '4px 10px',
+            borderRadius: '16px',
+            fontSize: '12px',
+            fontWeight: 500,
+            marginLeft: '8px'
+          }}>
+            <i className="fas fa-bolt" style={{ fontSize: '10px' }}></i>
+            Instant Book
+          </div>
+        )}
       </div>
+      
+      {/* Lead Time Notice */}
+      {minBookingLeadTimeHours > 0 && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          padding: '8px 12px',
+          background: '#fef3c7',
+          borderRadius: '8px',
+          fontSize: '13px',
+          color: '#92400e',
+          marginBottom: '12px'
+        }}>
+          <i className="fas fa-clock" style={{ fontSize: '12px' }}></i>
+          <span>Requires {formatLeadTime(minBookingLeadTimeHours)}</span>
+        </div>
+      )}
 
       {/* Date Selection Row */}
       <div 

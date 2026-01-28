@@ -6,6 +6,7 @@ const SharedDateTimePicker = ({
   vendorId,
   businessHours = [],
   timezone = null,
+  minBookingLeadTimeHours = 0,
   selectedDate: propSelectedDate = null,
   selectedStartTime: propSelectedStartTime = null,
   selectedEndTime: propSelectedEndTime = null,
@@ -17,13 +18,23 @@ const SharedDateTimePicker = ({
   showSaveDeleteButtons = true,
   inline = false
 }) => {
-  const [currentMonth, setCurrentMonth] = useState(new Date());
+  // Calculate the first available date based on lead time
+  const getFirstAvailableDate = () => {
+    if (minBookingLeadTimeHours > 0) {
+      const leadTimeMs = minBookingLeadTimeHours * 60 * 60 * 1000;
+      return new Date(Date.now() + leadTimeMs);
+    }
+    return new Date();
+  };
+
+  const [currentMonth, setCurrentMonth] = useState(getFirstAvailableDate);
   const [selectedDate, setSelectedDate] = useState(propSelectedDate ? new Date(propSelectedDate + 'T00:00:00') : null);
   const [selectedStartTime, setSelectedStartTime] = useState(propSelectedStartTime);
   const [selectedEndTime, setSelectedEndTime] = useState(propSelectedEndTime);
   const [vendorBookings, setVendorBookings] = useState([]);
   const [availabilityExceptions, setAvailabilityExceptions] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [calendarReady, setCalendarReady] = useState(true);
 
   const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'];
@@ -58,7 +69,6 @@ const SharedDateTimePicker = ({
   const fetchVendorBookings = useCallback(async () => {
     if (!vendorId) return;
     try {
-      setLoading(true);
       const response = await fetch(`${API_BASE_URL}/bookings/vendor/${vendorId}`);
       if (response.ok) {
         const data = await response.json();
@@ -71,8 +81,6 @@ const SharedDateTimePicker = ({
       }
     } catch (error) {
       console.error('Error fetching vendor bookings:', error);
-    } finally {
-      setLoading(false);
     }
   }, [vendorId]);
 
@@ -116,12 +124,21 @@ const SharedDateTimePicker = ({
 
   const days = getDaysInMonth(currentMonth);
 
-  // Check if a date is in the past
+  // Check if a date is in the past or within lead time
   const isDatePast = (date) => {
     if (!date) return true;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    return date < today;
+    if (date < today) return true;
+    
+    // Check lead time requirement
+    if (minBookingLeadTimeHours > 0) {
+      const leadTimeMs = minBookingLeadTimeHours * 60 * 60 * 1000;
+      const minBookingDate = new Date(Date.now() + leadTimeMs);
+      minBookingDate.setHours(0, 0, 0, 0);
+      if (date < minBookingDate) return true;
+    }
+    return false;
   };
 
   // Check if vendor is available on a specific day of week

@@ -5,13 +5,13 @@ import { API_BASE_URL } from '../config';
 import { apiGet, apiPost, apiDelete } from '../utils/api';
 import { PageLayout } from '../components/PageWrapper';
 import Header from '../components/Header';
-import FilterModal from '../components/FilterModal';
 import CategoriesNav from '../components/CategoryPills';
 import VendorGrid from '../components/VendorGrid';
 import VendorSection from '../components/VendorSection';
 import VendorSectionSkeleton from '../components/VendorSectionSkeleton';
 import MapView from '../components/MapView';
 import ProfileModal from '../components/ProfileModal';
+import FilterModal from '../components/FilterModal';
 import SetupIncompleteBanner from '../components/SetupIncompleteBanner';
 import MessagingWidget from '../components/MessagingWidget';
 import AnnouncementDisplay from '../components/AnnouncementDisplay';
@@ -36,7 +36,6 @@ function IndexPage() {
   });
   const [favorites, setFavorites] = useState([]);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [filterModalOpen, setFilterModalOpen] = useState(false);
   const [mapActive, setMapActive] = useState(true); // Map open by default
   const [currentPage, setCurrentPage] = useState(1);
   const [serverPageNumber, setServerPageNumber] = useState(1);
@@ -44,6 +43,7 @@ function IndexPage() {
   const [userLocation, setUserLocation] = useState(null);
   const [selectedVendorId, setSelectedVendorId] = useState(null);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [filterModalOpen, setFilterModalOpen] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [sortBy, setSortBy] = useState('recommended');
   const [mobileMapOpen, setMobileMapOpen] = useState(false); // Mobile fullscreen map
@@ -88,28 +88,109 @@ function IndexPage() {
   const isInitialMount = useRef(true);
   const hasLoadedOnce = useRef(false);
   const isLoadingRef = useRef(false); // Prevent concurrent API calls
+  const hasAppliedInitialFilters = useRef(false); // Prevent map from overwriting initial filtered results
   
   const vendorsPerPage = 12;
   const serverPageSize = 200;
 
-  // Initialize filters from URL params
+  // Filters state - location and vendor attributes (initialize from URL)
   const [filters, setFilters] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     return {
       location: params.get('location') || '',
-      useCurrentLocation: params.get('useCurrentLocation') === 'true',
-      distanceKm: 50,
-      priceLevel: params.get('priceLevel') || '',
+      eventTypes: params.get('eventTypes') ? params.get('eventTypes').split(',').map(id => parseInt(id)).filter(id => !isNaN(id)) : [],
+      cultures: params.get('cultures') ? params.get('cultures').split(',').map(id => parseInt(id)).filter(id => !isNaN(id)) : [],
+      experienceRange: params.get('experienceRange') || '',
+      serviceLocation: params.get('serviceLocation') || '',
+      minPrice: params.get('minPrice') ? parseInt(params.get('minPrice')) : null,
+      maxPrice: params.get('maxPrice') ? parseInt(params.get('maxPrice')) : null,
+      instantBookingOnly: params.get('instantBookingOnly') === 'true',
       minRating: params.get('minRating') || '',
-      region: params.get('region') || '',
-      tags: params.get('tags') ? params.get('tags').split(',') : [],
-      // Availability filters
-      eventDate: null,
-      dayOfWeek: null,
-      startTime: null,
-      endTime: null
+      // NEW: Enhanced filter parameters
+      minReviewCount: params.get('minReviewCount') || '',
+      freshListingsDays: params.get('freshListingsDays') || '',
+      hasGoogleReviews: params.get('hasGoogleReviews') === 'true',
+      availabilityDate: params.get('availabilityDate') || '',
+      availabilityDayOfWeek: params.get('availabilityDayOfWeek') || ''
     };
   });
+  
+  // Sync filters to URL when they change
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    
+    // Update URL params based on filters
+    if (filters.eventTypes && filters.eventTypes.length > 0) {
+      params.set('eventTypes', filters.eventTypes.join(','));
+    } else {
+      params.delete('eventTypes');
+    }
+    if (filters.cultures && filters.cultures.length > 0) {
+      params.set('cultures', filters.cultures.join(','));
+    } else {
+      params.delete('cultures');
+    }
+    if (filters.experienceRange) {
+      params.set('experienceRange', filters.experienceRange);
+    } else {
+      params.delete('experienceRange');
+    }
+    if (filters.serviceLocation) {
+      params.set('serviceLocation', filters.serviceLocation);
+    } else {
+      params.delete('serviceLocation');
+    }
+    if (filters.minPrice) {
+      params.set('minPrice', String(filters.minPrice));
+    } else {
+      params.delete('minPrice');
+    }
+    if (filters.maxPrice && filters.maxPrice < 5000) {
+      params.set('maxPrice', String(filters.maxPrice));
+    } else {
+      params.delete('maxPrice');
+    }
+    if (filters.instantBookingOnly) {
+      params.set('instantBookingOnly', 'true');
+    } else {
+      params.delete('instantBookingOnly');
+    }
+    if (filters.minRating) {
+      params.set('minRating', filters.minRating);
+    } else {
+      params.delete('minRating');
+    }
+    // NEW: Enhanced filter parameters
+    if (filters.minReviewCount) {
+      params.set('minReviewCount', filters.minReviewCount);
+    } else {
+      params.delete('minReviewCount');
+    }
+    if (filters.freshListingsDays) {
+      params.set('freshListingsDays', filters.freshListingsDays);
+    } else {
+      params.delete('freshListingsDays');
+    }
+    if (filters.hasGoogleReviews) {
+      params.set('hasGoogleReviews', 'true');
+    } else {
+      params.delete('hasGoogleReviews');
+    }
+    if (filters.availabilityDate) {
+      params.set('availabilityDate', filters.availabilityDate);
+    } else {
+      params.delete('availabilityDate');
+    }
+    if (filters.availabilityDayOfWeek) {
+      params.set('availabilityDayOfWeek', filters.availabilityDayOfWeek);
+    } else {
+      params.delete('availabilityDayOfWeek');
+    }
+    
+    // Update URL without triggering navigation
+    const newUrl = params.toString() ? `${location.pathname}?${params.toString()}` : location.pathname;
+    window.history.replaceState({}, '', newUrl);
+  }, [filters, location.pathname, location.search]);
 
   const loadFavorites = useCallback(async () => {
     if (!currentUser?.id) return;
@@ -270,6 +351,12 @@ function IndexPage() {
 
   // Handler for map bounds change - search as user drags map
   const handleMapBoundsChange = useCallback(async (boundsData) => {
+    // Skip if we haven't applied initial filters yet - let loadVendors handle the first load
+    if (!hasAppliedInitialFilters.current) {
+      console.log('[handleMapBoundsChange] Skipping - initial filters not yet applied');
+      return;
+    }
+    
     // Calculate radius based on map bounds (approximate)
     // ~69 miles per degree latitude - use the full visible area
     const latDiff = Math.abs(boundsData.bounds.north - boundsData.bounds.south);
@@ -313,6 +400,48 @@ function IndexPage() {
       
       if (currentCategory && currentCategory !== 'all') {
         qp.set('category', currentCategory);
+      }
+      
+      // Include active filters from FilterModal
+      if (filters.eventTypes && filters.eventTypes.length > 0) {
+        qp.set('eventTypes', filters.eventTypes.join(','));
+      }
+      if (filters.cultures && filters.cultures.length > 0) {
+        qp.set('cultures', filters.cultures.join(','));
+      }
+      if (filters.experienceRange) {
+        qp.set('experienceRange', filters.experienceRange);
+      }
+      if (filters.serviceLocation) {
+        qp.set('serviceLocation', filters.serviceLocation);
+      }
+      if (filters.instantBookingOnly) {
+        qp.set('instantBookingOnly', 'true');
+      }
+      if (filters.minPrice) {
+        qp.set('minPrice', String(filters.minPrice));
+      }
+      if (filters.maxPrice && filters.maxPrice < 5000) {
+        qp.set('maxPrice', String(filters.maxPrice));
+      }
+      if (filters.minRating) {
+        qp.set('minRating', String(filters.minRating));
+      }
+      // NEW: Enhanced filter parameters for map bounds
+      if (filters.minReviewCount) {
+        qp.set('minReviewCount', filters.minReviewCount);
+      }
+      if (filters.freshListingsDays) {
+        qp.set('freshListingsDays', filters.freshListingsDays);
+      }
+      if (filters.hasGoogleReviews) {
+        qp.set('hasGoogleReviews', 'true');
+      }
+      if (filters.availabilityDate) {
+        qp.set('availabilityDate', filters.availabilityDate);
+      }
+      if (filters.availabilityDayOfWeek) {
+        qp.set('availabilityDayOfWeek', filters.availabilityDayOfWeek);
       }
       
       const searchUrl = `${API_BASE_URL}/vendors?${qp.toString()}`;
@@ -371,10 +500,11 @@ function IndexPage() {
       setLoading(false);
       setLoadingDiscovery(false);
     }
-  }, [currentCategory]);
+  }, [currentCategory, filters.eventTypes, filters.cultures, filters.experienceRange, filters.serviceLocation, filters.instantBookingOnly, filters.minPrice, filters.maxPrice, filters.minRating, filters.minReviewCount, filters.freshListingsDays, filters.hasGoogleReviews, filters.availabilityDate, filters.availabilityDayOfWeek]);
 
   // EXACT match to original applyClientSideFilters (line 26091-26120)
   const applyClientSideFiltersInternal = useCallback((vendorsToFilter) => {
+    console.log('[applyClientSideFiltersInternal] Input vendors:', vendorsToFilter.length, 'currentCategory:', currentCategory, 'filters.location:', filters.location);
     const filtered = vendorsToFilter.filter(vendor => {
       // Category filter - check both category and type fields
       if (currentCategory !== 'all') {
@@ -399,6 +529,7 @@ function IndexPage() {
       return true;
     });
     
+    console.log('[applyClientSideFiltersInternal] Output filtered vendors:', filtered.length);
     setFilteredVendors(filtered);
     setCurrentPage(1); // Reset to first page (line 26112)
   }, [currentCategory, filters.location, userLocation]);
@@ -416,14 +547,34 @@ function IndexPage() {
         setLoadingMore(true);
       }
       
-      // Match original logic (line 26133-26162)
       const hasCategoryQuery = currentCategory && currentCategory !== 'all';
       const nextPage = append ? serverPageNumber + 1 : 1;
       const hasUserLocation = userLocation?.lat && userLocation?.lng;
       
       let url = '';
       
-      // Build URL exactly like original (line 26162-26227)
+      // Helper to add attribute filters to query params
+      const addAttributeFilters = (qp) => {
+        if (filters.minPrice) qp.set('minPrice', filters.minPrice);
+        if (filters.maxPrice && filters.maxPrice < 10000) qp.set('maxPrice', filters.maxPrice);
+        if (filters.minRating) qp.set('minRating', filters.minRating);
+        if (filters.instantBookingOnly) qp.set('instantBookingOnly', 'true');
+        if (filters.eventTypes && filters.eventTypes.length > 0) {
+          qp.set('eventTypes', filters.eventTypes.join(','));
+        }
+        if (filters.cultures && filters.cultures.length > 0) {
+          qp.set('cultures', filters.cultures.join(','));
+        }
+        if (filters.experienceRange) qp.set('experienceRange', filters.experienceRange);
+        if (filters.serviceLocation) qp.set('serviceLocation', filters.serviceLocation);
+        // NEW: Enhanced filter parameters
+        if (filters.minReviewCount) qp.set('minReviewCount', filters.minReviewCount);
+        if (filters.freshListingsDays) qp.set('freshListingsDays', filters.freshListingsDays);
+        if (filters.hasGoogleReviews) qp.set('hasGoogleReviews', 'true');
+        if (filters.availabilityDate) qp.set('availabilityDate', filters.availabilityDate);
+        if (filters.availabilityDayOfWeek) qp.set('availabilityDayOfWeek', filters.availabilityDayOfWeek);
+      };
+
       if (hasCategoryQuery) {
         // Use /vendors/search-by-categories for category queries
         const qp = new URLSearchParams();
@@ -436,34 +587,18 @@ function IndexPage() {
           qp.set('city', filters.location);
         }
         
-        // Add availability filters if set
-        if (filters.eventDate) qp.set('eventDate', filters.eventDate);
-        if (filters.dayOfWeek) qp.set('dayOfWeek', filters.dayOfWeek);
-        if (filters.startTime) qp.set('startTime', filters.startTime);
-        if (filters.endTime) qp.set('endTime', filters.endTime);
-        
+        // Add location coordinates if available
         if (hasUserLocation) {
           qp.set('latitude', String(userLocation.lat));
           qp.set('longitude', String(userLocation.lng));
-          // Convert km to miles (1 km = 0.621371 miles)
-          const radiusMiles = Math.round(filters.distanceKm * 0.621371);
-          qp.set('radiusMiles', String(radiusMiles));
+          qp.set('radiusMiles', '50');
         }
         
-        if (filters.priceLevel) qp.set('priceLevel', filters.priceLevel);
-        if (filters.minRating) qp.set('minRating', filters.minRating);
-        if (filters.region) qp.set('region', filters.region);
-        if (filters.tags.includes('premium')) qp.set('isPremium', 'true');
-        if (filters.tags.includes('eco-friendly')) qp.set('isEcoFriendly', 'true');
-        if (filters.tags.includes('award-winning')) qp.set('isAwardWinning', 'true');
-        if (filters.tags.includes('certified')) qp.set('isCertified', 'true');
-        if (filters.tags.includes('insured')) qp.set('isInsured', 'true');
-        if (filters.tags.includes('local')) qp.set('isLocal', 'true');
-        if (filters.tags.includes('mobile')) qp.set('isMobile', 'true');
+        // Add attribute filters from FilterModal
+        addAttributeFilters(qp);
         
-        // Include discovery sections for category searches too
         qp.set('includeDiscoverySections', 'true');
-        qp.set('pageSize', '200'); // Get more vendors for discovery sections
+        qp.set('pageSize', '200');
         
         url = `${API_BASE_URL}/vendors/search-by-categories?${qp.toString()}`;
       } else {
@@ -477,38 +612,23 @@ function IndexPage() {
           qp.set('city', filters.location);
         }
         
-        // Add availability filters if set
-        if (filters.eventDate) qp.set('eventDate', filters.eventDate);
-        if (filters.dayOfWeek) qp.set('dayOfWeek', filters.dayOfWeek);
-        if (filters.startTime) qp.set('startTime', filters.startTime);
-        if (filters.endTime) qp.set('endTime', filters.endTime);
-        
+        // Add location coordinates if available
         if (hasUserLocation) {
           qp.set('latitude', String(userLocation.lat));
           qp.set('longitude', String(userLocation.lng));
-          // Convert km to miles (1 km = 0.621371 miles)
-          const radiusMiles = Math.round(filters.distanceKm * 0.621371);
-          qp.set('radiusMiles', String(radiusMiles));
+          qp.set('radiusMiles', '50');
         }
         
-        if (filters.priceLevel) qp.set('priceLevel', filters.priceLevel);
-        if (filters.minRating) qp.set('minRating', filters.minRating);
-        if (filters.region) qp.set('region', filters.region);
-        if (filters.tags.includes('premium')) qp.set('isPremium', 'true');
-        if (filters.tags.includes('eco-friendly')) qp.set('isEcoFriendly', 'true');
-        if (filters.tags.includes('award-winning')) qp.set('isAwardWinning', 'true');
-        if (filters.tags.includes('certified')) qp.set('isCertified', 'true');
-        if (filters.tags.includes('insured')) qp.set('isInsured', 'true');
-        if (filters.tags.includes('local')) qp.set('isLocal', 'true');
-        if (filters.tags.includes('mobile')) qp.set('isMobile', 'true');
+        // Add attribute filters from FilterModal
+        addAttributeFilters(qp);
         
-        // Include discovery sections in the same query (unified endpoint)
         qp.set('includeDiscoverySections', 'true');
-        qp.set('pageSize', '200'); // Get more vendors for discovery sections
+        qp.set('pageSize', '200');
         
         url = `${API_BASE_URL}/vendors?${qp.toString()}`;
       }
       
+      console.log('[loadVendors] Fetching URL:', url);
       const response = await fetch(url);
       if (!response.ok) {
         const errorText = await response.text();
@@ -516,6 +636,7 @@ function IndexPage() {
         throw new Error('Failed to fetch vendors');
       }
       const data = await response.json();
+      console.log('[loadVendors] API Response:', { vendorCount: data.vendors?.length, totalCount: data.totalCount });
       
       // Handle response EXACTLY like original (line 26238-26258)
       let newVendors = [];
@@ -606,7 +727,12 @@ function IndexPage() {
       setServerTotalCount(totalCount);
       
       // Apply client-side filters
+      console.log('[loadVendors] Before client-side filter - updatedVendors:', updatedVendors.length);
       applyClientSideFiltersInternal(updatedVendors);
+      console.log('[loadVendors] After client-side filter - filteredVendors will be set');
+      
+      // Mark that initial filters have been applied - now map can take over
+      hasAppliedInitialFilters.current = true;
     } catch (error) {
       console.error('❌ Error loading vendors:', error);
       showBanner('Failed to load vendors', 'error');
@@ -616,7 +742,7 @@ function IndexPage() {
       isLoadingRef.current = false;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentCategory, filters.priceLevel, filters.minRating, filters.region, filters.tags, userLocation, serverPageNumber]);
+  }, [currentCategory, filters.location, filters.instantBookingOnly, filters.eventTypes, filters.cultures, filters.experienceRange, filters.serviceLocation, filters.minPrice, filters.maxPrice, filters.minRating, filters.minReviewCount, filters.freshListingsDays, filters.hasGoogleReviews, filters.availabilityDate, filters.availabilityDayOfWeek, userLocation, serverPageNumber]);
 
   const initializePage = useCallback(async () => {
     if (hasLoadedOnce.current) {
@@ -630,21 +756,11 @@ function IndexPage() {
     }
     await loadDiscoverySections();
     await loadVendors();
-  }, [loadDiscoverySections, loadVendors, tryGetUserLocation, loadFavorites, currentUser, currentCategory, filters.location]);
+  }, [loadDiscoverySections, loadVendors, tryGetUserLocation, loadFavorites, currentUser, currentCategory]);
 
-  // Reload vendors when filters change (triggered by handleFilterChange)
+  // Note: Filter reload is handled by the useEffect below that watches specific filter properties
+  // This ref is kept for tracking purposes only
   const filtersRef = useRef(filters);
-  useEffect(() => {
-    // Skip on initial mount - initializePage handles that
-    if (isInitialMount.current) return;
-    
-    // Check if filters actually changed (not just reference)
-    const filtersChanged = JSON.stringify(filtersRef.current) !== JSON.stringify(filters);
-    if (filtersChanged) {
-      filtersRef.current = filters;
-      loadVendors(false);
-    }
-  }, [filters, loadVendors]);
 
   // Initialize page on mount - URL params are already loaded in useState initializers
   useEffect(() => {
@@ -734,21 +850,6 @@ function IndexPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentCategory]);
 
-  // Reload vendors when filters change (especially popular filters/tags)
-  useEffect(() => {
-    // Skip on initial mount - initializePage handles the first load
-    if (isInitialMount.current) {
-      return;
-    }
-    
-    if (filters.priceLevel || filters.minRating || filters.region || filters.tags.length > 0) {
-      setLoading(true); // Show loading state when filters change
-      setServerPageNumber(1);
-      loadVendors();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters.priceLevel, filters.minRating, filters.region, filters.tags]);
-
   // Track if we're in the middle of an enhanced search to prevent useEffect from overwriting results
   const isEnhancedSearchRef = useRef(false);
   
@@ -836,62 +937,64 @@ function IndexPage() {
   }, [filteredVendors, userLocation]);
 
   const handleFilterChange = useCallback((newFilters) => {
-    setFilters(newFilters);
-    
-    // Update URL with filter parameters
-    const params = new URLSearchParams(window.location.search);
-    
-    // Add/update filter params
-    if (newFilters.location) {
-      params.set('location', newFilters.location);
-    } else {
-      params.delete('location');
-    }
-    
-    if (newFilters.priceLevel) {
-      params.set('priceLevel', newFilters.priceLevel);
-    } else {
-      params.delete('priceLevel');
-    }
-    
-    if (newFilters.minRating) {
-      params.set('minRating', newFilters.minRating);
-    } else {
-      params.delete('minRating');
-    }
-    
-    if (newFilters.region) {
-      params.set('region', newFilters.region);
-    } else {
-      params.delete('region');
-    }
-    
-    if (newFilters.tags && newFilters.tags.length > 0) {
-      params.set('tags', newFilters.tags.join(','));
-    } else {
-      params.delete('tags');
-    }
-    
-    if (newFilters.useCurrentLocation) {
-      params.set('useCurrentLocation', 'true');
-    } else {
-      params.delete('useCurrentLocation');
-    }
-    
-    if (newFilters.within50Miles) {
-      params.set('within50Miles', 'true');
-    } else {
-      params.delete('within50Miles');
-    }
-    
-    // Update URL without reloading page
-    const newUrl = `${window.location.pathname}?${params.toString()}`;
-    window.history.pushState({}, '', newUrl);
-    
-    // Reset to page 1 - useEffect will trigger loadVendors when filters state updates
+    // Handle all filter changes from FilterModal
+    setFilters(prev => ({ ...prev, ...newFilters }));
     setCurrentPage(1);
     setServerPageNumber(1);
   }, []);
+
+  // Reload vendors when attribute filters change (from FilterModal)
+  const prevFiltersRef = useRef(filters);
+  useEffect(() => {
+    // Skip on initial mount
+    if (!hasLoadedOnce.current) return;
+    
+    // Check if any attribute filter changed (not just location)
+    const prev = prevFiltersRef.current;
+    const attributeChanged = 
+      prev.instantBookingOnly !== filters.instantBookingOnly ||
+      prev.minRating !== filters.minRating ||
+      prev.experienceRange !== filters.experienceRange ||
+      prev.serviceLocation !== filters.serviceLocation ||
+      prev.minPrice !== filters.minPrice ||
+      prev.maxPrice !== filters.maxPrice ||
+      JSON.stringify(prev.eventTypes) !== JSON.stringify(filters.eventTypes) ||
+      JSON.stringify(prev.cultures) !== JSON.stringify(filters.cultures) ||
+      // NEW: Enhanced filter change detection
+      prev.minReviewCount !== filters.minReviewCount ||
+      prev.freshListingsDays !== filters.freshListingsDays ||
+      prev.hasGoogleReviews !== filters.hasGoogleReviews ||
+      prev.availabilityDate !== filters.availabilityDate ||
+      prev.availabilityDayOfWeek !== filters.availabilityDayOfWeek;
+    
+    prevFiltersRef.current = filters;
+    
+    if (attributeChanged) {
+      console.log('[useEffect] Attribute filters changed, reloading vendors...');
+      setLoading(true);
+      loadVendors();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters.instantBookingOnly, filters.eventTypes, filters.cultures, filters.experienceRange, filters.serviceLocation, filters.minPrice, filters.maxPrice, filters.minRating, filters.minReviewCount, filters.freshListingsDays, filters.hasGoogleReviews, filters.availabilityDate, filters.availabilityDayOfWeek]);
+
+  // Count active filters for badge display
+  const activeFilterCount = useMemo(() => {
+    return [
+      filters.minPrice > 0 || (filters.maxPrice && filters.maxPrice < 10000),
+      filters.minRating,
+      filters.instantBookingOnly,
+      filters.eventTypes?.length > 0,
+      filters.cultures?.length > 0,
+      filters.experienceRange,
+      filters.serviceLocation,
+      // NEW: Enhanced filter counts
+      filters.minReviewCount,
+      filters.freshListingsDays,
+      filters.hasGoogleReviews,
+      filters.availabilityDate,
+      filters.availabilityDayOfWeek
+    ].filter(Boolean).length;
+  }, [filters]);
 
   const handleToggleFavorite = useCallback(async (vendorId) => {
     if (!currentUser) {
@@ -1073,14 +1176,19 @@ function IndexPage() {
         onNotificationsClick={() => {}} 
       />
       <ProfileModal isOpen={profileModalOpen} onClose={() => setProfileModalOpen(false)} />
-      <FilterModal 
-        isOpen={filterModalOpen} 
+      
+      {/* Filter Modal */}
+      <FilterModal
+        isOpen={filterModalOpen}
         onClose={() => setFilterModalOpen(false)}
         filters={filters}
         onFilterChange={handleFilterChange}
-        userLocation={userLocation}
         vendorCount={serverTotalCount}
+        category={currentCategory}
+        city={filters.location || detectedCity}
+        userLocation={userLocation}
       />
+      
       <LocationSearchModal
         isOpen={locationModalOpen}
         onClose={() => setLocationModalOpen(false)}
@@ -1133,27 +1241,40 @@ function IndexPage() {
           gap: '10px',
           backgroundColor: 'white'
         }}>
-          <button 
-            className="filter-btn" 
+          {/* Filters Button */}
+          <button
             onClick={() => setFilterModalOpen(true)}
             style={{
-              flex: 1,
-              padding: '10px 16px',
-              borderRadius: '8px',
-              border: '1px solid #ddd',
-              backgroundColor: 'white',
-              fontSize: '14px',
-              color: '#222',
-              cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px',
-              fontWeight: 500
+              gap: '6px',
+              padding: '10px 14px',
+              border: activeFilterCount > 0 ? '2px solid #5086E8' : '1px solid #ddd',
+              borderRadius: '8px',
+              background: activeFilterCount > 0 ? '#eff6ff' : 'white',
+              color: activeFilterCount > 0 ? '#5086E8' : '#222',
+              fontSize: '14px',
+              fontWeight: 500,
+              cursor: 'pointer',
+              whiteSpace: 'nowrap'
             }}
           >
-            <i className="fas fa-sliders-h"></i>
+            <i className="fas fa-sliders-h" style={{ fontSize: '14px' }}></i>
             <span>Filters</span>
+            {activeFilterCount > 0 && (
+              <span style={{
+                background: '#5086E8',
+                color: 'white',
+                fontSize: '11px',
+                fontWeight: 600,
+                padding: '2px 6px',
+                borderRadius: '10px',
+                minWidth: '18px',
+                textAlign: 'center'
+              }}>
+                {activeFilterCount}
+              </span>
+            )}
           </button>
           <select 
             value={sortBy} 
@@ -1243,26 +1364,40 @@ function IndexPage() {
             <div className="view-controls">
               {!loading && (
                 <>
-                  <button 
-                    className="filter-btn" 
+                  {/* Filters Button - Desktop */}
+                  <button
                     onClick={() => setFilterModalOpen(true)}
                     style={{
-                      padding: '0.5rem 1rem',
-                      borderRadius: '8px',
-                      border: '1px solid #ddd',
-                      backgroundColor: 'white',
-                      fontSize: '0.9rem',
-                      color: '#222',
-                      cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
                       gap: '0.5rem',
-                      transition: 'all 0.2s',
-                      fontWeight: 500
+                      padding: '0.5rem 1rem',
+                      border: activeFilterCount > 0 ? '2px solid #5086E8' : '1px solid var(--border)',
+                      borderRadius: '8px',
+                      background: activeFilterCount > 0 ? '#eff6ff' : 'white',
+                      color: activeFilterCount > 0 ? '#5086E8' : 'var(--text)',
+                      fontSize: '0.9rem',
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
                     }}
                   >
-                    <i className="fas fa-sliders-h"></i>
+                    <i className="fas fa-sliders-h" style={{ fontSize: '0.875rem' }}></i>
                     <span>Filters</span>
+                    {activeFilterCount > 0 && (
+                      <span style={{
+                        background: '#5086E8',
+                        color: 'white',
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        padding: '2px 8px',
+                        borderRadius: '10px',
+                        minWidth: '20px',
+                        textAlign: 'center'
+                      }}>
+                        {activeFilterCount}
+                      </span>
+                    )}
                   </button>
                   <select id="sort-select" value={sortBy} onChange={handleSortChange} style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'white', fontSize: '0.9rem', color: 'var(--text)', cursor: 'pointer' }}><option value="recommended">Recommended</option><option value="price-low">Price: Low to High</option><option value="price-high">Price: High to Low</option><option value="nearest">Nearest to Me</option><option value="rating">Highest Rated</option></select>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -1448,7 +1583,7 @@ function IndexPage() {
       </div>
       
       {/* Mobile Map Button - Floating - Only show when no modals are open */}
-      {!profileModalOpen && !filterModalOpen && (
+      {!profileModalOpen && (
         <button 
           className="mobile-map-button"
           onClick={() => setMobileMapOpen(true)}

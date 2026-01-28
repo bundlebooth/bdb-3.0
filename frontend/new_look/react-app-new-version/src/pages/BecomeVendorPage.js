@@ -25,7 +25,8 @@ import {
   StripeStep,
   GoogleReviewsStep,
   PoliciesStep,
-  ReviewStep
+  ReviewStep,
+  VendorAttributesStep
 } from '../components/VendorOnboarding';
 import './BecomeVendorPage.css';
 
@@ -37,7 +38,7 @@ const BecomeVendorPage = () => {
   const { currentUser, setCurrentUser } = useAuth();
   
   // Step IDs for mapping URL params to step indices
-  const stepIds = ['account', 'categories', 'business-details', 'contact', 'location', 'services', 'cancellation-policy', 'business-hours', 'questionnaire', 'gallery', 'social-media', 'filters', 'stripe', 'google-reviews', 'policies', 'review'];
+  const stepIds = ['account', 'categories', 'business-details', 'contact', 'location', 'services', 'cancellation-policy', 'business-hours', 'questionnaire', 'vendor-attributes', 'gallery', 'social-media', 'filters', 'stripe', 'google-reviews', 'policies', 'review'];
 
   // Check URL step param ONCE at mount time - this is the source of truth
   const urlStepRef = useRef(null);
@@ -99,7 +100,7 @@ const BecomeVendorPage = () => {
   const [formData, setFormData] = useState({
     // Categories
     primaryCategory: '',
-    additionalCategories: [],
+    selectedSubcategories: [], // Replaces additionalCategories - now subcategories within the primary category
     
     // Business Details
     businessName: '',
@@ -275,6 +276,14 @@ const BecomeVendorPage = () => {
       title: 'Tell guests what your place has to offer',
       subtitle: 'Select features that describe your services',
       component: QuestionnaireStep,
+      required: false,
+      skippable: true
+    },
+    {
+      id: 'vendor-attributes',
+      title: 'Service Details & Booking Settings',
+      subtitle: 'Set your event types, cultures served, and booking preferences',
+      component: VendorAttributesStep,
       required: false,
       skippable: true
     },
@@ -505,7 +514,7 @@ const BecomeVendorPage = () => {
             ...formData,
             // Categories
             primaryCategory: primaryCat,
-            additionalCategories: additionalCats,
+            selectedSubcategories: [], // Will be loaded separately via vendor attributes API
             
             // Business Details
             businessName: profile.BusinessName || '',
@@ -738,7 +747,8 @@ const BecomeVendorPage = () => {
 
     setLoading(true);
     try {
-      const allCategories = [formData.primaryCategory, ...formData.additionalCategories].filter(Boolean);
+      // Single category model - only primary category
+      const allCategories = [formData.primaryCategory].filter(Boolean);
 
       // Format service areas properly - backend expects city, state, country properties
       const formattedServiceAreas = formData.serviceAreas.length > 0 
@@ -1162,7 +1172,8 @@ const BecomeVendorPage = () => {
         }
       }
 
-      const allCategories = [formData.primaryCategory, ...formData.additionalCategories].filter(Boolean);
+      // Single category model - only primary category
+      const allCategories = [formData.primaryCategory].filter(Boolean);
 
       // Format service areas properly - backend expects city, state, country properties
       const formattedServiceAreas = formData.serviceAreas.length > 0 
