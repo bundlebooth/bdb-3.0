@@ -20,11 +20,15 @@ import MobileBottomNav from '../components/MobileBottomNav';
 import { showBanner } from '../utils/helpers';
 import { EditButton } from '../components/common/UIComponents';
 import LocationSearchModal from '../components/LocationSearchModal';
+import { useLocalization } from '../context/LocalizationContext';
+import { useRecentlyViewed } from '../hooks/useRecentlyViewed';
 
 function IndexPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { currentUser } = useAuth();
+  const { formatDistance } = useLocalization();
+  const { recentlyViewed, addToRecentlyViewed } = useRecentlyViewed();
   
   const [vendors, setVendors] = useState([]);
   const [filteredVendors, setFilteredVendors] = useState([]);
@@ -49,6 +53,11 @@ function IndexPage() {
   const [mobileMapOpen, setMobileMapOpen] = useState(false); // Mobile fullscreen map
   const [locationModalOpen, setLocationModalOpen] = useState(false); // Location search modal
   const [isMobileView, setIsMobileView] = useState(window.innerWidth <= 768);
+  
+  // Progressive radius expansion state for "Load More Vendors"
+  const [currentRadiusLevel, setCurrentRadiusLevel] = useState(0); // 0 = initial (50mi), 1 = 100mi, 2 = 200mi, etc.
+  const [citySections, setCitySections] = useState([]); // Vendors grouped by city from expanded searches
+  const [loadingExpansion, setLoadingExpansion] = useState(false);
 
   // Track mobile view for conditional rendering
   useEffect(() => {
@@ -782,6 +791,11 @@ function IndexPage() {
       // Mark that initial filters have been applied - now map can take over
       hasAppliedInitialFilters.current = true;
     } catch (error) {
+      // Don't show error banner for aborted requests (happens during navigation/refresh)
+      if (error.name === 'AbortError' || error.message?.includes('aborted')) {
+        console.log('[loadVendors] Request aborted (likely page navigation)');
+        return;
+      }
       console.error('❌ Error loading vendors:', error);
       showBanner('Failed to load vendors', 'error');
     } finally {
@@ -791,6 +805,183 @@ function IndexPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentCategory, filters.location, filters.instantBookingOnly, filters.eventTypes, filters.cultures, filters.experienceRange, filters.serviceLocation, filters.minPrice, filters.maxPrice, filters.minRating, filters.minReviewCount, filters.freshListingsDays, filters.hasGoogleReviews, filters.availabilityDate, filters.availabilityDayOfWeek, userLocation, serverPageNumber]);
+
+  // Radius levels for progressive expansion (in miles)
+  const RADIUS_LEVELS = useMemo(() => [50, 100, 200, 400, 800], []);
+  
+  // Handle "Load More Vendors" - expands map radius and fetches vendors from surrounding cities
+  const handleLoadMoreVendors = useCallback(async () => {
+    if (!userLocation?.lat || !userLocation?.lng) {
+      showBanner('Location required to expand search', 'info');
+      return;
+    }
+    
+    const nextLevel = currentRadiusLevel + 1;
+    if (nextLevel >= RADIUS_LEVELS.length) {
+      showBanner('Maximum search area reached', 'info');
+      return;
+    }
+    
+    setLoadingExpansion(true);
+    
+    try {
+      const newRadius = RADIUS_LEVELS[nextLevel];
+      const prevRadius = RADIUS_LEVELS[currentRadiusLevel];
+      
+      // Calculate zoom level based on radius (approximate)
+      // 50mi ~ zoom 10, 100mi ~ zoom 9, 200mi ~ zoom 8, 400mi ~ zoom 7, 800mi ~ zoom 6
+      const zoomLevels = [10, 9, 8, 7, 6];
+      const newZoom = zoomLevels[nextLevel] || 6;
+      
+      // Trigger map zoom out via custom event
+      window.dispatchEvent(new CustomEvent('expandMapRadius', { 
+        detail: { 
+          zoom: newZoom,
+          center: { lat: userLocation.lat, lng: userLocation.lng }
+        }
+      }));
+      
+      // Fetch vendors in the expanded radius (excluding already loaded ones)
+      const qp = new URLSearchParams();
+      qp.set('latitude', String(userLocation.lat));
+      qp.set('longitude', String(userLocation.lng));
+      qp.set('radiusMiles', String(newRadius));
+      qp.set('minRadiusMiles', String(prevRadius)); // Exclude inner radius already loaded
+      qp.set('pageSize', '300');
+      qp.set('includeDiscoverySections', 'false');
+      qp.set('groupByCity', 'true'); // Request city-grouped response
+      
+      if (currentCategory && currentCategory !== 'all') {
+        qp.set('category', currentCategory);
+      }
+      
+      // Include active filters
+      if (filters.eventTypes?.length > 0) qp.set('eventTypes', filters.eventTypes.join(','));
+      if (filters.cultures?.length > 0) qp.set('cultures', filters.cultures.join(','));
+      if (filters.experienceRange) qp.set('experienceRange', filters.experienceRange);
+      if (filters.instantBookingOnly) qp.set('instantBookingOnly', 'true');
+      if (filters.minPrice) qp.set('minPrice', String(filters.minPrice));
+      if (filters.maxPrice && filters.maxPrice < 5000) qp.set('maxPrice', String(filters.maxPrice));
+      if (filters.minRating) qp.set('minRating', String(filters.minRating));
+      
+      const response = await fetch(`${API_BASE_URL}/vendors?${qp.toString()}`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        const newVendors = data.vendors || [];
+        
+        // Group vendors by city
+        const vendorsByCity = {};
+        newVendors.forEach(vendor => {
+          const city = vendor.City || vendor.city || 'Other';
+          if (!vendorsByCity[city]) {
+            vendorsByCity[city] = [];
+          }
+          vendorsByCity[city].push(vendor);
+        });
+        
+        // Convert to city sections array, sorted by vendor count
+        // Merge with existing city sections instead of creating duplicates
+        setCitySections(prev => {
+          const cityMap = new Map();
+          
+          // Add existing city sections to map
+          prev.forEach(section => {
+            cityMap.set(section.city, {
+              ...section,
+              allVendors: [...section.vendors] // Keep track of all vendors
+            });
+          });
+          
+          // Merge new vendors into existing cities or create new sections
+          Object.entries(vendorsByCity).forEach(([city, cityVendors]) => {
+            if (cityVendors.length === 0) return;
+            
+            if (cityMap.has(city)) {
+              // Merge with existing city section
+              const existing = cityMap.get(city);
+              const existingIds = new Set(existing.allVendors.map(v => 
+                String(v.vendorProfileId || v.VendorProfileID || v.id)
+              ));
+              
+              // Add only new vendors (not already in this city section)
+              const newUniqueVendors = cityVendors.filter(v => {
+                const id = String(v.vendorProfileId || v.VendorProfileID || v.id);
+                return !existingIds.has(id);
+              });
+              
+              existing.allVendors = [...existing.allVendors, ...newUniqueVendors];
+              existing.vendors = existing.allVendors.slice(0, 12);
+              existing.totalCount = existing.allVendors.length;
+            } else {
+              // Create new city section
+              cityMap.set(city, {
+                id: `city-${city.toLowerCase().replace(/\s+/g, '-')}`,
+                title: `Vendors in ${city}`,
+                city: city,
+                vendors: cityVendors.slice(0, 12),
+                allVendors: cityVendors,
+                totalCount: cityVendors.length,
+                radiusLevel: nextLevel
+              });
+            }
+          });
+          
+          // Convert back to array and sort by vendor count
+          return Array.from(cityMap.values())
+            .sort((a, b) => b.totalCount - a.totalCount);
+        });
+        
+        const newCityNames = Object.keys(vendorsByCity).filter(city => vendorsByCity[city].length > 0);
+        
+        // Also add new vendors to the main vendors list
+        setVendors(prev => {
+          const merged = [...prev, ...newVendors];
+          // Deduplicate by vendor ID
+          const byId = new Map();
+          for (const v of merged) {
+            const key = v.vendorProfileId || v.VendorProfileID || v.id;
+            byId.set(String(key || Math.random()), v);
+          }
+          return Array.from(byId.values());
+        });
+        
+        // Update filtered vendors too
+        setFilteredVendors(prev => {
+          const merged = [...prev, ...newVendors];
+          const byId = new Map();
+          for (const v of merged) {
+            const key = v.vendorProfileId || v.VendorProfileID || v.id;
+            byId.set(String(key || Math.random()), v);
+          }
+          return Array.from(byId.values());
+        });
+        
+        // Update total count
+        setServerTotalCount(prev => prev + newVendors.length);
+        
+        // Move to next radius level
+        setCurrentRadiusLevel(nextLevel);
+        
+        if (newCityNames.length > 0) {
+          const displayCities = newCityNames.slice(0, 3).join(', ');
+          showBanner(`Found ${newVendors.length} more vendors in ${displayCities}${newCityNames.length > 3 ? ' and more' : ''}`, 'success');
+        } else {
+          showBanner('No additional vendors found in expanded area', 'info');
+        }
+      }
+    } catch (error) {
+      console.error('Error expanding search radius:', error);
+      showBanner('Failed to load more vendors', 'error');
+    } finally {
+      setLoadingExpansion(false);
+    }
+  }, [userLocation, currentRadiusLevel, RADIUS_LEVELS, currentCategory, filters, showBanner]);
+
+  // Check if we can load more vendors (haven't reached max radius)
+  const canLoadMoreVendors = useMemo(() => {
+    return userLocation?.lat && userLocation?.lng && currentRadiusLevel < RADIUS_LEVELS.length - 1;
+  }, [userLocation, currentRadiusLevel, RADIUS_LEVELS]);
 
   const initializePage = useCallback(async () => {
     if (hasLoadedOnce.current) {
@@ -893,6 +1084,9 @@ function IndexPage() {
       setLoading(true); // Show loading state when category changes
       setLoadingDiscovery(true); // Also show loading for discovery sections
       setServerPageNumber(1);
+      // Reset expanded radius state when category changes
+      setCurrentRadiusLevel(0);
+      setCitySections([]);
       loadVendors();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -989,6 +1183,11 @@ function IndexPage() {
     setFilters(prev => ({ ...prev, ...newFilters }));
     setCurrentPage(1);
     setServerPageNumber(1);
+    // Reset expanded radius state when filters change (especially location)
+    if (newFilters.location !== undefined) {
+      setCurrentRadiusLevel(0);
+      setCitySections([]);
+    }
   }, []);
 
   // Reload vendors when attribute filters change (from FilterModal)
@@ -1067,7 +1266,48 @@ function IndexPage() {
     }
   }, [currentUser]);
 
-  const handleViewVendor = useCallback((vendorId) => navigate(`/vendor/${vendorId}`), [navigate]);
+  const handleViewVendor = useCallback((vendorId) => {
+    // Find the vendor data to add to recently viewed
+    // Search across all vendor sources: filteredVendors, discoverySections, categorySections, citySections
+    let vendor = filteredVendors.find(v => 
+      String(v.vendorProfileId || v.VendorProfileID || v.id) === String(vendorId)
+    );
+    
+    // Search in discovery sections if not found
+    if (!vendor) {
+      for (const section of discoverySections) {
+        vendor = section.vendors?.find(v => 
+          String(v.vendorProfileId || v.VendorProfileID || v.id) === String(vendorId)
+        );
+        if (vendor) break;
+      }
+    }
+    
+    // Search in category sections if not found
+    if (!vendor) {
+      for (const section of categorySections) {
+        vendor = section.vendors?.find(v => 
+          String(v.vendorProfileId || v.VendorProfileID || v.id) === String(vendorId)
+        );
+        if (vendor) break;
+      }
+    }
+    
+    // Search in city sections if not found
+    if (!vendor) {
+      for (const section of citySections) {
+        vendor = section.vendors?.find(v => 
+          String(v.vendorProfileId || v.VendorProfileID || v.id) === String(vendorId)
+        );
+        if (vendor) break;
+      }
+    }
+    
+    if (vendor) {
+      addToRecentlyViewed(vendor);
+    }
+    navigate(`/vendor/${vendorId}`);
+  }, [navigate, filteredVendors, discoverySections, categorySections, citySections, addToRecentlyViewed]);
 
   const handleHighlightVendor = useCallback((vendorId, highlight) => {
     if (window.highlightMapMarker) {
@@ -1174,6 +1414,11 @@ function IndexPage() {
         await loadDiscoverySections(newFilters);
         
       } catch (error) {
+        // Don't show error banner for aborted requests (happens during navigation/refresh)
+        if (error.name === 'AbortError' || error.message?.includes('aborted')) {
+          console.log('[handleEnhancedSearch] Request aborted (likely page navigation)');
+          return;
+        }
         console.error('Error loading vendors:', error);
         showBanner('Failed to load vendors', 'error');
       } finally {
@@ -1181,6 +1426,11 @@ function IndexPage() {
       }
 
     } catch (error) {
+      // Don't show error banner for aborted requests (happens during navigation/refresh)
+      if (error.name === 'AbortError' || error.message?.includes('aborted')) {
+        console.log('[handleEnhancedSearch] Request aborted (likely page navigation)');
+        return;
+      }
       console.error('Enhanced search error:', error);
       showBanner('Search failed. Please try again.', 'error');
       setLoading(false);
@@ -1378,6 +1628,23 @@ function IndexPage() {
           ))
         )}
         
+        {/* Recently Viewed Carousel - MOBILE */}
+        {!loadingDiscovery && recentlyViewed.length > 0 && (
+          <VendorSection
+            title="Recently Viewed"
+            description="Continue where you left off"
+            vendors={recentlyViewed.slice(0, 12)}
+            favorites={favorites}
+            onToggleFavorite={handleToggleFavorite}
+            onViewVendor={handleViewVendor}
+            onHighlightVendor={handleHighlightVendor}
+            icon="fa-clock-rotate-left"
+            sectionType="recently-viewed"
+            cityFilter={detectedCity || filters.location}
+            categoryFilter={currentCategory}
+          />
+        )}
+        
         {/* Category-based carousels - MOBILE */}
         {!loadingDiscovery && categorySections.length > 0 && currentCategory === 'all' && (
           <>
@@ -1418,6 +1685,133 @@ function IndexPage() {
               categoryFilter={currentCategory}
             />
           </>
+        )}
+        
+        {/* City-based carousels from expanded radius searches - MOBILE */}
+        {citySections.length > 0 && (
+          <div className="vendor-city-sections-mobile" style={{ marginTop: '16px', padding: '0 16px' }}>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '8px', 
+              marginBottom: '12px',
+              paddingBottom: '8px',
+              borderBottom: '1px solid #e5e7eb'
+            }}>
+              <i className="fas fa-map-marker-alt" style={{ color: '#5086E8', fontSize: '14px' }}></i>
+              <span style={{ fontSize: '13px', color: '#6b7280', fontWeight: 500 }}>
+                Expanded to {formatDistance(RADIUS_LEVELS[currentRadiusLevel], { decimals: 0 })}
+              </span>
+            </div>
+          </div>
+        )}
+        {citySections.map((section) => (
+          <React.Fragment key={`mobile-${section.id}`}>
+            <VendorSection
+              title={section.title}
+              description={section.totalCount > 12 ? `${section.totalCount} vendors` : ''}
+              vendors={section.vendors}
+              favorites={favorites}
+              onToggleFavorite={handleToggleFavorite}
+              onViewVendor={handleViewVendor}
+              onHighlightVendor={handleHighlightVendor}
+              icon="fa-city"
+              sectionType={`city-${section.city}`}
+              cityFilter={section.city}
+              categoryFilter={currentCategory}
+            />
+          </React.Fragment>
+        ))}
+        
+        {/* Load More Vendors Button - MOBILE */}
+        {!loading && !loadingDiscovery && canLoadMoreVendors && (
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'center', 
+            padding: '24px 16px',
+          }}>
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              padding: '20px 24px',
+              backgroundColor: '#f8fafc',
+              borderRadius: '16px',
+              border: '1px solid #e5e7eb',
+              width: '100%'
+            }}>
+              <h3 style={{ 
+                margin: '0 0 6px 0', 
+                fontSize: '16px', 
+                fontWeight: 600, 
+                color: '#1f2937' 
+              }}>
+                Looking for more options?
+              </h3>
+              <p style={{ 
+                margin: '0 0 16px 0', 
+                fontSize: '13px', 
+                color: '#6b7280',
+                textAlign: 'center'
+              }}>
+                Expand your search to discover vendors nearby
+              </p>
+              
+              {loadingExpansion ? (
+                <div 
+                  className="spinner spinner-blue" 
+                  style={{ width: '44px', height: '44px' }}
+                ></div>
+              ) : (
+                <button
+                  onClick={handleLoadMoreVendors}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '12px 20px',
+                    fontSize: '14px',
+                    fontWeight: 600,
+                    color: 'white',
+                    backgroundColor: '#5086E8',
+                    border: 'none',
+                    borderRadius: '25px',
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 12px rgba(80, 134, 232, 0.3)'
+                  }}
+                >
+                  <i className="fas fa-search"></i>
+                  <span>Load More Vendors</span>
+                  <i className="fas fa-chevron-down" style={{ fontSize: '11px' }}></i>
+                </button>
+              )}
+              
+              <p style={{ 
+                margin: '12px 0 0 0', 
+                fontSize: '11px', 
+                color: '#9ca3af',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}>
+                <i className="fas fa-info-circle"></i>
+                Map will zoom out to show more areas
+              </p>
+            </div>
+          </div>
+        )}
+        
+        {/* Max radius reached - MOBILE */}
+        {!loading && !loadingDiscovery && !canLoadMoreVendors && citySections.length > 0 && (
+          <div style={{ 
+            textAlign: 'center', 
+            padding: '16px',
+            color: '#6b7280',
+            fontSize: '13px'
+          }}>
+            <i className="fas fa-check-circle" style={{ color: '#10b981', marginRight: '6px' }}></i>
+            All vendors within {formatDistance(RADIUS_LEVELS[RADIUS_LEVELS.length - 1], { decimals: 0 })} loaded
+          </div>
         )}
       </div>
       )}
@@ -1566,9 +1960,28 @@ function IndexPage() {
           </div>
           )}
           
+          {/* Recently Viewed Carousel - DESKTOP */}
+          {!isMobileView && !loadingDiscovery && recentlyViewed.length > 0 && (
+            <div className="vendor-recently-viewed-section" style={{ marginTop: discoverySections.length > 0 ? '16px' : '0' }}>
+              <VendorSection
+                title="Recently Viewed"
+                description="Continue where you left off"
+                vendors={recentlyViewed.slice(0, 12)}
+                favorites={favorites}
+                onToggleFavorite={handleToggleFavorite}
+                onViewVendor={handleViewVendor}
+                onHighlightVendor={handleHighlightVendor}
+                icon="fa-clock-rotate-left"
+                sectionType="recently-viewed"
+                cityFilter={detectedCity || filters.location}
+                categoryFilter={currentCategory}
+              />
+            </div>
+          )}
+          
           {/* Category-based carousels - DESKTOP */}
           {!isMobileView && !loadingDiscovery && categorySections.length > 0 && currentCategory === 'all' && (
-            <div className="vendor-category-sections" style={{ marginTop: discoverySections.length > 0 ? '16px' : '0' }}>
+            <div className="vendor-category-sections" style={{ marginTop: (discoverySections.length > 0 || recentlyViewed.length > 0) ? '16px' : '0' }}>
               {categorySections.map((section) => (
                 <React.Fragment key={`desktop-${section.id}`}>
                   <VendorSection
@@ -1605,6 +2018,146 @@ function IndexPage() {
                 cityFilter={detectedCity || filters.location}
                 categoryFilter={currentCategory}
               />
+            </div>
+          )}
+          
+          {/* City-based carousels from expanded radius searches - DESKTOP */}
+          {!isMobileView && citySections.length > 0 && (
+            <div className="vendor-city-sections" style={{ marginTop: '24px' }}>
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '8px', 
+                marginBottom: '16px',
+                paddingBottom: '12px',
+                borderBottom: '1px solid #e5e7eb'
+              }}>
+                <i className="fas fa-map-marker-alt" style={{ color: '#5086E8' }}></i>
+                <span style={{ fontSize: '14px', color: '#6b7280', fontWeight: 500 }}>
+                  Expanded search area ({formatDistance(RADIUS_LEVELS[currentRadiusLevel], { decimals: 0 })})
+                </span>
+              </div>
+              {citySections.map((section) => (
+                <React.Fragment key={section.id}>
+                  <VendorSection
+                    title={section.title}
+                    description={section.totalCount > 12 ? `${section.totalCount} vendors available` : ''}
+                    vendors={section.vendors}
+                    favorites={favorites}
+                    onToggleFavorite={handleToggleFavorite}
+                    onViewVendor={handleViewVendor}
+                    onHighlightVendor={handleHighlightVendor}
+                    icon="fa-city"
+                    sectionType={`city-${section.city}`}
+                    cityFilter={section.city}
+                    categoryFilter={currentCategory}
+                  />
+                </React.Fragment>
+              ))}
+            </div>
+          )}
+          
+          {/* Load More Vendors Button - DESKTOP */}
+          {!isMobileView && !loading && !loadingDiscovery && canLoadMoreVendors && (
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'center', 
+              padding: '32px 0',
+              marginTop: '16px'
+            }}>
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                padding: '28px 40px',
+                backgroundColor: '#f8fafc',
+                borderRadius: '16px',
+                border: '1px solid #e5e7eb',
+                maxWidth: '500px',
+                width: '100%'
+              }}>
+                <h3 style={{ 
+                  margin: '0 0 8px 0', 
+                  fontSize: '18px', 
+                  fontWeight: 600, 
+                  color: '#1f2937' 
+                }}>
+                  Looking for more options?
+                </h3>
+                <p style={{ 
+                  margin: '0 0 20px 0', 
+                  fontSize: '14px', 
+                  color: '#6b7280',
+                  textAlign: 'center'
+                }}>
+                  Expand your search to discover vendors in Surrounding Area
+                </p>
+                
+                {loadingExpansion ? (
+                  <div 
+                    className="spinner spinner-blue" 
+                    style={{ width: '48px', height: '48px' }}
+                  ></div>
+                ) : (
+                  <button
+                    onClick={handleLoadMoreVendors}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      padding: '12px 24px',
+                      fontSize: '15px',
+                      fontWeight: 600,
+                      color: 'white',
+                      backgroundColor: '#5086E8',
+                      border: 'none',
+                      borderRadius: '25px',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      boxShadow: '0 4px 12px rgba(80, 134, 232, 0.3)'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#4070D0';
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                      e.currentTarget.style.boxShadow = '0 6px 16px rgba(80, 134, 232, 0.4)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = '#5086E8';
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(80, 134, 232, 0.3)';
+                    }}
+                  >
+                    <i className="fas fa-search"></i>
+                    <span>Load More Vendors</span>
+                    <i className="fas fa-chevron-down" style={{ fontSize: '12px', marginLeft: '4px' }}></i>
+                  </button>
+                )}
+                
+                <p style={{ 
+                  margin: '16px 0 0 0', 
+                  fontSize: '12px', 
+                  color: '#9ca3af',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}>
+                  <i className="fas fa-info-circle"></i>
+                  Map will zoom out to show more areas
+                </p>
+              </div>
+            </div>
+          )}
+          
+          {/* Max radius reached message - DESKTOP */}
+          {!isMobileView && !loading && !loadingDiscovery && !canLoadMoreVendors && citySections.length > 0 && (
+            <div style={{ 
+              textAlign: 'center', 
+              padding: '24px',
+              color: '#6b7280',
+              fontSize: '14px'
+            }}>
+              <i className="fas fa-check-circle" style={{ color: '#10b981', marginRight: '8px' }}></i>
+              You've explored all vendors within {formatDistance(RADIUS_LEVELS[RADIUS_LEVELS.length - 1], { decimals: 0 })}
             </div>
           )}
           </main>

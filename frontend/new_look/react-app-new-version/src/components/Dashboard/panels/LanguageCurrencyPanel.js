@@ -6,17 +6,21 @@ function LanguageCurrencyPanel({ onBack }) {
     language,
     currency,
     autoTranslate,
+    distanceUnit,
     setLanguage,
     setCurrency,
     setAutoTranslate,
+    setDistanceUnit,
     supportedLanguages,
     supportedCurrencies,
+    supportedDistanceUnits,
     getCurrentLanguage,
     getCurrentCurrency,
   } = useLocalization();
 
   const [selectedLanguage, setSelectedLanguage] = useState(language);
   const [selectedCurrency, setSelectedCurrency] = useState(currency);
+  const [selectedDistanceUnit, setSelectedDistanceUnit] = useState(distanceUnit);
   const [translateEnabled, setTranslateEnabled] = useState(autoTranslate);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -25,6 +29,7 @@ function LanguageCurrencyPanel({ onBack }) {
     setSaving(true);
     setLanguage(selectedLanguage);
     setCurrency(selectedCurrency);
+    setDistanceUnit(selectedDistanceUnit);
     setAutoTranslate(translateEnabled);
     
     setTimeout(() => {
@@ -37,6 +42,7 @@ function LanguageCurrencyPanel({ onBack }) {
   const hasChanges = 
     selectedLanguage !== language || 
     selectedCurrency !== currency || 
+    selectedDistanceUnit !== distanceUnit ||
     translateEnabled !== autoTranslate;
 
   return (
@@ -179,6 +185,43 @@ function LanguageCurrencyPanel({ onBack }) {
               </span>
               <span style={{ fontSize: '12px', color: '#6b7280' }}>
                 {curr.code} – {curr.symbol}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Distance Unit Section */}
+      <div style={{ marginBottom: '24px' }}>
+        <h3 style={{ fontSize: '14px', fontWeight: 600, color: '#111827', marginBottom: '8px' }}>
+          Distance Unit
+        </h3>
+        <p style={{ fontSize: '13px', color: '#6b7280', marginBottom: '16px' }}>
+          Choose how distances are displayed. Kilometers is the default for Canada.
+        </p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '12px' }}>
+          {supportedDistanceUnits.map((unit) => (
+            <button
+              key={unit.code}
+              onClick={() => setSelectedDistanceUnit(unit.code)}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'flex-start',
+                padding: '14px 16px',
+                border: selectedDistanceUnit === unit.code ? '2px solid #111827' : '1px solid #e5e7eb',
+                borderRadius: '10px',
+                background: selectedDistanceUnit === unit.code ? '#fafafa' : 'white',
+                cursor: 'pointer',
+                textAlign: 'left',
+                transition: 'all 0.2s'
+              }}
+            >
+              <span style={{ fontSize: '14px', fontWeight: 500, color: '#111827', marginBottom: '2px' }}>
+                {unit.name}
+              </span>
+              <span style={{ fontSize: '12px', color: '#6b7280' }}>
+                {unit.abbreviation}
               </span>
             </button>
           ))}

@@ -199,7 +199,10 @@ function VendorSection({
                 const titleLower = title.toLowerCase();
                 let discoveryType = sectionType;
                 
-                if (!discoveryType) {
+                // Check if this is a city-based section (starts with 'city-')
+                const isCitySection = sectionType && sectionType.startsWith('city-');
+                
+                if (!discoveryType || isCitySection) {
                   if (titleLower.includes('trending')) discoveryType = 'trending';
                   else if (titleLower.includes('top rated') || titleLower.includes('rated')) discoveryType = 'top-rated';
                   else if (titleLower.includes('responsive') || titleLower.includes('quick')) discoveryType = 'most-responsive';
@@ -210,13 +213,14 @@ function VendorSection({
                   else if (titleLower.includes('new') || titleLower.includes('added')) discoveryType = 'new';
                   else if (titleLower.includes('recommended')) discoveryType = 'recommended';
                   else if (titleLower.includes('budget') || titleLower.includes('affordable')) discoveryType = 'budget-friendly';
+                  else if (isCitySection) discoveryType = null; // Clear for city sections
                 }
                 
                 // Build URL with discovery type as primary, city/category as query params
                 let browseUrl = '/browse/';
                 const queryParams = new URLSearchParams();
                 
-                if (discoveryType) {
+                if (discoveryType && !isCitySection) {
                   // Discovery-focused URL: /browse/trending?city=Toronto&category=photo
                   browseUrl += discoveryType;
                   if (cityFilter) {

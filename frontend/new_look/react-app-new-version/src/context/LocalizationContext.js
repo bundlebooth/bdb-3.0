@@ -16,6 +16,12 @@ const SUPPORTED_CURRENCIES = [
   { code: 'MXN', name: 'Mexican peso', symbol: '$', locale: 'es-MX' },
 ];
 
+// Supported distance units - km is default for Canada
+const SUPPORTED_DISTANCE_UNITS = [
+  { code: 'km', name: 'Kilometers', abbreviation: 'km', conversionFromMiles: 1.60934 },
+  { code: 'mi', name: 'Miles', abbreviation: 'mi', conversionFromMiles: 1 },
+];
+
 const LocalizationContext = createContext();
 
 export function useLocalization() {
@@ -43,6 +49,11 @@ export function LocalizationProvider({ children }) {
     return saved === 'true';
   });
 
+  const [distanceUnit, setDistanceUnitState] = useState(() => {
+    const saved = localStorage.getItem('planbeau_distance_unit');
+    return saved || 'km'; // Default to km for Canada
+  });
+
   // Persist to localStorage when values change
   useEffect(() => {
     localStorage.setItem('planbeau_language', language);
@@ -55,6 +66,10 @@ export function LocalizationProvider({ children }) {
   useEffect(() => {
     localStorage.setItem('planbeau_auto_translate', autoTranslate.toString());
   }, [autoTranslate]);
+
+  useEffect(() => {
+    localStorage.setItem('planbeau_distance_unit', distanceUnit);
+  }, [distanceUnit]);
 
   // Set language with validation
   const setLanguage = (langCode) => {
@@ -75,6 +90,46 @@ export function LocalizationProvider({ children }) {
   // Toggle auto-translate
   const setAutoTranslate = (value) => {
     setAutoTranslateState(value);
+  };
+
+  // Set distance unit with validation
+  const setDistanceUnit = (unitCode) => {
+    const isValid = SUPPORTED_DISTANCE_UNITS.some(u => u.code === unitCode);
+    if (isValid) {
+      setDistanceUnitState(unitCode);
+    }
+  };
+
+  // Format distance - converts from miles (internal) to user's preferred unit
+  const formatDistance = (distanceInMiles, options = {}) => {
+    if (distanceInMiles == null || isNaN(distanceInMiles)) return '0 km';
+    
+    const unitInfo = SUPPORTED_DISTANCE_UNITS.find(u => u.code === distanceUnit) || SUPPORTED_DISTANCE_UNITS[0];
+    const { decimals = 1, showUnit = true } = options;
+    
+    const convertedDistance = distanceInMiles * unitInfo.conversionFromMiles;
+    const formatted = convertedDistance.toFixed(decimals);
+    
+    return showUnit ? `${formatted} ${unitInfo.abbreviation}` : formatted;
+  };
+
+  // Convert distance from user's unit to miles (for API calls)
+  const toMiles = (distance) => {
+    if (distance == null || isNaN(distance)) return 0;
+    const unitInfo = SUPPORTED_DISTANCE_UNITS.find(u => u.code === distanceUnit) || SUPPORTED_DISTANCE_UNITS[0];
+    return distance / unitInfo.conversionFromMiles;
+  };
+
+  // Convert distance from miles to user's unit
+  const fromMiles = (distanceInMiles) => {
+    if (distanceInMiles == null || isNaN(distanceInMiles)) return 0;
+    const unitInfo = SUPPORTED_DISTANCE_UNITS.find(u => u.code === distanceUnit) || SUPPORTED_DISTANCE_UNITS[0];
+    return distanceInMiles * unitInfo.conversionFromMiles;
+  };
+
+  // Get current distance unit info
+  const getCurrentDistanceUnit = () => {
+    return SUPPORTED_DISTANCE_UNITS.find(u => u.code === distanceUnit) || SUPPORTED_DISTANCE_UNITS[0];
   };
 
   // Format currency amount - displays as "C $500" format with currency prefix
@@ -133,20 +188,27 @@ export function LocalizationProvider({ children }) {
     language,
     currency,
     autoTranslate,
+    distanceUnit,
     
     // Setters
     setLanguage,
     setCurrency,
     setAutoTranslate,
+    setDistanceUnit,
     
     // Utilities
     formatCurrency,
+    formatDistance,
+    toMiles,
+    fromMiles,
     getCurrentLanguage,
     getCurrentCurrency,
+    getCurrentDistanceUnit,
     
     // Available options
     supportedLanguages: SUPPORTED_LANGUAGES,
     supportedCurrencies: SUPPORTED_CURRENCIES,
+    supportedDistanceUnits: SUPPORTED_DISTANCE_UNITS,
   };
 
   return (

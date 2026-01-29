@@ -6,7 +6,7 @@ import { useLocalization } from '../context/LocalizationContext';
 const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavorite, onView, onHighlight, showViewCount, showResponseTime, showAnalyticsBadge, analyticsBadgeType, onlineStatus, showBio = false }) {
   const [isHovered, setIsHovered] = React.useState(false);
   const [currentImageIndex, setCurrentImageIndex] = React.useState(0);
-  const { formatCurrency } = useLocalization();
+  const { formatCurrency, formatDistance } = useLocalization();
   const vendorId = vendor.VendorProfileID || vendor.id;
   
   // Build array of all available images for carousel
@@ -123,6 +123,11 @@ const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavori
   const bioText = rawBio.length > 100 ? rawBio.substring(0, 100).trim() + '...' : rawBio;
 
   const handleCardClick = () => {
+    // Call onView callback if provided (for tracking recently viewed, etc.)
+    if (onView) {
+      onView(vendorId);
+    }
+    
     // Build professional URL with slug and tracking parameters
     const url = buildVendorProfileUrl(vendor, {
       source: 'search',
@@ -478,7 +483,7 @@ const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavori
         </div>
         
         {/* Line 4: Discovery Analytics Badge - Only in discovery sections */}
-        {showAnalyticsBadge && vendor.analyticsBadge && (
+        {showAnalyticsBadge && (vendor.analyticsBadge || vendor.analyticsBadgeDistanceMiles != null) && (
           <div 
             className="vendor-card-analytics-badge"
             style={{ 
@@ -501,7 +506,12 @@ const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavori
               analyticsBadgeType === 'distance' ? 'fa-location-dot' :
               analyticsBadgeType === 'trending' ? 'fa-fire-flame-curved' : 'fa-fire'
             }`} style={{ fontSize: '11px' }}></i>
-            <span>{vendor.analyticsBadge}</span>
+            <span>
+              {/* Format distance using user's preferred unit if distance badge */}
+              {analyticsBadgeType === 'distance' && vendor.analyticsBadgeDistanceMiles != null
+                ? `${formatDistance(vendor.analyticsBadgeDistanceMiles)} away`
+                : vendor.analyticsBadge}
+            </span>
           </div>
         )}
         

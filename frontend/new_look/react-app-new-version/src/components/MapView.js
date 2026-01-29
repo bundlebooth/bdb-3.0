@@ -522,7 +522,8 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false, u
     // This keeps the map at a city overview level
     // BUT: Don't re-center if searchOnDrag is enabled - user is controlling the map position
     // When searchOnDrag is enabled, NEVER recenter or change zoom - user controls the map
-    if (hasValidMarkers && !searchOnDragEnabledRef.current) {
+    // Also don't recenter if map expansion is in progress (Load More Vendors)
+    if (hasValidMarkers && !searchOnDragEnabledRef.current && !window._mapExpandInProgress) {
       // If we have user location, center on that city
       if (userLocation && userLocation.lat && userLocation.lng) {
         mapInstanceRef.current.setCenter({ lat: userLocation.lat, lng: userLocation.lng });
@@ -638,6 +639,37 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false, u
       updateUserLocationMarker();
     }
   }, [userLocation, mapLoaded, updateUserLocationMarker]);
+
+  // Listen for expandMapRadius event from IndexPage to zoom out programmatically
+  useEffect(() => {
+    const handleExpandRadius = (event) => {
+      if (!mapInstanceRef.current) return;
+      
+      const { zoom, center } = event.detail;
+      
+      // Set flag to prevent updateMarkers from resetting zoom
+      window._mapExpandInProgress = true;
+      
+      // Smoothly animate to new zoom level and center
+      if (center?.lat && center?.lng) {
+        mapInstanceRef.current.panTo({ lat: center.lat, lng: center.lng });
+      }
+      
+      // Use setTimeout to allow pan to complete before zooming
+      setTimeout(() => {
+        if (zoom && mapInstanceRef.current) {
+          mapInstanceRef.current.setZoom(zoom);
+        }
+        // Clear flag after zoom is complete
+        setTimeout(() => {
+          window._mapExpandInProgress = false;
+        }, 500);
+      }, 300);
+    };
+    
+    window.addEventListener('expandMapRadius', handleExpandRadius);
+    return () => window.removeEventListener('expandMapRadius', handleExpandRadius);
+  }, []);
 
   // Expose highlight function globally for card hover
   // Use a registry pattern to support multiple MapView instances (desktop + mobile)
