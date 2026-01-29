@@ -947,7 +947,9 @@ router.get('/', async (req, res) => {
           .slice(0, 20)
           .map(v => ({
             ...v,
-            analyticsBadge: `${v.distanceMiles?.toFixed(1) || '?'} miles away`
+            // Send raw distance in miles - frontend will format with user's preferred unit
+            analyticsBadgeDistanceMiles: v.distanceMiles,
+            analyticsBadge: null // Will be formatted on frontend
           }));
         if (nearbyVendors.length > 0) {
           discoverySections.push({
@@ -1489,7 +1491,9 @@ router.get('/search-by-categories', async (req, res) => {
           .slice(0, 20)
           .map(v => ({
             ...v,
-            analyticsBadge: `${v.distanceMiles?.toFixed(1) || '?'} miles away`
+            // Send raw distance in miles - frontend will format with user's preferred unit
+            analyticsBadgeDistanceMiles: v.distanceMiles,
+            analyticsBadge: null // Will be formatted on frontend
           }));
         if (nearbyVendors.length > 0) {
           discoverySections.push({
