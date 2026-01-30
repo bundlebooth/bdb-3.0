@@ -7367,6 +7367,155 @@ router.put('/:id/subcategories', async (req, res) => {
   }
 });
 
+// ============================================
+// VENDOR FEATURES ENDPOINTS
+// ============================================
+
+// GET /api/vendors/features/categories - Get all feature categories
+router.get('/features/categories', async (req, res) => {
+  try {
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    const result = await request.execute('vendors.sp_GetFeatureCategories');
+    res.json({ success: true, categories: result.recordset || [] });
+  } catch (err) {
+    console.error('Get feature categories error:', err);
+    res.status(500).json({ success: false, message: 'Failed to get feature categories', error: err.message });
+  }
+});
+
+// GET /api/vendors/features/category/:categoryKey - Get features by category
+router.get('/features/category/:categoryId', async (req, res) => {
+  try {
+    const { categoryId } = req.params;
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('CategoryID', sql.Int, parseInt(categoryId));
+    const result = await request.execute('vendors.sp_GetFeaturesByCategory');
+    res.json({ success: true, features: result.recordset || [] });
+  } catch (err) {
+    console.error('Get features by category error:', err);
+    res.status(500).json({ success: false, message: 'Failed to get features', error: err.message });
+  }
+});
+
+// GET /api/vendors/features/all-grouped - Get all features grouped by category
+router.get('/features/all-grouped', async (req, res) => {
+  try {
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    const result = await request.execute('vendors.sp_GetAllFeaturesGrouped');
+    
+    // Group the results by category
+    const grouped = {};
+    (result.recordset || []).forEach(feature => {
+      const catName = feature.CategoryName || 'Other';
+      if (!grouped[catName]) {
+        grouped[catName] = {
+          categoryId: feature.CategoryID,
+          categoryName: catName,
+          categoryIcon: feature.CategoryIcon,
+          displayOrder: feature.CategoryDisplayOrder,
+          features: []
+        };
+      }
+      grouped[catName].features.push({
+        featureId: feature.FeatureID,
+        featureName: feature.FeatureName,
+        featureDescription: feature.FeatureDescription,
+        featureIcon: feature.FeatureIcon,
+        displayOrder: feature.FeatureDisplayOrder
+      });
+    });
+    
+    // Convert to array and sort by category order
+    const categories = Object.values(grouped).sort((a, b) => a.displayOrder - b.displayOrder);
+    res.json({ success: true, categories });
+  } catch (err) {
+    console.error('Get all features grouped error:', err);
+    res.status(500).json({ success: false, message: 'Failed to get features', error: err.message });
+  }
+});
+
+// GET /api/vendors/features/vendor/:vendorProfileId - Get vendor's selected features
+router.get('/features/vendor/:vendorProfileId', async (req, res) => {
+  try {
+    const vendorProfileId = resolveVendorIdParam(req.params.vendorProfileId);
+    if (!vendorProfileId) {
+      return res.status(400).json({ success: false, message: 'Invalid vendor profile ID' });
+    }
+    
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
+    const result = await request.execute('vendors.sp_GetSelectedFeatures');
+    res.json({ success: true, features: result.recordset || [] });
+  } catch (err) {
+    console.error('Get vendor features error:', err);
+    res.status(500).json({ success: false, message: 'Failed to get vendor features', error: err.message });
+  }
+});
+
+// POST /api/vendors/features/vendor/:vendorProfileId - Save vendor's feature selections
+router.post('/features/vendor/:vendorProfileId', async (req, res) => {
+  try {
+    const vendorProfileId = resolveVendorIdParam(req.params.vendorProfileId);
+    if (!vendorProfileId) {
+      return res.status(400).json({ success: false, message: 'Invalid vendor profile ID' });
+    }
+    
+    const { featureIds } = req.body;
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
+    request.input('FeatureIDs', sql.NVarChar(sql.MAX), Array.isArray(featureIds) ? featureIds.join(',') : (featureIds || ''));
+    
+    await request.execute('vendors.sp_SaveFeatureSelections');
+    res.json({ success: true, message: 'Features saved successfully' });
+  } catch (err) {
+    console.error('Save vendor features error:', err);
+    res.status(500).json({ success: false, message: 'Failed to save features', error: err.message });
+  }
+});
+
+// GET /api/vendors/features/vendor/:vendorProfileId/summary - Get vendor's feature summary
+router.get('/features/vendor/:vendorProfileId/summary', async (req, res) => {
+  try {
+    const vendorProfileId = resolveVendorIdParam(req.params.vendorProfileId);
+    if (!vendorProfileId) {
+      return res.status(400).json({ success: false, message: 'Invalid vendor profile ID' });
+    }
+    
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
+    const result = await request.execute('vendors.sp_GetFeatureSummary');
+    
+    // Group by category for display
+    const grouped = {};
+    (result.recordset || []).forEach(feature => {
+      const catName = feature.CategoryName || 'Other';
+      if (!grouped[catName]) {
+        grouped[catName] = {
+          categoryName: catName,
+          categoryIcon: feature.CategoryIcon,
+          features: []
+        };
+      }
+      grouped[catName].features.push({
+        featureId: feature.FeatureID,
+        featureName: feature.FeatureName,
+        featureIcon: feature.FeatureIcon
+      });
+    });
+    
+    res.json({ success: true, summary: Object.values(grouped) });
+  } catch (err) {
+    console.error('Get vendor feature summary error:', err);
+    res.status(500).json({ success: false, message: 'Failed to get feature summary', error: err.message });
+  }
+});
+
 // GET /api/vendors/:id/attributes - Get vendor's attributes (event types, cultures, settings)
 router.get('/:id/attributes', async (req, res) => {
   try {
