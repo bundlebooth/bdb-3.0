@@ -6953,14 +6953,14 @@ router.put('/:id/categories', async (req, res) => {
       // Delete existing subcategories
       await pool.request()
         .input('VendorProfileID', sql.Int, vendorProfileId)
-        .query('DELETE FROM vendors.VendorSubcategories WHERE VendorProfileID = @VendorProfileID');
+        .query('DELETE FROM vendors.Subcategories WHERE VendorProfileID = @VendorProfileID');
       
       // Insert new subcategories
       for (const subId of subcategoryIds) {
         await pool.request()
           .input('VendorProfileID', sql.Int, vendorProfileId)
           .input('SubcategoryID', sql.Int, subId)
-          .query('INSERT INTO vendors.VendorSubcategories (VendorProfileID, SubcategoryID) VALUES (@VendorProfileID, @SubcategoryID)');
+          .query('INSERT INTO vendors.Subcategories (VendorProfileID, SubcategoryID) VALUES (@VendorProfileID, @SubcategoryID)');
       }
     }
     
@@ -7548,6 +7548,28 @@ router.post('/features/vendor/:vendorProfileId', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid vendor profile ID' });
     }
     
+    const { featureIds } = req.body;
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
+    request.input('FeatureIDs', sql.NVarChar(sql.MAX), Array.isArray(featureIds) ? featureIds.join(',') : (featureIds || ''));
+    
+    await request.execute('vendors.sp_SaveFeatureSelections');
+    res.json({ success: true, message: 'Features saved successfully' });
+  } catch (err) {
+    console.error('Save vendor features error:', err);
+    res.status(500).json({ success: false, message: 'Failed to save features', error: err.message });
+  }
+});
+
+// PUT /api/vendors/features/vendor/:vendorProfileId - Save vendor's feature selections (alias for POST)
+router.put('/features/vendor/:vendorProfileId', async (req, res) => {
+  try {
+    const vendorProfileId = resolveVendorIdParam(req.params.vendorProfileId);
+    if (!vendorProfileId) {
+      return res.status(400).json({ success: false, message: 'Invalid vendor profile ID' });
+    }
+
     const { featureIds } = req.body;
     const pool = await poolPromise;
     const request = new sql.Request(pool);
