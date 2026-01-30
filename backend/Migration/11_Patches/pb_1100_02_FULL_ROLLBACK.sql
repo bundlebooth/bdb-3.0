@@ -25,7 +25,7 @@ PRINT '=== PHASE 1: Delete Seed Data ===';
 GO
 
 -- Clear junction table data first (FK constraints)
-DELETE FROM [vendors].[VendorSubcategories];
+DELETE FROM [vendors].[Subcategories];
 DELETE FROM [vendors].[VendorCultures];
 DELETE FROM [vendors].[VendorEventTypes];
 PRINT 'Cleared junction table data.';
@@ -86,8 +86,8 @@ PRINT '=== PHASE 3: Drop New Tables ===';
 GO
 
 -- Drop junction tables first (they have FK references)
-IF EXISTS (SELECT 1 FROM sys.objects WHERE object_id = OBJECT_ID(N'[vendors].[VendorSubcategories]') AND type in (N'U'))
-    DROP TABLE [vendors].[VendorSubcategories];
+IF EXISTS (SELECT 1 FROM sys.objects WHERE object_id = OBJECT_ID(N'[vendors].[Subcategories]') AND type in (N'U'))
+    DROP TABLE [vendors].[Subcategories];
 IF EXISTS (SELECT 1 FROM sys.objects WHERE object_id = OBJECT_ID(N'[vendors].[VendorCultures]') AND type in (N'U'))
     DROP TABLE [vendors].[VendorCultures];
 IF EXISTS (SELECT 1 FROM sys.objects WHERE object_id = OBJECT_ID(N'[vendors].[VendorEventTypes]') AND type in (N'U'))

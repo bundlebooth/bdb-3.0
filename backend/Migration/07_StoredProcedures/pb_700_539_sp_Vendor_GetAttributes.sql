@@ -69,7 +69,7 @@ BEGIN
         s.Category,
         s.SubcategoryKey,
         s.SubcategoryName
-    FROM [vendors].[VendorSubcategories] vs
+    FROM [vendors].[Subcategories] vs
     INNER JOIN [admin].[Subcategories] s ON vs.SubcategoryID = s.SubcategoryID
     WHERE vs.VendorProfileID = @VendorProfileID
     ORDER BY s.Category, s.DisplayOrder;

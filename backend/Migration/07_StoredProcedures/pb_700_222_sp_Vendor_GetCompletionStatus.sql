@@ -31,7 +31,7 @@ BEGIN
         vp.CancellationPolicy,
         (SELECT TOP 1 Category FROM vendors.VendorCategories WHERE VendorProfileID = @VendorProfileID AND IsPrimary = 1) AS PrimaryCategory,
         (SELECT COUNT(*) FROM vendors.VendorSelectedServices WHERE VendorProfileID = @VendorProfileID) AS ServiceCount,
-        (SELECT COUNT(*) FROM vendors.VendorFeatures WHERE VendorProfileID = @VendorProfileID) AS FeatureCount,
+        (SELECT COUNT(*) FROM vendors.Subcategories WHERE VendorProfileID = @VendorProfileID) AS SubcategoryCount,
         (SELECT COUNT(*) FROM vendors.VendorSocialMedia WHERE VendorProfileID = @VendorProfileID AND URL IS NOT NULL AND URL != '') AS SocialMediaCount,
         (SELECT COUNT(*) FROM vendors.VendorFAQs WHERE VendorProfileID = @VendorProfileID) AS FAQCount,
         (SELECT COUNT(*) FROM vendors.VendorServiceAreas WHERE VendorProfileID = @VendorProfileID) AS ServiceAreaCount,

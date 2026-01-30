@@ -4,7 +4,7 @@
     
     Order of deployment:
     1. Schema changes (columns on existing tables)
-    2. New tables (EventTypes, VendorEventTypes, Cultures, VendorCultures, Subcategories, VendorSubcategories)
+    2. New tables (EventTypes, VendorEventTypes, Cultures, VendorCultures, vendors.Subcategories)
     3. Stored procedures
     4. Seed data (EventTypes, Cultures, Subcategories, CategoryQuestions)
 */
@@ -177,23 +177,23 @@ ELSE
     PRINT 'Table [vendors].[VendorCultures] already exists.';
 GO
 
--- VendorSubcategories junction table
-IF NOT EXISTS (SELECT 1 FROM sys.objects WHERE object_id = OBJECT_ID(N'[vendors].[VendorSubcategories]') AND type in (N'U'))
+-- Subcategories junction table (vendors schema - for vendor selections)
+IF NOT EXISTS (SELECT 1 FROM sys.objects WHERE object_id = OBJECT_ID(N'[vendors].[Subcategories]') AND type in (N'U'))
 BEGIN
-    CREATE TABLE [vendors].[VendorSubcategories](
+    CREATE TABLE [vendors].[Subcategories](
         [VendorSubcategoryID] [int] IDENTITY(1,1) NOT NULL,
         [VendorProfileID] [int] NOT NULL,
         [SubcategoryID] [int] NOT NULL,
         [CreatedAt] [datetime2](7) NOT NULL DEFAULT GETUTCDATE(),
     PRIMARY KEY CLUSTERED ([VendorSubcategoryID] ASC),
-    CONSTRAINT [FK_VendorSubcategories_VendorProfiles] FOREIGN KEY ([VendorProfileID]) REFERENCES [vendors].[VendorProfiles]([VendorProfileID]),
-    CONSTRAINT [FK_VendorSubcategories_Subcategories] FOREIGN KEY ([SubcategoryID]) REFERENCES [vendors].[Subcategories]([SubcategoryID]),
+    CONSTRAINT [FK_Subcategories_VendorProfiles] FOREIGN KEY ([VendorProfileID]) REFERENCES [vendors].[VendorProfiles]([VendorProfileID]),
+    CONSTRAINT [FK_Subcategories_AdminSubcategories] FOREIGN KEY ([SubcategoryID]) REFERENCES [admin].[Subcategories]([SubcategoryID]),
     CONSTRAINT [UQ_VendorSubcategories] UNIQUE NONCLUSTERED ([VendorProfileID], [SubcategoryID])
     );
-    PRINT 'Table [vendors].[VendorSubcategories] created.';
+    PRINT 'Table [vendors].[Subcategories] created.';
 END
 ELSE
-    PRINT 'Table [vendors].[VendorSubcategories] already exists.';
+    PRINT 'Table [vendors].[Subcategories] already exists.';
 GO
 
 PRINT 'New tables completed.';
@@ -382,10 +382,10 @@ BEGIN
     SET NOCOUNT ON;
     BEGIN TRY
         BEGIN TRANSACTION;
-        DELETE FROM [vendors].[VendorSubcategories] WHERE VendorProfileID = @VendorProfileID;
+        DELETE FROM [vendors].[Subcategories] WHERE VendorProfileID = @VendorProfileID;
         IF @SubcategoryIDs IS NOT NULL AND LEN(@SubcategoryIDs) > 0
         BEGIN
-            INSERT INTO [vendors].[VendorSubcategories] (VendorProfileID, SubcategoryID, CreatedAt)
+            INSERT INTO [vendors].[Subcategories] (VendorProfileID, SubcategoryID, CreatedAt)
             SELECT @VendorProfileID, value, GETUTCDATE()
             FROM STRING_SPLIT(@SubcategoryIDs, ',')
             WHERE ISNUMERIC(value) = 1;
@@ -428,8 +428,8 @@ BEGIN
     WHERE vc.VendorProfileID = @VendorProfileID ORDER BY cu.DisplayOrder;
     
     SELECT vs.SubcategoryID, s.Category, s.SubcategoryKey, s.SubcategoryName
-    FROM [vendors].[VendorSubcategories] vs
-    INNER JOIN [vendors].[Subcategories] s ON vs.SubcategoryID = s.SubcategoryID
+    FROM [vendors].[Subcategories] vs
+    INNER JOIN [admin].[Subcategories] s ON vs.SubcategoryID = s.SubcategoryID
     WHERE vs.VendorProfileID = @VendorProfileID ORDER BY s.Category, s.DisplayOrder;
 END;
 GO

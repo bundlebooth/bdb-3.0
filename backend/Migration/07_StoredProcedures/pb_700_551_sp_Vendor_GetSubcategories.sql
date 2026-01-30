@@ -33,7 +33,7 @@ BEGIN
         s.Description,
         s.DisplayOrder,
         vs.CreatedAt
-    FROM [vendors].[VendorSubcategories] vs
+    FROM [vendors].[Subcategories] vs
     INNER JOIN [admin].[Subcategories] s ON vs.SubcategoryID = s.SubcategoryID
     WHERE vs.VendorProfileID = @VendorProfileID
       AND s.IsActive = 1

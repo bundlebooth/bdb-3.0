@@ -28,13 +28,13 @@ BEGIN
         BEGIN TRANSACTION;
         
         -- Delete existing subcategory selections
-        DELETE FROM [vendors].[VendorSubcategories]
+        DELETE FROM [vendors].[Subcategories]
         WHERE VendorProfileID = @VendorProfileID;
         
         -- Insert new subcategory selections
         IF @SubcategoryIDs IS NOT NULL AND LEN(@SubcategoryIDs) > 0
         BEGIN
-            INSERT INTO [vendors].[VendorSubcategories] (VendorProfileID, SubcategoryID, CreatedAt)
+            INSERT INTO [vendors].[Subcategories] (VendorProfileID, SubcategoryID, CreatedAt)
             SELECT @VendorProfileID, value, GETUTCDATE()
             FROM STRING_SPLIT(@SubcategoryIDs, ',')
             WHERE ISNUMERIC(value) = 1;
