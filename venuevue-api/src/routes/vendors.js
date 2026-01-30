@@ -6895,6 +6895,82 @@ router.get('/:id/categories', async (req, res) => {
   }
 });
 
+// PUT /api/vendors/:id/categories - Update vendor's primary category and subcategories
+router.put('/:id/categories', async (req, res) => {
+  try {
+    const vendorProfileId = resolveVendorIdParam(req.params.id);
+    if (!vendorProfileId) {
+      return res.status(400).json({ success: false, message: 'Invalid vendor profile ID' });
+    }
+
+    const { primaryCategoryId, primaryCategory, subcategoryIds } = req.body;
+    
+    // primaryCategoryId might be a string like "photo" or a category name like "Photo/Video"
+    // We need to handle both cases
+    let categoryName = primaryCategory || primaryCategoryId;
+    
+    // Map category IDs to names if needed
+    const categoryIdToName = {
+      'venue': 'Venues',
+      'photo': 'Photo/Video',
+      'music': 'Music/DJ',
+      'catering': 'Catering',
+      'entertainment': 'Entertainment',
+      'decorations': 'Decorations',
+      'beauty': 'Beauty',
+      'cake': 'Cake',
+      'transportation': 'Transportation',
+      'planners': 'Planners',
+      'fashion': 'Fashion',
+      'stationery': 'Stationery'
+    };
+    
+    if (categoryIdToName[categoryName]) {
+      categoryName = categoryIdToName[categoryName];
+    }
+
+    const pool = await poolPromise;
+    
+    // Update primary category
+    const categoryRequest = new sql.Request(pool);
+    categoryRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+    categoryRequest.input('Category', sql.NVarChar(100), categoryName);
+    categoryRequest.input('IsPrimary', sql.Bit, 1);
+    
+    // First delete existing categories, then insert new one
+    await pool.request()
+      .input('VendorProfileID', sql.Int, vendorProfileId)
+      .query('DELETE FROM vendors.VendorCategories WHERE VendorProfileID = @VendorProfileID');
+    
+    await pool.request()
+      .input('VendorProfileID', sql.Int, vendorProfileId)
+      .input('Category', sql.NVarChar(100), categoryName)
+      .input('IsPrimary', sql.Bit, 1)
+      .query('INSERT INTO vendors.VendorCategories (VendorProfileID, Category, IsPrimary) VALUES (@VendorProfileID, @Category, @IsPrimary)');
+    
+    // Update subcategories if provided
+    if (subcategoryIds && Array.isArray(subcategoryIds)) {
+      // Delete existing subcategories
+      await pool.request()
+        .input('VendorProfileID', sql.Int, vendorProfileId)
+        .query('DELETE FROM vendors.VendorSubcategories WHERE VendorProfileID = @VendorProfileID');
+      
+      // Insert new subcategories
+      for (const subId of subcategoryIds) {
+        await pool.request()
+          .input('VendorProfileID', sql.Int, vendorProfileId)
+          .input('SubcategoryID', sql.Int, subId)
+          .query('INSERT INTO vendors.VendorSubcategories (VendorProfileID, SubcategoryID) VALUES (@VendorProfileID, @SubcategoryID)');
+      }
+    }
+    
+    res.json({ success: true, message: 'Categories updated successfully' });
+  } catch (err) {
+    console.error('Update vendor categories error:', err);
+    res.status(500).json({ success: false, message: 'Failed to update categories', error: err.message });
+  }
+});
+
 // =============================================
 // VENDOR PACKAGES ROUTES
 // =============================================
