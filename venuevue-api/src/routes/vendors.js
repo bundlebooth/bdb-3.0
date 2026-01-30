@@ -1917,7 +1917,6 @@ router.post('/onboarding', async (req, res) => {
       selectedServices,
       businessHours,
       timezone,
-      selectedFeatures,
       photoURLs,
       socialMedia,
       selectedFilters,
@@ -2170,27 +2169,6 @@ router.post('/onboarding', async (req, res) => {
 
           await socialRequest.execute('vendors.sp_InsertSocialMedia');
         }
-      }
-    }
-
-    // Save selected features (questionnaire)
-    if (selectedFeatures && Array.isArray(selectedFeatures) && selectedFeatures.length > 0) {
-      try {
-        // Delete existing feature selections
-        const deleteFeatureRequest = new sql.Request(pool);
-        deleteFeatureRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-        await deleteFeatureRequest.execute('vendors.sp_DeleteSelectedFeatures');
-
-        // Insert new feature selections
-        for (const featureId of selectedFeatures) {
-          const featureRequest = new sql.Request(pool);
-          featureRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-          featureRequest.input('FeatureID', sql.Int, parseInt(featureId));
-          await featureRequest.execute('vendors.sp_InsertSelectedFeature');
-        }
-      } catch (featureError) {
-        console.warn('⚠️ Could not save features (table may not exist):', featureError.message);
-        // Don't fail the whole request if features table doesn't exist
       }
     }
 
@@ -2476,18 +2454,6 @@ router.get('/profile', async (req, res) => {
       serviceAreas = [];
     }
 
-    // Get selected features (questionnaire) for this vendor
-    let selectedFeatures = [];
-    try {
-      const featuresRequest = new sql.Request(pool);
-      featuresRequest.input('VendorProfileID', sql.Int, user.VendorProfileID);
-      const featuresResult = await featuresRequest.execute('vendors.sp_GetSelectedFeatures');
-      selectedFeatures = featuresResult.recordset.map(f => f.FeatureID);
-    } catch (featuresError) {
-      console.warn('Selected features query failed, using empty array:', featuresError.message);
-      selectedFeatures = [];
-    }
-    
     // Structure the comprehensive profile data
     // Stored procedure sp_GetVendorDetails returns recordsets in this order:
     // 0: Profile, 1: Categories, 2: Services, 3: Portfolio, 4: Reviews, 5: FAQs,
@@ -2505,7 +2471,6 @@ router.get('/profile', async (req, res) => {
       businessHours: profileResult.recordsets[8] || [],
       serviceAreas: serviceAreas,
       images: galleryImages.length > 0 ? galleryImages : (profileResult.recordsets[9] || []),
-      selectedFeatures: selectedFeatures,
       categoryAnswers: profileResult.recordsets[10] || [],
       isFavorite: profileResult.recordsets[11] ? profileResult.recordsets[11][0]?.IsFavorite || false : false,
       availableSlots: profileResult.recordsets[12] || []
@@ -2614,7 +2579,6 @@ router.get('/profile', async (req, res) => {
         businessHours: [],
         serviceAreas: [],
         images: [],
-        selectedFeatures: [],
         categoryAnswers: [],
         isFavorite: false,
         availableSlots: [],
@@ -6403,10 +6367,6 @@ router.post('/:vendorProfileId/submit-for-review', async (req, res) => {
           incompleteSections.push('When are you available?');
         }
         
-        // questionnaire (features) - "Tell guests what your place has to offer" - return formData.selectedFeatures.length > 0
-        if (vendor.FeatureCount === 0) {
-          incompleteSections.push('Tell guests what your place has to offer');
-        }
         
         // gallery - "Add photos to showcase your work" - return formData.photoURLs.length > 0
         if (vendor.ImageCount === 0) {
@@ -6575,272 +6535,6 @@ router.get('/:vendorProfileId/status', async (req, res) => {
   } catch (error) {
     console.error('Error fetching profile status:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch profile status', error: error.message });
-  }
-});
-
-// ============================================
-// VENDOR FEATURES ENDPOINTS
-// (Merged from vendorFeatures.js)
-// ============================================
-
-// GET /api/vendors/features/categories - Get all feature categories
-router.get('/features/categories', async (req, res) => {
-  try {
-    const pool = await poolPromise;
-    const result = await pool.request()
-      .execute('vendors.sp_GetFeatureCategories');
-    
-    res.json({
-      success: true,
-      categories: result.recordset
-    });
-  } catch (error) {
-    console.error('Error fetching feature categories:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch feature categories',
-      error: error.message
-    });
-  }
-});
-
-// GET /api/vendors/features/category/:categoryKey - Get features by category key
-router.get('/features/category/:categoryKey', async (req, res) => {
-  try {
-    const { categoryKey } = req.params;
-    const pool = await poolPromise;
-    
-    const result = await pool.request()
-      .input('CategoryKey', sql.NVarChar(50), categoryKey)
-      .execute('vendors.sp_GetFeaturesByCategory');
-    
-    res.json({
-      success: true,
-      features: result.recordset
-    });
-  } catch (error) {
-    console.error('Error fetching features by category:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch features',
-      error: error.message
-    });
-  }
-});
-
-// GET /api/vendors/features/all-grouped - Get all features grouped by category
-router.get('/features/all-grouped', async (req, res) => {
-  try {
-    const pool = await poolPromise;
-    let result;
-    
-    try {
-      result = await pool.request()
-        .execute('vendors.sp_GetAllFeaturesGrouped');
-    } catch (spError) {
-      console.error('sp_GetAllVendorFeaturesGrouped failed:', spError.message);
-      return res.json({
-        success: true,
-        categories: []
-      });
-    }
-    
-    // Group the results by category
-    const grouped = {};
-    (result.recordset || []).forEach(row => {
-      const catKey = row.CategoryKey;
-      if (!catKey) return;
-      
-      if (!grouped[catKey]) {
-        grouped[catKey] = {
-          categoryID: row.CategoryID,
-          categoryName: row.CategoryName,
-          categoryKey: row.CategoryKey,
-          categoryDescription: row.CategoryDescription,
-          categoryIcon: row.CategoryIcon,
-          applicableVendorCategories: row.ApplicableVendorCategories,
-          categoryOrder: row.CategoryOrder,
-          features: []
-        };
-      }
-      
-      if (row.FeatureID) {
-        grouped[catKey].features.push({
-          featureID: row.FeatureID,
-          featureName: row.FeatureName,
-          featureKey: row.FeatureKey,
-          featureDescription: row.FeatureDescription,
-          featureIcon: row.FeatureIcon,
-          featureOrder: row.FeatureOrder
-        });
-      }
-    });
-    
-    // Convert to array and sort by category order
-    const categories = Object.values(grouped).sort((a, b) => a.categoryOrder - b.categoryOrder);
-    
-    res.json({
-      success: true,
-      categories
-    });
-  } catch (error) {
-    console.error('Error fetching grouped features:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch features',
-      error: error.message
-    });
-  }
-});
-
-// GET /api/vendors/features/vendor/:vendorProfileId - Get vendor's selected features
-router.get('/features/vendor/:vendorProfileId', async (req, res) => {
-  try {
-    const { vendorProfileId } = req.params;
-    const pool = await poolPromise;
-    let result;
-    
-    try {
-      result = await pool.request()
-        .input('VendorProfileID', sql.Int, parseInt(vendorProfileId))
-        .execute('vendors.sp_GetSelectedFeatures');
-    } catch (spError) {
-      console.error('sp_Vendor_GetSelectedFeatures failed:', spError.message);
-      return res.json({
-        success: true,
-        selectedFeatures: [],
-        groupedByCategory: []
-      });
-    }
-    
-    // Group by category
-    const grouped = {};
-    (result.recordset || []).forEach(row => {
-      const catKey = row.CategoryKey;
-      if (!catKey) return;
-      
-      if (!grouped[catKey]) {
-        grouped[catKey] = {
-          categoryID: row.CategoryID,
-          categoryName: row.CategoryName,
-          categoryKey: row.CategoryKey,
-          categoryIcon: row.CategoryIcon,
-          features: []
-        };
-      }
-      
-      grouped[catKey].features.push({
-        featureID: row.FeatureID,
-        featureName: row.FeatureName,
-        featureKey: row.FeatureKey,
-        featureIcon: row.FeatureIcon,
-        selectedAt: row.SelectedAt
-      });
-    });
-    
-    const categories = Object.values(grouped);
-    
-    res.json({
-      success: true,
-      selectedFeatures: result.recordset || [],
-      groupedByCategory: categories
-    });
-  } catch (error) {
-    console.error('Error fetching vendor selected features:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch vendor features',
-      error: error.message
-    });
-  }
-});
-
-// POST /api/vendors/features/vendor/:vendorProfileId - Save vendor's feature selections
-router.post('/features/vendor/:vendorProfileId', async (req, res) => {
-  try {
-    const { vendorProfileId } = req.params;
-    let { featureIds } = req.body; // Array of feature IDs or objects with id property
-    
-    if (!Array.isArray(featureIds)) {
-      return res.status(400).json({
-        success: false,
-        message: 'featureIds must be an array'
-      });
-    }
-    
-    // Handle both formats: array of integers [1, 2, 3] or array of objects [{id: 1}, {id: 2}]
-    featureIds = featureIds.map(item => {
-      if (typeof item === 'object' && item !== null) {
-        return parseInt(item.id || item.FeatureID || item.featureId, 10);
-      }
-      return parseInt(item, 10);
-    }).filter(id => !isNaN(id));
-    
-    const pool = await poolPromise;
-    
-    // Convert array to comma-separated string
-    const featureIdsStr = featureIds.length > 0 ? featureIds.join(',') : '';
-    
-    let result;
-    try {
-      result = await pool.request()
-        .input('VendorProfileID', sql.Int, parseInt(vendorProfileId))
-        .input('FeatureIDs', sql.NVarChar(sql.MAX), featureIdsStr)
-        .execute('vendors.sp_SaveFeatureSelections');
-      
-      const status = result.recordset[0];
-      
-      if (status.Status === 'success') {
-        res.json({
-          success: true,
-          message: status.Message,
-          selectionCount: status.SelectionCount
-        });
-      } else {
-        res.status(500).json({
-          success: false,
-          message: status.Message
-        });
-      }
-    } catch (spError) {
-      console.error('[vendor-features] sp_SaveFeatureSelections error:', spError.message);
-      res.status(500).json({
-        success: false,
-        message: 'Failed to save feature selections. Please ensure database migrations are up to date.',
-        error: spError.message
-      });
-    }
-  } catch (error) {
-    console.error('Error saving vendor feature selections:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to save feature selections',
-      error: error.message
-    });
-  }
-});
-
-// GET /api/vendors/features/vendor/:vendorProfileId/summary - Get vendor's feature summary
-router.get('/features/vendor/:vendorProfileId/summary', async (req, res) => {
-  try {
-    const { vendorProfileId } = req.params;
-    const pool = await poolPromise;
-    
-    const result = await pool.request()
-      .input('VendorProfileID', sql.Int, parseInt(vendorProfileId))
-      .execute('vendors.sp_GetFeatureSummary');
-    
-    res.json({
-      success: true,
-      summary: result.recordset
-    });
-  } catch (error) {
-    console.error('Error fetching vendor feature summary:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch feature summary',
-      error: error.message
-    });
   }
 });
 
@@ -7594,6 +7288,25 @@ router.get('/lookup/price-types', async (req, res) => {
       { key: 'CustomQuote', label: 'Custom Quote' }
     ]
   });
+});
+
+// GET /api/vendors/lookup/subcategories - Get subcategories (optionally filtered by category)
+router.get('/lookup/subcategories', async (req, res) => {
+  try {
+    const { category } = req.query;
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    
+    if (category) {
+      request.input('Category', sql.NVarChar(50), category);
+    }
+    
+    const result = await request.execute('admin.sp_GetSubcategories');
+    res.json({ success: true, subcategories: result.recordset || [] });
+  } catch (err) {
+    console.error('Get subcategories lookup error:', err);
+    res.status(500).json({ success: false, message: 'Failed to get subcategories', error: err.message });
+  }
 });
 
 // GET /api/vendors/subcategories/:category - Get subcategories for a category
