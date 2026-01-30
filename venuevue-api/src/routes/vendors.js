@@ -7415,17 +7415,21 @@ router.get('/features/all-grouped', async (req, res) => {
           categoryId: feature.CategoryID,
           categoryName: catName,
           categoryIcon: feature.CategoryIcon,
-          displayOrder: feature.CategoryDisplayOrder,
+          displayOrder: feature.CategoryOrder || feature.CategoryDisplayOrder,
+          applicableVendorCategories: feature.ApplicableVendorCategories,
           features: []
         };
       }
-      grouped[catName].features.push({
-        featureId: feature.FeatureID,
-        featureName: feature.FeatureName,
-        featureDescription: feature.FeatureDescription,
-        featureIcon: feature.FeatureIcon,
-        displayOrder: feature.FeatureDisplayOrder
-      });
+      // Only add feature if it has a valid FeatureID (LEFT JOIN may return nulls)
+      if (feature.FeatureID) {
+        grouped[catName].features.push({
+          featureId: feature.FeatureID,
+          featureName: feature.FeatureName,
+          featureDescription: feature.FeatureDescription,
+          featureIcon: feature.FeatureIcon,
+          displayOrder: feature.FeatureOrder || feature.FeatureDisplayOrder
+        });
+      }
     });
     
     // Convert to array and sort by category order
