@@ -19,7 +19,7 @@ BEGIN
     SET NOCOUNT ON;
     
     -- Get vendor profile location
-    SELECT Address, City, State, Country, PostalCode, Latitude, Longitude
+    SELECT Address, City, State, Country, PostalCode, Latitude, Longitude, ServiceLocationScope
     FROM vendors.VendorProfiles
     WHERE VendorProfileID = @VendorProfileID;
     

@@ -550,12 +550,21 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
     }
   };
 
-  const filteredServices = availableServices.filter(s =>
-    !services.some(selected => selected.id === s.id) &&
-    (searchQuery === '' ||
-     s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-     (s.category && s.category.toLowerCase().includes(searchQuery.toLowerCase())))
-  );
+  const filteredServices = availableServices.filter(s => {
+    // Check if service is already selected - compare all possible ID formats
+    const serviceId = String(s.id || s.PredefinedServiceID);
+    const isAlreadySelected = services.some(selected => {
+      const selectedId = String(selected.id || selected.PredefinedServiceID);
+      return selectedId === serviceId;
+    });
+    
+    // Filter by search query
+    const matchesSearch = searchQuery === '' ||
+      (s.name && s.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (s.category && s.category.toLowerCase().includes(searchQuery.toLowerCase()));
+    
+    return !isAlreadySelected && matchesSearch;
+  });
 
 
 

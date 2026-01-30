@@ -11,7 +11,6 @@ export { default as ContactStep } from './ContactStep';
 export { default as ServicesStep } from './ServicesStep';
 export { default as CancellationPolicyStep } from './CancellationPolicyStep';
 export { default as BusinessHoursStep } from './BusinessHoursStep';
-export { default as QuestionnaireStep } from './QuestionnaireStep';
 export { default as GalleryStep } from './GalleryStep';
 export { default as SocialMediaStep } from './SocialMediaStep';
 export { default as FiltersStep } from './FiltersStep';

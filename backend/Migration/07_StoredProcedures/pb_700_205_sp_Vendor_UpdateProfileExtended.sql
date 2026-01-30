@@ -27,7 +27,7 @@ CREATE PROCEDURE [vendors].[sp_UpdateProfileExtended]
     @PostalCode NVARCHAR(20) = NULL,
     @Latitude DECIMAL(10,8) = NULL,
     @Longitude DECIMAL(11,8) = NULL,
-    @Tagline NVARCHAR(255) = NULL,
+    @Tagline NVARCHAR(255) = NULL, -- Deprecated: kept for backward compatibility, ignored
     @PriceLevel NVARCHAR(20) = NULL,
     @ProfileLogo NVARCHAR(255) = NULL
 AS
@@ -48,7 +48,7 @@ BEGIN
         PostalCode = @PostalCode,
         Latitude = @Latitude,
         Longitude = @Longitude,
-        Tagline = @Tagline,
+        -- Tagline is deprecated and no longer updated
         PriceLevel = @PriceLevel,
         LogoURL = @ProfileLogo,
         UpdatedAt = GETDATE()

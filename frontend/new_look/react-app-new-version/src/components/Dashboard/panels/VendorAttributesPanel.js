@@ -194,59 +194,11 @@ function VendorAttributesPanel({ onBack, vendorProfileId }) {
         <i className="fas fa-arrow-left"></i> Back to Business Profile Menu
       </button>
       <div className="dashboard-card">
-        <h2 className="dashboard-card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <i className="fas fa-sliders-h" style={{ color: 'var(--primary)' }}></i>
-          Vendor Attributes
-        </h2>
+        <h2 className="dashboard-card-title">Service Attributes</h2>
         <p style={{ color: 'var(--text-light)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
-          Configure your service attributes to help clients find you based on event types, cultures served, and more.
+          Event types, cultures served, and experience level.
         </p>
         <hr style={{ border: 'none', borderTop: '1px solid #e5e7eb', margin: '1.5rem 0' }} />
-        {/* Subcategories */}
-        {primaryCategory && subcategoriesOptions.length > 0 && (
-          <div style={{ marginBottom: '2rem' }}>
-            <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem', fontWeight: 600, color: '#111827' }}>
-              Subcategories
-              {selectedSubcategories.length > 0 && (
-                <span style={{
-                  background: '#5086E8',
-                  color: 'white',
-                  fontSize: '0.75rem',
-                  fontWeight: '600',
-                  padding: '2px 8px',
-                  borderRadius: '12px',
-                  marginLeft: '0.5rem'
-                }}>
-                  {selectedSubcategories.length} selected
-                </span>
-              )}
-            </h3>
-            <p style={{ margin: '0 0 1rem 0', color: '#6b7280', fontSize: '0.875rem' }}>
-              Select the specific services you offer within {primaryCategory}
-            </p>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-              {subcategoriesOptions.map(sub => (
-                <button
-                  key={sub.SubcategoryID}
-                  onClick={() => toggleSubcategory(sub.SubcategoryID)}
-                  style={{
-                    padding: '0.5rem 1rem',
-                    borderRadius: '20px',
-                    border: selectedSubcategories.includes(sub.SubcategoryID) ? '2px solid #5086E8' : '1px solid #d1d5db',
-                    background: selectedSubcategories.includes(sub.SubcategoryID) ? '#eff6ff' : 'white',
-                    color: selectedSubcategories.includes(sub.SubcategoryID) ? '#5086E8' : '#374151',
-                    fontWeight: selectedSubcategories.includes(sub.SubcategoryID) ? 600 : 400,
-                    cursor: 'pointer',
-                    fontSize: '0.875rem',
-                    transition: 'all 0.2s'
-                  }}
-                >
-                  {sub.SubcategoryName}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* Event Types */}
         <div style={{ marginBottom: '2rem' }}>
@@ -308,76 +260,6 @@ function VendorAttributesPanel({ onBack, vendorProfileId }) {
               </button>
             ))}
           </div>
-        </div>
-
-        {/* Service Location Scope */}
-        <div style={{ marginBottom: '2rem' }}>
-          <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem', fontWeight: 600, color: '#111827' }}>
-            Service Location
-          </h3>
-          <p style={{ margin: '0 0 1rem 0', color: '#6b7280', fontSize: '0.875rem' }}>
-            Choose where you are willing to provide your services
-          </p>
-          <div style={{ display: 'flex', gap: '1rem' }}>
-            {serviceLocations.map(loc => (
-              <label
-                key={loc.key}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  padding: '1rem 1.5rem',
-                  borderRadius: '8px',
-                  border: serviceLocationScope === loc.key ? '2px solid #5086E8' : '1px solid #d1d5db',
-                  background: serviceLocationScope === loc.key ? '#eff6ff' : 'white',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s'
-                }}
-              >
-                <input
-                  type="radio"
-                  name="serviceLocation"
-                  value={loc.key}
-                  checked={serviceLocationScope === loc.key}
-                  onChange={(e) => setServiceLocationScope(e.target.value)}
-                  style={{ accentColor: '#5086E8' }}
-                />
-                <span style={{ fontWeight: serviceLocationScope === loc.key ? 600 : 400 }}>
-                  {loc.label}
-                </span>
-              </label>
-            ))}
-          </div>
-        </div>
-
-        {/* Years of Experience */}
-        <div style={{ marginBottom: '2rem' }}>
-          <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem', fontWeight: 600, color: '#111827' }}>
-            Years of Experience
-          </h3>
-          <p style={{ margin: '0 0 1rem 0', color: '#6b7280', fontSize: '0.875rem' }}>
-            How long have you been in business?
-          </p>
-          <select
-            value={yearsOfExperienceRange}
-            onChange={(e) => setYearsOfExperienceRange(e.target.value)}
-            style={{
-              width: '100%',
-              maxWidth: '300px',
-              padding: '0.75rem 1rem',
-              borderRadius: '8px',
-              border: '1px solid #d1d5db',
-              fontSize: '1rem',
-              background: 'white'
-            }}
-          >
-            <option value="">Select experience range</option>
-            {experienceRanges.map(range => (
-              <option key={range.key} value={range.key}>
-                {range.label}
-              </option>
-            ))}
-          </select>
         </div>
 
         {/* Save Button */}

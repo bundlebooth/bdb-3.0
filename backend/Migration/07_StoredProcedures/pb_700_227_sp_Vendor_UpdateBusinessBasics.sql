@@ -20,7 +20,7 @@ CREATE PROCEDURE [vendors].[sp_UpdateBusinessBasics]
     @BusinessPhone NVARCHAR(20),
     @Website NVARCHAR(255) = NULL,
     @BusinessDescription NVARCHAR(MAX) = NULL,
-    @Tagline NVARCHAR(255) = NULL,
+    @Tagline NVARCHAR(255) = NULL, -- Deprecated: kept for backward compatibility, ignored
     @YearsInBusiness INT = NULL,
     @PriceLevel NVARCHAR(20) = '$$'
 AS
@@ -31,7 +31,8 @@ BEGIN
     SET BusinessName = @BusinessName, DisplayName = @DisplayName, 
         BusinessEmail = @BusinessEmail, BusinessPhone = @BusinessPhone,
         Website = @Website, BusinessDescription = @BusinessDescription,
-        Tagline = @Tagline, YearsInBusiness = @YearsInBusiness,
+        -- Tagline is deprecated and no longer updated
+        YearsInBusiness = @YearsInBusiness,
         PriceLevel = @PriceLevel,
         UpdatedAt = GETDATE()
     WHERE VendorProfileID = @VendorProfileID;

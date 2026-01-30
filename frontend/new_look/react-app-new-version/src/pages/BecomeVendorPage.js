@@ -18,7 +18,6 @@ import {
   ServicesStep,
   CancellationPolicyStep,
   BusinessHoursStep,
-  QuestionnaireStep,
   GalleryStep,
   SocialMediaStep,
   FiltersStep,
@@ -38,7 +37,7 @@ const BecomeVendorPage = () => {
   const { currentUser, setCurrentUser } = useAuth();
   
   // Step IDs for mapping URL params to step indices
-  const stepIds = ['account', 'categories', 'business-details', 'contact', 'location', 'services', 'cancellation-policy', 'business-hours', 'questionnaire', 'vendor-attributes', 'gallery', 'social-media', 'filters', 'stripe', 'google-reviews', 'policies', 'review'];
+  const stepIds = ['account', 'categories', 'business-details', 'contact', 'location', 'services', 'cancellation-policy', 'business-hours', 'vendor-attributes', 'gallery', 'social-media', 'filters', 'stripe', 'google-reviews', 'policies', 'review'];
 
   // Check URL step param ONCE at mount time - this is the source of truth
   const urlStepRef = useRef(null);
@@ -107,7 +106,6 @@ const BecomeVendorPage = () => {
     displayName: '',
     businessDescription: '',
     yearsInBusiness: '',
-    tagline: '',
     priceRange: '',
     profileLogo: '',
     
@@ -270,14 +268,6 @@ const BecomeVendorPage = () => {
       subtitle: 'Set your business hours',
       component: BusinessHoursStep,
       required: true
-    },
-    {
-      id: 'questionnaire',
-      title: 'Tell guests what your place has to offer',
-      subtitle: 'Select features that describe your services',
-      component: QuestionnaireStep,
-      required: false,
-      skippable: true
     },
     {
       id: 'vendor-attributes',
@@ -521,7 +511,6 @@ const BecomeVendorPage = () => {
             displayName: profile.DisplayName || profile.BusinessName || '',
             businessDescription: profile.BusinessDescription || '',
             yearsInBusiness: profile.YearsInBusiness?.toString() || '',
-            tagline: profile.Tagline || '',
             priceRange: profile.PriceRange || '',
             profileLogo: profile.ProfileLogo || profile.LogoURL || '',
             
@@ -783,7 +772,6 @@ const BecomeVendorPage = () => {
         displayName: formData.displayName || formData.businessName,
         businessDescription: formData.businessDescription,
         yearsInBusiness: formData.yearsInBusiness ? parseInt(formData.yearsInBusiness) : null,
-        tagline: formData.tagline,
         priceRange: formData.priceRange,
         profileLogo: formData.profileLogo,
         businessPhone: formData.businessPhone,

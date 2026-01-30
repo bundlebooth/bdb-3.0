@@ -1899,7 +1899,6 @@ router.post('/onboarding', async (req, res) => {
       displayName,
       businessDescription,
       yearsInBusiness,
-      tagline,
       priceRange,
       profileLogo,
       businessPhone,
@@ -2001,7 +2000,6 @@ router.post('/onboarding', async (req, res) => {
       updateRequest.input('PostalCode', sql.NVarChar(20), postalCode || null);
       updateRequest.input('Latitude', sql.Decimal(10, 8), latitude || null);
       updateRequest.input('Longitude', sql.Decimal(11, 8), longitude || null);
-      updateRequest.input('Tagline', sql.NVarChar(255), tagline || null);
       updateRequest.input('PriceLevel', sql.NVarChar(20), priceRange || null);
       updateRequest.input('ProfileLogo', sql.NVarChar(255), profileLogoUrl || null);
 
@@ -2038,7 +2036,6 @@ router.post('/onboarding', async (req, res) => {
       updateExtraRequest.input('VendorProfileID', sql.Int, vendorProfileId);
       updateExtraRequest.input('Latitude', sql.Decimal(10, 8), latitude || null);
       updateExtraRequest.input('Longitude', sql.Decimal(11, 8), longitude || null);
-      updateExtraRequest.input('Tagline', sql.NVarChar(255), tagline || null);
       updateExtraRequest.input('PriceLevel', sql.NVarChar(20), priceRange || null);
       updateExtraRequest.input('ProfileLogo', sql.NVarChar(255), profileLogoUrl || null);
 
@@ -3018,7 +3015,6 @@ router.post('/setup/step1-business-basics', async (req, res) => {
       businessPhone,
       website,
       businessDescription,
-      tagline,
       yearsInBusiness,
       primaryCategory,
       additionalCategories,
@@ -3044,7 +3040,6 @@ router.post('/setup/step1-business-basics', async (req, res) => {
     updateRequest.input('BusinessPhone', sql.NVarChar, businessPhone);
     updateRequest.input('Website', sql.NVarChar, website || null);
     updateRequest.input('BusinessDescription', sql.NVarChar, (businessDescription && businessDescription.trim().length > 0) ? businessDescription : null);
-    updateRequest.input('Tagline', sql.NVarChar, tagline || null);
     updateRequest.input('YearsInBusiness', sql.Int, yearsInBusiness || null);
     updateRequest.input('PriceLevel', sql.NVarChar, priceLevel || '$$');
     
@@ -5877,6 +5872,14 @@ router.get('/:id/location', async (req, res) => {
     const profileData = locationResult.recordsets[0][0] || {};
     const areasData = locationResult.recordsets[1] || [];
     
+    // Parse serviceLocationScope - stored as comma-separated, return as array
+    let serviceLocationScope = profileData.ServiceLocationScope || 'Local';
+    if (typeof serviceLocationScope === 'string' && serviceLocationScope.includes(',')) {
+      serviceLocationScope = serviceLocationScope.split(',').map(s => s.trim());
+    } else if (typeof serviceLocationScope === 'string') {
+      serviceLocationScope = [serviceLocationScope];
+    }
+    
     res.json({
       address: profileData.Address || '',
       city: profileData.City || '',
@@ -5885,6 +5888,7 @@ router.get('/:id/location', async (req, res) => {
       postalCode: profileData.PostalCode || '',
       latitude: profileData.Latitude || null,
       longitude: profileData.Longitude || null,
+      serviceLocationScope: serviceLocationScope,
       serviceAreas: areasData.map(area => ({
         placeId: area.GooglePlaceID,
         city: area.CityName,
@@ -5908,7 +5912,7 @@ router.get('/:id/location', async (req, res) => {
 router.post('/:id/location', async (req, res) => {
   try {
     const vendorProfileId = parseVendorProfileId(req.params.id);
-    const { address, city, state, country, postalCode, latitude, longitude, serviceAreas } = req.body;
+    const { address, city, state, country, postalCode, latitude, longitude, serviceAreas, serviceLocationScope } = req.body;
     const pool = await poolPromise;
     
     // Update vendor profile location
@@ -5923,6 +5927,22 @@ router.post('/:id/location', async (req, res) => {
     updateRequest.input('Longitude', sql.Decimal(11, 8), longitude || null);
     
     await updateRequest.execute('vendors.sp_UpdateLocationProfile');
+    
+    // Update service location scope (can be array or single value)
+    if (serviceLocationScope) {
+      const scopeValue = Array.isArray(serviceLocationScope) 
+        ? serviceLocationScope.join(',') 
+        : serviceLocationScope;
+      
+      const scopeRequest = new sql.Request(pool);
+      scopeRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+      scopeRequest.input('ServiceLocationScope', sql.NVarChar(100), scopeValue);
+      await scopeRequest.query(`
+        UPDATE vendors.VendorProfiles 
+        SET ServiceLocationScope = @ServiceLocationScope, UpdatedAt = GETDATE()
+        WHERE VendorProfileID = @VendorProfileID
+      `);
+    }
     
     // Delete existing service areas
     const deleteRequest = new sql.Request(pool);

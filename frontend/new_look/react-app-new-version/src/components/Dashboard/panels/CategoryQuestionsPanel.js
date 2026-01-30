@@ -38,10 +38,17 @@ function CategoryQuestionsPanel({ onBack, vendorProfileId }) {
         const primary = categories.find(c => c.IsPrimary) || categories[0];
         if (primary) {
           setPrimaryCategory(primary.Category);
+        } else {
+          // No primary category found, stop loading
+          setLoading(false);
         }
+      } else {
+        // Request failed, stop loading
+        setLoading(false);
       }
     } catch (error) {
       console.error('Error loading vendor category:', error);
+      setLoading(false);
     }
   };
 

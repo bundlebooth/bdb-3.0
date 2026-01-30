@@ -7,12 +7,16 @@ import { DeleteButton } from '../../common/UIComponents';
 function FAQsPanel({ onBack, vendorProfileId }) {
   const [loading, setLoading] = useState(true);
   const [faqs, setFaqs] = useState([]);
-  const [newFaq, setNewFaq] = useState({ question: '', answer: '' });
+  const [newFaq, setNewFaq] = useState({ question: '', answers: [''] });
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [editingFaq, setEditingFaq] = useState(null); // { index, id, question, answer }
 
   // Clear state when vendorProfileId changes
   useEffect(() => {
     setFaqs([]);
-    setNewFaq({ question: '', answer: '' });
+    setNewFaq({ question: '', answers: [''] });
+    setShowAddForm(false);
+    setEditingFaq(null);
   }, [vendorProfileId]);
 
   useEffect(() => {
@@ -49,19 +53,24 @@ function FAQsPanel({ onBack, vendorProfileId }) {
   const handleAddFAQ = async (e) => {
     e.preventDefault();
     
-    if (!newFaq.question || !newFaq.answer) {
-      showBanner('Please fill in both question and answer', 'error');
+    const validAnswers = newFaq.answers.filter(a => a.trim());
+    if (!newFaq.question || validAnswers.length === 0) {
+      showBanner('Please fill in the question and at least one answer', 'error');
       return;
     }
 
     try {
-      // Load existing FAQs first
-      const existingResponse = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/faqs`);
-      const existingData = existingResponse.ok ? await existingResponse.json() : { faqs: [] };
-      const existingFaqs = existingData.faqs || [];
+      // Load existing FAQs first - API returns array directly
+      const existingResponse = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/faqs`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      const existingData = existingResponse.ok ? await existingResponse.json() : [];
+      // API returns array directly, not { faqs: [] }
+      const existingFaqs = Array.isArray(existingData) ? existingData : (existingData.faqs || []);
       
-      // Add new FAQ to the list
-      const updatedFaqs = [...existingFaqs, { question: newFaq.question, answer: newFaq.answer }];
+      // Join multiple answers with line breaks for storage
+      const combinedAnswer = validAnswers.join('\n\n');
+      const updatedFaqs = [...existingFaqs, { question: newFaq.question, answer: combinedAnswer }];
       
       const response = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/faqs`, {
         method: 'POST',
@@ -74,7 +83,8 @@ function FAQsPanel({ onBack, vendorProfileId }) {
       
       if (response.ok) {
         showBanner('FAQ added successfully!', 'success');
-        setNewFaq({ question: '', answer: '' });
+        setNewFaq({ question: '', answers: [''] });
+        setShowAddForm(false);
         loadFAQs();
       } else {
         throw new Error('Failed to add FAQ');
@@ -83,6 +93,26 @@ function FAQsPanel({ onBack, vendorProfileId }) {
       console.error('Error adding FAQ:', error);
       showBanner('Failed to add FAQ', 'error');
     }
+  };
+
+  const addAnswerField = () => {
+    setNewFaq(prev => ({ ...prev, answers: [...prev.answers, ''] }));
+  };
+
+  const removeAnswerField = (index) => {
+    if (newFaq.answers.length > 1) {
+      setNewFaq(prev => ({
+        ...prev,
+        answers: prev.answers.filter((_, i) => i !== index)
+      }));
+    }
+  };
+
+  const updateAnswer = (index, value) => {
+    setNewFaq(prev => ({
+      ...prev,
+      answers: prev.answers.map((a, i) => i === index ? value : a)
+    }));
   };
 
   const handleDeleteFAQ = async (faqId) => {
@@ -101,6 +131,57 @@ function FAQsPanel({ onBack, vendorProfileId }) {
     } catch (error) {
       console.error('Error deleting FAQ:', error);
       showBanner('Failed to delete FAQ', 'error');
+    }
+  };
+
+  const handleEditFAQ = (faq, index) => {
+    setEditingFaq({
+      index,
+      id: faq.id,
+      question: faq.question,
+      answer: faq.answer
+    });
+    setShowAddForm(false);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingFaq(null);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingFaq.question.trim() || !editingFaq.answer.trim()) {
+      showBanner('Please fill in both question and answer', 'error');
+      return;
+    }
+
+    try {
+      // Update the FAQ in the array and save all
+      const updatedFaqs = faqs.map((faq, idx) => {
+        if (idx === editingFaq.index) {
+          return { question: editingFaq.question, answer: editingFaq.answer };
+        }
+        return { question: faq.question, answer: faq.answer };
+      });
+
+      const response = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/faqs`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ faqs: updatedFaqs })
+      });
+
+      if (response.ok) {
+        showBanner('FAQ updated successfully!', 'success');
+        setEditingFaq(null);
+        loadFAQs();
+      } else {
+        throw new Error('Failed to update FAQ');
+      }
+    } catch (error) {
+      console.error('Error updating FAQ:', error);
+      showBanner('Failed to update FAQ', 'error');
     }
   };
 
@@ -139,45 +220,154 @@ function FAQsPanel({ onBack, vendorProfileId }) {
           {faqs.length === 0 ? (
             <p style={{ color: 'var(--text-light)', textAlign: 'center', padding: '2rem' }}>No FAQs added yet.</p>
           ) : (
-            <div style={{ display: 'grid', gap: '1rem', marginBottom: '1rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1rem' }}>
               {faqs.map((faq, index) => (
-                <div key={faq.id || index} style={{ padding: '1.5rem', border: '1px solid var(--border)', borderRadius: 'var(--radius)', background: 'white' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' }}>
-                    <div style={{ display: 'flex', gap: '0.75rem', flex: 1 }}>
-                      <span style={{ 
-                        width: '28px', 
-                        height: '28px', 
-                        borderRadius: '50%', 
-                        background: 'var(--primary)', 
-                        color: 'white', 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'center', 
-                        fontSize: '0.9rem',
-                        fontWeight: 600,
-                        flexShrink: 0
-                      }}>
-                        Q
-                      </span>
-                      <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: 'var(--text)' }}>
-                        {faq.question}
-                      </h4>
+                <div key={faq.id || index} className="panel-list-item" style={{ padding: '1rem', border: '1px solid var(--border)', borderRadius: '8px', background: 'white' }}>
+                  {editingFaq && editingFaq.index === index ? (
+                    /* Edit Mode */
+                    <div>
+                      <div style={{ marginBottom: '1rem' }}>
+                        <label style={{ display: 'block', fontWeight: 500, fontSize: '0.875rem', marginBottom: '0.5rem', color: 'var(--text)' }}>
+                          Question <span style={{ color: '#ef4444' }}>*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={editingFaq.question}
+                          onChange={(e) => setEditingFaq({ ...editingFaq, question: e.target.value })}
+                          className="panel-input"
+                          style={{ width: '100%', padding: '0.625rem 0.875rem', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '0.875rem' }}
+                        />
+                      </div>
+                      <div style={{ marginBottom: '1rem' }}>
+                        <label style={{ display: 'block', fontWeight: 500, fontSize: '0.875rem', marginBottom: '0.5rem', color: 'var(--text)' }}>
+                          Answer <span style={{ color: '#ef4444' }}>*</span>
+                        </label>
+                        <textarea
+                          value={editingFaq.answer}
+                          onChange={(e) => setEditingFaq({ ...editingFaq, answer: e.target.value })}
+                          rows={3}
+                          className="panel-textarea"
+                          style={{ width: '100%', padding: '0.625rem 0.875rem', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '0.875rem', resize: 'vertical' }}
+                        />
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button className="btn btn-primary" onClick={handleSaveEdit} style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}>
+                          Save Changes
+                        </button>
+                        <button className="btn btn-outline" onClick={handleCancelEdit} style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}>
+                          Cancel
+                        </button>
+                      </div>
                     </div>
-                    <DeleteButton onClick={() => handleDeleteFAQ(faq.id || index)} title="Remove" />
-                  </div>
-                  <div style={{ display: 'flex', gap: '0.75rem', paddingLeft: '2.5rem' }}>
-                    <p style={{ margin: 0, color: 'var(--text-light)', lineHeight: 1.6 }}>
-                      {faq.answer}
-                    </p>
-                  </div>
+                  ) : (
+                    /* View Mode */
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
+                      <div style={{ flex: 1 }}>
+                        <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.95rem', fontWeight: 600, color: 'var(--text)' }}>
+                          {faq.question}
+                        </h4>
+                        <p style={{ margin: 0, color: 'var(--text-light)', fontSize: '0.875rem', lineHeight: 1.5 }}>
+                          {faq.answer}
+                        </p>
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button
+                          onClick={() => handleEditFAQ(faq, index)}
+                          className="action-btn action-btn-edit"
+                          title="Edit"
+                          style={{ padding: '0.5rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary)' }}
+                        >
+                          <i className="fas fa-pencil-alt"></i>
+                        </button>
+                        <DeleteButton onClick={() => handleDeleteFAQ(faq.id || index)} title="Remove" />
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
           )}
         </div>
-        <div style={{ marginTop: '1rem' }}>
-          <button id="add-faq-btn" className="btn btn-outline" onClick={handleAddFAQ}>Add FAQ</button>
-          <button id="save-faqs-btn" className="btn btn-primary" style={{ marginLeft: '0.5rem' }}>Save</button>
+        {/* Add FAQ Button/Form */}
+        <div style={{ marginTop: '1.5rem' }}>
+          {!showAddForm ? (
+            <button 
+              className="btn btn-primary" 
+              onClick={() => setShowAddForm(true)}
+              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+            >
+              <i className="fas fa-plus"></i> Add FAQ
+            </button>
+          ) : (
+            <div className="panel-add-form" style={{ padding: '1.25rem', background: 'white', borderRadius: '8px', border: '1px solid var(--border)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600 }}>Add New FAQ</h4>
+                <button 
+                  className="btn btn-outline" 
+                  onClick={() => { setShowAddForm(false); setNewFaq({ question: '', answers: [''] }); }}
+                  style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem' }}
+                >
+                  Cancel
+                </button>
+              </div>
+              
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', fontWeight: 500, fontSize: '0.875rem', marginBottom: '0.5rem', color: 'var(--text)' }}>
+                  Question <span style={{ color: '#ef4444' }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  value={newFaq.question}
+                  onChange={(e) => setNewFaq({ ...newFaq, question: e.target.value })}
+                  placeholder="e.g., What is your cancellation policy?"
+                  className="panel-input"
+                  style={{ width: '100%', padding: '0.625rem 0.875rem', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '0.875rem' }}
+                />
+              </div>
+
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', fontWeight: 500, fontSize: '0.875rem', marginBottom: '0.5rem', color: 'var(--text)' }}>
+                  Answer <span style={{ color: '#ef4444' }}>*</span>
+                </label>
+                {newFaq.answers.map((answer, index) => (
+                  <div key={index} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                    <textarea
+                      value={answer}
+                      onChange={(e) => updateAnswer(index, e.target.value)}
+                      placeholder="Enter your answer..."
+                      rows={2}
+                      className="panel-textarea"
+                      style={{ flex: 1, padding: '0.625rem 0.875rem', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '0.875rem', resize: 'vertical', minHeight: '60px' }}
+                    />
+                    {newFaq.answers.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeAnswerField(index)}
+                        className="panel-btn-text"
+                        style={{ padding: '0.5rem', background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}
+                        title="Remove"
+                      >
+                        <i className="fas fa-times"></i>
+                      </button>
+                    )}
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={addAnswerField}
+                  style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', background: 'none', border: '1px dashed var(--border)', borderRadius: '6px', color: 'var(--text-light)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.375rem' }}
+                >
+                  <i className="fas fa-plus" style={{ fontSize: '0.7rem' }}></i> Add answer
+                </button>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <button className="btn btn-primary" onClick={handleAddFAQ} style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}>
+                  Save FAQ
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

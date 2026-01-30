@@ -1,37 +1,64 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import BusinessInformationPanel from '../panels/BusinessInformationPanel';
 import LocationServiceAreasPanel from '../panels/LocationServiceAreasPanel';
 import ServicesPackagesPanel from '../panels/ServicesPackagesPanel';
 import SocialMediaPanel from '../panels/SocialMediaPanel';
-import VendorQuestionnairePanel from '../panels/VendorQuestionnairePanel';
 import GalleryMediaPanel from '../panels/GalleryMediaPanel';
-import FAQsPanel from '../panels/FAQsPanel';
 import AvailabilityHoursPanel from '../panels/AvailabilityHoursPanel';
 import StripeSetupPanel from '../panels/StripeSetupPanel';
-import PopularFiltersPanel from '../panels/PopularFiltersPanel';
 import GoogleReviewsPanel from '../panels/GoogleReviewsPanel';
-import CancellationPolicyPanel from '../panels/CancellationPolicyPanel';
-import CategoryQuestionsPanel from '../panels/CategoryQuestionsPanel';
-import VendorAttributesPanel from '../panels/VendorAttributesPanel';
+import CategoryServicesPanel from '../panels/CategoryServicesPanel';
+import FAQsPanel from '../panels/FAQsPanel';
 import BookingSettingsPanel from '../panels/BookingSettingsPanel';
+
+// Map panel IDs to URL-friendly keys
+const PANEL_URL_MAP = {
+  'vendor-profile-panel': 'business-info',
+  'vendor-location-panel': 'location',
+  'vendor-category-panel': 'category-services',
+  'vendor-qa-panel': 'faqs',
+  'vendor-services-panel': 'services',
+  'vendor-photos-panel': 'gallery',
+  'vendor-social-panel': 'social',
+  'vendor-availability-panel': 'availability',
+  'vendor-booking-settings-panel': 'booking-settings',
+  'vendor-google-reviews-panel': 'google-reviews',
+  'vendor-stripe-panel': 'stripe'
+};
+
+// Reverse map for URL to panel ID
+const URL_PANEL_MAP = Object.fromEntries(
+  Object.entries(PANEL_URL_MAP).map(([k, v]) => [v, k])
+);
 
 function VendorBusinessProfileSection() {
   const { currentUser } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [activePanel, setActivePanel] = useState(null);
   
   // NO FALLBACK - must have vendorProfileId
   const vendorProfileId = currentUser?.vendorProfileId;
 
-  // Hooks must be called unconditionally
+  // Read panel from URL on mount and when searchParams change
   useEffect(() => {
-    if (!vendorProfileId) return; // Guard inside effect
-  }, [currentUser, vendorProfileId, activePanel]);
+    const panelKey = searchParams.get('panel');
+    if (panelKey && URL_PANEL_MAP[panelKey]) {
+      setActivePanel(URL_PANEL_MAP[panelKey]);
+    }
+  }, [searchParams]);
 
-  // Close any open panel when user changes to prevent showing old data
-  useEffect(() => {
-    setActivePanel(null);
-  }, [currentUser?.id, currentUser?.vendorProfileId]);
+  // Update URL when panel changes
+  const handlePanelChange = (panelId) => {
+    setActivePanel(panelId);
+    if (panelId && PANEL_URL_MAP[panelId]) {
+      setSearchParams({ section: 'vendor-business-profile', panel: PANEL_URL_MAP[panelId] });
+    } else {
+      // Going back to menu - remove panel param
+      setSearchParams({ section: 'vendor-business-profile' });
+    }
+  };
   
   // Don't render if no vendorProfileId - MUST be after all hooks
   if (!vendorProfileId) {
@@ -44,56 +71,44 @@ function VendorBusinessProfileSection() {
   }
 
   const profileCards = [
-    { id: 'vendor-profile-panel', icon: 'fa-building', title: 'Business Information', description: 'Update your business details, categories, and description' },
-    { id: 'vendor-location-panel', icon: 'fa-map-marker-alt', title: 'Location & Service Areas', description: 'Set your business address and areas you serve' },
-    { id: 'vendor-attributes-panel', icon: 'fa-sliders-h', title: 'Service Details & Attributes', description: 'Set event types, cultures served, experience, service location, and pricing' },
-    { id: 'vendor-booking-settings-panel', icon: 'fa-bolt', title: 'Booking Settings', description: 'Configure instant booking and minimum lead time' },
-    { id: 'vendor-category-questions-panel', icon: 'fa-clipboard-list', title: 'Category Questions', description: 'Answer questions specific to your service category' },
-    { id: 'vendor-additional-details-panel', icon: 'fa-clipboard-check', title: 'Vendor Setup Questionnaire', description: 'Select features that describe your services' },
-    { id: 'vendor-services-panel', icon: 'fa-briefcase', title: 'Services & Packages', description: 'Manage your offerings and service packages' },
-    { id: 'vendor-photos-panel', icon: 'fa-images', title: 'Gallery & Media', description: 'Manage business photos and organize into albums' },
-    { id: 'vendor-social-panel', icon: 'fa-share-alt', title: 'Social Media & Booking', description: 'Connect your social profiles and booking link' },
-    { id: 'vendor-faqs-panel', icon: 'fa-question-circle', title: 'FAQs', description: 'Create frequently asked questions' },
-    { id: 'vendor-availability-panel', icon: 'fa-clock', title: 'Availability & Hours', description: 'Set your business hours and availability' },
-    { id: 'vendor-google-reviews-panel', icon: 'fa-google', title: 'Google Reviews Integration', description: 'Display your Google Reviews on your profile', iconClass: 'fab', useGoogleLogo: true },
-    { id: 'vendor-stripe-panel', icon: 'fa-stripe', title: 'Stripe Setup', description: 'Connect your Stripe account to receive payments', iconClass: 'fab', useStripeLogo: true },
-    { id: 'vendor-popular-filters-panel', icon: 'fa-tags', title: 'Popular Filters', description: 'Enable special badges that help clients find your business' },
-    { id: 'vendor-cancellation-panel', icon: 'fa-calendar-times', title: 'Cancellation Policy', description: 'Set your booking cancellation and refund terms' }
+    { id: 'vendor-profile-panel', icon: 'fa-building', title: 'Business Information', description: 'Edit your business name, contact info, and about section' },
+    { id: 'vendor-location-panel', icon: 'fa-map-marker-alt', title: 'Location & Service Areas', description: 'Set your address and define where you provide services' },
+    { id: 'vendor-category-panel', icon: 'fa-tags', title: 'Category & Services', description: 'Select your category, features, and answer category-specific questions' },
+    { id: 'vendor-qa-panel', icon: 'fa-question-circle', title: 'FAQs', description: 'Add common questions and answers for your clients' },
+    { id: 'vendor-services-panel', icon: 'fa-briefcase', title: 'Services & Packages', description: 'Create and manage your service packages and pricing' },
+    { id: 'vendor-photos-panel', icon: 'fa-images', title: 'Gallery & Media', description: 'Upload photos and organize your portfolio albums' },
+    { id: 'vendor-social-panel', icon: 'fa-share-alt', title: 'Social Media', description: 'Connect your social accounts and add booking links' },
+    { id: 'vendor-availability-panel', icon: 'fa-clock', title: 'Availability & Hours', description: 'Set your business hours and timezone' },
+    { id: 'vendor-booking-settings-panel', icon: 'fa-calendar-check', title: 'Booking Settings', description: 'Configure instant booking, lead time, and cancellation policy' },
+    { id: 'vendor-google-reviews-panel', icon: 'fa-google', title: 'Google Reviews', description: 'Import and display reviews from your Google Business Profile', iconClass: 'fab', useGoogleLogo: true },
+    { id: 'vendor-stripe-panel', icon: 'fa-stripe', title: 'Stripe Setup', description: 'Connect Stripe to accept online payments and deposits', iconClass: 'fab', useStripeLogo: true }
   ];
 
   const renderPanel = () => {
     // Use vendorProfileId as key to force component remount when vendor changes
     switch (activePanel) {
       case 'vendor-profile-panel':
-        return <BusinessInformationPanel key={vendorProfileId} onBack={() => setActivePanel(null)} vendorProfileId={vendorProfileId} />;
+        return <BusinessInformationPanel key={vendorProfileId} onBack={() => handlePanelChange(null)} vendorProfileId={vendorProfileId} />;
       case 'vendor-location-panel':
-        return <LocationServiceAreasPanel key={vendorProfileId} onBack={() => setActivePanel(null)} vendorProfileId={vendorProfileId} />;
+        return <LocationServiceAreasPanel key={vendorProfileId} onBack={() => handlePanelChange(null)} vendorProfileId={vendorProfileId} />;
+      case 'vendor-category-panel':
+        return <CategoryServicesPanel key={vendorProfileId} onBack={() => handlePanelChange(null)} vendorProfileId={vendorProfileId} />;
       case 'vendor-services-panel':
-        return <ServicesPackagesPanel key={vendorProfileId} onBack={() => setActivePanel(null)} vendorProfileId={vendorProfileId} />;
+        return <ServicesPackagesPanel key={vendorProfileId} onBack={() => handlePanelChange(null)} vendorProfileId={vendorProfileId} />;
       case 'vendor-social-panel':
-        return <SocialMediaPanel key={vendorProfileId} onBack={() => setActivePanel(null)} vendorProfileId={vendorProfileId} />;
-      case 'vendor-additional-details-panel':
-        return <VendorQuestionnairePanel key={vendorProfileId} onBack={() => setActivePanel(null)} vendorProfileId={vendorProfileId} />;
+        return <SocialMediaPanel key={vendorProfileId} onBack={() => handlePanelChange(null)} vendorProfileId={vendorProfileId} />;
       case 'vendor-photos-panel':
-        return <GalleryMediaPanel key={vendorProfileId} onBack={() => setActivePanel(null)} vendorProfileId={vendorProfileId} />;
-      case 'vendor-faqs-panel':
-        return <FAQsPanel key={vendorProfileId} onBack={() => setActivePanel(null)} vendorProfileId={vendorProfileId} />;
+        return <GalleryMediaPanel key={vendorProfileId} onBack={() => handlePanelChange(null)} vendorProfileId={vendorProfileId} />;
+      case 'vendor-qa-panel':
+        return <FAQsPanel key={vendorProfileId} onBack={() => handlePanelChange(null)} vendorProfileId={vendorProfileId} />;
       case 'vendor-availability-panel':
-        return <AvailabilityHoursPanel key={vendorProfileId} onBack={() => setActivePanel(null)} vendorProfileId={vendorProfileId} />;
-      case 'vendor-google-reviews-panel':
-        return <GoogleReviewsPanel key={vendorProfileId} onBack={() => setActivePanel(null)} vendorProfileId={vendorProfileId} />;
-      case 'vendor-stripe-panel':
-        return <StripeSetupPanel key={vendorProfileId} onBack={() => setActivePanel(null)} vendorProfileId={vendorProfileId} />;
-      case 'vendor-popular-filters-panel':
-        return <PopularFiltersPanel key={vendorProfileId} onBack={() => setActivePanel(null)} vendorProfileId={vendorProfileId} />;
-      case 'vendor-cancellation-panel':
-        return <CancellationPolicyPanel key={vendorProfileId} onBack={() => setActivePanel(null)} vendorProfileId={vendorProfileId} />;
-      case 'vendor-category-questions-panel':
-        return <CategoryQuestionsPanel key={vendorProfileId} onBack={() => setActivePanel(null)} vendorProfileId={vendorProfileId} />;
-      case 'vendor-attributes-panel':
-        return <VendorAttributesPanel key={vendorProfileId} onBack={() => setActivePanel(null)} vendorProfileId={vendorProfileId} />;
+        return <AvailabilityHoursPanel key={vendorProfileId} onBack={() => handlePanelChange(null)} vendorProfileId={vendorProfileId} />;
       case 'vendor-booking-settings-panel':
-        return <BookingSettingsPanel key={vendorProfileId} onBack={() => setActivePanel(null)} vendorProfileId={vendorProfileId} />;
+        return <BookingSettingsPanel key={vendorProfileId} onBack={() => handlePanelChange(null)} vendorProfileId={vendorProfileId} />;
+      case 'vendor-google-reviews-panel':
+        return <GoogleReviewsPanel key={vendorProfileId} onBack={() => handlePanelChange(null)} vendorProfileId={vendorProfileId} />;
+      case 'vendor-stripe-panel':
+        return <StripeSetupPanel key={vendorProfileId} onBack={() => handlePanelChange(null)} vendorProfileId={vendorProfileId} />;
       default:
         return null;
     }
@@ -120,7 +135,7 @@ function VendorBusinessProfileSection() {
                 key={card.id}
                 className="settings-card" 
                 data-panel={card.id}
-                onClick={() => setActivePanel(card.id)}
+                onClick={() => handlePanelChange(card.id)}
                 style={{ cursor: 'pointer' }}
               >
                 <div className="settings-card-icon">

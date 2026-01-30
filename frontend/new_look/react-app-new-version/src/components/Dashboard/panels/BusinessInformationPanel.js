@@ -9,6 +9,9 @@ function BusinessInformationPanel({ onBack, vendorProfileId }) {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [categories, setCategories] = useState([]);
+  const [subcategoriesOptions, setSubcategoriesOptions] = useState([]);
+  const [selectedSubcategories, setSelectedSubcategories] = useState([]);
+  const [loadingSubcategories, setLoadingSubcategories] = useState(false);
   const [formData, setFormData] = useState({
     businessName: '',
     displayName: '',
@@ -17,7 +20,6 @@ function BusinessInformationPanel({ onBack, vendorProfileId }) {
     website: '',
     yearsInBusiness: 0,
     description: '',
-    tagline: '',
     category: '',
     additionalCategories: [],
     priceLevel: '$$',
@@ -35,7 +37,6 @@ function BusinessInformationPanel({ onBack, vendorProfileId }) {
       website: '',
       yearsInBusiness: 0,
       description: '',
-      tagline: '',
       category: '',
       additionalCategories: [],
       priceLevel: '$$',
@@ -51,6 +52,73 @@ function BusinessInformationPanel({ onBack, vendorProfileId }) {
       setLoading(false);
     }
   }, [vendorProfileId]);
+
+  // Category ID to name mapping for subcategories lookup
+  const categoryIdToName = {
+    'venue': 'Venues',
+    'photo': 'Photo/Video',
+    'music': 'Music/DJ',
+    'catering': 'Catering',
+    'entertainment': 'Entertainment',
+    'experiences': 'Experiences',
+    'decor': 'Decorations',
+    'beauty': 'Beauty',
+    'cake': 'Cake',
+    'transport': 'Transportation',
+    'planner': 'Planners',
+    'fashion': 'Fashion',
+    'stationery': 'Stationery'
+  };
+
+  // Load subcategories when primary category changes
+  useEffect(() => {
+    if (formData.category) {
+      // Convert category ID to name for API lookup
+      const categoryName = categoryIdToName[formData.category] || formData.category;
+      loadSubcategoriesForCategory(categoryName);
+    } else {
+      setSubcategoriesOptions([]);
+    }
+  }, [formData.category]);
+
+  const loadSubcategoriesForCategory = async (categoryName) => {
+    try {
+      setLoadingSubcategories(true);
+      const response = await fetch(`${API_BASE_URL}/vendors/lookup/subcategories?category=${encodeURIComponent(categoryName)}`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setSubcategoriesOptions(data.subcategories || []);
+      }
+    } catch (error) {
+      console.error('Error loading subcategories:', error);
+    } finally {
+      setLoadingSubcategories(false);
+    }
+  };
+
+  const loadVendorSubcategories = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/subcategories`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setSelectedSubcategories((data.subcategories || []).map(s => s.SubcategoryID));
+      }
+    } catch (error) {
+      console.error('Error loading vendor subcategories:', error);
+    }
+  };
+
+  const toggleSubcategory = (subcategoryId) => {
+    setSelectedSubcategories(prev =>
+      prev.includes(subcategoryId)
+        ? prev.filter(id => id !== subcategoryId)
+        : [...prev, subcategoryId]
+    );
+  };
 
   const loadCategories = async () => {
     try {
@@ -134,7 +202,6 @@ function BusinessInformationPanel({ onBack, vendorProfileId }) {
         website: '',
         yearsInBusiness: 0,
         description: '',
-        tagline: '',
         category: '',
         additionalCategories: [],
         priceLevel: '$$',
@@ -177,17 +244,19 @@ function BusinessInformationPanel({ onBack, vendorProfileId }) {
         setFormData({
           businessName: profile.BusinessName || '',
           displayName: profile.DisplayName || profile.BusinessName || '',
-          email: profile.BusinessEmail || '',
+          email: profile.BusinessEmail || currentUser?.email || '',
           phone: profile.BusinessPhone || '',
           website: profile.Website || '',
           yearsInBusiness: profile.YearsInBusiness || 0,
           description: profile.BusinessDescription || '',
-          tagline: profile.Tagline || '',
           category: primaryCategory,
           additionalCategories: additionalCategories,
           priceLevel: profile.PriceLevel || '$$',
           logoUrl: profile.LogoURL || profile.FeaturedImageURL || profile.logoUrl || ''
         });
+        
+        // Load vendor's selected subcategories
+        await loadVendorSubcategories();
       } else if (response.status === 404) {
         console.warn('Profile not found (404) - this may be a new vendor profile');
         // Don't throw error for 404, just leave form empty for new profile
@@ -222,11 +291,20 @@ function BusinessInformationPanel({ onBack, vendorProfileId }) {
           website: formData.website,
           yearsInBusiness: formData.yearsInBusiness,
           businessDescription: formData.description,
-          tagline: formData.tagline,
           primaryCategory: formData.category,
           additionalCategories: formData.additionalCategories,
           priceLevel: formData.priceLevel
         })
+      });
+      
+      // Also save subcategories
+      await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/subcategories`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ subcategoryIds: selectedSubcategories })
       });
       
       if (response.ok) {
@@ -425,61 +503,6 @@ function BusinessInformationPanel({ onBack, vendorProfileId }) {
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               required
             ></textarea>
-          </div>
-
-          <div className="form-row">
-            <div className="form-col">
-              <div className="form-group">
-                <label htmlFor="vendor-tagline">Tagline (short description)</label>
-                <input
-                  type="text"
-                  id="vendor-tagline"
-                  placeholder="Short description"
-                  value={formData.tagline}
-                  onChange={(e) => setFormData({ ...formData, tagline: e.target.value })}
-                />
-              </div>
-            </div>
-            <div className="form-col">
-              <div className="form-group">
-                <label htmlFor="vendor-category">Primary Category <span style={{ color: 'red' }}>*</span></label>
-                <select
-                  id="vendor-category"
-                  value={formData.category}
-                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                  required
-                >
-                  <option value="">Select category</option>
-                  {categories.map(cat => (
-                    <option key={cat.id} value={cat.id}>{cat.name}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          </div>
-
-          <div className="form-row">
-            <div className="form-col">
-              <div className="form-group">
-                <label htmlFor="vendor-price-level">Price Range <span style={{ color: 'red' }}>*</span></label>
-                <select
-                  id="vendor-price-level"
-                  value={formData.priceLevel}
-                  onChange={(e) => setFormData({ ...formData, priceLevel: e.target.value })}
-                  required
-                  style={{ width: '100%', padding: '0.75rem', border: '1px solid var(--border)', borderRadius: 'var(--radius)', backgroundColor: 'white' }}
-                >
-                  <option value="">Select price range</option>
-                  <option value="$">$ - Inexpensive</option>
-                  <option value="$$">$$ - Moderate</option>
-                  <option value="$$$">$$$ - Expensive</option>
-                  <option value="$$$$">$$$$ - Luxury</option>
-                </select>
-                <small style={{ color: 'var(--text-light)', fontSize: '0.85rem' }}>
-                  This helps clients find services that match their budget
-                </small>
-              </div>
-            </div>
           </div>
 
           <button type="submit" className="btn btn-primary">Save</button>

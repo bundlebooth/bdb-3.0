@@ -160,21 +160,6 @@ function BusinessDetailsStep({ formData, onInputChange }) {
       </div>
 
       <div className="form-group">
-        <label>Tagline</label>
-        <input
-          type="text"
-          value={formData.tagline}
-          onChange={(e) => onInputChange('tagline', e.target.value)}
-          className="form-input"
-          placeholder="A catchy phrase that describes your business"
-          maxLength="100"
-        />
-        <p style={{ fontSize: '0.85rem', color: '#6b7280', marginTop: '0.5rem' }}>
-          {formData.tagline?.length || 0}/100 characters
-        </p>
-      </div>
-
-      <div className="form-group">
         <label>Business Description</label>
         <textarea
           value={formData.businessDescription}

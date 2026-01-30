@@ -1,6 +1,6 @@
 -- =============================================
 -- Stored Procedure: vendors.sp_UpdateExtraFields
--- Description: Updates extra vendor profile fields (lat/long, tagline, etc.)
+-- Description: Updates extra vendor profile fields (lat/long, price level, etc.)
 -- Phase: 600 (Stored Procedures)
 -- Schema: vendors
 -- =============================================
@@ -16,7 +16,7 @@ CREATE PROCEDURE [vendors].[sp_UpdateExtraFields]
     @VendorProfileID INT,
     @Latitude DECIMAL(10,8) = NULL,
     @Longitude DECIMAL(11,8) = NULL,
-    @Tagline NVARCHAR(255) = NULL,
+    @Tagline NVARCHAR(255) = NULL, -- Deprecated: kept for backward compatibility, ignored
     @PriceLevel NVARCHAR(20) = NULL,
     @ProfileLogo NVARCHAR(255) = NULL
 AS
@@ -26,7 +26,7 @@ BEGIN
     UPDATE vendors.VendorProfiles SET
         Latitude = @Latitude,
         Longitude = @Longitude,
-        Tagline = @Tagline,
+        -- Tagline is deprecated and no longer updated
         PriceLevel = @PriceLevel,
         LogoURL = @ProfileLogo
     WHERE VendorProfileID = @VendorProfileID;

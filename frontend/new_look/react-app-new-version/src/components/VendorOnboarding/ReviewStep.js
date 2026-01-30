@@ -238,34 +238,34 @@ function ReviewStep({ formData, categories, profileStatus, steps, isStepComplete
               )}
             </div>
 
-            {/* Features */}
+            {/* Subcategories */}
             <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '1.25rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600, color: '#111827' }}>Features & Amenities</h4>
-                <StatusBadge isRequired={false} isComplete={(formData.selectedFeatures || []).length > 0} />
+                <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600, color: '#111827' }}>Subcategories</h4>
+                <StatusBadge isRequired={false} isComplete={(formData.selectedSubcategories || []).length > 0} />
               </div>
-              {(formData.selectedFeatures || []).length > 0 ? (
+              {(formData.selectedSubcategories || []).length > 0 ? (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                  {(formData.selectedFeatures || []).slice(0, 10).map((feature, idx) => {
-                    const featureName = typeof feature === 'object' && feature !== null 
-                      ? (feature.name || feature.featureName || feature.label || `Feature ${feature.id || idx + 1}`)
-                      : typeof feature === 'string' 
-                        ? feature 
-                        : `Feature ${idx + 1}`;
+                  {(formData.selectedSubcategories || []).slice(0, 10).map((subcategory, idx) => {
+                    const subcategoryName = typeof subcategory === 'object' && subcategory !== null 
+                      ? (subcategory.name || subcategory.SubcategoryName || subcategory.label || `Subcategory ${subcategory.id || idx + 1}`)
+                      : typeof subcategory === 'string' 
+                        ? subcategory 
+                        : `Subcategory ${idx + 1}`;
                     return (
-                      <span key={idx} style={{ padding: '0.35rem 0.75rem', background: '#f3f4f6', borderRadius: '20px', fontSize: '0.8rem', color: '#374151', border: '1px solid #e5e7eb' }}>
-                        {featureName}
+                      <span key={idx} style={{ padding: '0.35rem 0.75rem', background: '#eff6ff', borderRadius: '20px', fontSize: '0.8rem', color: '#1e40af', border: '1px solid #bfdbfe' }}>
+                        {subcategoryName}
                       </span>
                     );
                   })}
-                  {(formData.selectedFeatures || []).length > 10 && (
+                  {(formData.selectedSubcategories || []).length > 10 && (
                     <span style={{ padding: '0.35rem 0.75rem', background: '#f3f4f6', borderRadius: '20px', fontSize: '0.8rem', color: '#6b7280', border: '1px solid #e5e7eb' }}>
-                      +{(formData.selectedFeatures || []).length - 10} more
+                      +{(formData.selectedSubcategories || []).length - 10} more
                     </span>
                   )}
                 </div>
               ) : (
-                <span style={{ fontSize: '0.9rem', color: '#9ca3af' }}>No features selected</span>
+                <span style={{ fontSize: '0.9rem', color: '#9ca3af' }}>No subcategories selected</span>
               )}
             </div>
 

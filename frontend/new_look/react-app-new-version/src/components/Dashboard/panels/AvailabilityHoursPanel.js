@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { showBanner } from '../../../utils/helpers';
 import { apiGet, apiPut } from '../../../utils/api';
 import { API_BASE_URL } from '../../../config';
+import { FormRow, ToggleSwitch, SelectDropdown, TextArea, SectionHeader } from '../../common/FormFields';
 
 function AvailabilityHoursPanel({ onBack, vendorProfileId }) {
   const [loading, setLoading] = useState(true);
@@ -201,11 +202,11 @@ function AvailabilityHoursPanel({ onBack, vendorProfileId }) {
       <div className="dashboard-card">
         <h2 className="dashboard-card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <span style={{ width: '36px', height: '36px', borderRadius: '8px', background: 'var(--secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', fontSize: '1.1rem' }}>
-            <i className="fas fa-clock"></i>
+            <i className="fas fa-calendar-check"></i>
           </span>
-          Availability & Business Hours
+          Availability & Hours
         </h2>
-        <p style={{ color: 'var(--text-light)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>Set your regular business hours and timezone</p>
+        <p style={{ color: 'var(--text-light)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>Set your business hours and booking preferences</p>
         <hr style={{ border: 'none', borderTop: '1px solid #e5e7eb', margin: '1.5rem 0' }} />
         
         {/* Timezone Selection */}

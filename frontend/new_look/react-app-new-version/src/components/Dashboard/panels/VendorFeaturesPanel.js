@@ -1,0 +1,361 @@
+import React, { useState, useEffect } from 'react';
+import { API_BASE_URL } from '../../../config';
+import { showBanner } from '../../../utils/helpers';
+
+// Map vendor category names to feature category names (handle variations)
+const CATEGORY_TO_FEATURE_MAP = {
+  'Venues': ['Venue Features'],
+  'Venue': ['Venue Features'],
+  'Photo/Video': ['Photography & Video'],
+  'Photo': ['Photography & Video'],
+  'Video': ['Photography & Video'],
+  'Photography': ['Photography & Video'],
+  'Music/DJ': ['Music & Entertainment'],
+  'Music': ['Music & Entertainment'],
+  'DJ': ['Music & Entertainment'],
+  'Catering': ['Catering & Bar'],
+  'Entertainment': ['Music & Entertainment', 'Experience Services'],
+  'Experiences': ['Experience Services'],
+  'Experience': ['Experience Services'],
+  'Decorations': ['Floral & Decor'],
+  'Decor': ['Floral & Decor'],
+  'Florist': ['Floral & Decor'],
+  'Beauty': ['Beauty & Fashion Services'],
+  'Cake': ['Cake & Desserts'],
+  'Cakes': ['Cake & Desserts'],
+  'Desserts': ['Cake & Desserts'],
+  'Transportation': ['Transportation'],
+  'Transport': ['Transportation'],
+  'Planners': ['Event Planning', 'Event Services'],
+  'Planner': ['Event Planning', 'Event Services'],
+  'Planning': ['Event Planning', 'Event Services'],
+  'Fashion': ['Fashion & Attire', 'Beauty & Fashion Services'],
+  'Attire': ['Fashion & Attire', 'Beauty & Fashion Services'],
+  'Stationery': ['Stationery & Paper Goods'],
+  'Invitations': ['Stationery & Paper Goods']
+};
+
+/**
+ * VendorFeaturesPanel - Panel for vendors to select features/amenities they offer
+ */
+function VendorFeaturesPanel({ onBack, vendorProfileId }) {
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [vendorCategory, setVendorCategory] = useState(null);
+  const [featureCategories, setFeatureCategories] = useState([]);
+  const [selectedFeatures, setSelectedFeatures] = useState([]);
+
+  useEffect(() => {
+    loadVendorCategory();
+    loadSelectedFeatures();
+  }, [vendorProfileId]);
+
+  useEffect(() => {
+    if (vendorCategory) {
+      loadFeatures();
+    }
+  }, [vendorCategory]);
+
+  const loadVendorCategory = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        const categories = data.data?.categories || [];
+        const primary = categories.find(c => c.IsPrimary) || categories[0];
+        if (primary) {
+          setVendorCategory(primary.Category);
+        } else {
+          setLoading(false);
+        }
+      } else {
+        setLoading(false);
+      }
+    } catch (error) {
+      console.error('Error loading vendor category:', error);
+      setLoading(false);
+    }
+  };
+
+  const loadFeatures = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_BASE_URL}/vendors/features/all-grouped`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        // Filter categories based on vendor's category
+        const applicableFeatureCategories = CATEGORY_TO_FEATURE_MAP[vendorCategory] || [];
+        const filteredCategories = (data.categories || []).filter(cat => 
+          applicableFeatureCategories.includes(cat.categoryName)
+        );
+        setFeatureCategories(filteredCategories);
+      }
+    } catch (error) {
+      console.error('Error loading features:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadSelectedFeatures = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_BASE_URL}/vendors/features/vendor/${vendorProfileId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setSelectedFeatures((data.features || []).map(f => f.FeatureID));
+      }
+    } catch (error) {
+      console.error('Error loading selected features:', error);
+    }
+  };
+
+  const toggleFeature = (featureId) => {
+    setSelectedFeatures(prev =>
+      prev.includes(featureId)
+        ? prev.filter(id => id !== featureId)
+        : [...prev, featureId]
+    );
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_BASE_URL}/vendors/features/vendor/${vendorProfileId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ featureIds: selectedFeatures })
+      });
+
+      if (response.ok) {
+        showBanner('Features saved successfully!', 'success');
+      } else {
+        throw new Error('Failed to save features');
+      }
+    } catch (error) {
+      console.error('Error saving features:', error);
+      showBanner('Failed to save features. Please try again.', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const getIconClass = (iconName) => {
+    // Map Lucide icon names to FontAwesome equivalents
+    const iconMap = {
+      'church': 'fa-church',
+      'trees': 'fa-tree',
+      'chef-hat': 'fa-utensils',
+      'accessibility': 'fa-wheelchair',
+      'car-front': 'fa-car',
+      'car': 'fa-car',
+      'speaker': 'fa-volume-up',
+      'wifi': 'fa-wifi',
+      'eye': 'fa-eye',
+      'disc': 'fa-compact-disc',
+      'presentation': 'fa-chalkboard',
+      'door-closed': 'fa-door-closed',
+      'bed': 'fa-bed',
+      'plane': 'fa-plane',
+      'users': 'fa-users',
+      'camera-off': 'fa-lock',
+      'zap': 'fa-bolt',
+      'heart': 'fa-heart',
+      'camera': 'fa-camera',
+      'images': 'fa-images',
+      'book-open': 'fa-book-open',
+      'file': 'fa-file',
+      'printer': 'fa-print',
+      'film': 'fa-film',
+      'radio': 'fa-broadcast-tower',
+      'guitar': 'fa-guitar',
+      'music': 'fa-music',
+      'lightbulb': 'fa-lightbulb',
+      'mic': 'fa-microphone',
+      'mic-vocal': 'fa-microphone-alt',
+      'glass-water': 'fa-glass-martini-alt',
+      'wine': 'fa-wine-glass-alt',
+      'beer': 'fa-beer',
+      'utensils': 'fa-utensils',
+      'utensils-crossed': 'fa-utensils',
+      'cake': 'fa-birthday-cake',
+      'coffee': 'fa-coffee',
+      'leaf': 'fa-leaf',
+      'wheat-off': 'fa-bread-slice',
+      'baby': 'fa-baby',
+      'scroll-text': 'fa-scroll',
+      'flower': 'fa-spa',
+      'flower-2': 'fa-seedling',
+      'hexagon': 'fa-shapes',
+      'rainbow': 'fa-rainbow',
+      'lamp': 'fa-lightbulb',
+      'cloud': 'fa-cloud',
+      'layers': 'fa-layer-group',
+      'armchair': 'fa-chair',
+      'circle': 'fa-circle',
+      'flame': 'fa-fire',
+      'signpost': 'fa-sign',
+      'trending-up': 'fa-sort-numeric-up',
+      'clipboard-check': 'fa-clipboard-check',
+      'clipboard-list': 'fa-clipboard-list',
+      'users-round': 'fa-user-friends',
+      'calendar-days': 'fa-calendar-alt',
+      'calendar-check': 'fa-calendar-check',
+      'hand': 'fa-hand-paper',
+      'handshake': 'fa-handshake',
+      'dollar-sign': 'fa-dollar-sign',
+      'bus': 'fa-bus',
+      'bus-front': 'fa-bus',
+      'key-round': 'fa-key',
+      'sparkles': 'fa-magic',
+      'flame-kindling': 'fa-fire-alt',
+      'gamepad-2': 'fa-gamepad',
+      'drama': 'fa-theater-masks',
+      'wand': 'fa-magic',
+      'palette': 'fa-palette',
+      'scissors': 'fa-cut',
+      'spray-can': 'fa-spray-can',
+      'move': 'fa-arrows-alt',
+      'map-pin': 'fa-map-marker-alt'
+    };
+    return iconMap[iconName] || 'fa-check';
+  };
+
+  if (loading) {
+    return (
+      <div>
+        <button className="btn btn-outline back-to-menu-btn" style={{ marginBottom: '1rem' }} onClick={onBack}>
+          <i className="fas fa-arrow-left"></i> Back to Business Profile Menu
+        </button>
+        <div className="dashboard-card">
+          <div style={{ textAlign: 'center', padding: '3rem' }}>
+            <div className="spinner" style={{ margin: '0 auto' }}></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <button className="btn btn-outline back-to-menu-btn" style={{ marginBottom: '1rem' }} onClick={onBack}>
+        <i className="fas fa-arrow-left"></i> Back to Business Profile Menu
+      </button>
+      
+      <div className="dashboard-card">
+        <h2 className="dashboard-card-title">Features & Amenities</h2>
+        <p style={{ color: 'var(--text-light)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
+          Select the amenities and capabilities you offer.
+        </p>
+        
+        {selectedFeatures.length > 0 && (
+          <div style={{ 
+            padding: '0.75rem 1rem', 
+            background: '#eff6ff', 
+            borderRadius: '8px', 
+            marginBottom: '1.5rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem'
+          }}>
+            <i className="fas fa-check-circle" style={{ color: '#5086E8' }}></i>
+            <span style={{ color: '#1e40af', fontWeight: 500 }}>
+              {selectedFeatures.length} feature{selectedFeatures.length !== 1 ? 's' : ''} selected
+            </span>
+          </div>
+        )}
+
+        <hr style={{ border: 'none', borderTop: '1px solid #e5e7eb', margin: '1.5rem 0' }} />
+
+        {!vendorCategory ? (
+          <div style={{ 
+            textAlign: 'center', 
+            padding: '2rem', 
+            background: '#f9fafb', 
+            borderRadius: '8px',
+            border: '1px solid #e5e7eb'
+          }}>
+            <p style={{ color: '#6b7280', margin: 0 }}>
+              Please select a primary category in Business Information first.
+            </p>
+          </div>
+        ) : featureCategories.length === 0 ? (
+          <div style={{ 
+            textAlign: 'center', 
+            padding: '2rem', 
+            background: '#f9fafb', 
+            borderRadius: '8px',
+            border: '1px solid #e5e7eb'
+          }}>
+            <p style={{ color: '#6b7280', margin: 0 }}>
+              No features available for {vendorCategory} category.
+            </p>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+            {featureCategories.flatMap(category => 
+              category.features.map(feature => {
+                const isSelected = selectedFeatures.includes(feature.featureId);
+                return (
+                  <button
+                    key={feature.featureId}
+                    type="button"
+                    onClick={() => toggleFeature(feature.featureId)}
+                    title={feature.featureDescription}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      padding: '0.5rem 1rem',
+                      borderRadius: '20px',
+                      border: isSelected ? '2px solid #5086E8' : '1px solid #d1d5db',
+                      background: isSelected ? '#eff6ff' : 'white',
+                      color: isSelected ? '#5086E8' : '#374151',
+                      fontWeight: isSelected ? 600 : 400,
+                      cursor: 'pointer',
+                      fontSize: '0.875rem',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    <i className={`fas ${getIconClass(feature.featureIcon)}`} style={{ fontSize: '0.8rem' }}></i>
+                    {feature.featureName}
+                    {isSelected && (
+                      <i className="fas fa-check" style={{ fontSize: '0.7rem', marginLeft: '0.25rem' }}></i>
+                    )}
+                  </button>
+                );
+              })
+            )}
+          </div>
+        )}
+
+        <div style={{ marginTop: '2rem' }}>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="btn btn-primary"
+          >
+            {saving ? 'Saving...' : 'Save Features'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default VendorFeaturesPanel;

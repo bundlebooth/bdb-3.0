@@ -38,6 +38,13 @@ const loadGoogleMapsAPI = () => {
 function LocationServiceAreasPanel({ onBack, vendorProfileId }) {
   const [loading, setLoading] = useState(true);
   const [serviceAreaInput, setServiceAreaInput] = useState('');
+  const [serviceLocationScopes, setServiceLocationScopes] = useState(['Local']);
+  const [serviceLocations, setServiceLocations] = useState([
+    { key: 'Local', label: 'Local (within city)' },
+    { key: 'Regional', label: 'Regional (within province)' },
+    { key: 'National', label: 'National (across Canada)' },
+    { key: 'International', label: 'International' }
+  ]);
   const [formData, setFormData] = useState({
     address: '',
     city: '',
@@ -249,6 +256,15 @@ function LocationServiceAreasPanel({ onBack, vendorProfileId }) {
         };
         setFormData(newFormData);
         
+        // Load service location scope from attributes
+        if (data.serviceLocationScope) {
+          // Handle both single value and array
+          const scopes = Array.isArray(data.serviceLocationScope) 
+            ? data.serviceLocationScope 
+            : [data.serviceLocationScope];
+          setServiceLocationScopes(scopes);
+        }
+        
         // Manually update the address input value since we're using ref
         if (addressInputRef.current && newFormData.address) {
           addressInputRef.current.value = newFormData.address;
@@ -305,7 +321,8 @@ function LocationServiceAreasPanel({ onBack, vendorProfileId }) {
         postalCode: formData.postalCode.trim(),
         latitude: formData.latitude,
         longitude: formData.longitude,
-        serviceAreas: formData.serviceAreas
+        serviceAreas: formData.serviceAreas,
+        serviceLocationScope: serviceLocationScopes
       };
       
       const response = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/location`, {
@@ -492,12 +509,12 @@ function LocationServiceAreasPanel({ onBack, vendorProfileId }) {
                       alignItems: 'center',
                       gap: '0.5rem',
                       padding: '0.5rem 0.875rem',
-                      background: '#f0f4ff',
-                      border: '1px solid #d0ddff',
-                      color: 'var(--text)',
-                      borderRadius: 'var(--radius)',
-                      fontSize: '0.9rem',
-                      fontWeight: 500
+                      background: '#f3f4f6',
+                      border: 'none',
+                      color: '#374151',
+                      borderRadius: '8px',
+                      fontSize: '0.875rem',
+                      fontWeight: 400
                     }}
                   >
                     {label}
@@ -507,15 +524,14 @@ function LocationServiceAreasPanel({ onBack, vendorProfileId }) {
                       style={{
                         background: 'none',
                         border: 'none',
-                        color: '#999',
+                        color: '#6b7280',
                         cursor: 'pointer',
                         padding: '0',
-                        fontSize: '1.3rem',
-                        lineHeight: 1,
-                        marginLeft: '4px'
+                        fontSize: '1rem',
+                        lineHeight: 1
                       }}
                       onMouseOver={(e) => e.target.style.color = 'var(--accent)'}
-                      onMouseOut={(e) => e.target.style.color = '#999'}
+                      onMouseOut={(e) => e.target.style.color = '#6b7280'}
                     >
                       ×
                     </button>
@@ -525,7 +541,58 @@ function LocationServiceAreasPanel({ onBack, vendorProfileId }) {
             </div>
           </div>
 
-          <button type="submit" className="btn btn-primary">
+          {/* Service Location Scope - White with grey border unselected, grey when selected */}
+          <div style={{ marginTop: '2rem', paddingTop: '2rem', borderTop: '1px solid var(--border)' }}>
+            <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text)', marginBottom: '0.5rem' }}>
+              Service Location
+            </h3>
+            <p style={{ color: 'var(--text-light)', fontSize: '0.875rem', marginBottom: '1rem' }}>
+              Select all areas where you are willing to provide your services
+            </p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.625rem' }}>
+              {serviceLocations.map(loc => {
+                const isSelected = serviceLocationScopes.includes(loc.key);
+                return (
+                  <div
+                    key={loc.key}
+                    onClick={() => {
+                      if (isSelected) {
+                        if (serviceLocationScopes.length > 1) {
+                          setServiceLocationScopes(serviceLocationScopes.filter(s => s !== loc.key));
+                        }
+                      } else {
+                        setServiceLocationScopes([...serviceLocationScopes, loc.key]);
+                      }
+                    }}
+                    style={{
+                      padding: '0.75rem 1rem',
+                      borderRadius: '8px',
+                      border: isSelected ? 'none' : '1px solid #d1d5db',
+                      background: isSelected ? '#f3f4f6' : 'white',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.5rem'
+                    }}
+                  >
+                    <span style={{ 
+                      fontWeight: 400, 
+                      fontSize: '0.875rem',
+                      color: '#374151'
+                    }}>
+                      {loc.label}
+                    </span>
+                    {isSelected && (
+                      <i className="fas fa-check" style={{ color: '#6b7280', fontSize: '0.8rem' }}></i>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <button type="submit" className="btn btn-primary" style={{ marginTop: '2rem' }}>
             Save
           </button>
         </form>

@@ -168,13 +168,13 @@ function VendorProfilePage() {
     }
   }, [vendorId, currentUser, location.search]);
 
-  // Load vendor features (questionnaire)
+  // Load vendor features
   const loadVendorFeatures = useCallback(async (vendorProfileId) => {
     try {
       const response = await apiGet(`/vendors/features/vendor/${vendorProfileId}`);
       if (response.ok) {
         const data = await response.json();
-        setVendorFeatures(data.selectedFeatures || []);
+        setVendorFeatures(data.features || data.selectedFeatures || []);
       }
     } catch (error) {
       console.error('Error loading vendor features:', error);
@@ -2546,7 +2546,7 @@ function VendorProfilePage() {
                   )}
                   
                   {/* Category */}
-                  <span style={{ color: '#000' }}>{profile.Tagline || profile.CategoryName || 'Event Services'}</span>
+                  <span style={{ color: '#000' }}>{profile.CategoryName || 'Event Services'}</span>
                 </div>
               </div>
                 </div>
