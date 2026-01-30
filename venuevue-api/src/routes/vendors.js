@@ -2713,6 +2713,54 @@ router.get('/:id', async (req, res) => {
       serviceAreas = [];
     }
 
+    // Get vendor's selected subcategories
+    let subcategories = [];
+    try {
+      const subResult = await pool.request()
+        .input('VendorProfileID', sql.Int, vendorProfileId)
+        .query(`
+          SELECT vs.SubcategoryID, s.SubcategoryName, s.Category
+          FROM vendors.Subcategories vs
+          JOIN admin.Subcategories s ON vs.SubcategoryID = s.SubcategoryID
+          WHERE vs.VendorProfileID = @VendorProfileID
+        `);
+      subcategories = subResult.recordset || [];
+    } catch (subError) {
+      console.warn('Subcategories query failed:', subError.message);
+    }
+
+    // Get vendor's selected event types
+    let eventTypes = [];
+    try {
+      const etResult = await pool.request()
+        .input('VendorProfileID', sql.Int, vendorProfileId)
+        .query(`
+          SELECT vet.EventTypeID, et.EventTypeName
+          FROM vendors.VendorEventTypes vet
+          JOIN admin.EventTypes et ON vet.EventTypeID = et.EventTypeID
+          WHERE vet.VendorProfileID = @VendorProfileID
+        `);
+      eventTypes = etResult.recordset || [];
+    } catch (etError) {
+      console.warn('Event types query failed:', etError.message);
+    }
+
+    // Get vendor's selected cultures
+    let cultures = [];
+    try {
+      const cultResult = await pool.request()
+        .input('VendorProfileID', sql.Int, vendorProfileId)
+        .query(`
+          SELECT vc.CultureID, c.CultureName
+          FROM vendors.VendorCultures vc
+          JOIN admin.Cultures c ON vc.CultureID = c.CultureID
+          WHERE vc.VendorProfileID = @VendorProfileID
+        `);
+      cultures = cultResult.recordset || [];
+    } catch (cultError) {
+      console.warn('Cultures query failed:', cultError.message);
+    }
+
     // Get host user profile information if UserID exists
     let hostProfile = null;
     const vendorUserID = profileRecordset[0]?.UserID;
@@ -2870,7 +2918,10 @@ router.get('/:id', async (req, res) => {
       isFavorite: isFavoriteRecordset && isFavoriteRecordset.length > 0 ? isFavoriteRecordset[0].IsFavorite : false,
       availableSlots: availableSlotsRecordset,
       serviceAreas: serviceAreas,
-      discoveryFlags: discoveryFlags
+      discoveryFlags: discoveryFlags,
+      subcategories: subcategories,
+      eventTypes: eventTypes,
+      cultures: cultures
     };
 
     res.json({
