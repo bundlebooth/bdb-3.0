@@ -8349,12 +8349,14 @@ router.post('/filter-count', async (req, res) => {
     }
     
     // Post-query filtering for features (always apply - SP doesn't handle this)
+    console.log('[filter-count] Features param received:', features, 'Type:', typeof features, 'IsArray:', Array.isArray(features));
     if (features && features.length > 0) {
       const featureIds = Array.isArray(features) ? features.map(id => parseInt(id)) : features.split(',').map(id => parseInt(id.trim()));
       const validFeatureIds = featureIds.filter(id => !isNaN(id) && id > 0);
-      console.log('[filter-count] Filtering by features:', validFeatureIds);
+      console.log('[filter-count] Filtering by features:', validFeatureIds, 'Vendors before filter:', vendors.length);
       if (validFeatureIds.length > 0) {
         const vendorIds = vendors.map(v => parseInt(v.VendorProfileID || v.id)).filter(id => !isNaN(id) && id > 0);
+        console.log('[filter-count] Vendor IDs to check:', vendorIds.length);
         if (vendorIds.length > 0) {
           try {
             const featureQuery = `
@@ -8363,9 +8365,13 @@ router.post('/filter-count', async (req, res) => {
               WHERE FeatureID IN (${validFeatureIds.join(',')})
               AND VendorProfileID IN (${vendorIds.join(',')})
             `;
+            console.log('[filter-count] Feature query:', featureQuery);
             const fResult = await pool.request().query(featureQuery);
+            console.log('[filter-count] Feature query result:', fResult.recordset);
             const matchingVendorIds = new Set(fResult.recordset.map(r => parseInt(r.VendorProfileID)));
+            console.log('[filter-count] Matching vendor IDs:', [...matchingVendorIds]);
             vendors = vendors.filter(v => matchingVendorIds.has(parseInt(v.VendorProfileID || v.id)));
+            console.log('[filter-count] Vendors after feature filter:', vendors.length);
           } catch (fErr) {
             console.warn('[filter-count] Feature filtering failed:', fErr.message);
           }
