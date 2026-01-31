@@ -390,6 +390,13 @@ const BecomeVendorPage = () => {
     }
   }, [currentUser]);
 
+  // Redirect unauthenticated users to the landing page
+  useEffect(() => {
+    if (!currentUser && !loadingProfile) {
+      navigate('/become-a-vendor');
+    }
+  }, [currentUser, loadingProfile, navigate]);
+
   // Fetch existing vendor profile data if user is already a vendor
   useEffect(() => {
     const fetchExistingVendorData = async () => {

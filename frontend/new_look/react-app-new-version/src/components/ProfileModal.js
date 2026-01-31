@@ -4,9 +4,9 @@ import { showBanner } from '../utils/helpers';
 import { apiGet, apiPost } from '../utils/api';
 import UniversalModal from './UniversalModal';
 
-function ProfileModal({ isOpen, onClose }) {
+function ProfileModal({ isOpen, onClose, defaultView = 'login', defaultAccountType = 'client', hideAccountTypeSelector = false }) {
   const { currentUser, handleGoogleLogin, logout, setCurrentUser } = useAuth();
-  const [view, setView] = useState('login'); // 'login', 'signup', 'twofa', 'loggedIn', 'googleAccountType'
+  const [view, setView] = useState(defaultView); // 'login', 'signup', 'twofa', 'loggedIn', 'googleAccountType'
   const [loading, setLoading] = useState(false);
 
   // Form states
@@ -16,7 +16,19 @@ function ProfileModal({ isOpen, onClose }) {
   const [signupLastName, setSignupLastName] = useState('');
   const [signupEmail, setSignupEmail] = useState('');
   const [signupPassword, setSignupPassword] = useState('');
-  const [accountType, setAccountType] = useState('client');
+  const [signupConfirmPassword, setSignupConfirmPassword] = useState('');
+  const [accountType, setAccountType] = useState(defaultAccountType);
+
+  // Password validation function
+  const validatePassword = (password) => {
+    const minLength = password.length >= 8;
+    const hasUpper = /[A-Z]/.test(password);
+    const hasLower = /[a-z]/.test(password);
+    const hasNumber = /[0-9]/.test(password);
+    return { minLength, hasUpper, hasLower, hasNumber, isValid: minLength && hasUpper && hasLower && hasNumber };
+  };
+
+  const passwordValidation = validatePassword(signupPassword);
   const [twofaCode, setTwofaCode] = useState(['', '', '', '', '', '']);
   const [twofaEmail, setTwofaEmail] = useState('');
   const [twofaTempToken, setTwofaTempToken] = useState('');
@@ -33,7 +45,9 @@ function ProfileModal({ isOpen, onClose }) {
       if (currentUser) {
         setView('loggedIn');
       } else {
-        setView('login');
+        setView(defaultView);
+        setAccountType(defaultAccountType);
+        setGoogleAccountType(defaultAccountType);
         // Check for session timeout message
         const logoutReason = sessionStorage.getItem('logoutReason');
         if (logoutReason === 'session_expired') {
@@ -50,7 +64,7 @@ function ProfileModal({ isOpen, onClose }) {
     return () => {
       document.body.classList.remove('modal-open');
     };
-  }, [isOpen, currentUser]);
+  }, [isOpen, currentUser, defaultView, defaultAccountType]);
 
   // Decode Google JWT to get user info
   const decodeGoogleJwt = (credential) => {
@@ -64,6 +78,76 @@ function ProfileModal({ isOpen, onClose }) {
     } catch (error) {
       console.error('Error decoding Google JWT:', error);
       return null;
+    }
+  };
+
+  // Handle direct Google signup without account type selection (for vendor-only flow)
+  const handleGoogleSignUpDirectly = async (credential, accountTypeToUse) => {
+    try {
+      setLoading(true);
+      
+      const decoded = decodeGoogleJwt(credential);
+      if (!decoded) {
+        throw new Error('Failed to decode Google credential');
+      }
+
+      const response = await apiPost('/users/social-login', {
+        email: decoded.email,
+        name: decoded.name,
+        authProvider: 'google',
+        avatar: decoded.picture,
+        accountType: accountTypeToUse
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Google sign-in failed');
+      }
+
+      const data = await response.json();
+      
+      if (data.token) {
+        localStorage.setItem('token', data.token);
+      }
+
+      const userData = {
+        id: data.userId,
+        userId: data.userId,
+        name: data.name || data.email?.split('@')[0] || 'User',
+        email: data.email,
+        userType: data.isVendor ? 'vendor' : 'client',
+        isVendor: data.isVendor || false,
+        isAdmin: data.isAdmin || false,
+        vendorProfileId: data.vendorProfileId || null
+      };
+
+      setCurrentUser(userData);
+      window.currentUser = userData;
+      localStorage.setItem('userSession', JSON.stringify(userData));
+      
+      if (userData.id) {
+        localStorage.removeItem(`vv_hideSetupReminderUntilComplete_${userData.id}`);
+      }
+
+      showBanner('Successfully signed in with Google!', 'success');
+      onClose();
+
+      // Check for pending vendor redirect (from become-a-vendor flow)
+      const pendingVendorRedirect = sessionStorage.getItem('pendingVendorRedirect');
+      if (pendingVendorRedirect === 'true' && userData.isVendor) {
+        sessionStorage.removeItem('pendingVendorRedirect');
+        setTimeout(() => {
+          window.location.href = '/become-a-vendor/setup';
+        }, 300);
+      }
+
+      setPendingGoogleCredential(null);
+
+    } catch (error) {
+      console.error('Google sign-up error:', error);
+      showBanner(error.message || 'Failed to sign in with Google', 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -89,17 +173,31 @@ function ProfileModal({ isOpen, onClose }) {
         onClose();
         setLoading(false);
       } else {
-        // New user - show account type selection
-        setPendingGoogleCredential(response.credential);
-        setView('googleAccountType');
+        // New user
+        if (hideAccountTypeSelector) {
+          // Skip account type selection, directly sign up with the default account type (vendor)
+          setPendingGoogleCredential(response.credential);
+          // Directly call the signup handler
+          handleGoogleSignUpDirectly(response.credential, defaultAccountType);
+        } else {
+          // Show account type selection
+          setPendingGoogleCredential(response.credential);
+          setView('googleAccountType');
+        }
       }
     } catch (error) {
       console.error('Google login error:', error);
-      // If check fails, show account type selection as fallback
-      setPendingGoogleCredential(response.credential);
-      setView('googleAccountType');
+      if (hideAccountTypeSelector) {
+        // Skip account type selection, directly sign up with the default account type
+        setPendingGoogleCredential(response.credential);
+        handleGoogleSignUpDirectly(response.credential, defaultAccountType);
+      } else {
+        // If check fails, show account type selection as fallback
+        setPendingGoogleCredential(response.credential);
+        setView('googleAccountType');
+      }
     }
-  }, [handleGoogleLogin, onClose]);
+  }, [handleGoogleLogin, onClose, hideAccountTypeSelector, defaultAccountType]);
 
   // Handle Google Sign-In after account type selection
   const handleGoogleSignInWithAccountType = async () => {
@@ -301,13 +399,22 @@ function ProfileModal({ isOpen, onClose }) {
       showBanner('Successfully logged in!', 'success');
       onClose();
       
-      // Check for post-login redirect (from email deep links)
-      const postLoginRedirect = sessionStorage.getItem('postLoginRedirect');
-      if (postLoginRedirect) {
-        sessionStorage.removeItem('postLoginRedirect');
+      // Check for pending vendor redirect (from become-a-vendor flow)
+      const pendingVendorRedirect = sessionStorage.getItem('pendingVendorRedirect');
+      if (pendingVendorRedirect === 'true' && userData.isVendor) {
+        sessionStorage.removeItem('pendingVendorRedirect');
         setTimeout(() => {
-          window.location.href = postLoginRedirect;
+          window.location.href = '/become-a-vendor/setup';
         }, 300);
+      } else {
+        // Check for post-login redirect (from email deep links)
+        const postLoginRedirect = sessionStorage.getItem('postLoginRedirect');
+        if (postLoginRedirect) {
+          sessionStorage.removeItem('postLoginRedirect');
+          setTimeout(() => {
+            window.location.href = postLoginRedirect;
+          }, 300);
+        }
       }
     } catch (error) {
       console.error('Login error:', error);
@@ -320,13 +427,20 @@ function ProfileModal({ isOpen, onClose }) {
   const handleSignup = async (e) => {
     e.preventDefault();
     
-    if (!signupFirstName || !signupLastName || !signupEmail || !signupPassword) {
+    if (!signupFirstName || !signupLastName || !signupEmail || !signupPassword || !signupConfirmPassword) {
       showBanner('Please fill in all fields', 'error');
       return;
     }
 
-    if (signupPassword.length < 6) {
-      showBanner('Password must be at least 6 characters', 'error');
+    // Validate password strength
+    if (!passwordValidation.isValid) {
+      showBanner('Password must be at least 8 characters with uppercase, lowercase, and a number', 'error');
+      return;
+    }
+
+    // Validate passwords match
+    if (signupPassword !== signupConfirmPassword) {
+      showBanner('Passwords do not match', 'error');
       return;
     }
 
@@ -377,8 +491,15 @@ function ProfileModal({ isOpen, onClose }) {
       showBanner('Account created successfully!', 'success');
       onClose();
       
-      // If vendor account, trigger dashboard modal for setup
-      if (userData.isVendor) {
+      // Check for pending vendor redirect (from become-a-vendor flow)
+      const pendingVendorRedirect = sessionStorage.getItem('pendingVendorRedirect');
+      if (pendingVendorRedirect === 'true' && userData.isVendor) {
+        sessionStorage.removeItem('pendingVendorRedirect');
+        setTimeout(() => {
+          window.location.href = '/become-a-vendor/setup';
+        }, 300);
+      } else if (userData.isVendor) {
+        // If vendor account, trigger dashboard modal for setup
         setTimeout(() => {
           window.dispatchEvent(new CustomEvent('openDashboard', { 
             detail: { section: 'vendor-settings' } 
@@ -828,7 +949,7 @@ function ProfileModal({ isOpen, onClose }) {
                   required
                 />
               </div>
-              <div style={{ marginBottom: '1.5rem' }}>
+              <div style={{ marginBottom: '1rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Password</label>
                 <input
                   type="password"
@@ -838,6 +959,48 @@ function ProfileModal({ isOpen, onClose }) {
                   required
                 />
               </div>
+              {/* Password validation requirements */}
+              {signupPassword && (
+                <div style={{ 
+                  marginBottom: '1rem', 
+                  padding: '12px', 
+                  backgroundColor: '#F9FAFB', 
+                  borderRadius: '8px',
+                  fontSize: '13px'
+                }}>
+                  <div style={{ color: passwordValidation.minLength ? '#10b981' : '#ef4444', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <i className={`fas fa-${passwordValidation.minLength ? 'check' : 'times'}`} style={{ fontSize: '11px' }}></i> At least 8 characters
+                  </div>
+                  <div style={{ color: passwordValidation.hasUpper ? '#10b981' : '#ef4444', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <i className={`fas fa-${passwordValidation.hasUpper ? 'check' : 'times'}`} style={{ fontSize: '11px' }}></i> One uppercase letter
+                  </div>
+                  <div style={{ color: passwordValidation.hasLower ? '#10b981' : '#ef4444', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <i className={`fas fa-${passwordValidation.hasLower ? 'check' : 'times'}`} style={{ fontSize: '11px' }}></i> One lowercase letter
+                  </div>
+                  <div style={{ color: passwordValidation.hasNumber ? '#10b981' : '#ef4444', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <i className={`fas fa-${passwordValidation.hasNumber ? 'check' : 'times'}`} style={{ fontSize: '11px' }}></i> One number
+                  </div>
+                </div>
+              )}
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Confirm Password</label>
+                <input
+                  type="password"
+                  value={signupConfirmPassword}
+                  onChange={(e) => setSignupConfirmPassword(e.target.value)}
+                  style={{ 
+                    width: '100%', 
+                    padding: '0.75rem', 
+                    border: `1px solid ${signupConfirmPassword && signupPassword !== signupConfirmPassword ? '#ef4444' : 'var(--border)'}`, 
+                    borderRadius: 'var(--radius)' 
+                  }}
+                  required
+                />
+                {signupConfirmPassword && signupPassword !== signupConfirmPassword && (
+                  <p style={{ color: '#ef4444', fontSize: '13px', marginTop: '6px', marginBottom: 0 }}>Passwords do not match</p>
+                )}
+              </div>
+              {!hideAccountTypeSelector && (
               <div style={{ marginBottom: '1.5rem' }}>
                 <label style={{ 
                   display: 'block', 
@@ -872,6 +1035,7 @@ function ProfileModal({ isOpen, onClose }) {
                   <option value="vendor">Vendor (I provide services)</option>
                 </select>
               </div>
+              )}
               <button 
                 type="submit" 
                 disabled={loading} 

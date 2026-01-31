@@ -516,7 +516,7 @@ function AccountStep({ currentUser, setFormData, formData, onAccountCreated, isE
                 style={{ 
                   width: '100%', 
                   padding: '14px',
-                  backgroundColor: '#222222',
+                  backgroundColor: '#5086E8',
                   color: 'white',
                   border: 'none',
                   borderRadius: '8px',
@@ -524,8 +524,11 @@ function AccountStep({ currentUser, setFormData, formData, onAccountCreated, isE
                   fontWeight: '600',
                   cursor: loading ? 'not-allowed' : 'pointer',
                   marginBottom: '0.75rem',
-                  opacity: loading ? 0.7 : 1
+                  opacity: loading ? 0.7 : 1,
+                  transition: 'background-color 0.2s'
                 }}
+                onMouseEnter={(e) => !loading && (e.target.style.backgroundColor = '#4070D0')}
+                onMouseLeave={(e) => !loading && (e.target.style.backgroundColor = '#5086E8')}
               >
                 {loading ? 'Verifying...' : 'Verify'}
               </button>
@@ -626,7 +629,7 @@ function AccountStep({ currentUser, setFormData, formData, onAccountCreated, isE
                 style={{ 
                   width: '100%', 
                   padding: '14px',
-                  backgroundColor: '#222222',
+                  backgroundColor: '#5086E8',
                   color: 'white',
                   border: 'none',
                   borderRadius: '8px',
@@ -634,8 +637,11 @@ function AccountStep({ currentUser, setFormData, formData, onAccountCreated, isE
                   fontWeight: '600',
                   cursor: loading ? 'not-allowed' : 'pointer',
                   marginBottom: '16px',
-                  opacity: loading ? 0.7 : 1
+                  opacity: loading ? 0.7 : 1,
+                  transition: 'background-color 0.2s'
                 }}
+                onMouseEnter={(e) => !loading && (e.target.style.backgroundColor = '#4070D0')}
+                onMouseLeave={(e) => !loading && (e.target.style.backgroundColor = '#5086E8')}
               >
                 {loading ? 'Logging in...' : 'Log In'}
               </button>
@@ -721,7 +727,7 @@ function AccountStep({ currentUser, setFormData, formData, onAccountCreated, isE
                 marginTop: '16px',
                 marginBottom: 0
               }}>
-                By signing up, you agree to our <a href="/terms-of-service" style={{ color: '#5B68F4' }}>Terms of Service</a> and <a href="/privacy-policy" style={{ color: '#5B68F4' }}>Privacy Policy</a>
+                By signing up, you agree to our <a href="/terms-of-service" style={{ color: '#5086E8' }}>Terms of Service</a> and <a href="/privacy-policy" style={{ color: '#5086E8' }}>Privacy Policy</a>
               </p>
             </form>
           ) : (
@@ -834,7 +840,7 @@ function AccountStep({ currentUser, setFormData, formData, onAccountCreated, isE
                 style={{ 
                   width: '100%', 
                   padding: '14px',
-                  backgroundColor: '#222222',
+                  backgroundColor: '#5086E8',
                   color: 'white',
                   border: 'none',
                   borderRadius: '8px',
@@ -842,8 +848,11 @@ function AccountStep({ currentUser, setFormData, formData, onAccountCreated, isE
                   fontWeight: '600',
                   cursor: loading ? 'not-allowed' : 'pointer',
                   marginBottom: '16px',
-                  opacity: loading ? 0.7 : 1
+                  opacity: loading ? 0.7 : 1,
+                  transition: 'background-color 0.2s'
                 }}
+                onMouseEnter={(e) => !loading && (e.target.style.backgroundColor = '#4070D0')}
+                onMouseLeave={(e) => !loading && (e.target.style.backgroundColor = '#5086E8')}
               >
                 {loading ? 'Creating Account...' : 'Create Account & Continue'}
               </button>
@@ -872,7 +881,7 @@ function AccountStep({ currentUser, setFormData, formData, onAccountCreated, isE
                 color: '#9CA3AF',
                 margin: 0
               }}>
-                By signing up, you agree to our <a href="/terms-of-service" style={{ color: '#5B68F4' }}>Terms of Service</a> and <a href="/privacy-policy" style={{ color: '#5B68F4' }}>Privacy Policy</a>
+                By signing up, you agree to our <a href="/terms-of-service" style={{ color: '#5086E8' }}>Terms of Service</a> and <a href="/privacy-policy" style={{ color: '#5086E8' }}>Privacy Policy</a>
               </p>
             </form>
           )}

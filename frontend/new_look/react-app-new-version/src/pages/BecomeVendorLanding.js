@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { showBanner } from '../utils/helpers';
 import { 
   Camera, Users, Music, Utensils, PartyPopper, Star, Ribbon, Scissors, Cake, Car, ClipboardList, ShoppingBag,
   Edit3, UserCheck, MessageCircle, Calendar, CreditCard, DollarSign, Shield, Award, MapPin, Clock, Image, Share2,
@@ -9,6 +10,7 @@ import {
 import { PageLayout } from '../components/PageWrapper';
 import Footer from '../components/Footer';
 import MessagingWidget from '../components/MessagingWidget';
+import ProfileModal from '../components/ProfileModal';
 import './BecomeVendorLanding.css';
 
 const BecomeVendorLanding = () => {
@@ -16,6 +18,8 @@ const BecomeVendorLanding = () => {
   const { currentUser } = useAuth();
   const [isScrolled, setIsScrolled] = useState(false);
   const [visibleSections, setVisibleSections] = useState(new Set());
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [pendingVendorRedirect, setPendingVendorRedirect] = useState(false);
   const observerRef = useRef(null);
 
   useEffect(() => {
@@ -72,8 +76,50 @@ const BecomeVendorLanding = () => {
   }, []);
 
   const handleGetStarted = () => {
-    navigate('/become-a-vendor/setup');
+    if (currentUser) {
+      if (currentUser.isVendor) {
+        // Already a vendor, go directly to setup
+        navigate('/become-a-vendor/setup');
+      } else {
+        // Client account - show message that they need a vendor account
+        showBanner('You are currently logged in as a client. Please create a vendor account to continue.', 'info');
+        sessionStorage.setItem('pendingVendorRedirect', 'true');
+        setPendingVendorRedirect(true);
+        setShowLoginModal(true);
+      }
+    } else {
+      // Not logged in, show the login/signup modal
+      sessionStorage.setItem('pendingVendorRedirect', 'true');
+      setPendingVendorRedirect(true);
+      setShowLoginModal(true);
+    }
   };
+
+  // Check for pending redirect on mount (in case page refreshed after login)
+  useEffect(() => {
+    const pending = sessionStorage.getItem('pendingVendorRedirect');
+    if (pending === 'true' && currentUser) {
+      sessionStorage.removeItem('pendingVendorRedirect');
+      if (currentUser.isVendor) {
+        navigate('/become-a-vendor/setup');
+      }
+    }
+  }, [currentUser, navigate]);
+
+  // Navigate to setup after successful login/signup as vendor
+  useEffect(() => {
+    if (currentUser && pendingVendorRedirect) {
+      if (currentUser.isVendor) {
+        sessionStorage.removeItem('pendingVendorRedirect');
+        setPendingVendorRedirect(false);
+        setShowLoginModal(false);
+        navigate('/become-a-vendor/setup');
+      } else {
+        // User logged in as client, show message
+        showBanner('You signed in as a client. Please create a new vendor account to become a vendor.', 'info');
+      }
+    }
+  }, [currentUser, pendingVendorRedirect, navigate]);
 
   // Vendor categories matching the app
   const vendorCategories = [
@@ -610,6 +656,15 @@ const BecomeVendorLanding = () => {
 
       <Footer />
       <MessagingWidget />
+
+      {/* Login/Signup Modal - shown when user clicks Get Started without being logged in */}
+      <ProfileModal 
+        isOpen={showLoginModal} 
+        onClose={() => setShowLoginModal(false)}
+        defaultView="signup"
+        defaultAccountType="vendor"
+        hideAccountTypeSelector={true}
+      />
     </PageLayout>
   );
 };
