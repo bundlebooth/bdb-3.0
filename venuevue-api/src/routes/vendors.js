@@ -630,7 +630,7 @@ router.get('/', async (req, res) => {
         enhancedRequest.input('CultureIDs', sql.NVarChar(500), cultures || null);
         enhancedRequest.input('QuestionFilters', sql.NVarChar(sql.MAX), questionFilters || null);
         enhancedRequest.input('FeatureIDs', sql.NVarChar(500), featureIds || null);
-        enhancedRequest.input('SubcategoryIDs', sql.NVarChar(500), subcategoryIds || null);
+        // Note: SubcategoryIDs not supported by sp_SearchEnhanced - handled via post-query filtering
         enhancedRequest.input('ExperienceRange', sql.NVarChar(20), experienceRange || null);
         enhancedRequest.input('ServiceLocation', sql.NVarChar(50), serviceLocation || null);
         enhancedRequest.input('PageNumber', sql.Int, pageNumber ? parseInt(pageNumber) : 1);
@@ -1406,7 +1406,7 @@ router.get('/search-by-categories', async (req, res) => {
               try {
                 const featureQuery = `
                   SELECT DISTINCT VendorProfileID 
-                  FROM vendors.VendorFeatures 
+                  FROM vendors.VendorSelectedFeatures 
                   WHERE FeatureID IN (${featIds.join(',')})
                   AND VendorProfileID IN (${vendorIds.join(',')})
                 `;
@@ -8198,7 +8198,7 @@ router.post('/filter-count', async (req, res) => {
     request.input('EventTypeIDs', sql.NVarChar(sql.MAX), eventTypeIdsStr);
     request.input('CultureIDs', sql.NVarChar(sql.MAX), cultureIdsStr);
     request.input('FeatureIDs', sql.NVarChar(sql.MAX), featureIdsStr);
-    request.input('SubcategoryIDs', sql.NVarChar(sql.MAX), subcategoryIdsStr);
+    // Note: SubcategoryIDs not supported by sp_SearchEnhanced - handled via post-query filtering
     request.input('QuestionFilters', sql.NVarChar(sql.MAX), null);
     request.input('IsCertified', sql.Bit, null);
     request.input('IsInsured', sql.Bit, null);
