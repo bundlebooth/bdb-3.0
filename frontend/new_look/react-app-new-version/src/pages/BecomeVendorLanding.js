@@ -77,15 +77,9 @@ const BecomeVendorLanding = () => {
 
   const handleGetStarted = () => {
     if (currentUser) {
-      if (currentUser.isVendor && currentUser.vendorProfileId) {
-        // Already an approved vendor with a profile - redirect to their dashboard instead
-        showBanner('You already have a vendor profile!', 'info');
-        navigate('/dashboard');
-      } else {
-        // Either a client wanting to become vendor, or a vendor without completed profile
-        // Allow them to proceed to setup
-        navigate('/become-a-vendor/setup');
-      }
+      // Any logged-in user can proceed to setup
+      // BecomeVendorPage will redirect approved vendors to dashboard
+      navigate('/become-a-vendor/setup');
     } else {
       // Not logged in, show the login/signup modal
       sessionStorage.setItem('pendingVendorRedirect', 'true');
@@ -99,14 +93,8 @@ const BecomeVendorLanding = () => {
     const pending = sessionStorage.getItem('pendingVendorRedirect');
     if (pending === 'true' && currentUser) {
       sessionStorage.removeItem('pendingVendorRedirect');
-      // Allow any logged-in user to proceed to vendor setup (clients can become vendors)
-      // Only block if they already have a completed vendor profile
-      if (currentUser.isVendor && currentUser.vendorProfileId) {
-        showBanner('You already have a vendor profile!', 'info');
-        navigate('/dashboard');
-      } else {
-        navigate('/become-a-vendor/setup');
-      }
+      // Any logged-in user can proceed - BecomeVendorPage handles approved vendor redirect
+      navigate('/become-a-vendor/setup');
     }
   }, [currentUser, navigate]);
 
@@ -116,14 +104,8 @@ const BecomeVendorLanding = () => {
       sessionStorage.removeItem('pendingVendorRedirect');
       setPendingVendorRedirect(false);
       setShowLoginModal(false);
-      // Allow any logged-in user to proceed (clients can become vendors)
-      // Only block if they already have a completed vendor profile
-      if (currentUser.isVendor && currentUser.vendorProfileId) {
-        showBanner('You already have a vendor profile!', 'info');
-        navigate('/dashboard');
-      } else {
-        navigate('/become-a-vendor/setup');
-      }
+      // Any logged-in user can proceed - BecomeVendorPage handles approved vendor redirect
+      navigate('/become-a-vendor/setup');
     }
   }, [currentUser, pendingVendorRedirect, navigate]);
 
@@ -667,7 +649,7 @@ const BecomeVendorLanding = () => {
       <ProfileModal 
         isOpen={showLoginModal} 
         onClose={() => setShowLoginModal(false)}
-        defaultView="signup"
+        defaultView="login"
         defaultAccountType="vendor"
         hideAccountTypeSelector={true}
       />

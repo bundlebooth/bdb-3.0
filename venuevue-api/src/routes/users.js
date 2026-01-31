@@ -1628,7 +1628,8 @@ router.post('/forgot-password', async (req, res) => {
     const resetUrl = getPasswordResetUrl(user.UserID, user.Email);
     
     // Send password reset email
-    // Signature: sendTemplatedEmail(templateKey, recipientEmail, recipientName, variables, userId, bookingId, metadata, emailCategory)
+    // Try templated email first, fallback to direct email if template not found
+    let emailSent = false;
     try {
       await sendTemplatedEmail(
         'password_reset',           // templateKey
@@ -1644,9 +1645,47 @@ router.post('/forgot-password', async (req, res) => {
         null,                       // metadata
         'account'                   // emailCategory (account-related emails)
       );
+      emailSent = true;
       console.log('[PasswordReset] Email sent successfully to:', user.Email);
     } catch (emailErr) {
-      console.error('[PasswordReset] Failed to send email:', emailErr.message, emailErr.stack);
+      console.error('[PasswordReset] Template email failed, trying fallback:', emailErr.message);
+      
+      // Fallback: Send direct email without template
+      try {
+        const { sendEmail } = require('../services/email');
+        const platformName = process.env.PLATFORM_NAME || 'PlanBeau';
+        const fallbackHtml = `
+          <!DOCTYPE html>
+          <html>
+          <head><meta charset="utf-8"></head>
+          <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;margin:0;padding:0;background:#f7f7f7">
+            <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;margin:40px auto;background:#ffffff;border:1px solid #ebebeb">
+              <tr><td style="padding:40px;text-align:center">
+                <h2 style="color:#333;margin:0 0 20px">Reset Your Password</h2>
+                <p style="color:#666;margin:0 0 20px">Hello ${user.Name || 'there'},</p>
+                <p style="color:#666;margin:0 0 30px">We received a request to reset your password. Click the button below to create a new password:</p>
+                <a href="${resetUrl}" style="display:inline-block;background:#222222;color:#ffffff;padding:14px 30px;text-decoration:none;border-radius:6px;font-weight:600">Reset Password</a>
+                <p style="color:#999;margin:30px 0 0;font-size:14px">This link expires in 1 hour. If you didn't request this, you can safely ignore this email.</p>
+              </td></tr>
+              <tr><td style="padding:20px;text-align:center;background:#f8f9fa;border-top:1px solid #e9ecef">
+                <p style="color:#adb5bd;margin:0;font-size:12px">© ${new Date().getFullYear()} ${platformName}. All rights reserved.</p>
+              </td></tr>
+            </table>
+          </body>
+          </html>
+        `;
+        await sendEmail({
+          to: user.Email,
+          subject: `Reset Your ${platformName} Password`,
+          html: fallbackHtml,
+          text: `Reset your password by visiting: ${resetUrl}\n\nThis link expires in 1 hour.`,
+          emailCategory: 'account'
+        });
+        emailSent = true;
+        console.log('[PasswordReset] Fallback email sent successfully to:', user.Email);
+      } catch (fallbackErr) {
+        console.error('[PasswordReset] Fallback email also failed:', fallbackErr.message);
+      }
     }
     
     // Log the password reset request

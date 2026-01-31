@@ -136,18 +136,10 @@ function ProfileModal({ isOpen, onClose, defaultView = 'login', defaultAccountTy
       const pendingVendorRedirect = sessionStorage.getItem('pendingVendorRedirect');
       if (pendingVendorRedirect === 'true') {
         sessionStorage.removeItem('pendingVendorRedirect');
-        // Allow any user to proceed - clients can become vendors
-        // Only block if they already have a completed vendor profile
-        if (userData.isVendor && userData.vendorProfileId) {
-          showBanner('You already have a vendor profile!', 'info');
-          setTimeout(() => {
-            window.location.href = '/dashboard';
-          }, 300);
-        } else {
-          setTimeout(() => {
-            window.location.href = '/become-a-vendor/setup';
-          }, 300);
-        }
+        // Any user can proceed - BecomeVendorPage handles approved vendor redirect
+        setTimeout(() => {
+          window.location.href = '/become-a-vendor/setup';
+        }, 300);
       }
 
       setPendingGoogleCredential(null);
@@ -412,18 +404,10 @@ function ProfileModal({ isOpen, onClose, defaultView = 'login', defaultAccountTy
       const pendingVendorRedirect = sessionStorage.getItem('pendingVendorRedirect');
       if (pendingVendorRedirect === 'true') {
         sessionStorage.removeItem('pendingVendorRedirect');
-        // Allow any user to proceed - clients can become vendors
-        // Only block if they already have a completed vendor profile
-        if (userData.isVendor && userData.vendorProfileId) {
-          showBanner('You already have a vendor profile!', 'info');
-          setTimeout(() => {
-            window.location.href = '/dashboard';
-          }, 300);
-        } else {
-          setTimeout(() => {
-            window.location.href = '/become-a-vendor/setup';
-          }, 300);
-        }
+        // Any user can proceed - BecomeVendorPage handles approved vendor redirect
+        setTimeout(() => {
+          window.location.href = '/become-a-vendor/setup';
+        }, 300);
       } else {
         // Check for post-login redirect (from email deep links)
         const postLoginRedirect = sessionStorage.getItem('postLoginRedirect');

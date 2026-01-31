@@ -373,16 +373,20 @@ const BecomeVendorPage = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [currentStep]);
 
-  // Force user to step 0 when profile is pending review or approved - block all navigation
+  // Handle profile status - redirect approved vendors to dashboard, block pending review
   // BUT allow URL step param to override this for direct navigation
   useEffect(() => {
-    if (profileStatus === 'pending_review' || profileStatus === 'approved') {
+    if (profileStatus === 'approved') {
+      // Approved vendors should go to dashboard, not setup
+      showBanner('Your vendor profile is already approved!', 'info');
+      navigate('/dashboard');
+    } else if (profileStatus === 'pending_review') {
       // If URL step param was set at mount, respect it - don't force to step 0
       if (urlStepRef.current === false) {
         setCurrentStep(0);
       }
     }
-  }, [profileStatus]);
+  }, [profileStatus, navigate]);
 
   useEffect(() => {
     if (currentUser && formData.email === '') {
