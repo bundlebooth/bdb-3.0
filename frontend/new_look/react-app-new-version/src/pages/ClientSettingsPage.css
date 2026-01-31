@@ -173,6 +173,8 @@
   align-items: center;
   justify-content: center;
   margin-bottom: 16px;
+  background: #e8f4fd;
+  border-radius: 8px;
 }
 
 .settings-card-icon i {

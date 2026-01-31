@@ -73,15 +73,15 @@ function VendorBusinessProfileSection() {
   const profileCards = [
     { id: 'vendor-profile-panel', icon: 'fa-building', title: 'Business Information', description: 'Edit your business name, contact info, and about section' },
     { id: 'vendor-location-panel', icon: 'fa-map-marker-alt', title: 'Location & Service Areas', description: 'Set your address and define where you provide services' },
-    { id: 'vendor-category-panel', icon: 'fa-tags', title: 'Category & Services', description: 'Select your category, features, and answer category-specific questions' },
-    { id: 'vendor-qa-panel', icon: 'fa-question-circle', title: 'FAQs', description: 'Add common questions and answers for your clients' },
     { id: 'vendor-services-panel', icon: 'fa-briefcase', title: 'Services & Packages', description: 'Create and manage your service packages and pricing' },
-    { id: 'vendor-photos-panel', icon: 'fa-images', title: 'Gallery & Media', description: 'Upload photos and organize your portfolio albums' },
-    { id: 'vendor-social-panel', icon: 'fa-share-alt', title: 'Social Media', description: 'Connect your social accounts and add booking links' },
-    { id: 'vendor-availability-panel', icon: 'fa-clock', title: 'Availability & Hours', description: 'Set your business hours and timezone' },
+    { id: 'vendor-category-panel', icon: 'fa-tags', title: 'Category & Services', description: 'Select your category, features, and answer category-specific questions' },
     { id: 'vendor-booking-settings-panel', icon: 'fa-calendar-check', title: 'Booking Settings', description: 'Configure instant booking, lead time, and cancellation policy' },
+    { id: 'vendor-availability-panel', icon: 'fa-clock', title: 'Availability & Hours', description: 'Set your business hours and timezone' },
+    { id: 'vendor-photos-panel', icon: 'fa-images', title: 'Gallery & Media', description: 'Upload photos and organize your portfolio albums' },
+    { id: 'vendor-stripe-panel', icon: 'fa-stripe', title: 'Stripe Setup', description: 'Connect Stripe to accept online payments and deposits', iconClass: 'fab', useStripeLogo: true },
+    { id: 'vendor-qa-panel', icon: 'fa-question-circle', title: 'FAQs', description: 'Add common questions and answers for your clients' },
     { id: 'vendor-google-reviews-panel', icon: 'fa-google', title: 'Google Reviews', description: 'Import and display reviews from your Google Business Profile', iconClass: 'fab', useGoogleLogo: true },
-    { id: 'vendor-stripe-panel', icon: 'fa-stripe', title: 'Stripe Setup', description: 'Connect Stripe to accept online payments and deposits', iconClass: 'fab', useStripeLogo: true }
+    { id: 'vendor-social-panel', icon: 'fa-share-alt', title: 'Social Media', description: 'Connect your social accounts and add booking links' }
   ];
 
   const renderPanel = () => {
@@ -136,9 +136,9 @@ function VendorBusinessProfileSection() {
                 className="settings-card" 
                 data-panel={card.id}
                 onClick={() => handlePanelChange(card.id)}
-                style={{ cursor: 'pointer' }}
+                style={{ cursor: 'pointer', padding: '1rem' }}
               >
-                <div className="settings-card-icon">
+                <div style={{ width: '40px', height: '40px', backgroundColor: '#f0f7ff', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#5086E8', fontSize: '1.2rem', marginBottom: '0.5rem' }}>
                   {card.useGoogleLogo ? (
                     <img 
                       src="https://www.google.com/images/branding/googleg/1x/googleg_standard_color_128dp.png" 

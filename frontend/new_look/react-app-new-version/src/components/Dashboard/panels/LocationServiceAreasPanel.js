@@ -368,7 +368,7 @@ function LocationServiceAreasPanel({ onBack, vendorProfileId }) {
       </button>
       <div className="dashboard-card">
         <h2 className="dashboard-card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <span style={{ width: '36px', height: '36px', borderRadius: '8px', background: 'var(--secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', fontSize: '1.1rem' }}>
+          <span style={{ width: '36px', height: '36px', borderRadius: '8px', backgroundColor: '#f0f7ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', fontSize: '1.1rem' }}>
             <i className="fas fa-map-marker-alt"></i>
           </span>
           Location & Service Areas

@@ -4877,7 +4877,7 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
     background: white;
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    padding: 1.5rem;
+    padding: 1rem;
     cursor: pointer;
     transition: all 0.2s;
     display: flex;
@@ -4894,7 +4894,7 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
 .settings-card-icon {
     width: 40px;
     height: 40px;
-    background: var(--secondary, #e8f4fd);
+    background: #e8f4fd;
     border-radius: 8px;
     display: flex;
     align-items: center;
@@ -7914,7 +7914,7 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
     width: 36px;
     height: 36px;
     border-radius: 8px;
-    background: var(--secondary);
+    background: #e8f4fd;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -7934,6 +7934,24 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
     color: var(--text-light);
     margin: 0;
     line-height: 1.5;
+}
+
+/* Vendor Business Profile Section - Specific Styles */
+#vendor-business-profile-section .settings-card {
+    padding: 1rem;
+}
+
+#vendor-business-profile-section .settings-card-icon {
+    width: 40px;
+    height: 40px;
+    background: #e8f4fd;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary);
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
 }
 
 /* Settings Modal */

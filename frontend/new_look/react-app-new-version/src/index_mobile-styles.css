@@ -1,6 +1,6 @@
 ﻿:root {
-    --primary: #4F86E8;
-    --primary-dark: #3A6FD4;
+    --primary: #5086E8;
+    --primary-dark: #4070D0;
     --secondary: #f7fafc;
     --surface-bg: white;
     --accent: #ff6b6b;
@@ -4526,7 +4526,7 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
 .settings-card-icon {
     width: 40px;
     height: 40px;
-    background: var(--secondary, #e8f4fd);
+    background: #e8f4fd;
     border-radius: 8px;
     display: flex;
     align-items: center;
@@ -7454,7 +7454,7 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
     width: 36px;
     height: 36px;
     border-radius: 8px;
-    background: var(--secondary);
+    background: #e8f4fd;
     display: flex;
     align-items: center;
     justify-content: center;

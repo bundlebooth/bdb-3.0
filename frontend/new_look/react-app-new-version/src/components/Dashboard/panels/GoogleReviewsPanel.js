@@ -153,7 +153,7 @@ function GoogleReviewsPanel({ onBack, vendorProfileId }) {
       
       <div className="dashboard-card">
         <h2 className="dashboard-card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <span style={{ width: '36px', height: '36px', borderRadius: '8px', background: 'var(--secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <span style={{ width: '36px', height: '36px', borderRadius: '8px', backgroundColor: '#f0f7ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <img 
               src="https://www.google.com/images/branding/googleg/1x/googleg_standard_color_128dp.png" 
               alt="Google" 
