@@ -65,9 +65,11 @@ router.post('/resend-2fa', async (req, res) => {
       const timeSinceLastRequest = Date.now() - lastRequest;
       if (timeSinceLastRequest < TWO_FA_RESEND_COOLDOWN_MS) {
         const secondsRemaining = Math.ceil((TWO_FA_RESEND_COOLDOWN_MS - timeSinceLastRequest) / 1000);
-        return res.status(429).json({ 
-          success: false, 
-          message: `Please wait ${secondsRemaining} seconds before requesting another code.`,
+        // Return success:true with alreadySent flag so frontend can show appropriate message
+        return res.json({ 
+          success: true, 
+          alreadySent: true,
+          message: `A verification code was already sent. Please check your email. You can request a new code in ${secondsRemaining} seconds.`,
           retryAfter: secondsRemaining
         });
       }

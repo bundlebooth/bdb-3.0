@@ -1624,9 +1624,11 @@ router.post('/forgot-password', async (req, res) => {
       const timeSinceLastRequest = Date.now() - lastRequest;
       if (timeSinceLastRequest < PASSWORD_RESET_COOLDOWN_MS) {
         const secondsRemaining = Math.ceil((PASSWORD_RESET_COOLDOWN_MS - timeSinceLastRequest) / 1000);
-        return res.status(429).json({ 
-          success: false, 
-          message: `Please wait ${secondsRemaining} seconds before requesting another password reset.`,
+        // Return success:true with alreadySent flag so frontend can show appropriate message
+        return res.json({ 
+          success: true, 
+          alreadySent: true,
+          message: `A password reset email was already sent. Please check your email (including spam folder). You can request a new link in ${secondsRemaining} seconds.`,
           retryAfter: secondsRemaining
         });
       }
@@ -1637,7 +1639,7 @@ router.post('/forgot-password', async (req, res) => {
     // Check if user exists
     const userResult = await pool.request()
       .input('Email', sql.NVarChar, normalizedEmail)
-      .query('SELECT UserID, Name, Email FROM users.Users WHERE Email = @Email');
+      .query('SELECT UserID, FirstName, LastName, Email FROM users.Users WHERE Email = @Email');
     
     // Always return success to prevent email enumeration attacks
     if (userResult.recordset.length === 0) {
@@ -1647,6 +1649,7 @@ router.post('/forgot-password', async (req, res) => {
     }
     
     const user = userResult.recordset[0];
+    const userName = user.FirstName || 'there';
     const resetUrl = getPasswordResetUrl(user.UserID, user.Email);
     
     // Send password reset email using fallback (direct email)
@@ -1660,7 +1663,7 @@ router.post('/forgot-password', async (req, res) => {
         <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;margin:40px auto;background:#ffffff;border:1px solid #ebebeb">
           <tr><td style="padding:40px;text-align:center">
             <h2 style="color:#333;margin:0 0 20px">Reset Your Password</h2>
-            <p style="color:#666;margin:0 0 20px">Hello ${user.Name || 'there'},</p>
+            <p style="color:#666;margin:0 0 20px">Hello ${userName},</p>
             <p style="color:#666;margin:0 0 30px">We received a request to reset your password. Click the button below to create a new password:</p>
             <a href="${resetUrl}" style="display:inline-block;background:#222222;color:#ffffff;padding:14px 30px;text-decoration:none;border-radius:6px;font-weight:600">Reset Password</a>
             <p style="color:#999;margin:30px 0 0;font-size:14px">This link expires in 1 hour. If you didn't request this, you can safely ignore this email.</p>
