@@ -1,11 +1,37 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { GOOGLE_MAPS_API_KEY } from '../config';
 
+/**
+ * SimpleWorkingLocationStep - Vendor onboarding step for location & service areas
+ * UI cloned from LocationServiceAreasPanel for consistency
+ */
 function SimpleWorkingLocationStep({ formData, setFormData }) {
   const addressInputRef = useRef(null);
   const serviceAreaInputRef = useRef(null);
   const addressAutocompleteRef = useRef(null);
   const serviceAreaAutocompleteRef = useRef(null);
+  
+  // Service location scope options (matching LocationServiceAreasPanel)
+  const [serviceLocationScopes, setServiceLocationScopes] = useState(formData.serviceLocationScopes || ['Local']);
+  const serviceLocationOptions = [
+    { key: 'Local', label: 'Local (within city)' },
+    { key: 'Regional', label: 'Regional (within province)' },
+    { key: 'National', label: 'National (across Canada)' },
+    { key: 'International', label: 'International' }
+  ];
+  
+  // Update formData when scopes change
+  useEffect(() => {
+    setFormData(prev => ({ ...prev, serviceLocationScopes }));
+  }, [serviceLocationScopes]);
+  
+  const toggleServiceScope = (key) => {
+    setServiceLocationScopes(prev => 
+      prev.includes(key) 
+        ? prev.filter(k => k !== key) 
+        : [...prev, key]
+    );
+  };
 
   useEffect(() => {
     if (window.google && window.google.maps && window.google.maps.places) {
@@ -282,6 +308,45 @@ function SimpleWorkingLocationStep({ formData, setFormData }) {
 
         {/* Divider */}
         <hr style={{ border: 'none', borderTop: '1px solid #e5e7eb', margin: '2rem 0' }} />
+
+        {/* Service Location Scope Section - matching LocationServiceAreasPanel */}
+        <div className="form-group" style={{ marginBottom: '2rem' }}>
+          <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.5rem', fontSize: '0.95rem' }}>
+            Service Location Scope
+          </label>
+          <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '1rem' }}>
+            Select the geographic scope of your services
+          </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
+            {serviceLocationOptions.map(option => {
+              const isSelected = serviceLocationScopes.includes(option.key);
+              return (
+                <button
+                  key={option.key}
+                  type="button"
+                  onClick={() => toggleServiceScope(option.key)}
+                  style={{
+                    padding: '0.625rem 1.25rem',
+                    borderRadius: '8px',
+                    border: isSelected ? '2px solid #222' : '1px solid #d1d5db',
+                    background: isSelected ? '#f9fafb' : 'white',
+                    color: isSelected ? '#222' : '#374151',
+                    fontWeight: isSelected ? 600 : 400,
+                    cursor: 'pointer',
+                    fontSize: '0.9rem',
+                    transition: 'all 0.2s',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem'
+                  }}
+                >
+                  {isSelected && <i className="fas fa-check" style={{ fontSize: '0.75rem' }}></i>}
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
 
         {/* Service Areas Section */}
         <div className="form-group">

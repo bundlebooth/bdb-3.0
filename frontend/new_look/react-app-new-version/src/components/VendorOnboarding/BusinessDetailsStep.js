@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 
 /**
  * BusinessDetailsStep - Vendor onboarding step for business information
- * Extracted from BecomeVendorPage.js for better maintainability
+ * UI cloned from BusinessInformationPanel for consistency
  */
 function BusinessDetailsStep({ formData, onInputChange }) {
   const [logoPreview, setLogoPreview] = useState(formData.profileLogo || '');
@@ -18,7 +18,6 @@ function BusinessDetailsStep({ formData, onInputChange }) {
           const canvas = document.createElement('canvas');
           let { width, height } = img;
           
-          // Calculate new dimensions while maintaining aspect ratio
           if (width > height) {
             if (width > maxWidth) {
               height = Math.round((height * maxWidth) / width);
@@ -37,7 +36,6 @@ function BusinessDetailsStep({ formData, onInputChange }) {
           const ctx = canvas.getContext('2d');
           ctx.drawImage(img, 0, 0, width, height);
           
-          // Convert to base64 with compression
           const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
           resolve(compressedDataUrl);
         };
@@ -52,7 +50,6 @@ function BusinessDetailsStep({ formData, onInputChange }) {
   const handleLogoUpload = async (e) => {
     const file = e.target.files[0];
     if (file) {
-      // Check file size - if over 500KB, compress it
       const maxSizeKB = 500;
       const fileSizeKB = file.size / 1024;
       
@@ -60,17 +57,14 @@ function BusinessDetailsStep({ formData, onInputChange }) {
       try {
         let imageData;
         if (fileSizeKB > maxSizeKB) {
-          // Compress the image
           imageData = await compressImage(file, 400, 400, 0.7);
         } else {
-          // Still compress slightly for consistency
           imageData = await compressImage(file, 600, 600, 0.85);
         }
         setLogoPreview(imageData);
         onInputChange('profileLogo', imageData);
       } catch (error) {
         console.error('Error processing image:', error);
-        // Fallback to original method if compression fails
         const reader = new FileReader();
         reader.onloadend = () => {
           setLogoPreview(reader.result);
@@ -85,118 +79,172 @@ function BusinessDetailsStep({ formData, onInputChange }) {
 
   return (
     <div className="business-details-step">
-      <div className="form-group">
-        <label>Profile Logo</label>
-        <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'flex-start' }}>
-          <div style={{ flex: 1 }}>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleLogoUpload}
-              className="form-input"
-              style={{ padding: '0.5rem' }}
+      {/* Business Logo Section - matching BusinessInformationPanel */}
+      <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '1rem', color: '#1f2937' }}>
+        Business Logo
+      </h3>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', marginBottom: '2rem' }}>
+        <div style={{ 
+          width: '120px', 
+          height: '120px', 
+          borderRadius: '50%', 
+          overflow: 'hidden', 
+          border: '3px solid #e5e7eb',
+          background: '#f9fafb',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0
+        }}>
+          {logoPreview ? (
+            <img 
+              src={logoPreview} 
+              alt="Business Logo" 
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
             />
-            <p style={{ fontSize: '0.85rem', color: '#6b7280', marginTop: '0.5rem' }}>
-              Upload your business logo (JPG, PNG, or GIF)
-            </p>
-          </div>
-          {(logoPreview || uploadingLogo) && (
-            <div style={{ 
-              width: '100px', 
-              height: '100px', 
-              borderRadius: '50%', 
-              overflow: 'hidden',
-              border: '2px solid #e5e7eb',
+          ) : (
+            <i className="fas fa-building" style={{ fontSize: '3rem', color: '#9ca3af' }}></i>
+          )}
+        </div>
+        <div>
+          <button 
+            type="button"
+            className="btn btn-outline"
+            onClick={() => document.getElementById('logo-upload-input-onboarding').click()}
+            disabled={uploadingLogo}
+            style={{ 
+              marginBottom: '0.5rem',
+              padding: '0.5rem 1rem',
+              border: '1px solid #d1d5db',
+              borderRadius: '8px',
+              background: 'white',
+              cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center',
-              background: '#f9fafb',
-              position: 'relative'
-            }}>
-              {uploadingLogo ? (
-                <div style={{ 
-                  display: 'flex', 
-                  flexDirection: 'column', 
-                  alignItems: 'center', 
-                  gap: '4px',
-                  color: '#6b7280',
-                  fontSize: '12px'
-                }}>
-                  <i className="fas fa-spinner fa-spin" style={{ fontSize: '20px' }}></i>
-                  <span>Processing...</span>
-                </div>
-              ) : (
-                <img 
-                  src={logoPreview} 
-                  alt="Logo preview" 
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                />
-              )}
-            </div>
-          )}
+              gap: '0.5rem'
+            }}
+          >
+            <i className="fas fa-upload"></i> {uploadingLogo ? 'Uploading...' : 'Upload Logo'}
+          </button>
+          <input
+            type="file"
+            id="logo-upload-input-onboarding"
+            accept="image/*"
+            onChange={handleLogoUpload}
+            style={{ display: 'none' }}
+          />
+          <p style={{ color: '#6b7280', fontSize: '0.85rem', margin: 0 }}>
+            JPG, PNG or SVG. Max size 5MB.
+          </p>
         </div>
       </div>
 
-      <div className="form-group">
-        <label>Business Name <span style={{ color: '#ef4444' }}>*</span></label>
-        <input
-          type="text"
-          value={formData.businessName}
-          onChange={(e) => onInputChange('businessName', e.target.value)}
-          className="form-input"
-          placeholder="e.g., Elegant Events Catering"
-        />
+      <hr style={{ border: 'none', borderTop: '1px solid #e5e7eb', margin: '2rem 0' }} />
+
+      {/* Form rows matching BusinessInformationPanel layout */}
+      <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+        <div className="form-group" style={{ margin: 0 }}>
+          <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: '#374151' }}>
+            Business Name <span style={{ color: '#ef4444' }}>*</span>
+          </label>
+          <input
+            type="text"
+            value={formData.businessName}
+            onChange={(e) => onInputChange('businessName', e.target.value)}
+            placeholder="e.g., Elegant Events Catering"
+            style={{
+              width: '100%',
+              padding: '0.75rem',
+              border: '1px solid #d1d5db',
+              borderRadius: '8px',
+              fontSize: '0.95rem'
+            }}
+            required
+          />
+        </div>
+        <div className="form-group" style={{ margin: 0 }}>
+          <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: '#374151' }}>
+            Display Name (for public listing)
+          </label>
+          <input
+            type="text"
+            value={formData.displayName}
+            onChange={(e) => onInputChange('displayName', e.target.value)}
+            placeholder="How you want to appear to clients"
+            style={{
+              width: '100%',
+              padding: '0.75rem',
+              border: '1px solid #d1d5db',
+              borderRadius: '8px',
+              fontSize: '0.95rem'
+            }}
+          />
+        </div>
       </div>
 
-      <div className="form-group">
-        <label>Display Name <span style={{ color: '#ef4444' }}>*</span></label>
-        <input
-          type="text"
-          value={formData.displayName}
-          onChange={(e) => onInputChange('displayName', e.target.value)}
-          className="form-input"
-          placeholder="How you want to appear to clients"
-        />
+      <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+        <div className="form-group" style={{ margin: 0 }}>
+          <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: '#374151' }}>
+            Price Range
+          </label>
+          <select
+            value={formData.priceRange}
+            onChange={(e) => onInputChange('priceRange', e.target.value)}
+            style={{
+              width: '100%',
+              padding: '0.75rem',
+              border: '1px solid #d1d5db',
+              borderRadius: '8px',
+              fontSize: '0.95rem',
+              background: 'white'
+            }}
+          >
+            <option value="">Select price range</option>
+            <option value="$">$ - Budget Friendly</option>
+            <option value="$$">$$ - Moderate</option>
+            <option value="$$$">$$$ - Premium</option>
+            <option value="$$$$">$$$$ - Luxury</option>
+          </select>
+        </div>
+        <div className="form-group" style={{ margin: 0 }}>
+          <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: '#374151' }}>
+            Years in Business
+          </label>
+          <input
+            type="number"
+            value={formData.yearsInBusiness}
+            onChange={(e) => onInputChange('yearsInBusiness', e.target.value)}
+            min="0"
+            placeholder="e.g., 5"
+            style={{
+              width: '100%',
+              padding: '0.75rem',
+              border: '1px solid #d1d5db',
+              borderRadius: '8px',
+              fontSize: '0.95rem'
+            }}
+          />
+        </div>
       </div>
 
-      <div className="form-group">
-        <label>Business Description</label>
+      <div className="form-group" style={{ marginBottom: '1rem' }}>
+        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: '#374151' }}>
+          Business Description <span style={{ color: '#ef4444' }}>*</span>
+        </label>
         <textarea
           value={formData.businessDescription}
           onChange={(e) => onInputChange('businessDescription', e.target.value)}
-          className="form-textarea"
-          rows="5"
+          rows="4"
           placeholder="Tell clients about your business, what makes you unique, and what they can expect..."
-        />
-      </div>
-
-      <div className="form-group">
-        <label>Price Range</label>
-        <select
-          value={formData.priceRange}
-          onChange={(e) => onInputChange('priceRange', e.target.value)}
-          className="form-input"
-        >
-          <option value="">Select price range</option>
-          <option value="$">$ - Budget Friendly</option>
-          <option value="$$">$$ - Moderate</option>
-          <option value="$$$">$$$ - Premium</option>
-          <option value="$$$$">$$$$ - Luxury</option>
-        </select>
-        <p style={{ fontSize: '0.85rem', color: '#6b7280', marginTop: '0.5rem' }}>
-          Help clients understand your pricing level
-        </p>
-      </div>
-
-      <div className="form-group">
-        <label>Years in Business</label>
-        <input
-          type="number"
-          value={formData.yearsInBusiness}
-          onChange={(e) => onInputChange('yearsInBusiness', e.target.value)}
-          className="form-input"
-          min="0"
-          placeholder="e.g., 5"
+          style={{
+            width: '100%',
+            padding: '0.75rem',
+            border: '1px solid #d1d5db',
+            borderRadius: '8px',
+            fontSize: '0.95rem',
+            resize: 'vertical'
+          }}
+          required
         />
       </div>
     </div>

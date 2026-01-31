@@ -470,7 +470,7 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
                 position: 'relative'
               }}
             >
-              {currentUser ? currentUser.name.charAt(0).toUpperCase() : <i className="fas fa-user" style={{ fontSize: '14px' }}></i>}
+              {currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : <i className="fas fa-user" style={{ fontSize: '14px' }}></i>}
             </div>
           )}
           {/* Exclamation mark indicator for incomplete profile - only show if NOT live */}

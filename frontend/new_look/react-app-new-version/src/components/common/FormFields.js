@@ -135,12 +135,13 @@ export const MultiSelectTags = ({
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '0.5rem',
-                padding: '0.35rem 0.75rem',
-                background: '#f3f4f6',
+                gap: '0.25rem',
+                padding: '0.5rem 0.75rem',
+                background: '#f0f4ff',
+                border: '1px solid #e5e7eb',
                 borderRadius: '6px',
                 fontSize: '0.875rem',
-                color: 'var(--text)'
+                color: '#5086E8'
               }}
             >
               {opt}
@@ -153,9 +154,10 @@ export const MultiSelectTags = ({
                     border: 'none',
                     cursor: 'pointer',
                     padding: 0,
-                    color: '#6b7280',
-                    fontSize: '0.9rem',
-                    lineHeight: 1
+                    color: '#9ca3af',
+                    fontSize: '0.875rem',
+                    lineHeight: 1,
+                    marginLeft: '0.125rem'
                   }}
                 >
                   ×
@@ -294,7 +296,7 @@ export const TextArea = ({
   />
 );
 
-// Chip/Tag button for feature selection - white with grey border unselected, grey when selected
+// Chip/Tag button for feature selection - grey/blue style matching SelectableTile
 export const ChipButton = ({ 
   selected = false, 
   onClick, 
@@ -309,22 +311,23 @@ export const ChipButton = ({
     style={{
       display: 'inline-flex',
       alignItems: 'center',
-      gap: '0.5rem',
-      padding: '0.5rem 0.875rem',
-      borderRadius: '8px',
-      border: selected ? 'none' : '1px solid #d1d5db',
-      background: selected ? '#f3f4f6' : 'white',
-      color: '#374151',
+      gap: '0.25rem',
+      padding: '0.5rem 0.75rem',
+      borderRadius: '6px',
+      border: '1px solid #e5e7eb',
+      background: selected ? '#f0f4ff' : '#f9fafb',
+      color: selected ? '#5086E8' : '#374151',
       fontWeight: 400,
       cursor: disabled ? 'not-allowed' : 'pointer',
       fontSize: '0.875rem',
       transition: 'all 0.15s ease',
-      opacity: disabled ? 0.5 : 1
+      opacity: disabled ? 0.5 : 1,
+      whiteSpace: 'nowrap'
     }}
   >
     {children}
     {selected && showRemove && (
-      <span style={{ color: '#6b7280', fontSize: '0.9rem', lineHeight: 1 }}>×</span>
+      <span style={{ color: '#9ca3af', fontSize: '0.875rem', lineHeight: 1, marginLeft: '0.125rem' }}>×</span>
     )}
   </button>
 );

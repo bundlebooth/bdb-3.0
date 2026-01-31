@@ -3,6 +3,10 @@ import { API_BASE_URL } from '../../config';
 import { showBanner } from '../../utils/helpers';
 import { DeleteButton } from '../common/UIComponents';
 
+/**
+ * GalleryStep - Vendor onboarding step for gallery photos
+ * UI cloned from GalleryMediaPanel for consistency
+ */
 function GalleryStep({ formData, setFormData, currentUser }) {
   const [loading, setLoading] = useState(true);
   const [photos, setPhotos] = useState([]);
@@ -10,7 +14,6 @@ function GalleryStep({ formData, setFormData, currentUser }) {
   const [urlInput, setUrlInput] = useState({ url: '', caption: '', isPrimary: false });
   const [draggedIndex, setDraggedIndex] = useState(null);
   const [dragOverIndex, setDragOverIndex] = useState(null);
-  const fileInputRefs = useRef({});
   const MIN_PHOTOS = 5;
 
   useEffect(() => {
@@ -172,18 +175,25 @@ function GalleryStep({ formData, setFormData, currentUser }) {
   const handleDragStart = (e, index) => {
     setDraggedIndex(index);
     e.dataTransfer.effectAllowed = 'move';
+    e.target.style.opacity = '0.5';
   };
 
-  const handleDragEnd = () => {
+  const handleDragEnd = (e) => {
+    e.target.style.opacity = '1';
     setDraggedIndex(null);
     setDragOverIndex(null);
   };
 
   const handleDragOver = (e, index) => {
     e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
     if (index !== draggedIndex) {
       setDragOverIndex(index);
     }
+  };
+
+  const handleDragLeave = () => {
+    setDragOverIndex(null);
   };
 
   const handleDrop = async (e, dropIndex) => {
@@ -207,7 +217,7 @@ function GalleryStep({ formData, setFormData, currentUser }) {
         displayOrder: idx + 1
       }));
       
-      await fetch(`${API_BASE_URL}/vendors/${currentUser.vendorProfileId}/images/reorder`, {
+      const response = await fetch(`${API_BASE_URL}/vendors/${currentUser.vendorProfileId}/images/reorder`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -215,6 +225,10 @@ function GalleryStep({ formData, setFormData, currentUser }) {
         },
         body: JSON.stringify({ images: orderData })
       });
+      
+      if (response.ok) {
+        showBanner('Photos reordered!', 'success');
+      }
       
       setFormData(prev => ({
         ...prev,
@@ -226,12 +240,6 @@ function GalleryStep({ formData, setFormData, currentUser }) {
     }
   };
 
-  const triggerFileInput = (index) => {
-    if (fileInputRefs.current[index]) {
-      fileInputRefs.current[index].click();
-    }
-  };
-
   if (loading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '40vh' }}>
@@ -240,254 +248,246 @@ function GalleryStep({ formData, setFormData, currentUser }) {
     );
   }
 
-  // Create slots array - show at least MIN_PHOTOS slots
-  const totalSlots = Math.max(MIN_PHOTOS, photos.length + 1);
-  const slots = [];
-  for (let i = 0; i < totalSlots; i++) {
-    slots.push(photos[i] || null);
-  }
-
-  const coverPhoto = photos.find(p => p.isPrimary) || photos[0];
-  const otherPhotos = photos.filter(p => p !== coverPhoto);
-
   return (
     <div className="gallery-step">
-      <div style={{ maxWidth: '100%', width: '100%' }}>
+      {/* Business Photos Section - Airbnb Style (matching GalleryMediaPanel) */}
+      <div style={{ marginBottom: '3rem' }}>
+        {/* Header with title and Add More button */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+          <h3 style={{ fontSize: '1.5rem', fontWeight: 600, color: '#222', margin: 0 }}>
+            {photos.length > 0 ? 'Your listing looks great!' : 'Add photos to your listing'}
+          </h3>
+          {photos.length > 0 && (
+            <button 
+              onClick={() => document.getElementById('gallery-photo-upload-input').click()}
+              style={{
+                padding: '8px 16px',
+                border: '1px solid #222',
+                borderRadius: '8px',
+                background: 'white',
+                color: '#222',
+                fontWeight: 500,
+                fontSize: '0.875rem',
+                cursor: 'pointer'
+              }}
+            >
+              Add more
+            </button>
+          )}
+        </div>
+        
         {/* Photo count requirement */}
         <p style={{ 
           fontSize: '0.9rem', 
-          color: photos.length >= MIN_PHOTOS ? '#16a34a' : '#dc2626',
-          marginBottom: '1.5rem',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.5rem'
+          color: photos.length >= MIN_PHOTOS ? '#16a34a' : '#717171',
+          marginBottom: '0.5rem'
         }}>
-          At least {MIN_PHOTOS} photos required <span style={{ color: '#ef4444' }}>*</span>
-          <span style={{ color: '#6b7280' }}>— {photos.length}/{MIN_PHOTOS} photo{photos.length !== 1 ? 's' : ''} uploaded</span>
+          {photos.length >= MIN_PHOTOS 
+            ? `${photos.length} photos uploaded` 
+            : `At least ${MIN_PHOTOS} photos required — ${photos.length}/${MIN_PHOTOS} uploaded`}
         </p>
-
-        {/* Airbnb-style photo grid */}
-        <div style={{ marginBottom: '2rem' }}>
-          {/* Cover photo - large */}
-          <div 
-            onClick={() => !coverPhoto && triggerFileInput(0)}
-            draggable={!!coverPhoto}
-            onDragStart={(e) => coverPhoto && handleDragStart(e, 0)}
-            onDragEnd={handleDragEnd}
-            onDragOver={(e) => handleDragOver(e, 0)}
-            onDrop={(e) => handleDrop(e, 0)}
-            style={{
-              position: 'relative',
-              width: '100%',
-              aspectRatio: '16/9',
-              borderRadius: '12px',
-              overflow: 'hidden',
-              border: dragOverIndex === 0 ? '3px solid var(--primary)' : '2px dashed #d1d5db',
-              background: coverPhoto ? 'transparent' : '#f9fafb',
-              cursor: coverPhoto ? 'grab' : 'pointer',
-              marginBottom: '1rem'
-            }}
-          >
-            {coverPhoto ? (
-              <>
-                <img 
-                  src={coverPhoto.url} 
-                  alt="Cover" 
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                />
-                <div style={{
-                  position: 'absolute',
-                  top: '12px',
-                  left: '12px',
-                  background: '#222',
-                  color: 'white',
-                  padding: '0.35rem 0.75rem',
-                  borderRadius: '6px',
-                  fontSize: '0.8rem',
-                  fontWeight: 600
-                }}>
-                  Cover Photo
-                </div>
-                <DeleteButton 
-                  onClick={(e) => handleDeletePhoto(coverPhoto.id, e)}
-                  title="Remove"
-                  style={{ 
-                    position: 'absolute', 
-                    top: '12px', 
-                    right: '12px',
-                    background: 'rgba(255,255,255,0.95)'
-                  }}
-                />
-              </>
-            ) : (
-              <div style={{
+        
+        {/* Rearrange hint */}
+        {photos.length > 1 && (
+          <p style={{ color: '#717171', fontSize: '0.9rem', marginBottom: '1rem' }}>
+            Rearrange by dragging.
+          </p>
+        )}
+        
+        {/* Photo Grid - 3 column Airbnb style with drag to rearrange */}
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(3, 1fr)', 
+          gap: '8px', 
+          marginBottom: '1.5rem' 
+        }} id="vendor-photos-onboarding">
+          {photos.length === 0 ? (
+            <div 
+              onClick={() => document.getElementById('gallery-photo-upload-input').click()}
+              style={{
+                gridColumn: 'span 3',
+                aspectRatio: '16/9',
+                border: '1px dashed #b0b0b0',
+                borderRadius: '12px',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
-                height: '100%',
-                color: '#9ca3af'
-              }}>
-                <i className="fas fa-image" style={{ fontSize: '3rem', marginBottom: '0.75rem' }}></i>
-                <span style={{ fontSize: '0.9rem' }}>Click to add cover photo</span>
-              </div>
-            )}
-            <input
-              ref={el => fileInputRefs.current[0] = el}
-              type="file"
-              accept="image/*"
-              onChange={(e) => handleFileUpload(e, 0)}
-              style={{ display: 'none' }}
-            />
-          </div>
-
-          {/* Additional photos - 2x2 grid */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(2, 1fr)',
-            gap: '1rem'
-          }}>
-            {[1, 2, 3, 4].map((slotIndex) => {
-              const photo = otherPhotos[slotIndex - 1];
-              const isAddMore = slotIndex === 4 && !photo && photos.length >= 4;
-              
-              return (
+                cursor: 'pointer',
+                background: '#fafafa',
+                transition: 'border-color 0.2s'
+              }}
+              onMouseOver={(e) => e.currentTarget.style.borderColor = '#222'}
+              onMouseOut={(e) => e.currentTarget.style.borderColor = '#b0b0b0'}
+            >
+              <i className="fas fa-image" style={{ fontSize: '2rem', color: '#717171', marginBottom: '12px' }}></i>
+              <span style={{ fontWeight: 500, color: '#222' }}>Add photos</span>
+              <span style={{ fontSize: '0.85rem', color: '#717171', marginTop: '4px' }}>Click to upload</span>
+            </div>
+          ) : (
+            <>
+              {photos.map((photo, index) => (
                 <div
-                  key={slotIndex}
-                  onClick={() => !photo && triggerFileInput(slotIndex)}
-                  draggable={!!photo}
-                  onDragStart={(e) => photo && handleDragStart(e, photos.indexOf(photo))}
+                  key={photo.id}
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, index)}
                   onDragEnd={handleDragEnd}
-                  onDragOver={(e) => photo && handleDragOver(e, photos.indexOf(photo))}
-                  onDrop={(e) => photo && handleDrop(e, photos.indexOf(photo))}
+                  onDragOver={(e) => handleDragOver(e, index)}
+                  onDragLeave={handleDragLeave}
+                  onDrop={(e) => handleDrop(e, index)}
                   style={{
                     position: 'relative',
                     aspectRatio: '1',
-                    borderRadius: '12px',
+                    borderRadius: '8px',
                     overflow: 'hidden',
-                    border: '2px dashed #d1d5db',
-                    background: photo ? 'transparent' : '#f9fafb',
-                    cursor: photo ? 'grab' : 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
+                    cursor: 'grab',
+                    border: dragOverIndex === index ? '2px solid #222' : '1px solid #e5e7eb',
+                    opacity: draggedIndex === index ? 0.5 : 1,
+                    transition: 'border-color 0.2s, opacity 0.2s'
                   }}
                 >
-                  {photo ? (
-                    <>
-                      <img 
-                        src={photo.url} 
-                        alt={`Photo ${slotIndex}`}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                      />
-                      <DeleteButton 
-                        onClick={(e) => handleDeletePhoto(photo.id, e)}
-                        title="Remove"
-                        style={{ 
-                          position: 'absolute', 
-                          top: '8px', 
-                          right: '8px',
-                          background: 'rgba(255,255,255,0.95)'
-                        }}
-                      />
-                    </>
-                  ) : isAddMore ? (
-                    <div style={{ textAlign: 'center', color: '#6b7280' }}>
-                      <i className="fas fa-plus" style={{ fontSize: '1.5rem', marginBottom: '0.5rem', display: 'block' }}></i>
-                      <span style={{ fontSize: '0.85rem' }}>Add more</span>
+                  <img
+                    src={photo.url}
+                    alt={`Gallery ${index + 1}`}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none' }}
+                  />
+                  {/* Cover badge */}
+                  {index === 0 && (
+                    <div style={{
+                      position: 'absolute',
+                      top: '8px',
+                      left: '8px',
+                      background: 'white',
+                      color: '#222',
+                      padding: '4px 10px',
+                      borderRadius: '4px',
+                      fontSize: '12px',
+                      fontWeight: 500,
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                    }}>
+                      Cover
                     </div>
-                  ) : (
-                    <i className="fas fa-image" style={{ fontSize: '2rem', color: '#d1d5db' }}></i>
                   )}
-                  <input
-                    ref={el => fileInputRefs.current[slotIndex] = el}
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => handleFileUpload(e, slotIndex)}
-                    style={{ display: 'none' }}
+                  {/* Delete button - top right */}
+                  <DeleteButton
+                    onClick={(e) => handleDeletePhoto(photo.id, e)}
+                    className="photo-delete-btn"
+                    style={{ 
+                      position: 'absolute',
+                      top: '8px', 
+                      right: '8px', 
+                      opacity: 0,
+                      background: 'rgba(255,255,255,0.95)'
+                    }}
+                    title="Remove"
                   />
                 </div>
-              );
-            })}
-          </div>
+              ))}
+              {/* Add more card at the end - dashed border style */}
+              <div 
+                onClick={() => document.getElementById('gallery-photo-upload-input').click()}
+                style={{
+                  aspectRatio: '1',
+                  border: '2px dashed #d1d5db',
+                  borderRadius: '8px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  background: 'white',
+                  transition: 'border-color 0.2s, background 0.2s'
+                }}
+                onMouseOver={(e) => { e.currentTarget.style.borderColor = '#222'; e.currentTarget.style.background = '#fafafa'; }}
+                onMouseOut={(e) => { e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.background = 'white'; }}
+              >
+                <i className="fas fa-plus" style={{ fontSize: '1.25rem', color: '#222', marginBottom: '4px' }}></i>
+                <span style={{ fontSize: '0.8rem', color: '#222', fontWeight: 500 }}>Add photo</span>
+              </div>
+            </>
+          )}
         </div>
-
+        
+        {/* Show delete buttons on hover - CSS */}
+        <style>{`
+          #vendor-photos-onboarding > div:hover .photo-delete-btn {
+            opacity: 1 !important;
+          }
+        `}</style>
+        
+        <input
+          type="file"
+          id="gallery-photo-upload-input"
+          multiple
+          accept="image/*"
+          onChange={handleFileUpload}
+          style={{ display: 'none' }}
+        />
+        
         {/* Add by URL section */}
-        <div style={{ 
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr auto auto',
-          gap: '0.75rem',
-          alignItems: 'end',
-          marginTop: '1.5rem'
-        }}>
-          <div>
-            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '0.35rem', color: '#374151' }}>
-              Add Image by URL
-            </label>
+        <div style={{ marginTop: '1rem', display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '0.5rem', alignItems: 'end' }}>
+          <div className="form-group" style={{ margin: 0 }}>
+            <label htmlFor="image-url-input-onboarding">Add Image by URL</label>
             <input
-              type="text"
+              type="url"
+              id="image-url-input-onboarding"
               placeholder="https://..."
               value={urlInput.url}
-              onChange={(e) => setUrlInput(prev => ({ ...prev, url: e.target.value }))}
+              onChange={(e) => setUrlInput({ ...urlInput, url: e.target.value })}
               style={{
                 width: '100%',
-                padding: '0.625rem 0.875rem',
+                padding: '0.75rem',
                 border: '1px solid #d1d5db',
                 borderRadius: '8px',
                 fontSize: '0.9rem'
               }}
             />
           </div>
-          <div>
-            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '0.35rem', color: '#374151' }}>
-              Caption (optional)
-            </label>
+          <div className="form-group" style={{ margin: 0 }}>
+            <label htmlFor="image-caption-input-onboarding">Caption (optional)</label>
             <input
               type="text"
-              placeholder=""
+              id="image-caption-input-onboarding"
               value={urlInput.caption}
-              onChange={(e) => setUrlInput(prev => ({ ...prev, caption: e.target.value }))}
+              onChange={(e) => setUrlInput({ ...urlInput, caption: e.target.value })}
               style={{
                 width: '100%',
-                padding: '0.625rem 0.875rem',
+                padding: '0.75rem',
                 border: '1px solid #d1d5db',
                 borderRadius: '8px',
                 fontSize: '0.9rem'
               }}
             />
           </div>
-          <label style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '0.5rem', 
-            cursor: 'pointer',
-            paddingBottom: '0.625rem'
-          }}>
-            <input
-              type="checkbox"
-              checked={urlInput.isPrimary}
-              onChange={(e) => setUrlInput(prev => ({ ...prev, isPrimary: e.target.checked }))}
-              style={{ width: '16px', height: '16px' }}
-            />
-            <span style={{ fontSize: '0.85rem', color: '#374151' }}>Primary</span>
-          </label>
-          <button
-            onClick={handleAddPhotoByUrl}
-            disabled={uploading || !urlInput.url.trim()}
-            style={{
-              padding: '0.625rem 1rem',
-              background: '#222',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              fontSize: '0.85rem',
-              fontWeight: 500,
-              cursor: uploading || !urlInput.url.trim() ? 'not-allowed' : 'pointer',
-              opacity: uploading || !urlInput.url.trim() ? 0.6 : 1
-            }}
-          >
-            Add
-          </button>
+          <div className="form-group" style={{ margin: 0, display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+              <input
+                type="checkbox"
+                id="image-primary-checkbox-onboarding"
+                checked={urlInput.isPrimary}
+                onChange={(e) => setUrlInput({ ...urlInput, isPrimary: e.target.checked })}
+              />
+              {' '}Primary
+            </label>
+            <button 
+              className="btn btn-primary" 
+              type="button" 
+              onClick={handleAddPhotoByUrl}
+              disabled={uploading || !urlInput.url.trim()}
+              style={{
+                padding: '0.75rem 1.25rem',
+                background: '#222',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontWeight: 500,
+                cursor: uploading || !urlInput.url.trim() ? 'not-allowed' : 'pointer',
+                opacity: uploading || !urlInput.url.trim() ? 0.6 : 1
+              }}
+            >
+              Add
+            </button>
+          </div>
         </div>
       </div>
     </div>

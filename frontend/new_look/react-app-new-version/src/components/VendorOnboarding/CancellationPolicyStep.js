@@ -6,6 +6,21 @@ import { showBanner } from '../../utils/helpers';
 function CancellationPolicyStep({ formData, setFormData }) {
   const { currentUser } = useAuth();
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
+  
+  // Booking settings (matching BookingSettingsPanel)
+  const [instantBookingEnabled, setInstantBookingEnabled] = useState(false);
+  const [minBookingLeadTimeHours, setMinBookingLeadTimeHours] = useState(24);
+  
+  const leadTimeOptions = [
+    { value: 0, label: 'No minimum' },
+    { value: 24, label: '24 hours (1 day)' },
+    { value: 48, label: '48 hours (2 days)' },
+    { value: 72, label: '72 hours (3 days)' },
+    { value: 168, label: '1 week' },
+    { value: 336, label: '2 weeks' }
+  ];
+  
   const [policy, setPolicy] = useState({
     policyType: 'flexible',
     fullRefundDays: 7,
@@ -50,16 +65,39 @@ function CancellationPolicyStep({ formData, setFormData }) {
     }
   ];
 
-  // Load existing policy on mount
+  // Load existing policy and booking settings on mount
   useEffect(() => {
-    const loadPolicy = async () => {
-      if (!currentUser?.vendorProfileId) return;
+    const loadData = async () => {
+      if (!currentUser?.vendorProfileId) {
+        setLoading(false);
+        return;
+      }
       try {
-        const response = await fetch(`${API_BASE_URL}/payments/vendor/${currentUser.vendorProfileId}/cancellation-policy`, {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        const token = localStorage.getItem('token');
+        
+        // Load vendor profile for booking settings
+        const profileRes = await fetch(`${API_BASE_URL}/vendors/${currentUser.vendorProfileId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
         });
-        if (response.ok) {
-          const data = await response.json();
+        
+        if (profileRes.ok) {
+          const result = await profileRes.json();
+          const profile = result.data?.profile || result.profile || result;
+          
+          if (profile.InstantBookingEnabled !== undefined) {
+            setInstantBookingEnabled(profile.InstantBookingEnabled);
+          }
+          if (profile.MinBookingLeadTimeHours !== undefined) {
+            setMinBookingLeadTimeHours(profile.MinBookingLeadTimeHours);
+          }
+        }
+        
+        // Load cancellation policy
+        const policyRes = await fetch(`${API_BASE_URL}/payments/vendor/${currentUser.vendorProfileId}/cancellation-policy`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (policyRes.ok) {
+          const data = await policyRes.json();
           if (data.policy) {
             const loadedPolicy = {
               policyType: data.policy.PolicyType || 'flexible',
@@ -74,10 +112,12 @@ function CancellationPolicyStep({ formData, setFormData }) {
           }
         }
       } catch (error) {
-        console.error('Error loading cancellation policy:', error);
+        console.error('Error loading booking settings:', error);
+      } finally {
+        setLoading(false);
       }
     };
-    loadPolicy();
+    loadData();
   }, [currentUser?.vendorProfileId]);
 
   // Also load from formData if it exists
@@ -112,44 +152,127 @@ function CancellationPolicyStep({ formData, setFormData }) {
     }
     setSaving(true);
     try {
+      const token = localStorage.getItem('token');
+      
+      // Save booking settings via step4 endpoint (same as BookingSettingsPanel)
+      await fetch(`${API_BASE_URL}/vendors/setup/step4-business-hours`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          vendorProfileId: currentUser.vendorProfileId,
+          instantBookingEnabled,
+          minBookingLeadTimeHours
+        })
+      });
+      
+      // Save cancellation policy
       const response = await fetch(`${API_BASE_URL}/payments/vendor/${currentUser.vendorProfileId}/cancellation-policy`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(policy)
       });
       const data = await response.json();
       if (response.ok && data.success) {
-        showBanner('Cancellation policy saved!', 'success');
+        showBanner('Booking settings saved!', 'success');
       } else {
         throw new Error(data.message || 'Failed to save');
       }
     } catch (error) {
-      console.error('Error saving cancellation policy:', error);
-      showBanner('Failed to save cancellation policy: ' + error.message, 'error');
+      console.error('Error saving booking settings:', error);
+      showBanner('Failed to save: ' + error.message, 'error');
     } finally {
       setSaving(false);
     }
   };
 
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '40vh' }}>
+        <div className="spinner"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="cancellation-policy-step">
-      {/* Info Box */}
-      <div style={{
-        marginBottom: '1.5rem',
-        display: 'flex',
-        alignItems: 'flex-start',
-        gap: '0.75rem'
-      }}>
-        <i className="fas fa-shield-alt" style={{ color: '#22c55e', marginTop: '0.15rem' }}></i>
-        <div>
-          <strong style={{ color: '#166534' }}>Protect your business</strong>
-          <p style={{ margin: '0.5rem 0 0', color: '#6b7280', fontSize: '0.9rem' }}>
-            A clear cancellation policy protects your business while giving clients confidence when booking.
-          </p>
-        </div>
+      {/* Instant Booking Section */}
+      <div style={{ marginBottom: '2rem', paddingBottom: '1.5rem', borderBottom: '1px solid #e5e7eb' }}>
+        <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.125rem', fontWeight: 600, color: '#111827', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <i className="fas fa-bolt" style={{ color: '#5086E8' }}></i>
+          Instant Booking
+        </h3>
+        <p style={{ margin: '0 0 1rem 0', color: '#6b7280', fontSize: '0.875rem' }}>
+          Allow clients to book and pay immediately without waiting for your approval
+        </p>
+        <label style={{ 
+          display: 'flex', 
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '1rem 1.25rem',
+          background: instantBookingEnabled ? '#eff6ff' : '#f9fafb',
+          borderRadius: '12px',
+          border: instantBookingEnabled ? '2px solid #5086E8' : '1px solid #e5e7eb',
+          cursor: 'pointer',
+          maxWidth: '400px'
+        }}>
+          <span style={{ fontWeight: 500, color: '#111827' }}>
+            Enable Instant Booking
+          </span>
+          <input
+            type="checkbox"
+            checked={instantBookingEnabled}
+            onChange={(e) => setInstantBookingEnabled(e.target.checked)}
+            style={{ width: '20px', height: '20px', accentColor: '#5086E8' }}
+          />
+        </label>
+      </div>
+
+      {/* Minimum Lead Time Section */}
+      <div style={{ marginBottom: '2rem', paddingBottom: '1.5rem', borderBottom: '1px solid #e5e7eb' }}>
+        <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.125rem', fontWeight: 600, color: '#111827', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <i className="fas fa-clock" style={{ color: '#5086E8' }}></i>
+          Minimum Booking Lead Time
+        </h3>
+        <p style={{ margin: '0 0 1rem 0', color: '#6b7280', fontSize: '0.875rem' }}>
+          How much advance notice do you need for bookings?
+        </p>
+        <select
+          value={minBookingLeadTimeHours}
+          onChange={(e) => setMinBookingLeadTimeHours(parseInt(e.target.value))}
+          style={{
+            width: '100%',
+            maxWidth: '300px',
+            padding: '0.75rem 1rem',
+            borderRadius: '8px',
+            border: '1px solid #d1d5db',
+            fontSize: '0.95rem',
+            background: 'white',
+            color: '#111827'
+          }}
+        >
+          {leadTimeOptions.map(option => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Cancellation Policy Section */}
+      <div style={{ marginBottom: '1.5rem' }}>
+        <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.125rem', fontWeight: 600, color: '#111827', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <i className="fas fa-shield-alt" style={{ color: '#5086E8' }}></i>
+          Cancellation Policy
+        </h3>
+        <p style={{ margin: '0 0 1rem 0', color: '#6b7280', fontSize: '0.875rem' }}>
+          A clear cancellation policy protects your business while giving clients confidence when booking.
+        </p>
       </div>
 
       {/* Policy Type Selection - 2x2 Grid */}

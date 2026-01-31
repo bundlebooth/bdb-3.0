@@ -4,7 +4,7 @@ import { showBanner, formatDateTime } from '../../utils/helpers';
 import SetupIncompleteBanner from '../SetupIncompleteBanner';
 
 function AccountStep({ currentUser, setFormData, formData, onAccountCreated, isExistingVendor, steps, isStepCompleted, setCurrentStep, profileStatus, rejectionReason, submittedAt, reviewedAt }) {
-  const [mode, setMode] = useState('signup'); // 'signup' or 'login'
+  const [mode, setMode] = useState('signup'); // 'signup', 'login', or 'twofa'
   const [accountData, setAccountData] = useState({
     name: '',
     email: '',
@@ -12,6 +12,11 @@ function AccountStep({ currentUser, setFormData, formData, onAccountCreated, isE
     confirmPassword: ''
   });
   const [loading, setLoading] = useState(false);
+  
+  // 2FA state
+  const [twofaCode, setTwofaCode] = useState(['', '', '', '', '', '']);
+  const [twofaEmail, setTwofaEmail] = useState('');
+  const [twofaTempToken, setTwofaTempToken] = useState('');
 
   // Check if user is an existing vendor (either from state or from currentUser data)
   const isVendorWithProfile = isExistingVendor || (currentUser?.isVendor && currentUser?.vendorProfileId);
@@ -255,6 +260,15 @@ function AccountStep({ currentUser, setFormData, formData, onAccountCreated, isE
 
       const data = await response.json();
       
+      // Check if 2FA is required (for login only)
+      if (mode === 'login' && data.twoFactorRequired) {
+        setTwofaEmail(accountData.email);
+        setTwofaTempToken(data.tempToken);
+        setMode('twofa');
+        showBanner('Verification code sent to your email', 'info');
+        return;
+      }
+      
       // Store token
       localStorage.setItem('token', data.token);
       
@@ -293,6 +307,142 @@ function AccountStep({ currentUser, setFormData, formData, onAccountCreated, isE
     }
   };
 
+  // 2FA Verification Handler
+  const handleTwoFAVerify = async () => {
+    const code = twofaCode.join('');
+    
+    if (code.length !== 6) {
+      showBanner('Please enter the 6-digit code', 'error');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await fetch(`${API_BASE_URL}/users/login/verify-2fa`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tempToken: twofaTempToken, code })
+      });
+
+      if (!response.ok) {
+        throw new Error('Invalid verification code');
+      }
+
+      const data = await response.json();
+      
+      if (data.token) {
+        localStorage.setItem('token', data.token);
+      }
+      
+      const existingVendorProfileId = data.vendorProfileId || data.user?.vendorProfileId;
+      const isExistingVendorUser = data.isVendor || data.user?.isVendor || !!existingVendorProfileId;
+      
+      const userData = {
+        id: data.userId || data.user?.id,
+        userId: data.userId || data.user?.id,
+        name: data.name || data.user?.name || data.email?.split('@')[0] || 'User',
+        email: data.email || data.user?.email || twofaEmail,
+        userType: isExistingVendorUser ? 'vendor' : 'client',
+        isVendor: isExistingVendorUser,
+        vendorProfileId: existingVendorProfileId
+      };
+      
+      localStorage.setItem('userSession', JSON.stringify(userData));
+      setFormData(prev => ({ ...prev, email: userData.email }));
+      
+      showBanner('Successfully verified!', 'success');
+      
+      if (onAccountCreated) {
+        onAccountCreated(userData);
+      }
+    } catch (error) {
+      console.error('2FA verification error:', error);
+      showBanner('Invalid verification code', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 2FA Input Handler
+  const handleTwoFAInput = (index, value) => {
+    // Handle paste - if pasting full code
+    if (value.length > 1) {
+      const pastedCode = value.replace(/\D/g, '').slice(0, 6);
+      if (pastedCode.length > 0) {
+        const newCode = pastedCode.split('').concat(['', '', '', '', '', '']).slice(0, 6);
+        setTwofaCode(newCode);
+        // Auto-verify if we have 6 digits
+        if (pastedCode.length === 6) {
+          setTimeout(() => {
+            document.querySelector('.otp-verify-btn')?.click();
+          }, 100);
+        }
+        return;
+      }
+    }
+    
+    if (!/^\d*$/.test(value)) return;
+
+    const newCode = [...twofaCode];
+    newCode[index] = value.slice(-1);
+    setTwofaCode(newCode);
+
+    // Auto-focus next input or auto-verify if complete
+    if (value && index < 5) {
+      const nextInput = document.querySelectorAll('.otp-digit')[index + 1];
+      if (nextInput) nextInput.focus();
+    } else if (value && index === 5) {
+      const fullCode = newCode.join('');
+      if (fullCode.length === 6 && /^\d{6}$/.test(fullCode)) {
+        setTimeout(() => {
+          document.querySelector('.otp-verify-btn')?.click();
+        }, 100);
+      }
+    }
+  };
+
+  // 2FA Keyboard Handler
+  const handleTwoFAKeyDown = (index, e) => {
+    if (e.key === 'Backspace') {
+      e.preventDefault();
+      const newCode = [...twofaCode];
+      
+      if (twofaCode[index]) {
+        newCode[index] = '';
+        setTwofaCode(newCode);
+      } else if (index > 0) {
+        newCode[index - 1] = '';
+        setTwofaCode(newCode);
+        const prevInput = document.querySelectorAll('.otp-digit')[index - 1];
+        if (prevInput) prevInput.focus();
+      }
+    }
+    
+    if (e.key === 'ArrowLeft' && index > 0) {
+      const prevInput = document.querySelectorAll('.otp-digit')[index - 1];
+      if (prevInput) prevInput.focus();
+    }
+    
+    if (e.key === 'ArrowRight' && index < 5) {
+      const nextInput = document.querySelectorAll('.otp-digit')[index + 1];
+      if (nextInput) nextInput.focus();
+    }
+  };
+
+  // Resend 2FA Code
+  const handleResend2FA = async () => {
+    try {
+      await fetch(`${API_BASE_URL}/auth/resend-2fa`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: twofaEmail })
+      });
+      showBanner('Verification code resent', 'success');
+    } catch (error) {
+      showBanner('Failed to resend code', 'error');
+    }
+  };
+
   // Consistent modal-style login matching ProfileModal
   return (
     <div className="account-step">
@@ -320,7 +470,107 @@ function AccountStep({ currentUser, setFormData, formData, onAccountCreated, isE
         </div>
         
         <div style={{ padding: '24px' }}>
-          {mode === 'login' ? (
+          {/* 2FA Verification View */}
+          {mode === 'twofa' ? (
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <div style={{ marginBottom: '1rem', color: '#6B7280', fontSize: '0.95rem' }}>
+                Enter the 6-digit code we sent to your email: <strong>{twofaEmail}</strong>
+              </div>
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Verification Code</label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem' }}>
+                  {twofaCode.map((digit, index) => (
+                    <input
+                      key={index}
+                      className="otp-digit"
+                      type="text"
+                      inputMode="numeric"
+                      maxLength="1"
+                      value={digit}
+                      onChange={(e) => handleTwoFAInput(index, e.target.value)}
+                      onKeyDown={(e) => handleTwoFAKeyDown(index, e)}
+                      onPaste={(e) => {
+                        e.preventDefault();
+                        const pastedData = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+                        if (pastedData) {
+                          handleTwoFAInput(0, pastedData);
+                        }
+                      }}
+                      style={{ 
+                        width: '44px', 
+                        height: '48px', 
+                        textAlign: 'center', 
+                        fontSize: '1.25rem', 
+                        border: '1px solid #D1D5DB', 
+                        borderRadius: '8px',
+                        outline: 'none'
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+              <button 
+                className="otp-verify-btn"
+                onClick={handleTwoFAVerify} 
+                disabled={loading} 
+                style={{ 
+                  width: '100%', 
+                  padding: '14px',
+                  backgroundColor: '#222222',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  marginBottom: '0.75rem',
+                  opacity: loading ? 0.7 : 1
+                }}
+              >
+                {loading ? 'Verifying...' : 'Verify'}
+              </button>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', marginTop: 'auto' }}>
+                <button 
+                  type="button"
+                  onClick={handleResend2FA} 
+                  style={{ 
+                    flex: 1,
+                    padding: '12px',
+                    backgroundColor: 'white',
+                    border: '1px solid #D1D5DB',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    color: '#374151',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Resend Code
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => {
+                    setMode('login');
+                    setTwofaCode(['', '', '', '', '', '']);
+                    setTwofaTempToken('');
+                  }} 
+                  style={{ 
+                    flex: 1,
+                    padding: '12px',
+                    backgroundColor: 'white',
+                    border: '1px solid #D1D5DB',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    color: '#374151',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Back
+                </button>
+              </div>
+            </div>
+          ) : mode === 'login' ? (
             <form onSubmit={handleAccountSubmit}>
               <div style={{ marginBottom: '20px' }}>
                 <label style={{ 

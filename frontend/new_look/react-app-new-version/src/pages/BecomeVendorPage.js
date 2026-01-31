@@ -100,6 +100,9 @@ const BecomeVendorPage = () => {
     // Categories
     primaryCategory: '',
     selectedSubcategories: [], // Replaces additionalCategories - now subcategories within the primary category
+    selectedEventTypes: [], // Event types the vendor serves
+    selectedCultures: [], // Cultures the vendor specializes in
+    categoryAnswers: {}, // Answers to category-specific questions
     
     // Business Details
     businessName: '',
@@ -894,6 +897,68 @@ const BecomeVendorPage = () => {
             }
           } catch (featuresError) {
             console.error('[Save] Error saving features:', featuresError);
+          }
+        }
+
+        // Save event types to dedicated endpoint if any are selected
+        if (formData.selectedEventTypes && formData.selectedEventTypes.length > 0) {
+          try {
+            const eventTypesResponse = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/event-types`, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+              },
+              body: JSON.stringify({ eventTypeIds: formData.selectedEventTypes })
+            });
+            if (!eventTypesResponse.ok) {
+              console.error('[Save] Failed to save event types:', await eventTypesResponse.text());
+            }
+          } catch (eventTypesError) {
+            console.error('[Save] Error saving event types:', eventTypesError);
+          }
+        }
+
+        // Save cultures to dedicated endpoint if any are selected
+        if (formData.selectedCultures && formData.selectedCultures.length > 0) {
+          try {
+            const culturesResponse = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/cultures`, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+              },
+              body: JSON.stringify({ cultureIds: formData.selectedCultures })
+            });
+            if (!culturesResponse.ok) {
+              console.error('[Save] Failed to save cultures:', await culturesResponse.text());
+            }
+          } catch (culturesError) {
+            console.error('[Save] Error saving cultures:', culturesError);
+          }
+        }
+
+        // Save category answers to dedicated endpoint if any are provided
+        if (formData.categoryAnswers && Object.keys(formData.categoryAnswers).length > 0) {
+          try {
+            const answersArray = Object.entries(formData.categoryAnswers).map(([questionId, answer]) => ({
+              questionId: parseInt(questionId),
+              answer
+            }));
+            
+            const answersResponse = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/category-answers`, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+              },
+              body: JSON.stringify({ answers: answersArray })
+            });
+            if (!answersResponse.ok) {
+              console.error('[Save] Failed to save category answers:', await answersResponse.text());
+            }
+          } catch (answersError) {
+            console.error('[Save] Error saving category answers:', answersError);
           }
         }
         

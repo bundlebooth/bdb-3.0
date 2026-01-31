@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { API_BASE_URL } from '../../../config';
 import { showBanner } from '../../../utils/helpers';
+import SelectableTile, { SelectableTileGroup } from '../../common/SelectableTile';
 
 // Map vendor category names to feature category names (handle variations)
 const CATEGORY_TO_FEATURE_MAP = {
@@ -307,41 +308,19 @@ function VendorFeaturesPanel({ onBack, vendorProfileId }) {
             </p>
           </div>
         ) : (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+          <SelectableTileGroup>
             {featureCategories.flatMap(category => 
-              category.features.map(feature => {
-                const isSelected = selectedFeatures.includes(feature.featureId);
-                return (
-                  <button
-                    key={feature.featureId}
-                    type="button"
-                    onClick={() => toggleFeature(feature.featureId)}
-                    title={feature.featureDescription}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.5rem',
-                      padding: '0.5rem 1rem',
-                      borderRadius: '20px',
-                      border: isSelected ? '2px solid #5086E8' : '1px solid #d1d5db',
-                      background: isSelected ? '#eff6ff' : 'white',
-                      color: isSelected ? '#5086E8' : '#374151',
-                      fontWeight: isSelected ? 600 : 400,
-                      cursor: 'pointer',
-                      fontSize: '0.875rem',
-                      transition: 'all 0.2s'
-                    }}
-                  >
-                    <i className={`fas ${getIconClass(feature.featureIcon)}`} style={{ fontSize: '0.8rem' }}></i>
-                    {feature.featureName}
-                    {isSelected && (
-                      <i className="fas fa-check" style={{ fontSize: '0.7rem', marginLeft: '0.25rem' }}></i>
-                    )}
-                  </button>
-                );
-              })
+              category.features.map(feature => (
+                <SelectableTile
+                  key={feature.featureId}
+                  label={feature.featureName}
+                  isSelected={selectedFeatures.includes(feature.featureId)}
+                  onClick={() => toggleFeature(feature.featureId)}
+                  icon={getIconClass(feature.featureIcon)}
+                />
+              ))
             )}
-          </div>
+          </SelectableTileGroup>
         )}
 
         <div style={{ marginTop: '2rem' }}>

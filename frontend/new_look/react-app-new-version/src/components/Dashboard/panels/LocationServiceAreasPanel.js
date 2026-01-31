@@ -3,6 +3,7 @@ import { useAuth } from '../../../context/AuthContext';
 import { GOOGLE_MAPS_API_KEY, API_BASE_URL } from '../../../config';
 import { showBanner } from '../../../utils/helpers';
 import { apiGet, apiPut } from '../../../utils/api';
+import SelectableTile, { SelectableTileGroup } from '../../common/SelectableTile';
 
 // Load Google Maps API dynamically
 const loadGoogleMapsAPI = () => {
@@ -549,47 +550,25 @@ function LocationServiceAreasPanel({ onBack, vendorProfileId }) {
             <p style={{ color: 'var(--text-light)', fontSize: '0.875rem', marginBottom: '1rem' }}>
               Select all areas where you are willing to provide your services
             </p>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.625rem' }}>
-              {serviceLocations.map(loc => {
-                const isSelected = serviceLocationScopes.includes(loc.key);
-                return (
-                  <div
-                    key={loc.key}
-                    onClick={() => {
-                      if (isSelected) {
-                        if (serviceLocationScopes.length > 1) {
-                          setServiceLocationScopes(serviceLocationScopes.filter(s => s !== loc.key));
-                        }
-                      } else {
-                        setServiceLocationScopes([...serviceLocationScopes, loc.key]);
+            <SelectableTileGroup>
+              {serviceLocations.map(loc => (
+                <SelectableTile
+                  key={loc.key}
+                  label={loc.label}
+                  isSelected={serviceLocationScopes.includes(loc.key)}
+                  onClick={() => {
+                    const isSelected = serviceLocationScopes.includes(loc.key);
+                    if (isSelected) {
+                      if (serviceLocationScopes.length > 1) {
+                        setServiceLocationScopes(serviceLocationScopes.filter(s => s !== loc.key));
                       }
-                    }}
-                    style={{
-                      padding: '0.75rem 1rem',
-                      borderRadius: '8px',
-                      border: isSelected ? 'none' : '1px solid #d1d5db',
-                      background: isSelected ? '#f3f4f6' : 'white',
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '0.5rem'
-                    }}
-                  >
-                    <span style={{ 
-                      fontWeight: 400, 
-                      fontSize: '0.875rem',
-                      color: '#374151'
-                    }}>
-                      {loc.label}
-                    </span>
-                    {isSelected && (
-                      <i className="fas fa-check" style={{ color: '#6b7280', fontSize: '0.8rem' }}></i>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                    } else {
+                      setServiceLocationScopes([...serviceLocationScopes, loc.key]);
+                    }
+                  }}
+                />
+              ))}
+            </SelectableTileGroup>
           </div>
 
           <button type="submit" className="btn btn-primary" style={{ marginTop: '2rem' }}>
