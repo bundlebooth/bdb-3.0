@@ -813,7 +813,7 @@ router.get('/', async (req, res) => {
           try {
             const featureQuery = `
               SELECT DISTINCT VendorProfileID 
-              FROM vendors.VendorFeatures 
+              FROM vendors.VendorSelectedFeatures 
               WHERE FeatureID IN (${featIds.join(',')})
               AND VendorProfileID IN (${vendorIds.join(',')})
             `;
@@ -8361,7 +8361,7 @@ router.post('/filter-count', async (req, res) => {
           try {
             const featureQuery = `
               SELECT DISTINCT VendorProfileID 
-              FROM vendors.VendorFeatures 
+              FROM vendors.VendorSelectedFeatures 
               WHERE FeatureID IN (${validFeatureIds.join(',')})
               AND VendorProfileID IN (${vendorIds.join(',')})
             `;
