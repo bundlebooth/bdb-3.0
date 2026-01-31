@@ -615,7 +615,7 @@ function ProfileModal({ isOpen, onClose }) {
                     transition: 'border-color 0.2s',
                     boxSizing: 'border-box'
                   }}
-                  onFocus={(e) => e.target.style.borderColor = '#5B68F4'}
+                  onFocus={(e) => e.target.style.borderColor = '#5086E8'}
                   onBlur={(e) => e.target.style.borderColor = '#D1D5DB'}
                   required
                 />
@@ -642,7 +642,7 @@ function ProfileModal({ isOpen, onClose }) {
                     transition: 'border-color 0.2s',
                     boxSizing: 'border-box'
                   }}
-                  onFocus={(e) => e.target.style.borderColor = '#5B68F4'}
+                  onFocus={(e) => e.target.style.borderColor = '#5086E8'}
                   onBlur={(e) => e.target.style.borderColor = '#D1D5DB'}
                   required
                 />
@@ -653,7 +653,7 @@ function ProfileModal({ isOpen, onClose }) {
                     style={{
                       background: 'none',
                       border: 'none',
-                      color: '#5B68F4',
+                      color: '#5086E8',
                       fontSize: '13px',
                       cursor: 'pointer',
                       padding: 0,
@@ -671,7 +671,7 @@ function ProfileModal({ isOpen, onClose }) {
                 style={{ 
                   width: '100%', 
                   padding: '14px',
-                  backgroundColor: '#5B68F4',
+                  backgroundColor: '#5086E8',
                   color: 'white',
                   border: 'none',
                   borderRadius: '8px',
@@ -682,8 +682,8 @@ function ProfileModal({ isOpen, onClose }) {
                   transition: 'background-color 0.2s',
                   opacity: loading ? 0.7 : 1
                 }}
-                onMouseEnter={(e) => !loading && (e.target.style.backgroundColor = '#4A56E2')}
-                onMouseLeave={(e) => !loading && (e.target.style.backgroundColor = '#5B68F4')}
+                onMouseEnter={(e) => !loading && (e.target.style.backgroundColor = '#4070D0')}
+                onMouseLeave={(e) => !loading && (e.target.style.backgroundColor = '#5086E8')}
               >
                 {loading ? 'Logging in...' : 'Log In'}
               </button>
@@ -695,7 +695,7 @@ function ProfileModal({ isOpen, onClose }) {
                   style={{ 
                     background: 'none', 
                     border: 'none', 
-                    color: '#5B68F4', 
+                    color: '#5086E8', 
                     fontSize: '14px', 
                     cursor: 'pointer', 
                     padding: 0, 
@@ -788,7 +788,7 @@ function ProfileModal({ isOpen, onClose }) {
                 marginTop: '16px',
                 marginBottom: 0
               }}>
-                By signing up, you agree to our <a href="/terms-of-service" style={{ color: '#5B68F4' }}>Terms of Service</a> and <a href="/privacy-policy" style={{ color: '#5B68F4' }}>Privacy Policy</a>
+                By signing up, you agree to our <a href="/terms-of-service" style={{ color: '#5086E8' }}>Terms of Service</a> and <a href="/privacy-policy" style={{ color: '#5086E8' }}>Privacy Policy</a>
               </p>
             </form>
           )}
@@ -839,21 +839,63 @@ function ProfileModal({ isOpen, onClose }) {
                 />
               </div>
               <div style={{ marginBottom: '1.5rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Account Type</label>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: '8px', 
+                  fontWeight: '500',
+                  fontSize: '14px',
+                  color: '#374151'
+                }}>
+                  Account Type
+                </label>
                 <select
                   value={accountType}
                   onChange={(e) => setAccountType(e.target.value)}
-                  style={{ width: '100%', padding: '0.75rem', border: '1px solid var(--border)', borderRadius: 'var(--radius)' }}
+                  style={{ 
+                    width: '100%', 
+                    padding: '12px 16px', 
+                    border: '1px solid #D1D5DB', 
+                    borderRadius: '8px',
+                    fontSize: '15px',
+                    color: '#374151',
+                    backgroundColor: 'white',
+                    cursor: 'pointer',
+                    outline: 'none',
+                    appearance: 'none',
+                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236B7280' d='M2.5 4.5L6 8l3.5-3.5'/%3E%3C/svg%3E")`,
+                    backgroundRepeat: 'no-repeat',
+                    backgroundPosition: 'right 16px center',
+                    boxSizing: 'border-box'
+                  }}
                 >
                   <option value="client">Client (I want to book vendors)</option>
                   <option value="vendor">Vendor (I provide services)</option>
                 </select>
               </div>
-              <button className="btn btn-primary" type="submit" disabled={loading} style={{ width: '100%', marginBottom: '1rem' }}>
+              <button 
+                type="submit" 
+                disabled={loading} 
+                style={{ 
+                  width: '100%', 
+                  padding: '14px',
+                  backgroundColor: '#5086E8',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  marginBottom: '1rem',
+                  transition: 'background-color 0.2s',
+                  opacity: loading ? 0.7 : 1
+                }}
+                onMouseEnter={(e) => !loading && (e.target.style.backgroundColor = '#4070D0')}
+                onMouseLeave={(e) => !loading && (e.target.style.backgroundColor = '#5086E8')}
+              >
                 {loading ? 'Creating Account...' : 'Create Account'}
               </button>
               <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
-                <button type="button" onClick={() => setView('login')} style={{ background: 'none', border: 'none', color: 'var(--primary)', textDecoration: 'none', fontSize: '0.9rem', cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}>
+                <button type="button" onClick={() => setView('login')} style={{ background: 'none', border: 'none', color: '#6B7280', textDecoration: 'underline', fontSize: '0.9rem', cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}>
                   Already have an account? Log in
                 </button>
               </div>
@@ -863,7 +905,7 @@ function ProfileModal({ isOpen, onClose }) {
                 color: '#9CA3AF',
                 margin: 0
               }}>
-                By signing up, you agree to our <a href="/terms-of-service" style={{ color: '#5B68F4' }}>Terms of Service</a> and <a href="/privacy-policy" style={{ color: '#5B68F4' }}>Privacy Policy</a>
+                By signing up, you agree to our <a href="/terms-of-service" style={{ color: '#5086E8' }}>Terms of Service</a> and <a href="/privacy-policy" style={{ color: '#5086E8' }}>Privacy Policy</a>
               </p>
             </form>
           )}
@@ -912,105 +954,55 @@ function ProfileModal({ isOpen, onClose }) {
           {/* Google Account Type Selection */}
           {view === 'googleAccountType' && (
             <div id="google-account-type-form" style={{ display: 'flex', flexDirection: 'column' }}>
-              <div style={{ 
-                textAlign: 'center', 
-                marginBottom: '24px',
-                padding: '16px',
-                backgroundColor: '#F0F9FF',
-                borderRadius: '12px',
-                border: '1px solid #BAE6FD'
-              }}>
-                <svg width="48" height="48" viewBox="0 0 48 48" style={{ marginBottom: '12px' }}>
-                  <path d="M44.5 20H24v8.5h11.8C34.7 33.9 30.1 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 4.1 29.6 2 24 2 11.8 2 2 11.8 2 24s9.8 22 22 22c11 0 21-8 21-22 0-1.3-.2-2.7-.5-4z" fill="#4285F4"/>
-                  <path d="M3 15.5l7.3 5.4C12.1 16.3 17.6 13 24 13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 4.1 29.6 2 24 2 14.3 2 6 8.3 3 15.5z" fill="#EA4335"/>
-                  <path d="M24 46c5.4 0 10.3-1.8 14.1-4.9l-6.5-5.4C29.5 37.5 26.9 38.5 24 38.5c-6 0-11.1-4-12.9-9.5L3.5 34.5C6.9 41.3 14.8 46 24 46z" fill="#34A853"/>
-                  <path d="M46 24c0-1.3-.2-2.7-.5-4H24v8.5h11.8c-.5 2.7-2 5-4.2 6.5l6.5 5.4C42.5 36.5 46 30.8 46 24z" fill="#FBBC05"/>
+              <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+                <svg width="40" height="40" viewBox="0 0 18 18" style={{ marginBottom: '12px' }}>
+                  <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4"/>
+                  <path d="M9.003 18c2.43 0 4.467-.806 5.956-2.18L12.05 13.56c-.806.54-1.836.86-3.047.86-2.344 0-4.328-1.584-5.036-3.711H.96v2.332C2.44 15.983 5.485 18 9.003 18z" fill="#34A853"/>
+                  <path d="M3.964 10.712c-.18-.54-.282-1.117-.282-1.71 0-.593.102-1.17.282-1.71V4.96H.957C.347 6.175 0 7.55 0 9.002c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
+                  <path d="M9.003 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.464.891 11.426 0 9.003 0 5.485 0 2.44 2.017.96 4.958L3.967 7.29c.708-2.127 2.692-3.71 5.036-3.71z" fill="#EA4335"/>
                 </svg>
                 <p style={{ 
-                  color: '#0369A1', 
-                  fontSize: '14px', 
-                  margin: 0,
-                  fontWeight: '500'
+                  color: '#6B7280', 
+                  fontSize: '15px', 
+                  margin: 0
                 }}>
-                  Welcome! Choose how you'd like to use Planbeau
+                  Welcome! How would you like to use Planbeau?
                 </p>
               </div>
 
               <div style={{ marginBottom: '24px' }}>
                 <label style={{ 
                   display: 'block', 
-                  marginBottom: '12px', 
-                  fontWeight: '600',
-                  fontSize: '15px',
+                  marginBottom: '8px', 
+                  fontWeight: '500',
+                  fontSize: '14px',
                   color: '#374151'
                 }}>
-                  I want to join as:
+                  Account Type
                 </label>
-                
-                {/* Client Option */}
-                <div 
-                  onClick={() => setGoogleAccountType('client')}
-                  style={{
-                    padding: '16px',
-                    border: googleAccountType === 'client' ? '2px solid #5B68F4' : '1px solid #E5E7EB',
-                    borderRadius: '12px',
-                    marginBottom: '12px',
+                <select
+                  value={googleAccountType}
+                  onChange={(e) => setGoogleAccountType(e.target.value)}
+                  style={{ 
+                    width: '100%', 
+                    padding: '12px 16px', 
+                    border: '1px solid #D1D5DB', 
+                    borderRadius: '8px',
+                    fontSize: '15px',
+                    color: '#374151',
+                    backgroundColor: 'white',
                     cursor: 'pointer',
-                    backgroundColor: googleAccountType === 'client' ? '#F5F6FF' : 'white',
-                    transition: 'all 0.2s ease'
+                    outline: 'none',
+                    appearance: 'none',
+                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236B7280' d='M2.5 4.5L6 8l3.5-3.5'/%3E%3C/svg%3E")`,
+                    backgroundRepeat: 'no-repeat',
+                    backgroundPosition: 'right 16px center',
+                    boxSizing: 'border-box'
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{
-                      width: '20px',
-                      height: '20px',
-                      borderRadius: '50%',
-                      border: googleAccountType === 'client' ? '6px solid #5B68F4' : '2px solid #D1D5DB',
-                      backgroundColor: 'white',
-                      flexShrink: 0
-                    }} />
-                    <div>
-                      <div style={{ fontWeight: '600', color: '#1F2937', marginBottom: '4px' }}>
-                        Client
-                      </div>
-                      <div style={{ fontSize: '13px', color: '#6B7280' }}>
-                        I want to discover and book vendors for my events
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Vendor Option */}
-                <div 
-                  onClick={() => setGoogleAccountType('vendor')}
-                  style={{
-                    padding: '16px',
-                    border: googleAccountType === 'vendor' ? '2px solid #5B68F4' : '1px solid #E5E7EB',
-                    borderRadius: '12px',
-                    cursor: 'pointer',
-                    backgroundColor: googleAccountType === 'vendor' ? '#F5F6FF' : 'white',
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{
-                      width: '20px',
-                      height: '20px',
-                      borderRadius: '50%',
-                      border: googleAccountType === 'vendor' ? '6px solid #5B68F4' : '2px solid #D1D5DB',
-                      backgroundColor: 'white',
-                      flexShrink: 0
-                    }} />
-                    <div>
-                      <div style={{ fontWeight: '600', color: '#1F2937', marginBottom: '4px' }}>
-                        Vendor
-                      </div>
-                      <div style={{ fontSize: '13px', color: '#6B7280' }}>
-                        I provide services and want to list my business
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                  <option value="client">Client (I want to book vendors)</option>
+                  <option value="vendor">Vendor (I provide services)</option>
+                </select>
               </div>
 
               {googleAccountType === 'vendor' && (
@@ -1038,7 +1030,7 @@ function ProfileModal({ isOpen, onClose }) {
                 style={{
                   width: '100%',
                   padding: '14px',
-                  backgroundColor: '#5B68F4',
+                  backgroundColor: '#5086E8',
                   color: 'white',
                   border: 'none',
                   borderRadius: '8px',
@@ -1049,8 +1041,8 @@ function ProfileModal({ isOpen, onClose }) {
                   opacity: loading ? 0.7 : 1,
                   transition: 'background-color 0.2s'
                 }}
-                onMouseEnter={(e) => !loading && (e.target.style.backgroundColor = '#4A56E2')}
-                onMouseLeave={(e) => !loading && (e.target.style.backgroundColor = '#5B68F4')}
+                onMouseEnter={(e) => !loading && (e.target.style.backgroundColor = '#4070D0')}
+                onMouseLeave={(e) => !loading && (e.target.style.backgroundColor = '#5086E8')}
               >
                 {loading ? 'Signing in...' : 'Continue with Google'}
               </button>
@@ -1151,7 +1143,7 @@ function ProfileModal({ isOpen, onClose }) {
                       transition: 'border-color 0.2s',
                       boxSizing: 'border-box'
                     }}
-                    onFocus={(e) => e.target.style.borderColor = '#5B68F4'}
+                    onFocus={(e) => e.target.style.borderColor = '#5086E8'}
                     onBlur={(e) => e.target.style.borderColor = '#D1D5DB'}
                     required
                   />
@@ -1163,7 +1155,7 @@ function ProfileModal({ isOpen, onClose }) {
                   style={{
                     width: '100%',
                     padding: '14px',
-                    backgroundColor: '#5B68F4',
+                    backgroundColor: '#5086E8',
                     color: 'white',
                     border: 'none',
                     borderRadius: '8px',
@@ -1174,8 +1166,8 @@ function ProfileModal({ isOpen, onClose }) {
                     opacity: loading ? 0.7 : 1,
                     transition: 'background-color 0.2s'
                   }}
-                  onMouseEnter={(e) => !loading && (e.target.style.backgroundColor = '#4A56E2')}
-                  onMouseLeave={(e) => !loading && (e.target.style.backgroundColor = '#5B68F4')}
+                  onMouseEnter={(e) => !loading && (e.target.style.backgroundColor = '#4070D0')}
+                  onMouseLeave={(e) => !loading && (e.target.style.backgroundColor = '#5086E8')}
                 >
                   {loading ? 'Sending...' : 'Send Reset Link'}
                 </button>
