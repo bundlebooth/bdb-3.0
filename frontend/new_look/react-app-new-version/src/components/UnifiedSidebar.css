@@ -8,6 +8,21 @@
   bottom: 0;
   background: rgba(0, 0, 0, 0.5);
   z-index: 999;
+  animation: overlayFadeIn 0.25s ease-out;
+}
+
+.unified-sidebar-overlay.closing {
+  animation: overlayFadeOut 0.25s ease-out forwards;
+}
+
+@keyframes overlayFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes overlayFadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
 }
 
 .unified-sidebar {
@@ -30,6 +45,19 @@
   }
   to {
     transform: translateX(0);
+  }
+}
+
+.unified-sidebar.closing {
+  animation: slideOutRight 0.25s ease-out forwards;
+}
+
+@keyframes slideOutRight {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(100%);
   }
 }
 

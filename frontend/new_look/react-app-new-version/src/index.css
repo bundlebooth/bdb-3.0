@@ -104,6 +104,12 @@ body.overlay-open {
         touch-action: none !important;
         overscroll-behavior: none !important;
     }
+    
+    /* Hide mobile bottom nav when modal is open */
+    body.modal-open .mobile-bottom-nav,
+    body.overlay-open .mobile-bottom-nav {
+        display: none !important;
+    }
 }
 
 .app-container {
@@ -1287,6 +1293,12 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
     display: flex;
     align-items: center;
     justify-content: center;
+    animation: modalBackdropFadeIn 0.3s ease-out;
+}
+
+@keyframes modalBackdropFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 .modal-content {

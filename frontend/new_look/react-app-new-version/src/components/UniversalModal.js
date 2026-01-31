@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import './UniversalModal.css';
 
 /**
@@ -33,9 +33,22 @@ const UniversalModal = ({
   icon,
   footerCentered = false
 }) => {
+  const [isClosing, setIsClosing] = useState(false);
+  const [shouldRender, setShouldRender] = useState(false);
+
+  // Handle close with animation
+  const handleClose = useCallback(() => {
+    setIsClosing(true);
+    setTimeout(() => {
+      setIsClosing(false);
+      onClose();
+    }, 300); // Match animation duration
+  }, [onClose]);
+
   // Prevent background scrolling when modal is open
   useEffect(() => {
     if (isOpen) {
+      setShouldRender(true);
       document.body.classList.add('modal-open');
     } else {
       document.body.classList.remove('modal-open');
@@ -45,7 +58,14 @@ const UniversalModal = ({
     };
   }, [isOpen]);
 
-  if (!isOpen) return null;
+  // Handle unmount after close animation
+  useEffect(() => {
+    if (!isOpen && !isClosing) {
+      setShouldRender(false);
+    }
+  }, [isOpen, isClosing]);
+
+  if (!shouldRender && !isOpen) return null;
 
   const sizeClasses = {
     small: 'um-modal-small',
@@ -56,15 +76,15 @@ const UniversalModal = ({
   // Removed backdrop click to close - modals can only be closed via X button or explicit actions
 
   return (
-    <div className="um-backdrop">
-      <div className={`um-modal ${sizeClasses[size] || sizeClasses.medium}`}>
+    <div className={`um-backdrop ${isClosing ? 'closing' : ''}`}>
+      <div className={`um-modal ${sizeClasses[size] || sizeClasses.medium} ${isClosing ? 'closing' : ''}`}>
         {/* Modal Header */}
         <div className="um-header">
           <div className="um-header-content">
             {icon && <div className="um-header-icon">{icon}</div>}
             <h3 className="um-title">{title}</h3>
           </div>
-          <button className="um-close-btn" onClick={onClose} aria-label="Close modal">
+          <button className="um-close-btn" onClick={handleClose} aria-label="Close modal">
             <span>×</span>
           </button>
         </div>
@@ -85,7 +105,7 @@ const UniversalModal = ({
                   <button
                     type="button"
                     className="um-btn um-btn-secondary"
-                    onClick={secondaryAction?.onClick || onClose}
+                    onClick={secondaryAction?.onClick || handleClose}
                   >
                     {secondaryAction?.label || 'Cancel'}
                   </button>

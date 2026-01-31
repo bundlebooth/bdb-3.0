@@ -11,6 +11,8 @@ function UnifiedSidebar({ isOpen, onClose }) {
   const { currentUser, logout } = useAuth();
   const { t } = useTranslation();
   
+  const [isClosing, setIsClosing] = useState(false);
+  const [shouldRender, setShouldRender] = useState(false);
   const [hasVendorProfile, setHasVendorProfile] = useState(false);
   const [profileStatus, setProfileStatus] = useState(null);
   const [vendorLogoUrl, setVendorLogoUrl] = useState(null);
@@ -209,9 +211,27 @@ function UnifiedSidebar({ isOpen, onClose }) {
     // Don't close sidebar - let user continue navigating
   };
 
+  // Handle mounting/unmounting with animation
+  useEffect(() => {
+    if (isOpen) {
+      setShouldRender(true);
+      setIsClosing(false);
+    }
+  }, [isOpen]);
+
+  // Handle close with animation
+  const handleClose = () => {
+    setIsClosing(true);
+    setTimeout(() => {
+      setIsClosing(false);
+      setShouldRender(false);
+      onClose();
+    }, 250); // Match animation duration
+  };
+
   const handleNavigate = (path) => {
     navigate(path);
-    onClose();
+    handleClose();
   };
 
   const handleLogout = () => {
@@ -240,14 +260,14 @@ function UnifiedSidebar({ isOpen, onClose }) {
 
   const profilePic = getProfilePicture();
 
-  if (!isOpen || !currentUser) return null;
+  if (!shouldRender || !currentUser) return null;
 
   return (
     <>
-      <div className="unified-sidebar-overlay" onClick={onClose} />
-      <div className="unified-sidebar">
+      <div className={`unified-sidebar-overlay ${isClosing ? 'closing' : ''}`} onClick={handleClose} />
+      <div className={`unified-sidebar ${isClosing ? 'closing' : ''}`}>
         {/* Close button */}
-        <button className="unified-sidebar-close" onClick={onClose}>
+        <button className="unified-sidebar-close" onClick={handleClose}>
           <i className="fas fa-times"></i>
         </button>
         
