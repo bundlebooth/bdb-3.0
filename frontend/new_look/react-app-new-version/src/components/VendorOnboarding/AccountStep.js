@@ -432,12 +432,17 @@ function AccountStep({ currentUser, setFormData, formData, onAccountCreated, isE
   // Resend 2FA Code
   const handleResend2FA = async () => {
     try {
-      await fetch(`${API_BASE_URL}/auth/resend-2fa`, {
+      const res = await fetch(`${API_BASE_URL}/auth/resend-2fa`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: twofaEmail })
       });
-      showBanner('Verification code resent', 'success');
+      const data = await res.json();
+      if (data.alreadySent) {
+        showBanner(data.message || 'A verification code was already sent. Please check your email.', 'info');
+      } else {
+        showBanner('Verification code resent', 'success');
+      }
     } catch (error) {
       showBanner('Failed to resend code', 'error');
     }

@@ -589,8 +589,13 @@ function ProfileModal({ isOpen, onClose, defaultView = 'login', defaultAccountTy
 
   const handleResend2FA = async () => {
     try {
-      await apiPost('/auth/resend-2fa', { email: twofaEmail });
-      showBanner('Verification code resent', 'success');
+      const response = await apiPost('/auth/resend-2fa', { email: twofaEmail });
+      const data = await response.json();
+      if (data.alreadySent) {
+        showBanner(data.message || 'A verification code was already sent. Please check your email.', 'info');
+      } else {
+        showBanner('Verification code resent', 'success');
+      }
     } catch (error) {
       showBanner('Failed to resend code', 'error');
     }
@@ -1275,9 +1280,13 @@ function ProfileModal({ isOpen, onClose, defaultView = 'login', defaultAccountTy
                   setLoading(true);
                   const response = await apiPost('/users/forgot-password', { email: loginEmail });
                   const data = await response.json();
-                  if (response.ok) {
-                    showBanner('Password reset link sent! Check your email.', 'success');
-                    setView('login');
+                  if (response.ok || data.success) {
+                    if (data.alreadySent) {
+                      showBanner(data.message || 'A password reset email was already sent. Please check your email (including spam folder).', 'info');
+                    } else {
+                      showBanner('Password reset link sent! Check your email.', 'success');
+                      setView('login');
+                    }
                   } else {
                     showBanner(data.message || 'Failed to send reset email', 'error');
                   }
