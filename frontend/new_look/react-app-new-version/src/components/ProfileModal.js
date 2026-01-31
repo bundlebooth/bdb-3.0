@@ -134,11 +134,20 @@ function ProfileModal({ isOpen, onClose, defaultView = 'login', defaultAccountTy
 
       // Check for pending vendor redirect (from become-a-vendor flow)
       const pendingVendorRedirect = sessionStorage.getItem('pendingVendorRedirect');
-      if (pendingVendorRedirect === 'true' && userData.isVendor) {
+      if (pendingVendorRedirect === 'true') {
         sessionStorage.removeItem('pendingVendorRedirect');
-        setTimeout(() => {
-          window.location.href = '/become-a-vendor/setup';
-        }, 300);
+        // Allow any user to proceed - clients can become vendors
+        // Only block if they already have a completed vendor profile
+        if (userData.isVendor && userData.vendorProfileId) {
+          showBanner('You already have a vendor profile!', 'info');
+          setTimeout(() => {
+            window.location.href = '/dashboard';
+          }, 300);
+        } else {
+          setTimeout(() => {
+            window.location.href = '/become-a-vendor/setup';
+          }, 300);
+        }
       }
 
       setPendingGoogleCredential(null);
@@ -401,11 +410,20 @@ function ProfileModal({ isOpen, onClose, defaultView = 'login', defaultAccountTy
       
       // Check for pending vendor redirect (from become-a-vendor flow)
       const pendingVendorRedirect = sessionStorage.getItem('pendingVendorRedirect');
-      if (pendingVendorRedirect === 'true' && userData.isVendor) {
+      if (pendingVendorRedirect === 'true') {
         sessionStorage.removeItem('pendingVendorRedirect');
-        setTimeout(() => {
-          window.location.href = '/become-a-vendor/setup';
-        }, 300);
+        // Allow any user to proceed - clients can become vendors
+        // Only block if they already have a completed vendor profile
+        if (userData.isVendor && userData.vendorProfileId) {
+          showBanner('You already have a vendor profile!', 'info');
+          setTimeout(() => {
+            window.location.href = '/dashboard';
+          }, 300);
+        } else {
+          setTimeout(() => {
+            window.location.href = '/become-a-vendor/setup';
+          }, 300);
+        }
       } else {
         // Check for post-login redirect (from email deep links)
         const postLoginRedirect = sessionStorage.getItem('postLoginRedirect');
@@ -493,8 +511,9 @@ function ProfileModal({ isOpen, onClose, defaultView = 'login', defaultAccountTy
       
       // Check for pending vendor redirect (from become-a-vendor flow)
       const pendingVendorRedirect = sessionStorage.getItem('pendingVendorRedirect');
-      if (pendingVendorRedirect === 'true' && userData.isVendor) {
+      if (pendingVendorRedirect === 'true') {
         sessionStorage.removeItem('pendingVendorRedirect');
+        // New signup - always allow to proceed to vendor setup
         setTimeout(() => {
           window.location.href = '/become-a-vendor/setup';
         }, 300);

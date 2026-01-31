@@ -77,15 +77,14 @@ const BecomeVendorLanding = () => {
 
   const handleGetStarted = () => {
     if (currentUser) {
-      if (currentUser.isVendor) {
-        // Already a vendor, go directly to setup
-        navigate('/become-a-vendor/setup');
+      if (currentUser.isVendor && currentUser.vendorProfileId) {
+        // Already an approved vendor with a profile - redirect to their dashboard instead
+        showBanner('You already have a vendor profile!', 'info');
+        navigate('/dashboard');
       } else {
-        // Client account - show message that they need a vendor account
-        showBanner('You are currently logged in as a client. Please create a vendor account to continue.', 'info');
-        sessionStorage.setItem('pendingVendorRedirect', 'true');
-        setPendingVendorRedirect(true);
-        setShowLoginModal(true);
+        // Either a client wanting to become vendor, or a vendor without completed profile
+        // Allow them to proceed to setup
+        navigate('/become-a-vendor/setup');
       }
     } else {
       // Not logged in, show the login/signup modal
@@ -100,23 +99,30 @@ const BecomeVendorLanding = () => {
     const pending = sessionStorage.getItem('pendingVendorRedirect');
     if (pending === 'true' && currentUser) {
       sessionStorage.removeItem('pendingVendorRedirect');
-      if (currentUser.isVendor) {
+      // Allow any logged-in user to proceed to vendor setup (clients can become vendors)
+      // Only block if they already have a completed vendor profile
+      if (currentUser.isVendor && currentUser.vendorProfileId) {
+        showBanner('You already have a vendor profile!', 'info');
+        navigate('/dashboard');
+      } else {
         navigate('/become-a-vendor/setup');
       }
     }
   }, [currentUser, navigate]);
 
-  // Navigate to setup after successful login/signup as vendor
+  // Navigate to setup after successful login/signup
   useEffect(() => {
     if (currentUser && pendingVendorRedirect) {
-      if (currentUser.isVendor) {
-        sessionStorage.removeItem('pendingVendorRedirect');
-        setPendingVendorRedirect(false);
-        setShowLoginModal(false);
-        navigate('/become-a-vendor/setup');
+      sessionStorage.removeItem('pendingVendorRedirect');
+      setPendingVendorRedirect(false);
+      setShowLoginModal(false);
+      // Allow any logged-in user to proceed (clients can become vendors)
+      // Only block if they already have a completed vendor profile
+      if (currentUser.isVendor && currentUser.vendorProfileId) {
+        showBanner('You already have a vendor profile!', 'info');
+        navigate('/dashboard');
       } else {
-        // User logged in as client, show message
-        showBanner('You signed in as a client. Please create a new vendor account to become a vendor.', 'info');
+        navigate('/become-a-vendor/setup');
       }
     }
   }, [currentUser, pendingVendorRedirect, navigate]);
