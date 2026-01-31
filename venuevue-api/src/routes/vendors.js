@@ -8321,8 +8321,8 @@ router.post('/filter-count', async (req, res) => {
       }
     }
     
-    // Post-query filtering for subcategories
-    if (!result.recordset?.[0]?.HasGoogleReviews && subcategories && subcategories.length > 0) {
+    // Post-query filtering for subcategories (always apply - SP doesn't handle this)
+    if (subcategories && subcategories.length > 0) {
       const subcategoryIds = Array.isArray(subcategories) ? subcategories.map(id => parseInt(id)) : subcategories.split(',').map(id => parseInt(id.trim()));
       const validSubcategoryIds = subcategoryIds.filter(id => !isNaN(id) && id > 0);
       console.log('[filter-count] Filtering by subcategories:', validSubcategoryIds);
@@ -8348,8 +8348,8 @@ router.post('/filter-count', async (req, res) => {
       }
     }
     
-    // Post-query filtering for features
-    if (!result.recordset?.[0]?.HasGoogleReviews && features && features.length > 0) {
+    // Post-query filtering for features (always apply - SP doesn't handle this)
+    if (features && features.length > 0) {
       const featureIds = Array.isArray(features) ? features.map(id => parseInt(id)) : features.split(',').map(id => parseInt(id.trim()));
       const validFeatureIds = featureIds.filter(id => !isNaN(id) && id > 0);
       console.log('[filter-count] Filtering by features:', validFeatureIds);
