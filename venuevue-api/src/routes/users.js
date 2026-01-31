@@ -1603,6 +1603,10 @@ function getPasswordResetUrl(userId, email) {
   return `${frontendUrl}/reset-password/${token}`;
 }
 
+// In-memory rate limiting for password reset (2 minute cooldown)
+const passwordResetRateLimit = new Map();
+const PASSWORD_RESET_COOLDOWN_MS = 2 * 60 * 1000; // 2 minutes
+
 // POST /users/forgot-password - Request password reset email
 router.post('/forgot-password', async (req, res) => {
   try {
@@ -1612,92 +1616,95 @@ router.post('/forgot-password', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Valid email is required' });
     }
     
+    const normalizedEmail = email.toLowerCase().trim();
+    
+    // Check rate limiting (2 minute cooldown)
+    const lastRequest = passwordResetRateLimit.get(normalizedEmail);
+    if (lastRequest) {
+      const timeSinceLastRequest = Date.now() - lastRequest;
+      if (timeSinceLastRequest < PASSWORD_RESET_COOLDOWN_MS) {
+        const secondsRemaining = Math.ceil((PASSWORD_RESET_COOLDOWN_MS - timeSinceLastRequest) / 1000);
+        return res.status(429).json({ 
+          success: false, 
+          message: `Please wait ${secondsRemaining} seconds before requesting another password reset.`,
+          retryAfter: secondsRemaining
+        });
+      }
+    }
+    
     const pool = await poolPromise;
     
     // Check if user exists
     const userResult = await pool.request()
-      .input('Email', sql.NVarChar, email.toLowerCase())
+      .input('Email', sql.NVarChar, normalizedEmail)
       .query('SELECT UserID, Name, Email FROM users.Users WHERE Email = @Email');
     
     // Always return success to prevent email enumeration attacks
     if (userResult.recordset.length === 0) {
+      // Still set rate limit to prevent email enumeration via timing
+      passwordResetRateLimit.set(normalizedEmail, Date.now());
       return res.json({ success: true, message: 'If an account exists with this email, a password reset link will be sent.' });
     }
     
     const user = userResult.recordset[0];
     const resetUrl = getPasswordResetUrl(user.UserID, user.Email);
     
-    // Send password reset email
-    // Try templated email first, fallback to direct email if template not found
-    let emailSent = false;
+    // Send password reset email using fallback (direct email)
+    const { sendEmail } = require('../services/email');
+    const platformName = process.env.PLATFORM_NAME || 'PlanBeau';
+    const fallbackHtml = `
+      <!DOCTYPE html>
+      <html>
+      <head><meta charset="utf-8"></head>
+      <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;margin:0;padding:0;background:#f7f7f7">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;margin:40px auto;background:#ffffff;border:1px solid #ebebeb">
+          <tr><td style="padding:40px;text-align:center">
+            <h2 style="color:#333;margin:0 0 20px">Reset Your Password</h2>
+            <p style="color:#666;margin:0 0 20px">Hello ${user.Name || 'there'},</p>
+            <p style="color:#666;margin:0 0 30px">We received a request to reset your password. Click the button below to create a new password:</p>
+            <a href="${resetUrl}" style="display:inline-block;background:#222222;color:#ffffff;padding:14px 30px;text-decoration:none;border-radius:6px;font-weight:600">Reset Password</a>
+            <p style="color:#999;margin:30px 0 0;font-size:14px">This link expires in 1 hour. If you didn't request this, you can safely ignore this email.</p>
+          </td></tr>
+          <tr><td style="padding:20px;text-align:center;background:#f8f9fa;border-top:1px solid #e9ecef">
+            <p style="color:#adb5bd;margin:0;font-size:12px">© ${new Date().getFullYear()} ${platformName}. All rights reserved.</p>
+          </td></tr>
+        </table>
+      </body>
+      </html>
+    `;
+    
     try {
-      await sendTemplatedEmail(
-        'password_reset',           // templateKey
-        user.Email,                 // recipientEmail
-        user.Name || 'User',        // recipientName
-        {                           // variables
-          userName: user.Name || 'User',
-          resetUrl: resetUrl,
-          expiryTime: '1 hour'
-        },
-        user.UserID,                // userId
-        null,                       // bookingId
-        null,                       // metadata
-        'account'                   // emailCategory (account-related emails)
-      );
-      emailSent = true;
+      await sendEmail({
+        to: user.Email,
+        subject: `Reset Your ${platformName} Password`,
+        html: fallbackHtml,
+        text: `Reset your password by visiting: ${resetUrl}\n\nThis link expires in 1 hour.`,
+        emailCategory: 'account'
+      });
       console.log('[PasswordReset] Email sent successfully to:', user.Email);
     } catch (emailErr) {
-      console.error('[PasswordReset] Template email failed, trying fallback:', emailErr.message);
-      
-      // Fallback: Send direct email without template
-      try {
-        const { sendEmail } = require('../services/email');
-        const platformName = process.env.PLATFORM_NAME || 'PlanBeau';
-        const fallbackHtml = `
-          <!DOCTYPE html>
-          <html>
-          <head><meta charset="utf-8"></head>
-          <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;margin:0;padding:0;background:#f7f7f7">
-            <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;margin:40px auto;background:#ffffff;border:1px solid #ebebeb">
-              <tr><td style="padding:40px;text-align:center">
-                <h2 style="color:#333;margin:0 0 20px">Reset Your Password</h2>
-                <p style="color:#666;margin:0 0 20px">Hello ${user.Name || 'there'},</p>
-                <p style="color:#666;margin:0 0 30px">We received a request to reset your password. Click the button below to create a new password:</p>
-                <a href="${resetUrl}" style="display:inline-block;background:#222222;color:#ffffff;padding:14px 30px;text-decoration:none;border-radius:6px;font-weight:600">Reset Password</a>
-                <p style="color:#999;margin:30px 0 0;font-size:14px">This link expires in 1 hour. If you didn't request this, you can safely ignore this email.</p>
-              </td></tr>
-              <tr><td style="padding:20px;text-align:center;background:#f8f9fa;border-top:1px solid #e9ecef">
-                <p style="color:#adb5bd;margin:0;font-size:12px">© ${new Date().getFullYear()} ${platformName}. All rights reserved.</p>
-              </td></tr>
-            </table>
-          </body>
-          </html>
-        `;
-        await sendEmail({
-          to: user.Email,
-          subject: `Reset Your ${platformName} Password`,
-          html: fallbackHtml,
-          text: `Reset your password by visiting: ${resetUrl}\n\nThis link expires in 1 hour.`,
-          emailCategory: 'account'
-        });
-        emailSent = true;
-        console.log('[PasswordReset] Fallback email sent successfully to:', user.Email);
-      } catch (fallbackErr) {
-        console.error('[PasswordReset] Fallback email also failed:', fallbackErr.message);
-      }
+      console.error('[PasswordReset] Email failed:', emailErr.message);
+      // Don't fail the request - still return success to prevent enumeration
     }
     
-    // Log the password reset request
-    await pool.request()
-      .input('userId', sql.Int, user.UserID)
-      .input('email', sql.NVarChar, user.Email)
-      .input('action', sql.NVarChar, 'PasswordResetRequested')
-      .input('ActionStatus', sql.NVarChar, 'Success')
-      .input('ipAddress', sql.NVarChar, req.ip || 'Unknown')
-      .input('userAgent', sql.NVarChar, req.headers['user-agent'] || 'Unknown')
-      .input('details', sql.NVarChar, 'Password reset email sent')
-      .execute('users.sp_InsertSecurityLog');
+    // Set rate limit after successful request
+    passwordResetRateLimit.set(normalizedEmail, Date.now());
+    
+    // Log the password reset request (non-blocking, don't fail if this errors)
+    try {
+      await pool.request()
+        .input('userId', sql.Int, user.UserID)
+        .input('email', sql.NVarChar, user.Email)
+        .input('action', sql.NVarChar, 'PasswordResetRequested')
+        .input('ActionStatus', sql.NVarChar, 'Success')
+        .input('ipAddress', sql.NVarChar, req.ip || req.headers['x-forwarded-for'] || 'Unknown')
+        .input('userAgent', sql.NVarChar, req.headers['user-agent'] || 'Unknown')
+        .input('details', sql.NVarChar, 'Password reset email sent')
+        .execute('users.sp_InsertSecurityLog');
+    } catch (logErr) {
+      console.error('[PasswordReset] Failed to log security event:', logErr.message);
+      // Don't fail the request
+    }
     
     res.json({ success: true, message: 'If an account exists with this email, a password reset link will be sent.' });
   } catch (err) {

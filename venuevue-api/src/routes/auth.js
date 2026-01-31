@@ -12,6 +12,10 @@ const validateEmail = (email) => {
   return re.test(String(email).toLowerCase());
 };
 
+// In-memory rate limiting for 2FA resend (2 minute cooldown)
+const twoFAResendRateLimit = new Map();
+const TWO_FA_RESEND_COOLDOWN_MS = 2 * 60 * 1000; // 2 minutes
+
 // POST /auth/resend-2fa - Resend 2FA code using email (no token required)
 router.post('/resend-2fa', async (req, res) => {
   try {
@@ -54,6 +58,21 @@ router.post('/resend-2fa', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Email or tempToken is required' });
     }
     
+    // Check rate limiting (2 minute cooldown)
+    const rateLimitKey = userEmail.toLowerCase();
+    const lastRequest = twoFAResendRateLimit.get(rateLimitKey);
+    if (lastRequest) {
+      const timeSinceLastRequest = Date.now() - lastRequest;
+      if (timeSinceLastRequest < TWO_FA_RESEND_COOLDOWN_MS) {
+        const secondsRemaining = Math.ceil((TWO_FA_RESEND_COOLDOWN_MS - timeSinceLastRequest) / 1000);
+        return res.status(429).json({ 
+          success: false, 
+          message: `Please wait ${secondsRemaining} seconds before requesting another code.`,
+          retryAfter: secondsRemaining
+        });
+      }
+    }
+    
     const pool = await poolPromise;
     
     // Generate new 2FA code
@@ -76,6 +95,9 @@ router.post('/resend-2fa', async (req, res) => {
     } catch (emailErr) {
       console.error('2FA email error:', emailErr.message);
     }
+    
+    // Set rate limit after successful request
+    twoFAResendRateLimit.set(rateLimitKey, Date.now());
     
     // Generate new temp token if using email-based flow
     let newTempToken = tempToken;
