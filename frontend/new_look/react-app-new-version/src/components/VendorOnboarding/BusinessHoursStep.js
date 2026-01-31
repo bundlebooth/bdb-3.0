@@ -95,17 +95,19 @@ function BusinessHoursStep({ formData, setFormData }) {
   return (
     <div className="business-hours-step">
       <div style={{ maxWidth: '100%', width: '100%' }}>
-        <div style={{ marginBottom: '2rem', padding: '1.5rem', background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
-            <i className="fas fa-info-circle" style={{ color: 'var(--primary)', fontSize: '1.25rem' }}></i>
-            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>Set Your Regular Hours <span style={{ color: '#ef4444' }}>*</span></h3>
+        <div style={{ marginBottom: '1.5rem', padding: '1.25rem', background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+            <i className="fas fa-clock" style={{ color: '#5086E8', fontSize: '1rem' }}></i>
+            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: '#111827' }}>
+              Set Your Regular Hours <span style={{ color: '#ef4444' }}>*</span>
+            </h3>
           </div>
-          <p style={{ margin: 0, color: '#6b7280', fontSize: '0.9rem', lineHeight: 1.6 }}>
+          <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem', lineHeight: 1.5 }}>
             Set at least one day as available. These hours will be displayed on your public profile.
           </p>
         </div>
 
-        <div style={{ marginBottom: '2rem', padding: '1.5rem', background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+        <div style={{ marginBottom: '2rem', paddingBottom: '1.5rem', borderBottom: '1px solid #e5e7eb' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
             <i className="fas fa-globe" style={{ color: 'var(--primary)', fontSize: '1rem' }}></i>
             <label style={{ fontSize: '0.95rem', fontWeight: 600, color: '#374151' }}>Timezone</label>
@@ -145,9 +147,10 @@ function BusinessHoursStep({ formData, setFormData }) {
           {daysOfWeek.map(day => (
             <div
               key={day.key}
+              className="business-hours-day-row"
               style={{
-                display: 'grid',
-                gridTemplateColumns: '100px 1fr auto',
+                display: 'flex',
+                flexWrap: 'wrap',
                 gap: '1rem',
                 alignItems: 'center',
                 padding: '0.875rem 1rem',
@@ -156,7 +159,7 @@ function BusinessHoursStep({ formData, setFormData }) {
                 background: formData.businessHours[day.key]?.isAvailable === false ? '#f9fafb' : 'white'
               }}
             >
-              <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{day.label}</div>
+              <div style={{ fontWeight: 600, fontSize: '0.9rem', minWidth: '80px' }}>{day.label}</div>
               
               {formData.businessHours[day.key]?.isAvailable !== false ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>

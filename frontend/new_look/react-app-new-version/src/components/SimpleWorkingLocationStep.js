@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { GOOGLE_MAPS_API_KEY } from '../config';
+import SelectableTile, { SelectableTileGroup } from './common/SelectableTile';
 
 /**
  * SimpleWorkingLocationStep - Vendor onboarding step for location & service areas
@@ -309,7 +310,7 @@ function SimpleWorkingLocationStep({ formData, setFormData }) {
         {/* Divider */}
         <hr style={{ border: 'none', borderTop: '1px solid #e5e7eb', margin: '2rem 0' }} />
 
-        {/* Service Location Scope Section - matching LocationServiceAreasPanel */}
+        {/* Service Location Scope Section - using centralized SelectableTile component */}
         <div className="form-group" style={{ marginBottom: '2rem' }}>
           <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.5rem', fontSize: '0.95rem' }}>
             Service Location Scope
@@ -317,35 +318,19 @@ function SimpleWorkingLocationStep({ formData, setFormData }) {
           <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '1rem' }}>
             Select the geographic scope of your services
           </p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
+          <SelectableTileGroup>
             {serviceLocationOptions.map(option => {
               const isSelected = serviceLocationScopes.includes(option.key);
               return (
-                <button
+                <SelectableTile
                   key={option.key}
-                  type="button"
+                  label={option.label}
+                  isSelected={isSelected}
                   onClick={() => toggleServiceScope(option.key)}
-                  style={{
-                    padding: '0.625rem 1.25rem',
-                    borderRadius: '8px',
-                    border: isSelected ? '2px solid #222' : '1px solid #d1d5db',
-                    background: isSelected ? '#f9fafb' : 'white',
-                    color: isSelected ? '#222' : '#374151',
-                    fontWeight: isSelected ? 600 : 400,
-                    cursor: 'pointer',
-                    fontSize: '0.9rem',
-                    transition: 'all 0.2s',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem'
-                  }}
-                >
-                  {isSelected && <i className="fas fa-check" style={{ fontSize: '0.75rem' }}></i>}
-                  {option.label}
-                </button>
+                />
               );
             })}
-          </div>
+          </SelectableTileGroup>
         </div>
 
         {/* Service Areas Section */}
@@ -394,14 +379,14 @@ function SimpleWorkingLocationStep({ formData, setFormData }) {
                     style={{
                       display: 'inline-flex',
                       alignItems: 'center',
-                      gap: '0.5rem',
-                      padding: '0.5rem 0.875rem',
-                      background: '#f0f4ff',
-                      border: '1px solid #d0ddff',
-                      color: '#333',
-                      borderRadius: '8px',
-                      fontSize: '0.9rem',
-                      fontWeight: 500
+                      gap: '0.375rem',
+                      padding: '0.5rem 0.75rem',
+                      background: '#f3f4f6',
+                      border: '1px solid #e5e7eb',
+                      color: '#374151',
+                      borderRadius: '6px',
+                      fontSize: '0.875rem',
+                      fontWeight: 400
                     }}
                   >
                     {label}
@@ -411,15 +396,13 @@ function SimpleWorkingLocationStep({ formData, setFormData }) {
                       style={{
                         background: 'none',
                         border: 'none',
-                        color: '#999',
+                        color: '#9ca3af',
                         cursor: 'pointer',
                         padding: '0',
-                        fontSize: '1.3rem',
+                        fontSize: '0.875rem',
                         lineHeight: 1,
-                        marginLeft: '4px'
+                        marginLeft: '0.125rem'
                       }}
-                      onMouseOver={(e) => e.target.style.color = '#ef4444'}
-                      onMouseOut={(e) => e.target.style.color = '#999'}
                     >
                       ×
                     </button>

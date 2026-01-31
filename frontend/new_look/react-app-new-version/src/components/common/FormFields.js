@@ -135,13 +135,13 @@ export const MultiSelectTags = ({
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '0.25rem',
+                gap: '0.375rem',
                 padding: '0.5rem 0.75rem',
-                background: '#f0f4ff',
+                background: '#f3f4f6',
                 border: '1px solid #e5e7eb',
                 borderRadius: '6px',
                 fontSize: '0.875rem',
-                color: '#5086E8'
+                color: '#374151'
               }}
             >
               {opt}
@@ -296,7 +296,7 @@ export const TextArea = ({
   />
 );
 
-// Chip/Tag button for feature selection - grey/blue style matching SelectableTile
+// Chip/Tag button for feature selection - matches SelectableTile style exactly
 export const ChipButton = ({ 
   selected = false, 
   onClick, 
@@ -311,12 +311,12 @@ export const ChipButton = ({
     style={{
       display: 'inline-flex',
       alignItems: 'center',
-      gap: '0.25rem',
+      gap: '0.375rem',
       padding: '0.5rem 0.75rem',
       borderRadius: '6px',
       border: '1px solid #e5e7eb',
-      background: selected ? '#f0f4ff' : '#f9fafb',
-      color: selected ? '#5086E8' : '#374151',
+      background: selected ? '#f3f4f6' : 'white',
+      color: '#374151',
       fontWeight: 400,
       cursor: disabled ? 'not-allowed' : 'pointer',
       fontSize: '0.875rem',

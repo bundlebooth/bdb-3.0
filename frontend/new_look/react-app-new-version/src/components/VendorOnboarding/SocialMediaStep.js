@@ -103,7 +103,7 @@ function SocialMediaStep({ formData, onInputChange, setFormData, currentUser }) 
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '40vh' }}>
+      <div className="step-loading-container">
         <div className="spinner"></div>
       </div>
     );
@@ -112,7 +112,7 @@ function SocialMediaStep({ formData, onInputChange, setFormData, currentUser }) 
   return (
     <div className="social-media-step">
       <div style={{ maxWidth: '100%', width: '100%' }}>
-        <div style={{ marginBottom: '2rem', padding: '1.5rem', background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+        <div style={{ marginBottom: '1.5rem', padding: '1.25rem', background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
             <i className="fas fa-share-alt" style={{ color: 'var(--primary)', fontSize: '1.25rem' }}></i>
             <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>Connect Your Social Media</h3>
@@ -122,9 +122,9 @@ function SocialMediaStep({ formData, onInputChange, setFormData, currentUser }) 
           </p>
         </div>
 
-        <div style={{ display: 'grid', gap: '1.25rem' }}>
-          {socialPlatforms.map(platform => (
-            <div key={platform.key} style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '1.25rem' }}>
+        <div style={{ display: 'grid', gap: '0' }}>
+          {socialPlatforms.map((platform, index) => (
+            <div key={platform.key} style={{ paddingBottom: '1.25rem', marginBottom: '1.25rem', borderBottom: index < socialPlatforms.length - 1 ? '1px solid #e5e7eb' : 'none' }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem', fontSize: '0.95rem', fontWeight: 600 }}>
                 <i className={platform.icon} style={{ color: platform.color, fontSize: '1.5rem' }}></i>
                 {platform.label}

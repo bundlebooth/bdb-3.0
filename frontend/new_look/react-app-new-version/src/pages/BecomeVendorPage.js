@@ -13,6 +13,8 @@ import UniversalModal from '../components/UniversalModal';
 import {
   AccountStep,
   CategoriesStep,
+  ServiceDetailsStep,
+  CategoryQuestionsStep,
   BusinessDetailsStep,
   ContactStep,
   ServicesStep,
@@ -20,12 +22,10 @@ import {
   BusinessHoursStep,
   GalleryStep,
   SocialMediaStep,
-  FiltersStep,
   StripeStep,
   GoogleReviewsStep,
   PoliciesStep,
-  ReviewStep,
-  VendorAttributesStep
+  ReviewStep
 } from '../components/VendorOnboarding';
 import './BecomeVendorPage.css';
 
@@ -37,7 +37,7 @@ const BecomeVendorPage = () => {
   const { currentUser, setCurrentUser } = useAuth();
   
   // Step IDs for mapping URL params to step indices
-  const stepIds = ['account', 'categories', 'business-details', 'contact', 'location', 'services', 'cancellation-policy', 'business-hours', 'vendor-attributes', 'gallery', 'social-media', 'filters', 'stripe', 'google-reviews', 'policies', 'review'];
+  const stepIds = ['account', 'categories', 'service-details', 'category-questions', 'business-details', 'contact', 'location', 'services', 'business-hours', 'cancellation-policy', 'gallery', 'social-media', 'stripe', 'google-reviews', 'policies', 'review'];
 
   // Check URL step param ONCE at mount time - this is the source of truth
   const urlStepRef = useRef(null);
@@ -157,9 +157,6 @@ const BecomeVendorPage = () => {
     youtube: '',
     tiktok: '',
     
-    // Popular Filters
-    selectedFilters: [],
-    
     // Policies & FAQs
     cancellationPolicy: '',
     depositPercentage: '',
@@ -172,6 +169,23 @@ const BecomeVendorPage = () => {
     // Stripe
     stripeConnected: false
   });
+
+  // Map category names (from DB) to IDs (used in frontend)
+  const CATEGORY_NAME_TO_ID = {
+    'Venues': 'venue',
+    'Photo/Video': 'photo',
+    'Music/DJ': 'music',
+    'Catering': 'catering',
+    'Entertainment': 'entertainment',
+    'Experiences': 'experiences',
+    'Decorations': 'decor',
+    'Beauty': 'beauty',
+    'Cake': 'cake',
+    'Transportation': 'transport',
+    'Planners': 'planner',
+    'Fashion': 'fashion',
+    'Stationery': 'stationery'
+  };
 
   // Available categories - matching BusinessInformationPanel IDs
   const availableCategories = [
@@ -224,8 +238,22 @@ const BecomeVendorPage = () => {
     {
       id: 'categories',
       title: 'What services do you offer?',
-      subtitle: 'Select your primary category and any additional categories',
+      subtitle: 'Select your primary category',
       component: CategoriesStep,
+      required: true
+    },
+    {
+      id: 'service-details',
+      title: 'Service Details',
+      subtitle: 'Select your services, event types, cultures served, and features',
+      component: ServiceDetailsStep,
+      required: true
+    },
+    {
+      id: 'category-questions',
+      title: 'Category Questions',
+      subtitle: 'Answer questions specific to your service category',
+      component: CategoryQuestionsStep,
       required: true
     },
     {
@@ -258,14 +286,6 @@ const BecomeVendorPage = () => {
       skippable: true
     },
     {
-      id: 'cancellation-policy',
-      title: 'Set your cancellation policy',
-      subtitle: 'Protect your business while giving clients confidence when booking',
-      component: CancellationPolicyStep,
-      required: false,
-      skippable: true
-    },
-    {
       id: 'business-hours',
       title: 'When are you available?',
       subtitle: 'Set your business hours',
@@ -273,12 +293,11 @@ const BecomeVendorPage = () => {
       required: true
     },
     {
-      id: 'vendor-attributes',
-      title: 'Service Details & Booking Settings',
-      subtitle: 'Set your event types, cultures served, and booking preferences',
-      component: VendorAttributesStep,
-      required: false,
-      skippable: true
+      id: 'cancellation-policy',
+      title: 'Booking Settings',
+      subtitle: 'Configure instant booking, lead time, and cancellation policy',
+      component: CancellationPolicyStep,
+      required: true
     },
     {
       id: 'gallery',
@@ -296,19 +315,11 @@ const BecomeVendorPage = () => {
       skippable: true
     },
     {
-      id: 'filters',
-      title: 'Enable special badges for your profile',
-      subtitle: 'These help clients find you when browsing vendors',
-      component: FiltersStep,
-      required: false,
-      skippable: true
-    },
-    {
       id: 'stripe',
       title: 'Connect Stripe for Payments',
       subtitle: 'Set up payment processing to accept online payments',
       component: StripeStep,
-      required: false // Temporarily disabled for testing
+      required: false
     },
     {
       id: 'google-reviews',
@@ -485,8 +496,10 @@ const BecomeVendorPage = () => {
 
           // Extract primary and additional categories
           // Use 'Category' property instead of 'CategoryName'
-          const primaryCat = categories.find(c => c.IsPrimary)?.Category || categories[0]?.Category || '';
-          const additionalCats = categories.filter(c => !c.IsPrimary).map(c => c.Category);
+          // Convert category NAME from DB to category ID for frontend
+          const primaryCatName = categories.find(c => c.IsPrimary)?.Category || categories[0]?.Category || '';
+          const primaryCat = CATEGORY_NAME_TO_ID[primaryCatName] || primaryCatName.toLowerCase().replace(/[^a-z]/g, '');
+          const additionalCats = categories.filter(c => !c.IsPrimary).map(c => CATEGORY_NAME_TO_ID[c.Category] || c.Category.toLowerCase());
 
           // Map service areas to format expected by SimpleWorkingLocationStep
           const mappedServiceAreas = serviceAreas.map(area => ({
@@ -597,23 +610,6 @@ const BecomeVendorPage = () => {
             if (stripeRes.ok) {
               const stripeData = await stripeRes.json();
               updatedFormData.stripeConnected = stripeData.connected || false;
-            }
-          } catch (e) {
-          }
-
-          // Fetch filters
-          try {
-            const filtersRes = await fetch(`${API_BASE_URL}/vendors/${currentUser.vendorProfileId}/filters`, {
-              headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-            });
-            if (filtersRes.ok) {
-              const filtersData = await filtersRes.json();
-              // Check for filters string first, then fall back to boolean fields
-              if (filtersData.filters) {
-                updatedFormData.selectedFilters = filtersData.filters.split(',').filter(f => f.trim());
-              } else if (filtersData.isPremium || filtersData.isFeatured) {
-                updatedFormData.selectedFilters = ['filter-premium'];
-              }
             }
           } catch (e) {
           }
@@ -803,7 +799,6 @@ const BecomeVendorPage = () => {
           youtube: formData.youtube,
           tiktok: formData.tiktok
         },
-        filters: formData.selectedFilters,
         cancellationPolicy: formData.cancellationPolicy,
         depositPercentage: formData.depositPercentage ? parseInt(formData.depositPercentage) : null,
         paymentTerms: formData.paymentTerms,
@@ -962,26 +957,6 @@ const BecomeVendorPage = () => {
           }
         }
         
-        // Also save filters to dedicated endpoint if any are selected
-        if (formData.selectedFilters && formData.selectedFilters.length > 0) {
-          try {
-            const filtersResponse = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/filters`, {
-              method: 'PUT',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
-              },
-              body: JSON.stringify({ filters: formData.selectedFilters.join(',') })
-            });
-            if (filtersResponse.ok) {
-            } else {
-              console.error('[Save] Failed to save filters:', await filtersResponse.text());
-            }
-          } catch (filtersError) {
-            console.error('[Save] Error saving filters:', filtersError);
-          }
-        }
-
         // Save services with imageURL to step3-services endpoint
         if (formData.selectedServices && formData.selectedServices.length > 0) {
           try {
@@ -1065,6 +1040,17 @@ const BecomeVendorPage = () => {
       case 'categories':
         // MANDATORY: Must have a primary category selected
         return !!(formData.primaryCategory && formData.primaryCategory.trim());
+      case 'service-details':
+        // MANDATORY - must have subcategories selected
+        const hasSubcategories = formData.selectedSubcategories && formData.selectedSubcategories.length > 0;
+        const hasEventTypes = formData.selectedEventTypes && formData.selectedEventTypes.length > 0;
+        const hasCultures = formData.selectedCultures && formData.selectedCultures.length > 0;
+        const hasFeatures = formData.selectedFeatures && formData.selectedFeatures.length > 0;
+        return !!(hasSubcategories || hasEventTypes || hasCultures || hasFeatures);
+      case 'category-questions':
+        // MANDATORY - must have at least one category answer
+        const hasCategoryAnswers = formData.categoryAnswers && Object.keys(formData.categoryAnswers).length > 0;
+        return !!hasCategoryAnswers;
       case 'business-details':
         // MANDATORY: Must have business name AND display name (required fields)
         const hasBusinessName = formData.businessName && formData.businessName.trim().length > 0;
@@ -1097,9 +1083,6 @@ const BecomeVendorPage = () => {
       case 'social-media':
         // Optional - at least one social media link
         return !!(formData.facebook || formData.instagram || formData.twitter || formData.linkedin);
-      case 'filters':
-        // Optional - badges
-        return formData.selectedFilters && formData.selectedFilters.length > 0;
       case 'stripe':
         // OPTIONAL (temporarily bypassed): Stripe connection not required for submission
         return true;
@@ -1306,7 +1289,6 @@ const BecomeVendorPage = () => {
           youtube: formData.youtube,
           tiktok: formData.tiktok
         },
-        filters: formData.selectedFilters,
         cancellationPolicy: formData.cancellationPolicy,
         depositPercentage: formData.depositPercentage ? parseInt(formData.depositPercentage) : null,
         paymentTerms: formData.paymentTerms,
@@ -1367,25 +1349,6 @@ const BecomeVendorPage = () => {
           }
         } catch (featuresError) {
           console.error('[handleSubmit] Error saving features:', featuresError);
-        }
-      }
-
-      // Save filters to dedicated endpoint if any are selected
-      if (vendorProfileId && formData.selectedFilters && formData.selectedFilters.length > 0) {
-        try {
-          const filtersResponse = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/filters`, {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${localStorage.getItem('token')}`
-            },
-            body: JSON.stringify({ filters: formData.selectedFilters.join(',') })
-          });
-          if (!filtersResponse.ok) {
-            console.error('[handleSubmit] Failed to save filters:', await filtersResponse.text());
-          }
-        } catch (filtersError) {
-          console.error('[handleSubmit] Error saving filters:', filtersError);
         }
       }
 
@@ -1603,68 +1566,6 @@ const BecomeVendorPage = () => {
                   }}
                 >
                   Return to Home
-                </button>
-              </div>
-            </div>
-          </div>
-        ) : profileStatus === 'approved' && urlStepRef.current === false ? (
-          /* Show approved message only if NOT navigating via URL step param */
-          <div style={{ padding: '3rem 1rem', maxWidth: '700px', margin: '0 auto' }}>
-            <div style={{ 
-              background: 'linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)', 
-              borderRadius: '16px', 
-              padding: '2.5rem',
-              textAlign: 'center'
-            }}>
-              <div style={{ 
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '80px',
-                height: '80px',
-                borderRadius: '50%',
-                background: '#10b981',
-                marginBottom: '1.5rem'
-              }}>
-                <i className="fas fa-check-circle" style={{ fontSize: '2rem', color: 'white' }}></i>
-              </div>
-              <h2 style={{ fontSize: '1.75rem', marginBottom: '1rem', color: '#166534', fontWeight: '700' }}>
-                Profile Approved!
-              </h2>
-              <p style={{ color: '#15803d', fontSize: '1.1rem', lineHeight: 1.7, marginBottom: '1.5rem' }}>
-                Congratulations! Your vendor profile has been approved and is now live. 
-                Clients can find and book your services.
-              </p>
-              <div style={{ 
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                padding: '0.75rem 1.5rem',
-                background: '#10b981',
-                borderRadius: '8px',
-                color: 'white',
-                fontSize: '0.95rem',
-                fontWeight: 500,
-                marginBottom: '1.5rem'
-              }}>
-                <i className="fas fa-check"></i>
-                <span>Status: Approved & Live</span>
-              </div>
-              <div style={{ marginTop: '1rem' }}>
-                <button 
-                  onClick={() => navigate('/dashboard')}
-                  style={{
-                    padding: '0.75rem 2rem',
-                    background: '#10b981',
-                    border: 'none',
-                    borderRadius: '8px',
-                    color: 'white',
-                    fontSize: '1rem',
-                    fontWeight: 600,
-                    cursor: 'pointer'
-                  }}
-                >
-                  Go to Dashboard
                 </button>
               </div>
             </div>

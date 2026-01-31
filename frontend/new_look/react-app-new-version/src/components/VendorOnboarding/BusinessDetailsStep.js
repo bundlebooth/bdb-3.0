@@ -234,7 +234,7 @@ function BusinessDetailsStep({ formData, onInputChange }) {
         <textarea
           value={formData.businessDescription}
           onChange={(e) => onInputChange('businessDescription', e.target.value)}
-          rows="4"
+          rows="6"
           placeholder="Tell clients about your business, what makes you unique, and what they can expect..."
           style={{
             width: '100%',

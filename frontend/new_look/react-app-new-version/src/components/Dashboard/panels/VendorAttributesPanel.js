@@ -214,15 +214,15 @@ function VendorAttributesPanel({ onBack, vendorProfileId }) {
                 key={et.EventTypeID}
                 onClick={() => toggleEventType(et.EventTypeID)}
                 style={{
-                  padding: '0.5rem 1rem',
-                  borderRadius: '20px',
-                  border: selectedEventTypes.includes(et.EventTypeID) ? '2px solid #5086E8' : '1px solid #d1d5db',
-                  background: selectedEventTypes.includes(et.EventTypeID) ? '#eff6ff' : 'white',
-                  color: selectedEventTypes.includes(et.EventTypeID) ? '#5086E8' : '#374151',
-                  fontWeight: selectedEventTypes.includes(et.EventTypeID) ? 600 : 400,
+                  padding: '0.5rem 0.75rem',
+                  borderRadius: '6px',
+                  border: '1px solid #e5e7eb',
+                  background: selectedEventTypes.includes(et.EventTypeID) ? '#f3f4f6' : 'white',
+                  color: '#374151',
+                  fontWeight: 400,
                   cursor: 'pointer',
                   fontSize: '0.875rem',
-                  transition: 'all 0.2s'
+                  transition: 'all 0.15s ease'
                 }}
               >
                 {et.EventTypeName}
@@ -245,15 +245,15 @@ function VendorAttributesPanel({ onBack, vendorProfileId }) {
                 key={culture.CultureID}
                 onClick={() => toggleCulture(culture.CultureID)}
                 style={{
-                  padding: '0.5rem 1rem',
-                  borderRadius: '20px',
-                  border: selectedCultures.includes(culture.CultureID) ? '2px solid #5086E8' : '1px solid #d1d5db',
-                  background: selectedCultures.includes(culture.CultureID) ? '#eff6ff' : 'white',
-                  color: selectedCultures.includes(culture.CultureID) ? '#5086E8' : '#374151',
-                  fontWeight: selectedCultures.includes(culture.CultureID) ? 600 : 400,
+                  padding: '0.5rem 0.75rem',
+                  borderRadius: '6px',
+                  border: '1px solid #e5e7eb',
+                  background: selectedCultures.includes(culture.CultureID) ? '#f3f4f6' : 'white',
+                  color: '#374151',
+                  fontWeight: 400,
                   cursor: 'pointer',
                   fontSize: '0.875rem',
-                  transition: 'all 0.2s'
+                  transition: 'all 0.15s ease'
                 }}
               >
                 {culture.CultureName}

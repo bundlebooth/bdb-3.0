@@ -300,7 +300,7 @@ function ServicesStep({ formData, setFormData }) {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '40vh' }}>
+      <div className="step-loading-container">
         <div className="spinner"></div>
       </div>
     );
@@ -308,6 +308,19 @@ function ServicesStep({ formData, setFormData }) {
 
   return (
     <div className="services-step">
+      {/* Intro Section */}
+      <div style={{ marginBottom: '1.5rem', padding: '1.25rem', background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+          <i className="fas fa-concierge-bell" style={{ color: '#5086E8', fontSize: '1rem' }}></i>
+          <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: '#111827' }}>
+            Services & Packages
+          </h3>
+        </div>
+        <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem', lineHeight: 1.5 }}>
+          Add individual services or create packages to offer clients. Set your pricing and describe what's included.
+        </p>
+      </div>
+
       {/* Tabs */}
       <PackageServiceTabs 
         activeTab={activeTab}

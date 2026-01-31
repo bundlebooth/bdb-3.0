@@ -154,22 +154,18 @@
   font-size: 2rem !important;
   font-weight: 600 !important;
   color: #222222 !important;
-  margin: 0 0 0.5rem 0 !important;
+  margin: 0 !important;
   line-height: 1.1 !important;
   letter-spacing: -0.025em !important;
-  display: block !important;
-  width: 100% !important;
-  clear: both !important;
 }
 
 .step-header p,
 .step-subtitle {
   font-size: 1.125rem !important;
   color: #6a6a6a !important;
-  margin: 0 !important;
+  margin: 0.75rem 0 0 0 !important;
   line-height: 1.4 !important;
   font-weight: 400 !important;
-  display: block !important;
   width: 100% !important;
   clear: both !important;
   margin-top: 0.5rem !important;
@@ -604,6 +600,25 @@
   animation: spin 0.6s linear infinite;
 }
 
+/* Centered Loading Container for Steps */
+.step-loading-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 50vh;
+  width: 100%;
+}
+
+.step-loading-container .spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #e5e7eb;
+  border-top-color: #5086E8;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
 @keyframes spin {
   to {
     transform: rotate(360deg);
@@ -670,6 +685,38 @@
   .review-value {
     max-width: 50%;
   }
+
+  /* Step content responsive - tablet */
+  .step-content {
+    padding: 0;
+  }
+
+  /* Policy cards stack on tablet */
+  .policy-cards-grid,
+  .cancellation-policy-step .policy-options {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Social media cards stack */
+  .social-media-step > div > div:last-child {
+    gap: 1rem;
+  }
+
+  /* Business hours time inputs */
+  .business-hours-step .time-inputs {
+    flex-wrap: wrap;
+  }
+
+  /* Gallery photo grid - 2 columns on tablet */
+  .gallery-step .photo-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* Toggle rows wrap properly */
+  .toggle-row {
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
 }
 
 @media (max-width: 480px) {
@@ -702,6 +749,58 @@
     padding: 0.5rem 0.75rem;
     font-size: 0.8rem;
     min-width: 60px;
+  }
+
+  /* Mobile step content */
+  .step-content {
+    padding: 0;
+  }
+
+  /* Gallery photo grid - 1 column on mobile */
+  .gallery-step .photo-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Service/Package cards full width */
+  .services-step .service-card,
+  .services-step .package-card {
+    width: 100% !important;
+  }
+
+  /* Form inputs full width */
+  .form-input,
+  .form-select,
+  select {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Time inputs stack vertically */
+  .business-hours-step .time-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  /* Info boxes smaller padding on mobile */
+  .info-box,
+  .intro-section {
+    padding: 1rem !important;
+  }
+
+  /* SelectableTile groups wrap better */
+  .selectable-tile-group {
+    gap: 0.5rem !important;
+  }
+
+  /* FAQ cards padding */
+  .policies-step .faq-card {
+    padding: 1rem !important;
+  }
+
+  /* Stripe/Google Reviews status boxes */
+  .stripe-step .status-box,
+  .google-reviews-step .status-box {
+    padding: 0.75rem !important;
   }
 }
 

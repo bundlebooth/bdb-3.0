@@ -131,7 +131,7 @@ function GoogleReviewsStep({ formData, setFormData, currentUser }) {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '40vh' }}>
+      <div className="step-loading-container">
         <div className="spinner"></div>
       </div>
     );
@@ -140,7 +140,7 @@ function GoogleReviewsStep({ formData, setFormData, currentUser }) {
   return (
     <div className="google-reviews-step">
       <div style={{ maxWidth: '100%', width: '100%' }}>
-        <div style={{ marginBottom: '2rem', padding: '1.5rem', background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+        <div style={{ marginBottom: '1.5rem', padding: '1.25rem', background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
             <svg width="24" height="24" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>

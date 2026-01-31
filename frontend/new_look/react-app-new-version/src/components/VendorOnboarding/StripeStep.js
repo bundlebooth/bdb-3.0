@@ -111,7 +111,7 @@ function StripeStep({ formData, setFormData, currentUser }) {
   return (
     <div className="stripe-step">
       <div style={{ maxWidth: '100%', width: '100%' }}>
-        <div style={{ marginBottom: '2rem', padding: '1.5rem', background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+        <div style={{ marginBottom: '1.5rem', padding: '1.25rem', background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
             <i className="fab fa-stripe" style={{ color: '#635bff', fontSize: '1.5rem' }}></i>
             <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>Connect Stripe for Payments</h3>

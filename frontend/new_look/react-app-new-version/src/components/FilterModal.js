@@ -23,7 +23,7 @@ const SERVICE_LOCATIONS = [
   { key: 'International', label: 'International' }
 ];
 
-// Tag Button Component for filter options - grey rectangular style
+// Tag Button Component for filter options - matches SelectableTile style exactly
 const CheckboxTile = ({ label, checked, onChange }) => (
   <button
     type="button"
@@ -31,12 +31,12 @@ const CheckboxTile = ({ label, checked, onChange }) => (
     style={{
       display: 'inline-flex',
       alignItems: 'center',
-      gap: '0.25rem',
+      gap: '0.375rem',
       padding: '0.5rem 0.75rem',
       borderRadius: '6px',
       border: '1px solid #e5e7eb',
-      background: checked ? '#f0f4ff' : '#f9fafb',
-      color: checked ? '#5086E8' : '#374151',
+      background: checked ? '#f3f4f6' : 'white',
+      color: '#374151',
       fontSize: '0.875rem',
       fontWeight: 400,
       cursor: 'pointer',
@@ -49,7 +49,7 @@ const CheckboxTile = ({ label, checked, onChange }) => (
       <span style={{ 
         fontSize: '0.875rem', 
         color: '#9ca3af',
-        marginLeft: '0.25rem'
+        marginLeft: '0.125rem'
       }}>×</span>
     )}
   </button>

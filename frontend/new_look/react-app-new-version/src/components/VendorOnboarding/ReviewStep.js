@@ -213,7 +213,7 @@ function ReviewStep({ formData, categories, profileStatus, steps, isStepComplete
             <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '1.25rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                 <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600, color: '#111827' }}>Services</h4>
-                <StatusBadge isRequired={false} isComplete={servicesCount > 0} />
+                <StatusBadge isRequired={true} isComplete={servicesCount > 0} />
               </div>
               {servicesCount > 0 ? (
                 <div style={{ fontSize: '0.9rem' }}>
@@ -242,7 +242,7 @@ function ReviewStep({ formData, categories, profileStatus, steps, isStepComplete
             <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '1.25rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                 <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600, color: '#111827' }}>Subcategories</h4>
-                <StatusBadge isRequired={false} isComplete={(formData.selectedSubcategories || []).length > 0} />
+                <StatusBadge isRequired={true} isComplete={(formData.selectedSubcategories || []).length > 0} />
               </div>
               {(formData.selectedSubcategories || []).length > 0 ? (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>

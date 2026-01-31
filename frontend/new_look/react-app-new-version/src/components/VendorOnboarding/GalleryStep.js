@@ -242,7 +242,7 @@ function GalleryStep({ formData, setFormData, currentUser }) {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '40vh' }}>
+      <div className="step-loading-container">
         <div className="spinner"></div>
       </div>
     );
@@ -255,7 +255,7 @@ function GalleryStep({ formData, setFormData, currentUser }) {
         {/* Header with title and Add More button */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
           <h3 style={{ fontSize: '1.5rem', fontWeight: 600, color: '#222', margin: 0 }}>
-            {photos.length > 0 ? 'Your listing looks great!' : 'Add photos to your listing'}
+            Your Photos
           </h3>
           {photos.length > 0 && (
             <button 

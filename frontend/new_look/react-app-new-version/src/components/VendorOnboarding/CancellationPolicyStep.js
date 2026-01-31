@@ -193,7 +193,7 @@ function CancellationPolicyStep({ formData, setFormData }) {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '40vh' }}>
+      <div className="step-loading-container">
         <div className="spinner"></div>
       </div>
     );
@@ -210,27 +210,41 @@ function CancellationPolicyStep({ formData, setFormData }) {
         <p style={{ margin: '0 0 1rem 0', color: '#6b7280', fontSize: '0.875rem' }}>
           Allow clients to book and pay immediately without waiting for your approval
         </p>
-        <label style={{ 
+        <div style={{ 
           display: 'flex', 
           alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '1rem 1.25rem',
-          background: instantBookingEnabled ? '#eff6ff' : '#f9fafb',
-          borderRadius: '12px',
-          border: instantBookingEnabled ? '2px solid #5086E8' : '1px solid #e5e7eb',
-          cursor: 'pointer',
-          maxWidth: '400px'
+          justifyContent: 'space-between'
         }}>
           <span style={{ fontWeight: 500, color: '#111827' }}>
             Enable Instant Booking
           </span>
-          <input
-            type="checkbox"
-            checked={instantBookingEnabled}
-            onChange={(e) => setInstantBookingEnabled(e.target.checked)}
-            style={{ width: '20px', height: '20px', accentColor: '#5086E8' }}
-          />
-        </label>
+          <button
+            type="button"
+            onClick={() => setInstantBookingEnabled(!instantBookingEnabled)}
+            style={{
+              width: '48px',
+              height: '26px',
+              borderRadius: '13px',
+              border: 'none',
+              background: instantBookingEnabled ? '#5086E8' : '#d1d5db',
+              cursor: 'pointer',
+              position: 'relative',
+              transition: 'background 0.2s ease'
+            }}
+          >
+            <span style={{
+              position: 'absolute',
+              top: '3px',
+              left: instantBookingEnabled ? '25px' : '3px',
+              width: '20px',
+              height: '20px',
+              borderRadius: '50%',
+              background: 'white',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+              transition: 'left 0.2s ease'
+            }} />
+          </button>
+        </div>
       </div>
 
       {/* Minimum Lead Time Section */}

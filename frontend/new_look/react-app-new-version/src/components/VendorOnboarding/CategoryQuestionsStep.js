@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { API_BASE_URL } from '../../config';
 import { showBanner } from '../../utils/helpers';
+import SelectableTile, { SelectableTileGroup } from '../common/SelectableTile';
 
 /**
  * CategoryQuestionsStep - Displays category-specific questions for vendors to answer
@@ -194,39 +195,24 @@ function CategoryQuestionsStep({ formData, setFormData, currentUser }) {
             <label style={{ display: 'block', marginBottom: '0.75rem', fontWeight: 500, color: '#111827' }}>
               {question.QuestionText}
             </label>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+            <SelectableTileGroup>
               {multiOptions.map(opt => {
                 const isSelected = selectedValues.includes(opt);
                 return (
-                  <button
+                  <SelectableTile
                     key={opt}
-                    type="button"
+                    label={opt}
+                    isSelected={isSelected}
                     onClick={() => {
                       const newValues = isSelected
                         ? selectedValues.filter(v => v !== opt)
                         : [...selectedValues, opt];
                       handleAnswerChange(question.QuestionID, newValues.join(','));
                     }}
-                    style={{
-                      padding: '0.5rem 1rem',
-                      borderRadius: '20px',
-                      border: isSelected ? '2px solid #5086E8' : '1px solid #d1d5db',
-                      background: isSelected ? '#eff6ff' : 'white',
-                      color: isSelected ? '#5086E8' : '#374151',
-                      fontWeight: isSelected ? 600 : 400,
-                      cursor: 'pointer',
-                      fontSize: '0.875rem',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.25rem'
-                    }}
-                  >
-                    {isSelected && <i className="fas fa-check" style={{ fontSize: '0.7rem' }}></i>}
-                    {opt}
-                  </button>
+                  />
                 );
               })}
-            </div>
+            </SelectableTileGroup>
           </div>
         );
 
@@ -258,7 +244,7 @@ function CategoryQuestionsStep({ formData, setFormData, currentUser }) {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '40vh' }}>
+      <div className="step-loading-container">
         <div className="spinner"></div>
       </div>
     );
@@ -294,61 +280,173 @@ function CategoryQuestionsStep({ formData, setFormData, currentUser }) {
     );
   }
 
-  // Count checked items
-  const checkedCount = Object.values(answers).filter(v => v === 'Yes' || v === 'true' || v === '1').length;
+  const handleMultiSelectChange = (questionId, option, checked) => {
+    const currentAnswer = answers[questionId] || '';
+    const currentOptions = currentAnswer ? currentAnswer.split(',').map(s => s.trim()) : [];
+    
+    let newOptions;
+    if (checked) {
+      newOptions = [...currentOptions, option];
+    } else {
+      newOptions = currentOptions.filter(o => o !== option);
+    }
+    
+    handleAnswerChange(questionId, newOptions.join(','));
+  };
+
+  const renderQuestionInput = (question) => {
+    const value = answers[question.QuestionID] || '';
+    
+    switch (question.QuestionType) {
+      case 'Checkbox':
+      case 'YesNo':
+        const isOn = value === 'Yes' || value === 'true' || value === '1';
+        return (
+          <button
+            type="button"
+            onClick={() => handleAnswerChange(question.QuestionID, isOn ? 'No' : 'Yes')}
+            style={{
+              width: '48px',
+              height: '26px',
+              borderRadius: '13px',
+              border: 'none',
+              background: isOn ? '#5086E8' : '#d1d5db',
+              cursor: 'pointer',
+              position: 'relative',
+              transition: 'background 0.2s ease',
+              flexShrink: 0
+            }}
+          >
+            <span style={{
+              position: 'absolute',
+              top: '3px',
+              left: isOn ? '25px' : '3px',
+              width: '20px',
+              height: '20px',
+              borderRadius: '50%',
+              background: 'white',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+              transition: 'left 0.2s ease'
+            }} />
+          </button>
+        );
+
+      case 'Select':
+        const selectOptions = question.Options ? question.Options.split(',').map(o => o.trim()) : [];
+        return (
+          <select
+            value={value}
+            onChange={(e) => handleAnswerChange(question.QuestionID, e.target.value)}
+            style={{
+              minWidth: '200px',
+              padding: '0.5rem 0.75rem',
+              borderRadius: '8px',
+              border: '1px solid #d1d5db',
+              fontSize: '0.9rem',
+              background: 'white'
+            }}
+          >
+            <option value="">Select...</option>
+            {selectOptions.map(opt => (
+              <option key={opt} value={opt}>{opt}</option>
+            ))}
+          </select>
+        );
+
+      case 'MultiSelect':
+        const multiOptions = question.Options ? question.Options.split(',').map(o => o.trim()) : [];
+        const selectedOptions = value ? value.split(',').map(s => s.trim()) : [];
+        return (
+          <SelectableTileGroup>
+            {multiOptions.map(opt => {
+              const isSelected = selectedOptions.includes(opt);
+              return (
+                <SelectableTile
+                  key={opt}
+                  label={opt}
+                  isSelected={isSelected}
+                  onClick={() => handleMultiSelectChange(question.QuestionID, opt, !isSelected)}
+                />
+              );
+            })}
+          </SelectableTileGroup>
+        );
+
+      case 'Number':
+        return (
+          <input
+            type="number"
+            value={value}
+            onChange={(e) => handleAnswerChange(question.QuestionID, e.target.value)}
+            placeholder="Enter number"
+            style={{
+              width: '120px',
+              padding: '0.5rem 0.75rem',
+              borderRadius: '8px',
+              border: '1px solid #d1d5db',
+              fontSize: '0.9rem'
+            }}
+          />
+        );
+
+      case 'Text':
+      default:
+        return (
+          <input
+            type="text"
+            value={value}
+            onChange={(e) => handleAnswerChange(question.QuestionID, e.target.value)}
+            placeholder="Enter answer"
+            style={{
+              minWidth: '200px',
+              padding: '0.5rem 0.75rem',
+              borderRadius: '8px',
+              border: '1px solid #d1d5db',
+              fontSize: '0.9rem'
+            }}
+          />
+        );
+    }
+  };
 
   return (
     <div className="category-questions-step">
-      <div style={{ marginBottom: '1.5rem' }}>
-        <p style={{ margin: 0, color: '#6b7280', fontSize: '0.9rem' }}>
-          <strong>Select the services you offer.</strong> Checked items will appear with a ✓ on your profile. Unchecked items will show as not available.
-        </p>
-        <div style={{ 
-          marginTop: '0.75rem', 
-          padding: '0.5rem 1rem', 
-          background: '#f0f9ff',
-          borderRadius: '8px',
-          fontSize: '0.85rem',
-          color: '#0369a1'
-        }}>
-          <i className="fas fa-check-circle" style={{ marginRight: '0.5rem', color: '#22c55e' }}></i>
-          {checkedCount} of {questions.length} services selected
-        </div>
-      </div>
-
-      <div style={{ 
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
-        gap: '0.5rem',
-        background: 'white', 
-        borderRadius: '12px', 
-        border: '1px solid #e5e7eb',
-        padding: '1.25rem'
-      }}>
-        {questions.map(q => renderQuestion(q))}
-      </div>
-
-      {currentUser?.vendorProfileId && (
-        <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end' }}>
-          <button
-            type="button"
-            onClick={handleSaveAnswers}
-            disabled={saving}
+      <p style={{ margin: '0 0 1.5rem 0', color: '#6b7280', fontSize: '0.875rem' }}>
+        Answer these questions to help clients understand your services better
+      </p>
+      
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        {questions.map(question => (
+          <div 
+            key={question.QuestionID}
             style={{
-              padding: '0.75rem 2rem',
-              borderRadius: '8px',
-              border: 'none',
-              background: saving ? '#9ca3af' : '#5086E8',
-              color: 'white',
-              fontWeight: 600,
-              cursor: saving ? 'not-allowed' : 'pointer',
-              fontSize: '1rem'
+              display: 'flex',
+              alignItems: question.QuestionType === 'MultiSelect' ? 'flex-start' : 'center',
+              justifyContent: 'space-between',
+              gap: '1rem',
+              paddingBottom: '1.25rem',
+              borderBottom: '1px solid #f3f4f6'
             }}
           >
-            {saving ? 'Saving...' : 'Save Answers'}
-          </button>
-        </div>
-      )}
+            <span style={{ 
+              fontWeight: 500, 
+              color: '#111827',
+              fontSize: '0.9rem',
+              flex: question.QuestionType === 'MultiSelect' ? '0 0 40%' : '1'
+            }}>
+              {question.QuestionText}
+              {question.IsRequired && <span style={{ color: '#ef4444', marginLeft: '0.25rem' }}>*</span>}
+            </span>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center',
+              flex: question.QuestionType === 'MultiSelect' ? '1' : 'none'
+            }}>
+              {renderQuestionInput(question)}
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

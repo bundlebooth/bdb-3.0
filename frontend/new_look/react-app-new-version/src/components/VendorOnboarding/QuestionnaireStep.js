@@ -183,7 +183,7 @@ function QuestionnaireStep({ formData, setFormData, currentUser, setFeaturesLoad
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '40vh' }}>
+      <div className="step-loading-container">
         <div className="spinner"></div>
       </div>
     );

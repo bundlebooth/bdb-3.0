@@ -4,7 +4,7 @@ import React from 'react';
  * Universal SelectableTile component for consistent tile selection UI
  * Used for multi-select options like Service Location, Features, etc.
  * 
- * Style: Grey background with border when unselected, light blue with blue text when selected
+ * Style: Matches "Ottawa, Ontario" chip - light grey background (#e5e7eb), dark text (#374151)
  * Shows × to remove when selected
  * 
  * @param {string} label - Display text for the tile
@@ -39,10 +39,10 @@ function SelectableTile({
     transition: 'all 0.15s ease',
     display: 'inline-flex',
     alignItems: 'center',
-    gap: '0.25rem',
-    background: isSelected ? '#f0f4ff' : '#f9fafb',
+    gap: '0.375rem',
+    background: isSelected ? '#f3f4f6' : 'white',
     border: '1px solid #e5e7eb',
-    color: isSelected ? '#5086E8' : '#374151',
+    color: '#374151',
     fontWeight: 400,
     opacity: disabled ? 0.5 : 1,
     whiteSpace: 'nowrap'
@@ -61,7 +61,7 @@ function SelectableTile({
       }}
     >
       {icon && (
-        <i className={`fas ${icon}`} style={{ color: isSelected ? '#5086E8' : iconColor, fontSize: '0.9em' }}></i>
+        <i className={`fas ${icon}`} style={{ color: iconColor, fontSize: '0.9em' }}></i>
       )}
       <span>{label}</span>
       {(showRemoveIcon || showCheckmark) && isSelected && (

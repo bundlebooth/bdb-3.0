@@ -202,20 +202,22 @@ function CategoryQuestionsPanel({ onBack, vendorProfileId }) {
         const multiOptions = question.Options ? question.Options.split(',').map(o => o.trim()) : [];
         const selectedOptions = answer ? answer.split(',').map(s => s.trim()) : [];
         return (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
             {multiOptions.map((opt, idx) => (
               <label 
                 key={idx} 
                 style={{ 
-                  display: 'flex', 
+                  display: 'inline-flex', 
                   alignItems: 'center', 
-                  gap: '0.5rem',
-                  padding: '0.5rem 1rem',
-                  borderRadius: '20px',
-                  border: selectedOptions.includes(opt) ? '2px solid #5086E8' : '1px solid #d1d5db',
-                  background: selectedOptions.includes(opt) ? '#eff6ff' : 'white',
+                  gap: '0.375rem',
+                  padding: '0.5rem 0.75rem',
+                  borderRadius: '6px',
+                  border: '1px solid #e5e7eb',
+                  background: selectedOptions.includes(opt) ? '#f3f4f6' : 'white',
+                  color: '#374151',
                   cursor: 'pointer',
-                  transition: 'all 0.2s'
+                  fontSize: '0.875rem',
+                  transition: 'all 0.15s ease'
                 }}
               >
                 <input
@@ -224,10 +226,10 @@ function CategoryQuestionsPanel({ onBack, vendorProfileId }) {
                   onChange={(e) => handleMultiSelectChange(question.QuestionID, opt, e.target.checked)}
                   style={{ display: 'none' }}
                 />
+                <span>{opt}</span>
                 {selectedOptions.includes(opt) && (
-                  <i className="fas fa-check" style={{ color: '#5086E8', fontSize: '0.8rem' }}></i>
+                  <span style={{ color: '#9ca3af', fontSize: '0.875rem', marginLeft: '0.125rem' }}>×</span>
                 )}
-                <span style={{ fontSize: '0.9rem' }}>{opt}</span>
               </label>
             ))}
           </div>
