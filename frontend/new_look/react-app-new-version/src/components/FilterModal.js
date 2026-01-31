@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import UniversalModal from './UniversalModal';
-import { MultiSelectTags } from './common/FormFields';
 import { API_BASE_URL } from '../config';
+
+// Number of items to show before "Show more"
+const INITIAL_VISIBLE_COUNT = 10;
 
 // Experience range options
 const EXPERIENCE_RANGES = [
@@ -21,35 +23,180 @@ const SERVICE_LOCATIONS = [
   { key: 'International', label: 'International' }
 ];
 
-// Review count options
-const REVIEW_COUNT_OPTIONS = [
-  { key: '', label: 'Any' },
-  { key: '5', label: '5+ reviews' },
-  { key: '10', label: '10+ reviews' },
-  { key: '25', label: '25+ reviews' },
-  { key: '50', label: '50+ reviews' },
-  { key: '100', label: '100+ reviews' }
-];
+// Tag Button Component for filter options - matching SelectableTile common component
+const CheckboxTile = ({ label, checked, onChange }) => (
+  <button
+    type="button"
+    onClick={onChange}
+    style={{
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '0.5rem',
+      padding: '0.5rem 0.75rem',
+      borderRadius: '8px',
+      border: checked ? 'none' : '1px solid #d1d5db',
+      background: checked ? '#f3f4f6' : 'white',
+      color: '#374151',
+      fontSize: '0.875rem',
+      fontWeight: 400,
+      cursor: 'pointer',
+      transition: 'all 0.15s ease',
+      whiteSpace: 'nowrap'
+    }}
+  >
+    {label}
+    {checked && (
+      <span style={{ 
+        fontSize: '0.9rem', 
+        color: '#6b7280',
+        marginLeft: '0.125rem'
+      }}>×</span>
+    )}
+  </button>
+);
 
-// Fresh listings options (days)
-const FRESH_LISTING_OPTIONS = [
-  { key: '', label: 'Any time' },
-  { key: '7', label: 'Last 7 days' },
-  { key: '30', label: 'Last 30 days' },
-  { key: '60', label: 'Last 60 days' },
-  { key: '90', label: 'Last 90 days' }
-];
+// Features Section Component with single "Show all" for entire section
+const FeaturesSection = ({ features, selectedFeatures, setSelectedFeatures }) => {
+  const [expanded, setExpanded] = useState(false);
+  
+  if (!features || features.length === 0) return null;
+  
+  // Count total features across all categories
+  const totalFeatures = features.reduce((sum, cat) => sum + cat.features.length, 0);
+  const INITIAL_CATEGORIES = 2; // Show first 2 categories initially
+  
+  const visibleCategories = expanded ? features : features.slice(0, INITIAL_CATEGORIES);
+  const hiddenCategories = features.length - INITIAL_CATEGORIES;
+  const hasMore = features.length > INITIAL_CATEGORIES;
 
-// Day of week options for availability
-const DAY_OF_WEEK_OPTIONS = [
-  { key: '0', label: 'Sunday' },
-  { key: '1', label: 'Monday' },
-  { key: '2', label: 'Tuesday' },
-  { key: '3', label: 'Wednesday' },
-  { key: '4', label: 'Thursday' },
-  { key: '5', label: 'Friday' },
-  { key: '6', label: 'Saturday' }
-];
+  return (
+    <div style={{ marginBottom: '1.5rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '1.5rem' }}>
+      <h3 style={{ 
+        fontSize: '1.1rem', 
+        fontWeight: 700, 
+        margin: '0 0 0.75rem 0',
+        color: '#111827'
+      }}>
+        Features & Amenities
+      </h3>
+      {visibleCategories.map((category) => (
+        <div key={category.categoryName} style={{ marginBottom: '1rem' }}>
+          <h4 style={{ 
+            fontSize: '0.85rem', 
+            fontWeight: 500, 
+            margin: '0 0 0.5rem 0',
+            color: '#6b7280'
+          }}>
+            {category.categoryName}
+          </h4>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+            {category.features.map((feature) => (
+              <CheckboxTile
+                key={feature.id}
+                label={feature.name}
+                checked={selectedFeatures.includes(feature.id)}
+                onChange={() => {
+                  setSelectedFeatures(prev => 
+                    prev.includes(feature.id) 
+                      ? prev.filter(x => x !== feature.id) 
+                      : [...prev, feature.id]
+                  );
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      ))}
+      {hasMore && (
+        <button
+          onClick={() => setExpanded(!expanded)}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: '#5086E8',
+            fontSize: '0.875rem',
+            fontWeight: 500,
+            cursor: 'pointer',
+            padding: '0.25rem 0 0 0',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.25rem'
+          }}
+        >
+          {expanded ? 'Show less' : `Show all (${hiddenCategories} more categories)`}
+        </button>
+      )}
+    </div>
+  );
+};
+
+// Expandable Section Component with "Show all" button
+const ExpandableCheckboxSection = ({ 
+  title, 
+  items, 
+  selectedIds, 
+  onToggle, 
+  getId, 
+  getName,
+  initialCount = INITIAL_VISIBLE_COUNT 
+}) => {
+  const [expanded, setExpanded] = useState(false);
+  const visibleItems = expanded ? items : items.slice(0, initialCount);
+  const hasMore = items.length > initialCount;
+  const hiddenCount = items.length - initialCount;
+
+  return (
+    <div style={{ marginBottom: '1.5rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '1.5rem' }}>
+      <h3 style={{ 
+        fontSize: '1.1rem', 
+        fontWeight: 700, 
+        margin: '0 0 0.75rem 0',
+        color: '#111827'
+      }}>
+        {title}
+      </h3>
+      <div style={{ 
+        display: 'flex', 
+        flexWrap: 'wrap', 
+        gap: '0.5rem'
+      }}>
+        {visibleItems.map((item) => {
+          const id = getId(item);
+          const name = getName(item);
+          const isChecked = selectedIds.includes(id);
+          return (
+            <CheckboxTile
+              key={id}
+              label={name}
+              checked={isChecked}
+              onChange={() => onToggle(id)}
+            />
+          );
+        })}
+      </div>
+      {hasMore && (
+        <button
+          onClick={() => setExpanded(!expanded)}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: '#5086E8',
+            fontSize: '0.875rem',
+            fontWeight: 500,
+            cursor: 'pointer',
+            padding: '0.5rem 0 0 0',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.25rem'
+          }}
+        >
+          {expanded ? 'Show less' : `Show all (${hiddenCount})`}
+          <span style={{ fontSize: '0.75rem' }}>{expanded ? '▲' : '▼'}</span>
+        </button>
+      )}
+    </div>
+  );
+};
 
 function FilterModal({ isOpen, onClose, filters, onFilterChange, userLocation, onApply, vendorCount = 0, category, city }) {
   // Filter state
@@ -136,23 +283,15 @@ function FilterModal({ isOpen, onClose, filters, onFilterChange, userLocation, o
         }
         if (featuresRes.ok) {
           const data = await featuresRes.json();
-          // Flatten all features from all categories and deduplicate by name
-          const featureMap = new Map();
-          (data.categories || []).forEach(cat => {
-            (cat.features || []).forEach(f => {
-              const name = f.FeatureName || f.featureName;
-              const id = f.FeatureID || f.featureId;
-              // Only add if we haven't seen this name before (keep first occurrence)
-              if (!featureMap.has(name)) {
-                featureMap.set(name, {
-                  id,
-                  name,
-                  category: cat.categoryName
-                });
-              }
-            });
-          });
-          setFeatures(Array.from(featureMap.values()));
+          // Keep features grouped by category for organized display
+          const categorizedFeatures = (data.categories || []).map(cat => ({
+            categoryName: cat.categoryName,
+            features: (cat.features || []).map(f => ({
+              id: f.FeatureID || f.featureId,
+              name: f.FeatureName || f.featureName
+            }))
+          })).filter(cat => cat.features.length > 0);
+          setFeatures(categorizedFeatures);
         }
       } catch (error) {
         console.error('Error fetching filter lookups:', error);
@@ -322,20 +461,6 @@ function FilterModal({ isOpen, onClose, filters, onFilterChange, userLocation, o
     onClose();
   };
 
-
-  // Chip style helper for single-select options - grey style matching MultiSelectTags
-  const getChipStyle = (isSelected) => ({
-    padding: '0.5rem 1rem',
-    borderRadius: '8px',
-    border: isSelected ? '1px solid #374151' : '1px solid #e5e7eb',
-    background: isSelected ? '#f3f4f6' : '#f9fafb',
-    color: isSelected ? '#111827' : '#6b7280',
-    fontWeight: isSelected ? 600 : 400,
-    cursor: 'pointer',
-    fontSize: '0.875rem',
-    transition: 'all 0.2s'
-  });
-
   // Count active filters
   const activeFilterCount = [
     priceRange[0] > 0 || priceRange[1] < 10000,
@@ -370,25 +495,70 @@ function FilterModal({ isOpen, onClose, filters, onFilterChange, userLocation, o
         padding: '0 1.5rem'
       }}>
         
-        {/* Price Range Section - Dual slider with min/max */}
-        <div style={{ marginBottom: '2rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '1.5rem' }}>
+        {/* Price Range Section - Input fields with slider */}
+        <div style={{ marginBottom: '1.5rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '1.5rem' }}>
           <h3 style={{ 
-            fontSize: '1.25rem', 
+            fontSize: '1.1rem', 
             fontWeight: 700, 
-            margin: '0 0 1rem 0',
+            margin: '0 0 0.75rem 0',
             color: '#111827'
           }}>
             Price Range
           </h3>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-            <span style={{ fontSize: '0.875rem', color: '#5086E8' }}>
-              <strong>${priceRange[0].toLocaleString()}</strong>
-            </span>
-            <span style={{ fontSize: '0.875rem', color: '#5086E8' }}>
-              <strong>${priceRange[1] >= 10000 ? '10,000+' : priceRange[1].toLocaleString()}</strong>
-            </span>
+          {/* Min/Max Input Fields */}
+          <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', alignItems: 'center' }}>
+            <div style={{ flex: 1 }}>
+              <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.25rem' }}>Minimum</label>
+              <div style={{ position: 'relative' }}>
+                <span style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#6b7280' }}>$</span>
+                <input
+                  type="number"
+                  min="0"
+                  max={priceRange[1]}
+                  step="100"
+                  value={priceRange[0]}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value) || 0;
+                    if (val < priceRange[1]) setPriceRange([val, priceRange[1]]);
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '0.5rem 0.75rem 0.5rem 1.5rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '8px',
+                    fontSize: '0.9rem'
+                  }}
+                />
+              </div>
+            </div>
+            <span style={{ color: '#9ca3af', marginTop: '1.25rem' }}>—</span>
+            <div style={{ flex: 1 }}>
+              <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.25rem' }}>Maximum</label>
+              <div style={{ position: 'relative' }}>
+                <span style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#6b7280' }}>$</span>
+                <input
+                  type="number"
+                  min={priceRange[0]}
+                  max="10000"
+                  step="100"
+                  value={priceRange[1]}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value) || 10000;
+                    if (val > priceRange[0]) setPriceRange([priceRange[0], val]);
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '0.5rem 0.75rem 0.5rem 1.5rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '8px',
+                    fontSize: '0.9rem'
+                  }}
+                />
+              </div>
+            </div>
           </div>
-          <div style={{ position: 'relative', height: '6px', marginBottom: '1.5rem' }}>
+          {/* Dual Range Slider */}
+          <div style={{ position: 'relative', height: '6px', marginBottom: '0.5rem' }}>
             <div style={{
               position: 'absolute',
               top: 0,
@@ -407,7 +577,6 @@ function FilterModal({ isOpen, onClose, filters, onFilterChange, userLocation, o
               background: '#5086E8',
               borderRadius: '3px'
             }} />
-            {/* Min price slider */}
             <input
               type="range"
               min="0"
@@ -416,10 +585,9 @@ function FilterModal({ isOpen, onClose, filters, onFilterChange, userLocation, o
               value={priceRange[0]}
               onChange={(e) => {
                 const newMin = parseInt(e.target.value);
-                if (newMin < priceRange[1]) {
-                  setPriceRange([newMin, priceRange[1]]);
-                }
+                if (newMin < priceRange[1]) setPriceRange([newMin, priceRange[1]]);
               }}
+              className="price-range-slider price-range-min"
               style={{
                 position: 'absolute',
                 top: '-6px',
@@ -430,8 +598,8 @@ function FilterModal({ isOpen, onClose, filters, onFilterChange, userLocation, o
                 cursor: 'pointer',
                 appearance: 'none',
                 WebkitAppearance: 'none',
-                pointerEvents: 'auto',
-                zIndex: 2
+                pointerEvents: 'none',
+                zIndex: 3
               }}
             />
             {/* Max price slider */}
@@ -447,6 +615,7 @@ function FilterModal({ isOpen, onClose, filters, onFilterChange, userLocation, o
                   setPriceRange([priceRange[0], newMax]);
                 }
               }}
+              className="price-range-slider price-range-max"
               style={{
                 position: 'absolute',
                 top: '-6px',
@@ -457,490 +626,193 @@ function FilterModal({ isOpen, onClose, filters, onFilterChange, userLocation, o
                 cursor: 'pointer',
                 appearance: 'none',
                 WebkitAppearance: 'none',
-                pointerEvents: 'auto',
-                zIndex: 1
+                pointerEvents: 'none',
+                zIndex: 4
               }}
             />
           </div>
-          {/* Quick price presets */}
-          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-            {[
-              { label: 'Under $500', min: 0, max: 500 },
-              { label: '$500 - $1,000', min: 500, max: 1000 },
-              { label: '$1,000 - $2,500', min: 1000, max: 2500 },
-              { label: '$2,500 - $5,000', min: 2500, max: 5000 },
-              { label: '$5,000+', min: 5000, max: 10000 }
-            ].map((preset) => (
-              <button
-                key={preset.label}
-                onClick={() => setPriceRange([preset.min, preset.max])}
-                style={{
-                  padding: '0.375rem 0.75rem',
-                  borderRadius: '16px',
-                  border: (priceRange[0] === preset.min && priceRange[1] === preset.max) 
-                    ? '2px solid #5086E8' : '1px solid #d1d5db',
-                  background: (priceRange[0] === preset.min && priceRange[1] === preset.max) 
-                    ? '#eff6ff' : 'white',
-                  color: (priceRange[0] === preset.min && priceRange[1] === preset.max) 
-                    ? '#5086E8' : '#6b7280',
-                  fontSize: '0.75rem',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s'
-                }}
-              >
-                {preset.label}
-              </button>
-            ))}
-          </div>
         </div>
 
-        {/* Subcategories Section - MultiSelectTags dropdown style */}
+        {/* Subcategories Section - Checkbox tiles */}
         {subcategories.length > 0 && (
-          <div style={{ marginBottom: '2rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '1.5rem' }}>
-            <h3 style={{ 
-              fontSize: '1.25rem', 
-              fontWeight: 700, 
-              margin: '0 0 1rem 0',
-              color: '#111827'
-            }}>
-              Subcategories{selectedSubcategories.length > 0 ? ` (${selectedSubcategories.length} selected)` : ''}
-            </h3>
-            <p style={{ margin: '0 0 1rem 0', color: '#6b7280', fontSize: '0.875rem' }}>
-              Select the specific services you're looking for
-            </p>
-            <MultiSelectTags
-              options={['All Subcategories', ...subcategories.map(s => s.SubcategoryName)]}
-              selectedValues={
-                selectedSubcategories.length === 0 
-                  ? ['All Subcategories']
-                  : subcategories
-                      .filter(s => selectedSubcategories.includes(s.SubcategoryID))
-                      .map(s => s.SubcategoryName)
-              }
-              onChange={(names) => {
-                if (names.includes('All Subcategories') && !selectedSubcategories.length === 0) {
-                  // User selected "All" - clear selections
-                  setSelectedSubcategories([]);
-                } else {
-                  // Filter out "All Subcategories" and map back to IDs
-                  const filteredNames = names.filter(n => n !== 'All Subcategories');
-                  const ids = subcategories
-                    .filter(s => filteredNames.includes(s.SubcategoryName))
-                    .map(s => s.SubcategoryID);
-                  setSelectedSubcategories(ids);
-                }
-              }}
-              placeholder="All Subcategories"
-            />
-          </div>
-        )}
-
-        {/* Event Types Section - MultiSelectTags dropdown style */}
-        {eventTypes.length > 0 && (
-          <div style={{ marginBottom: '2rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '1.5rem' }}>
-            <h3 style={{ 
-              fontSize: '1.25rem', 
-              fontWeight: 700, 
-              margin: '0 0 1rem 0',
-              color: '#111827'
-            }}>
-              Event Types{selectedEventTypes.length > 0 ? ` (${selectedEventTypes.length} selected)` : ''}
-            </h3>
-            <p style={{ margin: '0 0 1rem 0', color: '#6b7280', fontSize: '0.875rem' }}>
-              Select the types of events you're planning
-            </p>
-            <MultiSelectTags
-              options={['All Event Types', ...eventTypes.map(et => et.EventTypeName)]}
-              selectedValues={
-                selectedEventTypes.length === 0 
-                  ? ['All Event Types']
-                  : eventTypes
-                      .filter(et => selectedEventTypes.includes(et.EventTypeID))
-                      .map(et => et.EventTypeName)
-              }
-              onChange={(names) => {
-                if (names.includes('All Event Types') && selectedEventTypes.length > 0) {
-                  // User selected "All" - clear selections
-                  setSelectedEventTypes([]);
-                } else {
-                  // Filter out "All Event Types" and map back to IDs
-                  const filteredNames = names.filter(n => n !== 'All Event Types');
-                  const ids = eventTypes
-                    .filter(et => filteredNames.includes(et.EventTypeName))
-                    .map(et => et.EventTypeID);
-                  setSelectedEventTypes(ids);
-                }
-              }}
-              placeholder="All Event Types"
-            />
-          </div>
-        )}
-
-        {/* Cultures Served Section - MultiSelectTags dropdown style */}
-        {cultures.length > 0 && (
-          <div style={{ marginBottom: '2rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '1.5rem' }}>
-            <h3 style={{ 
-              fontSize: '1.25rem', 
-              fontWeight: 700, 
-              margin: '0 0 1rem 0',
-              color: '#111827'
-            }}>
-              Cultures Served{selectedCultures.length > 0 ? ` (${selectedCultures.length} selected)` : ''}
-            </h3>
-            <p style={{ margin: '0 0 1rem 0', color: '#6b7280', fontSize: '0.875rem' }}>
-              Find vendors who specialize in your cultural traditions
-            </p>
-            <MultiSelectTags
-              options={['All Cultures', ...cultures.map(c => c.CultureName)]}
-              selectedValues={
-                selectedCultures.length === 0 
-                  ? ['All Cultures']
-                  : cultures
-                      .filter(c => selectedCultures.includes(c.CultureID))
-                      .map(c => c.CultureName)
-              }
-              onChange={(names) => {
-                if (names.includes('All Cultures') && selectedCultures.length > 0) {
-                  // User selected "All" - clear selections
-                  setSelectedCultures([]);
-                } else {
-                  // Filter out "All Cultures" and map back to IDs
-                  const filteredNames = names.filter(n => n !== 'All Cultures');
-                  const ids = cultures
-                    .filter(c => filteredNames.includes(c.CultureName))
-                    .map(c => c.CultureID);
-                  setSelectedCultures(ids);
-                }
-              }}
-              placeholder="All Cultures"
-            />
-          </div>
-        )}
-
-        {/* Features Section - MultiSelectTags dropdown style */}
-        {features.length > 0 && (
-          <div style={{ marginBottom: '2rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '1.5rem' }}>
-            <h3 style={{ 
-              fontSize: '1.25rem', 
-              fontWeight: 700, 
-              margin: '0 0 1rem 0',
-              color: '#111827'
-            }}>
-              Features & Amenities{selectedFeatures.length > 0 ? ` (${selectedFeatures.length} selected)` : ''}
-            </h3>
-            <p style={{ margin: '0 0 1rem 0', color: '#6b7280', fontSize: '0.875rem' }}>
-              Select the amenities and capabilities you need
-            </p>
-            <MultiSelectTags
-              options={['All Features', ...features.map(f => f.name)]}
-              selectedValues={
-                selectedFeatures.length === 0 
-                  ? ['All Features']
-                  : features
-                      .filter(f => selectedFeatures.includes(f.id))
-                      .map(f => f.name)
-              }
-              onChange={(names) => {
-                if (names.includes('All Features') && selectedFeatures.length > 0) {
-                  // User selected "All" - clear selections
-                  setSelectedFeatures([]);
-                } else {
-                  // Filter out "All Features" and map back to IDs
-                  const filteredNames = names.filter(n => n !== 'All Features');
-                  const ids = features
-                    .filter(f => filteredNames.includes(f.name))
-                    .map(f => f.id);
-                  setSelectedFeatures(ids);
-                }
-              }}
-              placeholder="All Features"
-            />
-          </div>
-        )}
-
-        {/* Service Location Section - Radio buttons like Giggster */}
-        <div style={{ marginBottom: '2rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '1.5rem' }}>
-          <h3 style={{ 
-            fontSize: '1.25rem', 
-            fontWeight: 700, 
-            margin: '0 0 1rem 0',
-            color: '#111827'
-          }}>
-            Service Location
-          </h3>
-          <p style={{ margin: '0 0 1rem 0', color: '#6b7280', fontSize: '0.875rem' }}>
-            How far is the vendor willing to travel?
-          </p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
-            {SERVICE_LOCATIONS.map((loc) => {
-              const isSelected = serviceLocation === loc.key;
-              return (
-                <label
-                  key={loc.key}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    padding: '0.75rem 1rem',
-                    borderRadius: '8px',
-                    border: isSelected ? '2px solid #5086E8' : '1px solid #d1d5db',
-                    background: isSelected ? '#eff6ff' : 'white',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    flex: '1 1 calc(50% - 0.5rem)',
-                    minWidth: '140px'
-                  }}
-                >
-                  <input
-                    type="radio"
-                    name="serviceLocation"
-                    value={loc.key}
-                    checked={isSelected}
-                    onChange={(e) => setServiceLocation(e.target.value)}
-                    style={{ accentColor: '#5086E8' }}
-                  />
-                  <span style={{ fontWeight: isSelected ? 600 : 400, fontSize: '0.875rem' }}>
-                    {loc.label}
-                  </span>
-                </label>
+          <ExpandableCheckboxSection
+            title="Subcategories"
+            items={subcategories}
+            selectedIds={selectedSubcategories}
+            onToggle={(id) => {
+              setSelectedSubcategories(prev => 
+                prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
               );
-            })}
+            }}
+            getId={(item) => item.SubcategoryID}
+            getName={(item) => item.SubcategoryName}
+          />
+        )}
+
+        {/* Event Types Section - Checkbox tiles */}
+        {eventTypes.length > 0 && (
+          <ExpandableCheckboxSection
+            title="Event Types"
+            items={eventTypes}
+            selectedIds={selectedEventTypes}
+            onToggle={(id) => {
+              setSelectedEventTypes(prev => 
+                prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+              );
+            }}
+            getId={(item) => item.EventTypeID}
+            getName={(item) => item.EventTypeName}
+          />
+        )}
+
+        {/* Cultures Served Section - Checkbox tiles */}
+        {cultures.length > 0 && (
+          <ExpandableCheckboxSection
+            title="Cultures Served"
+            items={cultures}
+            selectedIds={selectedCultures}
+            onToggle={(id) => {
+              setSelectedCultures(prev => 
+                prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+              );
+            }}
+            getId={(item) => item.CultureID}
+            getName={(item) => item.CultureName}
+          />
+        )}
+
+        {/* Features Section - Categorized by vendor type with single Show all */}
+        <FeaturesSection
+          features={features}
+          selectedFeatures={selectedFeatures}
+          setSelectedFeatures={setSelectedFeatures}
+        />
+
+        {/* Quick Booking Options - Checkbox style */}
+        <div style={{ marginBottom: '1.5rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '1.5rem' }}>
+          <h3 style={{ 
+            fontSize: '1.1rem', 
+            fontWeight: 700, 
+            margin: '0 0 0.75rem 0',
+            color: '#111827'
+          }}>
+            Booking Options
+          </h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <CheckboxTile
+              label="Instant Book"
+              checked={instantBookingOnly}
+              onChange={() => setInstantBookingOnly(!instantBookingOnly)}
+            />
+            <span style={{ fontSize: '0.8rem', color: '#6b7280', marginLeft: '1.75rem', marginTop: '-0.25rem' }}>
+              Listings you can book without waiting for Host approval.
+            </span>
           </div>
-          {serviceLocation && (
-            <button
-              onClick={() => setServiceLocation('')}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: '#5086E8',
-                fontSize: '0.875rem',
-                cursor: 'pointer',
-                marginTop: '0.5rem',
-                padding: 0,
-                textDecoration: 'underline'
-              }}
-            >
-              Clear selection
-            </button>
-          )}
         </div>
 
-        {/* Years of Experience Section */}
-        <div style={{ marginBottom: '2rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '1.5rem' }}>
+        {/* Fresh Listings - Checkbox style */}
+        <div style={{ marginBottom: '1.5rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '1.5rem' }}>
           <h3 style={{ 
-            fontSize: '1.25rem', 
+            fontSize: '1.1rem', 
             fontWeight: 700, 
-            margin: '0 0 1rem 0',
-            color: '#111827'
-          }}>
-            Years of Experience
-          </h3>
-          <p style={{ margin: '0 0 1rem 0', color: '#6b7280', fontSize: '0.875rem' }}>
-            How experienced should the vendor be?
-          </p>
-          <select
-            value={experienceRange}
-            onChange={(e) => setExperienceRange(e.target.value)}
-            style={{
-              width: '100%',
-              maxWidth: '300px',
-              padding: '0.75rem 1rem',
-              borderRadius: '8px',
-              border: '1px solid #d1d5db',
-              fontSize: '0.9rem',
-              background: 'white',
-              cursor: 'pointer'
-            }}
-          >
-            <option value="">Any experience level</option>
-            {EXPERIENCE_RANGES.map(range => (
-              <option key={range.key} value={range.key}>
-                {range.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Quick Filters - Toggle Section */}
-        <div style={{ marginBottom: '2rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '1.5rem' }}>
-          <h3 style={{ 
-            fontSize: '1.25rem', 
-            fontWeight: 700, 
-            margin: '0 0 1rem 0',
-            color: '#111827'
-          }}>
-            Quick Filters
-          </h3>
-          
-          {/* Instant Booking Toggle */}
-          <label 
-            style={{ 
-              display: 'flex', 
-              alignItems: 'flex-start',
-              cursor: 'pointer',
-              fontSize: '0.9rem',
-              color: '#374151',
-              marginBottom: '1rem'
-            }}
-          >
-            <div style={{
-              width: '48px',
-              height: '26px',
-              borderRadius: '13px',
-              background: instantBookingOnly ? '#5086E8' : '#d1d5db',
-              position: 'relative',
-              marginRight: '1rem',
-              transition: 'background 0.2s',
-              flexShrink: 0
-            }}>
-              <div style={{
-                width: '22px',
-                height: '22px',
-                borderRadius: '50%',
-                background: 'white',
-                position: 'absolute',
-                top: '2px',
-                left: instantBookingOnly ? '24px' : '2px',
-                transition: 'left 0.2s',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
-              }} />
-              <input
-                type="checkbox"
-                checked={instantBookingOnly}
-                onChange={() => setInstantBookingOnly(!instantBookingOnly)}
-                style={{ opacity: 0, position: 'absolute', width: '100%', height: '100%', cursor: 'pointer' }}
-              />
-            </div>
-            <div>
-              <div style={{ fontWeight: 600, color: '#111827', fontSize: '1rem' }}>Instant Booking</div>
-              <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '4px' }}>
-                Book immediately without waiting for vendor approval
-              </div>
-            </div>
-          </label>
-
-          {/* Has Google Business Profile Toggle */}
-          <label 
-            style={{ 
-              display: 'flex', 
-              alignItems: 'flex-start',
-              cursor: 'pointer',
-              fontSize: '0.9rem',
-              color: '#374151'
-            }}
-          >
-            <div style={{
-              width: '48px',
-              height: '26px',
-              borderRadius: '13px',
-              background: hasGoogleReviews ? '#5086E8' : '#d1d5db',
-              position: 'relative',
-              marginRight: '1rem',
-              transition: 'background 0.2s',
-              flexShrink: 0
-            }}>
-              <div style={{
-                width: '22px',
-                height: '22px',
-                borderRadius: '50%',
-                background: 'white',
-                position: 'absolute',
-                top: '2px',
-                left: hasGoogleReviews ? '24px' : '2px',
-                transition: 'left 0.2s',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
-              }} />
-              <input
-                type="checkbox"
-                checked={hasGoogleReviews}
-                onChange={() => setHasGoogleReviews(!hasGoogleReviews)}
-                style={{ opacity: 0, position: 'absolute', width: '100%', height: '100%', cursor: 'pointer' }}
-              />
-            </div>
-            <div>
-              <div style={{ fontWeight: 600, color: '#111827', fontSize: '1rem' }}>Google Business Profile</div>
-              <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '4px' }}>
-                Show vendors with a linked Google Business profile
-              </div>
-            </div>
-          </label>
-        </div>
-
-        {/* Fresh Listings Section */}
-        <div style={{ marginBottom: '2rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '1.5rem' }}>
-          <h3 style={{ 
-            fontSize: '1.25rem', 
-            fontWeight: 700, 
-            margin: '0 0 1rem 0',
+            margin: '0 0 0.75rem 0',
             color: '#111827'
           }}>
             Fresh Listings
           </h3>
-          <p style={{ margin: '0 0 1rem 0', color: '#6b7280', fontSize: '0.875rem' }}>
-            Show newly added vendors
-          </p>
-          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-            {FRESH_LISTING_OPTIONS.map((option) => {
-              const isSelected = freshListingsDays === option.key;
-              return (
-                <button
-                  key={option.key}
-                  onClick={() => setFreshListingsDays(option.key)}
-                  style={getChipStyle(isSelected)}
-                >
-                  {option.label}
-                </button>
-              );
-            })}
+          <CheckboxTile
+            label="Fresh Listings"
+            checked={!!freshListingsDays}
+            onChange={() => setFreshListingsDays(freshListingsDays ? '' : '30')}
+          />
+          <span style={{ fontSize: '0.8rem', color: '#6b7280', marginLeft: '1.75rem' }}>
+            Show vendors added in the last 30 days.
+          </span>
+        </div>
+
+        {/* Service Location Section - Checkbox tiles */}
+        <div style={{ marginBottom: '1.5rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '1.5rem' }}>
+          <h3 style={{ 
+            fontSize: '1.1rem', 
+            fontWeight: 700, 
+            margin: '0 0 0.75rem 0',
+            color: '#111827'
+          }}>
+            Service Location
+          </h3>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+            {SERVICE_LOCATIONS.map((loc) => (
+              <CheckboxTile
+                key={loc.key}
+                label={loc.label}
+                checked={serviceLocation === loc.key}
+                onChange={() => setServiceLocation(serviceLocation === loc.key ? '' : loc.key)}
+              />
+            ))}
           </div>
         </div>
 
-        {/* Review Count Section */}
-        <div style={{ marginBottom: '2rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '1.5rem' }}>
+        {/* Years of Experience Section - Checkbox tiles */}
+        <div style={{ marginBottom: '1.5rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '1.5rem' }}>
           <h3 style={{ 
-            fontSize: '1.25rem', 
+            fontSize: '1.1rem', 
             fontWeight: 700, 
-            margin: '0 0 1rem 0',
+            margin: '0 0 0.75rem 0',
             color: '#111827'
           }}>
-            Number of Reviews
+            Years of Experience
           </h3>
-          <p style={{ margin: '0 0 1rem 0', color: '#6b7280', fontSize: '0.875rem' }}>
-            Filter by minimum review count
-          </p>
-          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-            {REVIEW_COUNT_OPTIONS.map((option) => {
-              const isSelected = minReviewCount === option.key;
-              return (
-                <button
-                  key={option.key}
-                  onClick={() => setMinReviewCount(option.key)}
-                  style={getChipStyle(isSelected)}
-                >
-                  {option.label}
-                </button>
-              );
-            })}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+            {EXPERIENCE_RANGES.map((range) => (
+              <CheckboxTile
+                key={range.key}
+                label={range.label}
+                checked={experienceRange === range.key}
+                onChange={() => setExperienceRange(experienceRange === range.key ? '' : range.key)}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Minimum Rating Section - Checkbox tiles */}
+        <div style={{ marginBottom: '1.5rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '1.5rem' }}>
+          <h3 style={{ 
+            fontSize: '1.1rem', 
+            fontWeight: 700, 
+            margin: '0 0 0.75rem 0',
+            color: '#111827'
+          }}>
+            Minimum Rating
+          </h3>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+            {[
+              { key: '', label: 'Any' },
+              { key: '3', label: '3+ ★' },
+              { key: '4', label: '4+ ★' },
+              { key: '4.5', label: '4.5+ ★' }
+            ].map((rating) => (
+              <CheckboxTile
+                key={rating.key}
+                label={rating.label}
+                checked={minRating === rating.key}
+                onChange={() => setMinRating(minRating === rating.key ? '' : rating.key)}
+              />
+            ))}
           </div>
         </div>
 
         {/* Availability Section */}
-        <div style={{ marginBottom: '2rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '1.5rem' }}>
+        <div style={{ marginBottom: '1.5rem' }}>
           <h3 style={{ 
-            fontSize: '1.25rem', 
+            fontSize: '1.1rem', 
             fontWeight: 700, 
-            margin: '0 0 1rem 0',
+            margin: '0 0 0.75rem 0',
             color: '#111827'
           }}>
             Availability
           </h3>
-          <p style={{ margin: '0 0 1rem 0', color: '#6b7280', fontSize: '0.875rem' }}>
-            Filter by vendor availability
-          </p>
-          
-          {/* Date picker */}
-          <div style={{ marginBottom: '1rem' }}>
-            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.5rem', color: '#374151' }}>
+          <div style={{ marginBottom: '0.75rem' }}>
+            <label style={{ fontSize: '0.875rem', color: '#374151', display: 'block', marginBottom: '0.25rem' }}>
               Available on specific date
             </label>
             <input
@@ -949,14 +821,11 @@ function FilterModal({ isOpen, onClose, filters, onFilterChange, userLocation, o
               onChange={(e) => setAvailabilityDate(e.target.value)}
               min={new Date().toISOString().split('T')[0]}
               style={{
-                width: '100%',
-                maxWidth: '200px',
-                padding: '0.75rem 1rem',
-                borderRadius: '8px',
+                padding: '0.5rem 0.75rem',
                 border: '1px solid #d1d5db',
+                borderRadius: '8px',
                 fontSize: '0.9rem',
-                background: 'white',
-                cursor: 'pointer'
+                maxWidth: '200px'
               }}
             />
             {availabilityDate && (
@@ -968,61 +837,12 @@ function FilterModal({ isOpen, onClose, filters, onFilterChange, userLocation, o
                   border: 'none',
                   color: '#5086E8',
                   fontSize: '0.875rem',
-                  cursor: 'pointer',
-                  textDecoration: 'underline'
+                  cursor: 'pointer'
                 }}
               >
                 Clear
               </button>
             )}
-          </div>
-
-          {/* Day of week */}
-          <div>
-            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.5rem', color: '#374151' }}>
-              Or available on day of week
-            </label>
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-              {DAY_OF_WEEK_OPTIONS.map((day) => {
-                const isSelected = availabilityDayOfWeek === day.key;
-                return (
-                  <button
-                    key={day.key}
-                    onClick={() => setAvailabilityDayOfWeek(isSelected ? '' : day.key)}
-                    style={getChipStyle(isSelected)}
-                  >
-                    {day.label.substring(0, 3)}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        {/* Minimum Rating */}
-        <div style={{ marginBottom: '1.5rem' }}>
-          <h3 style={{ 
-            fontSize: '1.25rem', 
-            fontWeight: 700, 
-            margin: '0 0 1rem 0',
-            color: '#111827'
-          }}>
-            Minimum Rating
-          </h3>
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            {['', '3', '4', '4.5'].map((rating) => {
-              const isSelected = minRating === rating;
-              const label = rating === '' ? 'Any' : `${rating}+ ★`;
-              return (
-                <button
-                  key={rating}
-                  onClick={() => setMinRating(rating)}
-                  style={getChipStyle(isSelected)}
-                >
-                  {label}
-                </button>
-              );
-            })}
           </div>
         </div>
       </div>
@@ -1095,8 +915,8 @@ function FilterModal({ isOpen, onClose, filters, onFilterChange, userLocation, o
           to { transform: rotate(360deg); }
         }
         
-        /* Custom range slider styling */
-        input[type="range"]::-webkit-slider-thumb {
+        /* Custom range slider styling - enable pointer events on thumbs */
+        .price-range-slider::-webkit-slider-thumb {
           -webkit-appearance: none;
           appearance: none;
           width: 20px;
@@ -1106,9 +926,10 @@ function FilterModal({ isOpen, onClose, filters, onFilterChange, userLocation, o
           cursor: pointer;
           border: 2px solid #5086E8;
           box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+          pointer-events: auto;
         }
 
-        input[type="range"]::-moz-range-thumb {
+        .price-range-slider::-moz-range-thumb {
           width: 20px;
           height: 20px;
           border-radius: 50%;
@@ -1116,6 +937,7 @@ function FilterModal({ isOpen, onClose, filters, onFilterChange, userLocation, o
           cursor: pointer;
           border: 2px solid #5086E8;
           box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+          pointer-events: auto;
         }
 
         /* Scrollbar styling */
