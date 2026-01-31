@@ -1243,6 +1243,8 @@ router.get('/search-by-categories', async (req, res) => {
       instantBookingOnly,   // Filter for instant booking vendors
       eventTypes,           // Comma-separated event type IDs
       cultures,             // Comma-separated culture IDs
+      featureIds,           // Comma-separated feature IDs
+      subcategoryIds,       // Comma-separated subcategory IDs
       includeDiscoverySections // Include discovery sections in response
     } = req.query;
 
@@ -1392,6 +1394,118 @@ router.get('/search-by-categories', async (req, res) => {
     }
 
     const sections = await Promise.all(categoryList.map(fetchCategory));
+
+    // Apply post-query filtering for features
+    if (featureIds) {
+      const featIds = featureIds.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
+      if (featIds.length > 0) {
+        for (const section of sections) {
+          if (section.vendors && section.vendors.length > 0) {
+            const vendorIds = section.vendors.map(v => parseInt(v.vendorProfileId || v.id)).filter(id => !isNaN(id) && id > 0);
+            if (vendorIds.length > 0) {
+              try {
+                const featureQuery = `
+                  SELECT DISTINCT VendorProfileID 
+                  FROM vendors.VendorFeatures 
+                  WHERE FeatureID IN (${featIds.join(',')})
+                  AND VendorProfileID IN (${vendorIds.join(',')})
+                `;
+                const fResult = await pool.request().query(featureQuery);
+                const matchingVendorIds = new Set(fResult.recordset.map(r => parseInt(r.VendorProfileID)));
+                section.vendors = section.vendors.filter(v => matchingVendorIds.has(parseInt(v.vendorProfileId || v.id)));
+                section.totalCount = section.vendors.length;
+              } catch (fErr) {
+                console.warn('[search-by-categories] Feature filtering failed:', fErr.message);
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Apply post-query filtering for subcategories
+    if (subcategoryIds) {
+      const subIds = subcategoryIds.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
+      if (subIds.length > 0) {
+        for (const section of sections) {
+          if (section.vendors && section.vendors.length > 0) {
+            const vendorIds = section.vendors.map(v => parseInt(v.vendorProfileId || v.id)).filter(id => !isNaN(id) && id > 0);
+            if (vendorIds.length > 0) {
+              try {
+                const subcategoryQuery = `
+                  SELECT DISTINCT VendorProfileID 
+                  FROM vendors.VendorSubcategories 
+                  WHERE SubcategoryID IN (${subIds.join(',')})
+                  AND VendorProfileID IN (${vendorIds.join(',')})
+                `;
+                const sResult = await pool.request().query(subcategoryQuery);
+                const matchingVendorIds = new Set(sResult.recordset.map(r => parseInt(r.VendorProfileID)));
+                section.vendors = section.vendors.filter(v => matchingVendorIds.has(parseInt(v.vendorProfileId || v.id)));
+                section.totalCount = section.vendors.length;
+              } catch (sErr) {
+                console.warn('[search-by-categories] Subcategory filtering failed:', sErr.message);
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Apply post-query filtering for event types
+    if (eventTypes) {
+      const eventTypeIds = eventTypes.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
+      if (eventTypeIds.length > 0) {
+        for (const section of sections) {
+          if (section.vendors && section.vendors.length > 0) {
+            const vendorIds = section.vendors.map(v => parseInt(v.vendorProfileId || v.id)).filter(id => !isNaN(id) && id > 0);
+            if (vendorIds.length > 0) {
+              try {
+                const eventTypeQuery = `
+                  SELECT DISTINCT VendorProfileID 
+                  FROM vendors.VendorEventTypes 
+                  WHERE EventTypeID IN (${eventTypeIds.join(',')})
+                  AND VendorProfileID IN (${vendorIds.join(',')})
+                `;
+                const etResult = await pool.request().query(eventTypeQuery);
+                const matchingVendorIds = new Set(etResult.recordset.map(r => parseInt(r.VendorProfileID)));
+                section.vendors = section.vendors.filter(v => matchingVendorIds.has(parseInt(v.vendorProfileId || v.id)));
+                section.totalCount = section.vendors.length;
+              } catch (etErr) {
+                console.warn('[search-by-categories] Event type filtering failed:', etErr.message);
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Apply post-query filtering for cultures
+    if (cultures) {
+      const cultureIds = cultures.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
+      if (cultureIds.length > 0) {
+        for (const section of sections) {
+          if (section.vendors && section.vendors.length > 0) {
+            const vendorIds = section.vendors.map(v => parseInt(v.vendorProfileId || v.id)).filter(id => !isNaN(id) && id > 0);
+            if (vendorIds.length > 0) {
+              try {
+                const cultureQuery = `
+                  SELECT DISTINCT VendorProfileID 
+                  FROM vendors.VendorCultures 
+                  WHERE CultureID IN (${cultureIds.join(',')})
+                  AND VendorProfileID IN (${vendorIds.join(',')})
+                `;
+                const cResult = await pool.request().query(cultureQuery);
+                const matchingVendorIds = new Set(cResult.recordset.map(r => parseInt(r.VendorProfileID)));
+                section.vendors = section.vendors.filter(v => matchingVendorIds.has(parseInt(v.vendorProfileId || v.id)));
+                section.totalCount = section.vendors.length;
+              } catch (cErr) {
+                console.warn('[search-by-categories] Culture filtering failed:', cErr.message);
+              }
+            }
+          }
+        }
+      }
+    }
 
     // Combine all vendors from all sections for discovery sections
     let allVendors = sections.flatMap(s => s.vendors || []);
