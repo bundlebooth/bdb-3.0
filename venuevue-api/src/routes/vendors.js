@@ -530,6 +530,7 @@ router.get('/', async (req, res) => {
       availabilityDate, // Filter by availability on specific date (YYYY-MM-DD)
       availabilityDayOfWeek, // Filter by day of week (0=Sunday, 1=Monday, etc.)
       featureIds, // Comma-separated feature IDs
+      subcategoryIds, // Comma-separated subcategory IDs
       questionFilters, // JSON array of question filters [{questionId, answer}]
       // Discovery sections - when true, returns categorized sections from same query
       includeDiscoverySections
@@ -629,6 +630,7 @@ router.get('/', async (req, res) => {
         enhancedRequest.input('CultureIDs', sql.NVarChar(500), cultures || null);
         enhancedRequest.input('QuestionFilters', sql.NVarChar(sql.MAX), questionFilters || null);
         enhancedRequest.input('FeatureIDs', sql.NVarChar(500), featureIds || null);
+        enhancedRequest.input('SubcategoryIDs', sql.NVarChar(500), subcategoryIds || null);
         enhancedRequest.input('ExperienceRange', sql.NVarChar(20), experienceRange || null);
         enhancedRequest.input('ServiceLocation', sql.NVarChar(50), serviceLocation || null);
         enhancedRequest.input('PageNumber', sql.Int, pageNumber ? parseInt(pageNumber) : 1);
@@ -774,6 +776,52 @@ router.get('/', async (req, res) => {
             formattedVendors = formattedVendors.filter(v => matchingVendorIds.has(parseInt(v.vendorProfileId || v.id)));
           } catch (cErr) {
             console.warn('Culture filtering failed:', cErr.message);
+          }
+        }
+      }
+    }
+
+    // Filter by subcategories if specified (requires additional query)
+    if (subcategoryIds) {
+      const subIds = subcategoryIds.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
+      if (subIds.length > 0) {
+        const vendorIds = formattedVendors.map(v => parseInt(v.vendorProfileId || v.id)).filter(id => !isNaN(id) && id > 0);
+        if (vendorIds.length > 0) {
+          try {
+            const subcategoryQuery = `
+              SELECT DISTINCT VendorProfileID 
+              FROM vendors.VendorSubcategories 
+              WHERE SubcategoryID IN (${subIds.join(',')})
+              AND VendorProfileID IN (${vendorIds.join(',')})
+            `;
+            const sResult = await pool.request().query(subcategoryQuery);
+            const matchingVendorIds = new Set(sResult.recordset.map(r => parseInt(r.VendorProfileID)));
+            formattedVendors = formattedVendors.filter(v => matchingVendorIds.has(parseInt(v.vendorProfileId || v.id)));
+          } catch (sErr) {
+            console.warn('Subcategory filtering failed:', sErr.message);
+          }
+        }
+      }
+    }
+
+    // Filter by features if specified (requires additional query)
+    if (featureIds) {
+      const featIds = featureIds.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
+      if (featIds.length > 0) {
+        const vendorIds = formattedVendors.map(v => parseInt(v.vendorProfileId || v.id)).filter(id => !isNaN(id) && id > 0);
+        if (vendorIds.length > 0) {
+          try {
+            const featureQuery = `
+              SELECT DISTINCT VendorProfileID 
+              FROM vendors.VendorFeatures 
+              WHERE FeatureID IN (${featIds.join(',')})
+              AND VendorProfileID IN (${vendorIds.join(',')})
+            `;
+            const fResult = await pool.request().query(featureQuery);
+            const matchingVendorIds = new Set(fResult.recordset.map(r => parseInt(r.VendorProfileID)));
+            formattedVendors = formattedVendors.filter(v => matchingVendorIds.has(parseInt(v.vendorProfileId || v.id)));
+          } catch (fErr) {
+            console.warn('Feature filtering failed:', fErr.message);
           }
         }
       }
@@ -7987,7 +8035,9 @@ router.post('/filter-count', async (req, res) => {
       freshListingsDays,
       hasGoogleReviews,
       availabilityDate,
-      availabilityDayOfWeek
+      availabilityDayOfWeek,
+      subcategories,
+      features
     } = req.body;
 
     const pool = await poolPromise;
@@ -7995,12 +8045,18 @@ router.post('/filter-count', async (req, res) => {
     // Use the enhanced sp_SearchEnhanced stored procedure for filter count
     const request = new sql.Request(pool);
     
-    // Parse event types and cultures
+    // Parse event types, cultures, subcategories, and features
     const eventTypeIdsStr = eventTypes && eventTypes.length > 0 
       ? (Array.isArray(eventTypes) ? eventTypes.join(',') : eventTypes)
       : null;
     const cultureIdsStr = cultures && cultures.length > 0 
       ? (Array.isArray(cultures) ? cultures.join(',') : cultures)
+      : null;
+    const subcategoryIdsStr = subcategories && subcategories.length > 0 
+      ? (Array.isArray(subcategories) ? subcategories.join(',') : subcategories)
+      : null;
+    const featureIdsStr = features && features.length > 0 
+      ? (Array.isArray(features) ? features.join(',') : features)
       : null;
     
     request.input('SearchTerm', sql.NVarChar(100), null);
@@ -8027,7 +8083,8 @@ router.post('/filter-count', async (req, res) => {
     request.input('AvailabilityDayOfWeek', sql.Int, availabilityDayOfWeek ? parseInt(availabilityDayOfWeek) : null);
     request.input('EventTypeIDs', sql.NVarChar(sql.MAX), eventTypeIdsStr);
     request.input('CultureIDs', sql.NVarChar(sql.MAX), cultureIdsStr);
-    request.input('FeatureIDs', sql.NVarChar(sql.MAX), null);
+    request.input('FeatureIDs', sql.NVarChar(sql.MAX), featureIdsStr);
+    request.input('SubcategoryIDs', sql.NVarChar(sql.MAX), subcategoryIdsStr);
     request.input('QuestionFilters', sql.NVarChar(sql.MAX), null);
     request.input('IsCertified', sql.Bit, null);
     request.input('IsInsured', sql.Bit, null);
@@ -8150,6 +8207,60 @@ router.post('/filter-count', async (req, res) => {
       }
     }
     
+    // Post-query filtering for subcategories
+    if (!result.recordset?.[0]?.HasGoogleReviews && subcategories && subcategories.length > 0) {
+      const subcategoryIds = Array.isArray(subcategories) ? subcategories.map(id => parseInt(id)) : subcategories.split(',').map(id => parseInt(id.trim()));
+      const validSubcategoryIds = subcategoryIds.filter(id => !isNaN(id) && id > 0);
+      console.log('[filter-count] Filtering by subcategories:', validSubcategoryIds);
+      if (validSubcategoryIds.length > 0) {
+        const vendorIds = vendors.map(v => parseInt(v.VendorProfileID || v.id)).filter(id => !isNaN(id) && id > 0);
+        if (vendorIds.length > 0) {
+          try {
+            const subcategoryQuery = `
+              SELECT DISTINCT VendorProfileID 
+              FROM vendors.VendorSubcategories 
+              WHERE SubcategoryID IN (${validSubcategoryIds.join(',')})
+              AND VendorProfileID IN (${vendorIds.join(',')})
+            `;
+            const sResult = await pool.request().query(subcategoryQuery);
+            const matchingVendorIds = new Set(sResult.recordset.map(r => parseInt(r.VendorProfileID)));
+            vendors = vendors.filter(v => matchingVendorIds.has(parseInt(v.VendorProfileID || v.id)));
+          } catch (sErr) {
+            console.warn('[filter-count] Subcategory filtering failed:', sErr.message);
+          }
+        } else {
+          vendors = [];
+        }
+      }
+    }
+    
+    // Post-query filtering for features
+    if (!result.recordset?.[0]?.HasGoogleReviews && features && features.length > 0) {
+      const featureIds = Array.isArray(features) ? features.map(id => parseInt(id)) : features.split(',').map(id => parseInt(id.trim()));
+      const validFeatureIds = featureIds.filter(id => !isNaN(id) && id > 0);
+      console.log('[filter-count] Filtering by features:', validFeatureIds);
+      if (validFeatureIds.length > 0) {
+        const vendorIds = vendors.map(v => parseInt(v.VendorProfileID || v.id)).filter(id => !isNaN(id) && id > 0);
+        if (vendorIds.length > 0) {
+          try {
+            const featureQuery = `
+              SELECT DISTINCT VendorProfileID 
+              FROM vendors.VendorFeatures 
+              WHERE FeatureID IN (${validFeatureIds.join(',')})
+              AND VendorProfileID IN (${vendorIds.join(',')})
+            `;
+            const fResult = await pool.request().query(featureQuery);
+            const matchingVendorIds = new Set(fResult.recordset.map(r => parseInt(r.VendorProfileID)));
+            vendors = vendors.filter(v => matchingVendorIds.has(parseInt(v.VendorProfileID || v.id)));
+          } catch (fErr) {
+            console.warn('[filter-count] Feature filtering failed:', fErr.message);
+          }
+        } else {
+          vendors = [];
+        }
+      }
+    }
+    
     const count = vendors.length;
     console.log('[filter-count] Final count after attribute filters:', count);
 
@@ -8161,6 +8272,8 @@ router.post('/filter-count', async (req, res) => {
         city,
         eventTypes,
         cultures,
+        subcategories,
+        features,
         experienceRange,
         serviceLocation,
         minPrice,
