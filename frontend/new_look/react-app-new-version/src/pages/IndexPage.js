@@ -93,6 +93,14 @@ function IndexPage() {
   const [discoverySections, setDiscoverySections] = useState([]);
   const [loadingDiscovery, setLoadingDiscovery] = useState(true);
   
+  // Filter lookup data for name-to-ID mapping
+  const [filterLookups, setFilterLookups] = useState({
+    eventTypes: [],
+    cultures: [],
+    subcategories: [],
+    features: []
+  });
+  
   // Track initial mount to prevent duplicate loads
   const isInitialMount = useRef(true);
   const hasLoadedOnce = useRef(false);
@@ -157,6 +165,8 @@ function IndexPage() {
       location: params.get('location') || '',
       eventTypes: params.get('eventTypes') ? params.get('eventTypes').split(',').map(id => parseInt(id)).filter(id => !isNaN(id)) : [],
       cultures: params.get('cultures') ? params.get('cultures').split(',').map(id => parseInt(id)).filter(id => !isNaN(id)) : [],
+      subcategories: params.get('subcategories') ? params.get('subcategories').split(',').map(id => parseInt(id)).filter(id => !isNaN(id)) : [],
+      features: params.get('features') ? params.get('features').split(',').map(id => parseInt(id)).filter(id => !isNaN(id)) : [],
       experienceRange: params.get('experienceRange') || '',
       serviceLocation: params.get('serviceLocation') || '',
       minPrice: params.get('minPrice') ? parseInt(params.get('minPrice')) : null,
@@ -172,20 +182,60 @@ function IndexPage() {
     };
   });
   
-  // Sync filters to URL when they change
+  // Sync filters to URL when they change - use names for readability
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     
-    // Update URL params based on filters
+    // Helper to convert IDs to names for URL display
+    const getEventTypeNames = (ids) => {
+      return ids.map(id => {
+        const et = filterLookups.eventTypes.find(e => e.EventTypeID === id);
+        return et ? et.EventTypeName : id;
+      }).join(',');
+    };
+    const getCultureNames = (ids) => {
+      return ids.map(id => {
+        const c = filterLookups.cultures.find(c => c.CultureID === id);
+        return c ? c.CultureName : id;
+      }).join(',');
+    };
+    const getSubcategoryNames = (ids) => {
+      return ids.map(id => {
+        const s = filterLookups.subcategories.find(s => s.SubcategoryID === id);
+        return s ? s.SubcategoryName : id;
+      }).join(',');
+    };
+    const getFeatureNames = (ids) => {
+      return ids.map(id => {
+        const f = filterLookups.features.find(f => f.id === id);
+        return f ? f.name : id;
+      }).join(',');
+    };
+    
+    // Update URL params based on filters - use names if lookups are loaded
     if (filters.eventTypes && filters.eventTypes.length > 0) {
-      params.set('eventTypes', filters.eventTypes.join(','));
+      const value = filterLookups.eventTypes.length > 0 ? getEventTypeNames(filters.eventTypes) : filters.eventTypes.join(',');
+      params.set('eventTypes', value);
     } else {
       params.delete('eventTypes');
     }
     if (filters.cultures && filters.cultures.length > 0) {
-      params.set('cultures', filters.cultures.join(','));
+      const value = filterLookups.cultures.length > 0 ? getCultureNames(filters.cultures) : filters.cultures.join(',');
+      params.set('cultures', value);
     } else {
       params.delete('cultures');
+    }
+    if (filters.subcategories && filters.subcategories.length > 0) {
+      const value = filterLookups.subcategories.length > 0 ? getSubcategoryNames(filters.subcategories) : filters.subcategories.join(',');
+      params.set('subcategories', value);
+    } else {
+      params.delete('subcategories');
+    }
+    if (filters.features && filters.features.length > 0) {
+      const value = filterLookups.features.length > 0 ? getFeatureNames(filters.features) : filters.features.join(',');
+      params.set('features', value);
+    } else {
+      params.delete('features');
     }
     if (filters.experienceRange) {
       params.set('experienceRange', filters.experienceRange);
@@ -247,7 +297,7 @@ function IndexPage() {
     // Update URL without triggering navigation
     const newUrl = params.toString() ? `${location.pathname}?${params.toString()}` : location.pathname;
     window.history.replaceState({}, '', newUrl);
-  }, [filters, location.pathname, location.search]);
+  }, [filters, filterLookups, location.pathname, location.search]);
 
   const loadFavorites = useCallback(async () => {
     if (!currentUser?.id) return;
@@ -262,6 +312,56 @@ function IndexPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser?.id]);
+
+  // Load filter lookups for name-to-ID mapping
+  useEffect(() => {
+    const fetchLookups = async () => {
+      try {
+        const [eventTypesRes, culturesRes, subcategoriesRes, featuresRes] = await Promise.all([
+          fetch(`${API_BASE_URL}/vendors/lookup/event-types`),
+          fetch(`${API_BASE_URL}/vendors/lookup/cultures`),
+          fetch(`${API_BASE_URL}/vendors/lookup/subcategories`),
+          fetch(`${API_BASE_URL}/vendors/features/all-grouped`)
+        ]);
+        
+        const lookups = { eventTypes: [], cultures: [], subcategories: [], features: [] };
+        
+        if (eventTypesRes.ok) {
+          const data = await eventTypesRes.json();
+          lookups.eventTypes = data.eventTypes || [];
+        }
+        if (culturesRes.ok) {
+          const data = await culturesRes.json();
+          lookups.cultures = data.cultures || [];
+        }
+        if (subcategoriesRes.ok) {
+          const data = await subcategoriesRes.json();
+          lookups.subcategories = data.subcategories || [];
+        }
+        if (featuresRes.ok) {
+          const data = await featuresRes.json();
+          // Flatten features from categories and deduplicate by name
+          const featureMap = new Map();
+          (data.categories || []).forEach(cat => {
+            (cat.features || []).forEach(f => {
+              const name = f.FeatureName || f.featureName;
+              const id = f.FeatureID || f.featureId;
+              if (!featureMap.has(name)) {
+                featureMap.set(name, { id, name });
+              }
+            });
+          });
+          lookups.features = Array.from(featureMap.values());
+        }
+        
+        setFilterLookups(lookups);
+      } catch (error) {
+        console.error('Error fetching filter lookups:', error);
+      }
+    };
+    
+    fetchLookups();
+  }, []);
 
   // Location session duration in hours (default 24 hours, can be configured via admin)
   const LOCATION_SESSION_HOURS = parseInt(localStorage.getItem('planbeau_location_session_hours') || '24', 10);
@@ -466,6 +566,12 @@ function IndexPage() {
       if (filters.cultures && filters.cultures.length > 0) {
         qp.set('cultures', filters.cultures.join(','));
       }
+      if (filters.subcategories && filters.subcategories.length > 0) {
+        qp.set('subcategoryIds', filters.subcategories.join(','));
+      }
+      if (filters.features && filters.features.length > 0) {
+        qp.set('featureIds', filters.features.join(','));
+      }
       if (filters.experienceRange) {
         qp.set('experienceRange', filters.experienceRange);
       }
@@ -621,6 +727,12 @@ function IndexPage() {
         }
         if (filters.cultures && filters.cultures.length > 0) {
           qp.set('cultures', filters.cultures.join(','));
+        }
+        if (filters.subcategories && filters.subcategories.length > 0) {
+          qp.set('subcategoryIds', filters.subcategories.join(','));
+        }
+        if (filters.features && filters.features.length > 0) {
+          qp.set('featureIds', filters.features.join(','));
         }
         if (filters.experienceRange) qp.set('experienceRange', filters.experienceRange);
         if (filters.serviceLocation) qp.set('serviceLocation', filters.serviceLocation);
@@ -1207,6 +1319,8 @@ function IndexPage() {
       prev.maxPrice !== filters.maxPrice ||
       JSON.stringify(prev.eventTypes) !== JSON.stringify(filters.eventTypes) ||
       JSON.stringify(prev.cultures) !== JSON.stringify(filters.cultures) ||
+      JSON.stringify(prev.subcategories) !== JSON.stringify(filters.subcategories) ||
+      JSON.stringify(prev.features) !== JSON.stringify(filters.features) ||
       // NEW: Enhanced filter change detection
       prev.minReviewCount !== filters.minReviewCount ||
       prev.freshListingsDays !== filters.freshListingsDays ||
@@ -1222,7 +1336,7 @@ function IndexPage() {
       loadVendors();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters.instantBookingOnly, filters.eventTypes, filters.cultures, filters.experienceRange, filters.serviceLocation, filters.minPrice, filters.maxPrice, filters.minRating, filters.minReviewCount, filters.freshListingsDays, filters.hasGoogleReviews, filters.availabilityDate, filters.availabilityDayOfWeek]);
+  }, [filters.instantBookingOnly, filters.eventTypes, filters.cultures, filters.subcategories, filters.features, filters.experienceRange, filters.serviceLocation, filters.minPrice, filters.maxPrice, filters.minRating, filters.minReviewCount, filters.freshListingsDays, filters.hasGoogleReviews, filters.availabilityDate, filters.availabilityDayOfWeek]);
 
   // Count active filters for badge display
   const activeFilterCount = useMemo(() => {
@@ -1232,6 +1346,8 @@ function IndexPage() {
       filters.instantBookingOnly,
       filters.eventTypes?.length > 0,
       filters.cultures?.length > 0,
+      filters.subcategories?.length > 0,
+      filters.features?.length > 0,
       filters.experienceRange,
       filters.serviceLocation,
       // NEW: Enhanced filter counts

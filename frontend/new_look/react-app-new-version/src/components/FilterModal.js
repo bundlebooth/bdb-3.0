@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import UniversalModal from './UniversalModal';
+import { MultiSelectTags } from './common/FormFields';
 import { API_BASE_URL } from '../config';
 
 // Experience range options
@@ -70,14 +71,18 @@ function FilterModal({ isOpen, onClose, filters, onFilterChange, userLocation, o
   // Lookup data
   const [eventTypes, setEventTypes] = useState([]);
   const [cultures, setCultures] = useState([]);
+  const [subcategories, setSubcategories] = useState([]);
+  const [features, setFeatures] = useState([]);
   const [eventTypeAvailability, setEventTypeAvailability] = useState({});
   const [cultureAvailability, setCultureAvailability] = useState({});
+  
+  // NEW: Subcategories and Features filter state
+  const [selectedSubcategories, setSelectedSubcategories] = useState(filters.subcategories || []);
+  const [selectedFeatures, setSelectedFeatures] = useState(filters.features || []);
   
   // UI state
   const [previewCount, setPreviewCount] = useState(vendorCount);
   const [loadingCount, setLoadingCount] = useState(false);
-  const [showAllEventTypes, setShowAllEventTypes] = useState(false);
-  const [showAllCultures, setShowAllCultures] = useState(false);
   const debounceRef = useRef(null);
 
   // Sync local state with props when modal opens
@@ -88,6 +93,8 @@ function FilterModal({ isOpen, onClose, filters, onFilterChange, userLocation, o
       setInstantBookingOnly(filters.instantBookingOnly || false);
       setSelectedEventTypes(filters.eventTypes || []);
       setSelectedCultures(filters.cultures || []);
+      setSelectedSubcategories(filters.subcategories || []);
+      setSelectedFeatures(filters.features || []);
       setExperienceRange(filters.experienceRange || '');
       setServiceLocation(filters.serviceLocation || '');
       // NEW: Sync enhanced filter state
@@ -99,13 +106,20 @@ function FilterModal({ isOpen, onClose, filters, onFilterChange, userLocation, o
     }
   }, [isOpen, filters]);
 
-  // Fetch event types and cultures on mount
+  // Fetch event types, cultures, subcategories, and features on mount
   useEffect(() => {
     const fetchLookups = async () => {
       try {
-        const [eventTypesRes, culturesRes] = await Promise.all([
+        // Build subcategories URL - if category is provided, filter by it
+        const subcategoriesUrl = category 
+          ? `${API_BASE_URL}/vendors/lookup/subcategories?category=${encodeURIComponent(category)}`
+          : `${API_BASE_URL}/vendors/lookup/subcategories`;
+        
+        const [eventTypesRes, culturesRes, subcategoriesRes, featuresRes] = await Promise.all([
           fetch(`${API_BASE_URL}/vendors/lookup/event-types`),
-          fetch(`${API_BASE_URL}/vendors/lookup/cultures`)
+          fetch(`${API_BASE_URL}/vendors/lookup/cultures`),
+          fetch(subcategoriesUrl),
+          fetch(`${API_BASE_URL}/vendors/features/all-grouped`)
         ]);
         
         if (eventTypesRes.ok) {
@@ -116,6 +130,30 @@ function FilterModal({ isOpen, onClose, filters, onFilterChange, userLocation, o
           const data = await culturesRes.json();
           setCultures(data.cultures || []);
         }
+        if (subcategoriesRes.ok) {
+          const data = await subcategoriesRes.json();
+          setSubcategories(data.subcategories || []);
+        }
+        if (featuresRes.ok) {
+          const data = await featuresRes.json();
+          // Flatten all features from all categories and deduplicate by name
+          const featureMap = new Map();
+          (data.categories || []).forEach(cat => {
+            (cat.features || []).forEach(f => {
+              const name = f.FeatureName || f.featureName;
+              const id = f.FeatureID || f.featureId;
+              // Only add if we haven't seen this name before (keep first occurrence)
+              if (!featureMap.has(name)) {
+                featureMap.set(name, {
+                  id,
+                  name,
+                  category: cat.categoryName
+                });
+              }
+            });
+          });
+          setFeatures(Array.from(featureMap.values()));
+        }
       } catch (error) {
         console.error('Error fetching filter lookups:', error);
       }
@@ -124,7 +162,7 @@ function FilterModal({ isOpen, onClose, filters, onFilterChange, userLocation, o
     if (isOpen) {
       fetchLookups();
     }
-  }, [isOpen]);
+  }, [isOpen, category]);
 
   // Fetch preview count and availability when filters change
   const fetchPreviewCount = useCallback(async () => {
@@ -145,6 +183,8 @@ function FilterModal({ isOpen, onClose, filters, onFilterChange, userLocation, o
           radiusMiles: 100, // Use a larger radius for filter count to show more options
           eventTypes: selectedEventTypes,
           cultures: selectedCultures,
+          subcategories: selectedSubcategories,
+          features: selectedFeatures,
           experienceRange: experienceRange || null,
           serviceLocation: serviceLocation || null,
           minPrice: priceRange[0] > 0 ? priceRange[0] : null,
@@ -177,6 +217,8 @@ function FilterModal({ isOpen, onClose, filters, onFilterChange, userLocation, o
         if (instantBookingOnly) params.set('instantBookingOnly', 'true');
         if (selectedEventTypes.length > 0) params.set('eventTypes', selectedEventTypes.join(','));
         if (selectedCultures.length > 0) params.set('cultures', selectedCultures.join(','));
+        if (selectedSubcategories.length > 0) params.set('subcategories', selectedSubcategories.join(','));
+        if (selectedFeatures.length > 0) params.set('features', selectedFeatures.join(','));
         // NEW: Enhanced filter parameters for fallback
         if (minReviewCount) params.set('minReviewCount', minReviewCount);
         if (freshListingsDays) params.set('freshListingsDays', freshListingsDays);
@@ -196,7 +238,7 @@ function FilterModal({ isOpen, onClose, filters, onFilterChange, userLocation, o
     } finally {
       setLoadingCount(false);
     }
-  }, [isOpen, userLocation, category, city, priceRange, minRating, instantBookingOnly, selectedEventTypes, selectedCultures, experienceRange, serviceLocation, minReviewCount, freshListingsDays, hasGoogleReviews, availabilityDate, availabilityDayOfWeek]);
+  }, [isOpen, userLocation, category, city, priceRange, minRating, instantBookingOnly, selectedEventTypes, selectedCultures, selectedSubcategories, selectedFeatures, experienceRange, serviceLocation, minReviewCount, freshListingsDays, hasGoogleReviews, availabilityDate, availabilityDayOfWeek]);
 
   // Debounced fetch when filters change
   useEffect(() => {
@@ -242,6 +284,8 @@ function FilterModal({ isOpen, onClose, filters, onFilterChange, userLocation, o
     setInstantBookingOnly(false);
     setSelectedEventTypes([]);
     setSelectedCultures([]);
+    setSelectedSubcategories([]);
+    setSelectedFeatures([]);
     setExperienceRange('');
     setServiceLocation('');
     // NEW: Clear enhanced filters
@@ -260,6 +304,8 @@ function FilterModal({ isOpen, onClose, filters, onFilterChange, userLocation, o
       instantBookingOnly,
       eventTypes: selectedEventTypes,
       cultures: selectedCultures,
+      subcategories: selectedSubcategories,
+      features: selectedFeatures,
       experienceRange,
       serviceLocation,
       // NEW: Enhanced filter values
@@ -276,23 +322,19 @@ function FilterModal({ isOpen, onClose, filters, onFilterChange, userLocation, o
     onClose();
   };
 
-  // Toggle event type selection
-  const toggleEventType = (eventTypeId) => {
-    setSelectedEventTypes(prev => 
-      prev.includes(eventTypeId) 
-        ? prev.filter(id => id !== eventTypeId)
-        : [...prev, eventTypeId]
-    );
-  };
 
-  // Toggle culture selection
-  const toggleCulture = (cultureId) => {
-    setSelectedCultures(prev => 
-      prev.includes(cultureId) 
-        ? prev.filter(id => id !== cultureId)
-        : [...prev, cultureId]
-    );
-  };
+  // Chip style helper for single-select options - grey style matching MultiSelectTags
+  const getChipStyle = (isSelected) => ({
+    padding: '0.5rem 1rem',
+    borderRadius: '8px',
+    border: isSelected ? '1px solid #374151' : '1px solid #e5e7eb',
+    background: isSelected ? '#f3f4f6' : '#f9fafb',
+    color: isSelected ? '#111827' : '#6b7280',
+    fontWeight: isSelected ? 600 : 400,
+    cursor: 'pointer',
+    fontSize: '0.875rem',
+    transition: 'all 0.2s'
+  });
 
   // Count active filters
   const activeFilterCount = [
@@ -301,6 +343,8 @@ function FilterModal({ isOpen, onClose, filters, onFilterChange, userLocation, o
     instantBookingOnly,
     selectedEventTypes.length > 0,
     selectedCultures.length > 0,
+    selectedSubcategories.length > 0,
+    selectedFeatures.length > 0,
     experienceRange,
     serviceLocation,
     // NEW: Enhanced filter counts
@@ -311,19 +355,6 @@ function FilterModal({ isOpen, onClose, filters, onFilterChange, userLocation, o
     availabilityDayOfWeek
   ].filter(Boolean).length;
 
-  // Chip style helper
-  const getChipStyle = (isSelected, isDisabled = false) => ({
-    padding: '0.5rem 1rem',
-    borderRadius: '20px',
-    border: isSelected ? '2px solid #5086E8' : '1px solid #d1d5db',
-    background: isSelected ? '#eff6ff' : isDisabled ? '#f9fafb' : 'white',
-    color: isSelected ? '#5086E8' : isDisabled ? '#9ca3af' : '#374151',
-    fontWeight: isSelected ? 600 : 400,
-    cursor: isDisabled ? 'not-allowed' : 'pointer',
-    fontSize: '0.875rem',
-    transition: 'all 0.2s',
-    opacity: isDisabled ? 0.5 : 1
-  });
 
   return (
     <UniversalModal
@@ -463,7 +494,48 @@ function FilterModal({ isOpen, onClose, filters, onFilterChange, userLocation, o
           </div>
         </div>
 
-        {/* Event Types Section - Giggster style chips */}
+        {/* Subcategories Section - MultiSelectTags dropdown style */}
+        {subcategories.length > 0 && (
+          <div style={{ marginBottom: '2rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '1.5rem' }}>
+            <h3 style={{ 
+              fontSize: '1.25rem', 
+              fontWeight: 700, 
+              margin: '0 0 1rem 0',
+              color: '#111827'
+            }}>
+              Subcategories{selectedSubcategories.length > 0 ? ` (${selectedSubcategories.length} selected)` : ''}
+            </h3>
+            <p style={{ margin: '0 0 1rem 0', color: '#6b7280', fontSize: '0.875rem' }}>
+              Select the specific services you're looking for
+            </p>
+            <MultiSelectTags
+              options={['All Subcategories', ...subcategories.map(s => s.SubcategoryName)]}
+              selectedValues={
+                selectedSubcategories.length === 0 
+                  ? ['All Subcategories']
+                  : subcategories
+                      .filter(s => selectedSubcategories.includes(s.SubcategoryID))
+                      .map(s => s.SubcategoryName)
+              }
+              onChange={(names) => {
+                if (names.includes('All Subcategories') && !selectedSubcategories.length === 0) {
+                  // User selected "All" - clear selections
+                  setSelectedSubcategories([]);
+                } else {
+                  // Filter out "All Subcategories" and map back to IDs
+                  const filteredNames = names.filter(n => n !== 'All Subcategories');
+                  const ids = subcategories
+                    .filter(s => filteredNames.includes(s.SubcategoryName))
+                    .map(s => s.SubcategoryID);
+                  setSelectedSubcategories(ids);
+                }
+              }}
+              placeholder="All Subcategories"
+            />
+          </div>
+        )}
+
+        {/* Event Types Section - MultiSelectTags dropdown style */}
         {eventTypes.length > 0 && (
           <div style={{ marginBottom: '2rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '1.5rem' }}>
             <h3 style={{ 
@@ -472,45 +544,39 @@ function FilterModal({ isOpen, onClose, filters, onFilterChange, userLocation, o
               margin: '0 0 1rem 0',
               color: '#111827'
             }}>
-              Event Types
+              Event Types{selectedEventTypes.length > 0 ? ` (${selectedEventTypes.length} selected)` : ''}
             </h3>
             <p style={{ margin: '0 0 1rem 0', color: '#6b7280', fontSize: '0.875rem' }}>
               Select the types of events you're planning
             </p>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-              {(showAllEventTypes ? eventTypes : eventTypes.slice(0, 10)).map((et) => {
-                const isSelected = selectedEventTypes.includes(et.EventTypeID);
-                return (
-                  <button
-                    key={et.EventTypeID}
-                    onClick={() => toggleEventType(et.EventTypeID)}
-                    style={getChipStyle(isSelected)}
-                  >
-                    {et.EventTypeName}
-                  </button>
-                );
-              })}
-            </div>
-            {eventTypes.length > 10 && (
-              <button
-                onClick={() => setShowAllEventTypes(!showAllEventTypes)}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#5086E8',
-                  fontSize: '0.875rem',
-                  cursor: 'pointer',
-                  marginTop: '0.75rem',
-                  padding: 0
-                }}
-              >
-                {showAllEventTypes ? 'Show less' : `Show all (${eventTypes.length})`} ↓
-              </button>
-            )}
+            <MultiSelectTags
+              options={['All Event Types', ...eventTypes.map(et => et.EventTypeName)]}
+              selectedValues={
+                selectedEventTypes.length === 0 
+                  ? ['All Event Types']
+                  : eventTypes
+                      .filter(et => selectedEventTypes.includes(et.EventTypeID))
+                      .map(et => et.EventTypeName)
+              }
+              onChange={(names) => {
+                if (names.includes('All Event Types') && selectedEventTypes.length > 0) {
+                  // User selected "All" - clear selections
+                  setSelectedEventTypes([]);
+                } else {
+                  // Filter out "All Event Types" and map back to IDs
+                  const filteredNames = names.filter(n => n !== 'All Event Types');
+                  const ids = eventTypes
+                    .filter(et => filteredNames.includes(et.EventTypeName))
+                    .map(et => et.EventTypeID);
+                  setSelectedEventTypes(ids);
+                }
+              }}
+              placeholder="All Event Types"
+            />
           </div>
         )}
 
-        {/* Cultures Served Section - Giggster style chips */}
+        {/* Cultures Served Section - MultiSelectTags dropdown style */}
         {cultures.length > 0 && (
           <div style={{ marginBottom: '2rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '1.5rem' }}>
             <h3 style={{ 
@@ -519,41 +585,76 @@ function FilterModal({ isOpen, onClose, filters, onFilterChange, userLocation, o
               margin: '0 0 1rem 0',
               color: '#111827'
             }}>
-              Cultures Served
+              Cultures Served{selectedCultures.length > 0 ? ` (${selectedCultures.length} selected)` : ''}
             </h3>
             <p style={{ margin: '0 0 1rem 0', color: '#6b7280', fontSize: '0.875rem' }}>
               Find vendors who specialize in your cultural traditions
             </p>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-              {(showAllCultures ? cultures : cultures.slice(0, 12)).map((culture) => {
-                const isSelected = selectedCultures.includes(culture.CultureID);
-                return (
-                  <button
-                    key={culture.CultureID}
-                    onClick={() => toggleCulture(culture.CultureID)}
-                    style={getChipStyle(isSelected)}
-                  >
-                    {culture.CultureName}
-                  </button>
-                );
-              })}
-            </div>
-            {cultures.length > 12 && (
-              <button
-                onClick={() => setShowAllCultures(!showAllCultures)}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#5086E8',
-                  fontSize: '0.875rem',
-                  cursor: 'pointer',
-                  marginTop: '0.75rem',
-                  padding: 0
-                }}
-              >
-                {showAllCultures ? 'Show less' : `Show all (${cultures.length})`} ↓
-              </button>
-            )}
+            <MultiSelectTags
+              options={['All Cultures', ...cultures.map(c => c.CultureName)]}
+              selectedValues={
+                selectedCultures.length === 0 
+                  ? ['All Cultures']
+                  : cultures
+                      .filter(c => selectedCultures.includes(c.CultureID))
+                      .map(c => c.CultureName)
+              }
+              onChange={(names) => {
+                if (names.includes('All Cultures') && selectedCultures.length > 0) {
+                  // User selected "All" - clear selections
+                  setSelectedCultures([]);
+                } else {
+                  // Filter out "All Cultures" and map back to IDs
+                  const filteredNames = names.filter(n => n !== 'All Cultures');
+                  const ids = cultures
+                    .filter(c => filteredNames.includes(c.CultureName))
+                    .map(c => c.CultureID);
+                  setSelectedCultures(ids);
+                }
+              }}
+              placeholder="All Cultures"
+            />
+          </div>
+        )}
+
+        {/* Features Section - MultiSelectTags dropdown style */}
+        {features.length > 0 && (
+          <div style={{ marginBottom: '2rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '1.5rem' }}>
+            <h3 style={{ 
+              fontSize: '1.25rem', 
+              fontWeight: 700, 
+              margin: '0 0 1rem 0',
+              color: '#111827'
+            }}>
+              Features & Amenities{selectedFeatures.length > 0 ? ` (${selectedFeatures.length} selected)` : ''}
+            </h3>
+            <p style={{ margin: '0 0 1rem 0', color: '#6b7280', fontSize: '0.875rem' }}>
+              Select the amenities and capabilities you need
+            </p>
+            <MultiSelectTags
+              options={['All Features', ...features.map(f => f.name)]}
+              selectedValues={
+                selectedFeatures.length === 0 
+                  ? ['All Features']
+                  : features
+                      .filter(f => selectedFeatures.includes(f.id))
+                      .map(f => f.name)
+              }
+              onChange={(names) => {
+                if (names.includes('All Features') && selectedFeatures.length > 0) {
+                  // User selected "All" - clear selections
+                  setSelectedFeatures([]);
+                } else {
+                  // Filter out "All Features" and map back to IDs
+                  const filteredNames = names.filter(n => n !== 'All Features');
+                  const ids = features
+                    .filter(f => filteredNames.includes(f.name))
+                    .map(f => f.id);
+                  setSelectedFeatures(ids);
+                }
+              }}
+              placeholder="All Features"
+            />
           </div>
         )}
 
@@ -888,17 +989,7 @@ function FilterModal({ isOpen, onClose, filters, onFilterChange, userLocation, o
                   <button
                     key={day.key}
                     onClick={() => setAvailabilityDayOfWeek(isSelected ? '' : day.key)}
-                    style={{
-                      padding: '0.5rem 0.75rem',
-                      borderRadius: '8px',
-                      border: isSelected ? '2px solid #5086E8' : '1px solid #d1d5db',
-                      background: isSelected ? '#eff6ff' : 'white',
-                      color: isSelected ? '#5086E8' : '#374151',
-                      fontWeight: isSelected ? 600 : 400,
-                      cursor: 'pointer',
-                      fontSize: '0.8rem',
-                      transition: 'all 0.2s'
-                    }}
+                    style={getChipStyle(isSelected)}
                   >
                     {day.label.substring(0, 3)}
                   </button>
@@ -926,17 +1017,7 @@ function FilterModal({ isOpen, onClose, filters, onFilterChange, userLocation, o
                 <button
                   key={rating}
                   onClick={() => setMinRating(rating)}
-                  style={{
-                    padding: '0.5rem 1rem',
-                    borderRadius: '20px',
-                    border: isSelected ? '2px solid #5086E8' : '1px solid #d1d5db',
-                    background: isSelected ? '#eff6ff' : 'white',
-                    color: isSelected ? '#5086E8' : '#374151',
-                    fontWeight: isSelected ? 600 : 400,
-                    cursor: 'pointer',
-                    fontSize: '0.875rem',
-                    transition: 'all 0.2s'
-                  }}
+                  style={getChipStyle(isSelected)}
                 >
                   {label}
                 </button>

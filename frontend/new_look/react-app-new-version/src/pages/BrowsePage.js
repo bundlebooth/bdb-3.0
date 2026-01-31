@@ -722,6 +722,18 @@ function BrowsePage() {
       // Add additional filters
       if (filters.priceLevel) params.set('priceLevel', filters.priceLevel);
       if (filters.minRating) params.set('minRating', filters.minRating);
+      if (filters.eventTypes && filters.eventTypes.length > 0) params.set('eventTypes', filters.eventTypes.join(','));
+      if (filters.cultures && filters.cultures.length > 0) params.set('cultures', filters.cultures.join(','));
+      if (filters.subcategories && filters.subcategories.length > 0) params.set('subcategoryIds', filters.subcategories.join(','));
+      if (filters.features && filters.features.length > 0) params.set('featureIds', filters.features.join(','));
+      if (filters.experienceRange) params.set('experienceRange', filters.experienceRange);
+      if (filters.serviceLocation) params.set('serviceLocation', filters.serviceLocation);
+      if (filters.instantBookingOnly) params.set('instantBookingOnly', 'true');
+      if (filters.minReviewCount) params.set('minReviewCount', filters.minReviewCount);
+      if (filters.freshListingsDays) params.set('freshListingsDays', filters.freshListingsDays);
+      if (filters.hasGoogleReviews) params.set('hasGoogleReviews', 'true');
+      if (filters.availabilityDate) params.set('availabilityDate', filters.availabilityDate);
+      if (filters.availabilityDayOfWeek) params.set('availabilityDayOfWeek', filters.availabilityDayOfWeek);
 
       let url = `${API_BASE_URL}/vendors?${params.toString()}`;
 
