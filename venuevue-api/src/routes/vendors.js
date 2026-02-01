@@ -621,8 +621,16 @@ router.get('/', async (req, res) => {
         enhancedRequest.input('InstantBookingOnly', sql.Bit, instantBookingOnly === 'true' ? 1 : null);
         enhancedRequest.input('FreshListingsDays', sql.Int, freshListingsDays ? parseInt(freshListingsDays) : null);
         enhancedRequest.input('HasGoogleReviews', sql.Bit, hasGoogleReviews === 'true' ? 1 : null);
-        enhancedRequest.input('AvailabilityDate', sql.Date, availabilityDate ? new Date(availabilityDate) : null);
-        enhancedRequest.input('AvailabilityDayOfWeek', sql.TinyInt, availabilityDayOfWeek ? parseInt(availabilityDayOfWeek) : null);
+        // Use eventDate if availabilityDate not provided (frontend sends eventDate from search bar)
+        const effectiveAvailabilityDate = availabilityDate || eventDate;
+        // Calculate day of week from eventDate if not provided
+        let effectiveDayOfWeek = availabilityDayOfWeek;
+        if (!effectiveDayOfWeek && effectiveAvailabilityDate) {
+          const dateObj = new Date(effectiveAvailabilityDate);
+          effectiveDayOfWeek = dateObj.getDay(); // 0=Sunday, 1=Monday, etc.
+        }
+        enhancedRequest.input('AvailabilityDate', sql.Date, effectiveAvailabilityDate ? new Date(effectiveAvailabilityDate) : null);
+        enhancedRequest.input('AvailabilityDayOfWeek', sql.TinyInt, effectiveDayOfWeek !== undefined && effectiveDayOfWeek !== null ? parseInt(effectiveDayOfWeek) : null);
         enhancedRequest.input('Latitude', sql.Decimal(10, 8), latitude ? parseFloat(latitude) : null);
         enhancedRequest.input('Longitude', sql.Decimal(11, 8), longitude ? parseFloat(longitude) : null);
         enhancedRequest.input('RadiusMiles', sql.Int, radiusMiles ? parseInt(radiusMiles) : 25);
@@ -638,7 +646,13 @@ router.get('/', async (req, res) => {
         enhancedRequest.input('SortBy', sql.NVarChar(50), sortBy || 'recommended');
         
         result = await enhancedRequest.execute('vendors.sp_SearchEnhanced');
-        console.log('[vendors] Using sp_SearchEnhanced');
+        console.log('[vendors] Using sp_SearchEnhanced with availability filters:', {
+          eventDate,
+          effectiveAvailabilityDate,
+          effectiveDayOfWeek,
+          startTime,
+          endTime
+        });
       } catch (enhancedError) {
         console.log('[vendors] sp_SearchEnhanced not available, falling back to sp_Search:', enhancedError.message);
         result = await request.execute('vendors.sp_Search');
