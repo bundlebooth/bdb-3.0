@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
@@ -8,12 +8,23 @@ import Header from '../components/Header';
 import Footer from '../components/Footer';
 import ProfileModal from '../components/ProfileModal';
 import { showBanner, formatMonthYear } from '../utils/helpers';
+import { decodeUserId, isPublicId } from '../utils/hashIds';
 import './ClientProfilePage.css';
 
 function ClientProfilePage() {
-  const { clientId } = useParams();
+  const { clientId: rawClientId } = useParams();
   const navigate = useNavigate();
   const { currentUser } = useAuth();
+  
+  // Decode the client ID from URL (supports both encoded and numeric IDs)
+  const clientId = useMemo(() => {
+    if (!rawClientId) return null;
+    if (isPublicId(rawClientId)) {
+      return decodeUserId(rawClientId);
+    }
+    const parsed = parseInt(rawClientId, 10);
+    return isNaN(parsed) ? null : parsed;
+  }, [rawClientId]);
 
   const [client, setClient] = useState(null);
   const [associatedVendors, setAssociatedVendors] = useState([]);

@@ -20,24 +20,25 @@ import { HASHID_SALT, HASHID_MIN_LENGTH } from '../config';
 // IMPORTANT: Set REACT_APP_HASHID_SALT in environment variables for production
 const BASE_SALT = HASHID_SALT;
 const MIN_LENGTH = HASHID_MIN_LENGTH;
+const ALPHABET = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 
 // Create separate Hashids instances for each entity type
 const hashids = {
-  vendor: new Hashids(`${BASE_SALT}_vendor`, MIN_LENGTH, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'),
-  user: new Hashids(`${BASE_SALT}_user`, MIN_LENGTH, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'),
-  booking: new Hashids(`${BASE_SALT}_booking`, MIN_LENGTH, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'),
-  invoice: new Hashids(`${BASE_SALT}_invoice`, MIN_LENGTH, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'),
-  service: new Hashids(`${BASE_SALT}_service`, MIN_LENGTH, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'),
-  category: new Hashids(`${BASE_SALT}_category`, MIN_LENGTH, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'),
-  conversation: new Hashids(`${BASE_SALT}_conversation`, MIN_LENGTH, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'),
-  message: new Hashids(`${BASE_SALT}_message`, MIN_LENGTH, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'),
-  notification: new Hashids(`${BASE_SALT}_notification`, MIN_LENGTH, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'),
-  review: new Hashids(`${BASE_SALT}_review`, MIN_LENGTH, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'),
-  transaction: new Hashids(`${BASE_SALT}_transaction`, MIN_LENGTH, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'),
-  package: new Hashids(`${BASE_SALT}_package`, MIN_LENGTH, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'),
-  announcement: new Hashids(`${BASE_SALT}_announcement`, MIN_LENGTH, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'),
-  faq: new Hashids(`${BASE_SALT}_faq`, MIN_LENGTH, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'),
-  image: new Hashids(`${BASE_SALT}_image`, MIN_LENGTH, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'),
+  vendor: new Hashids(`${BASE_SALT}_vendor`, MIN_LENGTH, ALPHABET),
+  user: new Hashids(`${BASE_SALT}_user`, MIN_LENGTH, ALPHABET),
+  booking: new Hashids(`${BASE_SALT}_booking`, MIN_LENGTH, ALPHABET),
+  invoice: new Hashids(`${BASE_SALT}_invoice`, MIN_LENGTH, ALPHABET),
+  service: new Hashids(`${BASE_SALT}_service`, MIN_LENGTH, ALPHABET),
+  category: new Hashids(`${BASE_SALT}_category`, MIN_LENGTH, ALPHABET),
+  conversation: new Hashids(`${BASE_SALT}_conversation`, MIN_LENGTH, ALPHABET),
+  message: new Hashids(`${BASE_SALT}_message`, MIN_LENGTH, ALPHABET),
+  notification: new Hashids(`${BASE_SALT}_notification`, MIN_LENGTH, ALPHABET),
+  review: new Hashids(`${BASE_SALT}_review`, MIN_LENGTH, ALPHABET),
+  transaction: new Hashids(`${BASE_SALT}_transaction`, MIN_LENGTH, ALPHABET),
+  package: new Hashids(`${BASE_SALT}_package`, MIN_LENGTH, ALPHABET),
+  announcement: new Hashids(`${BASE_SALT}_announcement`, MIN_LENGTH, ALPHABET),
+  faq: new Hashids(`${BASE_SALT}_faq`, MIN_LENGTH, ALPHABET),
+  image: new Hashids(`${BASE_SALT}_image`, MIN_LENGTH, ALPHABET),
 };
 
 // ============================================
@@ -98,64 +99,55 @@ export function encodeImageId(id) {
 // DECODING FUNCTIONS (Public ID -> Internal ID)
 // ============================================
 
-export function decodeVendorId(publicId) {
+// Strict decode helper - verifies the ID re-encodes to the same value (prevents tampering)
+function strictDecode(hashidInstance, publicId) {
   if (!publicId) return null;
-  const decoded = hashids.vendor.decode(publicId);
-  return decoded.length > 0 ? decoded[0] : null;
+  const decoded = hashidInstance.decode(publicId);
+  if (decoded.length === 0) return null;
+  // Re-encode and verify it matches exactly (prevents padded/tampered IDs)
+  const reEncoded = hashidInstance.encode(decoded[0]);
+  if (reEncoded !== publicId) return null;
+  return decoded[0];
+}
+
+export function decodeVendorId(publicId) {
+  return strictDecode(hashids.vendor, publicId);
 }
 
 export function decodeUserId(publicId) {
-  if (!publicId) return null;
-  const decoded = hashids.user.decode(publicId);
-  return decoded.length > 0 ? decoded[0] : null;
+  return strictDecode(hashids.user, publicId);
 }
 
 export function decodeBookingId(publicId) {
-  if (!publicId) return null;
-  const decoded = hashids.booking.decode(publicId);
-  return decoded.length > 0 ? decoded[0] : null;
+  return strictDecode(hashids.booking, publicId);
 }
 
 export function decodeInvoiceId(publicId) {
-  if (!publicId) return null;
-  const decoded = hashids.invoice.decode(publicId);
-  return decoded.length > 0 ? decoded[0] : null;
+  return strictDecode(hashids.invoice, publicId);
 }
 
 export function decodeServiceId(publicId) {
-  if (!publicId) return null;
-  const decoded = hashids.service.decode(publicId);
-  return decoded.length > 0 ? decoded[0] : null;
+  return strictDecode(hashids.service, publicId);
 }
 
 export function decodeCategoryId(publicId) {
-  if (!publicId) return null;
-  const decoded = hashids.category.decode(publicId);
-  return decoded.length > 0 ? decoded[0] : null;
+  return strictDecode(hashids.category, publicId);
 }
 
 export function decodeConversationId(publicId) {
-  if (!publicId) return null;
-  const decoded = hashids.conversation.decode(publicId);
-  return decoded.length > 0 ? decoded[0] : null;
+  return strictDecode(hashids.conversation, publicId);
 }
 
 export function decodeMessageId(publicId) {
-  if (!publicId) return null;
-  const decoded = hashids.message.decode(publicId);
-  return decoded.length > 0 ? decoded[0] : null;
+  return strictDecode(hashids.message, publicId);
 }
 
 export function decodePackageId(publicId) {
-  if (!publicId) return null;
-  const decoded = hashids.package.decode(publicId);
-  return decoded.length > 0 ? decoded[0] : null;
+  return strictDecode(hashids.package, publicId);
 }
 
 export function decodeImageId(publicId) {
-  if (!publicId) return null;
-  const decoded = hashids.image.decode(publicId);
-  return decoded.length > 0 ? decoded[0] : null;
+  return strictDecode(hashids.image, publicId);
 }
 
 // ============================================
@@ -176,9 +168,7 @@ export function decodeId(type, publicId) {
     console.warn(`Unknown entity type for decoding: ${type}`);
     return null;
   }
-  if (!publicId) return null;
-  const decoded = hashids[type].decode(publicId);
-  return decoded.length > 0 ? decoded[0] : null;
+  return strictDecode(hashids[type], publicId);
 }
 
 // ============================================

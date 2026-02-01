@@ -115,7 +115,7 @@ export const UNSPLASH_ACCESS_KEY = process.env.REACT_APP_UNSPLASH_ACCESS_KEY || 
 // Fallback salt is used for development - ensure it matches backend
 const DEFAULT_HASHID_SALT = 'd4f1b8c0e7a24f56a9c3e1b77f08d92c4eb1a6f53d7e9c0fa2b14ce8f937ab10';
 export const HASHID_SALT = process.env.REACT_APP_HASHID_SALT || DEFAULT_HASHID_SALT;
-export const HASHID_MIN_LENGTH = 8;
+export const HASHID_MIN_LENGTH = 14;
 
 // ============================================================
 // ENVIRONMENT INFO EXPORT

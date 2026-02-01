@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { API_BASE_URL } from '../../../config';
 import { showBanner } from '../../../utils/helpers';
+import { encodeUserId } from '../../../utils/hashIds';
 import UniversalModal from '../../UniversalModal';
 import './ProfileEditPanel.css';
 
@@ -200,7 +201,7 @@ const ProfileEditPanel = ({ onClose, onSave }) => {
   };
 
   const viewProfile = () => {
-    window.open(`/host/${currentUser.id}`, '_blank');
+    window.open(`/host/${encodeUserId(currentUser?.id)}`, '_blank');
   };
 
   const handleSave = async () => {

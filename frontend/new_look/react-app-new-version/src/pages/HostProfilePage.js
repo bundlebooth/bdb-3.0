@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
@@ -9,12 +9,23 @@ import ProfileModal from '../components/ProfileModal';
 import VendorCard from '../components/VendorCard';
 import { showBanner } from '../utils/helpers';
 import { useUserOnlineStatus } from '../hooks/useOnlineStatus';
+import { decodeUserId, isPublicId } from '../utils/hashIds';
 import './HostProfilePage.css';
 
 function HostProfilePage() {
-  const { hostId } = useParams();
+  const { hostId: rawHostId } = useParams();
   const navigate = useNavigate();
   const { currentUser } = useAuth();
+  
+  // Decode the host ID from URL (supports both encoded and numeric IDs)
+  const hostId = useMemo(() => {
+    if (!rawHostId) return null;
+    if (isPublicId(rawHostId)) {
+      return decodeUserId(rawHostId);
+    }
+    const parsed = parseInt(rawHostId, 10);
+    return isNaN(parsed) ? null : parsed;
+  }, [rawHostId]);
 
   const [host, setHost] = useState(null);
   const [enhancedProfile, setEnhancedProfile] = useState(null);

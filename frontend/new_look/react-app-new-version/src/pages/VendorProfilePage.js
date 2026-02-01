@@ -20,6 +20,8 @@ import MessagingWidget from '../components/MessagingWidget';
 import { useVendorOnlineStatus } from '../hooks/useOnlineStatus';
 import { showBanner } from '../utils/helpers';
 import { extractVendorIdFromSlug, parseQueryParams, trackPageView, buildBookingUrl } from '../utils/urlHelpers';
+import { decodeVendorId } from '../utils/hashIds';
+import { encodeUserId } from '../utils/hashIds';
 import { useLocalization } from '../context/LocalizationContext';
 import { useTranslation } from '../hooks/useTranslation';
 import ProfileVendorWidget from '../components/ProfileVendorWidget';
@@ -32,8 +34,9 @@ function VendorProfilePage() {
   const { formatCurrency } = useLocalization();
   const { t } = useTranslation();
   
-  // Extract vendor ID from slug (supports both "138" and "business-name-138")
-  const vendorId = extractVendorIdFromSlug(vendorSlug) || vendorSlug;
+  // Extract vendor ID from slug - strict validation, no fallback to raw slug
+  const vendorId = extractVendorIdFromSlug(vendorSlug);
+  const isInvalidVendorId = !vendorId && vendorSlug;
   const { currentUser } = useAuth();
 
   const [vendor, setVendor] = useState(null);
@@ -2152,6 +2155,52 @@ function VendorProfilePage() {
     );
   };
 
+  // Show error page for invalid/tampered vendor IDs
+  if (isInvalidVendorId) {
+    return (
+      <PageLayout variant="fullWidth" pageClassName="vendor-profile-page">
+        <Header 
+          onSearch={() => {}} 
+          onProfileClick={() => setProfileModalOpen(true)} 
+          onWishlistClick={() => setProfileModalOpen(true)} 
+          onChatClick={() => setProfileModalOpen(true)} 
+          onNotificationsClick={() => {}} 
+        />
+        <div style={{ 
+          display: 'flex', 
+          flexDirection: 'column', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          minHeight: '60vh',
+          padding: '2rem',
+          textAlign: 'center'
+        }}>
+          <i className="fas fa-exclamation-triangle" style={{ fontSize: '4rem', color: '#f59e0b', marginBottom: '1.5rem' }}></i>
+          <h1 style={{ fontSize: '1.75rem', fontWeight: 600, marginBottom: '0.75rem', color: '#222' }}>Invalid Vendor Link</h1>
+          <p style={{ color: '#717171', marginBottom: '1.5rem', maxWidth: '400px' }}>
+            The vendor link you're trying to access is invalid or has been tampered with.
+          </p>
+          <button 
+            onClick={() => navigate('/')}
+            style={{
+              background: '#222',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              padding: '12px 24px',
+              fontSize: '1rem',
+              fontWeight: 500,
+              cursor: 'pointer'
+            }}
+          >
+            Go to Homepage
+          </button>
+        </div>
+        <Footer />
+      </PageLayout>
+    );
+  }
+
   if (loading) {
     const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
     
@@ -2844,7 +2893,7 @@ function VendorProfilePage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
               {/* Host Avatar */}
               <div 
-                onClick={() => navigate(`/host/${profile.HostUserID || vendorId}`)}
+                onClick={() => navigate(`/host/${encodeUserId(profile.HostUserID || vendorId)}`)}
                 style={{ 
                   width: '56px', 
                   height: '56px', 
@@ -2866,7 +2915,7 @@ function VendorProfilePage() {
               {/* Host Info */}
               <div style={{ flex: 1 }}>
                 <div 
-                  onClick={() => navigate(`/host/${profile.HostUserID || vendorId}`)}
+                  onClick={() => navigate(`/host/${encodeUserId(profile.HostUserID || vendorId)}`)}
                   style={{ 
                     fontSize: '1rem', 
                     fontWeight: 600, 
@@ -2980,7 +3029,7 @@ function VendorProfilePage() {
             <div>
               {/* Profile Card - Horizontal Layout (matching HostProfilePage) */}
               <div 
-                onClick={() => navigate(`/host/${profile.HostUserID}`)}
+                onClick={() => navigate(`/host/${encodeUserId(profile.HostUserID)}`)}
                 style={{
                   display: 'flex',
                   flexDirection: 'row',
