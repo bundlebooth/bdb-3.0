@@ -16,6 +16,7 @@ import Footer from '../components/Footer';
 import MessagingWidget from '../components/MessagingWidget';
 import { showBanner } from '../utils/helpers';
 import { getBrowsePageImage } from '../utils/unsplash';
+import { encodeVendorId } from '../utils/hashIds';
 import './BrowsePage.css';
 
 // Category key to label mapping
@@ -924,7 +925,7 @@ function BrowsePage() {
 
   // Handle view vendor
   const handleViewVendor = useCallback((vendorId) => {
-    navigate(`/vendor/${vendorId}`);
+    navigate(`/vendor/${encodeVendorId(vendorId)}`);
   }, [navigate]);
 
   // Handle filter change

@@ -22,6 +22,7 @@ import { EditButton } from '../components/common/UIComponents';
 import LocationSearchModal from '../components/LocationSearchModal';
 import { useLocalization } from '../context/LocalizationContext';
 import { useRecentlyViewed } from '../hooks/useRecentlyViewed';
+import { encodeVendorId } from '../utils/hashIds';
 
 function IndexPage() {
   const navigate = useNavigate();
@@ -1422,7 +1423,7 @@ function IndexPage() {
     if (vendor) {
       addToRecentlyViewed(vendor);
     }
-    navigate(`/vendor/${vendorId}`);
+    navigate(`/vendor/${encodeVendorId(vendorId)}`);
   }, [navigate, filteredVendors, discoverySections, categorySections, citySections, addToRecentlyViewed]);
 
   const handleHighlightVendor = useCallback((vendorId, highlight) => {

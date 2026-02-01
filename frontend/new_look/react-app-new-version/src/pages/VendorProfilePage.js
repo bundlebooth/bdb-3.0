@@ -20,8 +20,7 @@ import MessagingWidget from '../components/MessagingWidget';
 import { useVendorOnlineStatus } from '../hooks/useOnlineStatus';
 import { showBanner } from '../utils/helpers';
 import { extractVendorIdFromSlug, parseQueryParams, trackPageView, buildBookingUrl } from '../utils/urlHelpers';
-import { decodeVendorId } from '../utils/hashIds';
-import { encodeUserId } from '../utils/hashIds';
+import { decodeVendorId, encodeVendorId, encodeUserId } from '../utils/hashIds';
 import { useLocalization } from '../context/LocalizationContext';
 import { useTranslation } from '../hooks/useTranslation';
 import ProfileVendorWidget from '../components/ProfileVendorWidget';
@@ -2147,7 +2146,7 @@ function VendorProfilePage() {
               vendor={venue}
               isFavorite={favorites.some(fav => fav.vendorProfileId === (venue.VendorProfileID || venue.id))}
               onToggleFavorite={(vendorId) => handleRecommendationFavorite(vendorId)}
-              onView={(vendorId) => navigate(`/vendor/${vendorId}`)}
+              onView={(vendorId) => navigate(`/vendor/${encodeVendorId(vendorId)}`)}
             />
           ))}
         </div>
@@ -3696,7 +3695,7 @@ function VendorProfilePage() {
                 onClick={() => {
                   setPackageModalOpen(false);
                   setSelectedPackage(null);
-                  navigate(`/booking/${vendorId}`);
+                  navigate(`/booking/${encodeVendorId(vendorId)}`);
                 }}
                 style={{
                   width: '100%',
@@ -3884,7 +3883,7 @@ function VendorProfilePage() {
                 onClick={() => {
                   setServiceModalOpen(false);
                   setSelectedService(null);
-                  navigate(`/booking/${vendorId}`);
+                  navigate(`/booking/${encodeVendorId(vendorId)}`);
                 }}
                 style={{
                   width: '100%',

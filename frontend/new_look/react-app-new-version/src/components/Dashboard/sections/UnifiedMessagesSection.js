@@ -3,6 +3,7 @@ import { useAuth } from '../../../context/AuthContext';
 import { apiGet, apiPost } from '../../../utils/api';
 import { API_BASE_URL, GIPHY_API_KEY } from '../../../config';
 import { useUserOnlineStatus, useVendorOnlineStatus } from '../../../hooks/useOnlineStatus';
+import { decodeConversationId, isPublicId } from '../../../utils/hashIds';
 import BookingDetailsModal from '../BookingDetailsModal';
 
 function UnifiedMessagesSection({ onSectionChange }) {
@@ -408,16 +409,27 @@ function UnifiedMessagesSection({ onSectionChange }) {
   // Check for conversation to open from sessionStorage (from Chat button click)
   useEffect(() => {
     const checkForOpenConversation = () => {
-      const conversationId = sessionStorage.getItem('openConversationId');
+      const rawConversationId = sessionStorage.getItem('openConversationId');
       const otherPartyName = sessionStorage.getItem('openConversationName');
       
-      if (conversationId && conversations.length > 0) {
+      if (rawConversationId && conversations.length > 0) {
+        // Decode the conversation ID if it's a public hash ID
+        let conversationId = rawConversationId;
+        if (isPublicId(rawConversationId)) {
+          const decoded = decodeConversationId(rawConversationId);
+          if (decoded) {
+            conversationId = decoded;
+          }
+        }
+        
         // Find the conversation in our list
         const conv = conversations.find(c => 
           c.id === conversationId || 
           c.id === parseInt(conversationId) ||
           c.ConversationID === conversationId ||
-          c.ConversationID === parseInt(conversationId)
+          c.ConversationID === parseInt(conversationId) ||
+          c.id === rawConversationId ||
+          c.ConversationID === rawConversationId
         );
         
         if (conv) {

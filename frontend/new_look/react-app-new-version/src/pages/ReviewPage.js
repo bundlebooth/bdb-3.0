@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { apiGet, apiPost } from '../utils/api';
 import { showBanner } from '../utils/banners';
+import { decodeBookingId, isPublicId } from '../utils/hashIds';
 import UniversalModal from '../components/UniversalModal';
 import './ReviewPage.css';
 
@@ -16,7 +17,11 @@ import './ReviewPage.css';
 
 function ReviewPage() {
   const navigate = useNavigate();
-  const { bookingId } = useParams();
+  const { bookingId: encodedBookingId } = useParams();
+  // Decode the booking ID from URL (supports both encoded and plain numeric IDs)
+  const bookingId = encodedBookingId && isPublicId(encodedBookingId) 
+    ? decodeBookingId(encodedBookingId) 
+    : (encodedBookingId ? parseInt(encodedBookingId, 10) : null);
   const { currentUser, loading: authLoading } = useAuth();
   
   const [status, setStatus] = useState('loading'); // loading, ready, error, submitting, success
@@ -43,7 +48,7 @@ function ReviewPage() {
 
     // If not logged in, redirect to login with return URL
     if (!currentUser) {
-      const returnUrl = `/review/${bookingId}`;
+      const returnUrl = `/review/${encodedBookingId}`;
       sessionStorage.setItem('postLoginRedirect', returnUrl);
       navigate('/', { state: { showLogin: true, returnUrl } });
       return;

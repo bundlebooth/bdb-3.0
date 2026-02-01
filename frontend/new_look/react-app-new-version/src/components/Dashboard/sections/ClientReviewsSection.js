@@ -5,6 +5,7 @@ import { apiGet, apiPost } from '../../../utils/api';
 import { showBanner } from '../../../utils/banners';
 import { useTranslation } from '../../../hooks/useTranslation';
 import { useLocalization } from '../../../context/LocalizationContext';
+import { decodeBookingId, isPublicId } from '../../../utils/hashIds';
 import UniversalModal from '../../UniversalModal';
 import CardRow from '../CardRow';
 import ReviewCard from '../ReviewCard';
@@ -83,10 +84,19 @@ function ClientReviewsSection({ deepLinkBookingId, onDeepLinkHandled }) {
   // Handle deep link - open review modal when deepLinkBookingId is provided
   useEffect(() => {
     if (deepLinkBookingId && pastBookings.length > 0 && !loading) {
+      // Decode the booking ID if it's a public hash ID
+      let targetId = deepLinkBookingId;
+      if (isPublicId(deepLinkBookingId)) {
+        const decoded = decodeBookingId(deepLinkBookingId);
+        if (decoded) {
+          targetId = decoded;
+        }
+      }
+      
       // Find the booking by ID
       const booking = pastBookings.find(b => 
-        String(b.BookingID) === String(deepLinkBookingId) || 
-        String(b.RequestID) === String(deepLinkBookingId) ||
+        String(b.BookingID) === String(targetId) || 
+        String(b.RequestID) === String(targetId) ||
         String(b.bookingPublicId) === String(deepLinkBookingId)
       );
       

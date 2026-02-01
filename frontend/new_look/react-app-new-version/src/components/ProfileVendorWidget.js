@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { API_BASE_URL } from '../config';
 import { useLocalization } from '../context/LocalizationContext';
+import { encodeVendorId } from '../utils/hashIds';
 import './ProfileVendorWidget.css';
 
 const ProfileVendorWidget = ({ 
@@ -384,8 +385,8 @@ const ProfileVendorWidget = ({
       if (selectedEndTime) params.set('endTime', selectedEndTime);
       if (selectedPackage) params.set('packageId', selectedPackage.PackageID);
       
-      console.log('Navigating to:', `/booking/${vendorId}?${params.toString()}`);
-      navigate(`/booking/${vendorId}?${params.toString()}`);
+      console.log('Navigating to:', `/booking/${encodeVendorId(vendorId)}?${params.toString()}`);
+      navigate(`/booking/${encodeVendorId(vendorId)}?${params.toString()}`);
     }
   };
 

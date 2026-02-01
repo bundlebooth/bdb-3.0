@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import Header from '../components/Header';
 import ClientBookingsSection from '../components/Dashboard/sections/ClientBookingsSection';
 import MobileBottomNav from '../components/MobileBottomNav';
+import { encodeBookingId } from '../utils/hashIds';
 import './ClientPage.css';
 
 function ClientBookingsPage() {
@@ -21,7 +22,8 @@ function ClientBookingsPage() {
   // Handle Pay Now - navigate to payment page
   const handlePayNow = (booking) => {
     const bookingId = booking.BookingID || booking.RequestID;
-    navigate(`/payment/${bookingId}`);
+    const encodedId = encodeBookingId(bookingId);
+    navigate(`/payment/${encodedId}`);
   };
 
   return (

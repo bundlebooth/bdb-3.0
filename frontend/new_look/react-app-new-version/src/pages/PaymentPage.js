@@ -136,10 +136,10 @@ function PaymentPage() {
   // Redirect if not logged in
   useEffect(() => {
     if (!authLoading && !currentUser) {
-      sessionStorage.setItem('postLoginRedirect', `/payment/${bookingId}`);
+      sessionStorage.setItem('postLoginRedirect', `/payment/${encodedBookingId}`);
       navigate('/', { state: { showLogin: true } });
     }
-  }, [currentUser, authLoading, navigate, bookingId]);
+  }, [currentUser, authLoading, navigate, encodedBookingId]);
 
   // Load booking data
   useEffect(() => {

@@ -8,7 +8,7 @@ import Header from '../components/Header';
 import Footer from '../components/Footer';
 import ProfileModal from '../components/ProfileModal';
 import { showBanner, formatMonthYear } from '../utils/helpers';
-import { decodeUserId, isPublicId } from '../utils/hashIds';
+import { decodeUserId, encodeVendorId, isPublicId } from '../utils/hashIds';
 import './ClientProfilePage.css';
 
 function ClientProfilePage() {
@@ -270,7 +270,7 @@ function ClientProfilePage() {
                   <div 
                     key={vendor.id} 
                     className="client-vendor-card"
-                    onClick={() => navigate(`/vendor/${vendor.id}`)}
+                    onClick={() => navigate(`/vendor/${encodeVendorId(vendor.id)}`)}
                   >
                     <div className="vendor-image">
                       <img 
@@ -357,7 +357,7 @@ function ClientProfilePage() {
                     {activeTab === 'given' && review.VendorName && (
                       <button 
                         className="view-vendor-btn"
-                        onClick={(e) => { e.stopPropagation(); navigate(`/vendor/${review.VendorProfileID}`); }}
+                        onClick={(e) => { e.stopPropagation(); navigate(`/vendor/${encodeVendorId(review.VendorProfileID)}`); }}
                       >
                         View {review.VendorName} →
                       </button>

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import { apiGet, apiPost } from '../../../utils/api';
 import { buildVendorProfileUrl } from '../../../utils/urlHelpers';
+import { encodeConversationId, encodeVendorId } from '../../../utils/hashIds';
 import { useLocalization } from '../../../context/LocalizationContext';
 
 function ClientFavoritesSection() {
@@ -66,14 +67,14 @@ function ClientFavoritesSection() {
       
       if (resp.ok) {
         const data = await resp.json();
-        navigate(`/dashboard?section=messages&conversationId=${data.conversationId}`);
+        navigate(`/dashboard?section=messages&conversationId=${encodeConversationId(data.conversationId)}`);
       } else {
         // Fallback to just navigating with vendorId
-        navigate(`/dashboard?section=messages&vendorId=${vendorId}`);
+        navigate(`/dashboard?section=messages&vendorId=${encodeVendorId(vendorId)}`);
       }
     } catch (error) {
       console.error('Error creating conversation:', error);
-      navigate(`/dashboard?section=messages&vendorId=${vendorId}`);
+      navigate(`/dashboard?section=messages&vendorId=${encodeVendorId(vendorId)}`);
     }
   };
 

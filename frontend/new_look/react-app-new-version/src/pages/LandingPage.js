@@ -12,6 +12,7 @@ import MobileBottomNav from '../components/MobileBottomNav';
 import MessagingWidget from '../components/MessagingWidget';
 import ProfileModal from '../components/ProfileModal';
 import { useTranslation } from '../hooks/useTranslation';
+import { encodeVendorId } from '../utils/hashIds';
 import './LandingPage.css';
 
 function LandingPage() {
@@ -539,7 +540,7 @@ function LandingPage() {
                 vendors={discoverySections[0].vendors}
                 favorites={favorites}
                 onToggleFavorite={handleToggleFavorite}
-                onViewVendor={(vendorId) => { window.scrollTo(0, 0); navigate(`/vendor/${vendorId}`); }}
+                onViewVendor={(vendorId) => { window.scrollTo(0, 0); navigate(`/vendor/${encodeVendorId(vendorId)}`); }}
               />
             </div>
           </div>

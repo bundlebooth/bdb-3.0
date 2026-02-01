@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import CardRow from './CardRow';
-import { encodeUserId } from '../../utils/hashIds';
+import { encodeUserId, encodeBookingId } from '../../utils/hashIds';
 
 /**
  * Shared BookingCard component for displaying booking information
@@ -244,13 +244,13 @@ const BookingCard = ({
       
       // If awaiting payment, navigate to payment page
       if (status === 'awaiting_payment' || status === 'awaiting payment' || status === 'accepted' || status === 'approved') {
-        navigate(`/payment/${bookingId}`);
+        navigate(`/payment/${encodeBookingId(bookingId)}`);
         return;
       }
       
       // Otherwise navigate to bookings section with the item expanded
       const section = isVendorView ? 'vendor-requests' : 'bookings';
-      navigate(`/dashboard?section=${section}&itemId=${bookingId}`);
+      navigate(`/dashboard?section=${section}&itemId=${encodeBookingId(bookingId)}`);
     };
     
     return (
