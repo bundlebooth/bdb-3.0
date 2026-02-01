@@ -872,46 +872,6 @@ function BookingPage() {
         return false;
       }
       
-      // Check for booking overlap with existing bookings
-      if (vendorAvailability?.bookings && vendorAvailability.bookings.length > 0) {
-        const selectedDate = bookingData.eventDate;
-        const selectedStart = bookingData.eventTime;
-        const selectedEnd = bookingData.eventEndTime;
-        
-        const [startH, startM] = selectedStart.split(':').map(Number);
-        const [endH, endM] = selectedEnd.split(':').map(Number);
-        const selectedStartMins = startH * 60 + startM;
-        const selectedEndMins = endH * 60 + endM;
-        
-        for (const booking of vendorAvailability.bookings) {
-          if (!booking.EventDate || !booking.EventTime) continue;
-          
-          const status = (booking.Status || '').toLowerCase();
-          const isActive = status === 'confirmed' || status === 'pending' || status === 'paid' || status === 'approved';
-          if (!isActive) continue;
-          
-          const bookingDate = new Date(booking.EventDate).toISOString().split('T')[0];
-          if (bookingDate !== selectedDate) continue;
-          
-          // Parse booking times
-          const bookingStartTime = booking.EventTime || '';
-          const bookingEndTime = booking.EventEndTime || booking.EndTime || '';
-          
-          if (bookingStartTime && bookingEndTime) {
-            const [bStartH, bStartM] = bookingStartTime.split(':').map(Number);
-            const [bEndH, bEndM] = bookingEndTime.split(':').map(Number);
-            const bookingStartMins = bStartH * 60 + (bStartM || 0);
-            const bookingEndMins = bEndH * 60 + (bEndM || 0);
-            
-            // Check for overlap: new booking starts before existing ends AND new booking ends after existing starts
-            if (selectedStartMins < bookingEndMins && selectedEndMins > bookingStartMins) {
-              alert(`This time slot overlaps with an existing booking (${bookingStartTime.substring(0,5)} - ${bookingEndTime.substring(0,5)}). Please select a different time.`);
-              return false;
-            }
-          }
-        }
-      }
-      
       if (!bookingData.attendeeCount || bookingData.attendeeCount < 1) {
         alert('Please enter the number of guests');
         return false;

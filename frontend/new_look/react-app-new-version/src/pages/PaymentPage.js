@@ -211,8 +211,8 @@ function PaymentPage() {
     loadBookingAndInitPayment();
   }, [currentUser, bookingId]);
 
-  const handleSuccess = () => {
-    navigate('/payment-success', { state: { bookingId } });
+  const handleSuccess = (paymentIntent) => {
+    navigate(`/payment-success?payment_intent=${paymentIntent.id}&booking_id=${bookingId}`);
   };
 
   const handleCancel = () => {
@@ -397,30 +397,28 @@ function PaymentPage() {
                     options={{
                       clientSecret,
                       appearance: {
-                        theme: 'flat',
+                        theme: 'stripe',
                         variables: {
-                          colorPrimary: '#4F86E8',
+                          colorPrimary: '#222222',
                           colorBackground: '#ffffff',
-                          colorText: '#2d3748',
-                          colorTextSecondary: '#718096',
+                          colorText: '#222222',
+                          colorTextSecondary: '#6b7280',
                           colorDanger: '#dc2626',
-                          fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif',
+                          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
                           fontSizeBase: '15px',
-                          borderRadius: '8px',
-                          spacingUnit: '4px',
-                          colorIconTab: '#718096',
-                          colorIconTabSelected: '#4F86E8'
+                          borderRadius: '6px',
+                          spacingUnit: '4px'
                         },
                         rules: {
                           '.Input': {
-                            border: '1px solid #e2e8f0',
+                            border: '1px solid #e5e7eb',
                             boxShadow: 'none',
                             padding: '12px 14px',
                             backgroundColor: '#ffffff'
                           },
                           '.Input:focus': {
-                            border: '1px solid #4F86E8',
-                            boxShadow: '0 0 0 3px rgba(79, 134, 232, 0.1)',
+                            border: '1px solid #222222',
+                            boxShadow: '0 0 0 1px #222222',
                             outline: 'none'
                           },
                           '.Input--invalid': {
@@ -431,35 +429,36 @@ function PaymentPage() {
                             fontWeight: '500',
                             marginBottom: '6px',
                             fontSize: '14px',
-                            color: '#2d3748'
+                            color: '#222222'
                           },
                           '.Tab': {
-                            border: '1px solid #e2e8f0',
-                            borderRadius: '8px',
+                            border: '1px solid #e5e7eb',
+                            borderRadius: '6px',
                             backgroundColor: '#ffffff',
                             boxShadow: 'none'
                           },
                           '.Tab:hover': {
-                            backgroundColor: '#f7fafc',
-                            border: '1px solid #cbd5e0'
+                            backgroundColor: '#f9fafb',
+                            border: '1px solid #d1d5db'
                           },
                           '.Tab--selected': {
-                            border: '1px solid #4F86E8',
-                            backgroundColor: '#f0f7ff',
+                            border: '1px solid #222222',
+                            backgroundColor: '#ffffff',
                             boxShadow: 'none',
-                            color: '#2d3748'
+                            color: '#222222'
                           },
                           '.TabLabel': {
-                            color: '#2d3748'
+                            color: '#374151'
                           },
                           '.TabLabel--selected': {
-                            color: '#2d3748'
+                            color: '#222222',
+                            fontWeight: '600'
                           },
                           '.TabIcon': {
-                            fill: '#718096'
+                            fill: '#6b7280'
                           },
                           '.TabIcon--selected': {
-                            fill: '#4F86E8'
+                            fill: '#222222'
                           },
                           '.Error': {
                             fontSize: '13px',

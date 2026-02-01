@@ -309,13 +309,39 @@ const SharedDateTimePicker = ({
       if (mins < openMins || mins >= closeMins) return false;
       
       for (const booking of dayBookings) {
-        const bookingStart = parseTimeString(booking.EventTime);
-        const bookingEnd = parseTimeString(booking.EventEndTime);
-        if (bookingStart && bookingEnd) {
-          const bStartMins = bookingStart.hour * 60 + (bookingStart.minute || 0);
-          const bEndMins = bookingEnd.hour * 60 + (bookingEnd.minute || 0);
-          if (mins >= bStartMins && mins < bEndMins) return false;
+        let startHour, startMin, endHour, endMin;
+        
+        // Parse start time - match timeline visualization logic exactly
+        if (booking.EventTime) {
+          const timeParts = booking.EventTime.split(':');
+          startHour = parseInt(timeParts[0]);
+          startMin = parseInt(timeParts[1] || 0);
+        } else {
+          // Fallback to EventDate time component
+          const eventDate = new Date(booking.EventDate);
+          startHour = eventDate.getHours();
+          startMin = eventDate.getMinutes();
         }
+        
+        // Parse end time - match timeline visualization logic exactly
+        if (booking.EventEndTime) {
+          const endParts = booking.EventEndTime.split(':');
+          endHour = parseInt(endParts[0]);
+          endMin = parseInt(endParts[1] || 0);
+        } else if (booking.EndDate) {
+          const endDate = new Date(booking.EndDate);
+          endHour = endDate.getHours();
+          endMin = endDate.getMinutes();
+        } else {
+          // Default to 2 hours if no end time (same as timeline)
+          endHour = startHour + 2;
+          endMin = startMin;
+        }
+        
+        const bStartMins = startHour * 60 + startMin;
+        const bEndMins = endHour * 60 + endMin;
+        
+        if (mins >= bStartMins && mins < bEndMins) return false;
       }
       return true;
     });
@@ -342,12 +368,23 @@ const SharedDateTimePicker = ({
     
     let maxEndMins = closeMins;
     for (const booking of dayBookings) {
-      const bookingStart = parseTimeString(booking.EventTime);
-      if (bookingStart) {
-        const bStartMins = bookingStart.hour * 60 + (bookingStart.minute || 0);
-        if (bStartMins > startMins && bStartMins < maxEndMins) {
-          maxEndMins = bStartMins;
-        }
+      let startHour, startMin;
+      
+      // Parse start time - match timeline visualization logic exactly
+      if (booking.EventTime) {
+        const timeParts = booking.EventTime.split(':');
+        startHour = parseInt(timeParts[0]);
+        startMin = parseInt(timeParts[1] || 0);
+      } else {
+        // Fallback to EventDate time component
+        const eventDate = new Date(booking.EventDate);
+        startHour = eventDate.getHours();
+        startMin = eventDate.getMinutes();
+      }
+      
+      const bStartMins = startHour * 60 + startMin;
+      if (bStartMins > startMins && bStartMins < maxEndMins) {
+        maxEndMins = bStartMins;
       }
     }
     
