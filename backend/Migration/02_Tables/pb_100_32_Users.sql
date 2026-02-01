@@ -50,6 +50,9 @@ BEGIN
 	[DeletedAt] [datetime] NULL,
 	[DeletedReason] [nvarchar](500) NULL,
 	[LastActiveAt] [datetime] NULL,
+	-- Email unsubscribe columns
+	[UnsubscribedFromAll] [bit] NOT NULL CONSTRAINT DF_Users_UnsubscribedFromAll DEFAULT 0,
+	[UnsubscribedAt] [datetime2] NULL,
 PRIMARY KEY CLUSTERED 
 (
 	[UserID] ASC

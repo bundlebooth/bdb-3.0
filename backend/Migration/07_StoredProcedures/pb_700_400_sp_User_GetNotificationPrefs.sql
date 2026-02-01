@@ -18,7 +18,10 @@ AS
 BEGIN
     SET NOCOUNT ON;
     
-    SELECT NotificationPreferences 
+    SELECT 
+        NotificationPreferences,
+        ISNULL(UnsubscribedFromAll, 0) AS UnsubscribedFromAll,
+        UnsubscribedAt
     FROM users.Users 
     WHERE UserID = @UserID;
 END

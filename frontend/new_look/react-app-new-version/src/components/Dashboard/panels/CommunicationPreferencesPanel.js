@@ -12,6 +12,7 @@ function CommunicationPreferencesPanel({ onBack }) {
   const [pushSupported, setPushSupported] = useState(false);
   const [pushPermission, setPushPermission] = useState('default');
   const [pushSubscribed, setPushSubscribed] = useState(false);
+  const [unsubscribedFromAll, setUnsubscribedFromAll] = useState(false);
   const [preferences, setPreferences] = useState({
     email: {
       bookingConfirmations: true,
@@ -65,6 +66,7 @@ function CommunicationPreferencesPanel({ onBack }) {
             push: { ...prev.push, ...data.preferences.push }
           }));
         }
+        setUnsubscribedFromAll(data.unsubscribedFromAll || false);
       }
     } catch (error) {
       console.error('Error loading preferences:', error);
@@ -132,7 +134,7 @@ function CommunicationPreferencesPanel({ onBack }) {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
-        body: JSON.stringify(preferences)
+        body: JSON.stringify({ ...preferences, unsubscribeFromAll: unsubscribedFromAll })
       });
       
       if (response.ok) {
@@ -148,13 +150,18 @@ function CommunicationPreferencesPanel({ onBack }) {
     }
   };
 
-  const ToggleSwitch = ({ checked, onChange, label, description }) => (
+  const handleUnsubscribeToggle = () => {
+    setUnsubscribedFromAll(prev => !prev);
+  };
+
+  const ToggleSwitch = ({ checked, onChange, label, description, disabled = false }) => (
     <div style={{ 
       display: 'flex', 
       justifyContent: 'space-between', 
       alignItems: 'center', 
       padding: '1rem 0',
-      borderBottom: '1px solid #f3f4f6'
+      borderBottom: '1px solid #f3f4f6',
+      opacity: disabled ? 0.5 : 1
     }}>
       <div>
         <div style={{ fontWeight: 500, color: 'var(--text)', marginBottom: '0.25rem' }}>{label}</div>
@@ -162,11 +169,12 @@ function CommunicationPreferencesPanel({ onBack }) {
           <div style={{ fontSize: '0.85rem', color: 'var(--text-light)' }}>{description}</div>
         )}
       </div>
-      <label style={{ position: 'relative', display: 'inline-block', width: '44px', height: '24px', cursor: 'pointer' }}>
+      <label style={{ position: 'relative', display: 'inline-block', width: '44px', height: '24px', cursor: disabled ? 'not-allowed' : 'pointer' }}>
         <input 
           type="checkbox" 
           checked={checked} 
-          onChange={onChange}
+          onChange={disabled ? undefined : onChange}
+          disabled={disabled}
           style={{ opacity: 0, width: 0, height: 0 }}
         />
         <span style={{
@@ -175,7 +183,7 @@ function CommunicationPreferencesPanel({ onBack }) {
           left: 0,
           right: 0,
           bottom: 0,
-          backgroundColor: checked ? '#5e72e4' : '#E5E7EB',
+          backgroundColor: checked ? '#5086E8' : '#E5E7EB',
           borderRadius: '24px',
           transition: 'background-color 0.3s'
         }}>
@@ -229,52 +237,91 @@ function CommunicationPreferencesPanel({ onBack }) {
         
         <form onSubmit={handleSubmit}>
           {/* Email Notifications */}
-          <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <i className="fas fa-envelope" style={{ color: 'var(--primary)' }}></i>
-            Email Notifications
-          </h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+            <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
+              <i className="fas fa-envelope" style={{ color: 'var(--primary)' }}></i>
+              Email Notifications
+            </h3>
+            <label style={{ position: 'relative', display: 'inline-block', width: '44px', height: '24px', cursor: 'pointer' }}>
+              <input 
+                type="checkbox" 
+                checked={!unsubscribedFromAll} 
+                onChange={handleUnsubscribeToggle}
+                style={{ opacity: 0, width: 0, height: 0 }}
+              />
+              <span style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: !unsubscribedFromAll ? '#5086E8' : '#E5E7EB',
+                borderRadius: '24px',
+                transition: 'background-color 0.3s'
+              }}>
+                <span style={{
+                  position: 'absolute',
+                  height: '20px',
+                  width: '20px',
+                  left: !unsubscribedFromAll ? '22px' : '2px',
+                  top: '2px',
+                  backgroundColor: 'white',
+                  borderRadius: '50%',
+                  transition: 'left 0.3s',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                }}></span>
+              </span>
+            </label>
+          </div>
           
           <ToggleSwitch
             checked={preferences.email.bookingConfirmations}
             onChange={() => handleToggle('email', 'bookingConfirmations')}
             label="Booking Confirmations"
             description="Receive email confirmations when bookings are made or updated"
+            disabled={unsubscribedFromAll}
           />
           <ToggleSwitch
             checked={preferences.email.bookingReminders}
             onChange={() => handleToggle('email', 'bookingReminders')}
             label="Booking Reminders"
             description="Get reminded about upcoming bookings"
+            disabled={unsubscribedFromAll}
           />
           <ToggleSwitch
             checked={preferences.email.bookingUpdates}
             onChange={() => handleToggle('email', 'bookingUpdates')}
             label="Booking Updates"
             description="Get notified when bookings are accepted, rejected, or cancelled"
+            disabled={unsubscribedFromAll}
           />
           <ToggleSwitch
             checked={preferences.email.messages}
             onChange={() => handleToggle('email', 'messages')}
             label="New Messages"
             description="Receive email notifications for new messages"
+            disabled={unsubscribedFromAll}
           />
           <ToggleSwitch
             checked={preferences.email.payments}
             onChange={() => handleToggle('email', 'payments')}
             label="Payment Notifications"
             description="Receive payment confirmations and invoices"
+            disabled={unsubscribedFromAll}
           />
           <ToggleSwitch
             checked={preferences.email.promotions}
             onChange={() => handleToggle('email', 'promotions')}
             label="Promotions & Offers"
             description="Receive special offers and promotional content"
+            disabled={unsubscribedFromAll}
           />
           <ToggleSwitch
             checked={preferences.email.newsletter}
             onChange={() => handleToggle('email', 'newsletter')}
             label="Newsletter"
             description="Receive our monthly newsletter with tips and updates"
+            disabled={unsubscribedFromAll}
           />
 
           {/* Push Notifications */}

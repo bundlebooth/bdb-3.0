@@ -1077,7 +1077,9 @@ router.get('/:id/notification-preferences', async (req, res) => {
 
     res.json({
       success: true,
-      preferences
+      preferences,
+      unsubscribedFromAll: result.recordset[0].UnsubscribedFromAll === true || result.recordset[0].UnsubscribedFromAll === 1,
+      unsubscribedAt: result.recordset[0].UnsubscribedAt || null
     });
 
   } catch (err) {
@@ -1094,7 +1096,7 @@ router.get('/:id/notification-preferences', async (req, res) => {
 router.put('/:id/notification-preferences', async (req, res) => {
   try {
     const { id } = req.params;
-    const { email, push } = req.body;
+    const { email, push, unsubscribeFromAll } = req.body;
 
     if (isNaN(id)) {
       return res.status(400).json({
@@ -1122,16 +1124,41 @@ router.put('/:id/notification-preferences', async (req, res) => {
     };
 
     const pool = await poolPromise;
+    
+    // Update notification preferences
     const request = pool.request();
     request.input('UserID', sql.Int, parseInt(id));
     request.input('Preferences', sql.NVarChar(sql.MAX), JSON.stringify(preferences));
-
     await request.execute('users.sp_UpdateNotificationPrefs');
+
+    // Handle unsubscribe from all emails toggle
+    if (typeof unsubscribeFromAll === 'boolean') {
+      const unsubRequest = pool.request();
+      unsubRequest.input('UserID', sql.Int, parseInt(id));
+      unsubRequest.input('UnsubscribedFromAll', sql.Bit, unsubscribeFromAll ? 1 : 0);
+      
+      if (unsubscribeFromAll) {
+        await unsubRequest.query(`
+          UPDATE users.Users 
+          SET UnsubscribedFromAll = @UnsubscribedFromAll, 
+              UnsubscribedAt = GETUTCDATE() 
+          WHERE UserID = @UserID
+        `);
+      } else {
+        await unsubRequest.query(`
+          UPDATE users.Users 
+          SET UnsubscribedFromAll = @UnsubscribedFromAll, 
+              UnsubscribedAt = NULL 
+          WHERE UserID = @UserID
+        `);
+      }
+    }
 
     res.json({
       success: true,
       message: 'Notification preferences updated successfully',
-      preferences
+      preferences,
+      unsubscribedFromAll: unsubscribeFromAll ?? false
     });
 
   } catch (err) {
