@@ -7,6 +7,7 @@ import { PageLayout } from '../components/PageWrapper';
 import Header from '../components/Header';
 import { buildInvoiceUrl } from '../utils/urlHelpers';
 import { formatCurrency, formatDateLong } from '../utils/helpers';
+import { decodeBookingId, isPublicId } from '../utils/hashIds';
 import './PaymentSuccessPage.css';
 
 function PaymentSuccessPage() {
@@ -18,7 +19,10 @@ function PaymentSuccessPage() {
   const [error, setError] = useState(null);
 
   const sessionId = searchParams.get('session_id');
-  const bookingId = searchParams.get('booking_id');
+  const rawBookingId = searchParams.get('booking_id');
+  const bookingId = rawBookingId && isPublicId(rawBookingId) 
+    ? decodeBookingId(rawBookingId) 
+    : (rawBookingId ? parseInt(rawBookingId, 10) : null);
   const paymentIntentId = searchParams.get('payment_intent');
 
   useEffect(() => {

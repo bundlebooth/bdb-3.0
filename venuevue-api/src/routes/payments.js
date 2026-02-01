@@ -14,7 +14,7 @@ const {
   notifyClientOfPayment, 
   notifyOfBookingConfirmation 
 } = require('../services/emailService');
-const { decodeBookingId, isPublicId } = require('../utils/hashIds');
+const { decodeBookingId, encodeBookingId, isPublicId } = require('../utils/hashIds');
 
 // Helper to resolve booking ID (handles both public ID and numeric ID)
 function resolveBookingId(idParam) {
@@ -358,9 +358,10 @@ function ensureSessionIdParam(urlStr, bookingId = null) {
     if (!u.searchParams.has('session_id')) {
       u.searchParams.set('session_id', '{CHECKOUT_SESSION_ID}');
     }
-    // Also add booking_id as fallback for older sessions
+    // Also add booking_id as fallback for older sessions - encode it for URL exposure
     if (bookingId && !u.searchParams.has('booking_id')) {
-      u.searchParams.set('booking_id', String(bookingId));
+      const encodedId = encodeBookingId(bookingId);
+      u.searchParams.set('booking_id', encodedId || String(bookingId));
     }
     return u.toString();
   } catch (e) {

@@ -9,6 +9,7 @@ import {
 import { API_BASE_URL } from '../config';
 import { showBanner, formatCurrency } from '../utils/helpers';
 import { getProvinceFromLocation, getTaxInfoForProvince, PROVINCE_TAX_RATES } from '../utils/taxCalculations';
+import { encodeBookingId } from '../utils/hashIds';
 import UniversalModal from './UniversalModal';
 import './PaymentModal.css';
 
@@ -33,7 +34,7 @@ function CheckoutForm({ booking, onSuccess, onCancel, clientProvince }) {
       const { error, paymentIntent } = await stripe.confirmPayment({
         elements,
         confirmParams: {
-          return_url: `${window.location.origin}/payment-success?booking_id=${booking.BookingID}`,
+          return_url: `${window.location.origin}/payment-success?booking_id=${encodeBookingId(booking.BookingID)}`,
         },
         redirect: 'if_required'
       });

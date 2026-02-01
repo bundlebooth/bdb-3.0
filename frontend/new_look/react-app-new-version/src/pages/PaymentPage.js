@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { loadStripe } from '@stripe/stripe-js';
-import { decodeBookingId, isPublicId } from '../utils/hashIds';
+import { decodeBookingId, encodeBookingId, isPublicId } from '../utils/hashIds';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { useAuth } from '../context/AuthContext';
 import { apiGet, apiPost } from '../utils/api';
@@ -223,7 +223,8 @@ function PaymentPage() {
   }, [currentUser, bookingId]);
 
   const handleSuccess = (paymentIntent) => {
-    navigate(`/payment-success?payment_intent=${paymentIntent.id}&booking_id=${bookingId}`);
+    const encodedBookingId = encodeBookingId(bookingId);
+    navigate(`/payment-success?payment_intent=${paymentIntent.id}&booking_id=${encodedBookingId}`);
   };
 
   const handleCancel = () => {
