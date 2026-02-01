@@ -9,6 +9,17 @@ const { processUnsubscribe, generateUnsubscribeHtml, getUserPreferences, updateU
 const crypto = require('crypto');
 const { upload } = require('../middlewares/uploadMiddleware');
 const cloudinaryService = require('../services/cloudinaryService');
+const { decodeUserId, isPublicId } = require('../utils/hashIds');
+
+// Helper to resolve user ID (handles both public ID and numeric ID)
+function resolveUserId(idParam) {
+  if (!idParam) return null;
+  if (isPublicId(idParam)) {
+    return decodeUserId(idParam);
+  }
+  const parsed = parseInt(idParam, 10);
+  return isNaN(parsed) ? null : parsed;
+}
 
 // Helper functions for validation
 const validateEmail = (email) => {
@@ -707,9 +718,9 @@ router.get('/me', async (req, res) => {
 // Get user dashboard
 router.get('/:id/dashboard', async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = resolveUserId(req.params.id);
 
-    if (isNaN(id)) {
+    if (!id) {
       return res.status(400).json({
         success: false,
         message: 'Invalid user ID'
@@ -718,7 +729,7 @@ router.get('/:id/dashboard', async (req, res) => {
 
     const pool = await poolPromise;
     const request = pool.request();
-    request.input('UserID', sql.Int, parseInt(id));
+    request.input('UserID', sql.Int, id);
 
     const result = await request.execute('users.sp_GetUserDashboard');
     
@@ -762,11 +773,12 @@ router.get('/:id/dashboard', async (req, res) => {
 // Get all bookings for a user (unified view with consistent status)
 router.get('/:id/bookings/all', async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = resolveUserId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: 'Invalid user ID' });
     const { status } = req.query; // Optional filter: 'pending', 'upcoming', 'completed', 'cancelled', 'declined'
     const pool = await poolPromise;
     const request = pool.request();
-    request.input('UserID', sql.Int, parseInt(id));
+    request.input('UserID', sql.Int, id);
     request.input('StatusFilter', sql.NVarChar(50), status || null);
     
     // Use unified stored procedure for consistent status handling
@@ -827,10 +839,11 @@ router.get('/:id/bookings/all', async (req, res) => {
 // Get all reviews by a user
 router.get('/:id/reviews', async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = resolveUserId(req.params.id);
+    if (!id) return res.status(400).json({ message: 'Invalid user ID' });
     const pool = await poolPromise;
     const request = pool.request();
-    request.input('UserID', sql.Int, parseInt(id));
+    request.input('UserID', sql.Int, id);
     const result = await request.execute('users.sp_GetUserReviews');
     res.json(result.recordset);
   } catch (err) {
@@ -842,10 +855,11 @@ router.get('/:id/reviews', async (req, res) => {
 // Get user profile (alias for profile-details)
 router.get('/:id/profile', async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = resolveUserId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: 'Invalid user ID' });
     const pool = await poolPromise;
     const request = pool.request();
-    request.input('UserID', sql.Int, parseInt(id));
+    request.input('UserID', sql.Int, id);
     const result = await request.execute('users.sp_GetUserProfileDetails');
     if (result.recordset.length > 0) {
       res.json({ success: true, profile: result.recordset[0] });
@@ -861,10 +875,11 @@ router.get('/:id/profile', async (req, res) => {
 // Get user's vendor profile
 router.get('/:id/vendor-profile', async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = resolveUserId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: 'Invalid user ID' });
     const pool = await poolPromise;
     const request = pool.request();
-    request.input('UserID', sql.Int, parseInt(id));
+    request.input('UserID', sql.Int, id);
     const result = await request.execute('vendors.sp_GetVendorProfileByUserId');
     if (result.recordset.length > 0) {
       res.json({ success: true, vendorProfile: result.recordset[0] });
@@ -880,10 +895,11 @@ router.get('/:id/vendor-profile', async (req, res) => {
 // Get user profile details for editing
 router.get('/:id/profile-details', async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = resolveUserId(req.params.id);
+    if (!id) return res.status(400).json({ message: 'Invalid user ID' });
     const pool = await poolPromise;
     const request = pool.request();
-    request.input('UserID', sql.Int, parseInt(id));
+    request.input('UserID', sql.Int, id);
     const result = await request.execute('users.sp_GetUserProfileDetails');
     if (result.recordset.length > 0) {
       res.json(result.recordset[0]);
@@ -1185,9 +1201,9 @@ router.post('/:id/profile-picture', upload.single('profilePicture'), async (req,
 // Get user by ID (with profile picture)
 router.get('/:id', async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = resolveUserId(req.params.id);
 
-    if (isNaN(id)) {
+    if (!id) {
       return res.status(400).json({
         success: false,
         message: 'Invalid user ID'
@@ -1196,7 +1212,7 @@ router.get('/:id', async (req, res) => {
 
     const pool = await poolPromise;
     const request = pool.request();
-    request.input('UserID', sql.Int, parseInt(id));
+    request.input('UserID', sql.Int, id);
 
     const result = await request.execute('users.sp_GetProfile');
 

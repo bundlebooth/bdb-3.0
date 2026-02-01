@@ -14,6 +14,17 @@ const {
   notifyClientOfPayment, 
   notifyOfBookingConfirmation 
 } = require('../services/emailService');
+const { decodeBookingId, isPublicId } = require('../utils/hashIds');
+
+// Helper to resolve booking ID (handles both public ID and numeric ID)
+function resolveBookingId(idParam) {
+  if (!idParam) return null;
+  if (isPublicId(idParam)) {
+    return decodeBookingId(idParam);
+  }
+  const parsed = parseInt(idParam, 10);
+  return isNaN(parsed) ? null : parsed;
+}
 
 // Helper function to check if Stripe is properly configured
 function isStripeConfigured() {
@@ -445,8 +456,8 @@ router.get('/connect/onboard/:vendorProfileId', async (req, res) => {
 // 10a. GET STRIPE RECEIPT/INVOICE URL FOR A BOOKING
 router.get('/receipt/:bookingId', async (req, res) => {
   try {
-    const bookingId = parseInt(req.params.bookingId, 10);
-    if (!Number.isInteger(bookingId)) {
+    const bookingId = resolveBookingId(req.params.bookingId);
+    if (!bookingId) {
       return res.status(400).json({ success: false, message: 'Invalid bookingId' });
     }
     if (!hasStripeSecret()) {
@@ -1507,7 +1518,8 @@ router.post('/refund/:chargeId', async (req, res) => {
 // Refunds the payment to client but KEEPS the application fee (platform fee)
 router.post('/cancel-booking/:bookingId', async (req, res) => {
   try {
-    const { bookingId } = req.params;
+    const bookingId = resolveBookingId(req.params.bookingId);
+    if (!bookingId) return res.status(400).json({ success: false, message: 'Invalid booking ID' });
     const { 
       cancelledBy, // 'client', 'vendor', 'admin'
       cancelledByUserId,
@@ -2349,7 +2361,8 @@ const webhook = async (req, res) => {
 // 10. CHECK BOOKING PAYMENT STATUS (no access control - for payment success page)
 router.get('/booking/:bookingId/status', async (req, res) => {
   try {
-    const { bookingId } = req.params;
+    const bookingId = resolveBookingId(req.params.bookingId);
+    if (!bookingId) return res.status(400).json({ success: false, message: 'Invalid booking ID' });
     
     const pool = await poolPromise;
     const request = new sql.Request(pool);

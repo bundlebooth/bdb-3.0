@@ -492,14 +492,30 @@ router.get('/vendor/:vendorProfileId', async (req, res) => {
   }
 });
 
-// Get invoice by ID
+// Get invoice by ID (with authorization check)
 router.get('/:invoiceId', async (req, res) => {
   try {
     const invoiceId = resolveInvoiceId(req.params.invoiceId);
     if (!invoiceId) return res.status(400).json({ success: false, message: 'Invalid invoice ID' });
+    const requesterUserId = parseInt(req.query.userId || 0, 10);
+    if (!requesterUserId) return res.status(400).json({ success: false, message: 'userId is required' });
+    
     const pool = await poolPromise;
     const invoice = await getInvoiceCore(pool, invoiceId);
     if (!invoice) return res.status(404).json({ success: false, message: 'Invoice not found' });
+    
+    // Authorization check: only client or vendor user can view
+    const bookingId = invoice.BookingID;
+    if (bookingId) {
+      const br = await pool.request().input('BookingID', sql.Int, bookingId).execute('invoices.sp_GetBookingAccess');
+      if (br.recordset.length > 0) {
+        const row = br.recordset[0];
+        if (requesterUserId !== row.ClientUserID && requesterUserId !== row.VendorUserID) {
+          return res.status(403).json({ success: false, message: 'Access denied' });
+        }
+      }
+    }
+    
     res.json({ success: true, invoice });
   } catch (err) {
     console.error('Get invoice error:', err);

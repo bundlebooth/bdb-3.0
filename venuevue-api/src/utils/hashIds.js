@@ -15,26 +15,27 @@ const Hashids = require('hashids');
 // Configuration - Use environment variable or default salt
 // IMPORTANT: In production, set HASHID_SALT environment variable
 const BASE_SALT = process.env.HASHID_SALT || 'd4f1b8c0e7a24f56a9c3e1b77f08d92c4eb1a6f53d7e9c0fa2b14ce8f937ab10';
-const MIN_LENGTH = 8; // Minimum length for generated IDs
+const MIN_LENGTH = 14; // Minimum length for generated IDs (increased from 8 for better security)
+const ALPHABET = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 
 // Create separate Hashids instances for each entity type
 // Using different salts ensures the same numeric ID produces different public IDs for different entities
 const hashids = {
-  vendor: new Hashids(`${BASE_SALT}_vendor`, MIN_LENGTH, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'),
-  user: new Hashids(`${BASE_SALT}_user`, MIN_LENGTH, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'),
-  booking: new Hashids(`${BASE_SALT}_booking`, MIN_LENGTH, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'),
-  invoice: new Hashids(`${BASE_SALT}_invoice`, MIN_LENGTH, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'),
-  service: new Hashids(`${BASE_SALT}_service`, MIN_LENGTH, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'),
-  category: new Hashids(`${BASE_SALT}_category`, MIN_LENGTH, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'),
-  conversation: new Hashids(`${BASE_SALT}_conversation`, MIN_LENGTH, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'),
-  message: new Hashids(`${BASE_SALT}_message`, MIN_LENGTH, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'),
-  notification: new Hashids(`${BASE_SALT}_notification`, MIN_LENGTH, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'),
-  review: new Hashids(`${BASE_SALT}_review`, MIN_LENGTH, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'),
-  transaction: new Hashids(`${BASE_SALT}_transaction`, MIN_LENGTH, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'),
-  package: new Hashids(`${BASE_SALT}_package`, MIN_LENGTH, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'),
-  announcement: new Hashids(`${BASE_SALT}_announcement`, MIN_LENGTH, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'),
-  faq: new Hashids(`${BASE_SALT}_faq`, MIN_LENGTH, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'),
-  image: new Hashids(`${BASE_SALT}_image`, MIN_LENGTH, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'),
+  vendor: new Hashids(`${BASE_SALT}_vendor`, MIN_LENGTH, ALPHABET),
+  user: new Hashids(`${BASE_SALT}_user`, MIN_LENGTH, ALPHABET),
+  booking: new Hashids(`${BASE_SALT}_booking`, MIN_LENGTH, ALPHABET),
+  invoice: new Hashids(`${BASE_SALT}_invoice`, MIN_LENGTH, ALPHABET),
+  service: new Hashids(`${BASE_SALT}_service`, MIN_LENGTH, ALPHABET),
+  category: new Hashids(`${BASE_SALT}_category`, MIN_LENGTH, ALPHABET),
+  conversation: new Hashids(`${BASE_SALT}_conversation`, MIN_LENGTH, ALPHABET),
+  message: new Hashids(`${BASE_SALT}_message`, MIN_LENGTH, ALPHABET),
+  notification: new Hashids(`${BASE_SALT}_notification`, MIN_LENGTH, ALPHABET),
+  review: new Hashids(`${BASE_SALT}_review`, MIN_LENGTH, ALPHABET),
+  transaction: new Hashids(`${BASE_SALT}_transaction`, MIN_LENGTH, ALPHABET),
+  package: new Hashids(`${BASE_SALT}_package`, MIN_LENGTH, ALPHABET),
+  announcement: new Hashids(`${BASE_SALT}_announcement`, MIN_LENGTH, ALPHABET),
+  faq: new Hashids(`${BASE_SALT}_faq`, MIN_LENGTH, ALPHABET),
+  image: new Hashids(`${BASE_SALT}_image`, MIN_LENGTH, ALPHABET),
 };
 
 // ============================================
