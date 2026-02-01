@@ -295,6 +295,7 @@ function BookingPage() {
   const [activeTooltip, setActiveTooltip] = useState(null);
   const [paymentError, setPaymentError] = useState('');
   const [paymentProcessing, setPaymentProcessing] = useState(false);
+  const [hasPrefilledDate, setHasPrefilledDate] = useState(false);
   const locationInputRef = useRef(null);
   const autocompleteRef = useRef(null);
 
@@ -338,6 +339,10 @@ function BookingPage() {
         eventTime: prefilledStartTime || prev.eventTime,
         eventEndTime: prefilledEndTime || prev.eventEndTime
       }));
+      // Track that we have prefilled date from search/profile
+      if (prefilledDate) {
+        setHasPrefilledDate(true);
+      }
     }
 
     // Store prefilled package ID to select after packages load
@@ -1476,6 +1481,43 @@ function BookingPage() {
 
                   <div className="form-group">
                     <label className="form-label">Event Date & Time</label>
+                    {/* Prefilled date banner */}
+                    {hasPrefilledDate && bookingData.eventDate && (
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '10px 14px',
+                        background: '#e0f2fe',
+                        borderRadius: '8px',
+                        marginBottom: '12px',
+                        fontSize: '0.9rem'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#0369a1' }}>
+                          <i className="fas fa-calendar-check"></i>
+                          <span>Date pre-filled from your search</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setBookingData(prev => ({ ...prev, eventDate: '', eventTime: '', eventEndTime: '' }));
+                            setHasPrefilledDate(false);
+                            sessionStorage.removeItem('searchDateParams');
+                          }}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: '#0369a1',
+                            cursor: 'pointer',
+                            fontSize: '0.85rem',
+                            textDecoration: 'underline',
+                            padding: '0'
+                          }}
+                        >
+                          Choose different date
+                        </button>
+                      </div>
+                    )}
                     <SharedDateTimePicker
                       vendorId={vendorId}
                       businessHours={vendorData?.businessHours || vendorAvailability?.businessHours || []}

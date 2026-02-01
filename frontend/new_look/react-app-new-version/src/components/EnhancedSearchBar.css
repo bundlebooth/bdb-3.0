@@ -64,7 +64,8 @@
 }
 
 .compact-field:hover {
-  background-color: transparent;
+  background-color: #f5f5f5;
+  border-radius: 20px;
 }
 
 .compact-value {
@@ -102,7 +103,7 @@
 }
 
 .search-btn-compact {
-  background: var(--primary, #007bff);
+  background: var(--primary, #5086E8);
   border: none;
   color: white;
   width: 34px;
@@ -112,15 +113,13 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s ease;
   margin-left: auto;
   font-size: 14px;
   flex-shrink: 0;
 }
 
 .search-btn-compact:hover {
-  background: #0056b3;
-  transform: scale(1.05);
+  background: var(--primary-dark, #4070D0);
 }
 
 .search-btn-compact span {
@@ -141,7 +140,6 @@
   position: relative;
   padding: 10px 20px;
   cursor: pointer;
-  transition: all 0.2s ease;
   border-radius: 30px;
   background: transparent;
 }
@@ -272,7 +270,6 @@
   cursor: pointer;
   padding: 6px;
   border-radius: 50%;
-  transition: all 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -292,7 +289,6 @@
   cursor: pointer;
   padding: 6px;
   border-radius: 50%;
-  transition: all 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -310,7 +306,7 @@
 }
 
 .search-btn {
-  background: var(--primary, #007bff);
+  background: var(--primary, #5086E8);
   border: none;
   color: white;
   padding: 12px 24px;
@@ -321,21 +317,14 @@
   gap: 8px;
   font-weight: 600;
   font-size: 14px;
-  transition: all 0.2s ease;
   border-radius: 30px;
   margin: 0;
   flex-shrink: 0;
   white-space: nowrap;
 }
 
-
 .search-btn:hover {
-  background: #0056b3;
-  transform: scale(1.02);
-}
-
-.search-btn:active {
-  transform: scale(1);
+  background: var(--primary-dark, #4070D0);
 }
 
 .search-btn i {
@@ -438,7 +427,6 @@ body:not(:has(.enhanced-search-container.expanded)) .pac-container {
   gap: 12px;
   font-size: 14px;
   color: #333;
-  transition: background-color 0.2s ease;
 }
 
 .dropdown-item:hover {

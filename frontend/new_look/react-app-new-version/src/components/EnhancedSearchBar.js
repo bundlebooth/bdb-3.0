@@ -2,8 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { API_BASE_URL, GOOGLE_MAPS_API_KEY } from '../config';
 import './EnhancedSearchBar.css';
 import Calendar from './Calendar';
-import './Calendar.css';
 import LocationSearchModal from './LocationSearchModal';
+import DateSearchModal from './DateSearchModal';
 
 const EnhancedSearchBar = ({ onSearch, isScrolled }) => {
   const [location, setLocation] = useState('');
@@ -18,7 +18,9 @@ const EnhancedSearchBar = ({ onSearch, isScrolled }) => {
   const [startTime, setStartTime] = useState('11:00');
   const [endTime, setEndTime] = useState('17:00');
   const [showLocationModal, setShowLocationModal] = useState(false);
+  const [showDateModal, setShowDateModal] = useState(false);
   const [searchRadius, setSearchRadius] = useState(50);
+  const [endDate, setEndDate] = useState('');
 
   const locationRef = useRef(null);
   const dateRef = useRef(null);
@@ -448,14 +450,14 @@ const EnhancedSearchBar = ({ onSearch, isScrolled }) => {
         ref={searchBarRef}
       >
         <div className="enhanced-search-bar">
-        {/* Compact View (collapsed state) */}
+        {/* Compact View (collapsed state) - Opens modals directly, no expand */}
         {!isExpanded ? (
-          <div className="compact-view" onClick={handleSearchBarClick}>
+          <div className="compact-view">
             <div className="compact-field compact-location" onClick={(e) => { e.stopPropagation(); setShowLocationModal(true); }}>
               <span className="compact-value">{formatLocationDisplay(location, true) || 'Location'}</span>
             </div>
             <div className="compact-separator">|</div>
-            <div className="compact-field compact-date">
+            <div className="compact-field compact-date" onClick={(e) => { e.stopPropagation(); setShowDateModal(true); }}>
               <span className="compact-value">{formatDateDisplay(selectedDate, true)}</span>
             </div>
             <button className="search-btn-compact" onClick={(e) => { e.stopPropagation(); handleSearch(); }} title="Search">
@@ -551,11 +553,11 @@ const EnhancedSearchBar = ({ onSearch, isScrolled }) => {
           }
           
           // Trigger search immediately when location is changed
-          // This updates the map and vendor list to the new location
           if (onSearch) {
             onSearch({
               location: newLocation,
               date: selectedDate,
+              endDate: endDate,
               startTime: startTime,
               endTime: endTime,
               userLocation: newUserLocation || userLocation
@@ -564,6 +566,34 @@ const EnhancedSearchBar = ({ onSearch, isScrolled }) => {
         }}
         initialLocation={location}
         initialRadius={searchRadius}
+      />
+      
+      {/* Date Search Modal */}
+      <DateSearchModal
+        isOpen={showDateModal}
+        onClose={() => setShowDateModal(false)}
+        onApply={({ startDate: newStartDate, endDate: newEndDate, startTime: newStartTime, endTime: newEndTime }) => {
+          setSelectedDate(newStartDate);
+          setEndDate(newEndDate);
+          setStartTime(newStartTime);
+          setEndTime(newEndTime);
+          
+          // Trigger search immediately when dates are changed
+          if (onSearch) {
+            onSearch({
+              location: location,
+              date: newStartDate,
+              endDate: newEndDate,
+              startTime: newStartTime,
+              endTime: newEndTime,
+              userLocation: userLocation
+            });
+          }
+        }}
+        initialStartDate={selectedDate}
+        initialEndDate={endDate}
+        initialStartTime={startTime}
+        initialEndTime={endTime}
       />
     </>
   );

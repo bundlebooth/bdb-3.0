@@ -1486,10 +1486,23 @@ function IndexPage() {
         ...filters,
         location: cityName || filters.location,
         eventDate: searchParams.date || null,
+        endDate: searchParams.endDate || null,
         dayOfWeek: dayOfWeek || null,
         startTime: searchParams.startTime || null,
         endTime: searchParams.endTime || null
       };
+      
+      // Store search date params in sessionStorage for passing to vendor profile/booking pages
+      if (searchParams.date) {
+        sessionStorage.setItem('searchDateParams', JSON.stringify({
+          date: searchParams.date,
+          endDate: searchParams.endDate || searchParams.date,
+          startTime: searchParams.startTime || '',
+          endTime: searchParams.endTime || ''
+        }));
+      } else {
+        sessionStorage.removeItem('searchDateParams');
+      }
       
       setFilters(newFilters);
       setServerPageNumber(1);

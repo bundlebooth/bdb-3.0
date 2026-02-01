@@ -19,7 +19,10 @@ const ProfileVendorWidget = ({
   instantBookingEnabled = false,
   minBookingLeadTimeHours = 0,
   onReserve,
-  onMessage
+  onMessage,
+  prefilledDate = null,
+  prefilledStartTime = null,
+  prefilledEndTime = null
 }) => {
   const navigate = useNavigate();
   const { formatCurrency } = useLocalization();
@@ -107,6 +110,25 @@ const ProfileVendorWidget = ({
     fetchVendorBookings();
     fetchAvailabilityExceptions();
   }, [fetchVendorBookings, fetchAvailabilityExceptions]);
+
+  // Initialize from prefilled date/time props (from search bar)
+  useEffect(() => {
+    if (prefilledDate) {
+      // Parse the date string (YYYY-MM-DD) to a Date object
+      const [year, month, day] = prefilledDate.split('-').map(Number);
+      const date = new Date(year, month - 1, day);
+      setSelectedDate(date);
+      setCurrentMonth(new Date(year, month - 1, 1));
+      
+      // Set times if provided
+      if (prefilledStartTime) {
+        setSelectedStartTime(prefilledStartTime);
+      }
+      if (prefilledEndTime) {
+        setSelectedEndTime(prefilledEndTime);
+      }
+    }
+  }, [prefilledDate, prefilledStartTime, prefilledEndTime]);
 
   // Auto-select first available date based on lead time when picker opens
   useEffect(() => {

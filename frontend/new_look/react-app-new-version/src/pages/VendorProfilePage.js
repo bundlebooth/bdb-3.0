@@ -102,6 +102,22 @@ function VendorProfilePage() {
   
   // Services/Packages modal state  
   const [showServicesModal, setShowServicesModal] = useState(false);
+  
+  // Search date params from explore page (for pre-filling availability widget)
+  const [searchDateParams, setSearchDateParams] = useState(null);
+  
+  // Load search date params from sessionStorage on mount
+  useEffect(() => {
+    const storedParams = sessionStorage.getItem('searchDateParams');
+    if (storedParams) {
+      try {
+        const parsed = JSON.parse(storedParams);
+        setSearchDateParams(parsed);
+      } catch (e) {
+        console.error('Error parsing search date params:', e);
+      }
+    }
+  }, []);
 
   // Get online status for this vendor
   const { statuses: onlineStatuses } = useVendorOnlineStatus(
@@ -2885,6 +2901,9 @@ function VendorProfilePage() {
             minBookingLeadTimeHours={profile?.MinBookingLeadTimeHours || 0}
             onReserve={handleRequestBooking}
             onMessage={handleMessageVendor}
+            prefilledDate={searchDateParams?.date}
+            prefilledStartTime={searchDateParams?.startTime}
+            prefilledEndTime={searchDateParams?.endTime}
           />
 
           {/* 2. Hosted By Card */}
