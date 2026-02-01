@@ -937,7 +937,15 @@ router.post('/requests/send', async (req, res) => {
       timeZone,
       packageId,
       packageName,
-      packagePrice
+      packagePrice,
+      // Frontend-calculated values - use these directly, NO backend calculation
+      subtotal: frontendSubtotal,
+      platformFee: frontendPlatformFee,
+      taxAmount: frontendTaxAmount,
+      taxPercent: frontendTaxPercent,
+      taxLabel: frontendTaxLabel,
+      processingFee: frontendProcessingFee,
+      grandTotal: frontendGrandTotal
     } = req.body;
 
     // Validation - require all essential booking data
@@ -991,13 +999,15 @@ router.post('/requests/send', async (req, res) => {
     expiresAt.setHours(expiresAt.getHours() + 24);
 
     // Build services JSON - include both services and package if selected
+    // IMPORTANT: Preserve calculatedPrice to avoid double-counting hourly rates
     let allItems = [];
     if (services && Array.isArray(services) && services.length > 0) {
       allItems = services.map(s => ({
         type: 'service',
         id: s.VendorServiceID || s.ServiceID || s.id,
         name: s.ServiceName || s.name,
-        price: s.calculatedPrice || s.VendorPrice || s.Price || s.price || 0,
+        price: s.VendorPrice || s.Price || s.price || 0,
+        calculatedPrice: s.calculatedPrice || null,
         hours: s.hours || null,
         pricingModel: s.PricingModel || s.pricingModel || null
       }));
@@ -1007,73 +1017,23 @@ router.post('/requests/send', async (req, res) => {
         type: 'package',
         id: packageId,
         name: packageName,
-        price: packagePrice
+        price: packagePrice,
+        calculatedPrice: packagePrice // packagePrice from frontend is already the calculated total
       });
     }
     const servicesJson = allItems.length > 0 ? JSON.stringify(allItems) : null;
 
-    // Calculate hours from event times
-    let totalHours = 0;
-    if (eventTime && eventEndTime) {
-      const startParts = eventTime.split(':');
-      const endParts = eventEndTime.split(':');
-      const startMinutes = parseInt(startParts[0]) * 60 + parseInt(startParts[1] || 0);
-      const endMinutes = parseInt(endParts[0]) * 60 + parseInt(endParts[1] || 0);
-      totalHours = (endMinutes - startMinutes) / 60;
-      if (totalHours < 0) totalHours += 24; // Handle overnight events
-    }
+    // USE FRONTEND-CALCULATED VALUES DIRECTLY - NO BACKEND CALCULATION
+    // Frontend has already calculated everything correctly, just use those values
+    const subtotal = parseFloat(frontendSubtotal) || parseFloat(budget) || 0;
+    const platformFee = parseFloat(frontendPlatformFee) || 0;
+    const taxAmount = parseFloat(frontendTaxAmount) || 0;
+    const taxPercent = parseFloat(frontendTaxPercent) || 13; // Default to Ontario HST
+    const taxLabel = frontendTaxLabel || 'HST 13%';
+    const processingFee = parseFloat(frontendProcessingFee) || 0;
+    const grandTotal = parseFloat(frontendGrandTotal) || (subtotal + platformFee + taxAmount + processingFee);
 
-    // Calculate subtotal with hourly pricing support
-    let subtotal = 0;
-    for (const item of allItems) {
-      const basePrice = parseFloat(item.price || 0);
-      let pricingType = item.pricingModel || item.pricingType || '';
-      
-      // Look up package pricing type if not provided
-      if (!pricingType && item.type === 'package' && item.id) {
-        try {
-          const pkgRequest = pool.request();
-          pkgRequest.input('PackageID', sql.Int, item.id);
-          const pkgRes = await pkgRequest.query('SELECT PriceType FROM vendors.Packages WHERE PackageID = @PackageID');
-          if (pkgRes.recordset.length > 0) {
-            pricingType = pkgRes.recordset[0].PriceType || '';
-          }
-        } catch (pkgErr) {
-          console.warn('[BookingRequest] Could not fetch package pricing type:', pkgErr.message);
-        }
-      }
-      
-      const isHourly = pricingType === 'hourly' || pricingType === 'time_based';
-      if (isHourly && totalHours > 0) {
-        subtotal += basePrice * totalHours;
-      } else {
-        subtotal += basePrice;
-      }
-    }
-
-    // Fall back to budget if no subtotal calculated
-    if (subtotal === 0) {
-      subtotal = parseFloat(budget) || parseFloat(packagePrice) || 0;
-    }
-
-    // Calculate fee breakdown
-    const platformFeePercent = 0.05; // 5% platform fee
-    const stripeFeePercent = 0.029; // 2.9% Stripe fee
-    const stripeFeeFixed = 0.30; // $0.30 Stripe fixed fee
-
-    // Get tax info from event location
-    const province = getProvinceFromLocation(eventLocation || '');
-    const taxInfo = getTaxInfoForProvince(province);
-    const taxPercent = taxInfo.rate;
-
-    // Calculate fees
-    const platformFee = Math.round(subtotal * platformFeePercent * 100) / 100;
-    const taxableAmount = subtotal + platformFee;
-    const taxAmount = Math.round(taxableAmount * (taxPercent / 100) * 100) / 100;
-    const processingFee = Math.round((subtotal * stripeFeePercent + stripeFeeFixed) * 100) / 100;
-    const grandTotal = Math.round((subtotal + platformFee + taxAmount + processingFee) * 100) / 100;
-
-    console.log(`[BookingRequest] Fee breakdown: subtotal=$${subtotal}, platformFee=$${platformFee}, tax=$${taxAmount} (${taxInfo.label}), processing=$${processingFee}, total=$${grandTotal}`);
+    console.log(`[BookingRequest] Using frontend values: subtotal=$${subtotal}, platformFee=$${platformFee}, tax=$${taxAmount} (${taxLabel}), processing=$${processingFee}, total=$${grandTotal}`);
 
     request.input('UserID', sql.Int, userId);
     request.input('VendorProfileID', sql.Int, vendorProfileId);
@@ -1094,7 +1054,7 @@ router.post('/requests/send', async (req, res) => {
     request.input('PlatformFee', sql.Decimal(10, 2), platformFee);
     request.input('TaxAmount', sql.Decimal(10, 2), taxAmount);
     request.input('TaxPercent', sql.Decimal(5, 3), taxPercent);
-    request.input('TaxLabel', sql.NVarChar(50), taxInfo.label);
+    request.input('TaxLabel', sql.NVarChar(50), taxLabel);
     request.input('ProcessingFee', sql.Decimal(10, 2), processingFee);
     request.input('GrandTotal', sql.Decimal(10, 2), grandTotal);
 

@@ -1050,7 +1050,11 @@ function BookingPage() {
     setSubmitting(true);
 
     try {
-      const { subtotal, servicesWithPrices, packagePriceCalc } = calculateBookingTotals();
+      const { subtotal, servicesWithPrices, packagePriceCalc, platformFee, taxAmount, taxLabel, processingFee, total } = calculateBookingTotals();
+
+      // Get tax info for the request
+      const eventProvince = getProvinceFromLocation(bookingData.eventLocation);
+      const taxInfo = getTaxInfoForProvince(eventProvince);
 
       const requestData = {
         userId: currentUser.id,
@@ -1068,7 +1072,15 @@ function BookingPage() {
         packagePrice: packagePriceCalc || null,
         budget: subtotal,
         specialRequestText: bookingData.specialRequests,
-        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        // Send ALL calculated values - backend should NOT recalculate
+        subtotal: subtotal,
+        platformFee: platformFee,
+        taxAmount: taxAmount,
+        taxPercent: taxInfo.rate,
+        taxLabel: taxLabel,
+        processingFee: processingFee,
+        grandTotal: total
       };
 
       const response = await apiPost('/bookings/requests/send', requestData);

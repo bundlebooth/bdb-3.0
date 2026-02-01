@@ -172,15 +172,26 @@ function PaymentPage() {
         const province = getProvinceFromLocation(eventLocation);
         setClientProvince(province);
 
-        // Create payment intent
+        // Create payment intent - use GrandTotal from stored values, NOT TotalAmount
+        // The frontend calculated and stored these values, so use them directly
+        const amountToCharge = foundBooking.GrandTotal || foundBooking.TotalAmount || 0;
+        
         const paymentResp = await apiPost('/payments/payment-intent', {
           bookingId: foundBooking.BookingID || null,
           requestId: foundBooking.RequestID || null,
           vendorProfileId: foundBooking.VendorProfileID,
-          amount: foundBooking.TotalAmount,
+          amount: amountToCharge,
           currency: 'cad',
           description: `Payment for ${foundBooking.ServiceName || 'Booking'} with ${foundBooking.VendorName || 'Vendor'}`,
-          clientProvince: province
+          clientProvince: province,
+          // Pass stored breakdown values to avoid recalculation
+          subtotal: foundBooking.Subtotal,
+          platformFee: foundBooking.PlatformFee,
+          taxAmount: foundBooking.TaxAmount,
+          taxPercent: foundBooking.TaxPercent,
+          taxLabel: foundBooking.TaxLabel,
+          processingFee: foundBooking.ProcessingFee,
+          grandTotal: foundBooking.GrandTotal
         });
 
         const paymentData = await paymentResp.json();
@@ -229,12 +240,14 @@ function PaymentPage() {
 
   if (!currentUser) return null;
 
+  // Use stored values from booking record - NO recalculation
+  // Priority: breakdown from payment-intent response > stored booking values > fallback
   const taxInfo = getTaxInfoForProvince(clientProvince);
-  const subtotal = breakdown?.subtotal || booking?.TotalAmount || 0;
-  const taxAmount = breakdown?.tax || (subtotal * taxInfo.rate / 100);
-  const platformFee = breakdown?.platformFee || 0;
-  const processingFee = breakdown?.processingFee || 0;
-  const total = breakdown?.total || (subtotal + taxAmount + platformFee + processingFee);
+  const subtotal = breakdown?.subtotal || booking?.Subtotal || booking?.TotalAmount || 0;
+  const taxAmount = breakdown?.tax || booking?.TaxAmount || 0;
+  const platformFee = breakdown?.platformFee || booking?.PlatformFee || 0;
+  const processingFee = breakdown?.processingFee || booking?.ProcessingFee || 0;
+  const total = breakdown?.total || booking?.GrandTotal || (subtotal + taxAmount + platformFee + processingFee);
 
   const formatTime = (t) => {
     if (!t) return '';

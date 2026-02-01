@@ -840,7 +840,15 @@ router.post('/payment-intent', async (req, res) => {
       amount,
       currency = 'cad',
       description,
-      clientProvince
+      clientProvince,
+      // Frontend-provided breakdown values - use these directly if available
+      subtotal: frontendSubtotal,
+      platformFee: frontendPlatformFee,
+      taxAmount: frontendTaxAmount,
+      taxPercent: frontendTaxPercent,
+      taxLabel: frontendTaxLabel,
+      processingFee: frontendProcessingFee,
+      grandTotal: frontendGrandTotal
     } = req.body;
 
     if (!isStripeConfigured()) {
@@ -1035,16 +1043,114 @@ router.post('/payment-intent', async (req, res) => {
         processingFee = Math.round((subtotal * stripeFeePercent + stripeFeeFixed) * 100) / 100;
         totalAmount = Math.round((subtotal + platformFee + taxAmount + processingFee) * 100) / 100;
       }
+    } else if (requestId) {
+      // Try to fetch from Requests table
+      try {
+        const reqRequest = pool.request();
+        reqRequest.input('RequestID', sql.Int, requestId);
+        const reqRes = await reqRequest.query(`
+          SELECT 
+            r.Subtotal,
+            r.PlatformFee,
+            r.TaxAmount,
+            r.TaxPercent,
+            r.TaxLabel,
+            r.ProcessingFee,
+            r.GrandTotal,
+            r.EventLocation,
+            r.Budget
+          FROM bookings.Requests r
+          WHERE r.RequestID = @RequestID
+        `);
+        
+        if (reqRes.recordset.length > 0) {
+          const reqData = reqRes.recordset[0];
+          
+          // Get province for tax info
+          const eventLocation = reqData.EventLocation || '';
+          resolvedProvince = extractProvinceFromLocation(eventLocation) || clientProvince || 'Ontario';
+          taxInfo = getTaxInfoForProvince(resolvedProvince);
+          
+          // Use stored values if available
+          if (reqData.GrandTotal != null && reqData.Subtotal != null) {
+            subtotal = parseFloat(reqData.Subtotal) || 0;
+            platformFee = parseFloat(reqData.PlatformFee) || 0;
+            taxAmount = parseFloat(reqData.TaxAmount) || 0;
+            processingFee = parseFloat(reqData.ProcessingFee) || 0;
+            totalAmount = parseFloat(reqData.GrandTotal) || 0;
+            
+            if (reqData.TaxPercent) {
+              taxInfo = {
+                rate: parseFloat(reqData.TaxPercent),
+                label: reqData.TaxLabel || taxInfo.label,
+                type: reqData.TaxLabel ? reqData.TaxLabel.split(' ')[0] : taxInfo.type
+              };
+            }
+            
+            console.log(`[PaymentIntent] Using stored request amounts: subtotal=$${subtotal}, platformFee=$${platformFee}, tax=$${taxAmount}, processing=$${processingFee}, total=$${totalAmount}`);
+          } else {
+            // Fall back to Budget for older requests
+            subtotal = parseFloat(reqData.Budget) || Number(amount) || 0;
+            const taxPercent = taxInfo.rate;
+            platformFee = Math.round(subtotal * platformFeePercent * 100) / 100;
+            taxAmount = Math.round((subtotal + platformFee) * (taxPercent / 100) * 100) / 100;
+            processingFee = Math.round((subtotal * stripeFeePercent + stripeFeeFixed) * 100) / 100;
+            totalAmount = Math.round((subtotal + platformFee + taxAmount + processingFee) * 100) / 100;
+          }
+        } else {
+          throw new Error('Request not found');
+        }
+      } catch (dbErr) {
+        console.warn('[PaymentIntent] Could not fetch request, using frontend values:', dbErr?.message);
+        // Use frontend-provided values if available
+        if (frontendGrandTotal != null && frontendSubtotal != null) {
+          subtotal = parseFloat(frontendSubtotal) || 0;
+          platformFee = parseFloat(frontendPlatformFee) || 0;
+          taxAmount = parseFloat(frontendTaxAmount) || 0;
+          processingFee = parseFloat(frontendProcessingFee) || 0;
+          totalAmount = parseFloat(frontendGrandTotal) || 0;
+          resolvedProvince = clientProvince || 'Ontario';
+          taxInfo = {
+            rate: parseFloat(frontendTaxPercent) || 13,
+            label: frontendTaxLabel || 'HST 13%',
+            type: frontendTaxLabel ? frontendTaxLabel.split(' ')[0] : 'HST'
+          };
+        } else {
+          subtotal = Number(amount);
+          resolvedProvince = clientProvince || 'Ontario';
+          taxInfo = getTaxInfoForProvince(resolvedProvince);
+          const taxPercent = taxInfo.rate;
+          platformFee = Math.round(subtotal * platformFeePercent * 100) / 100;
+          taxAmount = Math.round((subtotal + platformFee) * (taxPercent / 100) * 100) / 100;
+          processingFee = Math.round((subtotal * stripeFeePercent + stripeFeeFixed) * 100) / 100;
+          totalAmount = Math.round((subtotal + platformFee + taxAmount + processingFee) * 100) / 100;
+        }
+      }
     } else {
-      // No bookingId - use provided amount and calculate
-      subtotal = Number(amount);
-      resolvedProvince = clientProvince || 'Ontario';
-      taxInfo = getTaxInfoForProvince(resolvedProvince);
-      const taxPercent = taxInfo.rate;
-      platformFee = Math.round(subtotal * platformFeePercent * 100) / 100;
-      taxAmount = Math.round((subtotal + platformFee) * (taxPercent / 100) * 100) / 100;
-      processingFee = Math.round((subtotal * stripeFeePercent + stripeFeeFixed) * 100) / 100;
-      totalAmount = Math.round((subtotal + platformFee + taxAmount + processingFee) * 100) / 100;
+      // No bookingId or requestId - use frontend-provided values if available, otherwise calculate
+      if (frontendGrandTotal != null && frontendSubtotal != null) {
+        subtotal = parseFloat(frontendSubtotal) || 0;
+        platformFee = parseFloat(frontendPlatformFee) || 0;
+        taxAmount = parseFloat(frontendTaxAmount) || 0;
+        processingFee = parseFloat(frontendProcessingFee) || 0;
+        totalAmount = parseFloat(frontendGrandTotal) || 0;
+        resolvedProvince = clientProvince || 'Ontario';
+        taxInfo = {
+          rate: parseFloat(frontendTaxPercent) || 13,
+          label: frontendTaxLabel || 'HST 13%',
+          type: frontendTaxLabel ? frontendTaxLabel.split(' ')[0] : 'HST'
+        };
+        console.log(`[PaymentIntent] Using frontend-provided values: subtotal=$${subtotal}, total=$${totalAmount}`);
+      } else {
+        subtotal = Number(amount);
+        resolvedProvince = clientProvince || 'Ontario';
+        taxInfo = getTaxInfoForProvince(resolvedProvince);
+        const taxPercent = taxInfo.rate;
+        platformFee = Math.round(subtotal * platformFeePercent * 100) / 100;
+        taxAmount = Math.round((subtotal + platformFee) * (taxPercent / 100) * 100) / 100;
+        processingFee = Math.round((subtotal * stripeFeePercent + stripeFeeFixed) * 100) / 100;
+        totalAmount = Math.round((subtotal + platformFee + taxAmount + processingFee) * 100) / 100;
+      }
     }
 
     const totalAmountCents = Math.round(totalAmount * 100);
