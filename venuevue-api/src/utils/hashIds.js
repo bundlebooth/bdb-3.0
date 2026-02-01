@@ -121,94 +121,75 @@ function encodeImageId(id) {
 // DECODING FUNCTIONS (Public ID -> Internal ID)
 // ============================================
 
-function decodeVendorId(publicId) {
+// Strict decode helper - verifies the ID re-encodes to the same value (prevents tampering)
+function strictDecode(hashidInstance, publicId) {
   if (!publicId) return null;
-  const decoded = hashids.vendor.decode(publicId);
-  return decoded.length > 0 ? decoded[0] : null;
+  const decoded = hashidInstance.decode(publicId);
+  if (decoded.length === 0) return null;
+  // Re-encode and verify it matches exactly (prevents padded/tampered IDs)
+  const reEncoded = hashidInstance.encode(decoded[0]);
+  if (reEncoded !== publicId) return null;
+  return decoded[0];
+}
+
+function decodeVendorId(publicId) {
+  return strictDecode(hashids.vendor, publicId);
 }
 
 function decodeUserId(publicId) {
-  if (!publicId) return null;
-  const decoded = hashids.user.decode(publicId);
-  return decoded.length > 0 ? decoded[0] : null;
+  return strictDecode(hashids.user, publicId);
 }
 
 function decodeBookingId(publicId) {
-  if (!publicId) return null;
-  const decoded = hashids.booking.decode(publicId);
-  return decoded.length > 0 ? decoded[0] : null;
+  return strictDecode(hashids.booking, publicId);
 }
 
 function decodeInvoiceId(publicId) {
-  if (!publicId) return null;
-  const decoded = hashids.invoice.decode(publicId);
-  return decoded.length > 0 ? decoded[0] : null;
+  return strictDecode(hashids.invoice, publicId);
 }
 
 function decodeServiceId(publicId) {
-  if (!publicId) return null;
-  const decoded = hashids.service.decode(publicId);
-  return decoded.length > 0 ? decoded[0] : null;
+  return strictDecode(hashids.service, publicId);
 }
 
 function decodeCategoryId(publicId) {
-  if (!publicId) return null;
-  const decoded = hashids.category.decode(publicId);
-  return decoded.length > 0 ? decoded[0] : null;
+  return strictDecode(hashids.category, publicId);
 }
 
 function decodeConversationId(publicId) {
-  if (!publicId) return null;
-  const decoded = hashids.conversation.decode(publicId);
-  return decoded.length > 0 ? decoded[0] : null;
+  return strictDecode(hashids.conversation, publicId);
 }
 
 function decodeMessageId(publicId) {
-  if (!publicId) return null;
-  const decoded = hashids.message.decode(publicId);
-  return decoded.length > 0 ? decoded[0] : null;
+  return strictDecode(hashids.message, publicId);
 }
 
 function decodeNotificationId(publicId) {
-  if (!publicId) return null;
-  const decoded = hashids.notification.decode(publicId);
-  return decoded.length > 0 ? decoded[0] : null;
+  return strictDecode(hashids.notification, publicId);
 }
 
 function decodeReviewId(publicId) {
-  if (!publicId) return null;
-  const decoded = hashids.review.decode(publicId);
-  return decoded.length > 0 ? decoded[0] : null;
+  return strictDecode(hashids.review, publicId);
 }
 
 function decodeTransactionId(publicId) {
-  if (!publicId) return null;
-  const decoded = hashids.transaction.decode(publicId);
-  return decoded.length > 0 ? decoded[0] : null;
+  return strictDecode(hashids.transaction, publicId);
 }
 
 function decodePackageId(publicId) {
-  if (!publicId) return null;
-  const decoded = hashids.package.decode(publicId);
-  return decoded.length > 0 ? decoded[0] : null;
+  return strictDecode(hashids.package, publicId);
 }
 
 function decodeAnnouncementId(publicId) {
-  if (!publicId) return null;
-  const decoded = hashids.announcement.decode(publicId);
-  return decoded.length > 0 ? decoded[0] : null;
+  return strictDecode(hashids.announcement, publicId);
 }
 
 function decodeFaqId(publicId) {
-  if (!publicId) return null;
-  const decoded = hashids.faq.decode(publicId);
-  return decoded.length > 0 ? decoded[0] : null;
+  return strictDecode(hashids.faq, publicId);
 }
 
 function decodeImageId(publicId) {
-  if (!publicId) return null;
-  const decoded = hashids.image.decode(publicId);
-  return decoded.length > 0 ? decoded[0] : null;
+  return strictDecode(hashids.image, publicId);
 }
 
 // ============================================
@@ -229,9 +210,7 @@ function decodeId(type, publicId) {
     console.warn(`Unknown entity type for decoding: ${type}`);
     return null;
   }
-  if (!publicId) return null;
-  const decoded = hashids[type].decode(publicId);
-  return decoded.length > 0 ? decoded[0] : null;
+  return strictDecode(hashids[type], publicId);
 }
 
 // ============================================
