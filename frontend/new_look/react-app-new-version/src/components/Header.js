@@ -269,7 +269,7 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
         
       </div>
 
-      {location.pathname === '/explore' && (
+      {(location.pathname === '/explore' || location.pathname === '/') && (
         <div className="search-container" style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
           <EnhancedSearchBar 
             onSearch={onSearch} 
