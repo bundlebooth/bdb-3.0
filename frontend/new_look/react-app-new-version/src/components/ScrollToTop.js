@@ -1,16 +1,19 @@
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
+import { trackPageView } from '../utils/analytics';
 
 /**
  * ScrollToTop Component
- * Scrolls to top of page on route change
+ * Scrolls to top of page on route change and tracks page views in Google Analytics
  */
 function ScrollToTop() {
-  const { pathname } = useLocation();
+  const location = useLocation();
 
   useEffect(() => {
     window.scrollTo(0, 0);
-  }, [pathname]);
+    // Track page view in Google Analytics
+    trackPageView(location.pathname + location.search);
+  }, [location]);
 
   return null;
 }
