@@ -28,23 +28,6 @@ export {
   PriceInput
 } from './FormComponents';
 
-export {
-  LoadingState as AdminLoadingState,
-  EmptyState,
-  PanelHeader,
-  FilterBar,
-  DataTable,
-  Pagination,
-  StatusBadge,
-  ActionButton,
-  ActionButtons as AdminActionButtons,
-  Card,
-  StatsCard,
-  TabNav,
-  DetailRow as AdminDetailRow,
-  DetailSection as AdminDetailSection
-} from './AdminComponents';
-
 // UI Components (new shared components)
 export {
   // Buttons

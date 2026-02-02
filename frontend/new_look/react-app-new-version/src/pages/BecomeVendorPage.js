@@ -36,6 +36,16 @@ const BecomeVendorPage = () => {
   const location = useLocation();
   const { currentUser, setCurrentUser } = useAuth();
   
+  // Check for admin review mode - admin viewing vendor's profile
+  const urlParams = new URLSearchParams(window.location.search);
+  const adminReviewVendorId = urlParams.get('adminReview');
+  const isAdminReviewMode = !!adminReviewVendorId;
+  
+  // Debug logging
+  console.log('[BecomeVendorPage] URL:', window.location.search);
+  console.log('[BecomeVendorPage] adminReviewVendorId:', adminReviewVendorId);
+  console.log('[BecomeVendorPage] isAdminReviewMode:', isAdminReviewMode);
+  
   // Step IDs for mapping URL params to step indices
   const stepIds = ['account', 'categories', 'service-details', 'category-questions', 'business-details', 'contact', 'location', 'services', 'business-hours', 'cancellation-policy', 'gallery', 'social-media', 'stripe', 'google-reviews', 'policies', 'review'];
 
@@ -58,6 +68,9 @@ const BecomeVendorPage = () => {
     if (urlStepRef.current !== false) {
       return urlStepRef.current;
     }
+    
+    // Admin review mode - start at categories (step 1)
+    if (isAdminReviewMode) return 1;
     
     if (!currentUser) return 0;
     
@@ -394,16 +407,149 @@ const BecomeVendorPage = () => {
     }
   }, [currentUser]);
 
-  // Redirect unauthenticated users to the landing page
+  // Redirect unauthenticated users to the landing page (skip in admin review mode)
   useEffect(() => {
-    if (!currentUser && !loadingProfile) {
+    if (!currentUser && !loadingProfile && !isAdminReviewMode) {
       navigate('/become-a-vendor');
     }
-  }, [currentUser, loadingProfile, navigate]);
+  }, [currentUser, loadingProfile, navigate, isAdminReviewMode]);
+
+  // Fetch vendor data for admin review mode
+  useEffect(() => {
+    const fetchAdminReviewData = async () => {
+      console.log('[BecomeVendorPage] fetchAdminReviewData - isAdminReviewMode:', isAdminReviewMode, 'vendorId:', adminReviewVendorId);
+      if (!isAdminReviewMode || !adminReviewVendorId) return;
+      if (initialDataLoaded) return;
+      
+      try {
+        setLoadingProfile(true);
+        console.log('[BecomeVendorPage] Fetching vendor data for admin review, vendorId:', adminReviewVendorId);
+        const response = await fetch(`${API_BASE_URL}/admin/vendor-approvals/${adminReviewVendorId}`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+        
+        if (!response.ok) throw new Error('Failed to fetch vendor profile');
+        
+        const data = await response.json();
+        if (data) {
+          setExistingVendorData(data);
+          setIsExistingVendor(true);
+          setProfileStatus('pending_review');
+          
+          // Transform and populate form data from admin API response
+          const profile = data.profile || {};
+          const categories = data.categories || [];
+          const services = data.services || [];
+          const images = data.images || [];
+          const businessHours = data.businessHours || [];
+          const socialMedia = data.socialMedia || [];
+          const serviceAreas = data.serviceAreas || [];
+          const features = data.features || [];
+          
+          // Map category names to IDs
+          const categoryNameToId = {
+            'Venues': 'venue', 'Photo/Video': 'photo', 'Music/DJ': 'music',
+            'Catering': 'catering', 'Entertainment': 'entertainment', 'Experiences': 'experiences',
+            'Decorations': 'decor', 'Beauty': 'beauty', 'Cake': 'cake',
+            'Transportation': 'transport', 'Planners': 'planner', 'Fashion': 'fashion', 'Stationery': 'stationery'
+          };
+          
+          const primaryCat = categories.find(c => c.IsPrimary) || categories[0];
+          const primaryCategoryId = primaryCat ? (categoryNameToId[primaryCat.Category || primaryCat.CategoryName] || '') : '';
+          
+          // Transform business hours
+          const hoursMap = {};
+          businessHours.forEach(h => {
+            const dayName = (h.DayOfWeek || h.Day || '').toLowerCase();
+            if (dayName) {
+              hoursMap[dayName] = {
+                isAvailable: !h.IsClosed,
+                openTime: h.OpenTime || '09:00',
+                closeTime: h.CloseTime || '17:00'
+              };
+            }
+          });
+          
+          // Transform social media
+          const socialMap = {};
+          socialMedia.forEach(sm => {
+            const platform = (sm.Platform || '').toLowerCase();
+            if (platform) socialMap[platform] = sm.URL || sm.Url;
+          });
+          
+          setFormData(prev => ({
+            ...prev,
+            primaryCategory: primaryCategoryId,
+            selectedSubcategories: categories.filter(c => !c.IsPrimary).map(c => c.SubcategoryName || c.Category),
+            businessName: profile.BusinessName || '',
+            displayName: profile.DisplayName || profile.BusinessName || '',
+            businessDescription: profile.Description || '',
+            yearsInBusiness: profile.YearsInBusiness || '',
+            priceRange: profile.PriceRange || '',
+            profileLogo: profile.LogoURL || '',
+            businessPhone: profile.BusinessPhone || profile.Phone || '',
+            website: profile.Website || '',
+            email: profile.BusinessEmail || data.ownerInfo?.OwnerEmail || '',
+            address: profile.Address || '',
+            city: profile.City || '',
+            province: profile.State || profile.Province || '',
+            country: profile.Country || 'Canada',
+            postalCode: profile.PostalCode || '',
+            latitude: profile.Latitude,
+            longitude: profile.Longitude,
+            serviceAreas: serviceAreas.map(a => ({ city: a.City || a.AreaName, province: a.State || a.Province })),
+            selectedServices: services.map(s => ({
+              id: s.PackageID || s.ServiceID,
+              name: s.Name || s.ServiceName,
+              description: s.Description,
+              price: s.Price || s.BasePrice,
+              duration: s.Duration,
+              capacity: s.Capacity
+            })),
+            businessHours: {
+              monday: hoursMap.monday || { isAvailable: false, openTime: '09:00', closeTime: '17:00' },
+              tuesday: hoursMap.tuesday || { isAvailable: false, openTime: '09:00', closeTime: '17:00' },
+              wednesday: hoursMap.wednesday || { isAvailable: false, openTime: '09:00', closeTime: '17:00' },
+              thursday: hoursMap.thursday || { isAvailable: false, openTime: '09:00', closeTime: '17:00' },
+              friday: hoursMap.friday || { isAvailable: false, openTime: '09:00', closeTime: '17:00' },
+              saturday: hoursMap.saturday || { isAvailable: false, openTime: '09:00', closeTime: '17:00' },
+              sunday: hoursMap.sunday || { isAvailable: false, openTime: '09:00', closeTime: '17:00' }
+            },
+            selectedFeatures: features.map(f => f.FeatureName || f.Name),
+            photoURLs: images.map(img => img.ImageURL || img.URL),
+            facebook: socialMap.facebook || '',
+            instagram: socialMap.instagram || '',
+            twitter: socialMap.twitter || socialMap.x || '',
+            linkedin: socialMap.linkedin || '',
+            youtube: socialMap.youtube || '',
+            tiktok: socialMap.tiktok || '',
+            cancellationPolicy: profile.CancellationPolicy || '',
+            depositPercentage: profile.DepositPercentage || '',
+            paymentTerms: profile.PaymentTerms || '',
+            stripeConnected: profile.StripeConnected || false
+          }));
+          
+          setInitialDataLoaded(true);
+        }
+      } catch (err) {
+        console.error('Error fetching vendor for admin review:', err);
+        showBanner('Failed to load vendor profile', 'error');
+      } finally {
+        setLoadingProfile(false);
+      }
+    };
+    
+    fetchAdminReviewData();
+  }, [isAdminReviewMode, adminReviewVendorId, initialDataLoaded]);
 
   // Fetch existing vendor profile data if user is already a vendor
   useEffect(() => {
     const fetchExistingVendorData = async () => {
+      // Skip if in admin review mode
+      if (isAdminReviewMode) return;
+      
       if (!currentUser || !currentUser.isVendor || !currentUser.vendorProfileId) {
         return;
       }
@@ -725,13 +871,18 @@ const BecomeVendorPage = () => {
         hasUpdatedUrl.current = true;
         return;
       }
+      // Don't update URL if in admin review mode - preserve adminReview param
+      if (isAdminReviewMode) {
+        hasUpdatedUrl.current = true;
+        return;
+      }
       hasUpdatedUrl.current = true;
       const currentStepId = steps[currentStep]?.id;
       if (currentStepId) {
         window.history.replaceState({}, document.title, `/become-a-vendor/setup?step=${currentStepId}`);
       }
     }
-  }, [currentStep, steps]);
+  }, [currentStep, steps, isAdminReviewMode]);
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -1490,13 +1641,176 @@ const BecomeVendorPage = () => {
         </div>
       </header>
 
+      {/* Admin Review Banner */}
+      {isAdminReviewMode && (
+        <div style={{
+          background: 'linear-gradient(90deg, #5086E8, #3b5998)',
+          color: 'white',
+          padding: '1rem 1.5rem',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '1rem'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <i className="fas fa-user-shield" style={{ fontSize: '1.25rem' }}></i>
+            <div>
+              <strong>Admin Review Mode</strong>
+              <span style={{ marginLeft: '0.5rem', opacity: 0.9 }}>
+                Viewing vendor profile #{adminReviewVendorId} - {formData.businessName || 'Loading...'}
+              </span>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: '0.75rem' }}>
+            <button
+              onClick={() => {
+                if (window.confirm('Reject this vendor application?')) {
+                  const reason = window.prompt('Enter rejection reason:');
+                  if (reason) {
+                    fetch(`${API_BASE_URL}/admin/vendor-approvals/${adminReviewVendorId}/reject`, {
+                      method: 'POST',
+                      headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                        'Content-Type': 'application/json'
+                      },
+                      body: JSON.stringify({ reason })
+                    }).then(() => {
+                      showBanner('Vendor rejected', 'success');
+                      navigate('/admin/vendors');
+                    }).catch(err => showBanner('Failed to reject: ' + err.message, 'error'));
+                  }
+                }
+              }}
+              style={{
+                padding: '0.5rem 1rem',
+                background: '#fee2e2',
+                color: '#dc2626',
+                border: 'none',
+                borderRadius: '6px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}
+            >
+              <i className="fas fa-times"></i> Reject
+            </button>
+            <button
+              onClick={() => {
+                if (window.confirm('Approve this vendor application?')) {
+                  fetch(`${API_BASE_URL}/admin/vendor-approvals/${adminReviewVendorId}/approve`, {
+                    method: 'POST',
+                    headers: {
+                      'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                      'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ notes: '' })
+                  }).then(() => {
+                    showBanner('Vendor approved!', 'success');
+                    navigate('/admin/vendors');
+                  }).catch(err => showBanner('Failed to approve: ' + err.message, 'error'));
+                }
+              }}
+              style={{
+                padding: '0.5rem 1rem',
+                background: '#10b981',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}
+            >
+              <i className="fas fa-check"></i> Approve
+            </button>
+            <button
+              onClick={() => navigate('/admin/vendors')}
+              style={{
+                padding: '0.5rem 1rem',
+                background: 'rgba(255,255,255,0.2)',
+                color: 'white',
+                border: '1px solid rgba(255,255,255,0.3)',
+                borderRadius: '6px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}
+            >
+              <i className="fas fa-arrow-left"></i> Back to Admin
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Admin Step Navigation */}
+      {isAdminReviewMode && steps.length > 0 && (
+        <div style={{
+          background: '#f8fafc',
+          borderBottom: '1px solid #e2e8f0',
+          padding: '0.75rem 1.5rem',
+          overflowX: 'auto'
+        }}>
+          <div style={{
+            display: 'flex',
+            gap: '0.5rem',
+            flexWrap: 'nowrap',
+            maxWidth: '1280px',
+            margin: '0 auto'
+          }}>
+            {steps.map((step, index) => (
+              <button
+                key={step.id}
+                onClick={() => setCurrentStep(index)}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: currentStep === index ? '#5086E8' : 'white',
+                  color: currentStep === index ? 'white' : '#64748b',
+                  border: currentStep === index ? 'none' : '1px solid #e2e8f0',
+                  borderRadius: '6px',
+                  fontSize: '0.8rem',
+                  fontWeight: currentStep === index ? 600 : 500,
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  transition: 'all 0.2s'
+                }}
+              >
+                <span style={{
+                  width: '20px',
+                  height: '20px',
+                  borderRadius: '50%',
+                  background: currentStep === index ? 'rgba(255,255,255,0.3)' : '#f1f5f9',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '0.7rem',
+                  fontWeight: 600
+                }}>
+                  {index + 1}
+                </span>
+                {step.title}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <main className="become-vendor-main" style={{ paddingBottom: '100px' }}>
         {loadingProfile ? (
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
             <div className="spinner"></div>
           </div>
-        ) : profileStatus === 'pending_review' && urlStepRef.current === false ? (
-          /* Show pending review message only if NOT navigating via URL step param */
+        ) : profileStatus === 'pending_review' && urlStepRef.current === false && !isAdminReviewMode ? (
+          /* Show pending review message only if NOT navigating via URL step param AND not in admin review mode */
           <div style={{ padding: '3rem 1rem', maxWidth: '700px', margin: '0 auto' }}>
             <div style={{ 
               background: 'linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%)', 

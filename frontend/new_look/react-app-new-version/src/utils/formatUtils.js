@@ -116,10 +116,31 @@ export function formatTime(date) {
  * @returns {string} Relative time string
  */
 export function formatRelativeTime(date) {
-  if (!date) return '';
+  // Handle null, undefined, empty string, or empty object
+  if (!date || (typeof date === 'object' && !(date instanceof Date) && Object.keys(date).length === 0)) {
+    return '';
+  }
   
   const now = new Date();
-  const then = new Date(date);
+  let then;
+  
+  // Handle various date formats including SQL Server datetime
+  if (typeof date === 'string') {
+    // Try parsing as ISO first, then as SQL Server format
+    then = new Date(date);
+    if (isNaN(then.getTime())) {
+      // Try replacing space with T for ISO format
+      then = new Date(date.replace(' ', 'T'));
+    }
+  } else {
+    then = new Date(date);
+  }
+  
+  // If still invalid, return empty
+  if (isNaN(then.getTime())) {
+    console.warn('Invalid date for formatRelativeTime:', date);
+    return '';
+  }
   const diffMs = now - then;
   const diffSec = Math.floor(diffMs / 1000);
   const diffMin = Math.floor(diffSec / 60);

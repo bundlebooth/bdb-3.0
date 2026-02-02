@@ -364,38 +364,6 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
             Switch to exploring
           </button>
         )}
-        {(currentUser?.isAdmin === true || currentUser?.isAdmin === 1 || currentUser?.IsAdmin === true || currentUser?.IsAdmin === 1) && (
-          <button 
-            className="admin-dashboard-btn"
-            onClick={() => navigate('/admin/dashboard')}
-            style={{
-              padding: '0.5rem 1rem',
-              backgroundColor: '#e3f2fd',
-              color: '#1565c0',
-              border: '1px solid #90caf9',
-              borderRadius: '8px',
-              fontSize: '0.95rem',
-              fontWeight: '500',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-              marginRight: '0.5rem',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem'
-            }}
-            onMouseEnter={(e) => {
-              e.target.style.backgroundColor = '#bbdefb';
-              e.target.style.borderColor = '#64b5f6';
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.backgroundColor = '#e3f2fd';
-              e.target.style.borderColor = '#90caf9';
-            }}
-          >
-            <i className="fas fa-tachometer-alt" style={{ fontSize: '0.9rem' }}></i>
-            {t('nav.dashboard')}
-          </button>
-        )}
         {/* What's New Button */}
         <div 
           className="nav-icon" 

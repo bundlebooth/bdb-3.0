@@ -9,7 +9,6 @@ import ClientProfilePage from './pages/ClientProfilePage';
 import BookingPage from './pages/BookingPage';
 import BecomeVendorPage from './pages/BecomeVendorPage';
 import BecomeVendorLanding from './pages/BecomeVendorLanding';
-import AdminDashboard from './pages/AdminDashboard';
 import InvoicePage from './pages/InvoicePage';
 import PaymentSuccessPage from './pages/PaymentSuccessPage';
 import TermsOfServicePage from './pages/TermsOfServicePage';
@@ -35,6 +34,8 @@ import ClientSettingsPrivacyPage from './pages/ClientSettingsPrivacyPage';
 import ClientSettingsSecurityPage from './pages/ClientSettingsSecurityPage';
 import ClientSettingsDeletePage from './pages/ClientSettingsDeletePage';
 import BlogPage from './components/BlogPage';
+import AdminDashboard from './components/Admin/AdminDashboard';
+import AdminProtectedRoute from './components/Admin/AdminProtectedRoute';
 import UnsubscribePage from './pages/UnsubscribePage';
 import EmailPreferencesPage from './pages/EmailPreferencesPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
@@ -42,6 +43,7 @@ import PaymentPage from './pages/PaymentPage';
 import DeepLinkPage from './pages/DeepLinkPage';
 import ReviewPage from './pages/ReviewPage';
 import CookieConsent from './components/CookieConsent';
+import ImpersonationBanner from './components/ImpersonationBanner';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LocalizationProvider } from './context/LocalizationContext';
 import { useHeartbeat } from './hooks/useOnlineStatus';
@@ -166,6 +168,7 @@ function App() {
       <AuthProvider>
         <SessionTimeoutProvider>
           <Router>
+            <ImpersonationBanner />
             <ScrollToTop />
             <Routes>
           <Route path="/" element={<HomeRoute />} />
@@ -177,7 +180,6 @@ function App() {
           <Route path="/booking/:vendorSlug" element={<BookingPage />} />
           <Route path="/become-a-vendor" element={<BecomeVendorLanding />} />
           <Route path="/become-a-vendor/setup" element={<BecomeVendorPage />} />
-          <Route path="/admin/dashboard" element={<AdminDashboard />} />
           <Route path="/invoice/:invoiceId" element={<InvoicePage />} />
           <Route path="/invoice/booking/:bookingId" element={<InvoicePage />} />
           <Route path="/payment-success" element={<PaymentSuccessPage />} />
@@ -200,6 +202,9 @@ function App() {
           <Route path="/forum/:slug" element={<ForumPage />} />
           <Route path="/forum/post/:slug" element={<ForumPostPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
+          {/* Admin Dashboard - Protected route for admin users only */}
+          <Route path="/admin" element={<AdminProtectedRoute><AdminDashboard /></AdminProtectedRoute>} />
+          <Route path="/admin/:section" element={<AdminProtectedRoute><AdminDashboard /></AdminProtectedRoute>} />
           {/* Dedicated Client Pages with vertical sidebar navigation */}
           <Route path="/client/bookings" element={<ClientBookingsPage />} />
           <Route path="/client/messages" element={<ClientMessagesPage />} />
