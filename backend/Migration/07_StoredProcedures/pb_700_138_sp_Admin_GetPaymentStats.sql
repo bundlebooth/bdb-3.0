@@ -18,9 +18,11 @@ BEGIN
     SET NOCOUNT ON;
     
     SELECT
-        (SELECT ISNULL(SUM(TotalAmount), 0) FROM bookings.Bookings WHERE Status IN ('Completed', 'completed')) as totalRevenue,
-        (SELECT ISNULL(SUM(TotalAmount * 0.1), 0) FROM bookings.Bookings WHERE Status IN ('Completed', 'completed')) as platformFees,
+        (SELECT ISNULL(SUM(TotalAmount), 0) FROM bookings.Bookings WHERE Status IN ('Completed', 'completed', 'Confirmed', 'confirmed')) as totalRevenue,
+        (SELECT COUNT(*) FROM bookings.Bookings) as totalBookings,
         (SELECT ISNULL(SUM(TotalAmount), 0) FROM bookings.Bookings WHERE Status IN ('Confirmed', 'confirmed', 'Pending', 'pending')) as pendingPayouts,
+        (SELECT ISNULL(SUM(TotalAmount), 0) FROM bookings.Bookings WHERE Status IN ('Refunded', 'refunded')) as totalRefunds,
+        (SELECT ISNULL(SUM(TotalAmount * 0.1), 0) FROM bookings.Bookings WHERE Status IN ('Completed', 'completed')) as platformFees,
         (SELECT ISNULL(SUM(TotalAmount * 0.9), 0) FROM bookings.Bookings WHERE Status IN ('Completed', 'completed')) as completedPayouts;
 END
 GO

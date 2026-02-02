@@ -36,7 +36,6 @@ BEGIN
         vp.AcceptingBookings,
         vp.CreatedAt,
         vp.UpdatedAt,
-        vp.AdminNotes,
         vp.RejectionReason,
         CONCAT(u.FirstName, ' ', ISNULL(u.LastName, '')) as OwnerName,
         u.Email as OwnerEmail,
@@ -44,7 +43,7 @@ BEGIN
         (SELECT TOP 1 ImageURL FROM vendors.VendorImages WHERE VendorProfileID = vp.VendorProfileID AND IsPrimary = 1) as PrimaryImage,
         (SELECT TOP 1 Category FROM vendors.VendorCategories WHERE VendorProfileID = vp.VendorProfileID) as Categories,
         (SELECT COUNT(*) FROM vendors.VendorImages WHERE VendorProfileID = vp.VendorProfileID) as ImageCount,
-        (SELECT COUNT(*) FROM vendors.VendorServices WHERE VendorProfileID = vp.VendorProfileID) as ServiceCount
+        (SELECT COUNT(*) FROM vendors.Packages WHERE VendorProfileID = vp.VendorProfileID) as ServiceCount
     FROM vendors.VendorProfiles vp
     LEFT JOIN users.Users u ON vp.UserID = u.UserID
     WHERE 

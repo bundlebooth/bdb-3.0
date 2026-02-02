@@ -44,10 +44,14 @@ BEGIN
         b.UpdatedAt,
         CONCAT(u.FirstName, ' ', ISNULL(u.LastName, '')) as ClientName,
         u.Email as ClientEmail,
-        vp.BusinessName as VendorName
+        vp.BusinessName as VendorName,
+        vu.Email as VendorEmail,
+        ISNULL(b.PlatformFee, 0) as PlatformFee,
+        (b.TotalAmount - ISNULL(b.PlatformFee, 0)) as VendorPayout
     FROM bookings.Bookings b
     LEFT JOIN users.Users u ON b.UserID = u.UserID
     LEFT JOIN vendors.VendorProfiles vp ON b.VendorProfileID = vp.VendorProfileID
+    LEFT JOIN users.Users vu ON vp.UserID = vu.UserID
     WHERE 
         (@Status IS NULL OR @Status = 'all' OR b.Status = @Status)
         AND (@Search IS NULL OR u.FirstName LIKE '%' + @Search + '%' OR u.LastName LIKE '%' + @Search + '%' OR u.Email LIKE '%' + @Search + '%' OR vp.BusinessName LIKE '%' + @Search + '%')
