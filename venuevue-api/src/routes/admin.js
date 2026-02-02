@@ -3574,6 +3574,7 @@ router.get('/email-queue', async (req, res) => {
     
     res.json({ 
       success: true, 
+      emails: serializeRecords(items),
       items: serializeRecords(items), 
       total: result.total,
       page: parseInt(page),
