@@ -884,18 +884,15 @@ router.get('/users/:id/activity', async (req, res) => {
 // ==================== BOOKING MANAGEMENT ====================
 
 // GET /admin/bookings - Get ALL bookings for ALL users and vendors
-// Uses vw_UserBookings view (same as sp_GetUserBookingsAll used by dashboard)
+// Uses admin.sp_GetAllBookings stored procedure
 router.get('/bookings', async (req, res) => {
   try {
-    const { status, startDate, endDate, search, page = 1, limit = 20 } = req.query;
+    const { status, search, page = 1, limit = 20 } = req.query;
     const pool = await getPool();
-    const offset = (page - 1) * limit;
     
-    // Use stored procedure for admin bookings
+    // Use stored procedure for admin bookings - only pass parameters the SP accepts
     const request = pool.request();
     request.input('Status', sql.NVarChar(50), status && status !== 'all' ? status : null);
-    request.input('StartDate', sql.DateTime, startDate || null);
-    request.input('EndDate', sql.DateTime, endDate || null);
     request.input('Search', sql.NVarChar(100), search || null);
     request.input('PageNumber', sql.Int, parseInt(page));
     request.input('PageSize', sql.Int, parseInt(limit));
@@ -4117,6 +4114,104 @@ router.put('/vendor-reports/:reportId', async (req, res) => {
   } catch (error) {
     console.error('Error updating vendor report:', error);
     res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ==================== IMPERSONATE USER ====================
+
+// POST /admin/impersonate/:userId - Start impersonating a user
+router.post('/impersonate/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const adminId = req.user?.id;
+    const pool = await getPool();
+    
+    // Get user details
+    const userResult = await pool.request()
+      .input('UserID', sql.Int, userId)
+      .query(`
+        SELECT UserID, Email, Name, FirstName, LastName, IsVendor, IsAdmin, IsActive
+        FROM users.Users
+        WHERE UserID = @UserID
+      `);
+    
+    if (userResult.recordset.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const user = userResult.recordset[0];
+    
+    // Log impersonation action
+    try {
+      await pool.request()
+        .input('UserID', sql.Int, adminId)
+        .input('Email', sql.NVarChar(255), req.user?.email || 'admin')
+        .input('Action', sql.NVarChar(100), 'ImpersonateUser')
+        .input('ActionStatus', sql.NVarChar(50), 'Success')
+        .input('Details', sql.NVarChar(sql.MAX), `Admin impersonated user: ${user.Email} (ID: ${userId})`)
+        .input('IPAddress', sql.NVarChar(50), req.ip || null)
+        .execute('admin.sp_LogSecurityEvent');
+    } catch (logErr) {
+      console.error('Failed to log impersonation:', logErr.message);
+    }
+    
+    // Generate impersonation token (same as regular token but with impersonation flag)
+    const jwt = require('jsonwebtoken');
+    const impersonationToken = jwt.sign(
+      {
+        id: user.UserID,
+        email: user.Email,
+        name: user.Name || `${user.FirstName} ${user.LastName}`,
+        isVendor: user.IsVendor,
+        isAdmin: false, // Don't give admin access when impersonating
+        impersonatedBy: adminId,
+        isImpersonation: true
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' } // Short expiry for impersonation
+    );
+    
+    res.json({
+      success: true,
+      token: impersonationToken,
+      user: {
+        id: user.UserID,
+        email: user.Email,
+        name: user.Name || `${user.FirstName} ${user.LastName}`,
+        isVendor: user.IsVendor
+      },
+      message: `Now impersonating ${user.Email}`
+    });
+  } catch (error) {
+    console.error('Error impersonating user:', error);
+    res.status(500).json({ error: 'Failed to impersonate user' });
+  }
+});
+
+// POST /admin/impersonate/end - End impersonation session
+router.post('/impersonate/end', async (req, res) => {
+  try {
+    const adminId = req.user?.impersonatedBy || req.user?.id;
+    const pool = await getPool();
+    
+    // Log end of impersonation
+    try {
+      await pool.request()
+        .input('UserID', sql.Int, adminId)
+        .input('Email', sql.NVarChar(255), 'admin')
+        .input('Action', sql.NVarChar(100), 'EndImpersonation')
+        .input('ActionStatus', sql.NVarChar(50), 'Success')
+        .input('Details', sql.NVarChar(sql.MAX), 'Admin ended impersonation session')
+        .input('IPAddress', sql.NVarChar(50), req.ip || null)
+        .execute('admin.sp_LogSecurityEvent');
+    } catch (logErr) {
+      console.error('Failed to log end impersonation:', logErr.message);
+    }
+    
+    res.json({ success: true, message: 'Impersonation ended' });
+  } catch (error) {
+    console.error('Error ending impersonation:', error);
+    res.status(500).json({ error: 'Failed to end impersonation' });
   }
 });
 
