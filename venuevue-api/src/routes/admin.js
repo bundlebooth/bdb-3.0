@@ -4144,13 +4144,15 @@ router.post('/impersonate/:userId', async (req, res) => {
     
     const pool = await getPool();
     
-    // Get user details
+    // Get user details including vendor profile ID
     const userResult = await pool.request()
       .input('UserID', sql.Int, parseInt(userId))
       .query(`
-        SELECT UserID, Email, FirstName, LastName, IsVendor, IsAdmin, IsActive
-        FROM users.Users
-        WHERE UserID = @UserID
+        SELECT u.UserID, u.Email, u.FirstName, u.LastName, u.IsVendor, u.IsAdmin, u.IsActive,
+               vp.VendorProfileID
+        FROM users.Users u
+        LEFT JOIN vendors.VendorProfiles vp ON u.UserID = vp.UserID
+        WHERE u.UserID = @UserID
       `);
     
     console.log(`[Impersonate] User query result:`, userResult.recordset.length, 'records');
@@ -4210,7 +4212,10 @@ router.post('/impersonate/:userId', async (req, res) => {
         id: user.UserID,
         email: user.Email,
         name: `${user.FirstName || ''} ${user.LastName || ''}`.trim() || user.Email,
-        isVendor: user.IsVendor
+        firstName: user.FirstName || '',
+        lastName: user.LastName || '',
+        isVendor: user.IsVendor || false,
+        vendorProfileId: user.VendorProfileID || null
       },
       message: `Now impersonating ${user.Email}`
     });
