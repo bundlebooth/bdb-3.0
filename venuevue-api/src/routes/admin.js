@@ -4215,8 +4215,8 @@ router.post('/impersonate/:userId', async (req, res) => {
       message: `Now impersonating ${user.Email}`
     });
   } catch (error) {
-    console.error('Error impersonating user:', error);
-    res.status(500).json({ error: 'Failed to impersonate user' });
+    console.error('Error impersonating user:', error.message, error.stack);
+    res.status(500).json({ error: 'Failed to impersonate user', details: error.message });
   }
 });
 
