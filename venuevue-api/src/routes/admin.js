@@ -125,28 +125,36 @@ router.get('/platform-health', async (req, res) => {
   }
 });
 
-// GET /admin/recent-activity - Get recent platform activity
+// GET /admin/recent-activity - Get ALL user notifications consolidated
 router.get('/recent-activity', async (req, res) => {
   try {
+    const { page = 1, limit = 50 } = req.query;
     const pool = await getPool();
     
-    // Try stored procedure first, fallback to direct query
-    try {
-      const result = await pool.request().execute('admin.sp_GetRecentActivity');
-      
-      const vendors = result.recordsets[0] || [];
-      const bookings = result.recordsets[1] || [];
-      const reviews = result.recordsets[2] || [];
-      
-      const activity = [...vendors, ...bookings, ...reviews]
-        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-        .slice(0, 10);
-      
-      return res.json({ activity });
-    } catch (spError) {
-      console.error('Stored procedure admin.sp_GetRecentActivity not found:', spError.message);
-      return res.json({ activity: [] });
-    }
+    const request = pool.request();
+    request.input('PageNumber', sql.Int, parseInt(page));
+    request.input('PageSize', sql.Int, parseInt(limit));
+    
+    const result = await request.execute('admin.sp_GetAllNotifications');
+    
+    const notifications = result.recordsets[0] || [];
+    const total = result.recordsets[1]?.[0]?.total || 0;
+    
+    // Transform notifications to activity format for frontend compatibility
+    const activity = notifications.map(n => ({
+      id: n.NotificationID,
+      user: n.UserName || 'Unknown User',
+      userEmail: n.UserEmail,
+      type: n.Type,
+      action: n.Message,
+      description: n.Title,
+      timestamp: n.CreatedAt,
+      isRead: n.IsRead,
+      relatedId: n.RelatedID,
+      relatedType: n.RelatedType
+    }));
+    
+    return res.json({ activity, total, page: parseInt(page), limit: parseInt(limit) });
   } catch (error) {
     console.error('Error fetching recent activity:', error);
     res.status(500).json({ error: 'Failed to fetch recent activity', details: error.message });
@@ -2525,20 +2533,23 @@ router.get('/bookings/export', async (req, res) => {
     const { status } = req.query;
     const pool = await getPool();
     
-    // Use stored procedure for disputes/export
+    // Use sp_GetAllBookings for export with large page size
     const request = pool.request();
     request.input('Status', sql.NVarChar(50), status && status !== 'all' ? status : null);
+    request.input('Search', sql.NVarChar(100), null);
+    request.input('PageNumber', sql.Int, 1);
+    request.input('PageSize', sql.Int, 10000); // Get all bookings for export
     
-    const result = await request.execute('admin.sp_GetDisputes');
+    const result = await request.execute('admin.sp_GetAllBookings');
     
     // Convert to CSV
-    const bookings = result.recordset;
+    const bookings = result.recordsets[0] || [];
     if (bookings.length === 0) {
       return res.status(404).json({ error: 'No bookings to export' });
     }
     
     const headers = Object.keys(bookings[0]).join(',');
-    const rows = bookings.map(b => Object.values(b).map(v => `"${v || ''}"`).join(','));
+    const rows = bookings.map(b => Object.values(b).map(v => `"${String(v || '').replace(/"/g, '""')}"`).join(','));
     const csv = [headers, ...rows].join('\n');
     
     res.setHeader('Content-Type', 'text/csv');
