@@ -4135,22 +4135,32 @@ router.post('/impersonate/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
     const adminId = req.user?.id;
+    
+    console.log(`[Impersonate] Admin ${adminId} attempting to impersonate user ${userId}`);
+    
+    if (!userId || isNaN(parseInt(userId))) {
+      return res.status(400).json({ error: 'Invalid user ID' });
+    }
+    
     const pool = await getPool();
     
     // Get user details
     const userResult = await pool.request()
-      .input('UserID', sql.Int, userId)
+      .input('UserID', sql.Int, parseInt(userId))
       .query(`
         SELECT UserID, Email, Name, FirstName, LastName, IsVendor, IsAdmin, IsActive
         FROM users.Users
         WHERE UserID = @UserID
       `);
     
+    console.log(`[Impersonate] User query result:`, userResult.recordset.length, 'records');
+    
     if (userResult.recordset.length === 0) {
       return res.status(404).json({ error: 'User not found' });
     }
     
     const user = userResult.recordset[0];
+    console.log(`[Impersonate] Found user:`, user.Email);
     
     // Log impersonation action (optional - don't fail if logging fails)
     try {
@@ -4170,19 +4180,28 @@ router.post('/impersonate/:userId', async (req, res) => {
     
     // Generate impersonation token (same as regular token but with impersonation flag)
     const jwt = require('jsonwebtoken');
-    const impersonationToken = jwt.sign(
-      {
-        id: user.UserID,
-        email: user.Email,
-        name: user.Name || `${user.FirstName} ${user.LastName}`,
-        isVendor: user.IsVendor,
-        isAdmin: false, // Don't give admin access when impersonating
-        impersonatedBy: adminId,
-        isImpersonation: true
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: '1h' } // Short expiry for impersonation
-    );
+    const jwtSecret = process.env.JWT_SECRET;
+    
+    if (!jwtSecret) {
+      console.error('[Impersonate] JWT_SECRET not configured!');
+      return res.status(500).json({ error: 'Server configuration error' });
+    }
+    
+    const tokenPayload = {
+      id: user.UserID,
+      email: user.Email,
+      name: user.Name || `${user.FirstName || ''} ${user.LastName || ''}`.trim(),
+      isVendor: user.IsVendor || false,
+      isAdmin: false, // Don't give admin access when impersonating
+      impersonatedBy: adminId,
+      isImpersonation: true
+    };
+    
+    console.log(`[Impersonate] Creating token for user:`, tokenPayload.email);
+    
+    const impersonationToken = jwt.sign(tokenPayload, jwtSecret, { expiresIn: '1h' });
+    
+    console.log(`[Impersonate] Token created successfully`);
     
     res.json({
       success: true,
