@@ -67,10 +67,19 @@ async function getQueueStats() {
   try {
     const pool = await poolPromise;
     const result = await pool.request().execute('admin.sp_GetEmailQueueStats');
-    return result.recordset || [];
+    const records = result.recordset || [];
+    // Transform array of {Status, Count} to {pending, processing, sent, failed}
+    const stats = { pending: 0, processing: 0, sent: 0, failed: 0 };
+    records.forEach(r => {
+      const status = (r.Status || '').toLowerCase();
+      if (stats.hasOwnProperty(status)) {
+        stats[status] = r.Count || 0;
+      }
+    });
+    return stats;
   } catch (error) {
     console.error('[QUEUE] Error getting stats:', error.message);
-    return [];
+    return { pending: 0, processing: 0, sent: 0, failed: 0 };
   }
 }
 
