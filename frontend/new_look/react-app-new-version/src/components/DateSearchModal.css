@@ -167,6 +167,24 @@
   box-shadow: 0 0 0 3px rgba(80, 134, 232, 0.1);
 }
 
+.time-select.error {
+  border-color: #dc3545;
+}
+
+.time-error {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #dc3545;
+  font-size: 12px;
+  margin-top: -8px;
+  padding: 4px 0;
+}
+
+.time-error i {
+  font-size: 12px;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .date-search-content {

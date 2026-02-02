@@ -128,11 +128,28 @@ const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavori
       onView(vendorId);
     }
     
-    // Build professional URL with slug and tracking parameters
+    // Get search date params from sessionStorage if available
+    let searchDateParams = {};
+    try {
+      const stored = sessionStorage.getItem('searchDateParams');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        searchDateParams = {
+          eventDate: parsed.date || parsed.eventDate,
+          startTime: parsed.startTime,
+          endTime: parsed.endTime
+        };
+      }
+    } catch (e) {
+      // Ignore parsing errors
+    }
+    
+    // Build professional URL with slug and date parameters
     const url = buildVendorProfileUrl(vendor, {
       source: 'search',
       category: primaryCategory,
-      previousSection: '1000' // Similar to Airbnb's tracking
+      previousSection: '1000',
+      ...searchDateParams
     });
     
     // Always open vendor profile in new tab

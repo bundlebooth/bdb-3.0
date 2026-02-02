@@ -106,8 +106,25 @@ function VendorProfilePage() {
   // Search date params from explore page (for pre-filling availability widget)
   const [searchDateParams, setSearchDateParams] = useState(null);
   
-  // Load search date params from sessionStorage on mount
+  // Load search date params from URL or sessionStorage on mount
   useEffect(() => {
+    // First check URL params
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlEventDate = urlParams.get('eventDate');
+    const urlStartTime = urlParams.get('startTime');
+    const urlEndTime = urlParams.get('endTime');
+    
+    if (urlEventDate) {
+      setSearchDateParams({
+        date: urlEventDate,
+        endDate: urlEventDate,
+        startTime: urlStartTime || '',
+        endTime: urlEndTime || ''
+      });
+      return;
+    }
+    
+    // Fall back to sessionStorage
     const storedParams = sessionStorage.getItem('searchDateParams');
     if (storedParams) {
       try {

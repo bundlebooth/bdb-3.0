@@ -572,7 +572,7 @@ const EnhancedSearchBar = ({ onSearch, isScrolled }) => {
       <DateSearchModal
         isOpen={showDateModal}
         onClose={() => setShowDateModal(false)}
-        onApply={({ startDate: newStartDate, endDate: newEndDate, startTime: newStartTime, endTime: newEndTime }) => {
+        onApply={({ startDate: newStartDate, endDate: newEndDate, startTime: newStartTime, endTime: newEndTime, timezone: newTimezone }) => {
           setSelectedDate(newStartDate);
           setEndDate(newEndDate);
           setStartTime(newStartTime);
@@ -586,6 +586,7 @@ const EnhancedSearchBar = ({ onSearch, isScrolled }) => {
               endDate: newEndDate,
               startTime: newStartTime,
               endTime: newEndTime,
+              timezone: newTimezone,
               userLocation: userLocation
             });
           }

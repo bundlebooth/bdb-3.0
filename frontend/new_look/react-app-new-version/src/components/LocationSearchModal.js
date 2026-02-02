@@ -203,12 +203,43 @@ const LocationSearchModal = ({ isOpen, onClose, onApply, onUseCurrentLocation, i
     });
   }, []);
 
-  const handleCurrentLocation = () => {
-    if (!navigator.geolocation) {
-      alert('Geolocation is not supported by your browser');
-      return;
+  // Fall back to IP lookup when geolocation fails
+  const fallbackToIpLookup = useCallback(async () => {
+    try {
+      const response = await fetch('https://ipapi.co/json/');
+      const data = await response.json();
+      
+      if (data.latitude && data.longitude) {
+        const newCoords = {
+          lat: data.latitude,
+          lng: data.longitude
+        };
+        setCoordinates(newCoords);
+        
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.setCenter(newCoords);
+          mapInstanceRef.current.setZoom(10);
+        }
+        if (markerRef.current) {
+          markerRef.current.setPosition(newCoords);
+        }
+        if (circleRef.current) {
+          circleRef.current.setCenter(newCoords);
+        }
+        
+        // Use city from IP lookup
+        const locationString = [data.city, data.region, data.country_name].filter(Boolean).join(', ');
+        setLocation(locationString || 'Your Location');
+      } else {
+        setLocation('');
+      }
+    } catch (error) {
+      console.error('IP lookup failed:', error);
+      setLocation('');
     }
+  }, []);
 
+  const handleCurrentLocation = () => {
     // Clear localStorage to allow fresh location detection
     if (onUseCurrentLocation) {
       localStorage.removeItem('userSelectedLocation');
@@ -216,6 +247,13 @@ const LocationSearchModal = ({ isOpen, onClose, onApply, onUseCurrentLocation, i
 
     // Show loading state
     setLocation('Getting your location...');
+
+    // Check if geolocation is available
+    if (!navigator.geolocation) {
+      // Fall back to IP lookup
+      fallbackToIpLookup();
+      return;
+    }
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
@@ -264,9 +302,9 @@ const LocationSearchModal = ({ isOpen, onClose, onApply, onUseCurrentLocation, i
         }
       },
       (error) => {
-        console.error('Error getting location:', error);
-        setLocation(''); // Clear the loading state
-        alert('Unable to get your location. Please enter it manually.');
+        console.error('Geolocation error, falling back to IP lookup:', error);
+        // Fall back to IP lookup instead of showing error
+        fallbackToIpLookup();
       },
       { timeout: 10000, enableHighAccuracy: true }
     );
@@ -324,6 +362,14 @@ const LocationSearchModal = ({ isOpen, onClose, onApply, onUseCurrentLocation, i
             placeholder="Enter a location"
           />
         </div>
+        <button 
+          className="current-location-btn-inline"
+          onClick={handleCurrentLocation}
+          title="Use my current location"
+          type="button"
+        >
+          <i className="fas fa-location-arrow"></i>
+        </button>
       </div>
 
       {/* Radius Selector */}
@@ -352,16 +398,6 @@ const LocationSearchModal = ({ isOpen, onClose, onApply, onUseCurrentLocation, i
       {/* Map Container */}
       <div className="map-container">
         <div ref={mapRef} className="map"></div>
-        <button 
-          className="current-location-btn"
-          onClick={handleCurrentLocation}
-          title="Use my current location"
-        >
-          <i className="fas fa-location-arrow"></i>
-        </button>
-        <button className="map-info-btn" title="Map information">
-          <i className="fas fa-info-circle"></i>
-        </button>
       </div>
     </UniversalModal>
   );

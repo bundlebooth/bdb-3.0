@@ -37,6 +37,10 @@ export const buildVendorProfileUrl = (vendor, options = {}) => {
   // Only include essential parameters that affect page content
   const params = new URLSearchParams();
   if (options.photoId) params.append('photo_id', options.photoId);
+  // Include availability/date params from search
+  if (options.eventDate) params.append('eventDate', options.eventDate);
+  if (options.startTime) params.append('startTime', options.startTime);
+  if (options.endTime) params.append('endTime', options.endTime);
   const queryString = params.toString();
   return queryString ? baseUrl + '?' + queryString : baseUrl;
 };

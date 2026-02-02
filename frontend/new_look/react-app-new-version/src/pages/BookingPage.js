@@ -325,9 +325,10 @@ function BookingPage() {
       dateInput.setAttribute('min', today);
     }
 
-    // Pre-fill booking data from URL params (coming from ProfileVendorWidget)
+    // Pre-fill booking data from URL params (coming from ProfileVendorWidget or search bar)
     const searchParams = new URLSearchParams(location.search);
-    const prefilledDate = searchParams.get('date');
+    // Check both 'date' (from widget) and 'eventDate' (from search bar URL)
+    const prefilledDate = searchParams.get('date') || searchParams.get('eventDate');
     const prefilledStartTime = searchParams.get('startTime');
     const prefilledEndTime = searchParams.get('endTime');
     const prefilledPackageId = searchParams.get('packageId');

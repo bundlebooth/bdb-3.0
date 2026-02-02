@@ -142,6 +142,37 @@
   color: #aaa;
 }
 
+/* Current location button inline with input */
+.current-location-btn-inline {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid #ddd;
+  background: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 0.75rem;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.current-location-btn-inline:hover {
+  background: #5086E8;
+  border-color: #5086E8;
+}
+
+.current-location-btn-inline:hover i {
+  color: white;
+}
+
+.current-location-btn-inline i {
+  font-size: 1rem;
+  color: #5086E8;
+  transition: color 0.2s;
+}
+
 .input-content select {
   cursor: pointer;
   appearance: none;

@@ -162,6 +162,22 @@ function IndexPage() {
   // Filters state - location and vendor attributes (initialize from URL)
   const [filters, setFilters] = useState(() => {
     const params = new URLSearchParams(window.location.search);
+    
+    // Also check for eventDate param (from search bar) and map to availabilityDate
+    const eventDate = params.get('eventDate') || params.get('availabilityDate') || '';
+    const startTime = params.get('startTime') || '';
+    const endTime = params.get('endTime') || '';
+    
+    // Store in sessionStorage if date params exist in URL (for VendorCard to read)
+    if (eventDate) {
+      sessionStorage.setItem('searchDateParams', JSON.stringify({
+        date: eventDate,
+        endDate: eventDate,
+        startTime: startTime,
+        endTime: endTime
+      }));
+    }
+    
     return {
       location: params.get('location') || '',
       eventTypes: params.get('eventTypes') ? params.get('eventTypes').split(',').map(id => parseInt(id)).filter(id => !isNaN(id)) : [],
@@ -178,8 +194,11 @@ function IndexPage() {
       minReviewCount: params.get('minReviewCount') || '',
       freshListingsDays: params.get('freshListingsDays') || '',
       hasGoogleReviews: params.get('hasGoogleReviews') === 'true',
-      availabilityDate: params.get('availabilityDate') || '',
-      availabilityDayOfWeek: params.get('availabilityDayOfWeek') || ''
+      availabilityDate: eventDate,
+      availabilityDayOfWeek: params.get('availabilityDayOfWeek') || '',
+      eventDate: eventDate,
+      startTime: startTime,
+      endTime: endTime
     };
   });
   
@@ -284,15 +303,44 @@ function IndexPage() {
     } else {
       params.delete('hasGoogleReviews');
     }
-    if (filters.availabilityDate) {
-      params.set('availabilityDate', filters.availabilityDate);
-    } else {
-      params.delete('availabilityDate');
-    }
+    // Remove legacy availabilityDate - we now use eventDate from search bar
+    params.delete('availabilityDate');
     if (filters.availabilityDayOfWeek) {
       params.set('availabilityDayOfWeek', filters.availabilityDayOfWeek);
     } else {
       params.delete('availabilityDayOfWeek');
+    }
+    // Search bar filters
+    if (filters.location) {
+      params.set('location', filters.location);
+    } else {
+      params.delete('location');
+    }
+    // Only add eventDate if user selected a specific date (not "Anytime")
+    if (filters.eventDate) {
+      params.set('eventDate', filters.eventDate);
+      // Only add times if eventDate is set
+      if (filters.startTime) {
+        params.set('startTime', filters.startTime);
+      } else {
+        params.delete('startTime');
+      }
+      if (filters.endTime) {
+        params.set('endTime', filters.endTime);
+      } else {
+        params.delete('endTime');
+      }
+      // Add timezone if set
+      if (filters.timezone) {
+        params.set('timezone', filters.timezone);
+      } else {
+        params.delete('timezone');
+      }
+    } else {
+      params.delete('eventDate');
+      params.delete('startTime');
+      params.delete('endTime');
+      params.delete('timezone');
     }
     
     // Update URL without triggering navigation
@@ -1215,8 +1263,8 @@ function IndexPage() {
     }
     
     // Skip if we just did an enhanced search - it already set filteredVendors directly
+    // Keep the flag true until all state updates have settled
     if (isEnhancedSearchRef.current) {
-      isEnhancedSearchRef.current = false;
       return;
     }
     
@@ -1423,8 +1471,22 @@ function IndexPage() {
     if (vendor) {
       addToRecentlyViewed(vendor);
     }
-    navigate(`/vendor/${encodeVendorId(vendorId)}`);
-  }, [navigate, filteredVendors, discoverySections, categorySections, citySections, addToRecentlyViewed]);
+    
+    // Build URL with search params if available
+    const vendorUrl = `/vendor/${encodeVendorId(vendorId)}`;
+    const urlParams = new URLSearchParams();
+    if (filters.eventDate) {
+      urlParams.set('eventDate', filters.eventDate);
+    }
+    if (filters.startTime) {
+      urlParams.set('startTime', filters.startTime);
+    }
+    if (filters.endTime) {
+      urlParams.set('endTime', filters.endTime);
+    }
+    const queryString = urlParams.toString();
+    navigate(queryString ? `${vendorUrl}?${queryString}` : vendorUrl);
+  }, [navigate, filteredVendors, discoverySections, categorySections, citySections, addToRecentlyViewed, filters.eventDate, filters.startTime, filters.endTime]);
 
   const handleHighlightVendor = useCallback((vendorId, highlight) => {
     if (window.highlightMapMarker) {
@@ -1489,7 +1551,8 @@ function IndexPage() {
         endDate: searchParams.endDate || null,
         dayOfWeek: dayOfWeek || null,
         startTime: searchParams.startTime || null,
-        endTime: searchParams.endTime || null
+        endTime: searchParams.endTime || null,
+        timezone: searchParams.timezone || null
       };
       
       // Store search date params in sessionStorage for passing to vendor profile/booking pages
@@ -1498,12 +1561,14 @@ function IndexPage() {
           date: searchParams.date,
           endDate: searchParams.endDate || searchParams.date,
           startTime: searchParams.startTime || '',
-          endTime: searchParams.endTime || ''
+          endTime: searchParams.endTime || '',
+          timezone: searchParams.timezone || ''
         }));
       } else {
         sessionStorage.removeItem('searchDateParams');
       }
       
+      // URL will be updated by the useEffect that syncs filters to URL
       setFilters(newFilters);
       setServerPageNumber(1);
       setLoading(true);
@@ -1533,11 +1598,40 @@ function IndexPage() {
           setFilteredVendors(vendorsData.vendors);
           setServerTotalCount(vendorsData.totalCount || 0);
           
+          // Update discovery sections with filtered vendors
+          if (vendorsData.vendors.length > 0) {
+            const filteredSections = [
+              {
+                id: 'trending',
+                title: 'Trending Vendors',
+                description: 'Popular vendors based on page views and engagement',
+                vendors: vendorsData.vendors.slice(0, 10),
+                showViewCount: true
+              },
+              {
+                id: 'top-rated',
+                title: 'Top Rated Vendors',
+                description: 'Highest rated by customers',
+                vendors: [...vendorsData.vendors].sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0)).slice(0, 10),
+                showAnalyticsBadge: true,
+                analyticsBadgeType: 'rating'
+              }
+            ];
+            setDiscoverySections(filteredSections);
+          } else {
+            setDiscoverySections([]);
+          }
+          
           if (vendorsData.vendors.length === 0) {
             showBanner(`No vendors found in ${cityName} for the selected criteria`, 'info');
           } else {
             showBanner(`Found ${vendorsData.vendors.length} vendor${vendorsData.vendors.length !== 1 ? 's' : ''}`, 'success');
           }
+          
+          // Reset the enhanced search flag after React has processed all state updates
+          setTimeout(() => {
+            isEnhancedSearchRef.current = false;
+          }, 100);
         }
         
         // Load discovery sections with the NEW filters (not stale state)
@@ -1564,6 +1658,7 @@ function IndexPage() {
       console.error('Enhanced search error:', error);
       showBanner('Search failed. Please try again.', 'error');
       setLoading(false);
+      isEnhancedSearchRef.current = false;
     }
   }, [filters, currentCategory, loadDiscoverySections, showBanner]);
 

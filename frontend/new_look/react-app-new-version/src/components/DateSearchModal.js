@@ -14,7 +14,51 @@ const DateSearchModal = ({
   const [selectedDate, setSelectedDate] = useState(initialStartDate || '');
   const [startTime, setStartTime] = useState(initialStartTime || '');
   const [endTime, setEndTime] = useState(initialEndTime || '');
+  const [timezone, setTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone);
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [timeError, setTimeError] = useState('');
+
+  // Common timezones for North America
+  const timezones = [
+    { value: 'America/New_York', label: 'Eastern Time (ET)' },
+    { value: 'America/Chicago', label: 'Central Time (CT)' },
+    { value: 'America/Denver', label: 'Mountain Time (MT)' },
+    { value: 'America/Los_Angeles', label: 'Pacific Time (PT)' },
+    { value: 'America/Toronto', label: 'Toronto (ET)' },
+    { value: 'America/Vancouver', label: 'Vancouver (PT)' },
+    { value: 'America/Halifax', label: 'Atlantic Time (AT)' },
+    { value: 'America/St_Johns', label: 'Newfoundland (NT)' },
+    { value: 'UTC', label: 'UTC' }
+  ];
+
+  // Validate that start time is before end time (no overnight)
+  const validateTimes = (start, end) => {
+    if (!start || !end) {
+      setTimeError('');
+      return true;
+    }
+    const [startHour, startMin] = start.split(':').map(Number);
+    const [endHour, endMin] = end.split(':').map(Number);
+    const startMinutes = startHour * 60 + startMin;
+    const endMinutes = endHour * 60 + endMin;
+    
+    if (startMinutes >= endMinutes) {
+      setTimeError('End time must be after start time (no overnight events)');
+      return false;
+    }
+    setTimeError('');
+    return true;
+  };
+
+  const handleStartTimeChange = (newStartTime) => {
+    setStartTime(newStartTime);
+    validateTimes(newStartTime, endTime);
+  };
+
+  const handleEndTimeChange = (newEndTime) => {
+    setEndTime(newEndTime);
+    validateTimes(startTime, newEndTime);
+  };
 
   const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -29,6 +73,7 @@ const DateSearchModal = ({
       setSelectedDate(initialStartDate || '');
       setStartTime(initialStartTime || '');
       setEndTime(initialEndTime || '');
+      setTimeError('');
       // Set current month to show the selected date if exists
       if (initialStartDate) {
         const [year, month] = initialStartDate.split('-').map(Number);
@@ -99,11 +144,16 @@ const DateSearchModal = ({
   };
 
   const handleApply = () => {
+    // Validate times before applying
+    if (startTime && endTime && !validateTimes(startTime, endTime)) {
+      return; // Don't apply if times are invalid
+    }
     onApply({
       startDate: selectedDate,
       endDate: selectedDate,
       startTime,
-      endTime
+      endTime,
+      timezone
     });
     onClose();
   };
@@ -176,7 +226,7 @@ const DateSearchModal = ({
             <label>Start time</label>
             <select 
               value={startTime} 
-              onChange={(e) => setStartTime(e.target.value)}
+              onChange={(e) => handleStartTimeChange(e.target.value)}
               className="time-select"
             >
               <option value="">Select time</option>
@@ -199,8 +249,8 @@ const DateSearchModal = ({
             <label>End time</label>
             <select 
               value={endTime} 
-              onChange={(e) => setEndTime(e.target.value)}
-              className="time-select"
+              onChange={(e) => handleEndTimeChange(e.target.value)}
+              className={`time-select ${timeError ? 'error' : ''}`}
             >
               <option value="">Select time</option>
               {Array.from({ length: 48 }, (_, i) => {
@@ -218,10 +268,28 @@ const DateSearchModal = ({
             </select>
           </div>
 
-          {/* Timezone indicator */}
-          <div className="timezone-indicator">
-            <i className="fas fa-globe"></i>
-            <span>{Intl.DateTimeFormat().resolvedOptions().timeZone}</span>
+          {/* Time validation error */}
+          {timeError && (
+            <div className="time-error">
+              <i className="fas fa-exclamation-circle"></i>
+              <span>{timeError}</span>
+            </div>
+          )}
+
+          {/* Timezone selector */}
+          <div className="time-input-group">
+            <label>Timezone</label>
+            <select 
+              value={timezone} 
+              onChange={(e) => setTimezone(e.target.value)}
+              className="time-select"
+            >
+              {timezones.map(tz => (
+                <option key={tz.value} value={tz.value}>
+                  {tz.label}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
       </div>
