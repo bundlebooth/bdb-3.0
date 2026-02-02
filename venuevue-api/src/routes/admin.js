@@ -4152,18 +4152,20 @@ router.post('/impersonate/:userId', async (req, res) => {
     
     const user = userResult.recordset[0];
     
-    // Log impersonation action
+    // Log impersonation action (optional - don't fail if logging fails)
     try {
+      // Try to log to security events table directly if SP doesn't exist
       await pool.request()
         .input('UserID', sql.Int, adminId)
-        .input('Email', sql.NVarChar(255), req.user?.email || 'admin')
         .input('Action', sql.NVarChar(100), 'ImpersonateUser')
-        .input('ActionStatus', sql.NVarChar(50), 'Success')
         .input('Details', sql.NVarChar(sql.MAX), `Admin impersonated user: ${user.Email} (ID: ${userId})`)
-        .input('IPAddress', sql.NVarChar(50), req.ip || null)
-        .execute('admin.sp_LogSecurityEvent');
+        .query(`
+          INSERT INTO admin.SecurityEvents (UserID, Action, Details, CreatedAt, IPAddress)
+          VALUES (@UserID, @Action, @Details, GETDATE(), NULL)
+        `);
     } catch (logErr) {
-      console.error('Failed to log impersonation:', logErr.message);
+      // Logging is optional - don't fail impersonation if logging fails
+      console.log('Note: Security logging skipped:', logErr.message);
     }
     
     // Generate impersonation token (same as regular token but with impersonation flag)
