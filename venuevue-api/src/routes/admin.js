@@ -4148,7 +4148,7 @@ router.post('/impersonate/:userId', async (req, res) => {
     const userResult = await pool.request()
       .input('UserID', sql.Int, parseInt(userId))
       .query(`
-        SELECT UserID, Email, Name, FirstName, LastName, IsVendor, IsAdmin, IsActive
+        SELECT UserID, Email, FirstName, LastName, IsVendor, IsAdmin, IsActive
         FROM users.Users
         WHERE UserID = @UserID
       `);
@@ -4190,7 +4190,7 @@ router.post('/impersonate/:userId', async (req, res) => {
     const tokenPayload = {
       id: user.UserID,
       email: user.Email,
-      name: user.Name || `${user.FirstName || ''} ${user.LastName || ''}`.trim(),
+      name: `${user.FirstName || ''} ${user.LastName || ''}`.trim() || user.Email,
       isVendor: user.IsVendor || false,
       isAdmin: false, // Don't give admin access when impersonating
       impersonatedBy: adminId,
@@ -4209,7 +4209,7 @@ router.post('/impersonate/:userId', async (req, res) => {
       user: {
         id: user.UserID,
         email: user.Email,
-        name: user.Name || `${user.FirstName} ${user.LastName}`,
+        name: `${user.FirstName || ''} ${user.LastName || ''}`.trim() || user.Email,
         isVendor: user.IsVendor
       },
       message: `Now impersonating ${user.Email}`
