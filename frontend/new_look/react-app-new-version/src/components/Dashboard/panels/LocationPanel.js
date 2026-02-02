@@ -2,6 +2,7 @@
 import { useAuth } from '../../../context/AuthContext';
 import { API_BASE_URL, GOOGLE_MAPS_API_KEY } from '../../../config';
 import { showBanner } from '../../../utils/banners';
+import { getProfileLocation } from '../../../utils/locationUtils';
 
 const loadGoogleMapsAPI = () => {
   return new Promise((resolve, reject) => {
@@ -84,9 +85,9 @@ function LocationPanel({ onBack }) {
         </div>
         <div className="form-group" style={{marginBottom:'1.5rem'}}>
           <label style={{display:'block',marginBottom:'0.5rem',fontWeight:500}}>Search Your City *</label>
-          <input ref={addressInputRef} type="text" placeholder="Start typing your city..." defaultValue={formData.city ? formData.city + ', ' + formData.province : ''} style={{width:'100%',padding:'0.875rem 1rem',border:'1px solid var(--border)',borderRadius:'8px',fontSize:'1rem'}} />
+          <input ref={addressInputRef} type="text" placeholder="" defaultValue={formData.city ? formData.city + ', ' + formData.province : ''} style={{width:'100%',padding:'0.875rem 1rem',border:'1px solid var(--border)',borderRadius:'8px',fontSize:'1rem'}} />
         </div>
-        {formData.province && (<div style={{background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:'8px',padding:'1rem',marginBottom:'1.5rem'}}><strong style={{color:'#166534'}}>Location: {formData.city}, {formData.province}, {formData.country}</strong></div>)}
+        {formData.province && (<div style={{background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:'8px',padding:'1rem',marginBottom:'1.5rem'}}><strong style={{color:'#166534'}}>Location: {getProfileLocation(formData)}</strong></div>)}
         <div style={{display:'flex',gap:'1rem',marginTop:'2rem'}}>
           <button onClick={onBack} className="btn btn-outline" style={{flex:1}}>Cancel</button>
           <button onClick={handleSave} disabled={saving||!formData.province} className="btn btn-primary" style={{flex:1}}>{saving ? 'Saving...' : 'Save Location'}</button>

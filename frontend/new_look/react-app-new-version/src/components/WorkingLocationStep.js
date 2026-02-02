@@ -161,7 +161,7 @@ function WorkingLocationStep({ formData, setFormData }) {
               ref={cityInputRef}
               type="text"
               className="form-input"
-              placeholder="Toronto"
+              placeholder=""
               style={{
                 width: '100%',
                 padding: '0.875rem 1rem',
@@ -257,7 +257,7 @@ function WorkingLocationStep({ formData, setFormData }) {
               ref={serviceAreaInputRef}
               type="text"
               className="form-input"
-              placeholder="Start typing a city name..."
+              placeholder=""
               style={{
                 flex: 1,
                 padding: '0.875rem 1rem',

@@ -20,6 +20,7 @@ import MobileBottomNav from '../components/MobileBottomNav';
 import { showBanner } from '../utils/helpers';
 import { EditButton } from '../components/common/UIComponents';
 import LocationSearchModal from '../components/LocationSearchModal';
+import { normalizeLocation, getIPGeolocationServices } from '../utils/locationUtils';
 import { useLocalization } from '../context/LocalizationContext';
 import { useRecentlyViewed } from '../hooks/useRecentlyViewed';
 import { encodeVendorId } from '../utils/hashIds';
@@ -178,8 +179,11 @@ function IndexPage() {
       }));
     }
     
+    // Normalize location to "City, Province" format (remove country if present)
+    const rawLocation = params.get('location') || '';
+    
     return {
-      location: params.get('location') || '',
+      location: normalizeLocation(rawLocation),
       eventTypes: params.get('eventTypes') ? params.get('eventTypes').split(',').map(id => parseInt(id)).filter(id => !isNaN(id)) : [],
       cultures: params.get('cultures') ? params.get('cultures').split(',').map(id => parseInt(id)).filter(id => !isNaN(id)) : [],
       subcategories: params.get('subcategories') ? params.get('subcategories').split(',').map(id => parseInt(id)).filter(id => !isNaN(id)) : [],
@@ -454,7 +458,9 @@ function IndexPage() {
         const parsed = JSON.parse(savedLocation);
         // Check expiration
         if (parsed.expiresAt && new Date(parsed.expiresAt) > new Date()) {
-          return parsed.city || '';
+          // Normalize to "City, Province" format (remove country if present)
+          const rawCity = parsed.city || '';
+          return normalizeLocation(rawCity);
         }
       } catch { return ''; }
     }
@@ -466,8 +472,10 @@ function IndexPage() {
     const savedLocation = getSavedLocation();
     if (savedLocation && savedLocation.lat && savedLocation.lng) {
       setUserLocation(savedLocation);
-      setFilters(prev => ({ ...prev, location: savedLocation.city || '' }));
-      setDetectedCity(savedLocation.city || '');
+      // Normalize location to "City, Province" format
+      const normalizedCity = normalizeLocation(savedLocation.city || '');
+      setFilters(prev => ({ ...prev, location: normalizedCity }));
+      setDetectedCity(normalizedCity.split(',')[0].trim());
     }
   }, [getSavedLocation]);
   
@@ -479,29 +487,8 @@ function IndexPage() {
     if (savedLocation) {
       return; // User-selected location takes priority
     }
-    // IP-based geolocation services (no permission needed, works immediately)
-    const geoServices = [
-      {
-        name: 'ipwho.is',
-        url: 'https://ipwho.is/',
-        parse: (data) => data.success && data.city ? {
-          city: data.city,
-          region: data.region,
-          lat: data.latitude,
-          lng: data.longitude
-        } : null
-      },
-      {
-        name: 'ip-api (via backend proxy)',
-        url: `${API_BASE_URL}/geo/ip-location`,
-        parse: (data) => data.success && data.city ? {
-          city: data.city,
-          region: data.region,
-          lat: data.lat,
-          lng: data.lng
-        } : null
-      }
-    ];
+    // Use centralized IP geolocation services
+    const geoServices = getIPGeolocationServices(API_BASE_URL);
 
     for (const service of geoServices) {
       try {
@@ -510,19 +497,17 @@ function IndexPage() {
           const data = await response.json();
           const parsed = service.parse(data);
           if (parsed && parsed.lat && parsed.lng) {
-            const cityString = `${parsed.city}, ${parsed.region}`;
             setDetectedCity(parsed.city);
             setUserLocation({
               lat: parsed.lat,
               lng: parsed.lng,
-              city: cityString
+              city: parsed.formattedLocation
             });
-            setFilters(prev => ({ ...prev, location: parsed.city }));
+            setFilters(prev => ({ ...prev, location: parsed.formattedLocation }));
             return; // Success, exit loop
           }
         }
       } catch (error) {
-        // Try next service
         continue;
       }
     }
@@ -727,13 +712,12 @@ function IndexPage() {
       }
       
       // Location filter - ALWAYS apply city filter when location is set
+      // Extract just the city name (first part before comma) for matching
       if (filters.location) {
-        const location = filters.location.toLowerCase();
+        const cityOnly = filters.location.split(',')[0].trim().toLowerCase();
         // Check both lowercase and uppercase property names (API returns lowercase, some code uses uppercase)
-        const vendorCity = vendor.city || vendor.City || '';
-        const vendorState = vendor.state || vendor.State || '';
-        const vendorLocation = `${vendorCity} ${vendorState}`.toLowerCase();
-        if (!vendorLocation.includes(location)) {
+        const vendorCity = (vendor.city || vendor.City || '').toLowerCase();
+        if (!vendorCity.includes(cityOnly)) {
           return false;
         }
       }
@@ -800,9 +784,10 @@ function IndexPage() {
         qp.set('pageNumber', String(nextPage));
         qp.set('pageSize', String(serverPageSize));
         
-        // Add city filter if location is set
+        // Add city filter if location is set - extract just the city name (first part before comma)
         if (filters.location) {
-          qp.set('city', filters.location);
+          const cityOnly = filters.location.split(',')[0].trim();
+          qp.set('city', cityOnly);
         }
         
         // Add location coordinates if available
@@ -825,9 +810,10 @@ function IndexPage() {
         qp.set('pageNumber', String(nextPage));
         qp.set('pageSize', String(serverPageSize));
         
-        // Add city filter if location is set
+        // Add city filter if location is set - extract just the city name (first part before comma)
         if (filters.location) {
-          qp.set('city', filters.location);
+          const cityOnly = filters.location.split(',')[0].trim();
+          qp.set('city', cityOnly);
         }
         
         // Add location coordinates if available
@@ -884,8 +870,8 @@ function IndexPage() {
         // Handle discovery sections from category search (filtered by category)
         // ALSO filter discovery section vendors by city
         if (data.discoverySections && Array.isArray(data.discoverySections)) {
-          // Filter each section's vendors by city if location is set
-          const cityFilter = filters.location?.toLowerCase();
+          // Filter each section's vendors by city if location is set - extract just city name
+          const cityFilter = filters.location ? filters.location.split(',')[0].trim().toLowerCase() : null;
           const filteredSections = data.discoverySections.map(section => ({
             ...section,
             vendors: cityFilter 
@@ -906,8 +892,8 @@ function IndexPage() {
         // Handle discovery sections from unified endpoint
         // ALSO filter discovery section vendors by city
         if (data.discoverySections && Array.isArray(data.discoverySections)) {
-          // Filter each section's vendors by city if location is set
-          const cityFilter = filters.location?.toLowerCase();
+          // Filter each section's vendors by city if location is set - extract just city name
+          const cityFilter = filters.location ? filters.location.split(',')[0].trim().toLowerCase() : null;
           const filteredSections = data.discoverySections.map(section => ({
             ...section,
             vendors: cityFilter 
@@ -1184,7 +1170,9 @@ function IndexPage() {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const urlCategory = params.get('category') || 'all';
-    const urlLocation = params.get('location') || '';
+    const rawUrlLocation = params.get('location') || '';
+    // Normalize location to "City, Province" format (remove country if present)
+    const urlLocation = normalizeLocation(rawUrlLocation);
     const openMap = params.get('openMap') === 'true';
     
     // Handle openMap parameter from MobileBottomNav
@@ -1194,6 +1182,14 @@ function IndexPage() {
       const newParams = new URLSearchParams(location.search);
       newParams.delete('openMap');
       const newUrl = newParams.toString() ? `${location.pathname}?${newParams.toString()}` : location.pathname;
+      window.history.replaceState({}, '', newUrl);
+    }
+    
+    // If URL has old format with country, update it to normalized format
+    if (rawUrlLocation && rawUrlLocation !== urlLocation) {
+      const newParams = new URLSearchParams(location.search);
+      newParams.set('location', urlLocation);
+      const newUrl = `${location.pathname}?${newParams.toString()}`;
       window.history.replaceState({}, '', newUrl);
     }
     
@@ -1580,7 +1576,10 @@ function IndexPage() {
         params.set('page', '1');
         params.set('limit', '20');
         
-        if (newFilters.location) params.set('city', newFilters.location);
+        if (newFilters.location) {
+          const cityOnly = newFilters.location.split(',')[0].trim();
+          params.set('city', cityOnly);
+        }
         if (newFilters.eventDate) params.set('eventDate', newFilters.eventDate);
         if (newFilters.dayOfWeek) params.set('dayOfWeek', newFilters.dayOfWeek);
         if (newFilters.startTime) params.set('startTime', newFilters.startTime);
@@ -1741,7 +1740,7 @@ function IndexPage() {
           // Re-detect location from IP
           detectCityFromIP();
         }}
-        initialLocation={detectedCity || filters.location || ''}
+        initialLocation={normalizeLocation(detectedCity || filters.location || '')}
         initialRadius={filters.radius || 50}
       />
       {/* Category Navigation - pill style buttons with page-wrapper for alignment */}

@@ -699,7 +699,7 @@ function AnalyticsSection() {
               </div>
             </div>
             <div style={{ border: '1px solid #e5e7eb', borderRadius: '8px', padding: '1rem', maxHeight: '400px', overflow: 'auto' }}>
-              <div dangerouslySetInnerHTML={{ __html: selectedEmail.HtmlBody || selectedEmail.body || '<p>No preview available</p>' }} />
+              <div dangerouslySetInnerHTML={{ __html: selectedEmail.htmlBody || selectedEmail.HtmlBody || selectedEmail.body || '<p>No preview available</p>' }} />
             </div>
           </div>
         )}

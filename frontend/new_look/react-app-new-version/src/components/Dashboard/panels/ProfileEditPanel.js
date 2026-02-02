@@ -3,6 +3,7 @@ import { useAuth } from '../../../context/AuthContext';
 import { API_BASE_URL } from '../../../config';
 import { showBanner } from '../../../utils/helpers';
 import { encodeUserId } from '../../../utils/hashIds';
+import { getProfileLocation } from '../../../utils/locationUtils';
 import UniversalModal from '../../UniversalModal';
 import './ProfileEditPanel.css';
 
@@ -126,10 +127,10 @@ const ProfileEditPanel = ({ onClose, onSave }) => {
           setSelectedLanguages(profile.Languages.split(',').map(l => l.trim()).filter(Boolean));
         }
         
-        // Set location search display
-        const locationParts = [profile.City, profile.State, profile.Country].filter(Boolean);
-        if (locationParts.length > 0) {
-          setLocationSearch(locationParts.join(', '));
+        // Set location search display using centralized utility
+        const locationDisplay = getProfileLocation(profile);
+        if (locationDisplay) {
+          setLocationSearch(locationDisplay);
         }
       }
     } catch (error) {
@@ -523,7 +524,7 @@ const ProfileEditPanel = ({ onClose, onSave }) => {
               {formData.city && (
                 <div className="location-preview">
                   <i className="fas fa-map-marker-alt"></i>
-                  <span>{[formData.city, formData.state, formData.country].filter(Boolean).join(', ')}</span>
+                  <span>{getProfileLocation(formData)}</span>
                 </div>
               )}
             </div>

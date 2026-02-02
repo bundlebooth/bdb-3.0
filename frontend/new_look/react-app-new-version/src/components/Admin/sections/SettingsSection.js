@@ -525,9 +525,18 @@ function SettingsSection() {
                   <td>
                     <button
                       className="admin-btn admin-btn-secondary admin-btn-sm"
-                      onClick={() => {
-                        setSelectedTemplate(template);
-                        setShowTemplateModal(true);
+                      onClick={async () => {
+                        try {
+                          // Fetch full template with body content
+                          const fullTemplate = await adminApi.getEmailTemplate(template.TemplateID || template.id);
+                          setSelectedTemplate(fullTemplate.template || fullTemplate);
+                          setShowTemplateModal(true);
+                        } catch (err) {
+                          console.error('Error fetching template:', err);
+                          // Fallback to basic template data
+                          setSelectedTemplate(template);
+                          setShowTemplateModal(true);
+                        }
                       }}
                     >
                       <i className="fas fa-pen"></i> Edit
@@ -761,9 +770,10 @@ function SettingsSection() {
             />
             <FormTextareaField
               label="Body (HTML)"
-              value={selectedTemplate.Body || selectedTemplate.body || ''}
+              value={selectedTemplate.bodyHtml || selectedTemplate.Body || selectedTemplate.body || selectedTemplate.fullHtml || ''}
               onChange={(e) => setSelectedTemplate({ 
                 ...selectedTemplate, 
+                bodyHtml: e.target.value,
                 Body: e.target.value, 
                 body: e.target.value 
               })}

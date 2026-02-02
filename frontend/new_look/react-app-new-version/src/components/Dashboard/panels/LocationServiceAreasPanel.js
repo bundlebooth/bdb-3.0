@@ -196,7 +196,7 @@ function LocationServiceAreasPanel({ onBack, vendorProfileId }) {
           country,
           latitude: loc ? (typeof loc.lat === 'function' ? loc.lat() : loc.lat) : null,
           longitude: loc ? (typeof loc.lng === 'function' ? loc.lng() : loc.lng) : null,
-          formattedAddress: place.formatted_address || [city, province, country].filter(Boolean).join(', '),
+          formattedAddress: [city, province].filter(Boolean).join(', ') || place.formatted_address,
           placeType: Array.isArray(place.types) ? place.types[0] : 'locality',
           serviceRadius: 25.0
         };

@@ -17,6 +17,7 @@ import MessagingWidget from '../components/MessagingWidget';
 import { showBanner } from '../utils/helpers';
 import { getBrowsePageImage } from '../utils/unsplash';
 import { encodeVendorId } from '../utils/hashIds';
+import { getIPGeolocationServices } from '../utils/locationUtils';
 import './BrowsePage.css';
 
 // Category key to label mapping
@@ -436,7 +437,8 @@ function BrowsePage() {
 
   // State for hero filter selections (category and city within discovery)
   const [heroCategory, setHeroCategory] = useState(queryCategoryParam || categoryFilter || 'all');
-  const [heroCity, setHeroCity] = useState(normalizeCityWithProvince(queryCityParam || (cityFilter ? decodeURIComponent(cityFilter) : '')));
+  const [heroCity, setHeroCity] = useState(normalizeCityWithProvince(queryCategoryParam || (cityFilter ? decodeURIComponent(cityFilter) : '')));
+  const [detectedCity, setDetectedCity] = useState(''); // IP-detected city for placeholder
 
   // Sync hero filters with URL query params when they change
   useEffect(() => {
@@ -446,6 +448,29 @@ function BrowsePage() {
     if (cat) setHeroCategory(cat);
     if (city) setHeroCity(normalizeCityWithProvince(city));
   }, [location.search]);
+
+  // Detect city from IP for placeholder
+  useEffect(() => {
+    const detectCityFromIP = async () => {
+      const geoServices = getIPGeolocationServices(API_BASE_URL);
+      for (const service of geoServices) {
+        try {
+          const response = await fetch(service.url);
+          if (response.ok) {
+            const data = await response.json();
+            const parsed = service.parse(data);
+            if (parsed && parsed.formattedLocation) {
+              setDetectedCity(parsed.formattedLocation);
+              return;
+            }
+          }
+        } catch (error) {
+          continue;
+        }
+      }
+    };
+    detectCityFromIP();
+  }, []);
 
   // State for city input on city pages (editable)
   const [heroCityInput, setHeroCityInput] = useState(cityFilter ? decodeURIComponent(cityFilter) : '');
@@ -1017,7 +1042,7 @@ function BrowsePage() {
                     <input 
                       ref={cityInputRef}
                       type="text"
-                      placeholder="Toronto, Canada"
+                      placeholder={detectedCity || ''}
                       value={heroCity}
                       onChange={(e) => setHeroCity(e.target.value)}
                       className="browse-hero-input"

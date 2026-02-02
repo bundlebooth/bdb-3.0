@@ -18,6 +18,8 @@ import ModerationSection from './sections/ModerationSection';
 import SupportSection from './sections/SupportSection';
 import SettingsSection from './sections/SettingsSection';
 import AnalyticsSection from './sections/AnalyticsSection';
+import SecuritySection from './sections/SecuritySection';
+import ContentSection from './sections/ContentSection';
 
 const sectionTitles = {
   overview: { title: 'Dashboard Overview', subtitle: 'Platform metrics and activity at a glance' },
@@ -25,12 +27,14 @@ const sectionTitles = {
   vendors: { title: 'Vendor Management', subtitle: 'Approvals, profiles, and categories' },
   bookings: { title: 'Bookings & Payments', subtitle: 'Transactions, refunds, and disputes' },
   moderation: { title: 'Content Moderation', subtitle: 'Reviews, chats, and content management' },
+  content: { title: 'Blog & FAQs', subtitle: 'Manage blog posts and frequently asked questions' },
   support: { title: 'Support Center', subtitle: 'Tickets and customer support' },
+  security: { title: 'Security & Logs', subtitle: 'Login activity, locked accounts, and security settings' },
   settings: { title: 'Settings & Configuration', subtitle: 'Platform settings and security' },
   analytics: { title: 'Reports & Analytics', subtitle: 'Insights and data exports' }
 };
 
-const validSections = ['overview', 'users', 'vendors', 'bookings', 'moderation', 'support', 'settings', 'analytics'];
+const validSections = ['overview', 'users', 'vendors', 'bookings', 'moderation', 'content', 'support', 'security', 'settings', 'analytics'];
 
 function AdminDashboard() {
   const navigate = useNavigate();
@@ -86,8 +90,12 @@ function AdminDashboard() {
         return <BookingsSection />;
       case 'moderation':
         return <ModerationSection />;
+      case 'content':
+        return <ContentSection />;
       case 'support':
         return <SupportSection />;
+      case 'security':
+        return <SecuritySection />;
       case 'settings':
         return <SettingsSection />;
       case 'analytics':

@@ -24,6 +24,7 @@ import { decodeVendorId, encodeVendorId, encodeUserId } from '../utils/hashIds';
 import { useLocalization } from '../context/LocalizationContext';
 import { useTranslation } from '../hooks/useTranslation';
 import ProfileVendorWidget from '../components/ProfileVendorWidget';
+import { getServiceAreaLocation, getProfileLocation } from '../utils/locationUtils';
 import './VendorProfilePage.css';
 
 function VendorProfilePage() {
@@ -996,7 +997,8 @@ function VendorProfilePage() {
               gap: '0.5rem' 
             }}>
               {serviceAreas.map((area, index) => {
-                const location = [area.CityName, area.StateProvince, area.Country].filter(Boolean).join(', ');
+                // Use centralized formatting utility
+                const location = getServiceAreaLocation(area);
                 return (
                   <div key={index} style={{ 
                     background: 'white', 
@@ -2620,7 +2622,7 @@ function VendorProfilePage() {
                           cursor: 'pointer' 
                         }}
                       >
-                        {[profile.City, profile.State, profile.Country].filter(Boolean).join(', ')}
+                        {getProfileLocation(profile)}
                       </span>
                       <span style={{ color: '#717171', margin: '0 0.25rem' }}>·</span>
                     </>

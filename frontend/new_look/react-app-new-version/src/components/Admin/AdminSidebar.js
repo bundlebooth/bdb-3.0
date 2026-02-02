@@ -13,7 +13,9 @@ const adminMenuItems = [
   { id: 'vendors', label: 'Vendors', icon: 'fa-store' },
   { id: 'bookings', label: 'Bookings & Payments', icon: 'fa-calendar-check' },
   { id: 'moderation', label: 'Content Moderation', icon: 'fa-shield-alt' },
+  { id: 'content', label: 'Blog & FAQs', icon: 'fa-newspaper' },
   { id: 'support', label: 'Support Center', icon: 'fa-headset' },
+  { id: 'security', label: 'Security & Logs', icon: 'fa-lock' },
   { id: 'settings', label: 'Settings', icon: 'fa-cog' },
   { id: 'analytics', label: 'Reports & Analytics', icon: 'fa-chart-bar' }
 ];

@@ -334,7 +334,7 @@ const fr = {
     guests: 'INVITÉS',
     numberOfGuests: "Nombre d'invités",
     location: 'EMPLACEMENT',
-    locationPlaceholder: 'Toronto',
+    locationPlaceholder: '',
     discover: 'Découvrir',
     findPerfectVendors: 'Trouvez les fournisseurs parfaits pour votre événement',
     browseVendorsDesc: "Parcourez plus de 500 fournisseurs vérifiés au Canada. Des photographes aux traiteurs, des salles aux DJ — nous avons sélectionné les meilleurs pour vous.",

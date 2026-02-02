@@ -40,7 +40,7 @@ function GoogleMapsLocationStep({ formData, setFormData, onInputChange }) {
               <input
                 id="google-city-input"
                 type="text"
-                placeholder="Toronto"
+                placeholder=""
                 style="
                   width: 100%;
                   padding: 0.875rem 1rem;
@@ -101,7 +101,7 @@ function GoogleMapsLocationStep({ formData, setFormData, onInputChange }) {
               <input
                 id="google-country-input"
                 type="text"
-                placeholder="Canada"
+                placeholder=""
                 value="Canada"
                 readonly
                 style="
@@ -131,7 +131,7 @@ function GoogleMapsLocationStep({ formData, setFormData, onInputChange }) {
               <input
                 id="google-service-area-input"
                 type="text"
-                placeholder="Start typing a city name..."
+                placeholder=""
                 style="
                   flex: 1;
                   padding: 0.875rem 1rem;

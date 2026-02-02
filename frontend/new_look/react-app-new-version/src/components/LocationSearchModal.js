@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { GOOGLE_MAPS_API_KEY } from '../config';
 import UniversalModal from './UniversalModal';
 import './LocationSearchModal.css';
+import { formatFromGooglePlace, normalizeLocation } from '../utils/locationUtils';
 
 const LocationSearchModal = ({ isOpen, onClose, onApply, onUseCurrentLocation, initialLocation, initialRadius }) => {
   const [location, setLocation] = useState(initialLocation || '');
@@ -149,7 +150,10 @@ const LocationSearchModal = ({ isOpen, onClose, onApply, onUseCurrentLocation, i
           lng: place.geometry.location.lng()
         };
         setCoordinates(newCoords);
-        setLocation(place.formatted_address || place.name);
+        
+        // Use centralized formatting utility
+        const formattedLocation = formatFromGooglePlace(place.address_components, place.name);
+        setLocation(formattedLocation || place.name);
         
         // Update map
         if (mapInstanceRef.current) {
@@ -198,7 +202,10 @@ const LocationSearchModal = ({ isOpen, onClose, onApply, onUseCurrentLocation, i
         const cityResult = results.find(r => 
           r.types.includes('locality') || r.types.includes('administrative_area_level_1')
         ) || results[0];
-        setLocation(cityResult.formatted_address);
+        
+        // Use centralized formatting utility
+        const formattedLocation = formatFromGooglePlace(cityResult.address_components);
+        setLocation(formattedLocation || cityResult.formatted_address);
       }
     });
   }, []);
@@ -227,8 +234,8 @@ const LocationSearchModal = ({ isOpen, onClose, onApply, onUseCurrentLocation, i
           circleRef.current.setCenter(newCoords);
         }
         
-        // Use city from IP lookup
-        const locationString = [data.city, data.region, data.country_name].filter(Boolean).join(', ');
+        // Use city from IP lookup - format as "City, Province" only (no country)
+        const locationString = [data.city, data.region_code || data.region].filter(Boolean).join(', ');
         setLocation(locationString || 'Your Location');
       } else {
         setLocation('');
@@ -284,14 +291,8 @@ const LocationSearchModal = ({ isOpen, onClose, onApply, onUseCurrentLocation, i
                 r.types.includes('locality') || r.types.includes('administrative_area_level_1')
               ) || results[0];
               
-              // Extract city and region for a cleaner display
-              const addressComponents = cityResult.address_components || [];
-              const city = addressComponents.find(c => c.types.includes('locality'))?.long_name || '';
-              const region = addressComponents.find(c => c.types.includes('administrative_area_level_1'))?.short_name || '';
-              const country = addressComponents.find(c => c.types.includes('country'))?.long_name || '';
-              
-              // Format as "City, Region, Country" or use formatted address
-              const locationString = [city, region, country].filter(Boolean).join(', ') || cityResult.formatted_address;
+              // Use centralized formatting utility
+              const locationString = formatFromGooglePlace(cityResult.address_components) || cityResult.formatted_address;
               setLocation(locationString);
             } else {
               setLocation('Your Location');

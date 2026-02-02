@@ -13,6 +13,7 @@ import MessagingWidget from '../components/MessagingWidget';
 import ProfileModal from '../components/ProfileModal';
 import { useTranslation } from '../hooks/useTranslation';
 import { encodeVendorId } from '../utils/hashIds';
+import { formatFromGooglePlace, getIPGeolocationServices } from '../utils/locationUtils';
 import './LandingPage.css';
 
 function LandingPage() {
@@ -25,6 +26,7 @@ function LandingPage() {
   const [loading, setLoading] = useState(true);
   const [favorites, setFavorites] = useState([]);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [detectedCity, setDetectedCity] = useState(''); // IP-detected city for placeholder
   // Check if we should show login modal (from deep link redirect or session expiry)
   const searchParams = new URLSearchParams(location.search);
   const sessionExpired = searchParams.get('sessionExpired') === 'true';
@@ -104,6 +106,29 @@ function LandingPage() {
     return () => clearInterval(interval);
   }, [heroSlides.length]);
 
+  // Detect city from IP for placeholder
+  useEffect(() => {
+    const detectCityFromIP = async () => {
+      const geoServices = getIPGeolocationServices(API_BASE_URL);
+      for (const service of geoServices) {
+        try {
+          const response = await fetch(service.url);
+          if (response.ok) {
+            const data = await response.json();
+            const parsed = service.parse(data);
+            if (parsed && parsed.formattedLocation) {
+              setDetectedCity(parsed.formattedLocation);
+              return;
+            }
+          }
+        } catch (error) {
+          continue;
+        }
+      }
+    };
+    detectCityFromIP();
+  }, []);
+
   // Initialize Google Places Autocomplete
   useEffect(() => {
     const initAutocomplete = () => {
@@ -115,8 +140,10 @@ function LandingPage() {
         
         autocompleteRef.current.addListener('place_changed', () => {
           const place = autocompleteRef.current.getPlace();
-          if (place.formatted_address) {
-            setSearchLocation(place.formatted_address);
+          if (place.geometry) {
+            // Use centralized formatting utility
+            const formattedLocation = formatFromGooglePlace(place.address_components, place.name);
+            setSearchLocation(formattedLocation || place.name);
           } else if (place.name) {
             setSearchLocation(place.name);
           }
@@ -374,7 +401,7 @@ function LandingPage() {
                   <input 
                     ref={locationInputRef}
                     type="text" 
-                    placeholder={t('landing.locationPlaceholder', 'Toronto')}
+                    placeholder={detectedCity || ''}
                     value={searchLocation}
                     onChange={(e) => setSearchLocation(e.target.value)}
                     className="landing-search-input"

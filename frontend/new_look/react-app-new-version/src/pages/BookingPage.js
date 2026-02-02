@@ -23,6 +23,7 @@ import { formatDateWithWeekday } from '../utils/helpers';
 import { getProvinceFromLocation, getTaxInfoForProvince, PROVINCE_TAX_RATES } from '../utils/taxCalculations';
 import { useLocalization } from '../context/LocalizationContext';
 import { useTranslation } from '../hooks/useTranslation';
+import { extractAddressComponents } from '../utils/locationUtils';
 import '../styles/BookingPage.css';
 import '../components/Calendar.css';
 
@@ -520,10 +521,17 @@ function BookingPage() {
 
     autocomplete.addListener('place_changed', () => {
       const place = autocomplete.getPlace();
-      if (place.formatted_address) {
+      if (place.geometry) {
+        // Use centralized utility to extract address components
+        const extracted = extractAddressComponents(place);
+        
+        // For event location, use street address if available, otherwise City, Province
+        const streetAddress = extracted.fullAddress;
+        const eventLocation = streetAddress ? `${streetAddress}, ${extracted.formattedLocation}` : extracted.formattedLocation || place.formatted_address;
+        
         setBookingData(prev => ({
           ...prev,
-          eventLocation: place.formatted_address
+          eventLocation: eventLocation
         }));
       }
     });

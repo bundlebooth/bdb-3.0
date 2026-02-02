@@ -4,9 +4,11 @@ import './EnhancedSearchBar.css';
 import Calendar from './Calendar';
 import LocationSearchModal from './LocationSearchModal';
 import DateSearchModal from './DateSearchModal';
+import { getIPGeolocationServices, formatFromGooglePlace } from '../utils/locationUtils';
 
 const EnhancedSearchBar = ({ onSearch, isScrolled }) => {
   const [location, setLocation] = useState('');
+  const [detectedCity, setDetectedCity] = useState(''); // IP-detected city for placeholder
   const [selectedDate, setSelectedDate] = useState('');
   const [showLocationDropdown, setShowLocationDropdown] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -30,29 +32,8 @@ const EnhancedSearchBar = ({ onSearch, isScrolled }) => {
 
   // Auto-detect user's city using IP geolocation (no permission required)
   const detectCityFromIP = async () => {
-    // Try multiple services with fallbacks
-    const geoServices = [
-      {
-        name: 'ipwho.is',
-        url: 'https://ipwho.is/',
-        parse: (data) => data.success && data.city ? {
-          city: data.city,
-          region: data.region,
-          lat: data.latitude,
-          lng: data.longitude
-        } : null
-      },
-      {
-        name: 'backend-proxy',
-        url: `${API_BASE_URL}/geo/ip-location`,
-        parse: (data) => data.success && data.city ? {
-          city: data.city,
-          region: data.region,
-          lat: data.lat,
-          lng: data.lng
-        } : null
-      }
-    ];
+    // Use centralized IP geolocation services
+    const geoServices = getIPGeolocationServices(API_BASE_URL);
 
     for (const service of geoServices) {
       try {
@@ -61,18 +42,18 @@ const EnhancedSearchBar = ({ onSearch, isScrolled }) => {
           const data = await response.json();
           const parsed = service.parse(data);
           if (parsed && parsed.lat && parsed.lng) {
-            const cityString = `${parsed.city}, ${parsed.region}`;
-            setLocation(cityString);
+            setDetectedCity(parsed.formattedLocation); // Store for placeholder
+            setLocation(parsed.formattedLocation);
             setUserLocation({
               latitude: parsed.lat,
               longitude: parsed.lng,
-              city: cityString
+              city: parsed.formattedLocation
             });
             return; // Success
           }
         }
       } catch (error) {
-        continue; // Try next service
+        continue;
       }
     }
   };
@@ -219,12 +200,15 @@ const EnhancedSearchBar = ({ onSearch, isScrolled }) => {
 
     autocomplete.addListener('place_changed', () => {
       const place = autocomplete.getPlace();
-      if (place.formatted_address) {
-        setLocation(place.formatted_address);
+      if (place.geometry) {
+        // Use centralized formatting utility
+        const formattedLocation = formatFromGooglePlace(place.address_components, place.name);
+        
+        setLocation(formattedLocation);
         setUserLocation({
           latitude: place.geometry?.location?.lat(),
           longitude: place.geometry?.location?.lng(),
-          city: place.formatted_address
+          city: formattedLocation
         });
         
         // Immediately hide Google Maps dropdown
@@ -270,9 +254,10 @@ const EnhancedSearchBar = ({ onSearch, isScrolled }) => {
           { location: { lat: latitude, lng: longitude } },
           (results, status) => {
             if (status === 'OK' && results[0]) {
-              const city = results[0].formatted_address;
-              setLocation(city);
-              setUserLocation({ latitude, longitude, city });
+              // Use centralized formatting utility
+              const formattedLocation = formatFromGooglePlace(results[0].address_components) || results[0].formatted_address;
+              setLocation(formattedLocation);
+              setUserLocation({ latitude, longitude, city: formattedLocation });
             } else {
               fallbackGeocoding(latitude, longitude);
             }
@@ -477,7 +462,7 @@ const EnhancedSearchBar = ({ onSearch, isScrolled }) => {
               <div className="field-input-wrapper">
                 <input
                   type="text"
-                  placeholder="Search cities in Canada"
+                  placeholder={detectedCity || ''}
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
                   onClick={(e) => e.stopPropagation()}

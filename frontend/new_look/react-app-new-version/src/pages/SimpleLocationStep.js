@@ -215,7 +215,7 @@ function SimpleLocationStep({ formData = {}, onInputChange = () => {} }) {
             className="form-input" 
             value={formData.city || ''} 
             onChange={(e) => onInputChange('city', e.target.value)} 
-            placeholder="Toronto" 
+            placeholder="" 
           />
         </div>
         <div className="form-group">
@@ -249,7 +249,7 @@ function SimpleLocationStep({ formData = {}, onInputChange = () => {} }) {
             className="form-input" 
             value={formData.country || 'Canada'} 
             onChange={(e) => onInputChange('country', e.target.value)} 
-            placeholder="Canada" 
+            placeholder="" 
           />
         </div>
       </div>

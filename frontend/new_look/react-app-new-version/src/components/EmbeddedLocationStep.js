@@ -75,7 +75,7 @@ function EmbeddedLocationStep({ formData, setFormData }) {
               <input
                 id="embedded-city"
                 type="text"
-                placeholder="Toronto"
+                placeholder=""
                 style="
                   width: 100%;
                   padding: 0.875rem 1rem;
@@ -165,7 +165,7 @@ function EmbeddedLocationStep({ formData, setFormData }) {
               <input
                 id="embedded-service-area"
                 type="text"
-                placeholder="Start typing a city name..."
+                placeholder=""
                 style="
                   flex: 1;
                   padding: 0.875rem 1rem;

@@ -10,6 +10,7 @@ import ProfileModal from '../components/ProfileModal';
 import MessagingWidget from '../components/MessagingWidget';
 import MobileBottomNav from '../components/MobileBottomNav';
 import EmojiPicker from 'emoji-picker-react';
+import RichTextEditor from '../components/common/RichTextEditor';
 
 function ForumPage() {
   const navigate = useNavigate();
@@ -693,142 +694,197 @@ function ForumPage() {
         </div>
       </div>
 
-      {/* Create Post Modal */}
+      {/* Create Post Modal - Styled to match other modals */}
       {showCreatePost && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000
-        }}>
-          <div style={{
-            background: 'white',
-            borderRadius: '16px',
-            padding: '2rem',
-            width: '100%',
-            maxWidth: '600px',
-            maxHeight: '90vh',
-            overflow: 'auto'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <h2 style={{ fontSize: '1.5rem', fontWeight: 600 }}>Create New Post</h2>
-              <button onClick={() => setShowCreatePost(false)} className="modal-close-btn">
+        <div 
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '1rem'
+          }}
+          onClick={(e) => e.target === e.currentTarget && setShowCreatePost(false)}
+        >
+          <div 
+            style={{
+              background: 'white',
+              borderRadius: '12px',
+              width: '100%',
+              maxWidth: '700px',
+              maxHeight: '90vh',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
+            }}
+          >
+            {/* Modal Header */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '1.25rem 1.5rem',
+              borderBottom: '1px solid #e5e7eb'
+            }}>
+              <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600, color: '#111827' }}>
+                Create New Post
+              </h2>
+              <button
+                onClick={() => setShowCreatePost(false)}
+                style={{
+                  width: '32px',
+                  height: '32px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '1.5rem',
+                  color: '#6b7280',
+                  borderRadius: '6px'
+                }}
+              >
                 ×
               </button>
             </div>
-            <form onSubmit={handleCreatePost}>
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Category</label>
-                <select
-                  value={newPost.categoryId}
-                  onChange={(e) => setNewPost({ ...newPost, categoryId: e.target.value })}
-                  required
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem',
-                    border: '1px solid #ddd',
-                    borderRadius: '8px',
-                    fontSize: '1rem'
-                  }}
-                >
-                  <option value="">Select a category</option>
-                  {categories.map(cat => (
-                    <option key={cat.CategoryID} value={cat.CategoryID}>{cat.Name}</option>
-                  ))}
-                </select>
-              </div>
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Title</label>
-                <input
-                  type="text"
-                  value={newPost.title}
-                  onChange={(e) => setNewPost({ ...newPost, title: e.target.value })}
-                  required
-                  maxLength={300}
-                  placeholder="What's your question or topic?"
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem',
-                    border: '1px solid #ddd',
-                    borderRadius: '8px',
-                    fontSize: '1rem'
-                  }}
-                />
-              </div>
-              <div style={{ marginBottom: '1.5rem', position: 'relative' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Content</label>
-                <textarea
-                  value={newPost.content}
-                  onChange={(e) => setNewPost({ ...newPost, content: e.target.value })}
-                  required
-                  rows={6}
-                  placeholder="Share more details..."
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem',
-                    border: '1px solid #ddd',
-                    borderRadius: '8px',
-                    fontSize: '1rem',
-                    resize: 'vertical'
-                  }}
-                />
-                <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <button
-                    type="button"
-                    onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                    style={{
-                      background: 'none',
-                      border: '1px solid #ddd',
-                      borderRadius: '8px',
-                      padding: '6px 12px',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      color: showEmojiPicker ? '#5e72e4' : '#666',
-                      fontSize: '14px'
-                    }}
-                  >
-                    <i className="far fa-smile"></i>
-                    Add Emoji
-                  </button>
-                </div>
-                {showEmojiPicker && (
-                  <div 
-                    ref={emojiPickerRef}
-                    style={{
-                      position: 'absolute',
-                      bottom: '50px',
-                      left: '0',
-                      zIndex: 1000
-                    }}
-                  >
-                    <EmojiPicker 
-                      onEmojiClick={onEmojiClick}
-                      width={300}
-                      height={350}
-                      searchDisabled={false}
-                      skinTonesDisabled
-                      previewConfig={{ showPreview: false }}
+
+            {/* Modal Body */}
+            <form onSubmit={handleCreatePost} style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+              <div style={{ flex: 1, overflow: 'auto', padding: '1.5rem' }}>
+                {/* Row 1: Title and Category */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 200px', gap: '1rem', marginBottom: '1.25rem' }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.375rem', fontSize: '0.875rem', fontWeight: 500, color: '#374151' }}>
+                      Title <span style={{ color: '#ef4444' }}>*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={newPost.title}
+                      onChange={(e) => setNewPost({ ...newPost, title: e.target.value })}
+                      required
+                      maxLength={300}
+                      placeholder="What's your question or topic?"
+                      style={{
+                        width: '100%',
+                        padding: '0.625rem 0.875rem',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '6px',
+                        fontSize: '0.9375rem',
+                        outline: 'none'
+                      }}
                     />
                   </div>
-                )}
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.375rem', fontSize: '0.875rem', fontWeight: 500, color: '#374151' }}>
+                      Category <span style={{ color: '#ef4444' }}>*</span>
+                    </label>
+                    <select
+                      value={newPost.categoryId}
+                      onChange={(e) => setNewPost({ ...newPost, categoryId: e.target.value })}
+                      required
+                      style={{
+                        width: '100%',
+                        padding: '0.625rem 0.875rem',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '6px',
+                        fontSize: '0.9375rem',
+                        background: 'white',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <option value="">Select a category</option>
+                      {categories.map(cat => (
+                        <option key={cat.CategoryID} value={cat.CategoryID}>{cat.Name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Row 2: Content Editor */}
+                <div style={{ position: 'relative' }}>
+                  <label style={{ display: 'block', marginBottom: '0.375rem', fontSize: '0.875rem', fontWeight: 500, color: '#374151' }}>
+                    Content <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <RichTextEditor
+                    value={newPost.content}
+                    onChange={(content) => setNewPost({ ...newPost, content: content })}
+                    placeholder="Share more details..."
+                    height={220}
+                  />
+                  <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <button
+                      type="button"
+                      onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                      style={{
+                        background: showEmojiPicker ? '#f3f4f6' : 'transparent',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '6px',
+                        padding: '0.5rem 0.75rem',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.375rem',
+                        color: showEmojiPicker ? '#5e72e4' : '#6b7280',
+                        fontSize: '0.875rem',
+                        fontWeight: 500
+                      }}
+                    >
+                      <i className="far fa-smile"></i>
+                      Emoji
+                    </button>
+                  </div>
+                  {showEmojiPicker && (
+                    <div 
+                      ref={emojiPickerRef}
+                      style={{
+                        position: 'absolute',
+                        bottom: '45px',
+                        left: '0',
+                        zIndex: 1001
+                      }}
+                    >
+                      <EmojiPicker 
+                        onEmojiClick={onEmojiClick}
+                        width={320}
+                        height={380}
+                        searchDisabled={false}
+                        skinTonesDisabled
+                        previewConfig={{ showPreview: false }}
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
-              <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+
+              {/* Modal Footer */}
+              <div style={{
+                display: 'flex',
+                justifyContent: 'flex-end',
+                alignItems: 'center',
+                gap: '0.75rem',
+                padding: '1rem 1.5rem',
+                borderTop: '1px solid #e5e7eb',
+                background: '#f9fafb'
+              }}>
                 <button
                   type="button"
                   onClick={() => setShowCreatePost(false)}
                   style={{
-                    padding: '0.75rem 1.5rem',
-                    border: '1px solid #ddd',
-                    borderRadius: '8px',
+                    padding: '0.625rem 1.25rem',
                     background: 'white',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    fontSize: '0.9375rem',
+                    fontWeight: 500,
+                    color: '#374151',
                     cursor: 'pointer'
                   }}
                 >
@@ -838,14 +894,15 @@ function ForumPage() {
                   type="submit"
                   disabled={creating}
                   style={{
-                    padding: '0.75rem 1.5rem',
-                    background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                    padding: '0.625rem 1.25rem',
+                    background: '#5e72e4',
+                    border: '1px solid #5e72e4',
+                    borderRadius: '6px',
+                    fontSize: '0.9375rem',
+                    fontWeight: 500,
                     color: 'white',
-                    border: 'none',
-                    borderRadius: '8px',
-                    fontWeight: 600,
                     cursor: creating ? 'not-allowed' : 'pointer',
-                    opacity: creating ? 0.7 : 1
+                    opacity: creating ? 0.6 : 1
                   }}
                 >
                   {creating ? 'Creating...' : 'Create Post'}

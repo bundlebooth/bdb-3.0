@@ -10,6 +10,7 @@ import VendorCard from '../components/VendorCard';
 import { showBanner } from '../utils/helpers';
 import { useUserOnlineStatus } from '../hooks/useOnlineStatus';
 import { decodeUserId, isPublicId } from '../utils/hashIds';
+import { getProfileLocation } from '../utils/locationUtils';
 import './HostProfilePage.css';
 
 function HostProfilePage() {
@@ -535,10 +536,10 @@ function HostProfilePage() {
                     <span>Speaks {enhancedProfile.Languages}</span>
                   </div>
                 )}
-                {(enhancedProfile?.City || enhancedProfile?.Country) && (
+                {(enhancedProfile?.City || enhancedProfile?.State) && (
                   <div className="host-quick-item">
                     <i className="fas fa-map-marker-alt"></i>
-                    <span>Lives in {[enhancedProfile?.City, enhancedProfile?.Country].filter(Boolean).join(', ')}</span>
+                    <span>Lives in {getProfileLocation(enhancedProfile)}</span>
                   </div>
                 )}
                 {host.isVerified && (

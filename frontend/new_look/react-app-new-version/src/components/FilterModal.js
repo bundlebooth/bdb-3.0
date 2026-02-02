@@ -2,6 +2,12 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import UniversalModal from './UniversalModal';
 import { API_BASE_URL } from '../config';
 
+// Extract just the city name from "City, Province" format for API filtering
+const extractCityName = (location) => {
+  if (!location) return null;
+  return location.split(',')[0].trim() || null;
+};
+
 // Number of items to show before "Show more"
 const INITIAL_VISIBLE_COUNT = 10;
 
@@ -316,7 +322,7 @@ function FilterModal({ isOpen, onClose, filters, onFilterChange, userLocation, o
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           category: category || null,
-          city: city || null,
+          city: extractCityName(city),
           latitude: userLocation?.lat || null,
           longitude: userLocation?.lng || null,
           radiusMiles: 100, // Use a larger radius for filter count to show more options

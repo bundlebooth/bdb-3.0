@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { formatFromGooglePlace } from '../utils/locationUtils';
 
 function NewLocationStep({ formData = {}, onInputChange = () => {} }) {
   const addressInputRef = useRef(null);
@@ -107,10 +108,13 @@ function NewLocationStep({ formData = {}, onInputChange = () => {} }) {
 
           cityAutocomplete.addListener('place_changed', () => {
             const place = cityAutocomplete.getPlace();
-            if (place.formatted_address) {
+            if (place.geometry) {
+              // Use centralized formatting utility
+              const areaToAdd = formatFromGooglePlace(place.address_components, place.name);
+              
               const areas = formData.serviceAreas || [];
-              if (!areas.includes(place.formatted_address)) {
-                onInputChange('serviceAreas', [...areas, place.formatted_address]);
+              if (areaToAdd && !areas.includes(areaToAdd)) {
+                onInputChange('serviceAreas', [...areas, areaToAdd]);
               }
               cityInputRef.current.value = '';
             }
@@ -170,7 +174,7 @@ function NewLocationStep({ formData = {}, onInputChange = () => {} }) {
             type="text"
             value={formData.city || ''}
             onChange={(e) => onInputChange('city', e.target.value)}
-            placeholder="Toronto"
+            placeholder=""
             style={{
               width: '100%',
               padding: '12px',
@@ -231,7 +235,7 @@ function NewLocationStep({ formData = {}, onInputChange = () => {} }) {
             type="text"
             value={formData.country || 'Canada'}
             onChange={(e) => onInputChange('country', e.target.value)}
-            placeholder="Canada"
+            placeholder=""
             style={{
               width: '100%',
               padding: '12px',
@@ -255,7 +259,7 @@ function NewLocationStep({ formData = {}, onInputChange = () => {} }) {
         <input
           ref={cityInputRef}
           type="text"
-          placeholder="Start typing a city name..."
+          placeholder=""
           style={{
             width: '100%',
             padding: '12px',

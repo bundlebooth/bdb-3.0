@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { GOOGLE_MAPS_API_KEY } from '../config';
+import { formatFromGooglePlace, extractAddressComponents } from '../utils/locationUtils';
 
 function WorkingGoogleLocationStep({ formData, setFormData }) {
   const [serviceAreaInput, setServiceAreaInput] = useState('');
@@ -82,27 +83,18 @@ function WorkingGoogleLocationStep({ formData, setFormData }) {
         const place = autocomplete.getPlace();
         
         if (place.address_components) {
-          const comps = place.address_components;
-          const pick = (type) => comps.find(c => c.types.includes(type))?.long_name || '';
-          
-          const streetNumber = pick('street_number');
-          const route = pick('route');
-          const fullAddress = streetNumber && route ? `${streetNumber} ${route}` : place.formatted_address;
-          
-          const city = pick('locality') || pick('sublocality') || pick('postal_town') || '';
-          const province = pick('administrative_area_level_1') || '';
-          const postalCode = pick('postal_code') || '';
-          const country = pick('country') || 'Canada';
+          // Use centralized utility to extract address components
+          const extracted = extractAddressComponents(place);
           
           setFormData(prev => ({
             ...prev,
-            address: fullAddress || '',
-            city: city,
-            province: province,
-            country: country,
-            postalCode: postalCode,
-            latitude: place.geometry?.location?.lat() || null,
-            longitude: place.geometry?.location?.lng() || null
+            address: extracted.fullAddress || '',
+            city: extracted.city,
+            province: extracted.province,
+            country: extracted.country,
+            postalCode: extracted.postalCode,
+            latitude: extracted.latitude,
+            longitude: extracted.longitude
           }));
           
         }
@@ -128,10 +120,11 @@ function WorkingGoogleLocationStep({ formData, setFormData }) {
       autocomplete.addListener('place_changed', () => {
         const place = autocomplete.getPlace();
         
-        if (place.formatted_address) {
-          const areaToAdd = place.formatted_address;
+        if (place.geometry) {
+          // Use centralized formatting utility
+          const areaToAdd = formatFromGooglePlace(place.address_components, place.name);
           
-          if (!formData.serviceAreas.includes(areaToAdd)) {
+          if (areaToAdd && !formData.serviceAreas.includes(areaToAdd)) {
             setFormData(prev => ({
               ...prev,
               serviceAreas: [...prev.serviceAreas, areaToAdd]
@@ -207,7 +200,7 @@ function WorkingGoogleLocationStep({ formData, setFormData }) {
               value={formData.city || ''}
               onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value }))}
               className="form-input"
-              placeholder="Toronto"
+              placeholder=""
               style={{
                 width: '100%',
                 padding: '0.875rem 1rem',
@@ -306,7 +299,7 @@ function WorkingGoogleLocationStep({ formData, setFormData }) {
               value={serviceAreaInput}
               onChange={(e) => setServiceAreaInput(e.target.value)}
               className="form-input"
-              placeholder="Start typing a city name..."
+              placeholder=""
               onClick={() => {
                 // Reinitialize on click like EnhancedSearchBar does
                 setTimeout(() => {
