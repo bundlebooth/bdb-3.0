@@ -234,5 +234,44 @@ BEGIN
             PRINT 'Added new_support_message template';
         END
     END
+
+    -- Add payment_failed template (for automation rules)
+    IF NOT EXISTS (SELECT 1 FROM [admin].[EmailTemplates] WHERE [TemplateKey] = 'payment_failed')
+    BEGIN
+        DECLARE @PaymentFailedBodyID INT;
+        SELECT @PaymentFailedBodyID = ComponentID FROM [admin].[EmailTemplateComponents] WHERE [ComponentName] = 'payment_failed_body';
+        IF @PaymentFailedBodyID IS NOT NULL
+        BEGIN
+            INSERT [admin].[EmailTemplates] ([TemplateKey], [TemplateName], [HeaderComponentID], [BodyComponentID], [FooterComponentID], [Subject], [Category], [AvailableVariables], [IsActive], [CreatedAt], [UpdatedAt])
+            VALUES (N'payment_failed', N'Payment Failed - Retry Request', 1, @PaymentFailedBodyID, 2, N'Action Required: Payment Failed for Your Booking', N'booking', N'recipientName,bookingId,serviceName,vendorName,amount,retryUrl', 1, GETDATE(), GETDATE());
+            PRINT 'Added payment_failed template';
+        END
+    END
+
+    -- Add vendor_inactivity template (for automation rules)
+    IF NOT EXISTS (SELECT 1 FROM [admin].[EmailTemplates] WHERE [TemplateKey] = 'vendor_inactivity')
+    BEGIN
+        DECLARE @VendorInactivityBodyID INT;
+        SELECT @VendorInactivityBodyID = ComponentID FROM [admin].[EmailTemplateComponents] WHERE [ComponentName] = 'vendor_inactivity_body';
+        IF @VendorInactivityBodyID IS NOT NULL
+        BEGIN
+            INSERT [admin].[EmailTemplates] ([TemplateKey], [TemplateName], [HeaderComponentID], [BodyComponentID], [FooterComponentID], [Subject], [Category], [AvailableVariables], [IsActive], [CreatedAt], [UpdatedAt])
+            VALUES (N'vendor_inactivity', N'Vendor Inactivity Alert', 1, @VendorInactivityBodyID, 2, N'We Miss You! Your Planbeau Profile Needs Attention', N'vendor', N'recipientName,vendorName,lastActiveDate,dashboardUrl', 1, GETDATE(), GETDATE());
+            PRINT 'Added vendor_inactivity template';
+        END
+    END
+
+    -- Add user_inactivity template (for automation rules)
+    IF NOT EXISTS (SELECT 1 FROM [admin].[EmailTemplates] WHERE [TemplateKey] = 'user_inactivity')
+    BEGIN
+        DECLARE @UserInactivityBodyID INT;
+        SELECT @UserInactivityBodyID = ComponentID FROM [admin].[EmailTemplateComponents] WHERE [ComponentName] = 'user_inactivity_body';
+        IF @UserInactivityBodyID IS NOT NULL
+        BEGIN
+            INSERT [admin].[EmailTemplates] ([TemplateKey], [TemplateName], [HeaderComponentID], [BodyComponentID], [FooterComponentID], [Subject], [Category], [AvailableVariables], [IsActive], [CreatedAt], [UpdatedAt])
+            VALUES (N'user_inactivity', N'User Inactivity Alert', 1, @UserInactivityBodyID, 2, N'We Miss You! Come Back to Planbeau', N'user', N'recipientName,searchUrl,dashboardUrl', 1, GETDATE(), GETDATE());
+            PRINT 'Added user_inactivity template';
+        END
+    END
 END
 GO

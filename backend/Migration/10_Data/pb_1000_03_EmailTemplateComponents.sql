@@ -605,4 +605,55 @@ BEGIN
     );
     PRINT 'Added New Support Message component';
 END
+
+-- Payment Failed Body (for automation rules)
+IF NOT EXISTS (SELECT 1 FROM [admin].[EmailTemplateComponents] WHERE [ComponentName] = 'payment_failed_body')
+BEGIN
+    INSERT [admin].[EmailTemplateComponents] ([ComponentType], [ComponentName], [HtmlContent], [TextContent], [Description], [IsActive], [CreatedAt], [UpdatedAt])
+    VALUES (
+        N'body', 
+        N'payment_failed_body', 
+        N'<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;"><h2 style="color: #ef4444;">Payment Failed</h2><p>Hi {{recipientName}},</p><p>We were unable to process your payment of <strong>{{amount}}</strong> for your booking with <strong>{{vendorName}}</strong>.</p><p>Please update your payment method and try again to secure your booking.</p><p><a href="{{retryUrl}}" style="display: inline-block; background: #5086E8; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px;">Retry Payment</a></p><p>If you need assistance, please contact our support team.</p></div>', 
+        N'Hi {{recipientName}}, We were unable to process your payment of {{amount}} for your booking with {{vendorName}}. Please retry at: {{retryUrl}}', 
+        N'Payment failed notification for automation rules', 
+        1, 
+        GETDATE(), 
+        GETDATE()
+    );
+    PRINT 'Added payment_failed_body component';
+END
+
+-- Vendor Inactivity Body (for automation rules)
+IF NOT EXISTS (SELECT 1 FROM [admin].[EmailTemplateComponents] WHERE [ComponentName] = 'vendor_inactivity_body')
+BEGIN
+    INSERT [admin].[EmailTemplateComponents] ([ComponentType], [ComponentName], [HtmlContent], [TextContent], [Description], [IsActive], [CreatedAt], [UpdatedAt])
+    VALUES (
+        N'body', 
+        N'vendor_inactivity_body', 
+        N'<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;"><h2 style="color: #5086E8;">We Miss You!</h2><p>Hi {{recipientName}},</p><p>It has been a while since you last updated your Planbeau vendor profile. Your potential clients are waiting!</p><p>Last active: {{lastActiveDate}}</p><p>Keep your profile fresh to attract more bookings:</p><ul><li>Update your availability</li><li>Add new photos to your gallery</li><li>Review and respond to inquiries</li></ul><p><a href="{{dashboardUrl}}" style="display: inline-block; background: #5086E8; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px;">Go to Dashboard</a></p></div>', 
+        N'Hi {{recipientName}}, It has been a while since you updated your Planbeau profile. Last active: {{lastActiveDate}}. Go to dashboard: {{dashboardUrl}}', 
+        N'Vendor inactivity alert for automation rules', 
+        1, 
+        GETDATE(), 
+        GETDATE()
+    );
+    PRINT 'Added vendor_inactivity_body component';
+END
+
+-- User Inactivity Body (for automation rules)
+IF NOT EXISTS (SELECT 1 FROM [admin].[EmailTemplateComponents] WHERE [ComponentName] = 'user_inactivity_body')
+BEGIN
+    INSERT [admin].[EmailTemplateComponents] ([ComponentType], [ComponentName], [HtmlContent], [TextContent], [Description], [IsActive], [CreatedAt], [UpdatedAt])
+    VALUES (
+        N'body', 
+        N'user_inactivity_body', 
+        N'<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;"><h2 style="color: #5086E8;">We Miss You!</h2><p>Hi {{recipientName}},</p><p>It has been a while since you visited Planbeau. We have amazing vendors waiting to help with your next event!</p><p><a href="{{searchUrl}}" style="display: inline-block; background: #5086E8; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px;">Find Vendors</a></p></div>', 
+        N'Hi {{recipientName}}, It has been a while since you visited Planbeau. Find vendors at: {{searchUrl}}', 
+        N'User inactivity alert for automation rules', 
+        1, 
+        GETDATE(), 
+        GETDATE()
+    );
+    PRINT 'Added user_inactivity_body component';
+END
 GO
