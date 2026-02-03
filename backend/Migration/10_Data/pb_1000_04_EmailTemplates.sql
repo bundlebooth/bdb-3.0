@@ -273,5 +273,31 @@ BEGIN
             PRINT 'Added user_inactivity template';
         END
     END
+
+    -- Add account_locked template (for chat violations)
+    IF NOT EXISTS (SELECT 1 FROM [admin].[EmailTemplates] WHERE [TemplateKey] = 'account_locked')
+    BEGIN
+        DECLARE @AccountLockedBodyID INT;
+        SELECT @AccountLockedBodyID = ComponentID FROM [admin].[EmailTemplateComponents] WHERE [ComponentName] = 'Account Locked';
+        IF @AccountLockedBodyID IS NOT NULL
+        BEGIN
+            INSERT [admin].[EmailTemplates] ([TemplateKey], [TemplateName], [HeaderComponentID], [BodyComponentID], [FooterComponentID], [Subject], [Category], [AvailableVariables], [IsActive], [CreatedAt], [UpdatedAt])
+            VALUES (N'account_locked', N'Account Locked Notification', 1, @AccountLockedBodyID, 2, N'Your {{platformName}} Account Has Been Locked', N'admin', N'["userName","lockReason","lockType","supportEmail","supportUrl","platformName","platformUrl","currentYear","logoUrl"]', 1, GETDATE(), GETDATE());
+            PRINT 'Added account_locked template';
+        END
+    END
+
+    -- Add account_unlocked template
+    IF NOT EXISTS (SELECT 1 FROM [admin].[EmailTemplates] WHERE [TemplateKey] = 'account_unlocked')
+    BEGIN
+        DECLARE @AccountUnlockedBodyID INT;
+        SELECT @AccountUnlockedBodyID = ComponentID FROM [admin].[EmailTemplateComponents] WHERE [ComponentName] = 'Account Unlocked';
+        IF @AccountUnlockedBodyID IS NOT NULL
+        BEGIN
+            INSERT [admin].[EmailTemplates] ([TemplateKey], [TemplateName], [HeaderComponentID], [BodyComponentID], [FooterComponentID], [Subject], [Category], [AvailableVariables], [IsActive], [CreatedAt], [UpdatedAt])
+            VALUES (N'account_unlocked', N'Account Unlocked Notification', 1, @AccountUnlockedBodyID, 2, N'Your {{platformName}} Account Has Been Unlocked', N'admin', N'["userName","unlockReason","dashboardUrl","platformName","platformUrl","currentYear","logoUrl"]', 1, GETDATE(), GETDATE());
+            PRINT 'Added account_unlocked template';
+        END
+    END
 END
 GO

@@ -619,6 +619,49 @@ export const getBlogStats = async () => {
 };
 
 // ============================================================
+// CHAT MODERATION
+// ============================================================
+
+export const getModerationFlagged = async (params = {}) => {
+  const queryString = new URLSearchParams(
+    Object.fromEntries(Object.entries(params).filter(([_, v]) => v != null))
+  ).toString();
+  const response = await apiGet(`/admin/moderation/flagged${queryString ? `?${queryString}` : ''}`);
+  return handleApiResponse(response);
+};
+
+export const getModerationStats = async () => {
+  const response = await apiGet('/admin/moderation/stats');
+  return handleApiResponse(response);
+};
+
+export const getModerationNotifications = async (params = {}) => {
+  const queryString = new URLSearchParams(params).toString();
+  const response = await apiGet(`/admin/moderation/notifications${queryString ? `?${queryString}` : ''}`);
+  return handleApiResponse(response);
+};
+
+export const reviewViolation = async (data) => {
+  const response = await apiPost('/admin/moderation/review', data);
+  return handleApiResponse(response);
+};
+
+export const lockUserAccount = async (data) => {
+  const response = await apiPost('/admin/moderation/lock-user', data);
+  return handleApiResponse(response);
+};
+
+export const unlockUserAccount = async (data) => {
+  const response = await apiPost('/admin/moderation/unlock-user', data);
+  return handleApiResponse(response);
+};
+
+export const getUserViolations = async (userId) => {
+  const response = await apiGet(`/admin/moderation/user-violations/${userId}`);
+  return handleApiResponse(response);
+};
+
+// ============================================================
 // EXPORT ALL AS DEFAULT OBJECT
 // ============================================================
 
@@ -753,7 +796,16 @@ const adminApi = {
   
   // Impersonation
   impersonateUser,
-  endImpersonation
+  endImpersonation,
+  
+  // Moderation
+  getModerationFlagged,
+  getModerationStats,
+  getModerationNotifications,
+  reviewViolation,
+  lockUserAccount,
+  unlockUserAccount,
+  getUserViolations
 };
 
 export default adminApi;

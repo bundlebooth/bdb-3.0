@@ -1,14 +1,15 @@
 /**
  * Chat Section - Admin Dashboard
- * Real-time communication oversight and live chat management
+ * Real-time communication oversight, live chat management, and content moderation
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { formatRelativeTime } from '../../../utils/formatUtils';
+import { formatRelativeTime, formatDate } from '../../../utils/formatUtils';
 import adminApi from '../../../services/adminApi';
 import { GIPHY_API_KEY } from '../../../config';
 
 function ChatSection() {
+  const [activeTab, setActiveTab] = useState('conversations');
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -16,6 +17,27 @@ function ChatSection() {
   const [conversationMessages, setConversationMessages] = useState([]);
   const [supportReply, setSupportReply] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
+  
+  // Flagged messages / moderation state
+  const [flaggedMessages, setFlaggedMessages] = useState([]);
+  const [flaggedLoading, setFlaggedLoading] = useState(false);
+  const [flaggedTotal, setFlaggedTotal] = useState(0);
+  const [flaggedPage, setFlaggedPage] = useState(1);
+  const [reviewFilter, setReviewFilter] = useState('pending'); // 'pending', 'reviewed', 'all'
+  const [violationTypeFilter, setViolationTypeFilter] = useState('');
+  const [moderationStats, setModerationStats] = useState(null);
+  
+  // Review modal state
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [selectedViolation, setSelectedViolation] = useState(null);
+  const [reviewAction, setReviewAction] = useState('');
+  const [reviewNotes, setReviewNotes] = useState('');
+  
+  // Lock user modal state
+  const [showLockModal, setShowLockModal] = useState(false);
+  const [lockUserId, setLockUserId] = useState(null);
+  const [lockReason, setLockReason] = useState('');
+  const [lockType, setLockType] = useState('chat_violation');
   
   // Chat enhancements - emoji/GIF picker
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -82,6 +104,139 @@ function ChatSection() {
     fetchConversations();
   }, [fetchConversations]);
 
+  // Fetch flagged messages for moderation
+  const fetchFlaggedMessages = useCallback(async () => {
+    try {
+      setFlaggedLoading(true);
+      const isReviewed = reviewFilter === 'pending' ? 'false' : reviewFilter === 'reviewed' ? 'true' : null;
+      const data = await adminApi.getModerationFlagged({
+        page: flaggedPage,
+        limit: 20,
+        isReviewed,
+        violationType: violationTypeFilter || null
+      });
+      setFlaggedMessages(data?.violations || []);
+      setFlaggedTotal(data?.total || 0);
+    } catch (err) {
+      console.error('Error fetching flagged messages:', err);
+    } finally {
+      setFlaggedLoading(false);
+    }
+  }, [flaggedPage, reviewFilter, violationTypeFilter]);
+
+  // Fetch moderation stats
+  const fetchModerationStats = useCallback(async () => {
+    try {
+      const data = await adminApi.getModerationStats();
+      setModerationStats(data?.stats || null);
+    } catch (err) {
+      console.error('Error fetching moderation stats:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'flagged') {
+      fetchFlaggedMessages();
+      fetchModerationStats();
+    }
+  }, [activeTab, fetchFlaggedMessages, fetchModerationStats]);
+
+  // Handle review violation
+  const handleReviewViolation = async () => {
+    if (!selectedViolation || !reviewAction) return;
+    setActionLoading(true);
+    try {
+      await adminApi.reviewViolation({
+        violationId: selectedViolation.ViolationID,
+        actionTaken: reviewAction,
+        adminNotes: reviewNotes
+      });
+      setShowReviewModal(false);
+      setSelectedViolation(null);
+      setReviewAction('');
+      setReviewNotes('');
+      fetchFlaggedMessages();
+      fetchModerationStats();
+    } catch (err) {
+      alert('Failed to review violation');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Handle lock user
+  const handleLockUser = async () => {
+    if (!lockUserId || !lockReason) return;
+    setActionLoading(true);
+    try {
+      await adminApi.lockUserAccount({
+        userId: lockUserId,
+        lockType,
+        lockReason
+      });
+      setShowLockModal(false);
+      setLockUserId(null);
+      setLockReason('');
+      fetchFlaggedMessages();
+      fetchModerationStats();
+      alert('User account locked successfully');
+    } catch (err) {
+      alert('Failed to lock user account');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Handle unlock user
+  const handleUnlockUser = async (userId) => {
+    if (!window.confirm('Are you sure you want to unlock this user account?')) return;
+    setActionLoading(true);
+    try {
+      await adminApi.unlockUserAccount({ userId, unlockReason: 'Account reviewed and unlocked by admin' });
+      fetchFlaggedMessages();
+      fetchModerationStats();
+      alert('User account unlocked successfully');
+    } catch (err) {
+      alert('Failed to unlock user account');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Get severity badge
+  const getSeverityBadge = (severity) => {
+    const badges = {
+      1: { label: 'Warning', class: 'admin-badge-warning' },
+      2: { label: 'Moderate', class: 'admin-badge-info' },
+      3: { label: 'Severe', class: 'admin-badge-danger' }
+    };
+    const badge = badges[severity] || badges[1];
+    return <span className={`admin-badge ${badge.class}`}>{badge.label}</span>;
+  };
+
+  // Get violation type badge
+  const getViolationTypeBadge = (type) => {
+    const colors = {
+      email: '#3b82f6',
+      phone: '#8b5cf6',
+      profanity: '#f59e0b',
+      racism: '#ef4444',
+      solicitation: '#ec4899'
+    };
+    return (
+      <span style={{
+        padding: '0.25rem 0.5rem',
+        borderRadius: '4px',
+        fontSize: '0.75rem',
+        fontWeight: 500,
+        background: `${colors[type] || '#6b7280'}20`,
+        color: colors[type] || '#6b7280'
+      }}>
+        {type}
+      </span>
+    );
+  };
+
   const handleViewConversation = async (conv) => {
     setSelectedConversation(conv);
     try {
@@ -109,8 +264,205 @@ function ChatSection() {
     }
   };
 
+  // Render flagged messages tab content
+  const renderFlaggedMessages = () => (
+    <div className="admin-card">
+      {/* Stats Row */}
+      {moderationStats && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', padding: '1rem', borderBottom: '1px solid #e5e7eb' }}>
+          <div style={{ textAlign: 'center', padding: '0.75rem' }}>
+            <div style={{ fontSize: '1.5rem', fontWeight: 600, color: '#ef4444' }}>{moderationStats.PendingReviews || 0}</div>
+            <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>Pending Reviews</div>
+          </div>
+          <div style={{ textAlign: 'center', padding: '0.75rem' }}>
+            <div style={{ fontSize: '1.5rem', fontWeight: 600, color: '#f59e0b' }}>{moderationStats.ViolationsLast24h || 0}</div>
+            <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>Last 24h</div>
+          </div>
+          <div style={{ textAlign: 'center', padding: '0.75rem' }}>
+            <div style={{ fontSize: '1.5rem', fontWeight: 600, color: '#8b5cf6' }}>{moderationStats.UniqueViolators || 0}</div>
+            <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>Unique Violators</div>
+          </div>
+          <div style={{ textAlign: 'center', padding: '0.75rem' }}>
+            <div style={{ fontSize: '1.5rem', fontWeight: 600, color: '#dc2626' }}>{moderationStats.LockedAccounts || 0}</div>
+            <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>Locked Accounts</div>
+          </div>
+        </div>
+      )}
+
+      {/* Filters */}
+      <div className="admin-card-header" style={{ borderBottom: '1px solid #e5e7eb' }}>
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+          <select
+            value={reviewFilter}
+            onChange={(e) => { setReviewFilter(e.target.value); setFlaggedPage(1); }}
+            className="admin-select"
+            style={{ padding: '0.5rem', borderRadius: '6px', border: '1px solid #e5e7eb' }}
+          >
+            <option value="pending">Pending Review</option>
+            <option value="reviewed">Reviewed</option>
+            <option value="all">All</option>
+          </select>
+          <select
+            value={violationTypeFilter}
+            onChange={(e) => { setViolationTypeFilter(e.target.value); setFlaggedPage(1); }}
+            className="admin-select"
+            style={{ padding: '0.5rem', borderRadius: '6px', border: '1px solid #e5e7eb' }}
+          >
+            <option value="">All Types</option>
+            <option value="email">Email</option>
+            <option value="phone">Phone</option>
+            <option value="profanity">Profanity</option>
+            <option value="racism">Racism</option>
+            <option value="solicitation">Solicitation</option>
+          </select>
+        </div>
+        <button className="admin-btn admin-btn-secondary admin-btn-sm" onClick={fetchFlaggedMessages}>
+          <i className="fas fa-sync-alt"></i> Refresh
+        </button>
+      </div>
+
+      {/* Flagged Messages Table */}
+      <div className="admin-card-body" style={{ padding: 0 }}>
+        {flaggedLoading ? (
+          <div className="admin-loading"><div className="admin-loading-spinner"></div><p>Loading...</p></div>
+        ) : flaggedMessages.length === 0 ? (
+          <div className="admin-empty-state" style={{ padding: '3rem' }}>
+            <i className="fas fa-check-circle" style={{ color: '#10b981' }}></i>
+            <h3>No Flagged Messages</h3>
+            <p>All clear! No violations to review.</p>
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>User</th>
+                  <th>Type</th>
+                  <th>Severity</th>
+                  <th>Detected</th>
+                  <th>Message Preview</th>
+                  <th>Date</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {flaggedMessages.map((v) => (
+                  <tr key={v.ViolationID}>
+                    <td>
+                      <div>
+                        <strong>{v.UserName || 'Unknown'}</strong>
+                        {v.UserIsLocked && <span className="admin-badge admin-badge-danger" style={{ marginLeft: '0.5rem' }}>Locked</span>}
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>{v.UserEmail}</div>
+                      <div style={{ fontSize: '0.7rem', color: '#9ca3af' }}>{v.UserTotalViolations} total violations</div>
+                    </td>
+                    <td>{getViolationTypeBadge(v.ViolationType)}</td>
+                    <td>{getSeverityBadge(v.Severity)}</td>
+                    <td style={{ maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {v.DetectedContent || '-'}
+                    </td>
+                    <td style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {v.OriginalMessage?.substring(0, 100) || '-'}
+                    </td>
+                    <td style={{ fontSize: '0.8rem', color: '#6b7280' }}>{formatRelativeTime(v.CreatedAt)}</td>
+                    <td>
+                      {v.IsReviewed ? (
+                        <span className="admin-badge admin-badge-success">{v.ActionTaken}</span>
+                      ) : (
+                        <span className="admin-badge admin-badge-warning">Pending</span>
+                      )}
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        {!v.IsReviewed && (
+                          <button
+                            className="admin-btn admin-btn-primary admin-btn-sm"
+                            onClick={() => { setSelectedViolation(v); setShowReviewModal(true); }}
+                            title="Review"
+                          >
+                            <i className="fas fa-gavel"></i>
+                          </button>
+                        )}
+                        {!v.UserIsLocked ? (
+                          <button
+                            className="admin-btn admin-btn-danger admin-btn-sm"
+                            onClick={() => { setLockUserId(v.UserID); setShowLockModal(true); }}
+                            title="Lock Account"
+                          >
+                            <i className="fas fa-lock"></i>
+                          </button>
+                        ) : (
+                          <button
+                            className="admin-btn admin-btn-success admin-btn-sm"
+                            onClick={() => handleUnlockUser(v.UserID)}
+                            title="Unlock Account"
+                          >
+                            <i className="fas fa-unlock"></i>
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Pagination */}
+      {flaggedTotal > 20 && (
+        <div style={{ padding: '1rem', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'center', gap: '0.5rem' }}>
+          <button
+            className="admin-btn admin-btn-secondary admin-btn-sm"
+            disabled={flaggedPage === 1}
+            onClick={() => setFlaggedPage(p => p - 1)}
+          >
+            Previous
+          </button>
+          <span style={{ padding: '0.5rem 1rem', color: '#6b7280' }}>
+            Page {flaggedPage} of {Math.ceil(flaggedTotal / 20)}
+          </span>
+          <button
+            className="admin-btn admin-btn-secondary admin-btn-sm"
+            disabled={flaggedPage >= Math.ceil(flaggedTotal / 20)}
+            onClick={() => setFlaggedPage(p => p + 1)}
+          >
+            Next
+          </button>
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="admin-section">
+      {/* Tabs */}
+      <div className="admin-tabs" style={{ marginBottom: '1.5rem' }}>
+        <button
+          className={`admin-tab ${activeTab === 'conversations' ? 'active' : ''}`}
+          onClick={() => setActiveTab('conversations')}
+        >
+          <i className="fas fa-comments" style={{ marginRight: '0.5rem' }}></i>
+          Live Chat
+        </button>
+        <button
+          className={`admin-tab ${activeTab === 'flagged' ? 'active' : ''}`}
+          onClick={() => setActiveTab('flagged')}
+        >
+          <i className="fas fa-flag" style={{ marginRight: '0.5rem' }}></i>
+          Flagged Messages
+          {moderationStats?.PendingReviews > 0 && (
+            <span className="admin-badge admin-badge-danger" style={{ marginLeft: '0.5rem' }}>
+              {moderationStats.PendingReviews}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* Tab Content */}
+      {activeTab === 'flagged' ? renderFlaggedMessages() : (
       <div style={{ display: 'grid', gridTemplateColumns: '350px 1fr', gap: '1.5rem', height: '650px' }}>
         {/* Conversations List */}
         <div className="admin-card" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -369,6 +721,124 @@ function ChatSection() {
           )}
         </div>
       </div>
+      )}
+
+      {/* Review Violation Modal */}
+      {showReviewModal && selectedViolation && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
+        }}>
+          <div style={{ background: 'white', borderRadius: '12px', padding: '1.5rem', width: '500px', maxWidth: '90vw' }}>
+            <h3 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>Review Violation</h3>
+            
+            <div style={{ marginBottom: '1rem', padding: '1rem', background: '#f9fafb', borderRadius: '8px' }}>
+              <p style={{ margin: '0 0 0.5rem' }}><strong>User:</strong> {selectedViolation.UserName}</p>
+              <p style={{ margin: '0 0 0.5rem' }}><strong>Type:</strong> {selectedViolation.ViolationType}</p>
+              <p style={{ margin: '0 0 0.5rem' }}><strong>Detected:</strong> {selectedViolation.DetectedContent}</p>
+              <p style={{ margin: '0', fontSize: '0.9rem', color: '#6b7280' }}><strong>Message:</strong> {selectedViolation.OriginalMessage?.substring(0, 200)}</p>
+            </div>
+
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Action</label>
+              <select
+                value={reviewAction}
+                onChange={(e) => setReviewAction(e.target.value)}
+                style={{ width: '100%', padding: '0.75rem', border: '1px solid #e5e7eb', borderRadius: '6px' }}
+              >
+                <option value="">Select action...</option>
+                <option value="dismissed">Dismiss (False Positive)</option>
+                <option value="warned">Warn User</option>
+                <option value="locked">Lock Account</option>
+                <option value="escalated">Escalate</option>
+              </select>
+            </div>
+
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Notes (optional)</label>
+              <textarea
+                value={reviewNotes}
+                onChange={(e) => setReviewNotes(e.target.value)}
+                placeholder="Add notes about this review..."
+                style={{ width: '100%', padding: '0.75rem', border: '1px solid #e5e7eb', borderRadius: '6px', minHeight: '80px', resize: 'vertical' }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+              <button
+                className="admin-btn admin-btn-secondary"
+                onClick={() => { setShowReviewModal(false); setSelectedViolation(null); setReviewAction(''); setReviewNotes(''); }}
+              >
+                Cancel
+              </button>
+              <button
+                className="admin-btn admin-btn-primary"
+                onClick={handleReviewViolation}
+                disabled={!reviewAction || actionLoading}
+              >
+                {actionLoading ? 'Saving...' : 'Submit Review'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Lock User Modal */}
+      {showLockModal && lockUserId && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
+        }}>
+          <div style={{ background: 'white', borderRadius: '12px', padding: '1.5rem', width: '500px', maxWidth: '90vw' }}>
+            <h3 style={{ margin: '0 0 1rem', fontSize: '1.25rem', color: '#dc2626' }}>
+              <i className="fas fa-lock" style={{ marginRight: '0.5rem' }}></i>
+              Lock User Account
+            </h3>
+            
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Lock Type</label>
+              <select
+                value={lockType}
+                onChange={(e) => setLockType(e.target.value)}
+                style={{ width: '100%', padding: '0.75rem', border: '1px solid #e5e7eb', borderRadius: '6px' }}
+              >
+                <option value="chat_violation">Chat Policy Violation</option>
+                <option value="admin_manual">Administrative Action</option>
+                <option value="suspicious_activity">Suspicious Activity</option>
+              </select>
+            </div>
+
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Reason *</label>
+              <textarea
+                value={lockReason}
+                onChange={(e) => setLockReason(e.target.value)}
+                placeholder="Explain why this account is being locked..."
+                style={{ width: '100%', padding: '0.75rem', border: '1px solid #e5e7eb', borderRadius: '6px', minHeight: '100px', resize: 'vertical' }}
+              />
+              <p style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: '0.5rem' }}>
+                This reason will be sent to the user via email.
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+              <button
+                className="admin-btn admin-btn-secondary"
+                onClick={() => { setShowLockModal(false); setLockUserId(null); setLockReason(''); }}
+              >
+                Cancel
+              </button>
+              <button
+                className="admin-btn admin-btn-danger"
+                onClick={handleLockUser}
+                disabled={!lockReason.trim() || actionLoading}
+              >
+                {actionLoading ? 'Locking...' : 'Lock Account'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

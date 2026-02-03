@@ -73,7 +73,7 @@ BEGIN
             WHERE ConversationID = c.ConversationID 
             ORDER BY CreatedAt DESC
         )
-    WHERE c.UserID = @UserID OR (v.UserID = @UserID AND @UserVendorProfileID IS NOT NULL)
+    WHERE c.UserID = @UserID
     GROUP BY c.ConversationID, c.VendorProfileID, c.CreatedAt, c.UserID, 
              u.FirstName, u.LastName, u.ProfileImageURL,
              v.BusinessName, v.LogoURL, v.UserID,

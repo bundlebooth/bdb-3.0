@@ -7,9 +7,10 @@ import { decodeConversationId, isPublicId } from '../../../utils/hashIds';
 import BookingDetailsModal from '../BookingDetailsModal';
 
 function UnifiedMessagesSection({ onSectionChange, forceViewMode = null }) {
-  const { currentUser } = useAuth();
+  const { currentUser, logout } = useAuth();
   const [conversations, setConversations] = useState([]);
   const [allConversations, setAllConversations] = useState({ client: [], vendor: [] });
+  const [messageBlockedAlert, setMessageBlockedAlert] = useState(null); // For showing blocked message alerts
   // Use forceViewMode prop if provided, otherwise use viewMode from localStorage
   const getMessageRole = () => {
     if (forceViewMode) return forceViewMode;
@@ -231,6 +232,51 @@ function UnifiedMessagesSection({ onSectionChange, forceViewMode = null }) {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Listen for message-blocked and force-logout socket events
+  useEffect(() => {
+    if (!window.socket) return;
+
+    const handleMessageBlocked = (data) => {
+      console.log('[Chat] Message blocked:', data);
+      setMessageBlockedAlert({
+        reason: data.reason,
+        warningMessage: data.warningMessage,
+        warningLevel: data.warningLevel,
+        violationType: data.violationType
+      });
+      
+      // Auto-dismiss after 10 seconds for warnings
+      if (data.warningLevel <= 2) {
+        setTimeout(() => setMessageBlockedAlert(null), 10000);
+      }
+    };
+
+    const handleForceLogout = (data) => {
+      console.log('[Chat] Force logout:', data);
+      // Show alert before logging out
+      const message = data.isPermanent
+        ? 'Your account has been locked due to policy violations. Please contact support.'
+        : `Your account has been suspended for ${data.cooldownHours} hour(s). Please try again later.`;
+      
+      alert(message);
+      
+      // Logout the user
+      if (logout) {
+        logout();
+      }
+      // Redirect to login
+      window.location.href = '/login';
+    };
+
+    window.socket.on('message-blocked', handleMessageBlocked);
+    window.socket.on('force-logout', handleForceLogout);
+
+    return () => {
+      window.socket.off('message-blocked', handleMessageBlocked);
+      window.socket.off('force-logout', handleForceLogout);
+    };
+  }, [logout]);
 
   const scrollToBottom = useCallback((instant = false) => {
     if (chatContainerRef.current) {
@@ -706,6 +752,30 @@ function UnifiedMessagesSection({ onSectionChange, forceViewMode = null }) {
           senderId: senderId,
           content: newMessage.trim()
         });
+        
+        const data = await response.json().catch(() => ({}));
+        
+        // Check if message was blocked by content filter
+        if (data.blocked) {
+          console.log('[Chat] Message blocked by content filter:', data);
+          setMessageBlockedAlert({
+            reason: data.message || 'Your message was blocked due to policy violations.',
+            warningMessage: data.message,
+            warningLevel: data.userLocked ? 3 : 1,
+            violationType: 'policy_violation'
+          });
+          
+          // If user was locked, handle logout
+          if (data.userLocked) {
+            alert(data.lockReason || 'Your account has been suspended due to policy violations.');
+            if (logout) logout();
+            window.location.href = '/login';
+          } else {
+            // Clear alert after 10 seconds for warnings
+            setTimeout(() => setMessageBlockedAlert(null), 10000);
+          }
+          return;
+        }
         
         if (response.ok) {
           setNewMessage('');
@@ -1776,6 +1846,52 @@ function UnifiedMessagesSection({ onSectionChange, forceViewMode = null }) {
         onClose={() => setSelectedBookingForDetails(null)} 
         booking={selectedBookingForDetails} 
       />
+      
+      {/* Message Blocked Alert */}
+      {messageBlockedAlert && (
+        <div style={{
+          position: 'fixed',
+          top: '20px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          backgroundColor: messageBlockedAlert.warningLevel >= 3 ? '#dc3545' : '#ffc107',
+          color: messageBlockedAlert.warningLevel >= 3 ? 'white' : '#856404',
+          padding: '16px 24px',
+          borderRadius: '8px',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+          zIndex: 10000,
+          maxWidth: '500px',
+          textAlign: 'center'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
+            <div>
+              <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
+                {messageBlockedAlert.warningLevel >= 3 ? '⛔ Account Suspended' : '⚠️ Message Blocked'}
+              </div>
+              <div style={{ fontSize: '14px' }}>{messageBlockedAlert.reason}</div>
+              {messageBlockedAlert.warningMessage && (
+                <div style={{ fontSize: '13px', marginTop: '4px', opacity: 0.9 }}>
+                  {messageBlockedAlert.warningMessage}
+                </div>
+              )}
+            </div>
+            <button 
+              onClick={() => setMessageBlockedAlert(null)}
+              style={{
+                background: 'none',
+                border: 'none',
+                fontSize: '20px',
+                cursor: 'pointer',
+                color: 'inherit',
+                padding: '0',
+                lineHeight: 1
+              }}
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

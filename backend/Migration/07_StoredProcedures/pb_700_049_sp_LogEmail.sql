@@ -28,7 +28,7 @@ CREATE   PROCEDURE [admin].[sp_LogEmail]
 AS
 BEGIN
     SET NOCOUNT ON;
-    INSERT INTO EmailLogs (TemplateKey, RecipientEmail, RecipientName, Subject, Status, ErrorMessage, UserID, BookingID, Metadata, HtmlBody)
+    INSERT INTO [admin].[EmailLogs] (TemplateKey, RecipientEmail, RecipientName, Subject, Status, ErrorMessage, UserID, BookingID, Metadata, HtmlBody)
     VALUES (@TemplateKey, @RecipientEmail, @RecipientName, @Subject, @Status, @ErrorMessage, @UserID, @BookingID, @Metadata, @HtmlBody);
     SELECT SCOPE_IDENTITY() AS EmailLogID;
 END

@@ -656,4 +656,38 @@ BEGIN
     );
     PRINT 'Added user_inactivity_body component';
 END
+
+-- Account Locked Body (for chat violations)
+IF NOT EXISTS (SELECT 1 FROM [admin].[EmailTemplateComponents] WHERE [ComponentName] = 'Account Locked')
+BEGIN
+    INSERT [admin].[EmailTemplateComponents] ([ComponentType], [ComponentName], [HtmlContent], [TextContent], [Description], [IsActive], [CreatedAt], [UpdatedAt])
+    VALUES (
+        N'body', 
+        N'Account Locked', 
+        N'<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;"><h2 style="color: #dc3545; margin: 0 0 20px;">Account Locked</h2><p style="color: #666; margin: 0 0 20px;">Hello {{userName}},</p><p style="color: #666; margin: 0 0 30px;">Your account has been temporarily locked due to a violation of our community guidelines.</p><div style="background: #f8d7da; padding: 20px; border-radius: 8px; border-left: 4px solid #dc3545; margin: 0 0 30px;"><h3 style="color: #721c24; margin: 0 0 15px; font-size: 16px;">Reason for Lock</h3><p style="color: #721c24; margin: 5px 0;"><strong>Type:</strong> {{lockType}}</p><p style="color: #721c24; margin: 5px 0;">{{lockReason}}</p></div><p style="color: #666; margin: 0 0 20px;">We take the safety of our community seriously. Sharing personal contact information, using inappropriate language, or attempting to conduct business outside the platform violates our terms of service.</p><p style="color: #666; margin: 0 0 30px;">If you believe this was a mistake, please contact our support team for assistance.</p><p style="text-align: center; margin: 0;"><a href="{{supportUrl}}" style="display: inline-block; background: #5086E8; color: white; padding: 14px 30px; text-decoration: none; border-radius: 6px; font-weight: 600;">Contact Support</a></p><p style="color: #999; font-size: 12px; margin: 30px 0 0; text-align: center;">Support Email: {{supportEmail}}</p></div>', 
+        N'Hello {{userName}}, Your account has been locked due to: {{lockType}} - {{lockReason}}. Contact support at {{supportEmail}} if you believe this was a mistake.', 
+        N'Account locked notification for chat violations', 
+        1, 
+        GETDATE(), 
+        GETDATE()
+    );
+    PRINT 'Added Account Locked component';
+END
+
+-- Account Unlocked Body
+IF NOT EXISTS (SELECT 1 FROM [admin].[EmailTemplateComponents] WHERE [ComponentName] = 'Account Unlocked')
+BEGIN
+    INSERT [admin].[EmailTemplateComponents] ([ComponentType], [ComponentName], [HtmlContent], [TextContent], [Description], [IsActive], [CreatedAt], [UpdatedAt])
+    VALUES (
+        N'body', 
+        N'Account Unlocked', 
+        N'<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;"><h2 style="color: #28a745; margin: 0 0 20px;">Account Unlocked</h2><p style="color: #666; margin: 0 0 20px;">Hello {{userName}},</p><p style="color: #666; margin: 0 0 30px;">Great news! Your account has been reviewed and unlocked. You can now access all features of the platform again.</p><div style="background: #d4edda; padding: 20px; border-radius: 8px; border-left: 4px solid #28a745; margin: 0 0 30px;"><h3 style="color: #155724; margin: 0 0 15px; font-size: 16px;">Account Status</h3><p style="color: #155724; margin: 5px 0;">{{unlockReason}}</p></div><p style="color: #666; margin: 0 0 30px;">Please remember to follow our community guidelines to keep your account in good standing. We appreciate your cooperation!</p><p style="text-align: center; margin: 0;"><a href="{{dashboardUrl}}" style="display: inline-block; background: #5086E8; color: white; padding: 14px 30px; text-decoration: none; border-radius: 6px; font-weight: 600;">Go to Dashboard</a></p></div>', 
+        N'Hello {{userName}}, Your account has been unlocked. {{unlockReason}}. Go to dashboard: {{dashboardUrl}}', 
+        N'Account unlocked notification', 
+        1, 
+        GETDATE(), 
+        GETDATE()
+    );
+    PRINT 'Added Account Unlocked component';
+END
 GO
