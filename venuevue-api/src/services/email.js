@@ -703,6 +703,75 @@ async function sendAccountUnlockedEmail(userEmail, userName, unlockReason, userI
   }, userId, null, null, 'admin', adminBcc);
 }
 
+// Send policy warning email for chat violations (before account lock)
+async function sendPolicyWarningEmail(userEmail, userName, violationType, violationCount, userId = null) {
+  const supportEmail = process.env.EMAIL_SUPPORT || 'support@planbeau.com';
+  const adminBcc = 'admin@planbeau.com';
+  
+  // Format violation type for display
+  const violationTypeDisplay = {
+    'profanity': 'Use of inappropriate language',
+    'email': 'Sharing contact information (email)',
+    'phone': 'Sharing contact information (phone number)',
+    'solicitation': 'Attempting to conduct business outside the platform',
+    'racism': 'Use of discriminatory language'
+  };
+  
+  const violationText = violationTypeDisplay[violationType] || 'Policy violation';
+  
+  // Determine warning level based on violation count
+  const isSecondWarning = violationCount >= 2;
+  const subject = isSecondWarning 
+    ? 'Second Warning: Your Message Was Blocked - Planbeau'
+    : 'Warning: Your Message Was Blocked - Planbeau';
+  
+  const warningMessage = isSecondWarning
+    ? `This is your second warning. Your account will be locked if you continue to violate our community guidelines.`
+    : `This is a warning. Continued violations may result in your account being suspended.`;
+  
+  // Build HTML content using existing email patterns
+  const htmlContent = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <div style="background: linear-gradient(135deg, #D4A574 0%, #C4956A 100%); padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
+        <h1 style="color: white; margin: 0; font-size: 24px;">⚠️ Message Blocked</h1>
+      </div>
+      <div style="background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 8px 8px;">
+        <p style="font-size: 16px; color: #333;">Hi ${userName},</p>
+        <p style="font-size: 16px; color: #333;">Your recent message could not be sent because it violated our community guidelines.</p>
+        
+        <div style="background: #FFF3CD; border-left: 4px solid #FFC107; padding: 15px; margin: 20px 0; border-radius: 4px;">
+          <p style="margin: 0; font-weight: bold; color: #856404;">Violation Type: ${violationText}</p>
+          <p style="margin: 10px 0 0 0; color: #856404;">${warningMessage}</p>
+        </div>
+        
+        <p style="font-size: 16px; color: #333;">At Planbeau, we're committed to maintaining a safe and professional environment for all users. Please review our <a href="https://www.planbeau.com/community-guidelines" style="color: #D4A574;">Community Guidelines</a> to ensure your future messages comply with our policies.</p>
+        
+        <p style="font-size: 14px; color: #666; margin-top: 30px;">If you believe this was a mistake, please contact our support team at <a href="mailto:${supportEmail}" style="color: #D4A574;">${supportEmail}</a>.</p>
+        
+        <p style="font-size: 16px; color: #333; margin-top: 20px;">Thank you for your understanding,<br><strong>The Planbeau Team</strong></p>
+      </div>
+    </div>
+  `;
+  
+  const textContent = `
+Hi ${userName},
+
+Your recent message could not be sent because it violated our community guidelines.
+
+Violation Type: ${violationText}
+${warningMessage}
+
+At Planbeau, we're committed to maintaining a safe and professional environment for all users. Please review our Community Guidelines at https://www.planbeau.com/community-guidelines.
+
+If you believe this was a mistake, please contact our support team at ${supportEmail}.
+
+Thank you for your understanding,
+The Planbeau Team
+  `;
+  
+  return sendEmail(userEmail, subject, htmlContent, textContent, adminBcc);
+}
+
 module.exports = {
   sendEmail,
   sendTemplatedEmail,
@@ -732,5 +801,6 @@ module.exports = {
   sendSupportMessageToUser,
   sendNewSupportMessageToTeam,
   sendAccountLockedEmail,
-  sendAccountUnlockedEmail
+  sendAccountUnlockedEmail,
+  sendPolicyWarningEmail
 };

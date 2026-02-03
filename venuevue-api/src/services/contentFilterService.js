@@ -201,7 +201,7 @@ function scanContent(content) {
   if (profanityFound.length > 0) {
     violations.push({
       type: 'profanity',
-      severity: SEVERITY.WARNING,
+      severity: SEVERITY.MODERATE, // Block profanity messages
       detected: profanityFound.slice(0, 5).join(', '),
       message: 'Profanity detected'
     });
@@ -295,11 +295,19 @@ async function processMessage(userId, messageId, conversationId, content) {
     // Determine if message should be blocked
     result.shouldBlock = scanResult.highestSeverity >= SEVERITY.MODERATE;
 
-    // Check if user should be locked
+    // Get user info for email notifications
+    const userResult = await pool.request()
+      .input('UserID', sql.Int, userId)
+      .query('SELECT Email, FirstName, LastName FROM users.Users WHERE UserID = @UserID');
+    
+    const user = userResult.recordset[0];
+    const userName = user ? `${user.FirstName || ''} ${user.LastName || ''}`.trim() || 'User' : 'User';
+    const userEmail = user ? user.Email : null;
+
+    // Check if user should be locked (3+ violations in 24h)
     const shouldLock = 
       (scanResult.highestSeverity >= SEVERITY.SEVERE && recentViolationCount >= VIOLATION_THRESHOLDS.LOCK_AFTER_SEVERE) ||
-      (scanResult.highestSeverity >= SEVERITY.MODERATE && recentViolationCount >= VIOLATION_THRESHOLDS.LOCK_AFTER_MODERATE) ||
-      (recentViolationCount >= VIOLATION_THRESHOLDS.LOCK_AFTER_WARNING);
+      (scanResult.highestSeverity >= SEVERITY.MODERATE && recentViolationCount >= VIOLATION_THRESHOLDS.LOCK_AFTER_MODERATE);
 
     if (shouldLock) {
       // Lock the user account
@@ -318,6 +326,25 @@ async function processMessage(userId, messageId, conversationId, content) {
       result.userLocked = true;
       result.lockReason = lockReason;
       result.lockInfo = lockResult.recordset[0];
+
+      // Send account locked email
+      if (userEmail) {
+        try {
+          const { sendAccountLockedEmail } = require('./email');
+          await sendAccountLockedEmail(userEmail, userName, lockReason, 'chat_violation', userId);
+        } catch (emailError) {
+          console.error('[ContentFilter] Error sending lock email:', emailError.message);
+        }
+      }
+    } else if (result.shouldBlock && userEmail) {
+      // Send warning email for blocked message (not locked yet)
+      try {
+        const { sendPolicyWarningEmail } = require('./email');
+        const primaryViolationType = scanResult.violations[0]?.type || 'policy';
+        await sendPolicyWarningEmail(userEmail, userName, primaryViolationType, recentViolationCount, userId);
+      } catch (emailError) {
+        console.error('[ContentFilter] Error sending warning email:', emailError.message);
+      }
     }
 
     // Create admin notification
@@ -404,7 +431,7 @@ async function getUserViolationHistory(userId) {
         SELECT 
           ViolationID, ViolationType, DetectedContent, Severity,
           IsReviewed, ActionTaken, CreatedAt
-        FROM moderation.ChatViolations
+        FROM admin.ChatViolations
         WHERE UserID = @UserID
         ORDER BY CreatedAt DESC
       `);
