@@ -160,6 +160,19 @@ router.get('/conversations/user/:userId', async (req, res) => {
         OtherPartyName: conv.OtherPartyName,
         OtherPartyType: conv.OtherPartyType,
         OtherPartyAvatar: conv.OtherPartyAvatar,
+        // Vendor business info
+        vendorBusinessName: conv.VendorBusinessName,
+        vendorLogoURL: conv.VendorLogoURL,
+        // Vendor host info
+        vendorHostFirstName: conv.VendorHostFirstName,
+        vendorHostLastName: conv.VendorHostLastName,
+        vendorHostName: conv.VendorHostFirstName ? `${conv.VendorHostFirstName} ${conv.VendorHostLastName || ''}`.trim() : null,
+        vendorHostAvatar: conv.VendorHostAvatar,
+        // Client info
+        clientFirstName: conv.ClientFirstName,
+        clientLastName: conv.ClientLastName,
+        clientName: conv.ClientFirstName ? `${conv.ClientFirstName} ${conv.ClientLastName || ''}`.trim() : null,
+        clientAvatar: conv.ClientAvatar,
         isClientRole: conv.IsClientRole === 1,
         isVendorRole: conv.IsVendorRole === 1,
         lastMessageContent: conv.LastMessageContent || '',
