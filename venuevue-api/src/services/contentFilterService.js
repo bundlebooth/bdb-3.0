@@ -259,15 +259,22 @@ function scanContent(content) {
  * @returns {Object} - Processing result with shouldBlock flag
  */
 async function processMessage(userId, messageId, conversationId, content) {
+  console.log(`[ContentFilter] Processing message from user ${userId}: "${content.substring(0, 50)}..."`);
+  
   const scanResult = scanContent(content);
   
+  console.log(`[ContentFilter] Scan result: hasViolations=${scanResult.hasViolations}, violations=${JSON.stringify(scanResult.violations)}`);
+  
   if (!scanResult.hasViolations) {
+    console.log(`[ContentFilter] No violations detected, allowing message`);
     return {
       shouldBlock: false,
       violations: [],
       userLocked: false
     };
   }
+  
+  console.log(`[ContentFilter] Violations detected! Types: ${scanResult.violations.map(v => v.type).join(', ')}, Highest severity: ${scanResult.highestSeverity}`);
 
   const result = {
     shouldBlock: false,
@@ -429,10 +436,16 @@ async function processMessage(userId, messageId, conversationId, content) {
 
   } catch (error) {
     console.error('[ContentFilter] Error processing message:', error.message);
-    // Don't block on error - let the message through but log the issue
-    result.shouldBlock = false;
+    console.error('[ContentFilter] Full error:', error);
+    // Still block the message if we detected violations, even if logging failed
+    // This ensures violations are blocked even if DB is having issues
+    if (scanResult.hasViolations && scanResult.highestSeverity >= SEVERITY.MODERATE) {
+      result.shouldBlock = true;
+      console.log(`[ContentFilter] Blocking message despite DB error due to detected violations`);
+    }
   }
 
+  console.log(`[ContentFilter] Final result: shouldBlock=${result.shouldBlock}, warningLevel=${result.warningLevel}, userLocked=${result.userLocked}`);
   return result;
 }
 

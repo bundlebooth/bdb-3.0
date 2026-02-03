@@ -863,7 +863,28 @@ Thank you for your understanding,
 The Planbeau Team
   `;
   
-  return sendEmail(userEmail, subject, htmlContent, textContent, adminBcc);
+  // Log the email before sending
+  await logEmail('policy_warning', userEmail, userName, subject, 'pending', null, userId, null, { violationType, violationCount });
+  
+  try {
+    await sendEmail({ 
+      to: userEmail, 
+      subject, 
+      html: htmlContent, 
+      text: textContent,
+      templateKey: 'policy_warning',
+      emailCategory: 'admin'
+    });
+    
+    // Update log to sent
+    await logEmail('policy_warning', userEmail, userName, subject, 'sent', null, userId, null, { violationType, violationCount }, htmlContent);
+    console.log(`[Email] Policy warning email sent to ${userEmail}`);
+    return { success: true };
+  } catch (error) {
+    console.error(`[Email] Failed to send policy warning email to ${userEmail}:`, error.message);
+    await logEmail('policy_warning', userEmail, userName, subject, 'failed', error.message, userId, null, { violationType, violationCount });
+    return { success: false, error: error.message };
+  }
 }
 
 module.exports = {
