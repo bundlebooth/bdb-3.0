@@ -3,6 +3,7 @@ import { useAuth } from '../../../context/AuthContext';
 import { API_BASE_URL } from '../../../config';
 import { showBanner } from '../../../utils/helpers';
 import { DeleteButton } from '../../common/UIComponents';
+import { ConfirmationModal } from '../../UniversalModal';
 
 /**
  * QuestionsAnswersPanel - Panel for managing Custom FAQs
@@ -15,6 +16,8 @@ function QuestionsAnswersPanel({ onBack, vendorProfileId }) {
   const [loadingFaqs, setLoadingFaqs] = useState(true);
   const [newFaq, setNewFaq] = useState({ question: '', answers: [''] });
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [faqToDelete, setFaqToDelete] = useState(null);
 
   useEffect(() => {
     loadFAQs();
@@ -109,12 +112,18 @@ function QuestionsAnswersPanel({ onBack, vendorProfileId }) {
     }));
   };
 
-  const handleDeleteFAQ = async (faqId) => {
-    if (!window.confirm('Are you sure you want to delete this FAQ?')) return;
+  const handleDeleteFAQ = (faqId) => {
+    setFaqToDelete(faqId);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteFAQ = async () => {
+    if (!faqToDelete) return;
+    setShowDeleteModal(false);
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/faqs/${faqId}`, {
+      const response = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/faqs/${faqToDelete}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -126,6 +135,8 @@ function QuestionsAnswersPanel({ onBack, vendorProfileId }) {
     } catch (error) {
       console.error('Error deleting FAQ:', error);
       showBanner('Failed to delete FAQ', 'error');
+    } finally {
+      setFaqToDelete(null);
     }
   };
 
@@ -553,6 +564,18 @@ function QuestionsAnswersPanel({ onBack, vendorProfileId }) {
           </>
         )}
       </div>
+
+      {/* Delete FAQ Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showDeleteModal}
+        onClose={() => { setShowDeleteModal(false); setFaqToDelete(null); }}
+        title="Delete FAQ"
+        message="Are you sure you want to delete this FAQ?"
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        onConfirm={confirmDeleteFAQ}
+        variant="danger"
+      />
     </div>
   );
 }

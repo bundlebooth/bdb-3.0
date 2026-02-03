@@ -3,12 +3,16 @@ import { useAuth } from '../../../context/AuthContext';
 import { showBanner, formatDateTime } from '../../../utils/helpers';
 import { apiGet, apiDelete } from '../../../utils/api';
 import { API_BASE_URL } from '../../../config';
+import { ConfirmationModal } from '../../UniversalModal';
 
 function SecurityPanel({ onBack }) {
   const { currentUser, logout } = useAuth();
   const [loading, setLoading] = useState(true);
   const [sessions, setSessions] = useState([]);
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
+  const [showRevokeModal, setShowRevokeModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
 
   useEffect(() => {
     loadSecurityData();
@@ -58,10 +62,12 @@ function SecurityPanel({ onBack }) {
     }
   };
 
-  const handleRevokeAllSessions = async () => {
-    if (!window.confirm('This will log you out of all devices. Continue?')) {
-      return;
-    }
+  const handleRevokeAllSessions = () => {
+    setShowRevokeModal(true);
+  };
+
+  const confirmRevokeAllSessions = async () => {
+    setShowRevokeModal(false);
     
     try {
       const response = await fetch(`${API_BASE_URL}/users/${currentUser.id}/sessions/revoke-all`, {
@@ -109,18 +115,17 @@ function SecurityPanel({ onBack }) {
     }
   };
 
-  const handleDeleteAccount = async () => {
-    const confirmed = window.confirm(
-      'Are you sure you want to delete your account? This action cannot be undone.'
-    );
-    
-    if (!confirmed) return;
-    
-    const doubleConfirmed = window.confirm(
-      'This will permanently delete all your data including bookings, messages, and favorites. Type "DELETE" to confirm.'
-    );
-    
-    if (!doubleConfirmed) return;
+  const handleDeleteAccount = () => {
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteAccount = () => {
+    setShowDeleteModal(false);
+    setShowDeleteConfirmModal(true);
+  };
+
+  const confirmDeleteAccountFinal = async () => {
+    setShowDeleteConfirmModal(false);
     
     try {
       const response = await fetch(`${API_BASE_URL}/users/${currentUser.id}`, {
@@ -308,6 +313,42 @@ function SecurityPanel({ onBack }) {
           </button>
         </div>
       </div>
+
+      {/* Revoke All Sessions Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showRevokeModal}
+        onClose={() => setShowRevokeModal(false)}
+        title="Revoke All Sessions"
+        message="This will log you out of all devices. Continue?"
+        confirmLabel="Revoke All"
+        cancelLabel="Cancel"
+        onConfirm={confirmRevokeAllSessions}
+        variant="warning"
+      />
+
+      {/* Delete Account First Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        title="Delete Account"
+        message="Are you sure you want to delete your account? This action cannot be undone."
+        confirmLabel="Continue"
+        cancelLabel="Cancel"
+        onConfirm={confirmDeleteAccount}
+        variant="danger"
+      />
+
+      {/* Delete Account Final Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showDeleteConfirmModal}
+        onClose={() => setShowDeleteConfirmModal(false)}
+        title="Confirm Permanent Deletion"
+        message="This will permanently delete all your data including bookings, messages, and favorites. Are you absolutely sure?"
+        confirmLabel="Delete Forever"
+        cancelLabel="Cancel"
+        onConfirm={confirmDeleteAccountFinal}
+        variant="danger"
+      />
     </div>
   );
 }

@@ -7,7 +7,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { formatCurrency, formatRelativeTime, formatDate } from '../../../utils/formatUtils';
 import adminApi from '../../../services/adminApi';
-import UniversalModal from '../../UniversalModal';
+import UniversalModal, { ConfirmationModal } from '../../UniversalModal';
 
 // Line Chart Component
 const LineChart = ({ data, dataKey, color = '#5086E8', height = 200 }) => {
@@ -629,13 +629,24 @@ function AnalyticsSection() {
     </div>
   );
 
-  const handleCancelEmail = async (emailId) => {
-    if (!window.confirm('Cancel this queued email?')) return;
+  const [showCancelEmailModal, setShowCancelEmailModal] = useState(false);
+  const [emailToCancel, setEmailToCancel] = useState(null);
+
+  const handleCancelEmail = (emailId) => {
+    setEmailToCancel(emailId);
+    setShowCancelEmailModal(true);
+  };
+
+  const confirmCancelEmail = async () => {
+    if (!emailToCancel) return;
+    setShowCancelEmailModal(false);
     try {
-      await adminApi.cancelQueuedEmail(emailId, 'Cancelled by admin');
+      await adminApi.cancelQueuedEmail(emailToCancel, 'Cancelled by admin');
       fetchEmailQueue();
     } catch (err) {
-      alert('Failed to cancel email');
+      console.error('Failed to cancel email:', err);
+    } finally {
+      setEmailToCancel(null);
     }
   };
 
@@ -857,6 +868,18 @@ function AnalyticsSection() {
       {/* Tab Content */}
       {activeTab === 'overview' && renderOverview()}
       {activeTab === 'exports' && renderExports()}
+
+      {/* Cancel Email Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showCancelEmailModal}
+        onClose={() => { setShowCancelEmailModal(false); setEmailToCancel(null); }}
+        title="Cancel Queued Email"
+        message="Are you sure you want to cancel this queued email?"
+        confirmLabel="Cancel Email"
+        cancelLabel="Go Back"
+        onConfirm={confirmCancelEmail}
+        variant="warning"
+      />
     </div>
   );
 }

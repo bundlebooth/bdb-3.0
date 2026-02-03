@@ -3315,50 +3315,71 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
     }
 }
 
+/* Professional Toast Banner */
 .app-banner {
     position: fixed;
-    top: 20px;
+    top: 24px;
     left: 50%;
     transform: translateX(-50%);
-    width: calc(100% - 40px);
-    max-width: 900px;
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    padding: 0.875rem 1.25rem;
-    border-radius: 999px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    border: 1px solid var(--border);
-    background: #ffffff;
-    color: var(--text);
+    gap: 12px;
+    padding: 14px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.05);
+    color: #ffffff;
     z-index: 10002;
-    animation: bannerSlideIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+    animation: toastSlideDown 0.3s cubic-bezier(0.21, 1.02, 0.73, 1);
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 1.4;
+    max-width: 420px;
+}
+
+@keyframes toastSlideDown {
+    from { opacity: 0; transform: translateX(-50%) translateY(-20px) scale(0.95); }
+    to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
 }
 
 .app-banner.app-banner--removing {
-    animation: bannerSlideOut 0.3s cubic-bezier(0.4, 0, 1, 1) forwards;
+    animation: toastSlideUp 0.2s ease-in forwards;
 }
-.app-banner--success { border-color: #10b981; background: #ecfdf5; color: #065f46; }
-.app-banner--success .app-banner__icon { color: #10b981; }
-.app-banner--success .app-banner__title { color: #065f46; }
-.app-banner--error { border-color: #ef4444; background: #fef2f2; color: #991b1b; }
-.app-banner--error .app-banner__icon { color: #ef4444; }
-.app-banner--error .app-banner__title { color: #991b1b; }
-.app-banner--info, .app-banner--notice { border-color: #5086E8; background: #eff6ff; color: #1e40af; }
-.app-banner--info .app-banner__icon, .app-banner--notice .app-banner__icon { color: #5086E8; }
-.app-banner--info .app-banner__title, .app-banner--notice .app-banner__title { color: #1e40af; }
-.app-banner--favorite { border-color: #ef4444; background: #fef2f2; color: #991b1b; }
-.app-banner--favorite .app-banner__icon { color: #ef4444; }
-.app-banner--favorite .app-banner__title { color: #991b1b; }
-.app-banner__title { font-weight: 600; }
-.app-banner__icon { display: inline-flex; width: 20px; height: 20px; align-items: center; justify-content: center; }
+
+@keyframes toastSlideUp {
+    from { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+    to { opacity: 0; transform: translateX(-50%) translateY(-20px) scale(0.95); }
+}
+
+.app-banner--success { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
+.app-banner--error { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); }
+.app-banner--info, .app-banner--notice { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); }
+.app-banner--favorite { background: linear-gradient(135deg, #ec4899 0%, #db2777 100%); }
+
+.app-banner__icon { display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.app-banner__icon svg { width: 18px; height: 18px; }
+.app-banner__label { font-weight: 600; font-size: 14px; white-space: nowrap; opacity: 0.95; }
 .app-banner__close {
-    margin-left: auto;
-    background: none;
+    margin-left: 8px;
+    background: transparent;
     border: none;
-    font-size: 1.1rem;
+    font-size: 18px;
     cursor: pointer;
-    color: inherit;
+    color: rgba(255, 255, 255, 0.7);
+    padding: 0;
+    transition: color 0.15s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+}
+.app-banner__close:hover { color: #ffffff; }
+
+@media (max-width: 540px) {
+    .app-banner { left: 16px; right: 16px; transform: none; }
+    @keyframes toastSlideDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes toastSlideUp { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-20px); } }
 }
 
 /* Notifications Modal Styles */

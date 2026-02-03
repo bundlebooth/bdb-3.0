@@ -297,6 +297,9 @@ function BookingPage() {
   const [paymentError, setPaymentError] = useState('');
   const [paymentProcessing, setPaymentProcessing] = useState(false);
   const [hasPrefilledDate, setHasPrefilledDate] = useState(false);
+  const [showLeaveConfirmModal, setShowLeaveConfirmModal] = useState(false);
+  const [showNoSelectionModal, setShowNoSelectionModal] = useState(false);
+  const [pendingStepAction, setPendingStepAction] = useState(null);
   const locationInputRef = useRef(null);
   const autocompleteRef = useRef(null);
 
@@ -937,13 +940,32 @@ function BookingPage() {
       }
       
       if (!selectedPackage && selectedServices.length === 0) {
-        const proceed = window.confirm('You haven\'t selected a package or services. Do you want to continue anyway?');
-        return proceed;
+        setShowNoSelectionModal(true);
+        return false;
       }
       return true;
     }
     
     return true;
+  };
+
+  // Handle no selection confirmation
+  const handleNoSelectionConfirm = () => {
+    setShowNoSelectionModal(false);
+    if (currentStep < 3) {
+      setCurrentStep(currentStep + 1);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  // Handle leave confirmation
+  const handleLeaveConfirm = () => {
+    setShowLeaveConfirmModal(false);
+    if (vendorData?.profile) {
+      navigate(buildVendorProfileUrl(vendorData.profile));
+    } else {
+      navigate(`/vendor/${vendorSlug}`);
+    }
   };
 
   // Navigation
@@ -966,15 +988,7 @@ function BookingPage() {
   };
 
   const goBackToVendor = () => {
-    if (window.confirm('Are you sure you want to leave? Your booking information will be lost.')) {
-      // Use vendorData to build proper URL with public ID
-      if (vendorData?.profile) {
-        navigate(buildVendorProfileUrl(vendorData.profile));
-      } else {
-        // Fallback to vendorSlug from URL (already encoded)
-        navigate(`/vendor/${vendorSlug}`);
-      }
-    }
+    setShowLeaveConfirmModal(true);
   };
 
   // Check if vendor has instant booking enabled
@@ -2464,6 +2478,30 @@ function BookingPage() {
       
       {/* Messaging Widget */}
       <MessagingWidget />
+
+      {/* Leave Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showLeaveConfirmModal}
+        onClose={() => setShowLeaveConfirmModal(false)}
+        title="Leave Booking?"
+        message="Are you sure you want to leave? Your booking information will be lost."
+        confirmLabel="Leave"
+        cancelLabel="Stay"
+        onConfirm={handleLeaveConfirm}
+        variant="warning"
+      />
+
+      {/* No Selection Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showNoSelectionModal}
+        onClose={() => setShowNoSelectionModal(false)}
+        title="No Package or Services Selected"
+        message="You haven't selected a package or services. Do you want to continue anyway?"
+        confirmLabel="Continue"
+        cancelLabel="Go Back"
+        onConfirm={handleNoSelectionConfirm}
+        variant="info"
+      />
     </PageLayout>
   );
 }

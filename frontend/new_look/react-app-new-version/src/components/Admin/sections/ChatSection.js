@@ -7,6 +7,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { formatRelativeTime, formatDate } from '../../../utils/formatUtils';
 import adminApi from '../../../services/adminApi';
 import { GIPHY_API_KEY } from '../../../config';
+import { ConfirmationModal } from '../../UniversalModal';
 
 function ChatSection() {
   const [activeTab, setActiveTab] = useState('conversations');
@@ -17,6 +18,8 @@ function ChatSection() {
   const [conversationMessages, setConversationMessages] = useState([]);
   const [supportReply, setSupportReply] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
+  const [showUnlockModal, setShowUnlockModal] = useState(false);
+  const [userToUnlock, setUserToUnlock] = useState(null);
   
   // Flagged messages / moderation state
   const [flaggedMessages, setFlaggedMessages] = useState([]);
@@ -188,18 +191,24 @@ function ChatSection() {
   };
 
   // Handle unlock user
-  const handleUnlockUser = async (userId) => {
-    if (!window.confirm('Are you sure you want to unlock this user account?')) return;
+  const handleUnlockUser = (userId) => {
+    setUserToUnlock(userId);
+    setShowUnlockModal(true);
+  };
+
+  const confirmUnlockUser = async () => {
+    if (!userToUnlock) return;
+    setShowUnlockModal(false);
     setActionLoading(true);
     try {
-      await adminApi.unlockUserAccount({ userId, unlockReason: 'Account reviewed and unlocked by admin' });
+      await adminApi.unlockUserAccount({ userId: userToUnlock, unlockReason: 'Account reviewed and unlocked by admin' });
       fetchFlaggedMessages();
       fetchModerationStats();
-      alert('User account unlocked successfully');
     } catch (err) {
-      alert('Failed to unlock user account');
+      console.error('Failed to unlock user account:', err);
     } finally {
       setActionLoading(false);
+      setUserToUnlock(null);
     }
   };
 
@@ -438,31 +447,7 @@ function ChatSection() {
 
   return (
     <div className="admin-section">
-      {/* Tabs */}
-      <div className="admin-tabs" style={{ marginBottom: '1.5rem' }}>
-        <button
-          className={`admin-tab ${activeTab === 'conversations' ? 'active' : ''}`}
-          onClick={() => setActiveTab('conversations')}
-        >
-          <i className="fas fa-comments" style={{ marginRight: '0.5rem' }}></i>
-          Live Chat
-        </button>
-        <button
-          className={`admin-tab ${activeTab === 'flagged' ? 'active' : ''}`}
-          onClick={() => setActiveTab('flagged')}
-        >
-          <i className="fas fa-flag" style={{ marginRight: '0.5rem' }}></i>
-          Flagged Messages
-          {moderationStats?.PendingReviews > 0 && (
-            <span className="admin-badge admin-badge-danger" style={{ marginLeft: '0.5rem' }}>
-              {moderationStats.PendingReviews}
-            </span>
-          )}
-        </button>
-      </div>
-
-      {/* Tab Content */}
-      {activeTab === 'flagged' ? renderFlaggedMessages() : (
+      {/* Live Chat Content - Flagged Messages moved to Security & Audit section */}
       <div style={{ display: 'grid', gridTemplateColumns: '350px 1fr', gap: '1.5rem', height: '650px' }}>
         {/* Conversations List */}
         <div className="admin-card" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -721,7 +706,6 @@ function ChatSection() {
           )}
         </div>
       </div>
-      )}
 
       {/* Review Violation Modal */}
       {showReviewModal && selectedViolation && (
@@ -839,6 +823,18 @@ function ChatSection() {
           </div>
         </div>
       )}
+
+      {/* Unlock User Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showUnlockModal}
+        onClose={() => { setShowUnlockModal(false); setUserToUnlock(null); }}
+        title="Unlock User Account"
+        message="Are you sure you want to unlock this user account?"
+        confirmLabel="Unlock"
+        cancelLabel="Cancel"
+        onConfirm={confirmUnlockUser}
+        variant="success"
+      />
     </div>
   );
 }

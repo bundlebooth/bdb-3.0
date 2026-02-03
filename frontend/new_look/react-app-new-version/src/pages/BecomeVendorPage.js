@@ -9,7 +9,7 @@ import { parseQueryParams, trackPageView } from '../utils/urlHelpers';
 import SimpleWorkingLocationStep from '../components/SimpleWorkingLocationStep';
 import SetupIncompleteBanner from '../components/SetupIncompleteBanner';
 import { ServiceCard, PackageCard, PackageServiceTabs, PackageServiceList } from '../components/PackageServiceCard';
-import UniversalModal from '../components/UniversalModal';
+import UniversalModal, { ConfirmationModal } from '../components/UniversalModal';
 import {
   AccountStep,
   CategoriesStep,
@@ -107,6 +107,9 @@ const BecomeVendorPage = () => {
   const [submittedAt, setSubmittedAt] = useState(null); // Timestamp when vendor submitted for review
   const [reviewedAt, setReviewedAt] = useState(null); // Timestamp when support reviewed
   const [showSuccessModal, setShowSuccessModal] = useState(false); // Success modal after Go Live
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [showApproveModal, setShowApproveModal] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
   
   // Form data state
   const [formData, setFormData] = useState({
@@ -1664,24 +1667,7 @@ const BecomeVendorPage = () => {
           </div>
           <div style={{ display: 'flex', gap: '0.75rem' }}>
             <button
-              onClick={() => {
-                if (window.confirm('Reject this vendor application?')) {
-                  const reason = window.prompt('Enter rejection reason:');
-                  if (reason) {
-                    fetch(`${API_BASE_URL}/admin/vendor-approvals/${adminReviewVendorId}/reject`, {
-                      method: 'POST',
-                      headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('token')}`,
-                        'Content-Type': 'application/json'
-                      },
-                      body: JSON.stringify({ reason })
-                    }).then(() => {
-                      showBanner('Vendor rejected', 'success');
-                      navigate('/admin/vendors');
-                    }).catch(err => showBanner('Failed to reject: ' + err.message, 'error'));
-                  }
-                }
-              }}
+              onClick={() => setShowRejectModal(true)}
               style={{
                 padding: '0.5rem 1rem',
                 background: '#fee2e2',
@@ -1698,21 +1684,7 @@ const BecomeVendorPage = () => {
               <i className="fas fa-times"></i> Reject
             </button>
             <button
-              onClick={() => {
-                if (window.confirm('Approve this vendor application?')) {
-                  fetch(`${API_BASE_URL}/admin/vendor-approvals/${adminReviewVendorId}/approve`, {
-                    method: 'POST',
-                    headers: {
-                      'Authorization': `Bearer ${localStorage.getItem('token')}`,
-                      'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ notes: '' })
-                  }).then(() => {
-                    showBanner('Vendor approved!', 'success');
-                    navigate('/admin/vendors');
-                  }).catch(err => showBanner('Failed to approve: ' + err.message, 'error'));
-                }
-              }}
+              onClick={() => setShowApproveModal(true)}
               style={{
                 padding: '0.5rem 1rem',
                 background: '#10b981',
@@ -2177,6 +2149,85 @@ const BecomeVendorPage = () => {
           </div>
         </div>
       )}
+
+      {/* Reject Vendor Modal */}
+      <UniversalModal
+        isOpen={showRejectModal}
+        onClose={() => { setShowRejectModal(false); setRejectReason(''); }}
+        title="Reject Vendor Application"
+        size="small"
+        primaryAction={{
+          label: 'Reject',
+          onClick: () => {
+            if (!rejectReason.trim()) {
+              showBanner('Please enter a rejection reason', 'error');
+              return;
+            }
+            fetch(`${API_BASE_URL}/admin/vendor-approvals/${adminReviewVendorId}/reject`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ reason: rejectReason })
+            }).then(() => {
+              showBanner('Vendor rejected', 'success');
+              setShowRejectModal(false);
+              setRejectReason('');
+              navigate('/admin/vendors');
+            }).catch(err => showBanner('Failed to reject: ' + err.message, 'error'));
+          }
+        }}
+        secondaryAction={{ label: 'Cancel', onClick: () => { setShowRejectModal(false); setRejectReason(''); } }}
+      >
+        <div style={{ marginBottom: '1rem' }}>
+          <p style={{ marginBottom: '1rem', color: '#6b7280' }}>
+            Are you sure you want to reject this vendor application?
+          </p>
+          <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>
+            Rejection Reason <span style={{ color: 'red' }}>*</span>
+          </label>
+          <textarea
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+            placeholder="Enter the reason for rejection..."
+            rows={3}
+            style={{
+              width: '100%',
+              padding: '0.75rem',
+              border: '1px solid #e5e7eb',
+              borderRadius: '8px',
+              fontSize: '0.95rem',
+              resize: 'vertical'
+            }}
+          />
+        </div>
+      </UniversalModal>
+
+      {/* Approve Vendor Modal */}
+      <ConfirmationModal
+        isOpen={showApproveModal}
+        onClose={() => setShowApproveModal(false)}
+        title="Approve Vendor Application"
+        message="Are you sure you want to approve this vendor application? The vendor will be able to receive bookings."
+        confirmLabel="Approve"
+        cancelLabel="Cancel"
+        onConfirm={() => {
+          fetch(`${API_BASE_URL}/admin/vendor-approvals/${adminReviewVendorId}/approve`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('token')}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ notes: '' })
+          }).then(() => {
+            showBanner('Vendor approved!', 'success');
+            setShowApproveModal(false);
+            navigate('/admin/vendors');
+          }).catch(err => showBanner('Failed to approve: ' + err.message, 'error'));
+        }}
+        variant="success"
+      />
     </div>
   );
 };

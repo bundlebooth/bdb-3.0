@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { API_BASE_URL } from '../../config';
 import { showBanner } from '../../utils/helpers';
 import { DeleteButton } from '../common/UIComponents';
+import { ConfirmationModal } from '../UniversalModal';
 
 /**
  * GalleryStep - Vendor onboarding step for gallery photos
@@ -14,6 +15,8 @@ function GalleryStep({ formData, setFormData, currentUser }) {
   const [urlInput, setUrlInput] = useState({ url: '', caption: '', isPrimary: false });
   const [draggedIndex, setDraggedIndex] = useState(null);
   const [dragOverIndex, setDragOverIndex] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [photoToDelete, setPhotoToDelete] = useState(null);
   const MIN_PHOTOS = 5;
 
   useEffect(() => {
@@ -110,12 +113,18 @@ function GalleryStep({ formData, setFormData, currentUser }) {
     }
   };
 
-  const handleDeletePhoto = async (photoId, e) => {
+  const handleDeletePhoto = (photoId, e) => {
     e.stopPropagation();
-    if (!window.confirm('Are you sure you want to delete this photo?')) return;
+    setPhotoToDelete(photoId);
+    setShowDeleteModal(true);
+  };
 
+  const confirmDeletePhoto = async () => {
+    if (!photoToDelete) return;
+    setShowDeleteModal(false);
+    
     try {
-      const response = await fetch(`${API_BASE_URL}/vendors/${currentUser.vendorProfileId}/images/${photoId}`, {
+      const response = await fetch(`${API_BASE_URL}/vendors/${currentUser.vendorProfileId}/images/${photoToDelete}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
@@ -127,6 +136,8 @@ function GalleryStep({ formData, setFormData, currentUser }) {
     } catch (error) {
       console.error('Error deleting photo:', error);
       showBanner('Failed to delete photo', 'error');
+    } finally {
+      setPhotoToDelete(null);
     }
   };
 
@@ -490,6 +501,18 @@ function GalleryStep({ formData, setFormData, currentUser }) {
           </div>
         </div>
       </div>
+
+      {/* Delete Photo Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showDeleteModal}
+        onClose={() => { setShowDeleteModal(false); setPhotoToDelete(null); }}
+        title="Delete Photo"
+        message="Are you sure you want to delete this photo?"
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        onConfirm={confirmDeletePhoto}
+        variant="danger"
+      />
     </div>
   );
 }

@@ -67,8 +67,9 @@ function SecuritySection() {
   const fetchFlaggedItems = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await adminApi.getFlaggedItems();
-      const itemsArray = Array.isArray(data?.items) ? data.items : Array.isArray(data) ? data : [];
+      // Fetch chat violations from moderation API
+      const data = await adminApi.getModerationFlagged({ page: 1, limit: 50, isReviewed: 'false' });
+      const itemsArray = Array.isArray(data?.violations) ? data.violations : Array.isArray(data?.items) ? data.items : Array.isArray(data) ? data : [];
       setFlaggedItems(itemsArray);
     } catch (err) {
       console.error('Error fetching flagged items:', err);
@@ -285,11 +286,17 @@ function SecuritySection() {
   const renderFlaggedItems = () => (
     <div className="admin-card">
       <div className="admin-card-header">
-        <h3 className="admin-card-title">Flagged Items</h3>
+        <h3 className="admin-card-title">
+          <i className="fas fa-flag" style={{ marginRight: '0.5rem', color: '#f59e0b' }}></i>
+          Chat Violations & Flagged Content
+        </h3>
         <button className="admin-btn admin-btn-secondary admin-btn-sm" onClick={fetchFlaggedItems}>
           <i className="fas fa-sync-alt"></i> Refresh
         </button>
       </div>
+      <p style={{ padding: '0 1.25rem', color: '#6b7280', fontSize: '0.9rem', marginBottom: '1rem' }}>
+        Content flagged by the moderation system for policy violations including profanity, contact sharing, and other prohibited content.
+      </p>
       
       {loading ? (
         <div className="admin-loading">
@@ -297,36 +304,83 @@ function SecuritySection() {
           <p>Loading...</p>
         </div>
       ) : flaggedItems.length === 0 ? (
-        <div className="admin-empty-state">
-          <i className="fas fa-flag" style={{ color: '#10b981' }}></i>
-          <h3>No Flagged Items</h3>
-          <p>All content is currently clear</p>
+        <div className="admin-empty-state" style={{ padding: '3rem' }}>
+          <div style={{
+            width: '60px',
+            height: '60px',
+            borderRadius: '50%',
+            background: 'rgba(16, 185, 129, 0.1)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            margin: '0 auto 1rem'
+          }}>
+            <i className="fas fa-check-circle" style={{ fontSize: '2rem', color: '#10b981' }}></i>
+          </div>
+          <h3>No Pending Violations</h3>
+          <p>All flagged content has been reviewed</p>
         </div>
       ) : (
-        <div className="admin-card-body">
-          {flaggedItems.map((item, idx) => (
-            <div 
-              key={item.id || idx}
-              style={{
-                padding: '1rem',
-                borderBottom: '1px solid #f3f4f6',
-                background: 'rgba(239, 68, 68, 0.03)'
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <span className="admin-badge admin-badge-danger">{item.type || 'Content'}</span>
-                  <span style={{ marginLeft: '0.5rem', fontWeight: 500 }}>{item.title || item.description}</span>
-                </div>
-                <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>
-                  {formatRelativeTime(item.flaggedAt || item.createdAt)}
-                </span>
-              </div>
-              <p style={{ margin: '0.5rem 0 0', fontSize: '0.9rem', color: '#6b7280' }}>
-                Reason: {item.reason || 'No reason provided'}
-              </p>
-            </div>
-          ))}
+        <div className="admin-table-container">
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th>User</th>
+                <th>Type</th>
+                <th>Severity</th>
+                <th>Detected</th>
+                <th>Message Preview</th>
+                <th>Date</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {flaggedItems.map((item, idx) => (
+                <tr key={item.ViolationID || item.id || idx}>
+                  <td>
+                    <div>
+                      <div style={{ fontWeight: 500 }}>{item.UserName || 'Unknown'}</div>
+                      <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>{item.UserEmail}</div>
+                      {item.IsLocked && (
+                        <span className="admin-badge admin-badge-danger" style={{ marginTop: '4px' }}>Locked</span>
+                      )}
+                    </div>
+                  </td>
+                  <td>
+                    <span style={{
+                      padding: '0.25rem 0.5rem',
+                      borderRadius: '4px',
+                      fontSize: '0.75rem',
+                      fontWeight: 500,
+                      background: '#fef3c7',
+                      color: '#d97706'
+                    }}>
+                      {item.ViolationType || item.type || 'violation'}
+                    </span>
+                  </td>
+                  <td>
+                    <span className={`admin-badge ${item.Severity >= 3 ? 'admin-badge-danger' : item.Severity >= 2 ? 'admin-badge-warning' : 'admin-badge-info'}`}>
+                      {item.Severity >= 3 ? 'Severe' : item.Severity >= 2 ? 'Moderate' : 'Warning'}
+                    </span>
+                  </td>
+                  <td style={{ fontFamily: 'monospace', fontSize: '0.85rem', color: '#dc2626' }}>
+                    {item.DetectedContent || '-'}
+                  </td>
+                  <td style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {item.OriginalMessage?.substring(0, 50) || '-'}
+                  </td>
+                  <td style={{ fontSize: '0.85rem', color: '#6b7280' }}>
+                    {formatDate(item.CreatedAt || item.flaggedAt)}
+                  </td>
+                  <td>
+                    <span className={`admin-badge ${item.IsReviewed ? 'admin-badge-success' : 'admin-badge-warning'}`}>
+                      {item.IsReviewed ? 'Reviewed' : 'Pending'}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>

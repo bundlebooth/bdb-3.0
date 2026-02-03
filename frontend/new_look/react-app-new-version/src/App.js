@@ -46,7 +46,7 @@ import ImpersonationBanner from './components/ImpersonationBanner';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LocalizationProvider } from './context/LocalizationContext';
 import { useHeartbeat } from './hooks/useOnlineStatus';
-import { SocketProvider } from './context/SocketContext';
+import { useSocket } from './hooks/useSocket';
 import SessionTimeoutProvider from './components/SessionTimeoutProvider';
 import './styles/MapControls.css';
 
@@ -69,7 +69,8 @@ function HomeRoute() {
   // Send heartbeat to track online status
   useHeartbeat();
   
-  // Socket is now initialized globally via SocketProvider
+  // Initialize socket connection for real-time messaging
+  useSocket();
   
   // Session timeout is handled globally by SessionTimeoutProvider
   
@@ -168,10 +169,9 @@ function App() {
   return (
     <LocalizationProvider>
       <AuthProvider>
-        <SocketProvider>
-          <SessionTimeoutProvider>
-            <Router>
-              <ImpersonationBanner />
+        <SessionTimeoutProvider>
+          <Router>
+            <ImpersonationBanner />
             <ScrollToTop />
             <Routes>
           <Route path="/" element={<HomeRoute />} />
@@ -233,9 +233,8 @@ function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
             <CookieConsent />
-            </Router>
-          </SessionTimeoutProvider>
-        </SocketProvider>
+          </Router>
+        </SessionTimeoutProvider>
       </AuthProvider>
     </LocalizationProvider>
   );

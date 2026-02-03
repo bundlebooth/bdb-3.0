@@ -6,6 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { useDebounce } from '../../../hooks/useApi';
 import adminApi from '../../../services/adminApi';
+import { ConfirmationModal } from '../../UniversalModal';
 
 function ToolsSection() {
   const [activeTab, setActiveTab] = useState('search');
@@ -20,6 +21,8 @@ function ToolsSection() {
   const [impersonateResults, setImpersonateResults] = useState([]);
   const [impersonating, setImpersonating] = useState(false);
   const [usersLoaded, setUsersLoaded] = useState(false);
+  const [showImpersonateModal, setShowImpersonateModal] = useState(false);
+  const [userToImpersonate, setUserToImpersonate] = useState(null);
 
   const debouncedQuickSearch = useDebounce(quickSearch, 300);
 
@@ -87,11 +90,17 @@ function ToolsSection() {
     }
   };
 
-  const handleImpersonate = async (userId) => {
-    if (!window.confirm('Are you sure you want to impersonate this user? All actions will be logged.')) return;
+  const handleImpersonate = (userId) => {
+    setUserToImpersonate(userId);
+    setShowImpersonateModal(true);
+  };
+
+  const confirmImpersonate = async () => {
+    if (!userToImpersonate) return;
+    setShowImpersonateModal(false);
     setImpersonating(true);
     try {
-      const result = await adminApi.impersonateUser(userId);
+      const result = await adminApi.impersonateUser(userToImpersonate);
       if (result.success && result.token) {
         // Store original token and user session
         localStorage.setItem('originalToken', localStorage.getItem('token'));
@@ -313,6 +322,18 @@ function ToolsSection() {
       {/* Tab Content */}
       {activeTab === 'search' && renderQuickSearch()}
       {activeTab === 'impersonate' && renderImpersonate()}
+
+      {/* Impersonate Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showImpersonateModal}
+        onClose={() => { setShowImpersonateModal(false); setUserToImpersonate(null); }}
+        title="Impersonate User"
+        message="Are you sure you want to impersonate this user? All actions will be logged."
+        confirmLabel="Impersonate"
+        cancelLabel="Cancel"
+        onConfirm={confirmImpersonate}
+        variant="warning"
+      />
     </div>
   );
 }

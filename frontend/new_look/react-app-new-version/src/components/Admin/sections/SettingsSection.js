@@ -580,10 +580,20 @@ function SettingsSection() {
     setSelectedRule(null);
   };
 
+  const [showDeleteRuleModal, setShowDeleteRuleModal] = useState(false);
+  const [ruleToDelete, setRuleToDelete] = useState(null);
+
   const handleDeleteRule = (ruleId) => {
-    if (window.confirm('Are you sure you want to delete this automation rule?')) {
-      setAutomationRules(rules => rules.filter(r => r.id !== ruleId));
+    setRuleToDelete(ruleId);
+    setShowDeleteRuleModal(true);
+  };
+
+  const confirmDeleteRule = () => {
+    if (ruleToDelete) {
+      setAutomationRules(rules => rules.filter(r => r.id !== ruleToDelete));
     }
+    setShowDeleteRuleModal(false);
+    setRuleToDelete(null);
   };
 
   const renderAutomation = () => (
@@ -739,6 +749,18 @@ function SettingsSection() {
         confirmLabel={saving ? 'Processing...' : 'Confirm'}
         onConfirm={handleToggleMaintenance}
         variant={maintenanceMode ? 'success' : 'danger'}
+      />
+
+      {/* Delete Rule Confirmation */}
+      <ConfirmationModal
+        isOpen={showDeleteRuleModal}
+        onClose={() => { setShowDeleteRuleModal(false); setRuleToDelete(null); }}
+        title="Delete Automation Rule"
+        message="Are you sure you want to delete this automation rule?"
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        onConfirm={confirmDeleteRule}
+        variant="danger"
       />
 
     </div>

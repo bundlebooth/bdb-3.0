@@ -3,6 +3,7 @@ import { showBanner } from '../../../utils/helpers';
 import { apiGet, apiPost, apiPut, apiDelete, apiPostFormData } from '../../../utils/api';
 import { API_BASE_URL } from '../../../config';
 import { DeleteButton } from '../../common/UIComponents';
+import { ConfirmationModal } from '../../UniversalModal';
 
 function GalleryMediaPanel({ onBack, vendorProfileId }) {
   const [loading, setLoading] = useState(true);
@@ -15,6 +16,10 @@ function GalleryMediaPanel({ onBack, vendorProfileId }) {
   const [albumForm, setAlbumForm] = useState({ name: '', description: '', coverImageURL: '', isPublic: true });
   const [draggedIndex, setDraggedIndex] = useState(null);
   const [dragOverIndex, setDragOverIndex] = useState(null);
+  const [showDeletePhotoModal, setShowDeletePhotoModal] = useState(false);
+  const [showDeleteAlbumModal, setShowDeleteAlbumModal] = useState(false);
+  const [photoToDelete, setPhotoToDelete] = useState(null);
+  const [albumToDelete, setAlbumToDelete] = useState(null);
   const dragRef = useRef(null);
 
   useEffect(() => {
@@ -118,11 +123,17 @@ function GalleryMediaPanel({ onBack, vendorProfileId }) {
     }
   };
 
-  const handleDeletePhoto = async (photoId) => {
-    if (!window.confirm('Are you sure you want to delete this photo?')) return;
+  const handleDeletePhoto = (photoId) => {
+    setPhotoToDelete(photoId);
+    setShowDeletePhotoModal(true);
+  };
+
+  const confirmDeletePhoto = async () => {
+    if (!photoToDelete) return;
+    setShowDeletePhotoModal(false);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/images/${photoId}`, {
+      const response = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/images/${photoToDelete}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
@@ -134,6 +145,8 @@ function GalleryMediaPanel({ onBack, vendorProfileId }) {
     } catch (error) {
       console.error('Error deleting photo:', error);
       showBanner('Failed to delete photo', 'error');
+    } finally {
+      setPhotoToDelete(null);
     }
   };
 
@@ -208,13 +221,17 @@ function GalleryMediaPanel({ onBack, vendorProfileId }) {
     }
   };
 
-  const handleDeleteAlbum = async (albumId) => {
-    if (!window.confirm('Are you sure you want to delete this album? All images in this album will also be deleted. This cannot be undone.')) {
-      return;
-    }
+  const handleDeleteAlbum = (albumId) => {
+    setAlbumToDelete(albumId);
+    setShowDeleteAlbumModal(true);
+  };
+
+  const confirmDeleteAlbum = async () => {
+    if (!albumToDelete) return;
+    setShowDeleteAlbumModal(false);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/portfolio/albums/${albumId}`, {
+      const response = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/portfolio/albums/${albumToDelete}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
@@ -228,6 +245,8 @@ function GalleryMediaPanel({ onBack, vendorProfileId }) {
     } catch (error) {
       console.error('Error deleting album:', error);
       showBanner('Failed to delete album', 'error');
+    } finally {
+      setAlbumToDelete(null);
     }
   };
 
@@ -947,6 +966,30 @@ function GalleryMediaPanel({ onBack, vendorProfileId }) {
 
 
       </div>
+
+      {/* Delete Photo Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showDeletePhotoModal}
+        onClose={() => { setShowDeletePhotoModal(false); setPhotoToDelete(null); }}
+        title="Delete Photo"
+        message="Are you sure you want to delete this photo?"
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        onConfirm={confirmDeletePhoto}
+        variant="danger"
+      />
+
+      {/* Delete Album Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showDeleteAlbumModal}
+        onClose={() => { setShowDeleteAlbumModal(false); setAlbumToDelete(null); }}
+        title="Delete Album"
+        message="Are you sure you want to delete this album? All images in this album will also be deleted. This cannot be undone."
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        onConfirm={confirmDeleteAlbum}
+        variant="danger"
+      />
     </div>
   );
 }

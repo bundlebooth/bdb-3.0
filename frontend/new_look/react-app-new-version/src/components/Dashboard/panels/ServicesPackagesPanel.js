@@ -4,7 +4,7 @@ import { apiGet, apiPost, apiPut, apiDelete, apiPostFormData } from '../../../ut
 import { API_BASE_URL } from '../../../config';
 import SkeletonLoader from '../../SkeletonLoader';
 import { ServiceCard, PackageCard, PackageServiceTabs, PackageServiceEmpty, PackageServiceList } from '../../PackageServiceCard';
-import UniversalModal from '../../UniversalModal';
+import UniversalModal, { ConfirmationModal } from '../../UniversalModal';
 
 function ServicesPackagesPanel({ onBack, vendorProfileId }) {
   const [loading, setLoading] = useState(true);
@@ -21,6 +21,8 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
   const [packages, setPackages] = useState([]);
   const [showPackageModal, setShowPackageModal] = useState(false);
   const [editingPackage, setEditingPackage] = useState(null);
+  const [showDeletePackageModal, setShowDeletePackageModal] = useState(false);
+  const [packageToDelete, setPackageToDelete] = useState(null);
   const [packageForm, setPackageForm] = useState({
     name: '',
     description: '',
@@ -204,11 +206,17 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
     }
   };
 
-  const handleDeletePackage = async (packageId) => {
-    if (!window.confirm('Are you sure you want to delete this package?')) return;
+  const handleDeletePackage = (packageId) => {
+    setPackageToDelete(packageId);
+    setShowDeletePackageModal(true);
+  };
+
+  const confirmDeletePackage = async () => {
+    if (!packageToDelete) return;
+    setShowDeletePackageModal(false);
 
     try {
-      const response = await apiDelete(`/vendors/${vendorProfileId}/packages/${packageId}`);
+      const response = await apiDelete(`/vendors/${vendorProfileId}/packages/${packageToDelete}`);
 
       if (response.ok) {
         showBanner('Package deleted successfully!', 'success');
@@ -219,6 +227,8 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
     } catch (error) {
       console.error('Error deleting package:', error);
       showBanner('Failed to delete package', 'error');
+    } finally {
+      setPackageToDelete(null);
     }
   };
 
@@ -1546,6 +1556,18 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
                 </div>
           </div>
         </UniversalModal>
+
+        {/* Delete Package Confirmation Modal */}
+        <ConfirmationModal
+          isOpen={showDeletePackageModal}
+          onClose={() => { setShowDeletePackageModal(false); setPackageToDelete(null); }}
+          title="Delete Package"
+          message="Are you sure you want to delete this package?"
+          confirmLabel="Delete"
+          cancelLabel="Cancel"
+          onConfirm={confirmDeletePackage}
+          variant="danger"
+        />
 
       </div>
     </div>

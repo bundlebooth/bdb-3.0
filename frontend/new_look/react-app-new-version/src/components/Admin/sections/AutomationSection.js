@@ -6,13 +6,17 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { formatDate, formatRelativeTime } from '../../../utils/formatUtils';
 import adminApi from '../../../services/adminApi';
-import UniversalModal, { FormModal } from '../../UniversalModal';
+import UniversalModal, { FormModal, ConfirmationModal } from '../../UniversalModal';
 import { FormField, FormTextareaField, ToggleSwitch } from '../../common/FormComponents';
 
 function AutomationSection() {
   const [activeTab, setActiveTab] = useState('rules');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [showDeleteRuleModal, setShowDeleteRuleModal] = useState(false);
+  const [ruleToDelete, setRuleToDelete] = useState(null);
+  const [showCancelEmailModal, setShowCancelEmailModal] = useState(false);
+  const [emailToCancel, setEmailToCancel] = useState(null);
 
   // Email templates
   const [emailTemplates, setEmailTemplates] = useState([]);
@@ -130,18 +134,33 @@ function AutomationSection() {
   };
 
   const handleDeleteRule = (ruleId) => {
-    if (window.confirm('Are you sure you want to delete this automation rule?')) {
-      setAutomationRules(rules => rules.filter(r => r.id !== ruleId));
-    }
+    setRuleToDelete(ruleId);
+    setShowDeleteRuleModal(true);
   };
 
-  const handleCancelEmail = async (emailId) => {
-    if (!window.confirm('Cancel this queued email?')) return;
+  const confirmDeleteRule = () => {
+    if (ruleToDelete) {
+      setAutomationRules(rules => rules.filter(r => r.id !== ruleToDelete));
+    }
+    setShowDeleteRuleModal(false);
+    setRuleToDelete(null);
+  };
+
+  const handleCancelEmail = (emailId) => {
+    setEmailToCancel(emailId);
+    setShowCancelEmailModal(true);
+  };
+
+  const confirmCancelEmail = async () => {
+    if (!emailToCancel) return;
+    setShowCancelEmailModal(false);
     try {
-      await adminApi.cancelQueuedEmail(emailId, 'Cancelled by admin');
+      await adminApi.cancelQueuedEmail(emailToCancel, 'Cancelled by admin');
       fetchEmailQueue();
     } catch (err) {
-      alert('Failed to cancel email');
+      console.error('Failed to cancel email:', err);
+    } finally {
+      setEmailToCancel(null);
     }
   };
 
@@ -530,6 +549,30 @@ function AutomationSection() {
           </div>
         )}
       </UniversalModal>
+
+      {/* Delete Rule Confirmation */}
+      <ConfirmationModal
+        isOpen={showDeleteRuleModal}
+        onClose={() => { setShowDeleteRuleModal(false); setRuleToDelete(null); }}
+        title="Delete Automation Rule"
+        message="Are you sure you want to delete this automation rule?"
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        onConfirm={confirmDeleteRule}
+        variant="danger"
+      />
+
+      {/* Cancel Email Confirmation */}
+      <ConfirmationModal
+        isOpen={showCancelEmailModal}
+        onClose={() => { setShowCancelEmailModal(false); setEmailToCancel(null); }}
+        title="Cancel Queued Email"
+        message="Are you sure you want to cancel this queued email?"
+        confirmLabel="Cancel Email"
+        cancelLabel="Go Back"
+        onConfirm={confirmCancelEmail}
+        variant="warning"
+      />
     </div>
   );
 }
