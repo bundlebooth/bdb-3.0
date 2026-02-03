@@ -669,6 +669,40 @@ async function sendNewSupportMessageToTeam(supportEmail, userName, userEmail, co
   }, null, null, null, 'support', adminBcc);
 }
 
+// Send account locked notification due to chat violations
+async function sendAccountLockedEmail(userEmail, userName, lockReason, lockType, userId = null) {
+  const supportEmail = process.env.EMAIL_SUPPORT || 'support@planbeau.com';
+  const adminBcc = 'admin@planbeau.com';
+  
+  // Format lock type for display
+  const lockTypeDisplay = {
+    'chat_violation': 'Chat Policy Violation',
+    'failed_login': 'Security - Failed Login Attempts',
+    'admin_manual': 'Administrative Action',
+    'suspicious_activity': 'Suspicious Activity Detected'
+  };
+  
+  const lockTypeText = lockTypeDisplay[lockType] || 'Policy Violation';
+  
+  return sendTemplatedEmail('account_locked', userEmail, userName, {
+    userName,
+    lockReason,
+    lockType: lockTypeText,
+    supportEmail,
+    supportUrl: 'https://www.planbeau.com/support'
+  }, userId, null, null, 'admin', adminBcc);
+}
+
+// Send account unlocked notification
+async function sendAccountUnlockedEmail(userEmail, userName, unlockReason, userId = null) {
+  const adminBcc = 'admin@planbeau.com';
+  return sendTemplatedEmail('account_unlocked', userEmail, userName, {
+    userName,
+    unlockReason: unlockReason || 'Your account has been reviewed and unlocked.',
+    dashboardUrl: 'https://www.planbeau.com/dashboard'
+  }, userId, null, null, 'admin', adminBcc);
+}
+
 module.exports = {
   sendEmail,
   sendTemplatedEmail,
@@ -696,5 +730,7 @@ module.exports = {
   sendAccountSuspended,
   sendAccountReactivated,
   sendSupportMessageToUser,
-  sendNewSupportMessageToTeam
+  sendNewSupportMessageToTeam,
+  sendAccountLockedEmail,
+  sendAccountUnlockedEmail
 };

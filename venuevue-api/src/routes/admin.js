@@ -4253,4 +4253,264 @@ router.post('/impersonate/end', async (req, res) => {
   }
 });
 
+// ============================================
+// CHAT MODERATION ENDPOINTS
+// ============================================
+
+// GET /admin/moderation/flagged - Get flagged messages/violations
+router.get('/moderation/flagged', async (req, res) => {
+  try {
+    const { page = 1, limit = 20, isReviewed, violationType, severity, userId } = req.query;
+    const pool = await getPool();
+    
+    const result = await pool.request()
+      .input('Page', sql.Int, parseInt(page))
+      .input('Limit', sql.Int, parseInt(limit))
+      .input('IsReviewed', sql.Bit, isReviewed === 'true' ? 1 : isReviewed === 'false' ? 0 : null)
+      .input('ViolationType', sql.VarChar(50), violationType || null)
+      .input('Severity', sql.Int, severity ? parseInt(severity) : null)
+      .input('UserID', sql.Int, userId ? parseInt(userId) : null)
+      .execute('admin.sp_GetFlaggedMessages');
+    
+    const violations = result.recordset || [];
+    const total = violations.length > 0 ? violations[0].TotalCount : 0;
+    
+    res.json({
+      success: true,
+      violations,
+      total,
+      page: parseInt(page),
+      limit: parseInt(limit),
+      totalPages: Math.ceil(total / parseInt(limit))
+    });
+  } catch (error) {
+    console.error('Error fetching flagged messages:', error);
+    res.status(500).json({ error: 'Failed to fetch flagged messages', details: error.message });
+  }
+});
+
+// GET /admin/moderation/notifications - Get admin notifications
+router.get('/moderation/notifications', async (req, res) => {
+  try {
+    const { page = 1, limit = 20, isRead, notificationType, priority } = req.query;
+    const pool = await getPool();
+    
+    const result = await pool.request()
+      .input('Page', sql.Int, parseInt(page))
+      .input('Limit', sql.Int, parseInt(limit))
+      .input('IsRead', sql.Bit, isRead === 'true' ? 1 : isRead === 'false' ? 0 : null)
+      .input('NotificationType', sql.VarChar(50), notificationType || null)
+      .input('Priority', sql.Int, priority ? parseInt(priority) : null)
+      .execute('admin.sp_GetAdminNotifications');
+    
+    const notifications = result.recordset || [];
+    const total = notifications.length > 0 ? notifications[0].TotalCount : 0;
+    const unreadCount = notifications.length > 0 ? notifications[0].UnreadCount : 0;
+    
+    res.json({
+      success: true,
+      notifications,
+      total,
+      unreadCount,
+      page: parseInt(page),
+      limit: parseInt(limit)
+    });
+  } catch (error) {
+    console.error('Error fetching admin notifications:', error);
+    res.status(500).json({ error: 'Failed to fetch notifications', details: error.message });
+  }
+});
+
+// POST /admin/moderation/review - Review a violation
+router.post('/moderation/review', async (req, res) => {
+  try {
+    const { violationId, actionTaken, adminNotes } = req.body;
+    const adminId = req.user?.id || req.user?.userId;
+    
+    if (!violationId || !actionTaken) {
+      return res.status(400).json({ error: 'violationId and actionTaken are required' });
+    }
+    
+    const pool = await getPool();
+    
+    const result = await pool.request()
+      .input('ViolationID', sql.Int, violationId)
+      .input('AdminID', sql.Int, adminId)
+      .input('ActionTaken', sql.VarChar(50), actionTaken)
+      .input('AdminNotes', sql.NVarChar(sql.MAX), adminNotes || null)
+      .execute('admin.sp_ReviewViolation');
+    
+    res.json({
+      success: true,
+      message: 'Violation reviewed successfully',
+      violation: result.recordset[0]
+    });
+  } catch (error) {
+    console.error('Error reviewing violation:', error);
+    res.status(500).json({ error: 'Failed to review violation', details: error.message });
+  }
+});
+
+// POST /admin/moderation/lock-user - Lock a user account
+router.post('/moderation/lock-user', async (req, res) => {
+  try {
+    const { userId, lockType, lockReason, violationCount, relatedViolationIds, lockDuration } = req.body;
+    const adminId = req.user?.id || req.user?.userId;
+    
+    if (!userId || !lockType || !lockReason) {
+      return res.status(400).json({ error: 'userId, lockType, and lockReason are required' });
+    }
+    
+    const pool = await getPool();
+    
+    const result = await pool.request()
+      .input('UserID', sql.Int, userId)
+      .input('LockType', sql.VarChar(50), lockType)
+      .input('LockReason', sql.NVarChar(500), lockReason)
+      .input('ViolationCount', sql.Int, violationCount || 0)
+      .input('RelatedViolationIDs', sql.NVarChar(500), relatedViolationIds || null)
+      .input('LockedByAdminID', sql.Int, adminId)
+      .input('LockDuration', sql.Int, lockDuration || null)
+      .execute('admin.sp_LockUserAccount');
+    
+    const lockInfo = result.recordset[0];
+    
+    // Send email notification to user
+    if (lockInfo && lockInfo.Email) {
+      try {
+        const { sendAccountLockedEmail } = require('../services/email');
+        await sendAccountLockedEmail(
+          lockInfo.Email,
+          lockInfo.UserName,
+          lockReason,
+          lockType
+        );
+      } catch (emailErr) {
+        console.error('Failed to send account locked email:', emailErr.message);
+      }
+    }
+    
+    res.json({
+      success: true,
+      message: 'User account locked successfully',
+      lockInfo
+    });
+  } catch (error) {
+    console.error('Error locking user account:', error);
+    res.status(500).json({ error: 'Failed to lock user account', details: error.message });
+  }
+});
+
+// POST /admin/moderation/unlock-user - Unlock a user account
+router.post('/moderation/unlock-user', async (req, res) => {
+  try {
+    const { userId, unlockReason } = req.body;
+    const adminId = req.user?.id || req.user?.userId;
+    
+    if (!userId) {
+      return res.status(400).json({ error: 'userId is required' });
+    }
+    
+    const pool = await getPool();
+    
+    // Get user info before unlocking
+    const userResult = await pool.request()
+      .input('UserID', sql.Int, userId)
+      .query('SELECT Email, FirstName, LastName FROM users.Users WHERE UserID = @UserID');
+    
+    const user = userResult.recordset[0];
+    
+    await pool.request()
+      .input('UserID', sql.Int, userId)
+      .input('UnlockedByAdminID', sql.Int, adminId)
+      .input('UnlockReason', sql.NVarChar(500), unlockReason || null)
+      .execute('admin.sp_UnlockUserAccount');
+    
+    // Send email notification to user
+    if (user && user.Email) {
+      try {
+        const { sendAccountUnlockedEmail } = require('../services/email');
+        await sendAccountUnlockedEmail(
+          user.Email,
+          `${user.FirstName || ''} ${user.LastName || ''}`.trim() || 'User',
+          unlockReason
+        );
+      } catch (emailErr) {
+        console.error('Failed to send account unlocked email:', emailErr.message);
+      }
+    }
+    
+    res.json({
+      success: true,
+      message: 'User account unlocked successfully'
+    });
+  } catch (error) {
+    console.error('Error unlocking user account:', error);
+    res.status(500).json({ error: 'Failed to unlock user account', details: error.message });
+  }
+});
+
+// GET /admin/moderation/user-violations/:userId - Get violation history for a user
+router.get('/moderation/user-violations/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const pool = await getPool();
+    
+    const result = await pool.request()
+      .input('UserID', sql.Int, parseInt(userId))
+      .query(`
+        SELECT 
+          ViolationID, ViolationType, DetectedContent, Severity,
+          IsBlocked, IsReviewed, ActionTaken, AdminNotes, CreatedAt
+        FROM admin.ChatViolations
+        WHERE UserID = @UserID
+        ORDER BY CreatedAt DESC
+      `);
+    
+    res.json({
+      success: true,
+      violations: result.recordset || []
+    });
+  } catch (error) {
+    console.error('Error fetching user violations:', error);
+    res.status(500).json({ error: 'Failed to fetch user violations', details: error.message });
+  }
+});
+
+// GET /admin/moderation/stats - Get moderation statistics
+router.get('/moderation/stats', async (req, res) => {
+  try {
+    const pool = await getPool();
+    
+    // Get various stats
+    const statsResult = await pool.request().query(`
+      SELECT 
+        (SELECT COUNT(*) FROM admin.ChatViolations WHERE IsReviewed = 0) AS PendingReviews,
+        (SELECT COUNT(*) FROM admin.ChatViolations WHERE CreatedAt >= DATEADD(DAY, -1, GETDATE())) AS ViolationsLast24h,
+        (SELECT COUNT(*) FROM admin.ChatViolations WHERE CreatedAt >= DATEADD(DAY, -7, GETDATE())) AS ViolationsLast7d,
+        (SELECT COUNT(*) FROM admin.AdminNotifications WHERE IsRead = 0) AS UnreadNotifications,
+        (SELECT COUNT(*) FROM users.Users WHERE IsLocked = 1) AS LockedAccounts,
+        (SELECT COUNT(DISTINCT UserID) FROM admin.ChatViolations WHERE CreatedAt >= DATEADD(DAY, -7, GETDATE())) AS UniqueViolators
+    `);
+    
+    // Get violation type breakdown
+    const typeBreakdown = await pool.request().query(`
+      SELECT ViolationType, COUNT(*) AS Count
+      FROM admin.ChatViolations
+      WHERE CreatedAt >= DATEADD(DAY, -30, GETDATE())
+      GROUP BY ViolationType
+      ORDER BY Count DESC
+    `);
+    
+    res.json({
+      success: true,
+      stats: statsResult.recordset[0] || {},
+      violationTypeBreakdown: typeBreakdown.recordset || []
+    });
+  } catch (error) {
+    console.error('Error fetching moderation stats:', error);
+    res.status(500).json({ error: 'Failed to fetch moderation stats', details: error.message });
+  }
+});
+
 module.exports = router;

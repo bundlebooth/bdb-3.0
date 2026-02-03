@@ -3,6 +3,7 @@ const router = express.Router();
 const { poolPromise, sql } = require('../config/db');
 const { serializeDates, serializeRecords } = require('../utils/helpers');
 const { notifyOfNewMessage } = require('../services/emailService');
+const contentFilter = require('../services/contentFilterService');
 
 // Handle Socket.IO events
 const handleSocketIO = (io) => {
@@ -14,6 +15,32 @@ const handleSocketIO = (io) => {
         // Validate message
         if (!messageData.conversationId || !messageData.content) {
           throw new Error('Missing required fields');
+        }
+
+        // Content moderation - scan message before sending (async, non-blocking for performance)
+        const filterResult = await contentFilter.processMessage(
+          socket.userId,
+          null, // MessageID not yet created
+          messageData.conversationId,
+          messageData.content
+        );
+
+        // If message should be blocked, notify sender and don't save
+        if (filterResult.shouldBlock) {
+          socket.emit('message-blocked', {
+            conversationId: messageData.conversationId,
+            reason: 'Your message was blocked due to policy violations. Please review our community guidelines.',
+            userLocked: filterResult.userLocked
+          });
+          
+          // If user was locked, emit account locked event
+          if (filterResult.userLocked) {
+            socket.emit('account-locked', {
+              reason: filterResult.lockReason,
+              message: 'Your account has been locked due to repeated policy violations. Please check your email for details.'
+            });
+          }
+          return; // Don't proceed with sending the message
         }
 
         const pool = await poolPromise;
@@ -314,6 +341,40 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ 
         success: false,
         message: 'conversationId, senderId, and content are required' 
+      });
+    }
+
+    // Content moderation - scan message before sending
+    const filterResult = await contentFilter.processMessage(
+      senderId,
+      null, // MessageID not yet created
+      conversationId,
+      content
+    );
+
+    // If message should be blocked, return error response
+    if (filterResult.shouldBlock) {
+      // If user was locked, send lock notification email
+      if (filterResult.userLocked && filterResult.lockInfo) {
+        try {
+          const { sendAccountLockedEmail } = require('../services/email');
+          await sendAccountLockedEmail(
+            filterResult.lockInfo.Email,
+            filterResult.lockInfo.UserName,
+            filterResult.lockReason,
+            'chat_violation'
+          );
+        } catch (emailErr) {
+          console.error('Failed to send account locked email:', emailErr.message);
+        }
+      }
+
+      return res.status(403).json({
+        success: false,
+        blocked: true,
+        message: 'Your message was blocked due to policy violations. Please review our community guidelines.',
+        userLocked: filterResult.userLocked,
+        lockReason: filterResult.userLocked ? filterResult.lockReason : undefined
       });
     }
 
