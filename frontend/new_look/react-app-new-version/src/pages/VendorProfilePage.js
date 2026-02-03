@@ -571,27 +571,19 @@ function VendorProfilePage() {
       
       if (response.ok) {
         const data = await response.json();
-        // Dispatch custom event to open messaging widget with this conversation
-        window.dispatchEvent(new CustomEvent('openMessagingWidget', { 
-          detail: { 
-            conversationId: data.conversationId,
-            vendorName: profile?.BusinessName,
-            vendorProfileId: vendorId
-          } 
-        }));
-        showBanner('Opening conversation...', 'success');
+        // Store conversation info for the messages page to pick up
+        sessionStorage.setItem('openConversationId', data.conversationId);
+        sessionStorage.setItem('openConversationName', profile?.BusinessName || 'Vendor');
+        // Redirect to client messages page with the conversation
+        navigate(`/client/messages?conversationId=${data.conversationId}`);
       } else {
-        // Fallback: just open the messaging widget
-        window.dispatchEvent(new CustomEvent('openMessagingWidget', { 
-          detail: { vendorProfileId: vendorId, vendorName: profile?.BusinessName } 
-        }));
+        // Fallback: just go to messages page
+        navigate('/client/messages');
       }
     } catch (error) {
       console.error('Failed to start conversation:', error);
-      // Fallback: just open the messaging widget
-      window.dispatchEvent(new CustomEvent('openMessagingWidget', { 
-        detail: { vendorProfileId: vendorId, vendorName: profile?.BusinessName } 
-      }));
+      // Fallback: just go to messages page
+      navigate('/client/messages');
     }
   };
 
@@ -2930,7 +2922,7 @@ function VendorProfilePage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
               {/* Host Avatar */}
               <div 
-                onClick={() => navigate(`/host/${encodeUserId(profile.HostUserID || vendorId)}`)}
+                onClick={() => navigate(`/profile/${encodeUserId(profile.HostUserID || vendorId)}`)}
                 style={{ 
                   width: '56px', 
                   height: '56px', 
@@ -2952,7 +2944,7 @@ function VendorProfilePage() {
               {/* Host Info */}
               <div style={{ flex: 1 }}>
                 <div 
-                  onClick={() => navigate(`/host/${encodeUserId(profile.HostUserID || vendorId)}`)}
+                  onClick={() => navigate(`/profile/${encodeUserId(profile.HostUserID || vendorId)}`)}
                   style={{ 
                     fontSize: '1rem', 
                     fontWeight: 600, 
@@ -3066,7 +3058,7 @@ function VendorProfilePage() {
             <div>
               {/* Profile Card - Horizontal Layout (matching HostProfilePage) */}
               <div 
-                onClick={() => navigate(`/host/${encodeUserId(profile.HostUserID)}`)}
+                onClick={() => navigate(`/profile/${encodeUserId(profile.HostUserID)}`)}
                 style={{
                   display: 'flex',
                   flexDirection: 'row',

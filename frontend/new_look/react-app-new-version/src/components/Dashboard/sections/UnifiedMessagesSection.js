@@ -6,12 +6,13 @@ import { useUserOnlineStatus, useVendorOnlineStatus } from '../../../hooks/useOn
 import { decodeConversationId, isPublicId } from '../../../utils/hashIds';
 import BookingDetailsModal from '../BookingDetailsModal';
 
-function UnifiedMessagesSection({ onSectionChange }) {
+function UnifiedMessagesSection({ onSectionChange, forceViewMode = null }) {
   const { currentUser } = useAuth();
   const [conversations, setConversations] = useState([]);
   const [allConversations, setAllConversations] = useState({ client: [], vendor: [] });
-  // Use viewMode from localStorage instead of separate toggle
+  // Use forceViewMode prop if provided, otherwise use viewMode from localStorage
   const getMessageRole = () => {
+    if (forceViewMode) return forceViewMode;
     const stored = localStorage.getItem('viewMode');
     return stored === 'vendor' ? 'vendor' : 'client';
   };
@@ -131,6 +132,13 @@ function UnifiedMessagesSection({ onSectionChange }) {
       fetchGifs();
     }
   }, [showGifPicker]);
+  
+  // Update messageRole when forceViewMode prop changes
+  useEffect(() => {
+    if (forceViewMode) {
+      setMessageRole(forceViewMode);
+    }
+  }, [forceViewMode]);
   
   // Handle GIF search
   const handleGifSearch = () => {
@@ -286,7 +294,16 @@ function UnifiedMessagesSection({ onSectionChange }) {
             userName: conv.OtherPartyName || conv.userName || 'Unknown User',
             OtherPartyName: conv.OtherPartyName || conv.userName || 'Unknown User',
             OtherPartyAvatar: conv.OtherPartyAvatar || conv.OtherPartyLogo,
-            otherPartyVendorProfileId: conv.VendorProfileID || conv.vendorProfileId, // For online status lookup
+            otherPartyVendorProfileId: conv.VendorProfileID || conv.vendorProfileId,
+            // Vendor business info
+            vendorBusinessName: conv.vendorBusinessName,
+            vendorLogoURL: conv.vendorLogoURL,
+            // Vendor host info
+            vendorHostName: conv.vendorHostName,
+            vendorHostAvatar: conv.vendorHostAvatar,
+            // Client info
+            clientName: conv.clientName,
+            clientAvatar: conv.clientAvatar,
             lastMessageContent: conv.lastMessageContent || conv.LastMessageContent || 'No messages yet',
             lastMessageCreatedAt: conv.lastMessageCreatedAt || conv.LastMessageCreatedAt || conv.createdAt,
             lastMessageSenderId: conv.lastMessageSenderId || conv.LastMessageSenderID,
@@ -313,7 +330,10 @@ function UnifiedMessagesSection({ onSectionChange }) {
               userName: conv.OtherPartyName || conv.userName || 'Unknown User',
               OtherPartyName: conv.OtherPartyName || conv.userName || 'Unknown User',
               OtherPartyAvatar: conv.OtherPartyAvatar || conv.OtherPartyLogo,
-              otherPartyUserId: conv.userId || conv.UserID, // For online status lookup (client user ID) - API returns userId
+              otherPartyUserId: conv.userId || conv.UserID,
+              // Client info (the person messaging the vendor)
+              clientName: conv.OtherPartyName || conv.userName,
+              clientAvatar: conv.OtherPartyAvatar,
               lastMessageContent: conv.lastMessageContent || conv.LastMessageContent || 'No messages yet',
               lastMessageCreatedAt: conv.lastMessageCreatedAt || conv.LastMessageCreatedAt || conv.createdAt,
               lastMessageSenderId: conv.lastMessageSenderId || conv.LastMessageSenderID,
@@ -722,6 +742,25 @@ function UnifiedMessagesSection({ onSectionChange }) {
     const isSelected = selectedConversation?.id === conv.id;
     const hasUnread = conv.unreadCount > 0;
     
+    // Determine display based on conversation type
+    const isClientView = conv.type === 'client'; // User is the client, other party is vendor
+    
+    // For client view: show Business Name + Host Name
+    // For vendor view: show Client Name
+    const primaryName = isClientView 
+      ? (conv.vendorBusinessName || conv.OtherPartyName || 'Unknown Vendor')
+      : (conv.clientName || conv.OtherPartyName || 'Unknown Client');
+    
+    const secondaryName = isClientView 
+      ? (conv.vendorHostName ? `Hosted by ${conv.vendorHostName}` : null)
+      : null;
+    
+    // For client view: show vendor logo with host avatar overlay
+    const mainAvatarUrl = isClientView
+      ? (conv.vendorLogoURL || conv.OtherPartyAvatar)
+      : (conv.clientAvatar || conv.OtherPartyAvatar);
+    const overlayAvatarUrl = isClientView ? conv.vendorHostAvatar : null;
+    
     return (
       <div 
         key={conv.id}
@@ -739,50 +778,76 @@ function UnifiedMessagesSection({ onSectionChange }) {
         onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.backgroundColor = '#f8f9fa'; }}
         onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = isSelected ? '#f5f5f5' : 'white'; }}
       >
-        {/* Avatar - show profile pic if available */}
-        {conv.OtherPartyAvatar || conv.userProfilePic || conv.profilePicUrl ? (
-          <img 
-            src={conv.OtherPartyAvatar || conv.userProfilePic || conv.profilePicUrl}
-            alt={conv.userName || 'User'}
-            style={{
-              width: '48px',
-              height: '48px',
-              borderRadius: '50%',
-              objectFit: 'cover',
-              flexShrink: 0
-            }}
-            onError={(e) => {
-              e.target.style.display = 'none';
-              e.target.nextSibling.style.display = 'flex';
-            }}
-          />
-        ) : null}
-        <div style={{
-          width: '48px',
-          height: '48px',
-          borderRadius: '50%',
-          backgroundColor: '#5e72e4',
-          display: conv.OtherPartyAvatar || conv.userProfilePic || conv.profilePicUrl ? 'none' : 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: 'white',
-          fontWeight: 600,
-          fontSize: '18px',
-          flexShrink: 0
-        }}>
-          {(conv.userName || 'U').charAt(0).toUpperCase()}
+        {/* Avatar container - vendor logo with host profile pic overlay */}
+        <div style={{ position: 'relative', width: '48px', height: '48px', flexShrink: 0 }}>
+          {mainAvatarUrl ? (
+            <img 
+              src={mainAvatarUrl}
+              alt={primaryName}
+              style={{
+                width: '48px',
+                height: '48px',
+                borderRadius: '50%',
+                objectFit: 'cover'
+              }}
+              onError={(e) => {
+                e.target.style.display = 'none';
+                e.target.nextSibling.style.display = 'flex';
+              }}
+            />
+          ) : null}
+          <div style={{
+            width: '48px',
+            height: '48px',
+            borderRadius: '50%',
+            backgroundColor: '#5e72e4',
+            display: mainAvatarUrl ? 'none' : 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'white',
+            fontWeight: 600,
+            fontSize: '18px'
+          }}>
+            {(primaryName || 'U').charAt(0).toUpperCase()}
+          </div>
+          {/* Host profile pic overlay - only for client view */}
+          {isClientView && overlayAvatarUrl && (
+            <img
+              src={overlayAvatarUrl}
+              alt="Host"
+              style={{
+                position: 'absolute',
+                bottom: '-2px',
+                right: '-2px',
+                width: '20px',
+                height: '20px',
+                borderRadius: '50%',
+                objectFit: 'cover',
+                border: '2px solid white',
+                backgroundColor: '#e5e7eb'
+              }}
+              onError={(e) => { e.target.style.display = 'none'; }}
+            />
+          )}
         </div>
         
         {/* Content */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: secondaryName ? '2px' : '4px' }}>
             <span style={{ fontWeight: hasUnread ? 600 : 500, color: '#222', fontSize: '15px' }}>
-              {conv.userName || 'Unknown User'}
+              {primaryName}
             </span>
             <span style={{ fontSize: '12px', color: '#999' }}>
               {formatTimeAgo(conv.lastMessageCreatedAt)}
             </span>
           </div>
+          
+          {/* Secondary name (host name for vendors) */}
+          {secondaryName && (
+            <div style={{ fontSize: '12px', color: '#666', marginBottom: '2px' }}>
+              {secondaryName}
+            </div>
+          )}
           
           <div style={{ 
             fontSize: '14px', 
@@ -1035,61 +1100,104 @@ function UnifiedMessagesSection({ onSectionChange }) {
         )}
         
         {selectedConversation ? (
-          <>
-            <div style={{ position: 'relative' }}>
-              {selectedConversation.OtherPartyAvatar ? (
-                <img
-                  src={selectedConversation.OtherPartyAvatar}
-                  alt={selectedConversation.userName || 'User'}
-                  style={{
+          (() => {
+            // Determine display based on conversation type
+            const isClientView = selectedConversation.type === 'client';
+            const headerPrimaryName = isClientView 
+              ? (selectedConversation.vendorBusinessName || selectedConversation.OtherPartyName || 'Unknown Vendor')
+              : (selectedConversation.clientName || selectedConversation.OtherPartyName || 'Unknown Client');
+            const headerSecondaryName = isClientView 
+              ? (selectedConversation.vendorHostName || null)
+              : null;
+            const headerAvatarUrl = isClientView
+              ? (selectedConversation.vendorLogoURL || selectedConversation.OtherPartyAvatar)
+              : (selectedConversation.clientAvatar || selectedConversation.OtherPartyAvatar);
+            const headerOverlayAvatarUrl = isClientView ? selectedConversation.vendorHostAvatar : null;
+            
+            return (
+              <>
+                <div style={{ position: 'relative', width: '44px', height: '44px' }}>
+                  {headerAvatarUrl ? (
+                    <img
+                      src={headerAvatarUrl}
+                      alt={headerPrimaryName}
+                      style={{
+                        width: '44px',
+                        height: '44px',
+                        borderRadius: '50%',
+                        objectFit: 'cover'
+                      }}
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.nextSibling.style.display = 'flex';
+                      }}
+                    />
+                  ) : null}
+                  <div style={{
                     width: '44px',
                     height: '44px',
                     borderRadius: '50%',
-                    objectFit: 'cover'
-                  }}
-                  onError={(e) => {
-                    e.target.style.display = 'none';
-                    e.target.nextSibling.style.display = 'flex';
-                  }}
-                />
-              ) : null}
-              <div style={{
-                width: '44px',
-                height: '44px',
-                borderRadius: '50%',
-                backgroundColor: '#5e72e4',
-                display: selectedConversation.OtherPartyAvatar ? 'none' : 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'white',
-                fontWeight: 600,
-                fontSize: '16px'
-              }}>
-                {(selectedConversation.userName || 'U').charAt(0).toUpperCase()}
-              </div>
-              {/* Online indicator */}
-              <div style={{
-                position: 'absolute',
-                bottom: '2px',
-                right: '2px',
-                width: '12px',
-                height: '12px',
-                borderRadius: '50%',
-                backgroundColor: otherPartyOnlineStatus?.isOnline ? '#10b981' : '#9ca3af',
-                border: '2px solid white'
-              }}></div>
-            </div>
-            <div>
-              <div style={{ fontWeight: 600, color: '#222', fontSize: '16px' }}>
-                {selectedConversation.userName || 'Unknown'}
-              </div>
-              <div style={{ fontSize: '12px', color: otherPartyOnlineStatus?.isOnline ? '#10b981' : '#9ca3af' }}>
-                {otherPartyOnlineStatus?.isOnline 
-                  ? 'Online' 
-                  : (otherPartyOnlineStatus?.lastActiveText || 'Offline')}
-              </div>
-            </div>
-          </>
+                    backgroundColor: '#5e72e4',
+                    display: headerAvatarUrl ? 'none' : 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'white',
+                    fontWeight: 600,
+                    fontSize: '16px'
+                  }}>
+                    {(headerPrimaryName || 'U').charAt(0).toUpperCase()}
+                  </div>
+                  {/* Host profile pic overlay - only for client view */}
+                  {isClientView && headerOverlayAvatarUrl ? (
+                    <img
+                      src={headerOverlayAvatarUrl}
+                      alt="Host"
+                      style={{
+                        position: 'absolute',
+                        bottom: '-2px',
+                        right: '-2px',
+                        width: '18px',
+                        height: '18px',
+                        borderRadius: '50%',
+                        objectFit: 'cover',
+                        border: '2px solid white',
+                        backgroundColor: '#e5e7eb'
+                      }}
+                      onError={(e) => { e.target.style.display = 'none'; }}
+                    />
+                  ) : (
+                    /* Online indicator - show when no host overlay */
+                    <div style={{
+                      position: 'absolute',
+                      bottom: '2px',
+                      right: '2px',
+                      width: '12px',
+                      height: '12px',
+                      borderRadius: '50%',
+                      backgroundColor: otherPartyOnlineStatus?.isOnline ? '#10b981' : '#9ca3af',
+                      border: '2px solid white'
+                    }}></div>
+                  )}
+                </div>
+                <div>
+                  <div style={{ fontWeight: 600, color: '#222', fontSize: '16px' }}>
+                    {headerPrimaryName}
+                  </div>
+                  {/* Secondary name (host name for vendors) */}
+                  {headerSecondaryName && (
+                    <div style={{ fontSize: '12px', color: '#666' }}>
+                      {headerSecondaryName}
+                    </div>
+                  )}
+                  <div style={{ fontSize: '12px', color: otherPartyOnlineStatus?.isOnline ? '#10b981' : '#9ca3af' }}>
+                    {otherPartyOnlineStatus?.isOnline 
+                      ? 'Online' 
+                      : (otherPartyOnlineStatus?.lastActiveText || 'Offline')}
+                  </div>
+                </div>
+              </>
+            );
+          })()
         ) : (
           <div style={{ color: '#666', fontSize: '15px' }}>Select a conversation</div>
         )}

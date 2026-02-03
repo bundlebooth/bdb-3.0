@@ -26,6 +26,8 @@ BEGIN
         c.VendorProfileID,
         c.CreatedAt,
         c.UserID AS ConversationUserID,
+        -- When user is client: show vendor business name
+        -- When user is vendor: show client's name
         CASE 
             WHEN c.UserID = @UserID THEN v.BusinessName 
             ELSE CONCAT(u.FirstName, ' ', ISNULL(u.LastName, '')) 
@@ -38,6 +40,17 @@ BEGIN
             WHEN c.UserID = @UserID THEN v.LogoURL
             ELSE u.ProfileImageURL
         END AS OtherPartyAvatar,
+        -- Vendor business info (always included for context)
+        v.BusinessName AS VendorBusinessName,
+        v.LogoURL AS VendorLogoURL,
+        -- Vendor host (owner) info
+        vu.FirstName AS VendorHostFirstName,
+        vu.LastName AS VendorHostLastName,
+        vu.ProfileImageURL AS VendorHostAvatar,
+        -- Client info
+        u.FirstName AS ClientFirstName,
+        u.LastName AS ClientLastName,
+        u.ProfileImageURL AS ClientAvatar,
         CASE 
             WHEN c.UserID = @UserID THEN 1
             ELSE 0
@@ -52,6 +65,7 @@ BEGIN
     FROM messages.Conversations c
     LEFT JOIN users.Users u ON c.UserID = u.UserID
     LEFT JOIN vendors.VendorProfiles v ON c.VendorProfileID = v.VendorProfileID
+    LEFT JOIN users.Users vu ON v.UserID = vu.UserID  -- Vendor's user record (the host)
     LEFT JOIN messages.Messages m ON c.ConversationID = m.ConversationID
         AND m.MessageID = (
             SELECT TOP 1 MessageID 
@@ -60,7 +74,11 @@ BEGIN
             ORDER BY CreatedAt DESC
         )
     WHERE c.UserID = @UserID OR (v.UserID = @UserID AND @UserVendorProfileID IS NOT NULL)
-    GROUP BY c.ConversationID, c.VendorProfileID, c.CreatedAt, c.UserID, u.FirstName, u.LastName, v.BusinessName, m.Content, m.CreatedAt, v.LogoURL, u.ProfileImageURL, v.UserID
+    GROUP BY c.ConversationID, c.VendorProfileID, c.CreatedAt, c.UserID, 
+             u.FirstName, u.LastName, u.ProfileImageURL,
+             v.BusinessName, v.LogoURL, v.UserID,
+             vu.FirstName, vu.LastName, vu.ProfileImageURL,
+             m.Content, m.CreatedAt
     ORDER BY COALESCE(m.CreatedAt, c.CreatedAt) DESC;
 END
 GO

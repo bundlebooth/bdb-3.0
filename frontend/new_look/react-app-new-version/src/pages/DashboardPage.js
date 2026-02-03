@@ -502,9 +502,10 @@ function DashboardPage() {
       case 'vendor-settings':
         return <VendorSettingsSection />;
       
-      // Unified Messages section
+      // Unified Messages section - vendor view on dashboard
       case 'messages':
-        return <UnifiedMessagesSection onSectionChange={handleSectionChange} />;
+      case 'vendor-messages':
+        return <UnifiedMessagesSection onSectionChange={handleSectionChange} forceViewMode="vendor" />;
       
       default:
         return showVendorView 

@@ -39,7 +39,7 @@ function ClientMessagesPage() {
         </aside>
         <main className="client-page-main">
           <div className="client-page-content">
-            <UnifiedMessagesSection />
+            <UnifiedMessagesSection forceViewMode="client" />
           </div>
         </main>
       </div>

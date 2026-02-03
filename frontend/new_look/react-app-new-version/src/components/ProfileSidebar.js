@@ -298,7 +298,7 @@ function ProfileSidebar({ isOpen, onClose }) {
         {/* Profile Card - Clickable to view full profile */}
         <div 
           className="profile-sidebar-card"
-          onClick={() => handleNavigate(`/host/${encodeUserId(currentUser?.id)}`)}
+          onClick={() => handleNavigate(`/profile/${encodeUserId(currentUser?.id)}`)}
         >
           <div className="profile-sidebar-avatar-container">
             {profilePic ? (
@@ -398,7 +398,7 @@ function ProfileSidebar({ isOpen, onClose }) {
           <div className="profile-sidebar-menu-divider"></div>
           
           {/* View Profile */}
-          <button className="profile-sidebar-menu-item" onClick={() => handleNavigate(`/host/${encodeUserId(currentUser?.id)}`)}>
+          <button className="profile-sidebar-menu-item" onClick={() => handleNavigate(`/profile/${encodeUserId(currentUser?.id)}`)}>
             <i className="far fa-user-circle"></i>
             <span>View Profile</span>
             <i className="fas fa-chevron-right menu-item-arrow"></i>

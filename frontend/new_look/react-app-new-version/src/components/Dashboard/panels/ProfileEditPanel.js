@@ -202,7 +202,7 @@ const ProfileEditPanel = ({ onClose, onSave }) => {
   };
 
   const viewProfile = () => {
-    window.open(`/host/${encodeUserId(currentUser?.id)}`, '_blank');
+    window.open(`/profile/${encodeUserId(currentUser?.id)}`, '_blank');
   };
 
   const handleSave = async () => {

@@ -177,7 +177,7 @@ const BookingCard = ({
     if (isVendorView) {
       // For vendor view, could navigate to client profile if available
     } else if (profileId) {
-      navigate(`/host/${encodeUserId(profileId)}`);
+      navigate(`/profile/${encodeUserId(profileId)}`);
     }
   };
 
