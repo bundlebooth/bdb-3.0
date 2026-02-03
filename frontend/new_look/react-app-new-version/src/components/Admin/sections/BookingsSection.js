@@ -1,6 +1,6 @@
 /**
  * Bookings Section - Admin Dashboard
- * Bookings, payments, transactions, and refunds management
+ * Booking lifecycle and operations management
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -11,10 +11,7 @@ import UniversalModal, { FormModal } from '../../UniversalModal';
 import { FormTextareaField, FormSelectField, DetailRow, DetailSection } from '../../common/FormComponents';
 
 function BookingsSection() {
-  const [activeTab, setActiveTab] = useState('bookings');
   const [bookings, setBookings] = useState([]);
-  const [transactions, setTransactions] = useState([]);
-  const [payouts, setPayouts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
@@ -32,7 +29,6 @@ function BookingsSection() {
   const [refundReason, setRefundReason] = useState('');
   const [disputeResolution, setDisputeResolution] = useState('');
   const [disputeAction, setDisputeAction] = useState('');
-  const [paymentStats, setPaymentStats] = useState(null);
 
   const debouncedSearch = useDebounce(search, 300);
 
@@ -62,65 +58,12 @@ function BookingsSection() {
     }
   }, [page, debouncedSearch, statusFilter]);
 
-  const fetchTransactions = useCallback(async () => {
-    try {
-      setLoading(true);
-      const data = await adminApi.getTransactions({ page, limit });
-      // Ensure transactions is always an array
-      const txArray = Array.isArray(data?.transactions) ? data.transactions : Array.isArray(data) ? data : [];
-      setTransactions(txArray);
-      setTotal(data.total || 0);
-    } catch (err) {
-      console.error('Error fetching transactions:', err);
-      setError('Failed to load transactions');
-    } finally {
-      setLoading(false);
-    }
-  }, [page]);
-
-  const fetchPayouts = useCallback(async () => {
-    try {
-      setLoading(true);
-      const data = await adminApi.getPayouts({ page, limit });
-      // Ensure payouts is always an array
-      const payoutsArray = Array.isArray(data?.payouts) ? data.payouts : Array.isArray(data) ? data : [];
-      setPayouts(payoutsArray);
-      setTotal(data.total || 0);
-    } catch (err) {
-      console.error('Error fetching payouts:', err);
-      setError('Failed to load payouts');
-    } finally {
-      setLoading(false);
-    }
-  }, [page]);
-
-  const fetchPaymentStats = useCallback(async () => {
-    try {
-      const data = await adminApi.getPaymentStats();
-      setPaymentStats(data);
-    } catch (err) {
-      console.error('Error fetching payment stats:', err);
-    }
-  }, []);
+  useEffect(() => {
+    fetchBookings();
+  }, [fetchBookings]);
 
   useEffect(() => {
-    fetchPaymentStats();
-  }, [fetchPaymentStats]);
-
-  useEffect(() => {
-    if (activeTab === 'bookings') {
-      fetchBookings();
-    } else if (activeTab === 'transactions') {
-      fetchTransactions();
-    } else if (activeTab === 'payouts') {
-      fetchPayouts();
-    }
-  }, [activeTab, fetchBookings, fetchTransactions, fetchPayouts]);
-
-  useEffect(() => {
-    if (activeTab === 'bookings') {
-      fetchBookings();
-    }
+    fetchBookings();
   }, [page, debouncedSearch, statusFilter]);
 
   const handleRefund = async () => {
@@ -357,168 +300,10 @@ function BookingsSection() {
     </>
   );
 
-  const renderTransactions = () => (
-    <div className="admin-card">
-      <div className="admin-card-header">
-        <h3 className="admin-card-title">Recent Transactions</h3>
-      </div>
-      
-      {loading ? (
-        <div className="admin-loading">
-          <div className="admin-loading-spinner"></div>
-          <p>Loading transactions...</p>
-        </div>
-      ) : transactions.length === 0 ? (
-        <div className="admin-empty-state">
-          <i className="fas fa-credit-card"></i>
-          <h3>No Transactions</h3>
-          <p>No transactions found</p>
-        </div>
-      ) : (
-        <div className="admin-table-container">
-          <table className="admin-table">
-            <thead>
-              <tr>
-                <th>Transaction ID</th>
-                <th>Type</th>
-                <th>Amount</th>
-                <th>Status</th>
-                <th>Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              {transactions.map((tx) => (
-                <tr key={tx.TransactionID || tx.id}>
-                  <td style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>
-                    {tx.TransactionID || tx.id}
-                  </td>
-                  <td>{tx.Type || tx.type}</td>
-                  <td style={{ fontWeight: 500 }}>{formatCurrency(tx.Amount || tx.amount)}</td>
-                  <td>{getStatusBadge(tx.Status || tx.status)}</td>
-                  <td>{formatDate(tx.CreatedAt || tx.createdAt)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  );
-
-  const renderPayouts = () => (
-    <div className="admin-card">
-      <div className="admin-card-header">
-        <h3 className="admin-card-title">Vendor Payouts</h3>
-      </div>
-      
-      {loading ? (
-        <div className="admin-loading">
-          <div className="admin-loading-spinner"></div>
-          <p>Loading payouts...</p>
-        </div>
-      ) : payouts.length === 0 ? (
-        <div className="admin-empty-state">
-          <i className="fas fa-money-check-alt"></i>
-          <h3>No Payouts</h3>
-          <p>No payouts found</p>
-        </div>
-      ) : (
-        <div className="admin-table-container">
-          <table className="admin-table">
-            <thead>
-              <tr>
-                <th>Vendor</th>
-                <th>Amount</th>
-                <th>Status</th>
-                <th>Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              {payouts.map((payout) => (
-                <tr key={payout.PayoutID || payout.id}>
-                  <td>{payout.VendorName || payout.vendorName}</td>
-                  <td style={{ fontWeight: 500 }}>{formatCurrency(payout.Amount || payout.amount)}</td>
-                  <td>{getStatusBadge(payout.Status || payout.status)}</td>
-                  <td>{formatDate(payout.CreatedAt || payout.createdAt)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  );
-
   return (
     <div className="admin-section">
-      {/* Payment Stats */}
-      {paymentStats && (
-        <div className="admin-stats-grid" style={{ marginBottom: '1.5rem' }}>
-          <div className="admin-stat-card">
-            <div className="admin-stat-icon green">
-              <i className="fas fa-dollar-sign"></i>
-            </div>
-            <div className="admin-stat-content">
-              <div className="admin-stat-value">{formatCurrency(paymentStats.totalRevenue || 0)}</div>
-              <div className="admin-stat-label">Total Revenue</div>
-            </div>
-          </div>
-          <div className="admin-stat-card">
-            <div className="admin-stat-icon blue">
-              <i className="fas fa-calendar-check"></i>
-            </div>
-            <div className="admin-stat-content">
-              <div className="admin-stat-value">{paymentStats.totalBookings || 0}</div>
-              <div className="admin-stat-label">Total Bookings</div>
-            </div>
-          </div>
-          <div className="admin-stat-card">
-            <div className="admin-stat-icon orange">
-              <i className="fas fa-clock"></i>
-            </div>
-            <div className="admin-stat-content">
-              <div className="admin-stat-value">{paymentStats.pendingPayouts || 0}</div>
-              <div className="admin-stat-label">Pending Payouts</div>
-            </div>
-          </div>
-          <div className="admin-stat-card">
-            <div className="admin-stat-icon red">
-              <i className="fas fa-undo"></i>
-            </div>
-            <div className="admin-stat-content">
-              <div className="admin-stat-value">{formatCurrency(paymentStats.totalRefunds || 0)}</div>
-              <div className="admin-stat-label">Total Refunds</div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Tabs */}
-      <div className="admin-tabs">
-        <button
-          className={`admin-tab ${activeTab === 'bookings' ? 'active' : ''}`}
-          onClick={() => { setActiveTab('bookings'); setPage(1); }}
-        >
-          Bookings
-        </button>
-        <button
-          className={`admin-tab ${activeTab === 'transactions' ? 'active' : ''}`}
-          onClick={() => { setActiveTab('transactions'); setPage(1); }}
-        >
-          Transactions
-        </button>
-        <button
-          className={`admin-tab ${activeTab === 'payouts' ? 'active' : ''}`}
-          onClick={() => { setActiveTab('payouts'); setPage(1); }}
-        >
-          Payouts
-        </button>
-      </div>
-
-      {/* Tab Content */}
-      {activeTab === 'bookings' && renderBookings()}
-      {activeTab === 'transactions' && renderTransactions()}
-      {activeTab === 'payouts' && renderPayouts()}
+      {/* Bookings Content */}
+      {renderBookings()}
 
       {/* Booking Detail Modal */}
       <UniversalModal

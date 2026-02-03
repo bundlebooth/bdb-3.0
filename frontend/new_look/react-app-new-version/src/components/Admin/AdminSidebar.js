@@ -8,16 +8,20 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 
 const adminMenuItems = [
-  { id: 'overview', label: 'Overview', icon: 'fa-chart-pie' },
-  { id: 'users', label: 'Users', icon: 'fa-users' },
-  { id: 'vendors', label: 'Vendors', icon: 'fa-store' },
-  { id: 'bookings', label: 'Bookings & Payments', icon: 'fa-calendar-check' },
-  { id: 'moderation', label: 'Content Moderation', icon: 'fa-shield-alt' },
-  { id: 'content', label: 'Blog & FAQs', icon: 'fa-newspaper' },
-  { id: 'support', label: 'Support Center', icon: 'fa-headset' },
-  { id: 'security', label: 'Security & Logs', icon: 'fa-lock' },
-  { id: 'settings', label: 'Settings', icon: 'fa-cog' },
-  { id: 'analytics', label: 'Reports & Analytics', icon: 'fa-chart-bar' }
+  { id: 'dashboard', label: 'Dashboard', icon: 'fa-chart-pie' },
+  { id: 'analytics', label: 'Analytics & Reports', icon: 'fa-chart-bar' },
+  { id: 'users', label: 'User Management', icon: 'fa-users' },
+  { id: 'vendors', label: 'Vendor Management', icon: 'fa-store' },
+  { id: 'bookings', label: 'Bookings', icon: 'fa-calendar-check' },
+  { id: 'payments', label: 'Payments & Payouts', icon: 'fa-credit-card' },
+  { id: 'reviews', label: 'Reviews & Moderation', icon: 'fa-star' },
+  { id: 'content', label: 'Content Management', icon: 'fa-newspaper' },
+  { id: 'support', label: 'Support Tickets', icon: 'fa-ticket-alt' },
+  { id: 'chat', label: 'Live Chat', icon: 'fa-comments' },
+  { id: 'security', label: 'Security & Audit', icon: 'fa-shield-alt' },
+  { id: 'settings', label: 'Platform Settings', icon: 'fa-cog' },
+  { id: 'automation', label: 'Automation & Email', icon: 'fa-robot' },
+  { id: 'tools', label: 'Search & Impersonation', icon: 'fa-user-secret' }
 ];
 
 function AdminSidebar({ 

@@ -9,32 +9,40 @@ import { useAuth } from '../../context/AuthContext';
 import AdminSidebar from './AdminSidebar';
 import './AdminDashboard.css';
 
-// Section Components (will be created in subsequent phases)
-import OverviewSection from './sections/OverviewSection';
+// Section Components
+import DashboardSection from './sections/DashboardSection';
 import UsersSection from './sections/UsersSection';
 import VendorsSection from './sections/VendorsSection';
 import BookingsSection from './sections/BookingsSection';
-import ModerationSection from './sections/ModerationSection';
-import SupportSection from './sections/SupportSection';
-import SettingsSection from './sections/SettingsSection';
-import AnalyticsSection from './sections/AnalyticsSection';
-import SecuritySection from './sections/SecuritySection';
+import PaymentsSection from './sections/PaymentsSection';
+import ReviewsSection from './sections/ReviewsSection';
 import ContentSection from './sections/ContentSection';
+import SupportSection from './sections/SupportSection';
+import ChatSection from './sections/ChatSection';
+import SecuritySection from './sections/SecuritySection';
+import SettingsSection from './sections/SettingsSection';
+import AutomationSection from './sections/AutomationSection';
+import ToolsSection from './sections/ToolsSection';
+import AnalyticsSection from './sections/AnalyticsSection';
 
 const sectionTitles = {
-  overview: { title: 'Dashboard Overview', subtitle: 'Platform metrics and activity at a glance' },
+  dashboard: { title: 'Dashboard', subtitle: 'At-a-glance metrics and quick access' },
+  analytics: { title: 'Analytics & Reports', subtitle: 'Performance charts, trends, and data exports' },
   users: { title: 'User Management', subtitle: 'Manage platform users and accounts' },
   vendors: { title: 'Vendor Management', subtitle: 'Approvals, profiles, and categories' },
-  bookings: { title: 'Bookings & Payments', subtitle: 'Transactions, refunds, and disputes' },
-  moderation: { title: 'Content Moderation', subtitle: 'Reviews, chats, and content management' },
-  content: { title: 'Blog & FAQs', subtitle: 'Manage blog posts and frequently asked questions' },
-  support: { title: 'Support Center', subtitle: 'Tickets and customer support' },
-  security: { title: 'Security & Logs', subtitle: 'Login activity, locked accounts, and security settings' },
-  settings: { title: 'Settings & Configuration', subtitle: 'Platform settings and security' },
-  analytics: { title: 'Reports & Analytics', subtitle: 'Insights and data exports' }
+  bookings: { title: 'Bookings Management', subtitle: 'Booking lifecycle and operations' },
+  payments: { title: 'Payments & Payouts', subtitle: 'Transactions, vendor payouts, and revenue' },
+  reviews: { title: 'Reviews & Moderation', subtitle: 'Review management and content moderation' },
+  content: { title: 'Content Management', subtitle: 'Blog posts, FAQs, and banners' },
+  support: { title: 'Support Tickets', subtitle: 'Ticket management and responses' },
+  chat: { title: 'Live Chat', subtitle: 'Real-time communication oversight' },
+  security: { title: 'Security & Audit', subtitle: 'Login activity, locked accounts, and 2FA' },
+  settings: { title: 'Platform Settings', subtitle: 'Commission, fees, and maintenance' },
+  automation: { title: 'Automation & Email', subtitle: 'Automated workflows and email management' },
+  tools: { title: 'Search & Impersonation', subtitle: 'Quick search and user impersonation tools' }
 };
 
-const validSections = ['overview', 'users', 'vendors', 'bookings', 'moderation', 'content', 'support', 'security', 'settings', 'analytics'];
+const validSections = ['dashboard', 'analytics', 'users', 'vendors', 'bookings', 'payments', 'reviews', 'content', 'support', 'chat', 'security', 'settings', 'automation', 'tools'];
 
 function AdminDashboard() {
   const navigate = useNavigate();
@@ -48,7 +56,7 @@ function AdminDashboard() {
     if (urlSection && validSections.includes(urlSection)) return urlSection;
     const querySection = searchParams.get('section');
     if (querySection && validSections.includes(querySection)) return querySection;
-    return 'overview';
+    return 'dashboard';
   };
   
   const [activeSection, setActiveSection] = useState(getSectionFromUrl());
@@ -80,32 +88,40 @@ function AdminDashboard() {
 
   const renderSection = () => {
     switch (activeSection) {
-      case 'overview':
-        return <OverviewSection />;
+      case 'dashboard':
+        return <DashboardSection />;
+      case 'analytics':
+        return <AnalyticsSection />;
       case 'users':
         return <UsersSection />;
       case 'vendors':
         return <VendorsSection />;
       case 'bookings':
         return <BookingsSection />;
-      case 'moderation':
-        return <ModerationSection />;
+      case 'payments':
+        return <PaymentsSection />;
+      case 'reviews':
+        return <ReviewsSection />;
       case 'content':
         return <ContentSection />;
       case 'support':
         return <SupportSection />;
+      case 'chat':
+        return <ChatSection />;
       case 'security':
         return <SecuritySection />;
       case 'settings':
         return <SettingsSection />;
-      case 'analytics':
-        return <AnalyticsSection />;
+      case 'automation':
+        return <AutomationSection />;
+      case 'tools':
+        return <ToolsSection />;
       default:
-        return <OverviewSection />;
+        return <DashboardSection />;
     }
   };
 
-  const currentSectionInfo = sectionTitles[activeSection] || sectionTitles.overview;
+  const currentSectionInfo = sectionTitles[activeSection] || sectionTitles.dashboard;
 
   return (
     <div className="admin-dashboard">

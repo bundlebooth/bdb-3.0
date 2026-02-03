@@ -716,75 +716,17 @@ function SettingsSection() {
           Security
         </button>
         <button
-          className={`admin-tab ${activeTab === 'email' ? 'active' : ''}`}
-          onClick={() => setActiveTab('email')}
-        >
-          Email Templates
-        </button>
-        <button
           className={`admin-tab ${activeTab === 'maintenance' ? 'active' : ''}`}
           onClick={() => setActiveTab('maintenance')}
         >
           Maintenance
-        </button>
-        <button
-          className={`admin-tab ${activeTab === 'automation' ? 'active' : ''}`}
-          onClick={() => setActiveTab('automation')}
-        >
-          Automation Rules
         </button>
       </div>
 
       {/* Tab Content */}
       {activeTab === 'commission' && renderCommission()}
       {activeTab === 'security' && renderSecurity()}
-      {activeTab === 'email' && renderEmail()}
       {activeTab === 'maintenance' && renderMaintenance()}
-      {activeTab === 'automation' && renderAutomation()}
-
-      {/* Email Template Modal */}
-      <FormModal
-        isOpen={showTemplateModal}
-        onClose={() => setShowTemplateModal(false)}
-        title="Edit Email Template"
-        onSave={handleSaveTemplate}
-        saving={saving}
-        saveLabel="Save Template"
-        size="large"
-      >
-        {selectedTemplate && (
-          <div>
-            <FormField
-              label="Template Name"
-              value={selectedTemplate.Name || selectedTemplate.name || ''}
-              disabled
-            />
-            <FormField
-              label="Subject"
-              value={selectedTemplate.Subject || selectedTemplate.subject || ''}
-              onChange={(e) => setSelectedTemplate({ 
-                ...selectedTemplate, 
-                Subject: e.target.value, 
-                subject: e.target.value 
-              })}
-            />
-            <FormTextareaField
-              label="Body (HTML)"
-              value={selectedTemplate.bodyHtml || selectedTemplate.Body || selectedTemplate.body || selectedTemplate.fullHtml || ''}
-              onChange={(e) => setSelectedTemplate({ 
-                ...selectedTemplate, 
-                bodyHtml: e.target.value,
-                Body: e.target.value, 
-                body: e.target.value 
-              })}
-              rows={10}
-            />
-            <p style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: '0.5rem' }}>
-              Available variables: {'{{userName}}'}, {'{{bookingId}}'}, {'{{vendorName}}'}, {'{{eventDate}}'}, {'{{amount}}'}
-            </p>
-          </div>
-        )}
-      </FormModal>
 
       {/* Maintenance Confirmation */}
       <ConfirmationModal
@@ -799,72 +741,6 @@ function SettingsSection() {
         variant={maintenanceMode ? 'success' : 'danger'}
       />
 
-      {/* Automation Rule Modal */}
-      <FormModal
-        isOpen={showRuleModal}
-        onClose={() => { setShowRuleModal(false); setSelectedRule(null); }}
-        title={selectedRule?.id ? 'Edit Automation Rule' : 'Add Automation Rule'}
-        onSave={handleSaveRule}
-        saving={saving}
-        saveLabel="Save Rule"
-      >
-        {selectedRule && (
-          <div>
-            <FormField
-              label="Rule Name"
-              required
-              value={selectedRule.name || ''}
-              onChange={(e) => setSelectedRule({ ...selectedRule, name: e.target.value })}
-              placeholder="e.g., Booking Reminder"
-            />
-            <div style={{ marginTop: '1rem' }}>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Trigger</label>
-              <select
-                value={selectedRule.trigger || ''}
-                onChange={(e) => setSelectedRule({ ...selectedRule, trigger: e.target.value })}
-                style={{ width: '100%', padding: '0.625rem', border: '1px solid #e5e7eb', borderRadius: '8px' }}
-              >
-                <option value="">Select trigger...</option>
-                <option value="24 hours before booking">24 hours before booking</option>
-                <option value="48 hours before booking">48 hours before booking</option>
-                <option value="1 week before booking">1 week before booking</option>
-                <option value="When new booking is made">When new booking is made</option>
-                <option value="When booking is confirmed">When booking is confirmed</option>
-                <option value="When booking is cancelled">When booking is cancelled</option>
-                <option value="When payment fails">When payment fails</option>
-                <option value="2 days after booking completion">2 days after booking completion</option>
-                <option value="Vendor inactive for 30 days">Vendor inactive for 30 days</option>
-                <option value="User inactive for 30 days">User inactive for 30 days</option>
-              </select>
-            </div>
-            <div style={{ marginTop: '1rem' }}>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Action</label>
-              <select
-                value={selectedRule.action || ''}
-                onChange={(e) => setSelectedRule({ ...selectedRule, action: e.target.value })}
-                style={{ width: '100%', padding: '0.625rem', border: '1px solid #e5e7eb', borderRadius: '8px' }}
-              >
-                <option value="">Select action...</option>
-                <option value="Send reminder email to client">Send reminder email to client</option>
-                <option value="Send reminder email to vendor">Send reminder email to vendor</option>
-                <option value="Send notification to vendor">Send notification to vendor</option>
-                <option value="Send notification to client">Send notification to client</option>
-                <option value="Send review request email">Send review request email</option>
-                <option value="Send payment retry email">Send payment retry email</option>
-                <option value="Send re-engagement email">Send re-engagement email</option>
-                <option value="Send cancellation confirmation">Send cancellation confirmation</option>
-              </select>
-            </div>
-            <div style={{ marginTop: '1rem' }}>
-              <ToggleSwitch
-                checked={selectedRule.enabled !== false}
-                onChange={(e) => setSelectedRule({ ...selectedRule, enabled: e.target.checked })}
-                label="Enable this rule"
-              />
-            </div>
-          </div>
-        )}
-      </FormModal>
     </div>
   );
 }

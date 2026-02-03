@@ -39,6 +39,11 @@ function ContentSection() {
   const [showFaqModal, setShowFaqModal] = useState(false);
   const [showDeleteFaqModal, setShowDeleteFaqModal] = useState(false);
 
+  // Banners state
+  const [banners, setBanners] = useState([]);
+  const [selectedBanner, setSelectedBanner] = useState(null);
+  const [showBannerModal, setShowBannerModal] = useState(false);
+
   const [actionLoading, setActionLoading] = useState(false);
 
   const fetchBlogs = useCallback(async () => {
@@ -70,10 +75,24 @@ function ContentSection() {
     }
   }, []);
 
+  const fetchBanners = useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await adminApi.getBanners();
+      const bannersArray = Array.isArray(data?.banners) ? data.banners : Array.isArray(data) ? data : [];
+      setBanners(bannersArray);
+    } catch (err) {
+      console.error('Error fetching banners:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (activeTab === 'blogs') fetchBlogs();
     else if (activeTab === 'faqs') fetchFaqs();
-  }, [activeTab, fetchBlogs, fetchFaqs]);
+    else if (activeTab === 'banners') fetchBanners();
+  }, [activeTab, fetchBlogs, fetchFaqs, fetchBanners]);
 
   // Blog handlers
   const handleSaveBlog = async () => {
@@ -485,6 +504,72 @@ function ContentSection() {
     </>
   );
 
+  const renderBanners = () => (
+    <div className="admin-card">
+      <div className="admin-card-header">
+        <h3 className="admin-card-title">Banners & Announcements</h3>
+        <button 
+          className="admin-btn admin-btn-primary admin-btn-sm"
+          onClick={() => {
+            setSelectedBanner({ title: '', message: '', type: 'info', isActive: true });
+            setShowBannerModal(true);
+          }}
+        >
+          <i className="fas fa-plus"></i> Add Banner
+        </button>
+      </div>
+      
+      {loading ? (
+        <div className="admin-loading">
+          <div className="admin-loading-spinner"></div>
+          <p>Loading banners...</p>
+        </div>
+      ) : banners.length === 0 ? (
+        <div className="admin-empty-state">
+          <i className="fas fa-bullhorn"></i>
+          <h3>No Banners</h3>
+          <p>Create your first announcement banner</p>
+        </div>
+      ) : (
+        <div className="admin-card-body">
+          {banners.map((banner) => (
+            <div 
+              key={banner.BannerID || banner.id}
+              style={{
+                padding: '1rem',
+                borderBottom: '1px solid #f3f4f6',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}
+            >
+              <div>
+                <div style={{ fontWeight: 500, marginBottom: '0.25rem' }}>{banner.Title || banner.title}</div>
+                <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>{banner.Message || banner.message}</div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                {banner.IsActive !== false ? (
+                  <span className="admin-badge admin-badge-success">Active</span>
+                ) : (
+                  <span className="admin-badge admin-badge-neutral">Inactive</span>
+                )}
+                <button
+                  className="admin-btn admin-btn-secondary admin-btn-sm"
+                  onClick={() => {
+                    setSelectedBanner(banner);
+                    setShowBannerModal(true);
+                  }}
+                >
+                  <i className="fas fa-pen"></i>
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="admin-section">
       {/* Tabs */}
@@ -495,11 +580,15 @@ function ContentSection() {
         <button className={`admin-tab ${activeTab === 'faqs' ? 'active' : ''}`} onClick={() => setActiveTab('faqs')}>
           <i className="fas fa-question-circle" style={{ marginRight: '0.5rem' }}></i>FAQs
         </button>
+        <button className={`admin-tab ${activeTab === 'banners' ? 'active' : ''}`} onClick={() => setActiveTab('banners')}>
+          <i className="fas fa-bullhorn" style={{ marginRight: '0.5rem' }}></i>Banners
+        </button>
       </div>
 
       {/* Tab Content */}
       {activeTab === 'blogs' && renderBlogs()}
       {activeTab === 'faqs' && renderFaqs()}
+      {activeTab === 'banners' && renderBanners()}
 
       {/* Blog Edit Modal - Matches Image 2 Design */}
       {showBlogModal && selectedBlog && (

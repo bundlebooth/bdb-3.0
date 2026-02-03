@@ -849,15 +849,6 @@ function AnalyticsSection() {
         <button className={`admin-tab ${activeTab === 'overview' ? 'active' : ''}`} onClick={() => setActiveTab('overview')}>
           <i className="fas fa-chart-pie" style={{ marginRight: '0.5rem' }}></i>Overview
         </button>
-        <button className={`admin-tab ${activeTab === 'emails' ? 'active' : ''}`} onClick={() => setActiveTab('emails')}>
-          <i className="fas fa-envelope" style={{ marginRight: '0.5rem' }}></i>Email Logs
-        </button>
-        <button className={`admin-tab ${activeTab === 'queue' ? 'active' : ''}`} onClick={() => setActiveTab('queue')}>
-          <i className="fas fa-inbox" style={{ marginRight: '0.5rem' }}></i>Email Queue
-        </button>
-        <button className={`admin-tab ${activeTab === 'logs' ? 'active' : ''}`} onClick={() => setActiveTab('logs')}>
-          <i className="fas fa-shield-alt" style={{ marginRight: '0.5rem' }}></i>Audit Logs
-        </button>
         <button className={`admin-tab ${activeTab === 'exports' ? 'active' : ''}`} onClick={() => setActiveTab('exports')}>
           <i className="fas fa-download" style={{ marginRight: '0.5rem' }}></i>Exports
         </button>
@@ -865,9 +856,6 @@ function AnalyticsSection() {
 
       {/* Tab Content */}
       {activeTab === 'overview' && renderOverview()}
-      {activeTab === 'emails' && renderEmailLogs()}
-      {activeTab === 'queue' && renderEmailQueue()}
-      {activeTab === 'logs' && renderLogs()}
       {activeTab === 'exports' && renderExports()}
     </div>
   );
