@@ -10,6 +10,7 @@ const crypto = require('crypto');
 const { upload } = require('../middlewares/uploadMiddleware');
 const cloudinaryService = require('../services/cloudinaryService');
 const { decodeUserId, isPublicId } = require('../utils/hashIds');
+const { authRateLimiter } = require('../middlewares/rateLimitMiddleware');
 
 // Helper to resolve user ID (handles both public ID and numeric ID)
 function resolveUserId(idParam) {
@@ -130,8 +131,8 @@ router.post('/register', async (req, res) => {
   }
 });
 
-// User Login
-router.post('/login', async (req, res) => {
+// User Login (with rate limiting)
+router.post('/login', authRateLimiter, async (req, res) => {
   try {
     const { email, password } = req.body;
 
@@ -166,18 +167,42 @@ router.post('/login', async (req, res) => {
 
     const user = result.recordset[0];
 
-    // Check if account is locked due to failed login attempts
+    // Check if account is locked (failed login attempts OR chat violations)
     if (user.IsLocked) {
       const lockExpiry = user.LockExpiresAt ? new Date(user.LockExpiresAt) : null;
+      const lockReason = user.LockReason || 'Account locked';
+      
+      // Check if this is a temporary lock (cooldown) or permanent lock
       if (lockExpiry && lockExpiry > new Date()) {
+        // Temporary lock - show remaining time
         const minutesRemaining = Math.ceil((lockExpiry - new Date()) / 60000);
+        const hoursRemaining = Math.floor(minutesRemaining / 60);
+        const minsRemaining = minutesRemaining % 60;
+        
+        const timeMessage = hoursRemaining > 0 
+          ? `${hoursRemaining} hour(s) and ${minsRemaining} minute(s)`
+          : `${minutesRemaining} minute(s)`;
+        
         return res.status(423).json({
           success: false,
-          message: `Account is temporarily locked due to too many failed login attempts. Please try again in ${minutesRemaining} minute(s) or contact support.`,
+          message: `Your account is temporarily suspended. Please try again in ${timeMessage}.`,
+          reason: lockReason,
           isLocked: true,
-          lockExpiresAt: lockExpiry.toISOString()
+          isCooldown: true,
+          lockExpiresAt: lockExpiry.toISOString(),
+          minutesRemaining
+        });
+      } else if (!lockExpiry) {
+        // Permanent lock - admin must unlock
+        return res.status(423).json({
+          success: false,
+          message: 'Your account has been locked due to policy violations. Please contact support for assistance.',
+          reason: lockReason,
+          isLocked: true,
+          isPermanent: true
         });
       }
+      // If lock has expired, continue with login (will be unlocked below)
     }
 
     // Check if account is deleted (soft delete)

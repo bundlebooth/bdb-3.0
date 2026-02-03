@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const sql = require('mssql');
 const { poolPromise } = require('../config/db');
+const contentFilter = require('../services/contentFilterService');
+const { forumRateLimiter } = require('../middlewares/rateLimitMiddleware');
 
 // Get all forum categories
 router.get('/categories', async (req, res) => {
@@ -78,13 +80,41 @@ router.get('/posts/:slug', async (req, res) => {
   }
 });
 
-// Create a new post
-router.post('/posts', async (req, res) => {
+// Create a new post (with content moderation and rate limiting)
+router.post('/posts', forumRateLimiter, async (req, res) => {
   try {
     const { categoryId, authorId, title, content, imageUrl } = req.body;
     
     if (!categoryId || !authorId || !title || !content) {
       return res.status(400).json({ success: false, message: 'Missing required fields' });
+    }
+    
+    // Content moderation - scan both title and content
+    const combinedContent = `${title} ${content}`;
+    const filterResult = await contentFilter.processMessage(
+      authorId,
+      null, // No message ID for forum posts
+      null, // No conversation ID for forum posts
+      combinedContent
+    );
+    
+    // If content violates policy, block the post
+    if (filterResult.shouldBlock) {
+      return res.status(403).json({
+        success: false,
+        message: 'Your post could not be published due to policy violations.',
+        violation: {
+          type: filterResult.violationType,
+          warningLevel: filterResult.warningLevel,
+          warningMessage: filterResult.warningLevel === 1 
+            ? 'This is your first warning. Please review our community guidelines.'
+            : filterResult.warningLevel === 2
+            ? 'This is your second warning. Further violations will result in account suspension.'
+            : 'Your account may be suspended.',
+          forceLogout: filterResult.forceLogout,
+          userLocked: filterResult.userLocked
+        }
+      });
     }
     
     const pool = await poolPromise;
@@ -108,13 +138,40 @@ router.post('/posts', async (req, res) => {
   }
 });
 
-// Create a comment
-router.post('/comments', async (req, res) => {
+// Create a comment (with content moderation and rate limiting)
+router.post('/comments', forumRateLimiter, async (req, res) => {
   try {
     const { postId, authorId, content, parentCommentId } = req.body;
     
     if (!postId || !authorId || !content) {
       return res.status(400).json({ success: false, message: 'Missing required fields' });
+    }
+    
+    // Content moderation - scan comment content
+    const filterResult = await contentFilter.processMessage(
+      authorId,
+      null, // No message ID for forum comments
+      null, // No conversation ID for forum comments
+      content
+    );
+    
+    // If content violates policy, block the comment
+    if (filterResult.shouldBlock) {
+      return res.status(403).json({
+        success: false,
+        message: 'Your comment could not be posted due to policy violations.',
+        violation: {
+          type: filterResult.violationType,
+          warningLevel: filterResult.warningLevel,
+          warningMessage: filterResult.warningLevel === 1 
+            ? 'This is your first warning. Please review our community guidelines.'
+            : filterResult.warningLevel === 2
+            ? 'This is your second warning. Further violations will result in account suspension.'
+            : 'Your account may be suspended.',
+          forceLogout: filterResult.forceLogout,
+          userLocked: filterResult.userLocked
+        }
+      });
     }
     
     const pool = await poolPromise;

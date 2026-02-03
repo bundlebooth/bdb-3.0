@@ -27,19 +27,56 @@ const handleSocketIO = (io) => {
 
         // If message should be blocked, notify sender and don't save
         if (filterResult.shouldBlock) {
+          // Build detailed violation message based on warning level
+          const violationMessages = {
+            profanity: 'Your message contains inappropriate language.',
+            email: 'Sharing email addresses is not allowed.',
+            phone: 'Sharing phone numbers is not allowed.',
+            solicitation: 'Attempting to conduct business outside the platform is not allowed.',
+            racism: 'Your message contains discriminatory language.'
+          };
+          
+          const warningMessages = {
+            1: 'This is your first warning. Please review our community guidelines.',
+            2: 'This is your second warning. Further violations will result in account suspension.',
+            3: 'Your account has been temporarily suspended.',
+            4: 'Your account has been locked. Please contact support.'
+          };
+          
+          const violationReason = violationMessages[filterResult.violationType] || 'Your message violated our community guidelines.';
+          const warningMessage = warningMessages[filterResult.warningLevel] || '';
+          
           socket.emit('message-blocked', {
             conversationId: messageData.conversationId,
-            reason: 'Your message was blocked due to policy violations. Please review our community guidelines.',
-            userLocked: filterResult.userLocked
+            reason: violationReason,
+            warningMessage: warningMessage,
+            warningLevel: filterResult.warningLevel,
+            violationType: filterResult.violationType,
+            violationCount: filterResult.violationCount,
+            userLocked: filterResult.userLocked,
+            forceLogout: filterResult.forceLogout,
+            cooldownHours: filterResult.cooldownHours,
+            cooldownEndsAt: filterResult.cooldownEndsAt
           });
           
-          // If user was locked, emit account locked event
-          if (filterResult.userLocked) {
-            socket.emit('account-locked', {
+          // If user should be force logged out (cooldown or permanent lock)
+          if (filterResult.forceLogout) {
+            socket.emit('force-logout', {
               reason: filterResult.lockReason,
-              message: 'Your account has been locked due to repeated policy violations. Please check your email for details.'
+              cooldownHours: filterResult.cooldownHours,
+              cooldownEndsAt: filterResult.cooldownEndsAt,
+              isPermanent: !filterResult.cooldownHours,
+              message: filterResult.cooldownHours 
+                ? `Your account has been suspended for ${filterResult.cooldownHours} hour(s). Please try again later.`
+                : 'Your account has been locked due to repeated policy violations. Please contact support.'
             });
+            
+            // Disconnect the socket after a short delay to allow the message to be received
+            setTimeout(() => {
+              socket.disconnect(true);
+            }, 1000);
           }
+          
           return; // Don't proceed with sending the message
         }
 

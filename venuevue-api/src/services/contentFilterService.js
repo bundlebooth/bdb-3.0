@@ -109,11 +109,22 @@ const SEVERITY = {
   SEVERE: 3      // Severe violation, may lock account
 };
 
-// Violation thresholds for auto-lock
+// Tiered response thresholds
 const VIOLATION_THRESHOLDS = {
-  LOCK_AFTER_SEVERE: 1,      // Lock after 1 severe violation
-  LOCK_AFTER_MODERATE: 3,    // Lock after 3 moderate violations in 24h
-  LOCK_AFTER_WARNING: 5      // Lock after 5 warnings in 24h
+  FIRST_WARNING: 1,          // First warning email
+  SECOND_WARNING: 2,         // Second warning email (stronger)
+  COOLDOWN: 3,               // Temporary cooldown/block
+  PERMANENT_LOCK: 5,         // Permanent lock (admin unlock only)
+  SEVERE_IMMEDIATE_LOCK: 1   // Immediate lock for severe violations (racism)
+};
+
+// Cooldown durations in hours based on violation type
+const COOLDOWN_HOURS = {
+  profanity: 1,              // 1 hour cooldown for profanity
+  email: 24,                 // 24 hour cooldown for sharing email
+  phone: 24,                 // 24 hour cooldown for sharing phone
+  solicitation: 24,          // 24 hour cooldown for solicitation
+  racism: null               // Permanent lock (no cooldown, admin only)
 };
 
 /**
@@ -292,7 +303,7 @@ async function processMessage(userId, messageId, conversationId, content) {
       }
     }
 
-    // Determine if message should be blocked
+    // Determine if message should be blocked (all MODERATE and SEVERE violations block the message)
     result.shouldBlock = scanResult.highestSeverity >= SEVERITY.MODERATE;
 
     // Get user info for email notifications
@@ -304,13 +315,27 @@ async function processMessage(userId, messageId, conversationId, content) {
     const userName = user ? `${user.FirstName || ''} ${user.LastName || ''}`.trim() || 'User' : 'User';
     const userEmail = user ? user.Email : null;
 
-    // Check if user should be locked (3+ violations in 24h)
-    const shouldLock = 
-      (scanResult.highestSeverity >= SEVERITY.SEVERE && recentViolationCount >= VIOLATION_THRESHOLDS.LOCK_AFTER_SEVERE) ||
-      (scanResult.highestSeverity >= SEVERITY.MODERATE && recentViolationCount >= VIOLATION_THRESHOLDS.LOCK_AFTER_MODERATE);
+    // Determine primary violation type for cooldown calculation
+    const primaryViolationType = scanResult.violations[0]?.type || 'profanity';
+    const cooldownHours = COOLDOWN_HOURS[primaryViolationType];
+    
+    // Determine action based on violation count and severity
+    // Severe violations (racism) = immediate permanent lock
+    // 3+ moderate violations = cooldown (temp lock)
+    // 5+ violations = permanent lock
+    const isSevereViolation = scanResult.highestSeverity >= SEVERITY.SEVERE;
+    const shouldPermanentLock = isSevereViolation || recentViolationCount >= VIOLATION_THRESHOLDS.PERMANENT_LOCK;
+    const shouldCooldown = !shouldPermanentLock && recentViolationCount >= VIOLATION_THRESHOLDS.COOLDOWN;
+    const isSecondWarning = recentViolationCount === VIOLATION_THRESHOLDS.SECOND_WARNING;
+    const isFirstWarning = recentViolationCount === VIOLATION_THRESHOLDS.FIRST_WARNING;
 
-    if (shouldLock) {
-      // Lock the user account
+    // Set warning level for frontend display
+    result.warningLevel = isFirstWarning ? 1 : (isSecondWarning ? 2 : (shouldCooldown ? 3 : (shouldPermanentLock ? 4 : 0)));
+    result.violationType = primaryViolationType;
+    result.violationCount = recentViolationCount;
+
+    if (shouldPermanentLock) {
+      // Permanent lock - admin must unlock
       const lockReason = generateLockReason(scanResult.violations, recentViolationCount);
       
       const lockResult = await pool.request()
@@ -326,6 +351,7 @@ async function processMessage(userId, messageId, conversationId, content) {
       result.userLocked = true;
       result.lockReason = lockReason;
       result.lockInfo = lockResult.recordset[0];
+      result.forceLogout = true; // Signal to force logout the user
 
       // Send account locked email
       if (userEmail) {
@@ -336,11 +362,41 @@ async function processMessage(userId, messageId, conversationId, content) {
           console.error('[ContentFilter] Error sending lock email:', emailError.message);
         }
       }
+    } else if (shouldCooldown) {
+      // Temporary cooldown - user is logged out and can't login for X hours
+      const lockReason = `Your account has been temporarily suspended for ${cooldownHours} hour(s) due to repeated policy violations.`;
+      const lockDurationMinutes = cooldownHours * 60;
+      
+      const lockResult = await pool.request()
+        .input('UserID', sql.Int, userId)
+        .input('LockType', sql.VarChar(50), 'chat_violation')
+        .input('LockReason', sql.NVarChar(500), lockReason)
+        .input('ViolationCount', sql.Int, recentViolationCount)
+        .input('RelatedViolationIDs', sql.NVarChar(500), violationIds.join(','))
+        .input('LockedByAdminID', sql.Int, null)
+        .input('LockDuration', sql.Int, lockDurationMinutes)
+        .execute('admin.sp_LockUserAccount');
+
+      result.userLocked = true;
+      result.lockReason = lockReason;
+      result.lockInfo = lockResult.recordset[0];
+      result.forceLogout = true; // Signal to force logout the user
+      result.cooldownHours = cooldownHours;
+      result.cooldownEndsAt = new Date(Date.now() + cooldownHours * 60 * 60 * 1000);
+
+      // Send cooldown email
+      if (userEmail) {
+        try {
+          const { sendAccountLockedEmail } = require('./email');
+          await sendAccountLockedEmail(userEmail, userName, lockReason, 'chat_violation', userId);
+        } catch (emailError) {
+          console.error('[ContentFilter] Error sending cooldown email:', emailError.message);
+        }
+      }
     } else if (result.shouldBlock && userEmail) {
-      // Send warning email for blocked message (not locked yet)
+      // Send warning email for blocked message (1st or 2nd warning)
       try {
         const { sendPolicyWarningEmail } = require('./email');
-        const primaryViolationType = scanResult.violations[0]?.type || 'policy';
         await sendPolicyWarningEmail(userEmail, userName, primaryViolationType, recentViolationCount, userId);
       } catch (emailError) {
         console.error('[ContentFilter] Error sending warning email:', emailError.message);

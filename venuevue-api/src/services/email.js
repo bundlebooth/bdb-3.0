@@ -5,6 +5,86 @@ require('dotenv').config();
 
 let transporter = null;
 
+// Email deduplication cooldowns (in minutes) - prevents flooding same email type to same user
+const EMAIL_COOLDOWN_MINUTES = {
+  // High-velocity emails (2 min cooldown)
+  'auth_2fa': 2,
+  '2fa': 2,
+  'password_reset': 2,
+  'message_vendor_to_client': 2,
+  'message_client_to_vendor': 2,
+  'booking_request_vendor': 2,
+  'booking_accepted_client': 2,
+  'booking_rejected_client': 2,
+  'booking_confirmed_client': 2,
+  'booking_confirmed_vendor': 2,
+  'booking_cancelled_client': 2,
+  'booking_cancelled_vendor': 2,
+  'new_support_message': 2,
+  'support_message_reply': 2,
+  
+  // Warning emails (5 min cooldown)
+  'policy_warning': 5,
+  'violation_warning': 5,
+  
+  // Account action emails (1 hour cooldown)
+  'account_locked': 60,
+  'account_unlocked': 60,
+  'account_cooldown': 60,
+  'account_suspended': 60,
+  'account_reactivated': 60,
+  
+  // Default cooldown
+  'default': 2
+};
+
+/**
+ * Check if an email of this type was recently sent to this recipient
+ * @param {string} templateKey - The email template key
+ * @param {string} recipientEmail - The recipient's email
+ * @param {number} userId - Optional user ID
+ * @returns {Object} - { canSend: boolean, lastSentAt: Date|null, cooldownRemaining: number }
+ */
+async function checkEmailCooldown(templateKey, recipientEmail, userId = null) {
+  try {
+    const pool = await poolPromise;
+    const cooldownMinutes = EMAIL_COOLDOWN_MINUTES[templateKey] || EMAIL_COOLDOWN_MINUTES['default'];
+    
+    const result = await pool.request()
+      .input('TemplateKey', sql.NVarChar(50), templateKey)
+      .input('RecipientEmail', sql.NVarChar(255), recipientEmail)
+      .input('CooldownMinutes', sql.Int, cooldownMinutes)
+      .query(`
+        SELECT TOP 1 SentAt 
+        FROM admin.EmailLogs 
+        WHERE TemplateKey = @TemplateKey 
+          AND RecipientEmail = @RecipientEmail 
+          AND Status = 'sent'
+          AND SentAt > DATEADD(MINUTE, -@CooldownMinutes, GETDATE())
+        ORDER BY SentAt DESC
+      `);
+    
+    if (result.recordset.length > 0) {
+      const lastSentAt = result.recordset[0].SentAt;
+      const cooldownEnd = new Date(lastSentAt.getTime() + cooldownMinutes * 60 * 1000);
+      const cooldownRemaining = Math.ceil((cooldownEnd - new Date()) / 1000);
+      
+      console.log(`[Email] Cooldown active for ${templateKey} to ${recipientEmail}: ${cooldownRemaining}s remaining`);
+      return {
+        canSend: false,
+        lastSentAt,
+        cooldownRemaining: Math.max(0, cooldownRemaining)
+      };
+    }
+    
+    return { canSend: true, lastSentAt: null, cooldownRemaining: 0 };
+  } catch (error) {
+    console.error('[Email] Error checking cooldown:', error.message);
+    // On error, allow sending to avoid blocking important emails
+    return { canSend: true, lastSentAt: null, cooldownRemaining: 0 };
+  }
+}
+
 // Email sender configuration based on email type/category
 // Maps template keys and categories to specific sender addresses
 const EMAIL_SENDER_CONFIG = {
@@ -671,6 +751,13 @@ async function sendNewSupportMessageToTeam(supportEmail, userName, userEmail, co
 
 // Send account locked notification due to chat violations
 async function sendAccountLockedEmail(userEmail, userName, lockReason, lockType, userId = null) {
+  // Check cooldown before sending
+  const cooldownCheck = await checkEmailCooldown('account_locked', userEmail, userId);
+  if (!cooldownCheck.canSend) {
+    console.log(`[Email] Skipping account locked email - cooldown active (${cooldownCheck.cooldownRemaining}s remaining)`);
+    return { skipped: true, reason: 'cooldown', cooldownRemaining: cooldownCheck.cooldownRemaining };
+  }
+  
   const supportEmail = process.env.EMAIL_SUPPORT || 'support@planbeau.com';
   const adminBcc = 'admin@planbeau.com';
   
@@ -705,6 +792,13 @@ async function sendAccountUnlockedEmail(userEmail, userName, unlockReason, userI
 
 // Send policy warning email for chat violations (before account lock)
 async function sendPolicyWarningEmail(userEmail, userName, violationType, violationCount, userId = null) {
+  // Check cooldown before sending
+  const cooldownCheck = await checkEmailCooldown('policy_warning', userEmail, userId);
+  if (!cooldownCheck.canSend) {
+    console.log(`[Email] Skipping policy warning email - cooldown active (${cooldownCheck.cooldownRemaining}s remaining)`);
+    return { skipped: true, reason: 'cooldown', cooldownRemaining: cooldownCheck.cooldownRemaining };
+  }
+  
   const supportEmail = process.env.EMAIL_SUPPORT || 'support@planbeau.com';
   const adminBcc = 'admin@planbeau.com';
   
@@ -802,5 +896,6 @@ module.exports = {
   sendNewSupportMessageToTeam,
   sendAccountLockedEmail,
   sendAccountUnlockedEmail,
-  sendPolicyWarningEmail
+  sendPolicyWarningEmail,
+  checkEmailCooldown
 };
