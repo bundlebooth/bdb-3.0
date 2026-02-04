@@ -1445,9 +1445,16 @@ router.get('/security/locked-accounts', async (req, res) => {
         u.LockExpiresAt,
         u.LockReason,
         u.UpdatedAt as LockedAt,
+        u.IsLocked,
         CASE WHEN u.LockExpiresAt IS NULL OR u.LockExpiresAt > GETUTCDATE() THEN 1 ELSE 0 END as IsActivelyLocked,
-        lh.LockType,
-        lh.ViolationCount,
+        COALESCE(lh.LockType, 
+          CASE 
+            WHEN u.FailedLoginAttempts > 0 THEN 'failed_login'
+            WHEN u.LockReason LIKE '%violation%' OR u.LockReason LIKE '%inappropriate%' THEN 'chat_violation'
+            ELSE 'manual_lock'
+          END
+        ) as LockType,
+        ISNULL(lh.ViolationCount, 0) as ViolationCount,
         lh.LockedByAdminID,
         lh.CreatedAt as LockHistoryCreatedAt
       FROM users.Users u
@@ -1460,10 +1467,12 @@ router.get('/security/locked-accounts', async (req, res) => {
       ORDER BY COALESCE(lh.CreatedAt, u.UpdatedAt) DESC
     `);
     
+    console.log(`[Admin] Found ${result.recordset?.length || 0} locked accounts`);
+    
     res.json({ success: true, accounts: serializeRecords(result.recordset || []) });
   } catch (error) {
     console.error('Error fetching locked accounts:', error);
-    res.status(500).json({ error: 'Failed to fetch locked accounts' });
+    res.status(500).json({ error: 'Failed to fetch locked accounts', details: error.message });
   }
 });
 
