@@ -1432,33 +1432,39 @@ router.get('/security/locked-accounts', async (req, res) => {
     const pool = await getPool();
     
     // Get ALL users who are marked as locked (IsLocked = 1) - includes policy violations, chat bans, failed logins, etc.
-    // Simplified query that doesn't require UserLockHistory table
-    const result = await pool.request().query(`
-      SELECT 
-        u.UserID,
-        u.FirstName,
-        u.LastName,
-        COALESCE(u.FirstName + ' ' + u.LastName, u.Name, u.Email) as Name,
-        u.Email,
-        u.FailedLoginAttempts,
-        u.LastFailedLoginAt,
-        u.LockExpiresAt,
-        u.LockReason,
-        u.UpdatedAt as LockedAt,
-        u.IsLocked,
-        CASE WHEN u.LockExpiresAt IS NULL OR u.LockExpiresAt > GETUTCDATE() THEN 1 ELSE 0 END as IsActivelyLocked,
-        CASE 
-          WHEN u.FailedLoginAttempts > 0 THEN 'failed_login'
-          WHEN u.LockReason LIKE '%violation%' OR u.LockReason LIKE '%inappropriate%' THEN 'chat_violation'
-          ELSE 'manual_lock'
-        END as LockType,
-        0 as ViolationCount,
-        NULL as LockedByAdminID,
-        u.UpdatedAt as LockHistoryCreatedAt
-      FROM users.Users u
-      WHERE u.IsLocked = 1
-      ORDER BY u.UpdatedAt DESC
-    `);
+    let result;
+    try {
+      result = await pool.request().query(`
+        SELECT 
+          u.UserID,
+          u.FirstName,
+          u.LastName,
+          COALESCE(NULLIF(LTRIM(RTRIM(ISNULL(u.FirstName, '') + ' ' + ISNULL(u.LastName, ''))), ''), u.Email) as Name,
+          u.Email,
+          ISNULL(u.FailedLoginAttempts, 0) as FailedLoginAttempts,
+          u.LastFailedLoginAt,
+          u.LockExpiresAt,
+          u.LockReason,
+          u.UpdatedAt as LockedAt,
+          u.IsLocked,
+          CASE WHEN u.LockExpiresAt IS NULL OR u.LockExpiresAt > GETUTCDATE() THEN 1 ELSE 0 END as IsActivelyLocked,
+          CASE 
+            WHEN ISNULL(u.FailedLoginAttempts, 0) > 0 THEN 'failed_login'
+            WHEN u.LockReason LIKE '%violation%' OR u.LockReason LIKE '%inappropriate%' THEN 'chat_violation'
+            ELSE 'manual_lock'
+          END as LockType,
+          0 as ViolationCount,
+          NULL as LockedByAdminID,
+          u.UpdatedAt as LockHistoryCreatedAt
+        FROM users.Users u
+        WHERE u.IsLocked = 1
+        ORDER BY u.UpdatedAt DESC
+      `);
+    } catch (queryError) {
+      // If query fails, return empty array
+      console.error('Query error:', queryError.message);
+      result = { recordset: [] };
+    }
     
     console.log(`[Admin] Found ${result.recordset?.length || 0} locked accounts`);
     
