@@ -648,7 +648,7 @@ router.post('/users/:id/unlock', async (req, res) => {
     // Get user info for email notification
     const userResult = await pool.request()
       .input('UserID', sql.Int, id)
-      .query('SELECT Email, Name FROM users.Users WHERE UserID = @UserID');
+      .query(`SELECT Email, COALESCE(NULLIF(LTRIM(RTRIM(ISNULL(FirstName, '') + ' ' + ISNULL(LastName, ''))), ''), Email) as Name FROM users.Users WHERE UserID = @UserID`);
     
     if (userResult.recordset.length > 0) {
       const user = userResult.recordset[0];
