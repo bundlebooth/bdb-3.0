@@ -3565,6 +3565,127 @@ router.delete('/vendors/:id/badges/:badgeId', async (req, res) => {
 });
 
 // =============================================
+// GUEST FAVORITE MANAGEMENT
+// =============================================
+
+// GET /admin/guest-favorites - Get all vendors with guest favorite eligibility info
+router.get('/guest-favorites', async (req, res) => {
+  try {
+    const pool = await getPool();
+    
+    // Get vendors with their stats to determine eligibility
+    // Formula: AvgRating >= 4.5 AND TotalReviews >= 5 AND TotalBookings >= 10 AND ResponseRate >= 90
+    const result = await pool.request().query(`
+      SELECT 
+        vp.VendorProfileID,
+        vp.BusinessName,
+        vp.LogoURL,
+        vp.City,
+        vp.State,
+        ISNULL(vp.IsGuestFavorite, 0) as IsGuestFavorite,
+        vp.GuestFavoriteGrantedAt,
+        vp.GuestFavoriteGrantedBy,
+        ISNULL(vp.AvgRating, 0) as AvgRating,
+        ISNULL(vp.TotalReviews, 0) as TotalReviews,
+        ISNULL(vp.TotalBookings, 0) as TotalBookings,
+        ISNULL(vp.ResponseRate, 0) as ResponseRate,
+        vp.IsVisible,
+        vp.ProfileStatus,
+        u.FirstName + ' ' + u.LastName as OwnerName,
+        u.Email as OwnerEmail,
+        -- Calculate eligibility
+        CASE 
+          WHEN ISNULL(vp.AvgRating, 0) >= 4.5 
+           AND ISNULL(vp.TotalReviews, 0) >= 5 
+           AND ISNULL(vp.TotalBookings, 0) >= 10 
+           AND ISNULL(vp.ResponseRate, 0) >= 90 
+          THEN 1 
+          ELSE 0 
+        END as MeetsEligibility
+      FROM vendors.VendorProfiles vp
+      LEFT JOIN users.Users u ON vp.UserID = u.UserID
+      WHERE vp.IsVisible = 1 AND vp.ProfileStatus = 'approved'
+      ORDER BY 
+        ISNULL(vp.IsGuestFavorite, 0) DESC,
+        CASE 
+          WHEN ISNULL(vp.AvgRating, 0) >= 4.5 
+           AND ISNULL(vp.TotalReviews, 0) >= 5 
+           AND ISNULL(vp.TotalBookings, 0) >= 10 
+           AND ISNULL(vp.ResponseRate, 0) >= 90 
+          THEN 0 
+          ELSE 1 
+        END,
+        vp.AvgRating DESC,
+        vp.TotalBookings DESC
+    `);
+    
+    res.json({ 
+      success: true, 
+      vendors: serializeRecords(result.recordset),
+      eligibilityCriteria: {
+        minRating: 4.5,
+        minReviews: 5,
+        minBookings: 10,
+        minResponseRate: 90
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching guest favorites:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch guest favorites' });
+  }
+});
+
+// POST /admin/guest-favorites/:id/grant - Grant guest favorite status
+router.post('/guest-favorites/:id/grant', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const adminUserId = req.user?.id || req.user?.userId;
+    const pool = await getPool();
+    
+    await pool.request()
+      .input('VendorProfileID', sql.Int, parseInt(id))
+      .input('AdminUserID', sql.Int, adminUserId)
+      .query(`
+        UPDATE vendors.VendorProfiles 
+        SET IsGuestFavorite = 1,
+            GuestFavoriteGrantedAt = GETUTCDATE(),
+            GuestFavoriteGrantedBy = @AdminUserID,
+            UpdatedAt = GETUTCDATE()
+        WHERE VendorProfileID = @VendorProfileID
+      `);
+    
+    res.json({ success: true, message: 'Guest Favorite status granted successfully' });
+  } catch (error) {
+    console.error('Error granting guest favorite:', error);
+    res.status(500).json({ success: false, message: 'Failed to grant guest favorite status' });
+  }
+});
+
+// POST /admin/guest-favorites/:id/revoke - Revoke guest favorite status
+router.post('/guest-favorites/:id/revoke', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pool = await getPool();
+    
+    await pool.request()
+      .input('VendorProfileID', sql.Int, parseInt(id))
+      .query(`
+        UPDATE vendors.VendorProfiles 
+        SET IsGuestFavorite = 0,
+            GuestFavoriteGrantedAt = NULL,
+            GuestFavoriteGrantedBy = NULL,
+            UpdatedAt = GETUTCDATE()
+        WHERE VendorProfileID = @VendorProfileID
+      `);
+    
+    res.json({ success: true, message: 'Guest Favorite status revoked successfully' });
+  } catch (error) {
+    console.error('Error revoking guest favorite:', error);
+    res.status(500).json({ success: false, message: 'Failed to revoke guest favorite status' });
+  }
+});
+
+// =============================================
 // EMAIL QUEUE MANAGEMENT
 // =============================================
 
