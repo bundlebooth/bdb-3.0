@@ -1431,20 +1431,33 @@ router.get('/security/locked-accounts', async (req, res) => {
   try {
     const pool = await getPool();
     
-    // Get users who are marked as locked (IsLocked = 1) - includes both active and expired locks
+    // Get ALL users who are marked as locked (IsLocked = 1) - includes policy violations, chat bans, failed logins, etc.
+    // Join with lock history to get the lock type and additional details
     const result = await pool.request().query(`
       SELECT 
-        UserID,
-        Name,
-        Email,
-        FailedLoginAttempts,
-        LastFailedLoginAt,
-        LockExpiresAt,
-        LockReason,
-        CASE WHEN LockExpiresAt > GETUTCDATE() THEN 1 ELSE 0 END as IsActivelyLocked
-      FROM users.Users
-      WHERE IsLocked = 1
-      ORDER BY LockExpiresAt DESC
+        u.UserID,
+        u.FirstName,
+        u.LastName,
+        COALESCE(u.FirstName + ' ' + u.LastName, u.Name, u.Email) as Name,
+        u.Email,
+        u.FailedLoginAttempts,
+        u.LastFailedLoginAt,
+        u.LockExpiresAt,
+        u.LockReason,
+        u.UpdatedAt as LockedAt,
+        CASE WHEN u.LockExpiresAt IS NULL OR u.LockExpiresAt > GETUTCDATE() THEN 1 ELSE 0 END as IsActivelyLocked,
+        lh.LockType,
+        lh.ViolationCount,
+        lh.LockedByAdminID,
+        lh.CreatedAt as LockHistoryCreatedAt
+      FROM users.Users u
+      LEFT JOIN (
+        SELECT UserID, LockType, ViolationCount, LockedByAdminID, CreatedAt,
+               ROW_NUMBER() OVER (PARTITION BY UserID ORDER BY CreatedAt DESC) as rn
+        FROM admin.UserLockHistory
+      ) lh ON u.UserID = lh.UserID AND lh.rn = 1
+      WHERE u.IsLocked = 1
+      ORDER BY COALESCE(lh.CreatedAt, u.UpdatedAt) DESC
     `);
     
     res.json({ success: true, accounts: serializeRecords(result.recordset || []) });
@@ -1733,7 +1746,9 @@ router.put('/support/tickets/:id', async (req, res) => {
         }
         
         if (templateKey && ticket.UserEmail) {
-          await sendEmail(ticket.UserEmail, templateKey, variables, ticket.UserID);
+          // Use sendTemplatedEmail for database templates
+          const { sendTemplatedEmail } = require('../services/email');
+          await sendTemplatedEmail(templateKey, ticket.UserEmail, ticket.UserName || 'User', variables, ticket.UserID, null, null, 'support');
         }
       } catch (emailErr) {
         console.error('Failed to send ticket status email:', emailErr.message);
