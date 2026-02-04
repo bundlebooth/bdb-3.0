@@ -1432,7 +1432,7 @@ router.get('/security/locked-accounts', async (req, res) => {
     const pool = await getPool();
     
     // Get ALL users who are marked as locked (IsLocked = 1) - includes policy violations, chat bans, failed logins, etc.
-    // Join with lock history to get the lock type and additional details
+    // Simplified query that doesn't require UserLockHistory table
     const result = await pool.request().query(`
       SELECT 
         u.UserID,
@@ -1447,24 +1447,17 @@ router.get('/security/locked-accounts', async (req, res) => {
         u.UpdatedAt as LockedAt,
         u.IsLocked,
         CASE WHEN u.LockExpiresAt IS NULL OR u.LockExpiresAt > GETUTCDATE() THEN 1 ELSE 0 END as IsActivelyLocked,
-        COALESCE(lh.LockType, 
-          CASE 
-            WHEN u.FailedLoginAttempts > 0 THEN 'failed_login'
-            WHEN u.LockReason LIKE '%violation%' OR u.LockReason LIKE '%inappropriate%' THEN 'chat_violation'
-            ELSE 'manual_lock'
-          END
-        ) as LockType,
-        ISNULL(lh.ViolationCount, 0) as ViolationCount,
-        lh.LockedByAdminID,
-        lh.CreatedAt as LockHistoryCreatedAt
+        CASE 
+          WHEN u.FailedLoginAttempts > 0 THEN 'failed_login'
+          WHEN u.LockReason LIKE '%violation%' OR u.LockReason LIKE '%inappropriate%' THEN 'chat_violation'
+          ELSE 'manual_lock'
+        END as LockType,
+        0 as ViolationCount,
+        NULL as LockedByAdminID,
+        u.UpdatedAt as LockHistoryCreatedAt
       FROM users.Users u
-      LEFT JOIN (
-        SELECT UserID, LockType, ViolationCount, LockedByAdminID, CreatedAt,
-               ROW_NUMBER() OVER (PARTITION BY UserID ORDER BY CreatedAt DESC) as rn
-        FROM admin.UserLockHistory
-      ) lh ON u.UserID = lh.UserID AND lh.rn = 1
       WHERE u.IsLocked = 1
-      ORDER BY COALESCE(lh.CreatedAt, u.UpdatedAt) DESC
+      ORDER BY u.UpdatedAt DESC
     `);
     
     console.log(`[Admin] Found ${result.recordset?.length || 0} locked accounts`);
