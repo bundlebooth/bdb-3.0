@@ -14,7 +14,6 @@ import ProfileModal from '../components/ProfileModal';
 import { useTranslation } from '../hooks/useTranslation';
 import { encodeVendorId } from '../utils/hashIds';
 import { formatFromGooglePlace, getIPGeolocationServices } from '../utils/locationUtils';
-import EnhancedSearchBar from '../components/EnhancedSearchBar';
 import './LandingPage.css';
 
 function LandingPage() {
@@ -348,25 +347,72 @@ function LandingPage() {
               {t('landing.heroTitle3', 'imaginable')}
             </h1>
             
-            {/* Enhanced Search Bar - Same as explore page */}
-            <div className="landing-search-wrapper" style={{ marginTop: '2rem' }}>
-              <EnhancedSearchBar 
-                onSearch={(searchParams) => {
-                  // Build query string from search params
-                  const params = new URLSearchParams();
-                  if (searchParams.location) params.set('location', searchParams.location);
-                  if (searchParams.date) params.set('date', searchParams.date);
-                  if (searchParams.startTime) params.set('startTime', searchParams.startTime);
-                  if (searchParams.endTime) params.set('endTime', searchParams.endTime);
-                  if (searchParams.userLocation?.latitude) params.set('lat', searchParams.userLocation.latitude);
-                  if (searchParams.userLocation?.longitude) params.set('lng', searchParams.userLocation.longitude);
-                  
-                  window.scrollTo(0, 0);
-                  navigate(`/explore?${params.toString()}`);
-                }}
-                isScrolled={false}
-              />
-            </div>
+            {/* Search Bar - inside content, extends into image area */}
+            <form className="landing-search-bar" onSubmit={handleSearch}>
+              <div className="landing-search-field">
+                <svg className="landing-search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="11" cy="11" r="8"/>
+                  <path d="M21 21l-4.35-4.35"/>
+                </svg>
+                <div className="landing-search-field-inner">
+                  <span className="landing-search-label">{t('landing.eventType', 'EVENT TYPE')}</span>
+                  <select 
+                    value={eventType}
+                    onChange={(e) => setEventType(e.target.value)}
+                    className="landing-search-select"
+                  >
+                    <option value="">{t('landing.whatPlanning', 'What are you planning?')}</option>
+                    {eventTypes.map(type => (
+                      <option key={type} value={type}>{type}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              
+              <div className="landing-search-divider"></div>
+              
+              <div className="landing-search-field">
+                <svg className="landing-search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                  <circle cx="9" cy="7" r="4"/>
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                </svg>
+                <div className="landing-search-field-inner">
+                  <span className="landing-search-label">{t('landing.guests', 'GUESTS')}</span>
+                  <input 
+                    type="text" 
+                    placeholder={t('landing.numberOfGuests', 'Number of guests')}
+                    value={searchGuests}
+                    onChange={(e) => setSearchGuests(e.target.value)}
+                    className="landing-search-input"
+                  />
+                </div>
+              </div>
+              
+              <div className="landing-search-divider"></div>
+              
+              <div className="landing-search-field">
+                <svg className="landing-search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                  <circle cx="12" cy="10" r="3"/>
+                </svg>
+                <div className="landing-search-field-inner">
+                  <span className="landing-search-label">{t('landing.location', 'LOCATION')}</span>
+                  <input 
+                    ref={locationInputRef}
+                    type="text" 
+                    placeholder={detectedCity || ''}
+                    value={searchLocation}
+                    onChange={(e) => setSearchLocation(e.target.value)}
+                    className="landing-search-input"
+                  />
+                </div>
+              </div>
+              
+              <button type="submit" className="landing-search-btn">
+                {t('common.search')}
+              </button>
+            </form>
           </div>
         </div>
       </section>
