@@ -867,6 +867,11 @@ function BookingPage() {
     }
   };
 
+  const showValidationError = (message) => {
+    showWarning(message);
+    return false;
+  };
+
   // Validation - uses inline field highlighting and scrolls to top
   const validateStep = (step) => {
     // Clear previous errors

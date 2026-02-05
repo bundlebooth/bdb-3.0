@@ -4654,10 +4654,10 @@ router.get('/forum/posts', async (req, res) => {
     const { page = 1, limit = 20, status = 'all', search = '' } = req.query;
     const pool = await getPool();
     
-    let whereClause = '1=1';
-    if (status === 'flagged') whereClause += ' AND fp.IsFlagged = 1';
-    if (status === 'hidden') whereClause += ' AND fp.IsHidden = 1';
-    if (status === 'active') whereClause += ' AND fp.IsHidden = 0';
+    let whereClause = 'fp.IsDeleted = 0';
+    if (status === 'deleted') whereClause = 'fp.IsDeleted = 1';
+    if (status === 'pinned') whereClause += ' AND fp.IsPinned = 1';
+    if (status === 'locked') whereClause += ' AND fp.IsLocked = 1';
     
     const result = await pool.request()
       .input('PageNumber', sql.Int, parseInt(page))
@@ -4672,26 +4672,26 @@ router.get('/forum/posts', async (req, res) => {
           fp.CreatedAt,
           fp.UpdatedAt,
           fp.ViewCount,
-          fp.LikeCount,
+          fp.UpvoteCount,
           fp.CommentCount,
-          fp.IsFlagged,
-          fp.IsHidden,
+          fp.IsDeleted,
+          fp.IsLocked,
           fp.IsPinned,
           u.UserID,
           u.FirstName + ' ' + u.LastName as AuthorName,
           u.Email as AuthorEmail,
-          fc.CategoryName,
+          fc.Name as CategoryName,
           fc.Slug as CategorySlug
-        FROM forum.Posts fp
-        LEFT JOIN users.Users u ON fp.UserID = u.UserID
-        LEFT JOIN forum.Categories fc ON fp.CategoryID = fc.CategoryID
+        FROM forum.ForumPosts fp
+        LEFT JOIN users.Users u ON fp.AuthorID = u.UserID
+        LEFT JOIN forum.ForumCategories fc ON fp.CategoryID = fc.CategoryID
         WHERE ${whereClause}
           AND (@Search IS NULL OR fp.Title LIKE '%' + @Search + '%' OR fp.Content LIKE '%' + @Search + '%')
         ORDER BY fp.CreatedAt DESC
         OFFSET (@PageNumber - 1) * @PageSize ROWS
         FETCH NEXT @PageSize ROWS ONLY;
         
-        SELECT COUNT(*) as Total FROM forum.Posts fp WHERE ${whereClause}
+        SELECT COUNT(*) as Total FROM forum.ForumPosts fp WHERE ${whereClause}
           AND (@Search IS NULL OR fp.Title LIKE '%' + @Search + '%' OR fp.Content LIKE '%' + @Search + '%')
       `);
     
@@ -4721,10 +4721,10 @@ router.get('/forum/posts/:id', async (req, res) => {
           fp.*,
           u.FirstName + ' ' + u.LastName as AuthorName,
           u.Email as AuthorEmail,
-          fc.CategoryName
-        FROM forum.Posts fp
-        LEFT JOIN users.Users u ON fp.UserID = u.UserID
-        LEFT JOIN forum.Categories fc ON fp.CategoryID = fc.CategoryID
+          fc.Name as CategoryName
+        FROM forum.ForumPosts fp
+        LEFT JOIN users.Users u ON fp.AuthorID = u.UserID
+        LEFT JOIN forum.ForumCategories fc ON fp.CategoryID = fc.CategoryID
         WHERE fp.PostID = @PostID
       `);
     
@@ -4750,10 +4750,8 @@ router.post('/forum/posts/:id/hide', async (req, res) => {
       .input('PostID', sql.Int, parseInt(id))
       .input('Reason', sql.NVarChar(500), reason || 'Hidden by admin')
       .query(`
-        UPDATE forum.Posts 
-        SET IsHidden = 1, 
-            HiddenReason = @Reason,
-            HiddenAt = GETUTCDATE(),
+        UPDATE forum.ForumPosts 
+        SET IsDeleted = 1, 
             UpdatedAt = GETUTCDATE()
         WHERE PostID = @PostID
       `);
@@ -4774,10 +4772,8 @@ router.post('/forum/posts/:id/unhide', async (req, res) => {
     await pool.request()
       .input('PostID', sql.Int, parseInt(id))
       .query(`
-        UPDATE forum.Posts 
-        SET IsHidden = 0, 
-            HiddenReason = NULL,
-            HiddenAt = NULL,
+        UPDATE forum.ForumPosts 
+        SET IsDeleted = 0, 
             UpdatedAt = GETUTCDATE()
         WHERE PostID = @PostID
       `);
@@ -4800,7 +4796,7 @@ router.post('/forum/posts/:id/pin', async (req, res) => {
       .input('PostID', sql.Int, parseInt(id))
       .input('IsPinned', sql.Bit, pinned ? 1 : 0)
       .query(`
-        UPDATE forum.Posts 
+        UPDATE forum.ForumPosts 
         SET IsPinned = @IsPinned,
             UpdatedAt = GETUTCDATE()
         WHERE PostID = @PostID
@@ -4823,8 +4819,8 @@ router.delete('/forum/posts/:id', async (req, res) => {
     await pool.request()
       .input('PostID', sql.Int, parseInt(id))
       .query(`
-        DELETE FROM forum.Comments WHERE PostID = @PostID;
-        DELETE FROM forum.Posts WHERE PostID = @PostID;
+        DELETE FROM forum.ForumComments WHERE PostID = @PostID;
+        DELETE FROM forum.ForumPosts WHERE PostID = @PostID;
       `);
     
     res.json({ success: true, message: 'Post deleted successfully' });
@@ -4840,9 +4836,8 @@ router.get('/forum/comments', async (req, res) => {
     const { page = 1, limit = 20, status = 'all' } = req.query;
     const pool = await getPool();
     
-    let whereClause = '1=1';
-    if (status === 'flagged') whereClause += ' AND fc.IsFlagged = 1';
-    if (status === 'hidden') whereClause += ' AND fc.IsHidden = 1';
+    let whereClause = 'fc.IsDeleted = 0';
+    if (status === 'deleted') whereClause = 'fc.IsDeleted = 1';
     
     const result = await pool.request()
       .input('PageNumber', sql.Int, parseInt(page))
@@ -4852,24 +4847,23 @@ router.get('/forum/comments', async (req, res) => {
           fc.CommentID,
           fc.Content,
           fc.CreatedAt,
-          fc.IsFlagged,
-          fc.IsHidden,
-          fc.LikeCount,
+          fc.IsDeleted,
+          fc.UpvoteCount,
           fp.PostID,
           fp.Title as PostTitle,
           fp.Slug as PostSlug,
           u.UserID,
           u.FirstName + ' ' + u.LastName as AuthorName,
           u.Email as AuthorEmail
-        FROM forum.Comments fc
-        LEFT JOIN forum.Posts fp ON fc.PostID = fp.PostID
-        LEFT JOIN users.Users u ON fc.UserID = u.UserID
+        FROM forum.ForumComments fc
+        LEFT JOIN forum.ForumPosts fp ON fc.PostID = fp.PostID
+        LEFT JOIN users.Users u ON fc.AuthorID = u.UserID
         WHERE ${whereClause}
         ORDER BY fc.CreatedAt DESC
         OFFSET (@PageNumber - 1) * @PageSize ROWS
         FETCH NEXT @PageSize ROWS ONLY;
         
-        SELECT COUNT(*) as Total FROM forum.Comments fc WHERE ${whereClause}
+        SELECT COUNT(*) as Total FROM forum.ForumComments fc WHERE ${whereClause}
       `);
     
     res.json({
@@ -4892,8 +4886,8 @@ router.post('/forum/comments/:id/hide', async (req, res) => {
     await pool.request()
       .input('CommentID', sql.Int, parseInt(id))
       .query(`
-        UPDATE forum.Comments 
-        SET IsHidden = 1, UpdatedAt = GETUTCDATE()
+        UPDATE forum.ForumComments 
+        SET IsDeleted = 1, UpdatedAt = GETUTCDATE()
         WHERE CommentID = @CommentID
       `);
     
@@ -4912,7 +4906,7 @@ router.delete('/forum/comments/:id', async (req, res) => {
     
     await pool.request()
       .input('CommentID', sql.Int, parseInt(id))
-      .query(`DELETE FROM forum.Comments WHERE CommentID = @CommentID`);
+      .query(`DELETE FROM forum.ForumComments WHERE CommentID = @CommentID`);
     
     res.json({ success: true, message: 'Comment deleted' });
   } catch (error) {
@@ -4928,13 +4922,13 @@ router.get('/forum/stats', async (req, res) => {
     
     const result = await pool.request().query(`
       SELECT 
-        (SELECT COUNT(*) FROM forum.Posts) as TotalPosts,
-        (SELECT COUNT(*) FROM forum.Posts WHERE IsFlagged = 1) as FlaggedPosts,
-        (SELECT COUNT(*) FROM forum.Posts WHERE IsHidden = 1) as HiddenPosts,
-        (SELECT COUNT(*) FROM forum.Comments) as TotalComments,
-        (SELECT COUNT(*) FROM forum.Comments WHERE IsFlagged = 1) as FlaggedComments,
-        (SELECT COUNT(*) FROM forum.Posts WHERE CreatedAt >= DATEADD(DAY, -7, GETDATE())) as PostsLast7Days,
-        (SELECT COUNT(*) FROM forum.Comments WHERE CreatedAt >= DATEADD(DAY, -7, GETDATE())) as CommentsLast7Days
+        (SELECT COUNT(*) FROM forum.ForumPosts WHERE IsDeleted = 0) as TotalPosts,
+        (SELECT COUNT(*) FROM forum.ForumPosts WHERE IsPinned = 1) as PinnedPosts,
+        (SELECT COUNT(*) FROM forum.ForumPosts WHERE IsDeleted = 1) as DeletedPosts,
+        (SELECT COUNT(*) FROM forum.ForumComments WHERE IsDeleted = 0) as TotalComments,
+        (SELECT COUNT(*) FROM forum.ForumComments WHERE IsDeleted = 1) as DeletedComments,
+        (SELECT COUNT(*) FROM forum.ForumPosts WHERE CreatedAt >= DATEADD(DAY, -7, GETDATE()) AND IsDeleted = 0) as PostsLast7Days,
+        (SELECT COUNT(*) FROM forum.ForumComments WHERE CreatedAt >= DATEADD(DAY, -7, GETDATE()) AND IsDeleted = 0) as CommentsLast7Days
     `);
     
     res.json({ success: true, stats: result.recordset[0] || {} });
