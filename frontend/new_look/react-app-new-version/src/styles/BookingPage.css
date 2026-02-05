@@ -34,6 +34,7 @@
     grid-template-columns: 1fr 480px;
     gap: 4rem;
     min-height: calc(100vh - 80px);
+    align-items: start;
 }
 
 /* ============================================
@@ -45,7 +46,7 @@
 }
 
 .booking-form-wrapper {
-    padding: 1rem 0;
+    padding: 0;
 }
 
 .booking-title {
@@ -612,6 +613,8 @@ select.form-input:focus {
     position: sticky;
     top: 100px;
     height: fit-content;
+    margin-top: 0;
+    padding-top: 0;
 }
 
 .booking-summary-card {
@@ -921,9 +924,82 @@ select.form-input:focus {
     }
 }
 
+@keyframes slideInFromRight {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes slideInFromBottom {
+    from {
+        opacity: 0;
+        transform: translateY(15px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes pulseGlow {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(79, 134, 232, 0);
+    }
+    50% {
+        box-shadow: 0 0 0 4px rgba(79, 134, 232, 0.15);
+    }
+}
+
 .booking-step {
     animation: fadeIn 0.3s ease-out;
 }
+
+/* Animate form groups sequentially */
+.accordion-step.active .accordion-step-content .form-group {
+    animation: slideInFromBottom 0.4s ease-out both;
+}
+
+.accordion-step.active .accordion-step-content .form-group:nth-child(1) { animation-delay: 0.05s; }
+.accordion-step.active .accordion-step-content .form-group:nth-child(2) { animation-delay: 0.1s; }
+.accordion-step.active .accordion-step-content .form-group:nth-child(3) { animation-delay: 0.15s; }
+.accordion-step.active .accordion-step-content .form-group:nth-child(4) { animation-delay: 0.2s; }
+.accordion-step.active .accordion-step-content .form-group:nth-child(5) { animation-delay: 0.25s; }
+.accordion-step.active .accordion-step-content .form-group:nth-child(6) { animation-delay: 0.3s; }
+
+/* Animate form rows */
+.accordion-step.active .accordion-step-content .form-row {
+    animation: slideInFromBottom 0.4s ease-out both;
+}
+
+.accordion-step.active .accordion-step-content .form-row:nth-of-type(1) { animation-delay: 0.15s; }
+.accordion-step.active .accordion-step-content .form-row:nth-of-type(2) { animation-delay: 0.2s; }
+
+/* Input focus animation */
+.form-input:focus,
+.form-textarea:focus,
+select.form-input:focus {
+    animation: pulseGlow 1.5s ease-in-out;
+}
+
+/* Booking details slide-in animation */
+.booking-details-animate {
+    animation: slideInFromBottom 0.4s ease-out;
+}
+
+.booking-details-animate > div {
+    animation: slideInFromBottom 0.3s ease-out both;
+}
+
+.booking-details-animate > div:nth-child(1) { animation-delay: 0.05s; }
+.booking-details-animate > div:nth-child(2) { animation-delay: 0.1s; }
+.booking-details-animate > div:nth-child(3) { animation-delay: 0.15s; }
+.booking-details-animate > div:nth-child(4) { animation-delay: 0.2s; }
+.booking-details-animate > div:nth-child(5) { animation-delay: 0.25s; }
 
 /* ============================================
    ACCESSIBILITY

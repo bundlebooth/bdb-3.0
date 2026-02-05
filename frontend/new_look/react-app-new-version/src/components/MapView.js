@@ -51,8 +51,8 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false, u
                      (vendor.images && vendor.images.length > 0 ? vendor.images[0].url : null) ||
                      'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png';
     
-    // Premium status
-    const isPremium = vendor.IsPremium || vendor.isPremium || false;
+    // Guest Favorite status
+    const isGuestFavorite = vendor.IsGuestFavorite === true || vendor.isGuestFavorite === true;
     
     // Price resolution
     const rawPrice = vendor.startingPrice ?? vendor.MinPriceNumeric ?? vendor.MinPrice ?? 
@@ -120,7 +120,7 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false, u
               style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover;"
             />
             
-            ${isPremium ? `
+            ${isGuestFavorite ? `
             <div style="position: absolute; top: 8px; left: 8px; background: white; color: #222222; padding: 4px 8px; border-radius: 16px; font-size: 10px; font-weight: 600; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: flex; align-items: center; gap: 3px;">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="display: block; height: 11px; width: 11px; fill: #FF385C;">
                 <path d="M8 12.5l-4.5 2.5 1-5L0 6l5-.5L8 1l3 4.5 5 .5-4.5 4 1 5z"/>

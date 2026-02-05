@@ -61,8 +61,9 @@ const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavori
                   vendor.Logo ||
                   null;
   
-  // Premium status
-  const isPremium = vendor.IsPremium || vendor.isPremium || false;
+  // Guest Favorite status - only show badge if explicitly granted by admin
+  // Only check IsGuestFavorite field (admin-controlled), do NOT fall back to IsPremium
+  const isGuestFavorite = vendor.IsGuestFavorite === true || vendor.isGuestFavorite === true;
   
   // Price resolution
   const rawPrice = vendor.startingPrice ?? vendor.MinPriceNumeric ?? vendor.MinPrice ?? 
@@ -335,8 +336,8 @@ const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavori
           }}
         />
         
-        {/* Guest Favourite Badge - Frosted glass effect */}
-        {isPremium && (
+        {/* Guest Favourite Badge - Frosted glass effect, only shows if admin granted status */}
+        {isGuestFavorite && (
           <div style={{
             position: 'absolute',
             top: '12px',

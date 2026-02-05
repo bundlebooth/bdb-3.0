@@ -711,9 +711,6 @@ function BrowsePage() {
           case 'recently-reviewed':
             params.set('sortBy', 'recentReviews');
             break;
-          case 'premium':
-            params.set('isPremium', 'true');
-            break;
           case 'popular':
             params.set('sortBy', 'bookings');
             break;

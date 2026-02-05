@@ -1424,46 +1424,48 @@ function BookingPage() {
         onNotificationsClick={() => {}} 
       />
 
-      {/* Main Content */}
-      <div className="booking-container">
+      {/* Page Header - Outside grid for proper alignment */}
+      <div className="booking-page-header" style={{ maxWidth: '1100px', margin: '0 auto', padding: '2rem 2rem 0' }}>
+        {/* Back Button */}
+        <button 
+          className="back-button" 
+          onClick={goBackToVendor}
+          style={{ 
+            marginBottom: '1rem',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            padding: '0.5rem 1rem',
+            background: 'transparent',
+            border: '1px solid #ddd',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            fontSize: '0.95rem',
+            color: '#222'
+          }}
+        >
+          <i className="fas fa-arrow-left"></i>
+          Back to Vendor
+        </button>
+
+        {/* Breadcrumb Navigation */}
+        {vendorData && (
+          <Breadcrumb items={[
+            vendorData.profile?.City || 'City',
+            vendorData.categories?.[0]?.CategoryName || vendorData.profile?.CategoryName || vendorData.profile?.PrimaryCategory || vendorData.profile?.Category || 'Services',
+            vendorData.profile?.BusinessName || 'Vendor Name',
+            'Booking'
+          ]} />
+        )}
+
+        <h1 className="booking-title" style={{ marginBottom: '1.5rem' }}>{isInstantBookingEnabled ? 'Book & Pay' : 'Request to book'}</h1>
+      </div>
+
+      {/* Main Content - Grid with aligned panels */}
+      <div className="booking-container" style={{ paddingTop: 0 }}>
         {/* Left Side - Booking Form */}
         <div className="booking-form-section">
           <div className="booking-form-wrapper">
-            {/* Back Button - Above Breadcrumb */}
-            <button 
-              className="back-button" 
-              onClick={goBackToVendor}
-              style={{ 
-                marginBottom: '1rem',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                padding: '0.5rem 1rem',
-                background: 'transparent',
-                border: '1px solid #ddd',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontSize: '0.95rem',
-                color: '#222'
-              }}
-            >
-              <i className="fas fa-arrow-left"></i>
-              Back to Vendor
-            </button>
-
-            {/* Breadcrumb Navigation */}
-            {vendorData && (
-              <Breadcrumb items={[
-                vendorData.profile?.City || 'City',
-                vendorData.categories?.[0]?.CategoryName || vendorData.profile?.CategoryName || vendorData.profile?.PrimaryCategory || vendorData.profile?.Category || 'Services',
-                vendorData.profile?.BusinessName || 'Vendor Name',
-                'Booking'
-              ]} />
-            )}
-
-            
-            <h1 className="booking-title">{isInstantBookingEnabled ? 'Book & Pay' : 'Request to book'}</h1>
-            
             {/* Accordion Step 1: Event Details */}
             <div 
               className={`accordion-step ${currentStep === 1 ? 'active' : ''} ${currentStep > 1 ? 'completed' : ''}`}
@@ -2031,88 +2033,91 @@ function BookingPage() {
             )}
             
 
-            <div className="summary-divider"></div>
+            {/* Enhanced Event Details Display - Only show when user has entered data */}
+            {(bookingData.eventName || bookingData.eventType || bookingData.eventDate || bookingData.attendeeCount || bookingData.eventLocation) && (
+              <>
+                <div className="summary-divider"></div>
+                <div className="booking-details-animate" style={{ padding: '16px 0' }}>
+                  {/* Event Name */}
+                  {bookingData.eventName && (
+                    <div style={{ marginBottom: '12px' }}>
+                      <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#717171', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
+                        Event
+                      </div>
+                      <div style={{ fontSize: '1rem', color: '#222', fontWeight: 500 }}>
+                        {bookingData.eventName}
+                      </div>
+                    </div>
+                  )}
 
-            {/* Enhanced Event Details Display - Only show filled fields */}
-            <div style={{ padding: '16px 0' }}>
-              {/* Event Name */}
-              {bookingData.eventName && (
-                <div style={{ marginBottom: '12px' }}>
-                  <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#717171', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
-                    Event
-                  </div>
-                  <div style={{ fontSize: '1rem', color: '#222', fontWeight: 500 }}>
-                    {bookingData.eventName}
-                  </div>
-                </div>
-              )}
+                  {/* Event Type */}
+                  {bookingData.eventType && (
+                    <div style={{ marginBottom: '12px' }}>
+                      <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#717171', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
+                        Type
+                      </div>
+                      <div style={{ fontSize: '0.95rem', color: '#222' }}>
+                        {bookingData.eventType.charAt(0).toUpperCase() + bookingData.eventType.slice(1).replace('-', ' ')}
+                      </div>
+                    </div>
+                  )}
 
-              {/* Event Type */}
-              {bookingData.eventType && (
-                <div style={{ marginBottom: '12px' }}>
-                  <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#717171', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
-                    Type
-                  </div>
-                  <div style={{ fontSize: '0.95rem', color: '#222' }}>
-                    {bookingData.eventType.charAt(0).toUpperCase() + bookingData.eventType.slice(1).replace('-', ' ')}
-                  </div>
-                </div>
-              )}
+                  {/* Date & Time */}
+                  {bookingData.eventDate && (
+                    <div style={{ marginBottom: '12px' }}>
+                      <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#717171', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
+                        Date & Time
+                      </div>
+                      <div style={{ fontSize: '0.95rem', color: '#222', fontWeight: 500 }}>
+                        {formatDate(bookingData.eventDate)}
+                      </div>
+                      {bookingData.eventTime && bookingData.eventEndTime && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+                          <span style={{ fontSize: '0.9rem', color: '#222' }}>{formatTime(bookingData.eventTime)}</span>
+                          <span style={{ color: '#9ca3af' }}>→</span>
+                          <span style={{ fontSize: '0.9rem', color: '#222' }}>{formatTime(bookingData.eventEndTime)}</span>
+                          {(() => {
+                            const start = new Date(`2000-01-01T${bookingData.eventTime}`);
+                            const end = new Date(`2000-01-01T${bookingData.eventEndTime}`);
+                            const diffMs = end - start;
+                            const totalHours = diffMs > 0 ? diffMs / (1000 * 60 * 60) : 0;
+                            return totalHours > 0 ? (
+                              <span style={{ fontSize: '0.85rem', color: '#6b7280', marginLeft: '8px' }}>
+                                ({totalHours % 1 === 0 ? totalHours : totalHours.toFixed(1)} hrs)
+                              </span>
+                            ) : null;
+                          })()}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
-              {/* Date & Time */}
-              {bookingData.eventDate && (
-                <div style={{ marginBottom: '12px' }}>
-                  <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#717171', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
-                    Date & Time
-                  </div>
-                  <div style={{ fontSize: '0.95rem', color: '#222', fontWeight: 500 }}>
-                    {formatDate(bookingData.eventDate)}
-                  </div>
-                  {bookingData.eventTime && bookingData.eventEndTime && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
-                      <span style={{ fontSize: '0.9rem', color: '#222' }}>{formatTime(bookingData.eventTime)}</span>
-                      <span style={{ color: '#9ca3af' }}>→</span>
-                      <span style={{ fontSize: '0.9rem', color: '#222' }}>{formatTime(bookingData.eventEndTime)}</span>
-                      {(() => {
-                        const start = new Date(`2000-01-01T${bookingData.eventTime}`);
-                        const end = new Date(`2000-01-01T${bookingData.eventEndTime}`);
-                        const diffMs = end - start;
-                        const totalHours = diffMs > 0 ? diffMs / (1000 * 60 * 60) : 0;
-                        return totalHours > 0 ? (
-                          <span style={{ fontSize: '0.85rem', color: '#6b7280', marginLeft: '8px' }}>
-                            ({totalHours % 1 === 0 ? totalHours : totalHours.toFixed(1)} hrs)
-                          </span>
-                        ) : null;
-                      })()}
+                  {/* Guest Count */}
+                  {bookingData.attendeeCount && (
+                    <div style={{ marginBottom: '12px' }}>
+                      <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#717171', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
+                        Guests
+                      </div>
+                      <div style={{ fontSize: '0.95rem', color: '#222' }}>
+                        {bookingData.attendeeCount} guests
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Event Location */}
+                  {bookingData.eventLocation && (
+                    <div>
+                      <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#717171', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
+                        Location
+                      </div>
+                      <div style={{ fontSize: '0.9rem', color: '#222' }}>
+                        {bookingData.eventLocation}
+                      </div>
                     </div>
                   )}
                 </div>
-              )}
-
-              {/* Guest Count */}
-              {bookingData.attendeeCount && (
-                <div style={{ marginBottom: '12px' }}>
-                  <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#717171', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
-                    Guests
-                  </div>
-                  <div style={{ fontSize: '0.95rem', color: '#222' }}>
-                    {bookingData.attendeeCount} guests
-                  </div>
-                </div>
-              )}
-
-              {/* Event Location */}
-              {bookingData.eventLocation && (
-                <div>
-                  <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#717171', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
-                    Location
-                  </div>
-                  <div style={{ fontSize: '0.9rem', color: '#222' }}>
-                    {bookingData.eventLocation}
-                  </div>
-                </div>
-              )}
-            </div>
+              </>
+            )}
 
             {/* Giggster-style Price Breakdown - Only show when items selected */}
             {(selectedServices.length > 0 || selectedPackage) && (

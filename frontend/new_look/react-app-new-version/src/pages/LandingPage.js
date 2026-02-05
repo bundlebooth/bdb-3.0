@@ -191,12 +191,6 @@ function LandingPage() {
             sections.push({ id: 'top-rated', title: 'Top Rated Vendors', description: 'Highly rated by our community', vendors: topRated });
           }
           
-          // Premium
-          const premium = vendors.filter(v => v.IsPremium || v.isPremium).slice(0, 8);
-          if (premium.length > 0) {
-            sections.push({ id: 'premium', title: 'Premium Vendors', description: 'Exclusive premium services', vendors: premium });
-          }
-          
           // Most Responsive
           const responsive = vendors.filter(v => v.ResponseTime || v.responseTime).slice(0, 8);
           if (responsive.length > 0) {

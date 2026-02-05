@@ -452,6 +452,7 @@ const ProfileVendorWidget = ({
         <div className="gbw-price-section">
           {displayPrice ? (
             <>
+              <span className="gbw-price-prefix">Starting from </span>
               <span className="gbw-price">${displayPrice.toFixed(0)}</span>
               <span className="gbw-price-suffix">/hr</span>
             </>

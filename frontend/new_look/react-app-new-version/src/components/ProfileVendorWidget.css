@@ -36,6 +36,12 @@
   color: #222;
 }
 
+.gbw-price-prefix {
+  font-size: 0.9rem;
+  font-weight: 400;
+  color: #717171;
+}
+
 .gbw-price-suffix {
   font-size: 1rem;
   font-weight: 400;

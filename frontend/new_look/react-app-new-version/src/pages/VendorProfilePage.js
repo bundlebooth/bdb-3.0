@@ -1604,8 +1604,7 @@ function VendorProfilePage() {
               <div 
                 key={index} 
                 style={{ 
-                  padding: '1.25rem 0',
-                  borderBottom: index < faqs.length - 1 ? '1px solid #e5e7eb' : 'none'
+                  padding: '1.25rem 0'
                 }}
               >
                 <div style={{ 

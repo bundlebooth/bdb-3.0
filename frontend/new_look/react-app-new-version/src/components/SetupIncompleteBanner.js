@@ -271,11 +271,8 @@ function SetupIncompleteBanner({
         });
         if (filtersRes.ok) {
           const filtersData = await filtersRes.json();
-          // Same logic as BecomeVendorPage lines 498-500
           if (filtersData.filters) {
             updatedFormData.selectedFilters = filtersData.filters.split(',').filter(f => f.trim());
-          } else if (filtersData.isPremium || filtersData.isFeatured) {
-            updatedFormData.selectedFilters = ['filter-premium'];
           }
         }
       } catch (e) {

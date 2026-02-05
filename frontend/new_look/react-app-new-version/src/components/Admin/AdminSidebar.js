@@ -7,24 +7,70 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 
-const adminMenuItems = [
-  { id: 'dashboard', label: 'Dashboard', icon: 'fa-chart-pie' },
-  { id: 'analytics', label: 'Analytics & Reports', icon: 'fa-chart-bar' },
-  { id: 'users', label: 'User Management', icon: 'fa-users' },
-  { id: 'vendors', label: 'Vendor Management', icon: 'fa-store' },
-  { id: 'bookings', label: 'Bookings', icon: 'fa-calendar-check' },
-  { id: 'payments', label: 'Payments & Payouts', icon: 'fa-credit-card' },
-  { id: 'reviews', label: 'Reviews & Moderation', icon: 'fa-star' },
-  { id: 'content', label: 'Content Management', icon: 'fa-newspaper' },
-  { id: 'forum', label: 'Forum Moderation', icon: 'fa-comments-alt' },
-  { id: 'support', label: 'Support Tickets', icon: 'fa-ticket-alt' },
-  { id: 'chat', label: 'Live Chat', icon: 'fa-comments' },
-  { id: 'security', label: 'Security & Audit', icon: 'fa-shield-alt' },
-  { id: 'settings', label: 'Platform Settings', icon: 'fa-cog' },
-  { id: 'automation', label: 'Automation & Email', icon: 'fa-robot' },
-  { id: 'tools', label: 'Search & Impersonation', icon: 'fa-user-secret' },
-  { id: 'guest-favorites', label: 'Badges & Favorites', icon: 'fa-award' }
+// Grouped admin menu structure with collapsible sections
+const adminMenuGroups = [
+  {
+    id: 'overview',
+    label: 'Overview',
+    icon: 'fa-tachometer-alt',
+    items: [
+      { id: 'dashboard', label: 'Dashboard', icon: 'fa-chart-pie' },
+      { id: 'analytics', label: 'Analytics & Reports', icon: 'fa-chart-bar' }
+    ]
+  },
+  {
+    id: 'users-vendors',
+    label: 'Users & Vendors',
+    icon: 'fa-users-cog',
+    items: [
+      { id: 'users', label: 'User Management', icon: 'fa-users' },
+      { id: 'vendors', label: 'Vendor Management', icon: 'fa-store' },
+      { id: 'guest-favorites', label: 'Badges & Favorites', icon: 'fa-award' }
+    ]
+  },
+  {
+    id: 'operations',
+    label: 'Operations',
+    icon: 'fa-tasks',
+    items: [
+      { id: 'bookings', label: 'Bookings', icon: 'fa-calendar-check' },
+      { id: 'payments', label: 'Payments & Payouts', icon: 'fa-credit-card' }
+    ]
+  },
+  {
+    id: 'content-community',
+    label: 'Content & Community',
+    icon: 'fa-globe',
+    items: [
+      { id: 'reviews', label: 'Reviews & Moderation', icon: 'fa-star' },
+      { id: 'content', label: 'Content Management', icon: 'fa-newspaper' },
+      { id: 'forum', label: 'Forum Moderation', icon: 'fa-comments-alt' }
+    ]
+  },
+  {
+    id: 'support-group',
+    label: 'Support',
+    icon: 'fa-headset',
+    items: [
+      { id: 'support', label: 'Support Tickets', icon: 'fa-ticket-alt' },
+      { id: 'chat', label: 'Live Chat', icon: 'fa-comments' }
+    ]
+  },
+  {
+    id: 'system',
+    label: 'System',
+    icon: 'fa-cogs',
+    items: [
+      { id: 'security', label: 'Security & Audit', icon: 'fa-shield-alt' },
+      { id: 'settings', label: 'Platform Settings', icon: 'fa-cog' },
+      { id: 'automation', label: 'Automation & Email', icon: 'fa-robot' },
+      { id: 'tools', label: 'Search & Impersonation', icon: 'fa-user-secret' }
+    ]
+  }
 ];
+
+// Flat list for backwards compatibility
+const adminMenuItems = adminMenuGroups.flatMap(group => group.items);
 
 function AdminSidebar({ 
   activeSection, 
@@ -35,6 +81,39 @@ function AdminSidebar({
 }) {
   const { currentUser } = useAuth();
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  
+  // Initialize expanded groups - expand the group containing the active section
+  const getInitialExpandedGroups = () => {
+    const expanded = {};
+    adminMenuGroups.forEach(group => {
+      const hasActiveItem = group.items.some(item => item.id === activeSection);
+      expanded[group.id] = hasActiveItem;
+    });
+    // If no group has active section, expand the first group
+    if (!Object.values(expanded).some(v => v)) {
+      expanded['overview'] = true;
+    }
+    return expanded;
+  };
+  
+  const [expandedGroups, setExpandedGroups] = useState(getInitialExpandedGroups);
+  
+  // Toggle group expansion
+  const toggleGroup = (groupId) => {
+    setExpandedGroups(prev => ({
+      ...prev,
+      [groupId]: !prev[groupId]
+    }));
+  };
+  
+  // Auto-expand group when active section changes
+  useEffect(() => {
+    adminMenuGroups.forEach(group => {
+      if (group.items.some(item => item.id === activeSection)) {
+        setExpandedGroups(prev => ({ ...prev, [group.id]: true }));
+      }
+    });
+  }, [activeSection]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -163,45 +242,94 @@ function AdminSidebar({
             </button>
           </div>
 
-          {/* Menu items */}
-          <ul style={{ padding: '1rem', margin: 0, listStyle: 'none', flex: 1 }}>
-            <li style={{
-              margin: '0 0 0.5rem',
-              padding: '0 0.5rem',
-              fontSize: '0.7rem',
-              color: '#6b7280',
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em'
-            }}>
-              Admin Panel
-            </li>
-            {adminMenuItems.map(item => (
-              <li key={item.id} style={{ marginBottom: '0.25rem' }}>
-                <a 
-                  href="#" 
-                  onClick={(e) => {
-                    e.preventDefault();
-                    handleMenuItemClick(item.id);
-                  }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.75rem',
-                    padding: '0.75rem 1rem',
-                    borderRadius: '8px',
-                    color: activeSection === item.id ? 'white' : '#4b5563',
-                    background: activeSection === item.id ? '#5086E8' : 'transparent',
-                    textDecoration: 'none',
-                    fontSize: '0.95rem',
-                    fontWeight: activeSection === item.id ? '500' : '400',
-                    transition: 'all 0.15s'
-                  }}
-                >
-                  <i className={`fas ${item.icon}`} style={{ width: '20px', textAlign: 'center' }}></i>
-                  {item.label}
-                </a>
-              </li>
-            ))}
+          {/* Menu items with collapsible groups */}
+          <ul style={{ padding: '0.75rem', margin: 0, listStyle: 'none', flex: 1 }}>
+            {adminMenuGroups.map(group => {
+              const isExpanded = expandedGroups[group.id];
+              const hasActiveItem = group.items.some(item => item.id === activeSection);
+              
+              return (
+                <li key={group.id} style={{ marginBottom: '0.5rem' }}>
+                  {/* Group Header - Collapsible */}
+                  <button
+                    onClick={() => toggleGroup(group.id)}
+                    style={{
+                      width: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '0.65rem 0.75rem',
+                      border: 'none',
+                      borderRadius: '8px',
+                      background: hasActiveItem ? 'rgba(80, 134, 232, 0.08)' : 'transparent',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                      <i className={`fas ${group.icon}`} style={{ 
+                        width: '20px', 
+                        textAlign: 'center', 
+                        fontSize: '0.9rem',
+                        color: hasActiveItem ? '#5086E8' : '#6b7280'
+                      }}></i>
+                      <span style={{ 
+                        fontSize: '0.85rem', 
+                        fontWeight: 600, 
+                        color: hasActiveItem ? '#5086E8' : '#374151',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.03em'
+                      }}>
+                        {group.label}
+                      </span>
+                    </div>
+                    <i className={`fas fa-chevron-${isExpanded ? 'up' : 'down'}`} style={{ 
+                      fontSize: '0.7rem', 
+                      color: '#9ca3af'
+                    }}></i>
+                  </button>
+                  
+                  {/* Group Items - Collapsible Content */}
+                  <ul style={{
+                    listStyle: 'none',
+                    padding: 0,
+                    margin: 0,
+                    maxHeight: isExpanded ? '500px' : '0',
+                    overflow: 'hidden',
+                    transition: 'max-height 0.3s ease-in-out'
+                  }}>
+                    {group.items.map(item => (
+                      <li key={item.id}>
+                        <a 
+                          href="#" 
+                          onClick={(e) => {
+                            e.preventDefault();
+                            handleMenuItemClick(item.id);
+                          }}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.65rem',
+                            padding: '0.6rem 0.75rem 0.6rem 2.5rem',
+                            borderRadius: '6px',
+                            color: activeSection === item.id ? 'white' : '#4b5563',
+                            background: activeSection === item.id ? '#5086E8' : 'transparent',
+                            textDecoration: 'none',
+                            fontSize: '0.9rem',
+                            fontWeight: activeSection === item.id ? '500' : '400',
+                            transition: 'all 0.15s',
+                            marginTop: '2px'
+                          }}
+                        >
+                          <i className={`fas ${item.icon}`} style={{ width: '18px', textAlign: 'center', fontSize: '0.85rem' }}></i>
+                          {item.label}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </li>
+              );
+            })}
             <li style={{ marginTop: '1rem', borderTop: '1px solid #e5e7eb', paddingTop: '1rem' }}>
               <a 
                 href="#" 
@@ -284,45 +412,105 @@ function AdminSidebar({
         </div>
       </div>
 
-      {/* Menu items */}
-      <ul style={{ padding: '1rem', margin: 0, listStyle: 'none', flex: 1 }}>
-        <li style={{
-          margin: '0 0 0.75rem',
-          padding: '0 0.5rem',
-          fontSize: '0.7rem',
-          color: '#6b7280',
-          textTransform: 'uppercase',
-          letterSpacing: '0.05em'
-        }}>
-          Admin Panel
-        </li>
-        {adminMenuItems.map(item => (
-          <li key={item.id} style={{ marginBottom: '0.25rem' }}>
-            <a 
-              href="#" 
-              onClick={(e) => {
-                e.preventDefault();
-                handleMenuItemClick(item.id);
-              }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.75rem',
-                padding: '0.75rem 1rem',
-                borderRadius: '8px',
-                color: activeSection === item.id ? 'white' : '#4b5563',
-                background: activeSection === item.id ? '#5086E8' : 'transparent',
-                textDecoration: 'none',
-                fontSize: '0.9rem',
-                fontWeight: activeSection === item.id ? '500' : '400',
-                transition: 'all 0.15s'
-              }}
-            >
-              <i className={`fas ${item.icon}`} style={{ width: '20px', textAlign: 'center' }}></i>
-              {item.label}
-            </a>
-          </li>
-        ))}
+      {/* Menu items with collapsible groups */}
+      <ul style={{ padding: '0.75rem', margin: 0, listStyle: 'none', flex: 1 }}>
+        {adminMenuGroups.map(group => {
+          const isExpanded = expandedGroups[group.id];
+          const hasActiveItem = group.items.some(item => item.id === activeSection);
+          
+          return (
+            <li key={group.id} style={{ marginBottom: '0.5rem' }}>
+              {/* Group Header - Collapsible */}
+              <button
+                onClick={() => toggleGroup(group.id)}
+                style={{
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '0.6rem 0.75rem',
+                  border: 'none',
+                  borderRadius: '8px',
+                  background: hasActiveItem ? 'rgba(80, 134, 232, 0.08)' : 'transparent',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                  <i className={`fas ${group.icon}`} style={{ 
+                    width: '18px', 
+                    textAlign: 'center', 
+                    fontSize: '0.85rem',
+                    color: hasActiveItem ? '#5086E8' : '#6b7280'
+                  }}></i>
+                  <span style={{ 
+                    fontSize: '0.8rem', 
+                    fontWeight: 600, 
+                    color: hasActiveItem ? '#5086E8' : '#374151',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.03em'
+                  }}>
+                    {group.label}
+                  </span>
+                </div>
+                <i className={`fas fa-chevron-${isExpanded ? 'up' : 'down'}`} style={{ 
+                  fontSize: '0.65rem', 
+                  color: '#9ca3af',
+                  transition: 'transform 0.2s'
+                }}></i>
+              </button>
+              
+              {/* Group Items - Collapsible Content */}
+              <ul style={{
+                listStyle: 'none',
+                padding: 0,
+                margin: 0,
+                maxHeight: isExpanded ? '500px' : '0',
+                overflow: 'hidden',
+                transition: 'max-height 0.3s ease-in-out'
+              }}>
+                {group.items.map(item => (
+                  <li key={item.id}>
+                    <a 
+                      href="#" 
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleMenuItemClick(item.id);
+                      }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.6rem',
+                        padding: '0.55rem 0.75rem 0.55rem 2.25rem',
+                        borderRadius: '6px',
+                        color: activeSection === item.id ? 'white' : '#4b5563',
+                        background: activeSection === item.id ? '#5086E8' : 'transparent',
+                        textDecoration: 'none',
+                        fontSize: '0.85rem',
+                        fontWeight: activeSection === item.id ? '500' : '400',
+                        transition: 'all 0.15s',
+                        marginTop: '2px'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (activeSection !== item.id) {
+                          e.currentTarget.style.background = '#f3f4f6';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (activeSection !== item.id) {
+                          e.currentTarget.style.background = 'transparent';
+                        }
+                      }}
+                    >
+                      <i className={`fas ${item.icon}`} style={{ width: '16px', textAlign: 'center', fontSize: '0.8rem' }}></i>
+                      {item.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </li>
+          );
+        })}
       </ul>
 
       {/* Footer with logout */}
