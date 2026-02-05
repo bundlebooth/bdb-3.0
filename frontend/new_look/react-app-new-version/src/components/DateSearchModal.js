@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import UniversalModal from './UniversalModal';
 import './DateSearchModal.css';
 
@@ -12,8 +12,11 @@ const DateSearchModal = ({
   initialEndTime,
   onSwitchToLocation,
   showStepIndicator = true,
-  currentStep = 2
+  currentStep = 2,
+  anchorRef = null,
+  asDropdown = false
 }) => {
+  const dropdownRef = useRef(null);
   const [selectedDate, setSelectedDate] = useState(initialStartDate || '');
   const [startTime, setStartTime] = useState(initialStartTime || '');
   const [endTime, setEndTime] = useState(initialEndTime || '');
@@ -168,6 +171,173 @@ const DateSearchModal = ({
   };
 
   const days = getDaysInMonth(currentMonth);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    if (!anchorRef || !isOpen) return;
+    
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target) &&
+          anchorRef.current && !anchorRef.current.contains(event.target)) {
+        onClose();
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isOpen, anchorRef, onClose]);
+
+  // If anchorRef is provided, render as dropdown instead of modal
+  if (anchorRef) {
+    if (!isOpen) return null;
+    
+    return (
+      <div 
+        ref={dropdownRef}
+        className="date-search-dropdown"
+        style={{
+          position: 'absolute',
+          top: '100%',
+          right: 0,
+          zIndex: 1000,
+          background: '#fff',
+          borderRadius: '0 0 16px 16px',
+          boxShadow: '0 8px 40px rgba(0, 0, 0, 0.15)',
+          borderTop: '1px solid #e0e0e0',
+          minWidth: '500px'
+        }}
+      >
+        <div className="date-search-content">
+          {/* Left side - Calendar */}
+          <div className="date-search-calendar">
+            <div className="calendar-header">
+              <button onClick={handlePrevMonth} className="calendar-nav-btn" type="button">
+                <i className="fas fa-chevron-left"></i>
+              </button>
+              <h3 className="calendar-title">
+                {monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}
+              </h3>
+              <button onClick={handleNextMonth} className="calendar-nav-btn" type="button">
+                <i className="fas fa-chevron-right"></i>
+              </button>
+            </div>
+
+            <div className="calendar-grid">
+              {dayNames.map((day) => (
+                <div key={day} className="calendar-day-header">{day}</div>
+              ))}
+              
+              {days.map((date, index) => (
+                <button
+                  key={index}
+                  type="button"
+                  className={`calendar-day ${
+                    date ? (
+                      isDateSelected(date) ? 'selected' :
+                      isDateDisabled(date) ? 'disabled' :
+                      date.toDateString() === new Date().toDateString() ? 'today' : ''
+                    ) : 'empty'
+                  }`}
+                  onClick={() => handleDateClick(date)}
+                  disabled={isDateDisabled(date)}
+                >
+                  {date ? date.getDate() : ''}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Right side - Time selection */}
+          <div className="date-search-time">
+            <h4>Select a date</h4>
+            
+            {/* Time inputs */}
+            <div className="time-input-group">
+              <label>Start time</label>
+              <select 
+                value={startTime} 
+                onChange={(e) => handleStartTimeChange(e.target.value)}
+                className="time-select"
+              >
+                <option value="">Select time</option>
+                {Array.from({ length: 24 }, (_, i) => {
+                  const hour = i.toString().padStart(2, '0');
+                  return (
+                    <React.Fragment key={i}>
+                      <option value={`${hour}:00`}>{i === 0 ? '12:00 AM' : i < 12 ? `${i}:00 AM` : i === 12 ? '12:00 PM' : `${i-12}:00 PM`}</option>
+                      <option value={`${hour}:30`}>{i === 0 ? '12:30 AM' : i < 12 ? `${i}:30 AM` : i === 12 ? '12:30 PM' : `${i-12}:30 PM`}</option>
+                    </React.Fragment>
+                  );
+                })}
+              </select>
+            </div>
+
+            <div className="time-input-group">
+              <label>End time</label>
+              <select 
+                value={endTime} 
+                onChange={(e) => handleEndTimeChange(e.target.value)}
+                className="time-select"
+              >
+                <option value="">Select time</option>
+                {Array.from({ length: 24 }, (_, i) => {
+                  const hour = i.toString().padStart(2, '0');
+                  return (
+                    <React.Fragment key={i}>
+                      <option value={`${hour}:00`}>{i === 0 ? '12:00 AM' : i < 12 ? `${i}:00 AM` : i === 12 ? '12:00 PM' : `${i-12}:00 PM`}</option>
+                      <option value={`${hour}:30`}>{i === 0 ? '12:30 AM' : i < 12 ? `${i}:30 AM` : i === 12 ? '12:30 PM' : `${i-12}:30 PM`}</option>
+                    </React.Fragment>
+                  );
+                })}
+              </select>
+            </div>
+
+            {timeError && (
+              <div style={{ color: '#ef4444', fontSize: '12px', marginTop: '8px' }}>
+                {timeError}
+              </div>
+            )}
+
+            {/* Action buttons */}
+            <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+              <button 
+                type="button"
+                onClick={handleClear}
+                style={{
+                  flex: 1,
+                  padding: '10px 16px',
+                  border: '1px solid #e0e0e0',
+                  borderRadius: '8px',
+                  background: '#fff',
+                  cursor: 'pointer',
+                  fontSize: '14px'
+                }}
+              >
+                Clear
+              </button>
+              <button 
+                type="button"
+                onClick={handleApply}
+                style={{
+                  flex: 1,
+                  padding: '10px 16px',
+                  border: 'none',
+                  borderRadius: '8px',
+                  background: '#4F86E8',
+                  color: '#fff',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: 500
+                }}
+              >
+                Apply
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <UniversalModal

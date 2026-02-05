@@ -11,6 +11,7 @@ import Footer from '../components/Footer';
 import MobileBottomNav from '../components/MobileBottomNav';
 import MessagingWidget from '../components/MessagingWidget';
 import ProfileModal from '../components/ProfileModal';
+import DateSearchModal from '../components/DateSearchModal';
 import { useTranslation } from '../hooks/useTranslation';
 import { encodeVendorId } from '../utils/hashIds';
 import { formatFromGooglePlace, getIPGeolocationServices } from '../utils/locationUtils';
@@ -36,37 +37,52 @@ function LandingPage() {
   const [visibleSections, setVisibleSections] = useState(new Set());
   const observerRef = useRef(null);
   
-  // Hero slideshow data - each slide has an icon and background image
-  // Images are stored in /public/images/landing/
-  const heroSlides = [
-    { 
-      icon: 'fa-camera', 
-      label: 'Photography',
-      image: '/images/landing/slide-photography.jpg'
-    },
-    { 
-      icon: 'fa-utensils', 
-      label: 'Catering',
-      image: '/images/landing/slide-catering.jpg'
-    },
-    { 
-      icon: 'fa-music', 
-      label: 'Music & DJ',
-      image: '/images/landing/slide-music.jpg'
-    },
-    { 
-      icon: 'fa-users', 
-      label: 'Events',
-      image: '/images/landing/slide-events.jpg'
-    }
-  ];
+  // Hero slideshow data - memoized for performance
+  const heroSlides = useMemo(() => [
+    { icon: 'fa-camera', label: 'Photography', image: '/images/landing/slide-photography.jpg' },
+    { icon: 'fa-utensils', label: 'Catering', image: '/images/landing/slide-catering.jpg' },
+    { icon: 'fa-music', label: 'Music & DJ', image: '/images/landing/slide-music.jpg' },
+    { icon: 'fa-users', label: 'Events', image: '/images/landing/slide-events.jpg' }
+  ], []);
   
   // Search bar state
   const [searchLocation, setSearchLocation] = useState('');
-  const [searchGuests, setSearchGuests] = useState('');
-  const [eventType, setEventType] = useState('');
+  const [searchCategory, setSearchCategory] = useState('');
+  const [searchDate, setSearchDate] = useState('');
+  const [searchStartTime, setSearchStartTime] = useState('');
+  const [searchEndTime, setSearchEndTime] = useState('');
   const locationInputRef = useRef(null);
   const autocompleteRef = useRef(null);
+  const searchBarRef = useRef(null);
+  
+  // Dropdown states
+  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+  const [showLocationDropdown, setShowLocationDropdown] = useState(false);
+  const [showDateModal, setShowDateModal] = useState(false);
+  const [calendarMonth, setCalendarMonth] = useState(new Date());
+  
+  // Mobile search modal state
+  const [showMobileSearch, setShowMobileSearch] = useState(false);
+  const [mobileSearchStep, setMobileSearchStep] = useState(0); // 0: category, 1: location, 2: date
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  
+  // Categories - memoized for performance
+  const categories = useMemo(() => [
+    { name: 'All Categories', slug: 'all', icon: 'fa-th-large' },
+    { name: 'Venues', slug: 'venue', icon: 'fa-building' },
+    { name: 'Photo/Video', slug: 'photo', icon: 'fa-camera' },
+    { name: 'Music/DJ', slug: 'music', icon: 'fa-music' },
+    { name: 'Catering', slug: 'catering', icon: 'fa-utensils' },
+    { name: 'Entertainment', slug: 'entertainment', icon: 'fa-theater-masks' },
+    { name: 'Experiences', slug: 'experiences', icon: 'fa-star' },
+    { name: 'Decor', slug: 'decor', icon: 'fa-ribbon' },
+    { name: 'Beauty', slug: 'beauty', icon: 'fa-cut' },
+    { name: 'Cake', slug: 'cake', icon: 'fa-birthday-cake' },
+    { name: 'Transport', slug: 'transport', icon: 'fa-car' },
+    { name: 'Planners', slug: 'planner', icon: 'fa-clipboard-list' },
+    { name: 'Fashion', slug: 'fashion', icon: 'fa-shopping-bag' },
+    { name: 'Stationery', slug: 'stationery', icon: 'fa-envelope' }
+  ], []);
 
   // Handle scroll for header transparency
   useEffect(() => {
@@ -129,41 +145,61 @@ function LandingPage() {
     detectCityFromIP();
   }, []);
 
-  // Initialize Google Places Autocomplete
+  // Google Places suggestions state
+  const [placeSuggestions, setPlaceSuggestions] = useState([]);
+  const autocompleteServiceRef = useRef(null);
+
+  // Initialize Google Places AutocompleteService (not Autocomplete widget)
   useEffect(() => {
-    const initAutocomplete = () => {
-      if (window.google && window.google.maps && window.google.maps.places && locationInputRef.current) {
-        autocompleteRef.current = new window.google.maps.places.Autocomplete(locationInputRef.current, {
-          types: ['(cities)'],
-          componentRestrictions: { country: 'ca' }
-        });
-        
-        autocompleteRef.current.addListener('place_changed', () => {
-          const place = autocompleteRef.current.getPlace();
-          if (place.geometry) {
-            // Use centralized formatting utility
-            const formattedLocation = formatFromGooglePlace(place.address_components, place.name);
-            setSearchLocation(formattedLocation || place.name);
-          } else if (place.name) {
-            setSearchLocation(place.name);
-          }
-        });
+    const initAutocompleteService = () => {
+      if (window.google && window.google.maps && window.google.maps.places) {
+        autocompleteServiceRef.current = new window.google.maps.places.AutocompleteService();
       }
     };
 
-    // Check if Google Maps is loaded
     if (window.google && window.google.maps) {
-      initAutocomplete();
+      initAutocompleteService();
     } else {
-      // Load Google Maps API
       const script = document.createElement('script');
       script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places`;
       script.async = true;
       script.defer = true;
-      script.onload = initAutocomplete;
+      script.onload = initAutocompleteService;
       document.head.appendChild(script);
     }
   }, []);
+
+  // Fetch place suggestions when user types
+  const handleLocationInputChange = (e) => {
+    const value = e.target.value;
+    setSearchLocation(value);
+    
+    if (value.length >= 2 && autocompleteServiceRef.current) {
+      autocompleteServiceRef.current.getPlacePredictions(
+        {
+          input: value,
+          types: ['(cities)'],
+          componentRestrictions: { country: 'ca' }
+        },
+        (predictions, status) => {
+          if (status === window.google.maps.places.PlacesServiceStatus.OK && predictions) {
+            setPlaceSuggestions(predictions.slice(0, 5));
+          } else {
+            setPlaceSuggestions([]);
+          }
+        }
+      );
+    } else {
+      setPlaceSuggestions([]);
+    }
+  };
+
+  // Handle selecting a Google Places suggestion
+  const handlePlaceSuggestionSelect = (suggestion) => {
+    setSearchLocation(suggestion.description);
+    setPlaceSuggestions([]);
+    setShowLocationDropdown(false);
+  };
 
   // Load discovery sections from API (same as IndexPage)
   const loadVendors = useCallback(async () => {
@@ -218,12 +254,188 @@ function LandingPage() {
   }, [loadVendors]);
 
 
+  // Track window resize for mobile detection
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (searchBarRef.current && !searchBarRef.current.contains(event.target)) {
+        setShowCategoryDropdown(false);
+        setShowLocationDropdown(false);
+        setShowDateModal(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+  
+  // Prevent body scroll when mobile search is open
+  useEffect(() => {
+    if (showMobileSearch) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [showMobileSearch]);
+
+  // Close all dropdowns helper
+  const closeAllDropdowns = () => {
+    setShowCategoryDropdown(false);
+    setShowLocationDropdown(false);
+    setShowDateModal(false);
+  };
+
+  // Handle date modal apply
+  const handleDateApply = ({ startDate, startTime, endTime }) => {
+    setSearchDate(startDate || '');
+    setSearchStartTime(startTime || '');
+    setSearchEndTime(endTime || '');
+  };
+
+  // Handle use current location
+  const handleUseCurrentLocation = () => {
+    if (detectedCity) {
+      setSearchLocation(detectedCity);
+    }
+    setShowLocationDropdown(false);
+  };
+
+  // Handle location select
+  const handleLocationSelect = (city) => {
+    setSearchLocation(city);
+    setShowLocationDropdown(false);
+  };
+
+  // Get category label from slug
+  const getCategoryLabel = (slug) => {
+    if (!slug || slug === 'all') return 'All Categories';
+    const cat = categories.find(c => c.slug === slug);
+    return cat ? cat.name : 'All Categories';
+  };
+
+  // Handle category select
+  const handleCategorySelect = (cat) => {
+    setSearchCategory(cat.slug === 'all' ? '' : cat.slug);
+    setShowCategoryDropdown(false);
+  };
+
+  // Calendar helper constants
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const dayNames = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
+
+  // Format date for display
+  const formatDateDisplay = (dateStr) => {
+    if (!dateStr) return 'Any time';
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
+
+  const getDaysInMonth = (date) => {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    // Adjust for Monday start (0 = Monday, 6 = Sunday)
+    let startingDayOfWeek = firstDay.getDay() - 1;
+    if (startingDayOfWeek < 0) startingDayOfWeek = 6;
+
+    const days = [];
+    for (let i = 0; i < startingDayOfWeek; i++) {
+      days.push(null);
+    }
+    for (let day = 1; day <= daysInMonth; day++) {
+      days.push(new Date(year, month, day));
+    }
+    return days;
+  };
+
+  const formatDateString = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const isDateDisabled = (date) => {
+    if (!date) return true;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return date < today;
+  };
+
+  const isToday = (date) => {
+    if (!date) return false;
+    const today = new Date();
+    return date.toDateString() === today.toDateString();
+  };
+
+  const isTomorrow = (date) => {
+    if (!date) return false;
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return date.toDateString() === tomorrow.toDateString();
+  };
+
+  const handleDateSelect = (date) => {
+    if (!date || isDateDisabled(date)) return;
+    setSearchDate(formatDateString(date));
+  };
+
+  const handleQuickDate = (type) => {
+    const today = new Date();
+    if (type === 'today') {
+      setSearchDate(formatDateString(today));
+    } else if (type === 'tomorrow') {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      setSearchDate(formatDateString(tomorrow));
+    } else if (type === 'anytime') {
+      setSearchDate('');
+    }
+  };
+
+  const handleTimeSelect = (timeSlot) => {
+    if (timeSlot === 'anytime') {
+      setSearchStartTime('');
+      setSearchEndTime('');
+    } else if (timeSlot === 'morning') {
+      setSearchStartTime('09:00');
+      setSearchEndTime('12:00');
+    } else if (timeSlot === 'afternoon') {
+      setSearchStartTime('12:00');
+      setSearchEndTime('17:00');
+    } else if (timeSlot === 'evening') {
+      setSearchStartTime('17:00');
+      setSearchEndTime('23:00');
+    }
+  };
+
+  const getSelectedTimeSlot = () => {
+    if (!searchStartTime && !searchEndTime) return 'anytime';
+    if (searchStartTime === '09:00' && searchEndTime === '12:00') return 'morning';
+    if (searchStartTime === '12:00' && searchEndTime === '17:00') return 'afternoon';
+    if (searchStartTime === '17:00' && searchEndTime === '23:00') return 'evening';
+    return 'custom';
+  };
+
   const handleSearch = (e) => {
     e?.preventDefault();
     const params = new URLSearchParams();
     if (searchLocation) params.set('location', searchLocation);
-    if (eventType) params.set('category', eventType.toLowerCase());
-    if (searchGuests) params.set('guests', searchGuests);
+    if (searchCategory) params.set('category', searchCategory);
+    if (searchDate) params.set('eventDate', searchDate);
+    if (searchStartTime) params.set('startTime', searchStartTime);
+    if (searchEndTime) params.set('endTime', searchEndTime);
     window.scrollTo(0, 0);
     navigate(`/explore?${params.toString()}`);
   };
@@ -252,51 +464,36 @@ function LandingPage() {
     );
   };
 
-  const eventTypes = [
+  // Static data - memoized for performance
+  const eventTypes = useMemo(() => [
     'Wedding', 'Corporate Event', 'Birthday Party', 'Conference', 
     'Product Launch', 'Networking Event', 'Workshop', 'Gala'
-  ];
+  ], []);
 
-  const vendorCategories = [
+  const vendorCategories = useMemo(() => [
     { name: 'Venues', slug: 'Venues', icon: 'fa-building', image: '/images/landing/meeting-venue.jpg', count: 150 },
     { name: 'Caterers', slug: 'Catering', icon: 'fa-utensils', image: '/images/landing/slide-catering.jpg', count: 85 },
     { name: 'Photographers', slug: 'Photo/Video', icon: 'fa-camera', image: '/images/landing/slide-photography.jpg', count: 120 },
     { name: 'DJs & Music', slug: 'Music/DJ', icon: 'fa-music', image: '/images/landing/slide-music.jpg', count: 65 },
     { name: 'Decorators', slug: 'Decorations', icon: 'fa-palette', image: '/images/landing/creative-space.jpg', count: 45 },
     { name: 'Event Planners', slug: 'Entertainment', icon: 'fa-clipboard-list', image: '/images/landing/slide-events.jpg', count: 55 }
-  ];
+  ], []);
 
-  const cities = [
+  const cities = useMemo(() => [
     { name: 'Toronto, ON', shortName: 'Toronto', image: '/images/landing/city-toronto.jpg', vendorCount: 180, description: 'Canada\'s largest city with incredible venues' },
     { name: 'Vancouver, BC', shortName: 'Vancouver', image: '/images/landing/city-vancouver.jpg', vendorCount: 95, description: 'Beautiful coastal event spaces' },
     { name: 'Montreal, QC', shortName: 'Montreal', image: '/images/landing/city-montreal.jpg', vendorCount: 75, description: 'Historic charm meets modern elegance' },
     { name: 'Calgary, AB', shortName: 'Calgary', image: '/images/landing/city-calgary.jpg', vendorCount: 60, description: 'Mountain city celebrations' },
     { name: 'Ottawa, ON', shortName: 'Ottawa', image: '/images/landing/city-ottawa.jpg', vendorCount: 45, description: 'Capital city sophistication' },
     { name: 'Edmonton, AB', shortName: 'Edmonton', image: '/images/landing/city-edmonton.jpg', vendorCount: 40, description: 'Festival city venues' }
-  ];
+  ], []);
 
-  const features = [
-    {
-      icon: 'fa-search',
-      title: 'Discover unique spaces for any event',
-      description: 'Browse hundreds of vendors across Canada. Find the right one among venues, caterers, photographers, and more.'
-    },
-    {
-      icon: 'fa-sliders-h',
-      title: 'Find the perfect fit with smart tools',
-      description: 'Use intuitive filters to customize your search by budget, guest count, amenities, and availability.'
-    },
-    {
-      icon: 'fa-star',
-      title: 'Check verified reviews before you book',
-      description: 'Read real reviews from people who have hosted events. Make confident decisions with trusted feedback.'
-    },
-    {
-      icon: 'fa-shield-alt',
-      title: 'Make a secure, hassle-free booking',
-      description: 'Pay securely, chat directly with vendors, and manage everything with your free account.'
-    }
-  ];
+  const features = useMemo(() => [
+    { icon: 'fa-search', title: 'Discover unique spaces for any event', description: 'Browse hundreds of vendors across Canada. Find the right one among venues, caterers, photographers, and more.' },
+    { icon: 'fa-sliders-h', title: 'Find the perfect fit with smart tools', description: 'Use intuitive filters to customize your search by budget, guest count, amenities, and availability.' },
+    { icon: 'fa-star', title: 'Check verified reviews before you book', description: 'Read real reviews from people who have hosted events. Make confident decisions with trusted feedback.' },
+    { icon: 'fa-shield-alt', title: 'Make a secure, hassle-free booking', description: 'Pay securely, chat directly with vendors, and manage everything with your free account.' }
+  ], []);
 
   return (
     <PageLayout variant="fullWidth" pageClassName="landing-page">
@@ -341,75 +538,471 @@ function LandingPage() {
               {t('landing.heroTitle3', 'imaginable')}
             </h1>
             
-            {/* Search Bar - inside content, extends into image area */}
-            <form className="landing-search-bar" onSubmit={handleSearch}>
-              <div className="landing-search-field">
-                <svg className="landing-search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="11" cy="11" r="8"/>
-                  <path d="M21 21l-4.35-4.35"/>
-                </svg>
-                <div className="landing-search-field-inner">
-                  <span className="landing-search-label">{t('landing.eventType', 'EVENT TYPE')}</span>
-                  <select 
-                    value={eventType}
-                    onChange={(e) => setEventType(e.target.value)}
-                    className="landing-search-select"
+            {/* Search Bar - Clean Professional Design */}
+            <div className="hero-search-wrapper" ref={searchBarRef}>
+              {/* Mobile: Tagvenue-style stacked search fields */}
+              {isMobile ? (
+                <div className="mobile-hero-search">
+                  {/* Event Type Field */}
+                  <div 
+                    className="mobile-hero-field"
+                    onClick={() => { setShowMobileSearch(true); setMobileSearchStep(0); }}
                   >
-                    <option value="">{t('landing.whatPlanning', 'What are you planning?')}</option>
-                    {eventTypes.map(type => (
-                      <option key={type} value={type}>{type}</option>
-                    ))}
-                  </select>
+                    <i className="fas fa-search"></i>
+                    <div className="mobile-hero-field-content">
+                      <span className="mobile-hero-field-label">EVENT TYPE</span>
+                      <span className="mobile-hero-field-value">{searchCategory ? getCategoryLabel(searchCategory) : 'What are you planning?'}</span>
+                    </div>
+                  </div>
+                  
+                  {/* Location Field */}
+                  <div 
+                    className="mobile-hero-field"
+                    onClick={() => { setShowMobileSearch(true); setMobileSearchStep(1); }}
+                  >
+                    <i className="fas fa-map-marker-alt"></i>
+                    <div className="mobile-hero-field-content">
+                      <span className="mobile-hero-field-label">LOCATION</span>
+                      <span className="mobile-hero-field-value">{searchLocation || detectedCity || 'Enter location'}</span>
+                    </div>
+                  </div>
+                  
+                  {/* Date Field */}
+                  <div 
+                    className="mobile-hero-field"
+                    onClick={() => { setShowMobileSearch(true); setMobileSearchStep(2); }}
+                  >
+                    <i className="fas fa-calendar-alt"></i>
+                    <div className="mobile-hero-field-content">
+                      <span className="mobile-hero-field-label">WHEN</span>
+                      <span className="mobile-hero-field-value">
+                        {searchDate 
+                          ? new Date(searchDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                          : 'Select date'}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  {/* Search Button */}
+                  <button className="mobile-hero-search-btn" onClick={handleSearch}>
+                    Search
+                  </button>
+                  
+                  <div className="mobile-hero-trust">
+                    <i className="fas fa-shield-alt"></i>
+                    <span>Trusted by over 10K+ customers</span>
+                  </div>
                 </div>
-              </div>
-              
-              <div className="landing-search-divider"></div>
-              
-              <div className="landing-search-field">
-                <svg className="landing-search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                  <circle cx="9" cy="7" r="4"/>
-                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-                </svg>
-                <div className="landing-search-field-inner">
-                  <span className="landing-search-label">{t('landing.guests', 'GUESTS')}</span>
-                  <input 
-                    type="text" 
-                    placeholder={t('landing.numberOfGuests', 'Number of guests')}
-                    value={searchGuests}
-                    onChange={(e) => setSearchGuests(e.target.value)}
-                    className="landing-search-input"
-                  />
+              ) : (
+              <div className="hero-search-bar-new">
+                {/* Category Field with Dropdown */}
+                <div className="hero-field-wrapper">
+                  <div 
+                    className={`hero-search-field ${showCategoryDropdown ? 'active' : ''}`}
+                    onClick={() => { 
+                      closeAllDropdowns();
+                      setShowCategoryDropdown(!showCategoryDropdown); 
+                    }}
+                  >
+                    <i className="fas fa-search hero-field-icon"></i>
+                    <div className="hero-field-content">
+                      <span className="hero-field-value">{getCategoryLabel(searchCategory)}</span>
+                    </div>
+                  </div>
+                  {showCategoryDropdown && (
+                    <div className="hero-dropdown hero-dropdown-category">
+                      {categories.map((cat) => (
+                        <div 
+                          key={cat.slug}
+                          className={`hero-dropdown-item ${(searchCategory === cat.slug) || (!searchCategory && cat.slug === 'all') ? 'selected' : ''}`}
+                          onClick={() => handleCategorySelect(cat)}
+                        >
+                          <i className={`fas ${cat.icon}`}></i>
+                          <span>{cat.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              </div>
-              
-              <div className="landing-search-divider"></div>
-              
-              <div className="landing-search-field">
-                <svg className="landing-search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-                  <circle cx="12" cy="10" r="3"/>
-                </svg>
-                <div className="landing-search-field-inner">
-                  <span className="landing-search-label">{t('landing.location', 'LOCATION')}</span>
-                  <input 
-                    ref={locationInputRef}
-                    type="text" 
-                    placeholder={detectedCity || ''}
-                    value={searchLocation}
-                    onChange={(e) => setSearchLocation(e.target.value)}
-                    className="landing-search-input"
-                  />
+
+                <div className="hero-search-separator"></div>
+
+                {/* Location Field with Dropdown */}
+                <div className="hero-field-wrapper">
+                  <div 
+                    className={`hero-search-field hero-search-field-location ${showLocationDropdown ? 'active' : ''}`}
+                    onClick={() => { 
+                      closeAllDropdowns();
+                      setShowLocationDropdown(true); 
+                    }}
+                  >
+                    <i className="fas fa-map-marker-alt hero-field-icon"></i>
+                    <div className="hero-field-content">
+                      <input
+                        ref={locationInputRef}
+                        type="text"
+                        className="hero-location-input"
+                        placeholder={detectedCity || 'Enter city'}
+                        value={searchLocation}
+                        onChange={handleLocationInputChange}
+                        onClick={(e) => e.stopPropagation()}
+                        autoComplete="off"
+                      />
+                    </div>
+                  </div>
+                  {showLocationDropdown && (
+                    <div className="hero-dropdown hero-dropdown-location">
+                      {/* Google Places Suggestions */}
+                      {placeSuggestions.length > 0 && (
+                        <>
+                          {placeSuggestions.map((suggestion) => (
+                            <div 
+                              key={suggestion.place_id}
+                              className="hero-dropdown-item"
+                              onClick={() => handlePlaceSuggestionSelect(suggestion)}
+                            >
+                              <i className="fas fa-map-marker-alt"></i>
+                              <span>{suggestion.description}</span>
+                            </div>
+                          ))}
+                          <div className="hero-dropdown-divider"></div>
+                        </>
+                      )}
+                      <div 
+                        className="hero-dropdown-item hero-location-current"
+                        onClick={handleUseCurrentLocation}
+                      >
+                        <i className="fas fa-crosshairs"></i>
+                        <span>Use my current location</span>
+                      </div>
+                      {detectedCity && !placeSuggestions.length && (
+                        <div 
+                          className={`hero-dropdown-item ${searchLocation === detectedCity ? 'selected' : ''}`}
+                          onClick={() => handleLocationSelect(detectedCity)}
+                        >
+                          <i className="fas fa-map-marker-alt"></i>
+                          <span>{detectedCity}</span>
+                        </div>
+                      )}
+                      {!placeSuggestions.length && (
+                        <>
+                          <div className="hero-dropdown-section-title">Popular cities</div>
+                          {['Toronto, ON', 'Vancouver, BC', 'Montreal, QC', 'Calgary, AB', 'Ottawa, ON', 'Edmonton, AB'].map((city) => (
+                            <div 
+                              key={city}
+                              className={`hero-dropdown-item ${searchLocation === city ? 'selected' : ''}`}
+                              onClick={() => handleLocationSelect(city)}
+                            >
+                              <i className="fas fa-map-marker-alt"></i>
+                              <span>{city}</span>
+                            </div>
+                          ))}
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
+
+                <div className="hero-search-separator"></div>
+
+                {/* When Field - Opens Inline Calendar Dropdown */}
+                <div className="hero-field-wrapper">
+                  <div 
+                    className={`hero-search-field ${showDateModal ? 'active' : ''}`}
+                    onClick={() => { 
+                      closeAllDropdowns();
+                      setShowDateModal(!showDateModal); 
+                    }}
+                  >
+                    <i className="fas fa-calendar hero-field-icon"></i>
+                    <div className="hero-field-content">
+                      <span className="hero-field-value">
+                        {searchDate 
+                          ? `${new Date(searchDate + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} • ${searchStartTime ? (searchStartTime === '09:00' ? 'Morning' : searchStartTime === '12:00' ? 'Afternoon' : searchStartTime === '17:00' ? 'Evening' : searchStartTime) : 'Any time'}`
+                          : 'Any time'}
+                      </span>
+                    </div>
+                  </div>
+                  {/* Inline Calendar Dropdown - NOT a modal */}
+                  {showDateModal && (
+                    <div className="hero-dropdown hero-dropdown-calendar">
+                      <div className="calendar-dropdown-header">
+                        <span className="calendar-dropdown-title">Select availability</span>
+                        <button type="button" className="calendar-dropdown-close" onClick={(e) => { e.stopPropagation(); setShowDateModal(false); }}>
+                          <i className="fas fa-times"></i>
+                        </button>
+                      </div>
+                      <div className="calendar-dropdown-content">
+                        {/* Calendar Section */}
+                        <div className="calendar-dropdown-calendar">
+                          <div className="calendar-header">
+                            <button type="button" className="calendar-nav-btn" onClick={(e) => { e.stopPropagation(); setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1)); }}>
+                              <i className="fas fa-chevron-left"></i>
+                            </button>
+                            <span className="calendar-title">{monthNames[calendarMonth.getMonth()]} {calendarMonth.getFullYear()}</span>
+                            <button type="button" className="calendar-nav-btn" onClick={(e) => { e.stopPropagation(); setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1)); }}>
+                              <i className="fas fa-chevron-right"></i>
+                            </button>
+                          </div>
+                          <div className="calendar-grid">
+                            {dayNames.map((day) => (
+                              <div key={day} className="calendar-day-header">{day}</div>
+                            ))}
+                            {getDaysInMonth(calendarMonth).map((date, index) => (
+                              <button
+                                key={index}
+                                type="button"
+                                className={`calendar-day ${date ? (searchDate === formatDateString(date) ? 'selected' : isDateDisabled(date) ? 'disabled' : isToday(date) ? 'today' : '') : 'empty'}`}
+                                onClick={(e) => { e.stopPropagation(); if (date && !isDateDisabled(date)) setSearchDate(formatDateString(date)); }}
+                                disabled={!date || isDateDisabled(date)}
+                              >
+                                {date ? date.getDate() : ''}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        {/* Time Selection Section */}
+                        <div className="calendar-dropdown-time">
+                          <h4>Select a date</h4>
+                          <div className="time-input-group">
+                            <label>Start time</label>
+                            <select 
+                              value={searchStartTime} 
+                              onChange={(e) => setSearchStartTime(e.target.value)}
+                              className="time-select"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <option value="">Select time</option>
+                              {Array.from({ length: 24 }, (_, i) => {
+                                const hour = i.toString().padStart(2, '0');
+                                return (
+                                  <React.Fragment key={i}>
+                                    <option value={`${hour}:00`}>{i === 0 ? '12:00 AM' : i < 12 ? `${i}:00 AM` : i === 12 ? '12:00 PM' : `${i-12}:00 PM`}</option>
+                                    <option value={`${hour}:30`}>{i === 0 ? '12:30 AM' : i < 12 ? `${i}:30 AM` : i === 12 ? '12:30 PM' : `${i-12}:30 PM`}</option>
+                                  </React.Fragment>
+                                );
+                              })}
+                            </select>
+                          </div>
+                          <div className="time-input-group">
+                            <label>End time</label>
+                            <select 
+                              value={searchEndTime} 
+                              onChange={(e) => setSearchEndTime(e.target.value)}
+                              className="time-select"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <option value="">Select time</option>
+                              {Array.from({ length: 24 }, (_, i) => {
+                                const hour = i.toString().padStart(2, '0');
+                                return (
+                                  <React.Fragment key={i}>
+                                    <option value={`${hour}:00`}>{i === 0 ? '12:00 AM' : i < 12 ? `${i}:00 AM` : i === 12 ? '12:00 PM' : `${i-12}:00 PM`}</option>
+                                    <option value={`${hour}:30`}>{i === 0 ? '12:30 AM' : i < 12 ? `${i}:30 AM` : i === 12 ? '12:30 PM' : `${i-12}:30 PM`}</option>
+                                  </React.Fragment>
+                                );
+                              })}
+                            </select>
+                          </div>
+                          <div className="time-input-group">
+                            <label>Timezone</label>
+                            <select className="time-select" onClick={(e) => e.stopPropagation()}>
+                              <option value="America/Toronto">Eastern Time (ET)</option>
+                              <option value="America/Vancouver">Pacific Time (PT)</option>
+                              <option value="America/Chicago">Central Time (CT)</option>
+                              <option value="America/Denver">Mountain Time (MT)</option>
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Search Button */}
+                <button type="button" className="hero-search-button" onClick={handleSearch}>
+                  Search
+                </button>
               </div>
-              
-              <button type="submit" className="landing-search-btn">
-                {t('common.search')}
-              </button>
-            </form>
+              )}
+            </div>
           </div>
         </div>
       </section>
+      
+      {/* Mobile Full-Page Search Modal */}
+      {showMobileSearch && (
+        <div className="mobile-search-modal">
+          <div className="mobile-search-header">
+            <button className="mobile-search-close" onClick={() => setShowMobileSearch(false)}>
+              <i className="fas fa-times"></i>
+            </button>
+            <span className="mobile-search-title">
+              {mobileSearchStep === 0 ? 'What are you looking for?' : mobileSearchStep === 1 ? 'Where?' : 'When?'}
+            </span>
+            {/* Search button on last step */}
+            {mobileSearchStep === 2 ? (
+              <button 
+                className="mobile-search-done"
+                onClick={() => { setShowMobileSearch(false); handleSearch(); }}
+              >
+                Search
+              </button>
+            ) : (
+              <div style={{ width: 40 }}></div>
+            )}
+          </div>
+          
+          {/* Step Dots - tiny grey dots below header */}
+          <div className="mobile-search-dots">
+            {[0, 1, 2].map((step) => (
+              <button
+                key={step}
+                className={`mobile-search-dot ${mobileSearchStep === step ? 'active' : ''} ${step < mobileSearchStep ? 'completed' : ''}`}
+                onClick={() => setMobileSearchStep(step)}
+                aria-label={`Step ${step + 1}`}
+              />
+            ))}
+          </div>
+          
+          <div className="mobile-search-content">
+            {/* Step 0: Category Selection */}
+            {mobileSearchStep === 0 && (
+              <div className="mobile-search-step">
+                <div className="mobile-search-options">
+                  {categories.map((cat) => (
+                    <div 
+                      key={cat.slug}
+                      className={`mobile-search-option ${(searchCategory === cat.slug) || (!searchCategory && cat.slug === 'all') ? 'selected' : ''}`}
+                      onClick={() => { 
+                        setSearchCategory(cat.slug === 'all' ? '' : cat.slug);
+                        setMobileSearchStep(1);
+                      }}
+                    >
+                      <i className={`fas ${cat.icon}`}></i>
+                      <span>{cat.name}</span>
+                      {((searchCategory === cat.slug) || (!searchCategory && cat.slug === 'all')) && (
+                        <i className="fas fa-check mobile-check"></i>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {/* Step 1: Location Selection */}
+            {mobileSearchStep === 1 && (
+              <div className="mobile-search-step">
+                <div className="mobile-location-input-wrapper">
+                  <i className="fas fa-map-marker-alt"></i>
+                  <input
+                    type="text"
+                    className="mobile-location-input"
+                    placeholder="Enter city or use current location"
+                    value={searchLocation}
+                    onChange={handleLocationInputChange}
+                    autoFocus
+                  />
+                </div>
+                <div className="mobile-search-options">
+                  <div 
+                    className="mobile-search-option mobile-current-location"
+                    onClick={() => { handleUseCurrentLocation(); setMobileSearchStep(2); }}
+                  >
+                    <i className="fas fa-crosshairs"></i>
+                    <span>Use my current location</span>
+                  </div>
+                  {placeSuggestions.length > 0 ? (
+                    placeSuggestions.map((suggestion) => (
+                      <div 
+                        key={suggestion.place_id}
+                        className="mobile-search-option"
+                        onClick={() => { 
+                          setSearchLocation(suggestion.description);
+                          setPlaceSuggestions([]);
+                          setMobileSearchStep(2);
+                        }}
+                      >
+                        <i className="fas fa-map-marker-alt"></i>
+                        <span>{suggestion.description}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <>
+                      <div className="mobile-search-section-title">Popular cities</div>
+                      {['Toronto, ON', 'Vancouver, BC', 'Montreal, QC', 'Calgary, AB', 'Ottawa, ON', 'Edmonton, AB'].map((city) => (
+                        <div 
+                          key={city}
+                          className={`mobile-search-option ${searchLocation === city ? 'selected' : ''}`}
+                          onClick={() => { setSearchLocation(city); setMobileSearchStep(2); }}
+                        >
+                          <i className="fas fa-map-marker-alt"></i>
+                          <span>{city}</span>
+                        </div>
+                      ))}
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+            
+            {/* Step 2: Date Selection */}
+            {mobileSearchStep === 2 && (
+              <div className="mobile-search-step mobile-date-step">
+                <div className="mobile-calendar-container">
+                  <div className="calendar-header">
+                    <button type="button" className="calendar-nav-btn" onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1))}>
+                      <i className="fas fa-chevron-left"></i>
+                    </button>
+                    <span className="calendar-title">{monthNames[calendarMonth.getMonth()]} {calendarMonth.getFullYear()}</span>
+                    <button type="button" className="calendar-nav-btn" onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1))}>
+                      <i className="fas fa-chevron-right"></i>
+                    </button>
+                  </div>
+                  <div className="calendar-grid">
+                    {dayNames.map((day) => (
+                      <div key={day} className="calendar-day-header">{day}</div>
+                    ))}
+                    {getDaysInMonth(calendarMonth).map((date, index) => (
+                      <button
+                        key={index}
+                        type="button"
+                        className={`calendar-day ${date ? (searchDate === formatDateString(date) ? 'selected' : isDateDisabled(date) ? 'disabled' : isToday(date) ? 'today' : '') : 'empty'}`}
+                        onClick={() => { if (date && !isDateDisabled(date)) setSearchDate(formatDateString(date)); }}
+                        disabled={!date || isDateDisabled(date)}
+                      >
+                        {date ? date.getDate() : ''}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                
+                <div className="mobile-time-options">
+                  <div className="mobile-search-section-title">Time of day</div>
+                  {[
+                    { label: 'Any time', value: '' },
+                    { label: 'Morning (9am - 12pm)', value: 'morning' },
+                    { label: 'Afternoon (12pm - 5pm)', value: 'afternoon' },
+                    { label: 'Evening (5pm - 11pm)', value: 'evening' }
+                  ].map((time) => (
+                    <div 
+                      key={time.value}
+                      className={`mobile-search-option ${getSelectedTimeSlot() === (time.value || 'anytime') ? 'selected' : ''}`}
+                      onClick={() => handleTimeSelect(time.value || 'anytime')}
+                    >
+                      <span>{time.label}</span>
+                      {getSelectedTimeSlot() === (time.value || 'anytime') && (
+                        <i className="fas fa-check mobile-check"></i>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+          
+        </div>
+      )}
 
       {/* 1. Find the perfect vendors for your event (Lead Section) */}
       <section className="feature-showcase-section">

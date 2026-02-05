@@ -450,17 +450,778 @@
   font-size: 14px;
 }
 
-/* Custom Landing Search Bar - Tagvenue Style */
+/* ============================================
+   NEW HERO SEARCH BAR - Clean Professional Design
+   ============================================ */
+
+.hero-search-wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 860px;
+  margin-top: 32px;
+  margin-bottom: 200px; /* Space for hero image on desktop */
+  z-index: 100;
+}
+
+@media (max-width: 768px) {
+  .hero-search-wrapper {
+    margin-bottom: 0; /* No extra margin on mobile */
+  }
+}
+
+.hero-field-wrapper {
+  position: relative;
+  flex: 1;
+}
+
+.hero-search-bar-new {
+  display: flex;
+  align-items: center;
+  background: #fff;
+  border-radius: 50px;
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e0e0e0;
+  padding: 6px;
+}
+
+.hero-search-field {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 24px;
+  cursor: pointer;
+  border-radius: 50px;
+  transition: background 0.15s;
+  flex: 1;
+  min-width: 0;
+}
+
+.hero-search-field:hover {
+  background: #f7f7f7;
+}
+
+.hero-search-field.active {
+  background: #f0f0f0;
+}
+
+.hero-field-icon {
+  font-size: 18px;
+  color: #717171;
+  flex-shrink: 0;
+}
+
+.hero-field-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.hero-field-value {
+  font-size: 15px;
+  font-weight: 500;
+  color: #222;
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hero-field-input {
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 15px;
+  font-weight: 500;
+  color: #222;
+  width: 100%;
+  padding: 0;
+}
+
+.hero-field-input::placeholder {
+  color: #717171;
+  font-weight: 400;
+}
+
+.hero-search-separator {
+  width: 1px;
+  height: 24px;
+  background: #ddd;
+  flex-shrink: 0;
+}
+
+.hero-search-button {
+  background: #4F86E8;
+  color: #fff;
+  border: none;
+  border-radius: 50px;
+  padding: 16px 32px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+
+.hero-search-button:hover {
+  background: #3d6fc7;
+  transform: scale(1.02);
+}
+
+/* Hero Dropdown Base - Flush with search bar, curved edges */
+.hero-dropdown {
+  position: absolute;
+  top: calc(100% - 1px); /* Flush with search bar - no gap */
+  background: #fff;
+  border-radius: 0 0 20px 20px;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.12);
+  z-index: 1000;
+  animation: heroDropdownFade 0.15s ease;
+  overflow: hidden;
+  border: 1px solid #e0e0e0;
+  border-top: none;
+}
+
+@keyframes heroDropdownFade {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Category Dropdown */
+.hero-dropdown-category {
+  left: 0;
+  min-width: 100%;
+  width: max-content;
+  padding: 12px 0;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+/* Location Input */
+.hero-location-input {
+  border: none;
+  background: transparent;
+  font-size: 15px;
+  color: #222;
+  width: 100%;
+  outline: none;
+  padding: 0;
+}
+
+.hero-location-input::placeholder {
+  color: #717171;
+}
+
+/* Location Dropdown */
+.hero-dropdown-location {
+  left: 0;
+  min-width: 100%;
+  width: max-content;
+  padding: 12px 0;
+}
+
+.hero-location-current {
+  color: #4F86E8 !important;
+}
+
+.hero-location-current i {
+  color: #4F86E8 !important;
+}
+
+.hero-dropdown-divider {
+  height: 1px;
+  background: #f0f0f0;
+  margin: 8px 0;
+}
+
+.hero-dropdown-section-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: #717171;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 12px 20px 8px;
+  margin-top: 8px;
+}
+
+.hero-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 20px;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.hero-dropdown-item:hover {
+  background: #f5f5f5;
+}
+
+.hero-dropdown-item.selected {
+  background: #f0f7ff;
+}
+
+.hero-dropdown-item i {
+  font-size: 16px;
+  color: #717171;
+  width: 20px;
+  text-align: center;
+}
+
+.hero-dropdown-item.selected i {
+  color: #4F86E8;
+}
+
+.hero-dropdown-item span {
+  font-size: 15px;
+  color: #222;
+  font-weight: 400;
+}
+
+/* Calendar Dropdown - Inline below search bar, left-aligned */
+.hero-dropdown-calendar {
+  left: 0;
+  right: auto;
+  width: auto;
+  min-width: 520px;
+  padding: 0;
+  border-radius: 0 0 16px 16px;
+  overflow: visible;
+}
+
+.calendar-dropdown-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.calendar-dropdown-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #222;
+}
+
+.calendar-dropdown-close {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: none;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #666;
+  transition: background 0.15s;
+}
+
+.calendar-dropdown-close:hover {
+  background: #f0f0f0;
+}
+
+.calendar-dropdown-content {
+  display: flex;
+  padding: 16px;
+  gap: 24px;
+}
+
+.calendar-dropdown-calendar {
+  flex: 1;
+  min-width: 280px;
+}
+
+.calendar-dropdown-time {
+  width: 160px;
+  border-left: 1px solid #f0f0f0;
+  padding-left: 24px;
+}
+
+.calendar-dropdown-time h4 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #222;
+  margin: 0 0 16px 0;
+}
+
+.fresha-calendar {
+  display: flex;
+}
+
+/* Left side - Quick options */
+.fresha-quick-options {
+  width: 140px;
+  border-right: 1px solid #f0f0f0;
+  padding: 16px 0;
+}
+
+.fresha-quick-item {
+  padding: 12px 20px;
+  cursor: pointer;
+  border-left: 3px solid transparent;
+  transition: all 0.15s ease;
+}
+
+.fresha-quick-item:hover {
+  background: #f8f8f8;
+}
+
+.fresha-quick-item.selected {
+  border-left-color: #4F86E8;
+  background: #f0f7ff;
+}
+
+.fresha-quick-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #222;
+}
+
+.fresha-quick-date {
+  font-size: 12px;
+  color: #717171;
+  margin-top: 2px;
+}
+
+/* Right side - Calendar */
+.fresha-calendar-section {
+  flex: 1;
+  padding: 16px 20px;
+}
+
+.fresha-calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.fresha-nav-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: none;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #666;
+  transition: background 0.15s;
+}
+
+.fresha-nav-btn:hover {
+  background: #f0f0f0;
+}
+
+.fresha-month-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #222;
+}
+
+.fresha-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.fresha-day-header {
+  text-align: center;
+  font-size: 12px;
+  font-weight: 500;
+  color: #717171;
+  padding: 8px 0;
+}
+
+.fresha-day {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  border: none;
+  background: none;
+  border-radius: 50%;
+  cursor: pointer;
+  color: #222;
+  transition: all 0.15s;
+}
+
+.fresha-day:hover:not(.disabled):not(.empty) {
+  background: #f0f0f0;
+}
+
+.fresha-day.empty {
+  cursor: default;
+}
+
+.fresha-day.disabled {
+  color: #ccc;
+  cursor: not-allowed;
+}
+
+.fresha-day.today {
+  border: 1px solid #222;
+}
+
+.fresha-day.selected {
+  background: #4F86E8;
+  color: white;
+  font-weight: 500;
+}
+
+/* Time chips section */
+.fresha-time-section {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #f0f0f0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.fresha-time-label {
+  font-size: 13px;
+  color: #717171;
+  white-space: nowrap;
+}
+
+.fresha-time-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.fresha-time-chip {
+  padding: 8px 16px;
+  border: 1px solid #e0e0e0;
+  border-radius: 20px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 13px;
+  color: #222;
+  transition: all 0.15s;
+  text-align: center;
+}
+
+.fresha-time-chip:hover {
+  border-color: #222;
+}
+
+.fresha-time-chip.selected {
+  border-color: #222;
+  background: #fff;
+}
+
+.fresha-chip-sub {
+  font-size: 11px;
+  color: #717171;
+  margin-top: 2px;
+}
+
+/* DateSearchModal as dropdown - MUST override any other positioning */
+.hero-search-wrapper .date-search-dropdown.hero-dropdown-calendar {
+  position: absolute !important;
+  top: 100% !important;
+  right: 0 !important;
+  left: auto !important;
+  padding: 0;
+  overflow: visible;
+}
+
+.date-search-dropdown .date-search-content {
+  display: flex;
+  padding: 16px;
+  gap: 0;
+}
+
+.date-search-dropdown .date-search-calendar {
+  border-right: 1px solid #eee;
+  padding-right: 16px;
+  min-width: 280px;
+}
+
+.date-search-dropdown .date-search-time {
+  padding-left: 16px;
+  min-width: 180px;
+}
+
+.date-search-dropdown .date-search-time h4 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #222;
+}
+
+.hero-calendar-layout {
+  display: flex;
+}
+
+.hero-calendar-quick {
+  width: 160px;
+  padding: 16px;
+  border-right: 1px solid #eee;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.hero-quick-item {
+  padding: 12px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.hero-quick-item:hover {
+  background: #f5f5f5;
+}
+
+.hero-quick-item.selected {
+  background: #f0f7ff;
+}
+
+.hero-quick-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #222;
+  display: block;
+}
+
+.hero-quick-date {
+  font-size: 12px;
+  color: #717171;
+  display: block;
+  margin-top: 2px;
+}
+
+.hero-calendar-main {
+  flex: 1;
+  padding: 16px 20px;
+}
+
+.hero-calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.hero-cal-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #222;
+}
+
+.hero-cal-nav {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.12s;
+}
+
+.hero-cal-nav:hover {
+  background: #f5f5f5;
+}
+
+.hero-cal-nav i {
+  font-size: 12px;
+  color: #222;
+}
+
+.hero-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.hero-cal-day-name {
+  font-size: 11px;
+  font-weight: 600;
+  color: #717171;
+  text-align: center;
+  padding: 8px 0;
+}
+
+.hero-cal-day {
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: transparent;
+  border-radius: 50%;
+  font-size: 13px;
+  font-weight: 500;
+  color: #222;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+  transition: all 0.12s;
+}
+
+.hero-cal-day:hover:not(.disabled):not(.selected) {
+  background: #f5f5f5;
+}
+
+.hero-cal-day.selected {
+  background: #222;
+  color: #fff;
+}
+
+.hero-cal-day.today:not(.selected) {
+  border: 2px solid #222;
+}
+
+.hero-cal-day.disabled {
+  color: #ccc;
+  cursor: not-allowed;
+}
+
+.hero-cal-day.empty {
+  visibility: hidden;
+}
+
+/* Time Section */
+.hero-time-section {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #eee;
+}
+
+.hero-time-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #717171;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: block;
+  margin-bottom: 10px;
+}
+
+.hero-time-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.hero-time-chip {
+  padding: 8px 14px;
+  border: 1px solid #ddd;
+  border-radius: 20px;
+  background: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  color: #222;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.hero-time-chip:hover {
+  border-color: #222;
+}
+
+.hero-time-chip.selected {
+  background: #222;
+  color: #fff;
+  border-color: #222;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .hero-search-wrapper {
+    max-width: 100%;
+  }
+  
+  .hero-search-bar-new {
+    flex-direction: column;
+    border-radius: 16px;
+    padding: 12px;
+  }
+  
+  .hero-search-field {
+    width: 100%;
+    padding: 14px 16px;
+  }
+  
+  .hero-search-separator {
+    width: 100%;
+    height: 1px;
+    margin: 4px 0;
+  }
+  
+  .hero-search-button {
+    width: 100%;
+    margin: 8px 0 0 0;
+    padding: 14px;
+    border-radius: 12px;
+  }
+  
+  .hero-dropdown {
+    position: fixed;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0;
+    top: auto;
+    width: 100% !important;
+    max-width: 100%;
+    border-radius: 20px 20px 0 0;
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+  
+  .hero-calendar-layout {
+    flex-direction: column;
+  }
+  
+  .hero-calendar-quick {
+    width: 100%;
+    flex-direction: row;
+    border-right: none;
+    border-bottom: 1px solid #eee;
+    padding: 12px;
+    gap: 8px;
+  }
+  
+  .hero-quick-item {
+    flex: 1;
+    text-align: center;
+    padding: 10px 8px;
+  }
+}
+
+/* ============================================
+   LEGACY - Keep for other sections
+   ============================================ */
+
+/* Landing Search Bar Wrapper - LEGACY */
+.landing-search-bar-wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 800px;
+  z-index: 100;
+  margin-top: 32px;
+}
+
+/* Custom Landing Search Bar - LEGACY */
 .landing-search-bar {
   display: flex;
-  align-items: stretch;
+  align-items: center;
   background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  border-radius: 50px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
   border: 1px solid #e8e8e8;
   overflow: visible;
   max-width: 100%;
-  margin-top: 32px;
+  margin-top: 0;
+  padding: 6px 6px 6px 0;
 }
 
 .search-field-group {
@@ -522,6 +1283,401 @@
   color: #222;
 }
 
+/* Landing Search Field */
+.landing-search-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 20px;
+  cursor: pointer;
+  border-radius: 50px;
+  transition: background 0.2s ease;
+  flex: 1;
+  min-width: 140px;
+}
+
+.landing-search-field:hover {
+  background: #f7f7f7;
+}
+
+.landing-search-field.active {
+  background: #f0f0f0;
+}
+
+.landing-search-icon {
+  flex-shrink: 0;
+  color: #717171;
+  width: 18px;
+  height: 18px;
+}
+
+.landing-search-field-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.landing-search-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: #717171;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.landing-search-value {
+  font-size: 14px;
+  font-weight: 500;
+  color: #222;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.landing-search-input {
+  border: none;
+  outline: none;
+  font-size: 14px;
+  font-weight: 500;
+  color: #222;
+  background: transparent;
+  width: 100%;
+  padding: 0;
+}
+
+.landing-search-input::placeholder {
+  color: #717171;
+  font-weight: 400;
+}
+
+/* Landing Search Divider */
+.landing-search-divider {
+  width: 1px;
+  height: 28px;
+  background: #ddd;
+  flex-shrink: 0;
+  align-self: center;
+}
+
+/* Landing Search Button */
+.landing-search-btn {
+  background: #222;
+  color: #fff;
+  border: none;
+  border-radius: 50px;
+  padding: 14px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.1s ease;
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+
+.landing-search-btn:hover {
+  background: #333;
+  transform: scale(1.02);
+}
+
+/* Landing Search Dropdown */
+.landing-search-dropdown {
+  position: absolute;
+  top: calc(100% + 12px);
+  left: 0;
+  background: #fff;
+  border-radius: 24px;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.15);
+  padding: 24px;
+  min-width: 320px;
+  z-index: 1000;
+  animation: dropdownFadeIn 0.2s ease;
+  overflow: visible;
+}
+
+.landing-search-dropdown.when-dropdown {
+  left: auto;
+  right: 0;
+  min-width: 580px;
+  padding: 0;
+}
+
+@keyframes dropdownFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Dropdown Section */
+.dropdown-section {
+  padding: 0;
+  margin-bottom: 16px;
+}
+
+.dropdown-section:last-child {
+  margin-bottom: 0;
+}
+
+.dropdown-section-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #717171;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Category List */
+.landing-search-dropdown .category-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.landing-search-dropdown .category-item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.landing-search-dropdown .category-item:hover {
+  background: #f5f5f5;
+}
+
+.landing-search-dropdown .category-item.selected {
+  background: #f0f7ff;
+}
+
+.landing-search-dropdown .category-item .category-icon {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  color: #717171;
+  background: transparent;
+  border-radius: 8px;
+  flex-shrink: 0;
+  order: 0;
+}
+
+.landing-search-dropdown .category-item .category-icon i {
+  font-size: 16px;
+}
+
+.landing-search-dropdown .category-item.selected .category-icon {
+  color: #4F86E8;
+}
+
+.landing-search-dropdown .category-item span {
+  font-size: 15px;
+  color: #222;
+  font-weight: 400;
+  order: 1;
+}
+
+/* Inline Calendar Dropdown */
+.calendar-dropdown-content {
+  display: flex;
+  gap: 0;
+}
+
+.calendar-dropdown-sidebar {
+  width: 160px;
+  padding: 20px;
+  border-right: 1px solid #eee;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.calendar-quick-option {
+  padding: 12px 16px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  border: none;
+  background: transparent;
+  text-align: left;
+  width: 100%;
+}
+
+.calendar-quick-option:hover {
+  background: #f5f5f5;
+}
+
+.calendar-quick-option.selected {
+  background: #f0f7ff;
+}
+
+.calendar-quick-option-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #222;
+  display: block;
+}
+
+.calendar-quick-option-date {
+  font-size: 12px;
+  color: #717171;
+  margin-top: 2px;
+  display: block;
+}
+
+.calendar-dropdown-main {
+  flex: 1;
+  padding: 20px;
+}
+
+.calendar-dropdown-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.calendar-dropdown-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #222;
+}
+
+.calendar-dropdown-nav {
+  display: flex;
+  gap: 8px;
+}
+
+.calendar-nav-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease;
+}
+
+.calendar-nav-btn:hover {
+  background: #f5f5f5;
+}
+
+.calendar-dropdown-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.calendar-day-header {
+  font-size: 11px;
+  font-weight: 600;
+  color: #717171;
+  text-align: center;
+  padding: 8px 0;
+}
+
+.calendar-day {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: #222;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  margin: 0 auto;
+}
+
+.calendar-day:hover:not(.disabled):not(.selected) {
+  background: #f5f5f5;
+}
+
+.calendar-day.selected {
+  background: #222;
+  color: #fff;
+}
+
+.calendar-day.disabled {
+  color: #ccc;
+  cursor: not-allowed;
+}
+
+.calendar-day.today:not(.selected) {
+  border: 2px solid #222;
+}
+
+.calendar-day.weekend {
+  color: #e74c3c;
+}
+
+.calendar-day.weekend.disabled {
+  color: #f5c6c6;
+}
+
+/* Time Selection */
+.calendar-time-section {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #eee;
+}
+
+.calendar-time-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #717171;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.calendar-time-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.time-chip {
+  padding: 8px 16px;
+  border-radius: 20px;
+  border: 1px solid #ddd;
+  background: #fff;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: #222;
+  transition: all 0.15s ease;
+}
+
+.time-chip:hover {
+  border-color: #222;
+}
+
+.time-chip.selected {
+  background: #222;
+  color: #fff;
+  border-color: #222;
+}
+
 .search-divider {
   width: 1px;
   background: #e8e8e8;
@@ -529,7 +1685,7 @@
 }
 
 .search-submit-btn {
-  background: #ff5a5f;
+  background: #4F86E8;
   color: white;
   border: none;
   padding: 16px 40px;
@@ -545,7 +1701,7 @@
 }
 
 .search-submit-btn:hover {
-  background: #e04e52;
+  background: #3d6fc7;
 }
 
 .search-submit-btn i {
@@ -1471,6 +2627,49 @@
     padding: 0 16px;
   }
   
+  /* Landing Search Bar responsive */
+  .landing-search-bar-wrapper {
+    max-width: 100%;
+  }
+
+  .landing-search-bar {
+    flex-direction: column;
+    border-radius: 16px;
+    padding: 16px;
+    gap: 0;
+  }
+
+  .landing-search-field {
+    width: 100%;
+    padding: 16px;
+    border-radius: 12px;
+  }
+
+  .landing-search-divider {
+    width: 100%;
+    height: 1px;
+    margin: 4px 0;
+  }
+
+  .landing-search-btn {
+    width: 100%;
+    margin-top: 12px;
+    padding: 16px;
+    border-radius: 12px;
+  }
+
+  .landing-search-dropdown {
+    position: fixed;
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    max-width: 100%;
+    border-radius: 24px 24px 0 0;
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+  
   /* Simple search bar responsive */
   .hero-search-bar-simple {
     flex-direction: column;
@@ -2107,8 +3306,9 @@
    ============================================ */
 
 .feature-showcase-section {
-  padding: 40px 0 0;
+  padding: 0;
   background: #fff;
+  margin-top: -1px; /* Close gap with hero section */
 }
 
 /* Feature Row - Base Styles */
@@ -3286,10 +4486,39 @@
    Comprehensive mobile-first improvements
    ============================================ */
 
-/* Mobile Hero Section */
+/* Mobile Hero Section - Clean Tagvenue Style */
 @media (max-width: 768px) {
   .hero-section-fullscreen {
-    min-height: 85vh;
+    min-height: auto;
+    height: auto;
+    background: #fff !important;
+    padding: 20px 0 40px;
+  }
+  
+  /* Hide background slideshow on mobile */
+  .hero-section-fullscreen .landing-hero-slideshow {
+    display: none !important;
+  }
+  
+  /* Hide badge on mobile */
+  .landing-hero-badge {
+    display: none;
+  }
+  
+  .landing-hero-content {
+    position: relative;
+    z-index: 1;
+    max-width: 100%;
+    padding: 0 20px;
+  }
+  
+  .landing-hero-title {
+    font-size: 24px !important;
+    line-height: 1.3;
+    margin-bottom: 24px;
+    color: #222 !important;
+    text-shadow: none !important;
+    text-align: center;
   }
   
   .hero-center-content {
@@ -3306,6 +4535,10 @@
   
   .hero-search-bar-styled {
     max-width: 100%;
+    width: 100%;
+  }
+  
+  .hero-search-wrapper {
     width: 100%;
   }
   
@@ -4392,10 +5625,10 @@
 
 .landing-hero {
   background: #ffffff;
-  padding: 20px 0 280px;
+  padding: 20px 0 60px;
   position: relative;
-  min-height: 650px;
-  overflow: hidden;
+  min-height: auto;
+  overflow: visible;
 }
 
 .landing-hero-container {
@@ -4426,7 +5659,12 @@
 
 .landing-hero-content .landing-hero-badge,
 .landing-hero-content .landing-hero-title {
-  max-width: 420px;
+  max-width: 500px;
+}
+
+/* Allow search bar to extend beyond text content */
+.landing-hero-content .hero-search-wrapper {
+  max-width: none;
 }
 
 .landing-hero-badge {
@@ -4602,13 +5840,7 @@
 
 @media (max-width: 744px) {
   .landing-hero-images {
-    position: relative;
-    right: auto;
-    top: auto;
-    width: calc(100% + 48px);
-    margin-left: -24px;
-    height: 320px;
-    margin-bottom: 20px;
+    display: none;
   }
 }
 
@@ -4652,7 +5884,7 @@
   }
   
   .landing-hero-content {
-    max-width: 45%;
+    max-width: 100%;
   }
   
   .landing-hero-title {
@@ -4678,6 +5910,344 @@
     width: calc(100% - 16px);
     margin: 8px;
   }
+}
+
+/* ============================================
+   MOBILE FULL-PAGE SEARCH MODAL
+   ============================================ */
+
+/* ============================================
+   MOBILE HERO SEARCH - Tagvenue Style
+   Clean stacked fields, no background image
+   ============================================ */
+
+.mobile-hero-search {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.mobile-hero-field {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  border-bottom: 1px solid #f0f0f0;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.mobile-hero-field:hover {
+  background: #fafafa;
+}
+
+.mobile-hero-field:last-of-type {
+  border-bottom: none;
+}
+
+.mobile-hero-field > i {
+  font-size: 18px;
+  color: #999;
+  width: 24px;
+  text-align: center;
+}
+
+.mobile-hero-field-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.mobile-hero-field-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #4F86E8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.mobile-hero-field-value {
+  font-size: 16px;
+  color: #222;
+}
+
+.mobile-hero-search-btn {
+  width: calc(100% - 32px);
+  margin: 16px;
+  padding: 16px;
+  background: #4F86E8;
+  border: none;
+  border-radius: 12px;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.mobile-hero-search-btn:hover {
+  background: #3d6fc7;
+}
+
+.mobile-hero-trust {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 16px 16px;
+  font-size: 13px;
+  color: #717171;
+}
+
+.mobile-hero-trust i {
+  color: #999;
+  font-size: 12px;
+}
+
+/* Mobile Search Modal - Full Page */
+.mobile-search-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #fff;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  animation: mobileSearchSlideUp 0.3s ease;
+}
+
+@keyframes mobileSearchSlideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.mobile-search-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: #fff;
+  border-bottom: 1px solid #f0f0f0;
+  flex-shrink: 0;
+}
+
+/* Match UniversalModal close button style */
+.mobile-search-close {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  color: #6b7280;
+  padding: 4px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: all 0.15s;
+  line-height: 1;
+}
+
+.mobile-search-close:hover {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+.mobile-search-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #111827;
+}
+
+/* Mobile Search Content */
+.mobile-search-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 20px;
+  background: #fafafa;
+}
+
+.mobile-search-step {
+  padding: 16px 0 80px; /* Bottom padding for safe area */
+}
+
+.mobile-search-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mobile-search-option {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+}
+
+.mobile-search-option:hover {
+  border-color: #4F86E8;
+  background: #fff;
+}
+
+.mobile-search-option.selected {
+  background: #f0f7ff;
+  border-color: #4F86E8;
+}
+
+.mobile-search-option i {
+  font-size: 16px;
+  color: #717171;
+  width: 20px;
+  text-align: center;
+}
+
+.mobile-search-option.selected i {
+  color: #4F86E8;
+}
+
+.mobile-search-option span {
+  flex: 1;
+  font-size: 15px;
+  color: #222;
+}
+
+.mobile-check {
+  color: #4F86E8 !important;
+  font-size: 14px !important;
+}
+
+.mobile-current-location {
+  background: #f0f7ff;
+  border-color: #4F86E8;
+}
+
+.mobile-current-location i,
+.mobile-current-location span {
+  color: #4F86E8 !important;
+}
+
+.mobile-search-section-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: #717171;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 16px 0 8px;
+  margin-top: 8px;
+}
+
+/* Mobile Location Input */
+.mobile-location-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  margin-bottom: 16px;
+}
+
+.mobile-location-input-wrapper i {
+  color: #717171;
+  font-size: 18px;
+}
+
+.mobile-location-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-size: 16px;
+  color: #222;
+  outline: none;
+}
+
+.mobile-location-input::placeholder {
+  color: #999;
+}
+
+/* Mobile Date Step */
+.mobile-date-step {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.mobile-calendar-container {
+  background: #fff;
+  border-radius: 16px;
+  padding: 16px;
+  border: 1px solid #f0f0f0;
+}
+
+.mobile-time-options {
+  padding-bottom: 20px;
+}
+
+/* Step Dots - tiny grey dots below header */
+.mobile-search-dots {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 0 16px;
+  background: #fff;
+}
+
+.mobile-search-dot {
+  width: 6px !important;
+  height: 6px !important;
+  min-width: 6px !important;
+  max-width: 6px !important;
+  min-height: 6px !important;
+  max-height: 6px !important;
+  border-radius: 50% !important;
+  border: none !important;
+  background: #d1d5db !important;
+  cursor: pointer;
+  transition: all 0.2s;
+  padding: 0 !important;
+  margin: 0 !important;
+  flex: 0 0 6px !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  box-sizing: border-box !important;
+}
+
+.mobile-search-dot.active {
+  background: #4F86E8 !important;
+}
+
+.mobile-search-dot.completed {
+  background: #4F86E8 !important;
+}
+
+/* Search button in header on last step */
+.mobile-search-done {
+  background: #4F86E8;
+  color: #fff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.mobile-search-done:hover {
+  background: #3d6fc7;
 }
 
 /* Responsive - Mobile */

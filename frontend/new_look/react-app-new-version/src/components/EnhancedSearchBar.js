@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useLocation as useRouterLocation } from 'react-router-dom';
 import { API_BASE_URL, GOOGLE_MAPS_API_KEY } from '../config';
 import './EnhancedSearchBar.css';
 import Calendar from './Calendar';
@@ -7,9 +8,24 @@ import DateSearchModal from './DateSearchModal';
 import { getIPGeolocationServices, formatFromGooglePlace } from '../utils/locationUtils';
 
 const EnhancedSearchBar = ({ onSearch, isScrolled }) => {
-  const [location, setLocation] = useState('');
+  const routerLocation = useRouterLocation();
+  
+  // Initialize state from URL params
+  const getInitialParams = () => {
+    const params = new URLSearchParams(window.location.search);
+    return {
+      location: params.get('location') || '',
+      eventDate: params.get('eventDate') || '',
+      startTime: params.get('startTime') || '',
+      endTime: params.get('endTime') || ''
+    };
+  };
+  
+  const initialParams = getInitialParams();
+  
+  const [location, setLocation] = useState(initialParams.location);
   const [detectedCity, setDetectedCity] = useState(''); // IP-detected city for placeholder
-  const [selectedDate, setSelectedDate] = useState('');
+  const [selectedDate, setSelectedDate] = useState(initialParams.eventDate);
   const [showLocationDropdown, setShowLocationDropdown] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
@@ -17,12 +33,26 @@ const EnhancedSearchBar = ({ onSearch, isScrolled }) => {
   const [activeField, setActiveField] = useState(null); // 'event', 'location', 'date'
   const [userLocation, setUserLocation] = useState(null);
   const [loadingLocation, setLoadingLocation] = useState(false);
-  const [startTime, setStartTime] = useState('11:00');
-  const [endTime, setEndTime] = useState('17:00');
+  const [startTime, setStartTime] = useState(initialParams.startTime || '');
+  const [endTime, setEndTime] = useState(initialParams.endTime || '');
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [showDateModal, setShowDateModal] = useState(false);
   const [searchRadius, setSearchRadius] = useState(50);
   const [endDate, setEndDate] = useState('');
+  
+  // Sync state with URL params when URL changes
+  useEffect(() => {
+    const params = new URLSearchParams(routerLocation.search);
+    const urlLocation = params.get('location') || '';
+    const urlEventDate = params.get('eventDate') || '';
+    const urlStartTime = params.get('startTime') || '';
+    const urlEndTime = params.get('endTime') || '';
+    
+    if (urlLocation) setLocation(urlLocation);
+    if (urlEventDate) setSelectedDate(urlEventDate);
+    if (urlStartTime) setStartTime(urlStartTime);
+    if (urlEndTime) setEndTime(urlEndTime);
+  }, [routerLocation.search]);
 
   const locationRef = useRef(null);
   const dateRef = useRef(null);
@@ -381,7 +411,7 @@ const EnhancedSearchBar = ({ onSearch, isScrolled }) => {
     }, 300);
   };
 
-  // Format date for display (compact version)
+  // Format date for display (compact version) - includes time if available
   const formatDateDisplay = (dateString, compact = false) => {
     if (!dateString) return compact ? 'Anytime' : 'Pick the date';
     // Parse the date string as local date to avoid timezone issues
@@ -389,8 +419,31 @@ const EnhancedSearchBar = ({ onSearch, isScrolled }) => {
     const date = new Date(year, month - 1, day);
     const monthName = date.toLocaleDateString('en-US', { month: 'short' });
     const dayNum = date.getDate();
-    const yearNum = date.getFullYear();
-    return `${monthName} ${dayNum}, ${yearNum}`;
+    
+    // Format time slot display
+    let timeDisplay = '';
+    if (startTime) {
+      if (startTime === '09:00' && endTime === '12:00') {
+        timeDisplay = ' • Morning';
+      } else if (startTime === '12:00' && endTime === '17:00') {
+        timeDisplay = ' • Afternoon';
+      } else if (startTime === '17:00' && endTime === '23:00') {
+        timeDisplay = ' • Evening';
+      } else if (startTime) {
+        // Format custom time
+        const formatTime = (t) => {
+          if (!t) return '';
+          const [h, m] = t.split(':');
+          const hour = parseInt(h);
+          const ampm = hour >= 12 ? 'PM' : 'AM';
+          const hour12 = hour % 12 || 12;
+          return `${hour12}${m !== '00' ? ':' + m : ''} ${ampm}`;
+        };
+        timeDisplay = ` • ${formatTime(startTime)}`;
+      }
+    }
+    
+    return `${monthName} ${dayNum}${timeDisplay}`;
   };
 
   // Format location for compact display

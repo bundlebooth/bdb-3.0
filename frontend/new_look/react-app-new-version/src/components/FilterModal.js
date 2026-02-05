@@ -807,50 +807,7 @@ function FilterModal({ isOpen, onClose, filters, onFilterChange, userLocation, o
           </div>
         </div>
 
-        {/* Availability Section */}
-        <div style={{ marginBottom: '1.5rem' }}>
-          <h3 style={{ 
-            fontSize: '1.1rem', 
-            fontWeight: 700, 
-            margin: '0 0 0.75rem 0',
-            color: '#111827'
-          }}>
-            Availability
-          </h3>
-          <div style={{ marginBottom: '0.75rem' }}>
-            <label style={{ fontSize: '0.875rem', color: '#374151', display: 'block', marginBottom: '0.25rem' }}>
-              Available on specific date
-            </label>
-            <input
-              type="date"
-              value={availabilityDate}
-              onChange={(e) => setAvailabilityDate(e.target.value)}
-              min={new Date().toISOString().split('T')[0]}
-              style={{
-                padding: '0.5rem 0.75rem',
-                border: '1px solid #d1d5db',
-                borderRadius: '8px',
-                fontSize: '0.9rem',
-                maxWidth: '200px'
-              }}
-            />
-            {availabilityDate && (
-              <button
-                onClick={() => setAvailabilityDate('')}
-                style={{
-                  marginLeft: '0.5rem',
-                  background: 'none',
-                  border: 'none',
-                  color: '#5086E8',
-                  fontSize: '0.875rem',
-                  cursor: 'pointer'
-                }}
-              >
-                Clear
-              </button>
-            )}
-          </div>
-        </div>
+        {/* Availability Section - REMOVED: Now handled by search bar at top */}
       </div>
 
       {/* Footer - Fixed at bottom */}

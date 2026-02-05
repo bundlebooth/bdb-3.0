@@ -42,11 +42,12 @@
   width: 100%;
   gap: 0;
   cursor: pointer;
+  min-width: 320px; /* Wider minimum width */
 }
 
 .compact-field {
   cursor: pointer;
-  padding: 10px 18px;
+  padding: 10px 20px;
   display: flex;
   align-items: center;
   gap: 4px;
@@ -54,13 +55,15 @@
 
 .compact-location {
   flex: 1;
-  padding-left: 16px;
+  padding-left: 20px;
   justify-content: flex-start;
+  min-width: 140px;
 }
 
 .compact-date {
-  flex: 1;
+  flex: 1.5;
   justify-content: flex-start;
+  min-width: 160px; /* Wider to fit date + time */
 }
 
 .compact-field:hover {
@@ -76,6 +79,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   display: block;
+  max-width: 200px; /* Allow more text to show */
 }
 
 .compact-separator {

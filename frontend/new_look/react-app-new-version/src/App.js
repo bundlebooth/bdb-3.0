@@ -63,9 +63,10 @@ document.addEventListener('contextmenu', function(e) {
   }
 });
 
-// Home route wrapper - shows landing page for unauthenticated users, main page for authenticated
+// Home route wrapper - always shows landing page for all users
+// The /explore route is for vendor discovery with search results
 function HomeRoute() {
-  const { currentUser, loading } = useAuth();
+  const { loading } = useAuth();
   
   // Send heartbeat to track online status
   useHeartbeat();
@@ -87,8 +88,8 @@ function HomeRoute() {
     );
   }
   
-  // Show landing page for unauthenticated users, main page for authenticated
-  return currentUser ? <IndexPage /> : <LandingPage />;
+  // Always show landing page - /explore is for vendor discovery
+  return <LandingPage />;
 }
 
 // Protected deep link component - redirects to login if not authenticated, then to the target
