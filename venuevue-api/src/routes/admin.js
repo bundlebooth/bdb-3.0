@@ -3621,17 +3621,14 @@ router.get('/guest-favorites', async (req, res) => {
 router.post('/guest-favorites/:id/grant', async (req, res) => {
   try {
     const { id } = req.params;
-    const adminUserId = req.user?.id || req.user?.userId;
     const pool = await getPool();
     
     await pool.request()
       .input('VendorProfileID', sql.Int, parseInt(id))
-      .input('AdminUserID', sql.Int, adminUserId)
       .query(`
         UPDATE vendors.VendorProfiles 
         SET IsGuestFavorite = 1,
             GuestFavoriteGrantedAt = GETUTCDATE(),
-            GuestFavoriteGrantedBy = @AdminUserID,
             UpdatedAt = GETUTCDATE()
         WHERE VendorProfileID = @VendorProfileID
       `);
@@ -3655,7 +3652,6 @@ router.post('/guest-favorites/:id/revoke', async (req, res) => {
         UPDATE vendors.VendorProfiles 
         SET IsGuestFavorite = 0,
             GuestFavoriteGrantedAt = NULL,
-            GuestFavoriteGrantedBy = NULL,
             UpdatedAt = GETUTCDATE()
         WHERE VendorProfileID = @VendorProfileID
       `);
