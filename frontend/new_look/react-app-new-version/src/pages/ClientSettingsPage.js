@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import Header from '../components/Header';
 import MobileBottomNav from '../components/MobileBottomNav';
 import { useTranslation } from '../hooks/useTranslation';
+import { clientNavItems } from '../config/clientNavItems';
 import './ClientPage.css';
 import './ClientSettingsPage.css';
 
@@ -11,14 +12,7 @@ function ClientSettingsPage() {
   const location = useLocation();
   const { t } = useTranslation();
 
-  const navItems = [
-    { path: '/client/bookings', label: 'My Bookings', icon: 'fas fa-calendar-check' },
-    { path: '/client/messages', label: 'Messages', icon: 'fas fa-comments' },
-    { path: '/client/favorites', label: 'Favorites', icon: 'fas fa-heart' },
-    { path: '/client/reviews', label: 'Reviews', icon: 'fas fa-star' },
-    { path: '/client/invoices', label: 'Invoices', icon: 'fas fa-file-invoice' },
-    { path: '/client/settings', label: 'Settings', icon: 'fas fa-cog' },
-  ];
+  const navItems = clientNavItems;
 
   const settingsCards = [
     { 

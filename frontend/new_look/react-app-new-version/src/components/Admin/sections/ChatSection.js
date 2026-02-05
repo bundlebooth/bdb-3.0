@@ -8,8 +8,10 @@ import { formatRelativeTime, formatDate } from '../../../utils/formatUtils';
 import adminApi from '../../../services/adminApi';
 import { GIPHY_API_KEY } from '../../../config';
 import { ConfirmationModal } from '../../UniversalModal';
+import { useAlert } from '../../../context/AlertContext';
 
 function ChatSection() {
+  const { showError, showSuccess } = useAlert();
   const [activeTab, setActiveTab] = useState('conversations');
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -161,7 +163,7 @@ function ChatSection() {
       fetchFlaggedMessages();
       fetchModerationStats();
     } catch (err) {
-      alert('Failed to review violation');
+      showError('Failed to review violation');
     } finally {
       setActionLoading(false);
     }
@@ -182,9 +184,9 @@ function ChatSection() {
       setLockReason('');
       fetchFlaggedMessages();
       fetchModerationStats();
-      alert('User account locked successfully');
+      showSuccess('User account locked successfully');
     } catch (err) {
-      alert('Failed to lock user account');
+      showError('Failed to lock user account');
     } finally {
       setActionLoading(false);
     }
@@ -267,7 +269,7 @@ function ChatSection() {
       const data = await adminApi.getSupportConversationMessages(selectedConversation.ConversationID || selectedConversation.id);
       setConversationMessages(Array.isArray(data?.messages) ? data.messages : []);
     } catch (err) {
-      alert('Failed to send reply');
+      showError('Failed to send reply');
     } finally {
       setActionLoading(false);
     }

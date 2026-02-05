@@ -10,9 +10,11 @@ import { useDebounce } from '../../../hooks/useApi';
 import adminApi from '../../../services/adminApi';
 import UniversalModal, { ConfirmationModal, FormModal } from '../../UniversalModal';
 import { FormField, FormTextareaField, DetailRow, DetailSection } from '../../common/FormComponents';
+import { useAlert } from '../../../context/AlertContext';
 
 function VendorsSection() {
   const navigate = useNavigate();
+  const { showError } = useAlert();
   const [activeTab, setActiveTab] = useState('approvals');
   const [vendors, setVendors] = useState([]);
   const [approvals, setApprovals] = useState([]);
@@ -148,7 +150,7 @@ function VendorsSection() {
       fetchApprovals();
     } catch (err) {
       console.error('Error approving vendor:', err);
-      alert('Failed to approve vendor: ' + err.message);
+      showError('Failed to approve vendor: ' + err.message);
     } finally {
       setActionLoading(false);
     }
@@ -164,7 +166,7 @@ function VendorsSection() {
       fetchApprovals();
     } catch (err) {
       console.error('Error rejecting vendor:', err);
-      alert('Failed to reject vendor: ' + err.message);
+      showError('Failed to reject vendor: ' + err.message);
     } finally {
       setActionLoading(false);
     }
@@ -199,7 +201,7 @@ function VendorsSection() {
       fetchVendors();
     } catch (err) {
       console.error('Error executing action:', err);
-      alert('Action failed: ' + err.message);
+      showError('Action failed: ' + err.message);
     } finally {
       setActionLoading(false);
     }
@@ -219,7 +221,7 @@ function VendorsSection() {
       fetchCategories();
     } catch (err) {
       console.error('Error saving category:', err);
-      alert('Failed to save category: ' + err.message);
+      showError('Failed to save category: ' + err.message);
     } finally {
       setActionLoading(false);
     }

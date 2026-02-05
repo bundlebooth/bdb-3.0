@@ -459,43 +459,7 @@ const ProfileVendorWidget = ({
             <span className="gbw-price">Request a Quote</span>
           )}
         </div>
-        {/* Instant Booking Badge */}
-        {instantBookingEnabled && (
-          <div style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '6px',
-            background: '#e0f2fe',
-            color: '#0369a1',
-            padding: '4px 10px',
-            borderRadius: '16px',
-            fontSize: '12px',
-            fontWeight: 500,
-            marginLeft: '8px'
-          }}>
-            <i className="fas fa-bolt" style={{ fontSize: '10px' }}></i>
-            Instant Book
-          </div>
-        )}
       </div>
-      
-      {/* Lead Time Notice */}
-      {minBookingLeadTimeHours > 0 && (
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          padding: '8px 12px',
-          background: '#fef3c7',
-          borderRadius: '8px',
-          fontSize: '13px',
-          color: '#92400e',
-          marginBottom: '12px'
-        }}>
-          <i className="fas fa-clock" style={{ fontSize: '12px' }}></i>
-          <span>Requires {formatLeadTime(minBookingLeadTimeHours)}</span>
-        </div>
-      )}
 
       {/* Date Selection Row */}
       <div 
@@ -930,47 +894,63 @@ const ProfileVendorWidget = ({
         Reserve
       </button>
 
-      {/* Cancellation Policy - info icon with hover tooltip */}
-      {cancellationPolicy && (
-        <div 
-          className="gbw-cancel-policy"
-          style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '6px',
-            position: 'relative'
-          }}
-        >
-          <div 
-            style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '6px',
-              cursor: 'pointer',
-              padding: '8px 0'
-            }}
-            title={cancellationPolicy.Description || 
-              (cancellationPolicy.PolicyType === 'flexible' 
-                ? 'Full refund if cancelled at least 24 hours before the event date' 
-                : cancellationPolicy.PolicyType === 'moderate' 
-                  ? 'Free cancellation up to 5 days before the event date. 50% refund if cancelled 2-5 days before.' 
-                  : cancellationPolicy.PolicyType === 'strict'
-                    ? 'Non-refundable. No refund after booking is confirmed.'
-                    : 'Contact vendor for cancellation details')}
-          >
-            <i className="fas fa-info-circle" style={{ color: '#6b7280', fontSize: '14px' }}></i>
-            <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>
-              {cancellationPolicy.PolicyType === 'flexible' 
-                ? 'Free cancellation up to 24 hours before the event' 
-                : cancellationPolicy.PolicyType === 'moderate' 
-                  ? 'Free cancellation up to 5 days before the event' 
-                  : cancellationPolicy.PolicyType === 'strict'
-                    ? 'Non-refundable after booking'
-                    : 'Cancellation policy applies'}
-            </span>
+      {/* Booking Policies - Instant Booking, Lead Time, Cancellation */}
+      <div style={{ marginTop: '16px', borderTop: '1px solid #ebebeb', paddingTop: '16px' }}>
+        {/* Instant Booking */}
+        {instantBookingEnabled && (
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '12px' }}>
+            <i className="fas fa-bolt" style={{ color: '#5086E8', fontSize: '14px', marginTop: '2px', width: '16px' }}></i>
+            <div>
+              <div style={{ fontSize: '13px', fontWeight: 600, color: '#222' }}>Instant Booking</div>
+              <div style={{ fontSize: '12px', color: '#717171' }}>Book and pay now without waiting for vendor approval</div>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+
+        {/* Lead Time / Advance Notice */}
+        {minBookingLeadTimeHours > 0 && (
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '12px' }}>
+            <i className="fas fa-clock" style={{ color: '#f59e0b', fontSize: '14px', marginTop: '2px', width: '16px' }}></i>
+            <div>
+              <div style={{ fontSize: '13px', fontWeight: 600, color: '#222' }}>Advance notice required</div>
+              <div style={{ fontSize: '12px', color: '#717171' }}>
+                {minBookingLeadTimeHours >= 168 
+                  ? `Book at least ${Math.floor(minBookingLeadTimeHours / 168)} week${Math.floor(minBookingLeadTimeHours / 168) > 1 ? 's' : ''} in advance`
+                  : minBookingLeadTimeHours >= 24 
+                    ? `Book at least ${Math.floor(minBookingLeadTimeHours / 24)} day${Math.floor(minBookingLeadTimeHours / 24) > 1 ? 's' : ''} in advance`
+                    : `Book at least ${minBookingLeadTimeHours} hours in advance`}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Cancellation Policy */}
+        {cancellationPolicy && (
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+            <i className="fas fa-calendar-times" style={{ color: '#222', fontSize: '14px', marginTop: '2px', width: '16px' }}></i>
+            <div>
+              <div style={{ fontSize: '13px', fontWeight: 600, color: '#222' }}>
+                {cancellationPolicy.PolicyType === 'flexible' 
+                  ? 'Free cancellation' 
+                  : cancellationPolicy.PolicyType === 'moderate' 
+                    ? 'Moderate cancellation' 
+                    : cancellationPolicy.PolicyType === 'strict'
+                      ? 'Strict cancellation'
+                      : 'Cancellation policy'}
+              </div>
+              <div style={{ fontSize: '12px', color: '#717171' }}>
+                {cancellationPolicy.PolicyType === 'flexible' 
+                  ? 'Free cancellation up to 24 hours before the event' 
+                  : cancellationPolicy.PolicyType === 'moderate' 
+                    ? 'Free cancellation up to 5 days before the event' 
+                    : cancellationPolicy.PolicyType === 'strict'
+                      ? 'Non-refundable after booking'
+                      : cancellationPolicy.Description || 'Flexible cancellation policy'}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Price Breakdown */}
       {total && selectedStartTime && selectedEndTime && (

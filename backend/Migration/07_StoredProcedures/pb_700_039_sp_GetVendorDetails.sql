@@ -112,7 +112,10 @@ BEGIN
         vp.ServiceLocationScope,
         vp.YearsOfExperienceRange,
         vp.PriceType,
-        vp.BasePrice
+        vp.BasePrice,
+        -- Guest Favorite status (admin-controlled)
+        ISNULL(vp.IsGuestFavorite, 0) AS IsGuestFavorite,
+        vp.GuestFavoriteGrantedAt
     FROM vendors.VendorProfiles vp
     LEFT JOIN users.Users u ON u.UserID = vp.UserID
     WHERE vp.VendorProfileID = @VendorProfileID;

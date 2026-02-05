@@ -317,7 +317,7 @@ function ProfileSidebar({ isOpen, onClose }) {
           <div className="profile-sidebar-view-profile">View your profile</div>
         </div>
         
-        {/* Quick Action Cards - Custom AVIF icons */}
+        {/* Quick Action Cards - With images */}
         <div className="profile-sidebar-quick-actions">
           <div 
             className="profile-sidebar-action-card"
@@ -373,14 +373,14 @@ function ProfileSidebar({ isOpen, onClose }) {
         <div className="profile-sidebar-menu">
           {/* Bookings */}
           <button className="profile-sidebar-menu-item" onClick={() => handleNavigate('/client/bookings')}>
-            <i className="fas fa-suitcase"></i>
+            <i className="far fa-calendar-check"></i>
             <span>Bookings</span>
             <i className="fas fa-chevron-right menu-item-arrow"></i>
           </button>
           
           {/* Messages */}
           <button className="profile-sidebar-menu-item" onClick={() => handleNavigate('/client/messages')}>
-            <i className="fas fa-envelope"></i>
+            <i className="far fa-comment-dots"></i>
             <span>Messages</span>
             {notificationCounts.unreadMessages > 0 && (
               <span className="menu-item-badge">{notificationCounts.unreadMessages}</span>
@@ -390,7 +390,7 @@ function ProfileSidebar({ isOpen, onClose }) {
           
           {/* Favorites */}
           <button className="profile-sidebar-menu-item" onClick={() => handleNavigate('/client/favorites')}>
-            <i className="fas fa-heart"></i>
+            <i className="far fa-heart"></i>
             <span>Favorites</span>
             <i className="fas fa-chevron-right menu-item-arrow"></i>
           </button>
@@ -422,14 +422,14 @@ function ProfileSidebar({ isOpen, onClose }) {
           
           {/* Forums */}
           <button className="profile-sidebar-menu-item" onClick={() => handleNavigate('/forum')}>
-            <i className="fas fa-comments"></i>
+            <i className="far fa-comments"></i>
             <span>Forums</span>
             <i className="fas fa-chevron-right menu-item-arrow"></i>
           </button>
           
           {/* Blogs */}
           <button className="profile-sidebar-menu-item" onClick={() => handleNavigate('/blog')}>
-            <i className="fas fa-blog"></i>
+            <i className="fas fa-newspaper"></i>
             <span>Blog</span>
             <i className="fas fa-chevron-right menu-item-arrow"></i>
           </button>

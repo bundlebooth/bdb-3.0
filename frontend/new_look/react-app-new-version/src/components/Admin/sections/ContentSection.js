@@ -9,6 +9,7 @@ import { formatDate } from '../../../utils/formatUtils';
 import adminApi from '../../../services/adminApi';
 import UniversalModal, { ConfirmationModal, FormModal } from '../../UniversalModal';
 import RichTextEditor from '../../common/RichTextEditor';
+import { useAlert } from '../../../context/AlertContext';
 
 const blogCategories = [
   'Vendor Stories',
@@ -22,6 +23,7 @@ const blogCategories = [
 ];
 
 function ContentSection() {
+  const { showError } = useAlert();
   const [activeTab, setActiveTab] = useState('blogs');
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -109,7 +111,7 @@ function ContentSection() {
       fetchBlogs();
     } catch (err) {
       console.error('Error saving blog:', err);
-      alert('Failed to save blog: ' + err.message);
+      showError('Failed to save blog: ' + err.message);
     } finally {
       setActionLoading(false);
     }
@@ -125,7 +127,7 @@ function ContentSection() {
       fetchBlogs();
     } catch (err) {
       console.error('Error deleting blog:', err);
-      alert('Failed to delete blog: ' + err.message);
+      showError('Failed to delete blog: ' + err.message);
     } finally {
       setActionLoading(false);
     }
@@ -167,7 +169,7 @@ function ContentSection() {
       fetchFaqs();
     } catch (err) {
       console.error('Error saving FAQ:', err);
-      alert('Failed to save FAQ: ' + err.message);
+      showError('Failed to save FAQ: ' + err.message);
     } finally {
       setActionLoading(false);
     }
@@ -183,7 +185,7 @@ function ContentSection() {
       fetchFaqs();
     } catch (err) {
       console.error('Error deleting FAQ:', err);
-      alert('Failed to delete FAQ: ' + err.message);
+      showError('Failed to delete FAQ: ' + err.message);
     } finally {
       setActionLoading(false);
     }

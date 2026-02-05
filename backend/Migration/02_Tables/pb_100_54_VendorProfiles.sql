@@ -94,6 +94,9 @@ BEGIN
 	[AffordabilityLevel] [nvarchar](20) NULL,
 	[PriceType] [nvarchar](20) NULL,
 	[BasePrice] [decimal](10, 2) NULL,
+	-- Guest Favorite status (admin-controlled)
+	[IsGuestFavorite] [bit] NOT NULL CONSTRAINT DF_VendorProfiles_IsGuestFavorite DEFAULT 0,
+	[GuestFavoriteGrantedAt] [datetime] NULL,
 PRIMARY KEY CLUSTERED 
 (
 	[VendorProfileID] ASC

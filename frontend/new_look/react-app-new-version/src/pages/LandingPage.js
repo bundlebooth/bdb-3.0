@@ -347,72 +347,29 @@ function LandingPage() {
               {t('landing.heroTitle3', 'imaginable')}
             </h1>
             
-            {/* Search Bar - inside content, extends into image area */}
-            <form className="landing-search-bar" onSubmit={handleSearch}>
-              <div className="landing-search-field">
-                <svg className="landing-search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="11" cy="11" r="8"/>
-                  <path d="M21 21l-4.35-4.35"/>
-                </svg>
-                <div className="landing-search-field-inner">
-                  <span className="landing-search-label">{t('landing.eventType', 'EVENT TYPE')}</span>
-                  <select 
-                    value={eventType}
-                    onChange={(e) => setEventType(e.target.value)}
-                    className="landing-search-select"
-                  >
-                    <option value="">{t('landing.whatPlanning', 'What are you planning?')}</option>
-                    {eventTypes.map(type => (
-                      <option key={type} value={type}>{type}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              
-              <div className="landing-search-divider"></div>
-              
-              <div className="landing-search-field">
-                <svg className="landing-search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                  <circle cx="9" cy="7" r="4"/>
-                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-                </svg>
-                <div className="landing-search-field-inner">
-                  <span className="landing-search-label">{t('landing.guests', 'GUESTS')}</span>
-                  <input 
-                    type="text" 
-                    placeholder={t('landing.numberOfGuests', 'Number of guests')}
-                    value={searchGuests}
-                    onChange={(e) => setSearchGuests(e.target.value)}
-                    className="landing-search-input"
-                  />
-                </div>
-              </div>
-              
-              <div className="landing-search-divider"></div>
-              
-              <div className="landing-search-field">
-                <svg className="landing-search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-                  <circle cx="12" cy="10" r="3"/>
-                </svg>
-                <div className="landing-search-field-inner">
-                  <span className="landing-search-label">{t('landing.location', 'LOCATION')}</span>
-                  <input 
-                    ref={locationInputRef}
-                    type="text" 
-                    placeholder={detectedCity || ''}
-                    value={searchLocation}
-                    onChange={(e) => setSearchLocation(e.target.value)}
-                    className="landing-search-input"
-                  />
-                </div>
-              </div>
-              
-              <button type="submit" className="landing-search-btn">
-                {t('common.search')}
-              </button>
-            </form>
+            {/* CTA Button - Search bar removed, only on explore page */}
+            <button 
+              className="landing-hero-cta"
+              onClick={() => { window.scrollTo(0, 0); navigate('/explore'); }}
+              style={{
+                marginTop: '2rem',
+                padding: '16px 32px',
+                fontSize: '1.125rem',
+                fontWeight: 600,
+                background: '#222',
+                color: 'white',
+                border: 'none',
+                borderRadius: '12px',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              {t('landing.startExploring', 'Start Exploring')}
+              <i className="fas fa-arrow-right"></i>
+            </button>
           </div>
         </div>
       </section>

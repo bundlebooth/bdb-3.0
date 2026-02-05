@@ -254,19 +254,23 @@ function UnifiedMessagesSection({ onSectionChange, forceViewMode = null }) {
 
     const handleForceLogout = (data) => {
       console.log('[Chat] Force logout:', data);
-      // Show alert before logging out
+      // Dispatch event to show modal - the modal will handle logout after user clicks OK
       const message = data.isPermanent
-        ? 'Your account has been locked due to policy violations. Please contact support.'
-        : `Your account has been suspended for ${data.cooldownHours} hour(s). Please try again later.`;
+        ? 'Your account has been locked due to using inappropriate language. You have had ' + (data.violationCount || 'multiple') + ' violation(s) in the last 24 hours. Please contact support if you believe this is an error.'
+        : `Your account has been suspended for ${data.cooldownHours} hour(s) due to policy violations. Please try again later.`;
       
-      alert(message);
-      
-      // Logout the user
-      if (logout) {
-        logout();
-      }
-      // Redirect to login
-      window.location.href = '/login';
+      window.dispatchEvent(new CustomEvent('showForceLogoutModal', {
+        detail: {
+          message,
+          isPermanent: data.isPermanent,
+          onAcknowledge: () => {
+            if (logout) {
+              logout(data.isPermanent ? 'account_locked' : 'account_suspended');
+            }
+            window.location.href = '/';
+          }
+        }
+      }));
     };
 
     window.socket.on('message-blocked', handleMessageBlocked);
@@ -317,80 +321,65 @@ function UnifiedMessagesSection({ onSectionChange, forceViewMode = null }) {
     getVendorProfileId();
   }, [currentUser]);
 
-  // Load all conversations (both as client and vendor)
+  // Load all conversations (both as client and vendor) - PARALLEL for performance
   const loadConversations = useCallback(async () => {
     if (!currentUser?.id) return;
     
     try {
       setLoading(true);
-      let clientConvs = [];
-      let vendorConvs = [];
       
-      // Load client conversations
-      try {
-        const clientUrl = `${API_BASE_URL}/messages/conversations/user/${currentUser.id}`;
-        const clientResponse = await fetch(clientUrl, {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        });
-        
-        if (clientResponse.ok) {
-          const clientData = await clientResponse.json();
-          clientConvs = (clientData.conversations || []).map(conv => ({
-            id: conv.id || conv.ConversationID,
-            userName: conv.OtherPartyName || conv.userName || 'Unknown User',
-            OtherPartyName: conv.OtherPartyName || conv.userName || 'Unknown User',
-            OtherPartyAvatar: conv.OtherPartyAvatar || conv.OtherPartyLogo,
-            otherPartyVendorProfileId: conv.VendorProfileID || conv.vendorProfileId,
-            // Vendor business info
-            vendorBusinessName: conv.vendorBusinessName,
-            vendorLogoURL: conv.vendorLogoURL,
-            // Vendor host info
-            vendorHostName: conv.vendorHostName,
-            vendorHostAvatar: conv.vendorHostAvatar,
-            // Client info
-            clientName: conv.clientName,
-            clientAvatar: conv.clientAvatar,
-            lastMessageContent: conv.lastMessageContent || conv.LastMessageContent || 'No messages yet',
-            lastMessageCreatedAt: conv.lastMessageCreatedAt || conv.LastMessageCreatedAt || conv.createdAt,
-            lastMessageSenderId: conv.lastMessageSenderId || conv.LastMessageSenderID,
-            unreadCount: conv.unreadCount || conv.UnreadCount || 0,
-            type: 'client'
-          }));
-        }
-      } catch (e) {
-        console.error('Error loading client conversations:', e);
-      }
+      const token = localStorage.getItem('token');
+      const headers = { 'Authorization': `Bearer ${token}` };
       
-      // Load vendor conversations if user is a vendor
-      if (vendorProfileId) {
-        try {
-          const vendorUrl = `${API_BASE_URL}/messages/conversations/vendor/${vendorProfileId}`;
-          const vendorResponse = await fetch(vendorUrl, {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-          });
-          
-          if (vendorResponse.ok) {
-            const vendorData = await vendorResponse.json();
-            vendorConvs = (vendorData.conversations || []).map(conv => ({
-              id: conv.id || conv.ConversationID,
-              userName: conv.OtherPartyName || conv.userName || 'Unknown User',
-              OtherPartyName: conv.OtherPartyName || conv.userName || 'Unknown User',
-              OtherPartyAvatar: conv.OtherPartyAvatar || conv.OtherPartyLogo,
-              otherPartyUserId: conv.userId || conv.UserID,
-              // Client info (the person messaging the vendor)
-              clientName: conv.OtherPartyName || conv.userName,
-              clientAvatar: conv.OtherPartyAvatar,
-              lastMessageContent: conv.lastMessageContent || conv.LastMessageContent || 'No messages yet',
-              lastMessageCreatedAt: conv.lastMessageCreatedAt || conv.LastMessageCreatedAt || conv.createdAt,
-              lastMessageSenderId: conv.lastMessageSenderId || conv.LastMessageSenderID,
-              unreadCount: conv.unreadCount || conv.UnreadCount || 0,
-              type: 'vendor'
-            }));
-          }
-        } catch (e) {
-          console.error('Error loading vendor conversations:', e);
-        }
-      }
+      // Create promises for parallel fetching
+      const clientPromise = fetch(`${API_BASE_URL}/messages/conversations/user/${currentUser.id}`, { headers })
+        .then(res => res.ok ? res.json() : { conversations: [] })
+        .catch(() => ({ conversations: [] }));
+      
+      const vendorPromise = vendorProfileId 
+        ? fetch(`${API_BASE_URL}/messages/conversations/vendor/${vendorProfileId}`, { headers })
+            .then(res => res.ok ? res.json() : { conversations: [] })
+            .catch(() => ({ conversations: [] }))
+        : Promise.resolve({ conversations: [] });
+      
+      // Fetch both in parallel
+      const [clientData, vendorData] = await Promise.all([clientPromise, vendorPromise]);
+      
+      // Map client conversations
+      const clientConvs = (clientData.conversations || []).map(conv => ({
+        id: conv.id || conv.ConversationID,
+        userName: conv.OtherPartyName || conv.userName || 'Unknown User',
+        OtherPartyName: conv.OtherPartyName || conv.userName || 'Unknown User',
+        OtherPartyAvatar: conv.OtherPartyAvatar || conv.OtherPartyLogo,
+        otherPartyVendorProfileId: conv.VendorProfileID || conv.vendorProfileId,
+        vendorBusinessName: conv.vendorBusinessName,
+        vendorLogoURL: conv.vendorLogoURL,
+        vendorHostName: conv.vendorHostName,
+        vendorHostAvatar: conv.vendorHostAvatar,
+        clientName: conv.clientName,
+        clientAvatar: conv.clientAvatar,
+        lastMessageContent: conv.lastMessageContent || conv.LastMessageContent || 'No messages yet',
+        lastMessageCreatedAt: conv.lastMessageCreatedAt || conv.LastMessageCreatedAt || conv.createdAt,
+        lastMessageSenderId: conv.lastMessageSenderId || conv.LastMessageSenderID,
+        unreadCount: conv.unreadCount || conv.UnreadCount || 0,
+        type: 'client'
+      }));
+      
+      // Map vendor conversations
+      const vendorConvs = (vendorData.conversations || []).map(conv => ({
+        id: conv.id || conv.ConversationID,
+        userName: conv.OtherPartyName || conv.userName || 'Unknown User',
+        OtherPartyName: conv.OtherPartyName || conv.userName || 'Unknown User',
+        OtherPartyAvatar: conv.OtherPartyAvatar || conv.OtherPartyLogo,
+        otherPartyUserId: conv.userId || conv.UserID,
+        clientName: conv.OtherPartyName || conv.userName,
+        clientAvatar: conv.OtherPartyAvatar,
+        lastMessageContent: conv.lastMessageContent || conv.LastMessageContent || 'No messages yet',
+        lastMessageCreatedAt: conv.lastMessageCreatedAt || conv.LastMessageCreatedAt || conv.createdAt,
+        lastMessageSenderId: conv.lastMessageSenderId || conv.LastMessageSenderID,
+        unreadCount: conv.unreadCount || conv.UnreadCount || 0,
+        type: 'vendor'
+      }));
       
       // Store both lists separately for desktop tabs
       setAllConversations({ client: clientConvs, vendor: vendorConvs });
@@ -765,11 +754,18 @@ function UnifiedMessagesSection({ onSectionChange, forceViewMode = null }) {
             violationType: 'policy_violation'
           });
           
-          // If user was locked, handle logout
+          // If user was locked, handle logout via modal
           if (data.userLocked) {
-            alert(data.lockReason || 'Your account has been suspended due to policy violations.');
-            if (logout) logout();
-            window.location.href = '/login';
+            window.dispatchEvent(new CustomEvent('showForceLogoutModal', {
+              detail: {
+                message: data.lockReason || 'Your account has been suspended due to policy violations.',
+                isPermanent: true,
+                onAcknowledge: () => {
+                  if (logout) logout('account_locked');
+                  window.location.href = '/';
+                }
+              }
+            }));
           } else {
             // Clear alert after 10 seconds for warnings
             setTimeout(() => setMessageBlockedAlert(null), 10000);

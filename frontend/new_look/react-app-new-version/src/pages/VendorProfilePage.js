@@ -25,6 +25,7 @@ import { useLocalization } from '../context/LocalizationContext';
 import { useTranslation } from '../hooks/useTranslation';
 import ProfileVendorWidget from '../components/ProfileVendorWidget';
 import { getServiceAreaLocation, getProfileLocation } from '../utils/locationUtils';
+import { Icons } from '../components/common/AppIcons';
 import './VendorProfilePage.css';
 
 function VendorProfilePage() {
@@ -689,14 +690,15 @@ function VendorProfilePage() {
       { keywords: ['tent', 'canopy'], icon: 'campground' },
       
       // Photography & Video
-      { keywords: ['photo', 'photography', 'photographer'], icon: 'camera' },
+      { keywords: ['photo', 'photography', 'photographer', 'second photographer'], icon: 'camera' },
       { keywords: ['video', 'videography', 'film', 'cinemat'], icon: 'video' },
       { keywords: ['drone', 'aerial'], icon: 'plane' },
-      { keywords: ['album', 'print'], icon: 'book-open' },
-      { keywords: ['edit', 'retouch', 'post-production'], icon: 'magic' },
-      { keywords: ['engagement', 'pre-wedding'], icon: 'heart' },
+      { keywords: ['album', 'print'], icon: 'book' },
+      { keywords: ['edit', 'retouch', 'post-production'], icon: 'wand-magic-sparkles' },
+      { keywords: ['engagement', 'pre-wedding', 'session'], icon: 'heart' },
       { keywords: ['portrait', 'headshot'], icon: 'user' },
-      { keywords: ['candid', 'documentary'], icon: 'camera-retro' },
+      { keywords: ['candid', 'documentary'], icon: 'camera' },
+      { keywords: ['booth', 'photo booth'], icon: 'camera' },
       
       // Music & Entertainment
       { keywords: ['dj', 'disc jockey'], icon: 'headphones' },
@@ -1106,31 +1108,32 @@ function VendorProfilePage() {
     );
   };
 
-  // Render vendor subcategories section
+  // Render vendor subcategories section - Clean list style like Airbnb
   const renderVendorSubcategories = () => {
     if (!vendorSubcategories || vendorSubcategories.length === 0) return null;
 
     return (
-      <div className="content-section" style={{ paddingTop: '1rem', paddingBottom: '1rem', borderTop: '1px solid #ebebeb' }}>
-        <h2 style={{ fontSize: '1.375rem', fontWeight: 600, marginBottom: '0.75rem' }}>Services Offered</h2>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+      <div className="content-section" style={{ paddingTop: '1.5rem', paddingBottom: '1.5rem', borderTop: '1px solid #ebebeb' }}>
+        <h2 style={{ fontSize: '1.375rem', fontWeight: 600, marginBottom: '1rem' }}>Services Offered</h2>
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(2, 1fr)', 
+          gap: '12px 24px'
+        }}>
           {vendorSubcategories.map((subcategory, index) => (
-            <span 
+            <div 
               key={index}
               style={{
-                display: 'inline-flex',
+                display: 'flex',
                 alignItems: 'center',
-                padding: '8px 16px',
-                backgroundColor: '#f0f7ff',
-                color: '#5086E8',
-                borderRadius: '20px',
-                fontSize: '0.875rem',
-                fontWeight: 500,
-                border: '1px solid #5086E8'
+                gap: '12px',
+                fontSize: '0.95rem',
+                color: '#222'
               }}
             >
-              {subcategory.SubcategoryName || subcategory.subcategoryName}
-            </span>
+              <i className="fas fa-check" style={{ color: '#222', fontSize: '14px' }}></i>
+              <span>{subcategory.SubcategoryName || subcategory.subcategoryName}</span>
+            </div>
           ))}
         </div>
       </div>
@@ -1177,7 +1180,7 @@ function VendorProfilePage() {
                   <img 
                     src={badge.ImageURL} 
                     alt={badge.BadgeName || style.label}
-                    style={{ width: '150px', height: '150px', objectFit: 'contain' }}
+                    style={{ width: '120px', height: '120px', objectFit: 'contain' }}
                   />
                 ) : (
                   <div style={{
@@ -1672,8 +1675,8 @@ function VendorProfilePage() {
 
     return (
       <div className="content-section" id="reviews-section">
-        {/* Guest Favourite Section - Airbnb style matching image 3 exactly */}
-        {avgRating >= 4.5 && reviewCount > 0 && (
+        {/* Guest Favourite Section - Only show if admin has granted Guest Favorite status */}
+        {vendor?.profile?.IsGuestFavorite && (
           <div style={{
             textAlign: 'center',
             padding: '3rem 1.5rem',
@@ -2004,18 +2007,18 @@ function VendorProfilePage() {
                         {displayText}
                       </div>
 
-                      {/* Show more link */}
+                      {/* Show more button - consistent style */}
                       {isLongText && (
                         <button style={{ 
-                          background: 'none', 
-                          border: 'none', 
-                          padding: 0,
-                          marginTop: '8px',
-                          color: '#222', 
-                          cursor: 'pointer', 
-                          textDecoration: 'underline',
+                          marginTop: '12px',
+                          padding: '10px 20px',
+                          border: '1px solid #222',
+                          borderRadius: '8px',
+                          background: 'white',
+                          color: '#222',
+                          fontSize: '14px',
                           fontWeight: 600,
-                          fontSize: '14px'
+                          cursor: 'pointer'
                         }}>
                           Show more
                         </button>
@@ -2629,7 +2632,8 @@ function VendorProfilePage() {
 
             </div>
 
-            {/* Airbnb-style Guest Favourite Row */}
+            {/* Airbnb-style Guest Favourite Row - Only show if admin has granted Guest Favorite status */}
+            {vendor?.profile?.IsGuestFavorite && (
             <div style={{ 
               display: 'flex', 
               alignItems: 'center', 
@@ -2718,115 +2722,64 @@ function VendorProfilePage() {
                 </div>
               </div>
             </div>
+            )}
 
-            {/* Key Features - Dynamic discovery badges based on vendor stats */}
-            <div style={{ padding: '24px 0', borderBottom: '1px solid #ebebeb' }}>
-              {/* Discovery Badges - Show based on vendor's discovery flags */}
-              {vendor.discoveryFlags?.isTrending && (
-                <div style={{ display: 'flex', gap: '16px', marginBottom: '24px' }}>
-                  <i className="fas fa-fire-flame-curved" style={{ fontSize: '24px', color: '#FF6B35', width: '32px' }}></i>
-                  <div>
-                    <div style={{ fontSize: '16px', fontWeight: 600, color: '#222' }}>Trending</div>
-                    <div style={{ fontSize: '14px', color: '#717171' }}>
-                      {vendor.discoveryFlags.trendingBadge || 'Popular with guests right now'}
+            {/* Discovery Badges - 2x2 Grid Layout (simple styling, no colored borders) */}
+            {(vendor.discoveryFlags?.isTrending || vendor.discoveryFlags?.isMostBooked || vendor.discoveryFlags?.isTopRated || vendor.discoveryFlags?.isNewVendor) && (
+              <div style={{ padding: '24px 0', borderBottom: '1px solid #ebebeb' }}>
+                <div style={{ 
+                  display: 'grid', 
+                  gridTemplateColumns: 'repeat(2, 1fr)', 
+                  gap: '12px'
+                }}>
+                  {vendor.discoveryFlags?.isTrending && (
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                      <i className="fas fa-arrow-trend-up" style={{ fontSize: '20px', color: '#FF6B35', width: '24px', flexShrink: 0, marginTop: '2px' }}></i>
+                      <div>
+                        <div style={{ fontSize: '14px', fontWeight: 600, color: '#222' }}>Trending</div>
+                        <div style={{ fontSize: '12px', color: '#717171' }}>
+                          {vendor.discoveryFlags.trendingBadge || 'Popular with guests right now'}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              )}
-              
-              {vendor.discoveryFlags?.isMostBooked && (
-                <div style={{ display: 'flex', gap: '16px', marginBottom: '24px' }}>
-                  <i className="fas fa-calendar-check" style={{ fontSize: '24px', color: '#EC4899', width: '32px' }}></i>
-                  <div>
-                    <div style={{ fontSize: '16px', fontWeight: 600, color: '#222' }}>Most Booked</div>
-                    <div style={{ fontSize: '14px', color: '#717171' }}>
-                      {vendor.discoveryFlags.bookingsBadge || 'Frequently booked by guests'}
+                  )}
+                  
+                  {vendor.discoveryFlags?.isMostBooked && (
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                      <i className="fas fa-calendar-check" style={{ fontSize: '20px', color: '#EC4899', width: '24px', flexShrink: 0, marginTop: '2px' }}></i>
+                      <div>
+                        <div style={{ fontSize: '14px', fontWeight: 600, color: '#222' }}>Most Booked</div>
+                        <div style={{ fontSize: '12px', color: '#717171' }}>
+                          {vendor.discoveryFlags.bookingsBadge || 'Frequently booked by guests'}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              )}
-              
-              {vendor.discoveryFlags?.isQuickResponder && (
-                <div style={{ display: 'flex', gap: '16px', marginBottom: '24px' }}>
-                  <i className="fas fa-bolt" style={{ fontSize: '24px', color: '#10B981', width: '32px' }}></i>
-                  <div>
-                    <div style={{ fontSize: '16px', fontWeight: 600, color: '#222' }}>Quick Responder</div>
-                    <div style={{ fontSize: '14px', color: '#717171' }}>
-                      {vendor.discoveryFlags.responseBadge || 'Responds quickly to inquiries'}
+                  )}
+                  
+                  {vendor.discoveryFlags?.isTopRated && (
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                      <i className="fas fa-star" style={{ fontSize: '20px', color: '#FFB400', width: '24px', flexShrink: 0, marginTop: '2px' }}></i>
+                      <div>
+                        <div style={{ fontSize: '14px', fontWeight: 600, color: '#222' }}>Top Rated</div>
+                        <div style={{ fontSize: '12px', color: '#717171' }}>
+                          {vendor.discoveryFlags.ratingBadge || 'Highly rated by guests'}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              )}
-              
-              {vendor.discoveryFlags?.isTopRated && (
-                <div style={{ display: 'flex', gap: '16px', marginBottom: '24px' }}>
-                  <i className="fas fa-star" style={{ fontSize: '24px', color: '#FFB400', width: '32px' }}></i>
-                  <div>
-                    <div style={{ fontSize: '16px', fontWeight: 600, color: '#222' }}>Top Rated</div>
-                    <div style={{ fontSize: '14px', color: '#717171' }}>
-                      {vendor.discoveryFlags.ratingBadge || 'Highly rated by guests'}
+                  )}
+                  
+                  {vendor.discoveryFlags?.isNewVendor && (
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                      <i className="fas fa-wand-magic-sparkles" style={{ fontSize: '20px', color: '#5086E8', width: '24px', flexShrink: 0, marginTop: '2px' }}></i>
+                      <div>
+                        <div style={{ fontSize: '14px', fontWeight: 600, color: '#222' }}>New on Planbeau</div>
+                        <div style={{ fontSize: '12px', color: '#717171' }}>Recently joined our platform</div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              )}
-              
-              {vendor.discoveryFlags?.isNewVendor && (
-                <div style={{ display: 'flex', gap: '16px', marginBottom: '24px', alignItems: 'center' }}>
-                  <img 
-                    src="/images/badges/new_vendor_2026.png" 
-                    alt="New Vendor 2026" 
-                    style={{ width: '32px', height: '32px', objectFit: 'contain' }}
-                  />
-                  <div>
-                    <div style={{ fontSize: '16px', fontWeight: 600, color: '#222' }}>New on Planbeau</div>
-                    <div style={{ fontSize: '14px', color: '#717171' }}>Recently joined our platform</div>
-                  </div>
-                </div>
-              )}
-
-              {/* Instant Booking Badge */}
-              {profile?.InstantBookingEnabled && (
-                <div style={{ display: 'flex', gap: '16px', marginBottom: '24px' }}>
-                  <i className="fas fa-bolt" style={{ fontSize: '24px', color: '#5086E8', width: '32px' }}></i>
-                  <div>
-                    <div style={{ fontSize: '16px', fontWeight: 600, color: '#222' }}>Instant Booking</div>
-                    <div style={{ fontSize: '14px', color: '#717171' }}>Book and pay instantly without waiting for approval</div>
-                  </div>
-                </div>
-              )}
-
-              {/* Cancellation Policy - Always shown */}
-              <div style={{ display: 'flex', gap: '16px', marginBottom: profile?.MinBookingLeadTimeHours > 0 ? '24px' : 0 }}>
-                <i className="fas fa-calendar-xmark" style={{ fontSize: '24px', color: '#222', width: '32px' }}></i>
-                <div>
-                  <div style={{ fontSize: '16px', fontWeight: 600, color: '#222' }}>
-                    {cancellationPolicy?.Name || 'Free cancellation'}
-                  </div>
-                  <div style={{ fontSize: '14px', color: '#717171' }}>
-                    {cancellationPolicy?.CancellationDays 
-                      ? `Free cancellation up to ${cancellationPolicy.CancellationDays} days before the event`
-                      : cancellationPolicy?.Description || 'Flexible cancellation policy'}
-                  </div>
+                  )}
                 </div>
               </div>
-
-              {/* Minimum Lead Time Info - styled like cancellation policy */}
-              {profile?.MinBookingLeadTimeHours > 0 && (
-                <div style={{ display: 'flex', gap: '16px' }}>
-                  <i className="fas fa-clock" style={{ fontSize: '24px', color: '#222', width: '32px' }}></i>
-                  <div>
-                    <div style={{ fontSize: '16px', fontWeight: 600, color: '#222' }}>Advance notice required</div>
-                    <div style={{ fontSize: '14px', color: '#717171' }}>
-                      {profile.MinBookingLeadTimeHours >= 168 
-                        ? `Book at least ${Math.floor(profile.MinBookingLeadTimeHours / 168)} week${Math.floor(profile.MinBookingLeadTimeHours / 168) > 1 ? 's' : ''} in advance`
-                        : profile.MinBookingLeadTimeHours >= 24 
-                          ? `Book at least ${Math.floor(profile.MinBookingLeadTimeHours / 24)} day${Math.floor(profile.MinBookingLeadTimeHours / 24) > 1 ? 's' : ''} in advance`
-                          : `Book at least ${profile.MinBookingLeadTimeHours} hours in advance`}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
+            )}
 
             {/* Main Content */}
             <div style={{ paddingTop: '24px' }}>
@@ -2847,18 +2800,18 @@ function VendorProfilePage() {
                     <button
                       onClick={() => setDescriptionModalOpen(true)}
                       style={{
-                        background: 'none',
-                        border: 'none',
+                        marginTop: '16px',
+                        padding: '10px 20px',
+                        border: '1px solid #222',
+                        borderRadius: '8px',
+                        background: 'white',
                         color: '#222',
+                        fontSize: '14px',
                         fontWeight: 600,
-                        fontSize: '1rem',
-                        padding: '0.5rem 0',
-                        cursor: 'pointer',
-                        textDecoration: 'underline',
-                        marginTop: '0.5rem'
+                        cursor: 'pointer'
                       }}
                     >
-                      Show more <i className="fas fa-chevron-right" style={{ fontSize: '0.75rem', marginLeft: '4px' }}></i>
+                      Show more
                     </button>
                   )}
                 </>
@@ -2869,11 +2822,11 @@ function VendorProfilePage() {
           {/* 2. Services Offered (Subcategories) */}
           {renderVendorSubcategories()}
 
-          {/* 3. Badges Section */}
-          {renderVendorBadges()}
-
-          {/* 4. What This Place Offers (Questionnaire of Services) */}
+          {/* 3. What This Place Offers (Questionnaire of Services) */}
           {renderVendorFeatures()}
+
+          {/* 4. Badges Section */}
+          {renderVendorBadges()}
 
           {/* 4. What We Offer (Service Pricing) */}
           {renderEnhancedServices()}

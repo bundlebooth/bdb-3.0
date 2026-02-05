@@ -46,7 +46,7 @@ const getDetailedStatus = (booking, isVendorView = false) => {
     return { label: 'Deposit Paid', color: '#f59e0b', bg: '#fffbeb' };
   }
   if (s === 'confirmed' || s === 'approved' || s === 'accepted') {
-    return { label: 'Awaiting Payment', color: '#10b981', bg: '#ecfdf5' };
+    return { label: 'Awaiting Payment', color: '#5086E8', bg: 'rgba(80, 134, 232, 0.08)' };
   }
   if (s === 'pending') {
     return { label: isVendorView ? 'Pending Approval' : 'Awaiting Vendor Approval', color: '#f59e0b', bg: '#fffbeb' };

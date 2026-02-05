@@ -7,8 +7,10 @@ import React, { useState, useEffect } from 'react';
 import { useDebounce } from '../../../hooks/useApi';
 import adminApi from '../../../services/adminApi';
 import { ConfirmationModal } from '../../UniversalModal';
+import { useAlert } from '../../../context/AlertContext';
 
 function ToolsSection() {
+  const { showError, showInfo } = useAlert();
   const [activeTab, setActiveTab] = useState('search');
   
   // Quick Search state
@@ -84,7 +86,7 @@ function ToolsSection() {
       setImpersonateResults(data.results || data || []);
     } catch (err) {
       console.error('Error searching users:', err);
-      alert('Failed to search users: ' + err.message);
+      showError('Failed to search users: ' + err.message);
     } finally {
       setSearching(false);
     }
@@ -124,11 +126,12 @@ function ToolsSection() {
         };
         localStorage.setItem('userSession', JSON.stringify(impersonatedUserSession));
         
-        alert(`Now impersonating ${result.user.email}. You will be redirected to the explore page.`);
-        window.location.href = '/explore';
+        showInfo(`Now impersonating ${result.user.email}. You will be redirected to the explore page.`).then(() => {
+          window.location.href = '/explore';
+        });
       }
     } catch (err) {
-      alert('Failed to impersonate user: ' + err.message);
+      showError('Failed to impersonate user: ' + err.message);
     } finally {
       setImpersonating(false);
     }

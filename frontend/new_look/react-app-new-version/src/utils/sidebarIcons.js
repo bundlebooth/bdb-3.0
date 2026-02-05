@@ -10,103 +10,103 @@
  *   <i className={getIcon('bookings')}></i>
  */
 
-// Font Awesome icon class names
+// Font Awesome icon class names - Using outline (far) style like Airbnb
 export const ICONS = {
-  // Navigation & Bottom Nav
-  explore: 'fas fa-compass',
-  bookings: 'fas fa-suitcase',
-  messages: 'fas fa-envelope',
-  favorites: 'fas fa-heart',
+  // Navigation & Bottom Nav - Outline style
+  explore: 'far fa-compass',
+  bookings: 'far fa-calendar-check',
+  messages: 'far fa-envelope',
+  favorites: 'far fa-heart',
   profile: 'far fa-user-circle',
-  map: 'fas fa-map',
-  forum: 'fas fa-comments',
+  map: 'far fa-map',
+  forum: 'far fa-comments',
   
-  // Sidebar Menu Items
+  // Sidebar Menu Items - Outline style
   viewProfile: 'far fa-user-circle',
-  settings: 'fas fa-cog',
+  settings: 'far fa-cog',
   helpCentre: 'far fa-question-circle',
-  logout: 'fas fa-sign-out-alt',
+  logout: 'far fa-sign-out-alt',
   
   // Actions & UI
   notifications: 'far fa-bell',
   notificationsFilled: 'fas fa-bell',
-  close: 'fas fa-times',
-  back: 'fas fa-arrow-left',
+  close: 'far fa-times-circle',
+  back: 'far fa-arrow-alt-circle-left',
   chevronRight: 'fas fa-chevron-right',
   chevronLeft: 'fas fa-chevron-left',
   chevronDown: 'fas fa-chevron-down',
   chevronUp: 'fas fa-chevron-up',
-  search: 'fas fa-search',
-  filter: 'fas fa-filter',
-  sort: 'fas fa-sort',
-  edit: 'fas fa-edit',
-  delete: 'fas fa-trash-alt',
-  add: 'fas fa-plus',
-  check: 'fas fa-check',
+  search: 'far fa-search',
+  filter: 'far fa-filter',
+  sort: 'far fa-sort',
+  edit: 'far fa-edit',
+  delete: 'far fa-trash-alt',
+  add: 'far fa-plus-square',
+  check: 'far fa-check-circle',
   
-  // Vendor/Hosting
-  switchToHosting: 'fas fa-key',
-  switchToExplore: 'fas fa-compass',
-  becomeVendor: 'fas fa-store',
-  vendor: 'fas fa-store',
+  // Vendor/Hosting - Outline style
+  switchToHosting: 'far fa-key',
+  switchToExplore: 'far fa-compass',
+  becomeVendor: 'far fa-store',
+  vendor: 'far fa-store',
   
-  // Quick Action Cards
-  myBookings: 'fas fa-suitcase',
-  myFavorites: 'fas fa-heart',
+  // Quick Action Cards - Outline style
+  myBookings: 'far fa-calendar-check',
+  myFavorites: 'far fa-heart',
   
-  // Account/Settings Pages
-  personalInfo: 'fas fa-user',
-  personalDetails: 'fas fa-user',
-  loginSecurity: 'fas fa-lock',
-  security: 'fas fa-shield-alt',
-  privacy: 'fas fa-shield-alt',
+  // Account/Settings Pages - Outline style
+  personalInfo: 'far fa-user',
+  personalDetails: 'far fa-user',
+  loginSecurity: 'far fa-lock',
+  security: 'far fa-shield-alt',
+  privacy: 'far fa-shield-alt',
   notificationsSettings: 'far fa-bell',
-  taxes: 'fas fa-file-invoice-dollar',
-  payments: 'fas fa-credit-card',
-  languageCurrency: 'fas fa-globe',
-  location: 'fas fa-map-marker-alt',
-  communication: 'fas fa-envelope',
+  taxes: 'far fa-file-alt',
+  payments: 'far fa-credit-card',
+  languageCurrency: 'far fa-globe',
+  location: 'far fa-map-marker-alt',
+  communication: 'far fa-envelope',
   
-  // Client Pages
-  reviews: 'fas fa-star',
-  invoices: 'fas fa-file-invoice',
-  calendar: 'fas fa-calendar-alt',
+  // Client Pages - Outline style
+  reviews: 'far fa-star',
+  invoices: 'far fa-file-alt',
+  calendar: 'far fa-calendar-alt',
   
-  // Vendor Profile / Become Vendor
-  gallery: 'fas fa-images',
-  services: 'fas fa-concierge-bell',
-  pricing: 'fas fa-dollar-sign',
-  availability: 'fas fa-clock',
-  description: 'fas fa-align-left',
-  contact: 'fas fa-phone',
-  website: 'fas fa-globe',
-  social: 'fas fa-share-alt',
+  // Vendor Profile / Become Vendor - Outline style
+  gallery: 'far fa-images',
+  services: 'far fa-concierge-bell',
+  pricing: 'far fa-money-bill-alt',
+  availability: 'far fa-clock',
+  description: 'far fa-file-alt',
+  contact: 'far fa-address-book',
+  website: 'far fa-globe',
+  social: 'far fa-share-square',
   
-  // Status Icons
-  success: 'fas fa-check-circle',
-  error: 'fas fa-exclamation-circle',
-  warning: 'fas fa-exclamation-triangle',
-  info: 'fas fa-info-circle',
-  pending: 'fas fa-clock',
-  confirmed: 'fas fa-check',
-  cancelled: 'fas fa-times-circle',
+  // Status Icons - Keep some solid for emphasis
+  success: 'far fa-check-circle',
+  error: 'far fa-times-circle',
+  warning: 'far fa-exclamation-circle',
+  info: 'far fa-info-circle',
+  pending: 'far fa-clock',
+  confirmed: 'far fa-check-circle',
+  cancelled: 'far fa-times-circle',
   
-  // Misc
-  star: 'fas fa-star',
+  // Misc - Outline style
+  star: 'far fa-star',
   starEmpty: 'far fa-star',
   starHalf: 'fas fa-star-half-alt',
-  heart: 'fas fa-heart',
+  heart: 'far fa-heart',
   heartEmpty: 'far fa-heart',
-  share: 'fas fa-share',
-  copy: 'fas fa-copy',
-  download: 'fas fa-download',
-  upload: 'fas fa-upload',
-  camera: 'fas fa-camera',
-  image: 'fas fa-image',
-  video: 'fas fa-video',
-  file: 'fas fa-file',
-  link: 'fas fa-link',
-  externalLink: 'fas fa-external-link-alt',
+  share: 'far fa-share-square',
+  copy: 'far fa-copy',
+  download: 'far fa-arrow-alt-circle-down',
+  upload: 'far fa-arrow-alt-circle-up',
+  camera: 'far fa-camera',
+  image: 'far fa-image',
+  video: 'far fa-play-circle',
+  file: 'far fa-file',
+  link: 'far fa-link',
+  externalLink: 'far fa-external-link-alt',
 };
 
 // Helper function to get icon class

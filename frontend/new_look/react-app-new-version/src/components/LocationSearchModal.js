@@ -4,7 +4,7 @@ import UniversalModal from './UniversalModal';
 import './LocationSearchModal.css';
 import { formatFromGooglePlace, normalizeLocation } from '../utils/locationUtils';
 
-const LocationSearchModal = ({ isOpen, onClose, onApply, onUseCurrentLocation, initialLocation, initialRadius }) => {
+const LocationSearchModal = ({ isOpen, onClose, onApply, onUseCurrentLocation, initialLocation, initialRadius, onSwitchToDate, showStepIndicator = true, currentStep = 1 }) => {
   const [location, setLocation] = useState(initialLocation || '');
   const [radius, setRadius] = useState(initialRadius || 50);
   const [coordinates, setCoordinates] = useState(null);
@@ -400,6 +400,52 @@ const LocationSearchModal = ({ isOpen, onClose, onApply, onUseCurrentLocation, i
       <div className="map-container">
         <div ref={mapRef} className="map"></div>
       </div>
+
+      {/* Step Indicator Dots */}
+      {showStepIndicator && (
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          gap: '8px',
+          marginTop: '16px',
+          paddingTop: '16px',
+          borderTop: '1px solid #e5e7eb'
+        }}>
+          <button
+            onClick={() => {}}
+            style={{
+              width: '10px',
+              height: '10px',
+              borderRadius: '50%',
+              border: 'none',
+              background: currentStep === 1 ? '#5086E8' : '#d1d5db',
+              cursor: 'pointer',
+              padding: 0,
+              transition: 'background 0.2s'
+            }}
+            title="Location"
+          />
+          <button
+            onClick={() => {
+              if (onSwitchToDate) {
+                onClose();
+                onSwitchToDate();
+              }
+            }}
+            style={{
+              width: '10px',
+              height: '10px',
+              borderRadius: '50%',
+              border: 'none',
+              background: currentStep === 2 ? '#5086E8' : '#d1d5db',
+              cursor: onSwitchToDate ? 'pointer' : 'default',
+              padding: 0,
+              transition: 'background 0.2s'
+            }}
+            title="Date & Time"
+          />
+        </div>
+      )}
     </UniversalModal>
   );
 };

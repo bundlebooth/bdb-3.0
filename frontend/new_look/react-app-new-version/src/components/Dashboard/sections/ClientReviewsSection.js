@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
+import { useAlert } from '../../../context/AlertContext';
 import { apiGet, apiPost } from '../../../utils/api';
 import { showBanner } from '../../../utils/banners';
 import { useTranslation } from '../../../hooks/useTranslation';
@@ -12,6 +13,7 @@ import ReviewCard from '../ReviewCard';
 
 function ClientReviewsSection({ deepLinkBookingId, onDeepLinkHandled }) {
   const { currentUser } = useAuth();
+  const { showError } = useAlert();
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { formatCurrency } = useLocalization();
@@ -153,11 +155,11 @@ function ClientReviewsSection({ deepLinkBookingId, onDeepLinkHandled }) {
         setReviewSuccess(true);
         loadData(); // Reload to update lists
       } else {
-        alert(data.message || 'Failed to submit review');
+        showError(data.message || 'Failed to submit review');
       }
     } catch (error) {
       console.error('Error submitting review:', error);
-      alert('Failed to submit review');
+      showError('Failed to submit review');
     } finally {
       setSubmitting(false);
     }
@@ -310,11 +312,11 @@ function ClientReviewsSection({ deepLinkBookingId, onDeepLinkHandled }) {
         showBanner('Your review has been submitted successfully!', 'success');
         loadData();
       } else {
-        alert(data.message || 'Failed to submit review');
+        showError(data.message || 'Failed to submit review');
       }
     } catch (error) {
       console.error('Error submitting review:', error);
-      alert('Failed to submit review');
+      showError('Failed to submit review');
     } finally {
       setSubmitting(false);
     }

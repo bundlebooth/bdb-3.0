@@ -21,7 +21,8 @@ const adminMenuItems = [
   { id: 'security', label: 'Security & Audit', icon: 'fa-shield-alt' },
   { id: 'settings', label: 'Platform Settings', icon: 'fa-cog' },
   { id: 'automation', label: 'Automation & Email', icon: 'fa-robot' },
-  { id: 'tools', label: 'Search & Impersonation', icon: 'fa-user-secret' }
+  { id: 'tools', label: 'Search & Impersonation', icon: 'fa-user-secret' },
+  { id: 'guest-favorites', label: 'Badges & Favorites', icon: 'fa-award' }
 ];
 
 function AdminSidebar({ 

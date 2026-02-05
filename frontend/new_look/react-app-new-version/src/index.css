@@ -10,16 +10,21 @@ body.no-scroll {
 }
 
 :root {
+    /* Airbnb-style colors */
     --primary: #5086E8;
     --primary-dark: #4070D0;
-    --secondary: #f7fafc;
+    --secondary: #f7f7f7;
     --surface-bg: white;
-    --accent: #ff6b6b;
-    --text: #2d3748;
-    --text-light: #718096; 
-    --border: #e2e8f0;
-    --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --accent: #ff385c;
+    --text: #222222;
+    --text-secondary: #717171;
+    --text-light: #717171; 
+    --border: #dddddd;
+    --border-light: #ebebeb;
+    --shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.08);
     --radius: 12px;
+    --radius-sm: 8px;
     /* Airbnb-style centered container - wider layout like Airbnb */
     --page-max-width: 2000px;
     --page-padding-x: 24px;
@@ -80,12 +85,17 @@ a img, button img, .clickable-image {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    /* Airbnb-style font stack */
+    font-family: -apple-system, BlinkMacSystemFont, 'Roboto', 'Helvetica Neue', sans-serif;
 }
 
 body {
-    background-color: #f8fafc;
+    background-color: #ffffff;
     color: var(--text);
+    font-size: 16px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
 /* Global scroll lock - prevents background scrolling when modals/overlays are open */

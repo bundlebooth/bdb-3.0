@@ -42,7 +42,7 @@ const categoryLabels = {
 const discoveryTypes = {
   'trending': { 
     title: 'Trending Vendors', 
-    icon: 'fa-fire', 
+    icon: 'fa-chart-line', 
     color: '#FF385C',
     heroTitle: 'Find and Book\nTrending Vendors Near You',
     heroSubtitle: 'Discover the most popular vendors that everyone is booking right now',
@@ -55,7 +55,7 @@ const discoveryTypes = {
   },
   'trending-vendors': { 
     title: 'Trending Vendors', 
-    icon: 'fa-fire', 
+    icon: 'fa-chart-line', 
     color: '#FF385C',
     heroTitle: 'Find and Book\nTrending Vendors Near You',
     heroSubtitle: 'Discover the most popular vendors that everyone is booking right now',

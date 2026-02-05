@@ -1,20 +1,40 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { loadStripe } from '@stripe/stripe-js';
-import { decodeBookingId, encodeBookingId, isPublicId } from '../utils/hashIds';
-import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import { decodeBookingId, encodeBookingId, encodeUserId, isPublicId } from '../utils/hashIds';
+import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { useAuth } from '../context/AuthContext';
 import { apiGet, apiPost } from '../utils/api';
 import { formatCurrency } from '../utils/helpers';
 import { getProvinceFromLocation, getTaxInfoForProvince } from '../utils/taxCalculations';
 import { PageLayout } from '../components/PageWrapper';
 import Header from '../components/Header';
-import './PaymentPage.css';
+import SkeletonLoader from '../components/SkeletonLoader';
+import '../styles/BookingPage.css';
 
-function CheckoutForm({ onSuccess, onCancel, clientProvince, total, isProcessing, setIsProcessing }) {
+// Card Element styling - same as BookingPage
+const CARD_ELEMENT_OPTIONS = {
+  style: {
+    base: {
+      fontSize: '16px',
+      color: '#424770',
+      '::placeholder': {
+        color: '#aab7c4',
+      },
+    },
+    invalid: {
+      color: '#9e2146',
+    },
+  },
+};
+
+function CheckoutForm({ onSuccess, onCancel, clientProvince, total, isProcessing, setIsProcessing, clientSecret }) {
   const stripe = useStripe();
   const elements = useElements();
   const [error, setError] = useState('');
+  const [nameOnCard, setNameOnCard] = useState('');
+  const [country, setCountry] = useState('Canada');
+  const [postalCode, setPostalCode] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -24,16 +44,25 @@ function CheckoutForm({ onSuccess, onCancel, clientProvince, total, isProcessing
     setError('');
 
     try {
-      const { error: submitError, paymentIntent } = await stripe.confirmPayment({
-        elements,
-        confirmParams: {
-          return_url: `${window.location.origin}/payment-success`,
-        },
-        redirect: 'if_required'
-      });
+      const cardElement = elements.getElement(CardElement);
+      const { error: confirmError, paymentIntent } = await stripe.confirmCardPayment(
+        clientSecret,
+        {
+          payment_method: {
+            card: cardElement,
+            billing_details: {
+              name: nameOnCard || 'Customer',
+              address: {
+                country: country === 'Canada' ? 'CA' : 'US',
+                postal_code: postalCode
+              }
+            }
+          }
+        }
+      );
 
-      if (submitError) {
-        setError(submitError.message || 'Payment failed. Please try again.');
+      if (confirmError) {
+        setError(confirmError.message || 'Payment failed. Please try again.');
         setIsProcessing(false);
       } else if (paymentIntent && paymentIntent.status === 'succeeded') {
         try {
@@ -49,66 +78,113 @@ function CheckoutForm({ onSuccess, onCancel, clientProvince, total, isProcessing
     }
   };
 
-  const taxInfo = getTaxInfoForProvince(clientProvince);
-
   return (
-    <form onSubmit={handleSubmit} className="payment-checkout-form">
-      <div className="payment-element-wrapper">
-        <PaymentElement options={{ layout: 'tabs' }} />
+    <form onSubmit={handleSubmit}>
+      <div style={{ marginBottom: '16px' }}>
+        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>
+          Card number
+        </label>
+        <div style={{ padding: '12px 14px', border: '1px solid #d1d5db', borderRadius: '8px', backgroundColor: '#fff' }}>
+          <CardElement options={CARD_ELEMENT_OPTIONS} />
+        </div>
       </div>
 
+      <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
+        <div style={{ flex: 1 }}>
+          <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>
+            Country
+          </label>
+          <select 
+            value={country} 
+            onChange={e => setCountry(e.target.value)}
+            style={{ width: '100%', padding: '12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', backgroundColor: '#fff' }}
+          >
+            <option value="Canada">Canada</option>
+            <option value="United States">United States</option>
+          </select>
+        </div>
+        <div style={{ flex: 1 }}>
+          <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>
+            Postal code
+          </label>
+          <input 
+            type="text" 
+            value={postalCode}
+            onChange={e => setPostalCode(e.target.value)}
+            placeholder="M5V 1T4"
+            style={{ width: '100%', padding: '12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px' }}
+          />
+        </div>
+      </div>
+
+      <div style={{ marginBottom: '16px' }}>
+        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '500', color: '#374151', marginBottom: '6px' }}>
+          Name on card
+        </label>
+        <input 
+          type="text" 
+          value={nameOnCard}
+          onChange={e => setNameOnCard(e.target.value)}
+          placeholder="Full name as shown on card"
+          style={{ width: '100%', padding: '12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px' }}
+        />
+      </div>
+
+      <p style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '16px', lineHeight: 1.5 }}>
+        By providing your card information, you allow Planbeau Canada Inc. to charge your card for this booking in accordance with our terms.
+      </p>
+
       {error && (
-        <div className="payment-error-message">
-          <i className="fas fa-exclamation-circle"></i>
-          <span>{error}</span>
+        <div style={{ 
+          padding: '12px 16px', 
+          backgroundColor: '#fef2f2', 
+          border: '1px solid #fecaca', 
+          borderRadius: '8px', 
+          color: '#dc2626',
+          marginBottom: '16px',
+          fontSize: '0.9rem'
+        }}>
+          {error}
         </div>
       )}
 
-      <div className="payment-tax-info">
-        <i className="fas fa-info-circle"></i>
-        <span>Tax calculated based on event location: <strong>{taxInfo.label}</strong></span>
-      </div>
+      <button
+        type="submit"
+        disabled={!stripe || isProcessing}
+        style={{
+          width: '100%',
+          padding: '14px 24px',
+          background: isProcessing ? '#9ca3af' : '#5086E8',
+          color: '#fff',
+          border: 'none',
+          borderRadius: '8px',
+          fontSize: '1rem',
+          fontWeight: 600,
+          cursor: isProcessing ? 'not-allowed' : 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '8px'
+        }}
+      >
+        {isProcessing ? (
+          <>
+            <svg className="animate-spin" style={{ width: '20px', height: '20px' }} viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeDasharray="31.4 31.4" />
+            </svg>
+            Processing...
+          </>
+        ) : (
+          <>
+            <i className="fas fa-lock"></i>
+            Pay {formatCurrency(total)} CAD
+          </>
+        )}
+      </button>
 
-      <div className="payment-form-actions">
-        <button 
-          type="button" 
-          onClick={onCancel}
-          disabled={isProcessing}
-          className="btn btn-outline payment-btn-cancel"
-        >
-          <i className="fas fa-arrow-left"></i>
-          <span>Cancel</span>
-        </button>
-        <button 
-          type="submit" 
-          disabled={!stripe || isProcessing}
-          className="btn btn-primary payment-btn-submit"
-        >
-          {isProcessing ? (
-            <>
-              <i className="fas fa-spinner fa-spin"></i>
-              <span>Processing...</span>
-            </>
-          ) : (
-            <>
-              <i className="fas fa-lock"></i>
-              <span>Pay {formatCurrency(total)}</span>
-            </>
-          )}
-        </button>
-      </div>
-
-      <div className="payment-secure-footer">
-        <div className="secure-badge">
-          <i className="fas fa-lock"></i>
-          <span>Secured by</span>
-          <span className="stripe-text">Stripe</span>
-        </div>
-        <div className="payment-cards">
-          <i className="fab fa-cc-visa"></i>
-          <i className="fab fa-cc-mastercard"></i>
-          <i className="fab fa-cc-amex"></i>
-        </div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginTop: '12px' }}>
+        <i className="fas fa-shield-alt" style={{ fontSize: '0.75rem', color: '#9ca3af' }}></i>
+        <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>Secure payment powered by Stripe</span>
       </div>
     </form>
   );
@@ -125,6 +201,7 @@ function PaymentPage() {
   const { currentUser, loading: authLoading } = useAuth();
   
   const [booking, setBooking] = useState(null);
+  const [vendorData, setVendorData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [stripePromise, setStripePromise] = useState(null);
@@ -166,6 +243,21 @@ function PaymentPage() {
         }
 
         setBooking(foundBooking);
+
+        // Fetch vendor data for host name, rating, reviews, city
+        if (foundBooking.VendorProfileID) {
+          try {
+            const vendorResp = await apiGet(`/vendors/${foundBooking.VendorProfileID}`);
+            if (vendorResp.ok) {
+              const vendorResult = await vendorResp.json();
+              if (vendorResult.success && vendorResult.data) {
+                setVendorData(vendorResult.data);
+              }
+            }
+          } catch (vendorErr) {
+            console.error('Error fetching vendor data:', vendorErr);
+          }
+        }
 
         // Get province from event location
         const eventLocation = foundBooking.EventLocation || foundBooking.Location || '';
@@ -228,7 +320,7 @@ function PaymentPage() {
   };
 
   const handleCancel = () => {
-    navigate('/dashboard?section=bookings');
+    navigate('/client/bookings');
   };
 
   if (authLoading) {
@@ -258,249 +350,334 @@ function PaymentPage() {
     return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
   };
 
+  // Calculate duration for display
+  const calculateDuration = () => {
+    const startTime = booking?.StartTime || booking?.EventTime;
+    const endTime = booking?.EndTime || booking?.EventEndTime;
+    if (!startTime || !endTime) return null;
+    try {
+      const start = new Date(`2000-01-01T${startTime}`);
+      const end = new Date(`2000-01-01T${endTime}`);
+      const diffMs = end - start;
+      const hours = diffMs > 0 ? diffMs / (1000 * 60 * 60) : 0;
+      return hours > 0 ? hours : null;
+    } catch { return null; }
+  };
+
+  const totalHours = calculateDuration();
+
   return (
-    <PageLayout variant="fullWidth" pageClassName="payment-page-layout">
-      <Header 
-        onSearch={() => {}}
-        onProfileClick={() => {}}
-        onWishlistClick={() => {}}
-        onChatClick={() => {}}
-        onNotificationsClick={() => {}}
-      />
-      <div className="payment-page">
-        <div className="page-wrapper">
-          <div className="payment-page-container">
-          {/* Page Header */}
-          <div className="payment-page-header">
-            <button className="payment-back-btn" onClick={handleCancel}>
-              <i className="fas fa-arrow-left"></i>
-              <span>Back to Bookings</span>
-            </button>
-            <h1 className="payment-page-title">
-              <i className="fas fa-lock"></i>
-              Complete Secure Payment
-            </h1>
-          </div>
+    <PageLayout variant="fullWidth" pageClassName="booking-page-layout">
+      <Header />
+      
+      {/* Use EXACT same structure as BookingPage */}
+      <div className="booking-container">
+        {/* Left Side - Form Section */}
+        <div className="booking-form-section">
+          <button className="back-button" onClick={handleCancel}>
+            <i className="fas fa-arrow-left"></i>
+            Back to Bookings
+          </button>
 
           {loading ? (
-            <div className="payment-loading-state">
-              <div className="spinner"></div>
-              <p>Loading payment details...</p>
+            <div style={{ padding: '4rem 2rem', textAlign: 'center' }}>
+              <div className="spinner" style={{ width: 40, height: 40, margin: '0 auto 1rem' }}></div>
+              <p style={{ color: '#717171' }}>Loading payment details...</p>
             </div>
           ) : error ? (
-            <div className="payment-error-state">
-              <i className="fas fa-exclamation-triangle"></i>
-              <h3>Unable to Load Payment</h3>
-              <p>{error}</p>
-              <button className="btn btn-primary" onClick={handleCancel}>
-                Back to Bookings
-              </button>
+            <div style={{ padding: '4rem 2rem', textAlign: 'center' }}>
+              <i className="fas fa-exclamation-triangle" style={{ fontSize: '3rem', color: '#dc2626', marginBottom: '1rem' }}></i>
+              <h3 style={{ margin: '0 0 0.5rem', color: '#222' }}>Unable to Load Payment</h3>
+              <p style={{ color: '#717171', marginBottom: '1.5rem' }}>{error}</p>
+              <button className="btn btn-primary" onClick={handleCancel}>Back to Bookings</button>
             </div>
           ) : booking ? (
-            <div className="payment-content-grid">
-              {/* Left Column - Booking Summary */}
-              <div className="payment-summary-card">
-                <h2 className="payment-card-title">Booking Summary</h2>
-                
-                {/* Vendor Info */}
-                <div className="payment-vendor-info">
-                  <div className="vendor-avatar">
-                    {booking.VendorLogo ? (
-                      <img src={booking.VendorLogo} alt={booking.VendorName} />
+            <>
+              {/* Accordion Step - Pay (matches BookingPage Step 3 exactly) */}
+              <div className="accordion-step active">
+                <div className="accordion-step-header">
+                  <span className="accordion-step-number">1.</span>
+                  <span className="accordion-step-title">Review & pay</span>
+                </div>
+                <div className="accordion-step-content">
+                  {/* Pay in full card - EXACT match to BookingPage */}
+                  <div style={{ 
+                    padding: '20px', 
+                    border: '1px solid #ddd', 
+                    borderRadius: '12px', 
+                    backgroundColor: '#fff',
+                    marginBottom: '16px'
+                  }}>
+                    <div style={{ fontWeight: '600', color: '#222', marginBottom: '8px' }}>Pay in full</div>
+                    <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '16px' }}>
+                      Pay {formatCurrency(total)} now and your booking is confirmed instantly.
+                    </div>
+                    
+                    {clientSecret && stripePromise ? (
+                      <Elements stripe={stripePromise}>
+                        <CheckoutForm 
+                          onSuccess={handleSuccess}
+                          onCancel={handleCancel}
+                          clientProvince={clientProvince}
+                          total={total}
+                          isProcessing={isProcessing}
+                          setIsProcessing={setIsProcessing}
+                          clientSecret={clientSecret}
+                        />
+                      </Elements>
                     ) : (
-                      <i className="fas fa-store"></i>
+                      <div style={{ padding: '2rem', textAlign: 'center' }}>
+                        <div className="spinner" style={{ width: 32, height: 32, margin: '0 auto 1rem' }}></div>
+                        <p style={{ color: '#717171', margin: 0 }}>Initializing secure payment...</p>
+                      </div>
                     )}
                   </div>
-                  <div className="vendor-details">
-                    <h3>{booking.VendorName || 'Vendor'}</h3>
-                    <span>{booking.ServiceCategory || booking.ServiceName || 'Service'}</span>
-                  </div>
                 </div>
+              </div>
+            </>
+          ) : null}
+        </div>
 
-                {/* Event Details */}
-                <div className="payment-event-info">
-                  <div className="event-detail">
-                    <i className="fas fa-calendar-alt"></i>
-                    <span>
-                      {booking.EventDate ? new Date(booking.EventDate).toLocaleDateString('en-CA', {
-                        weekday: 'long',
-                        month: 'long',
-                        day: 'numeric',
-                        year: 'numeric'
-                      }) : 'Date TBD'}
-                    </span>
+        {/* Right Side - Booking Summary (EXACT match to BookingPage) */}
+        <div className="booking-summary-section">
+          {loading ? (
+            /* Skeleton loader for summary panel */
+            <div className="booking-summary-card">
+              <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
+                <SkeletonLoader variant="text" height="64px" width="64px" count={1} />
+                <div style={{ flex: 1 }}>
+                  <SkeletonLoader variant="text" height="20px" width="70%" count={1} />
+                  <div style={{ marginTop: '8px' }}><SkeletonLoader variant="text" height="14px" width="50%" count={1} /></div>
+                  <div style={{ marginTop: '8px' }}><SkeletonLoader variant="text" height="14px" width="40%" count={1} /></div>
+                </div>
+              </div>
+              <div className="summary-divider"></div>
+              <div style={{ padding: '16px 0' }}>
+                <SkeletonLoader variant="text" height="12px" width="30%" count={1} />
+                <div style={{ marginTop: '8px' }}><SkeletonLoader variant="text" height="18px" width="60%" count={1} /></div>
+                <div style={{ marginTop: '16px' }}><SkeletonLoader variant="text" height="12px" width="25%" count={1} /></div>
+                <div style={{ marginTop: '8px' }}><SkeletonLoader variant="text" height="18px" width="40%" count={1} /></div>
+                <div style={{ marginTop: '16px' }}><SkeletonLoader variant="text" height="12px" width="35%" count={1} /></div>
+                <div style={{ marginTop: '8px' }}><SkeletonLoader variant="text" height="18px" width="55%" count={1} /></div>
+              </div>
+              <div className="summary-divider"></div>
+              <div style={{ padding: '16px 0' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                  <SkeletonLoader variant="text" height="16px" width="40%" count={1} />
+                  <SkeletonLoader variant="text" height="16px" width="20%" count={1} />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                  <SkeletonLoader variant="text" height="14px" width="30%" count={1} />
+                  <SkeletonLoader variant="text" height="14px" width="15%" count={1} />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                  <SkeletonLoader variant="text" height="14px" width="35%" count={1} />
+                  <SkeletonLoader variant="text" height="14px" width="15%" count={1} />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                  <SkeletonLoader variant="text" height="14px" width="25%" count={1} />
+                  <SkeletonLoader variant="text" height="14px" width="15%" count={1} />
+                </div>
+                <div style={{ borderTop: '2px solid #e5e7eb', paddingTop: '12px', marginTop: '12px', display: 'flex', justifyContent: 'space-between' }}>
+                  <SkeletonLoader variant="text" height="20px" width="20%" count={1} />
+                  <SkeletonLoader variant="text" height="20px" width="25%" count={1} />
+                </div>
+              </div>
+            </div>
+          ) : booking ? (
+            <div className="booking-summary-card">
+              {/* Vendor Info - Use vendorData for host name, rating, reviews, city */}
+              <div className="vendor-info" id="vendor-info">
+                {(vendorData?.profile?.LogoURL || booking.VendorLogo) ? (
+                  <div style={{ width: '64px', height: '64px', borderRadius: '50%', overflow: 'hidden', border: '2px solid #DDDDDD', background: '#f7f7f7', flexShrink: 0 }}>
+                    <img src={vendorData?.profile?.LogoURL || booking.VendorLogo} alt={booking.VendorName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   </div>
-                  
-                  {(booking.StartTime || booking.EventTime) && (
-                    <div className="event-detail">
-                      <i className="fas fa-clock"></i>
-                      <span>
-                        {formatTime(booking.StartTime || booking.EventTime)}
-                        {booking.EndTime && ` → ${formatTime(booking.EndTime)}`}
+                ) : (
+                  <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: '#f7f7f7', border: '2px solid #DDDDDD', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <i className="far fa-store" style={{ fontSize: '24px', color: '#717171' }}></i>
+                  </div>
+                )}
+                <div className="vendor-details">
+                  <h3 className="vendor-name" style={{ fontSize: '1.1rem', fontWeight: 600, margin: '0 0 4px', color: '#222' }}>{vendorData?.profile?.BusinessName || booking.VendorName || 'Vendor'}</h3>
+                  {/* Host name with profile picture from vendorData - clickable to open profile */}
+                  {(() => {
+                    const hostName = vendorData?.profile?.HostName || vendorData?.HostName || 
+                      vendorData?.profile?.OwnerName || vendorData?.profile?.FirstName ||
+                      (vendorData?.profile?.ContactFirstName && vendorData?.profile?.ContactLastName 
+                        ? `${vendorData.profile.ContactFirstName} ${vendorData.profile.ContactLastName}` 
+                        : vendorData?.profile?.ContactFirstName);
+                    const hostProfilePic = vendorData?.profile?.HostProfileImage || vendorData?.profile?.ProfileImageURL;
+                    const hostUserId = vendorData?.profile?.HostUserID || vendorData?.profile?.UserID;
+                    return hostName ? (
+                      <p 
+                        style={{ fontSize: '0.875rem', color: '#717171', margin: '0 0 4px', display: 'flex', alignItems: 'center', gap: '6px', cursor: hostUserId ? 'pointer' : 'default' }}
+                        onClick={() => hostUserId && navigate(`/profile/${encodeUserId(hostUserId)}`)}
+                      >
+                        {hostProfilePic ? (
+                          <img src={hostProfilePic} alt={hostName} style={{ width: '16px', height: '16px', borderRadius: '50%', objectFit: 'cover' }} />
+                        ) : (
+                          <i className="fas fa-user" style={{ fontSize: '0.75rem' }}></i>
+                        )}
+                        Hosted by {hostName}
+                      </p>
+                    ) : null;
+                  })()}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    {/* Rating from vendorData */}
+                    {(() => {
+                      const rating = vendorData?.profile?.AverageRating || vendorData?.profile?.Rating || 0;
+                      const reviewCount = vendorData?.profile?.ReviewCount || vendorData?.profile?.TotalReviews || 0;
+                      return rating > 0 ? (
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.875rem', color: '#222' }}>
+                          <i className="fas fa-star" style={{ color: '#5086E8', fontSize: '0.8rem' }}></i>
+                          {parseFloat(rating).toFixed(1)}
+                          {reviewCount > 0 && (
+                            <span style={{ color: '#717171' }}>({reviewCount} review{reviewCount !== 1 ? 's' : ''})</span>
+                          )}
+                        </span>
+                      ) : null;
+                    })()}
+                    {/* City from vendorData */}
+                    {(vendorData?.profile?.City || booking.VendorCity) && (
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.875rem', color: '#717171' }}>
+                        <i className="fas fa-map-marker-alt" style={{ fontSize: '0.75rem' }}></i>
+                        {vendorData?.profile?.City || booking.VendorCity}
                       </span>
-                    </div>
-                  )}
-                  
-                  {booking.AttendeeCount && (
-                    <div className="event-detail">
-                      <i className="fas fa-users"></i>
-                      <span>{booking.AttendeeCount} guests</span>
-                    </div>
-                  )}
-                  
-                  {(booking.EventLocation || booking.Location) && (
-                    <div className="event-detail">
-                      <i className="fas fa-map-marker-alt"></i>
-                      <span>{booking.EventLocation || booking.Location}</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Price Breakdown */}
-                <div className="payment-price-section">
-                  <div className="price-row">
-                    <span>{booking.ServiceName || 'Service'}</span>
-                    <span>{formatCurrency(subtotal)}</span>
-                  </div>
-                  
-                  <div className="price-divider"></div>
-                  
-                  <div className="price-row subtotal">
-                    <span>Subtotal</span>
-                    <span>{formatCurrency(subtotal)}</span>
-                  </div>
-                  
-                  {platformFee > 0 && (
-                    <div className="price-row fee">
-                      <span>Platform Service Fee</span>
-                      <span>{formatCurrency(platformFee)}</span>
-                    </div>
-                  )}
-                  
-                  <div className="price-row fee">
-                    <span>Tax ({taxInfo.label})</span>
-                    <span>{formatCurrency(taxAmount)}</span>
-                  </div>
-                  
-                  {processingFee > 0 && (
-                    <div className="price-row fee">
-                      <span>Payment Processing Fee</span>
-                      <span>{formatCurrency(processingFee)}</span>
-                    </div>
-                  )}
-                  
-                  <div className="price-divider thick"></div>
-                  
-                  <div className="price-row total">
-                    <span>Total</span>
-                    <span className="total-amount">{formatCurrency(total)}</span>
+                    )}
                   </div>
                 </div>
               </div>
 
-              {/* Right Column - Payment Form */}
-              <div className="payment-form-card">
-                <h2 className="payment-card-title">
-                  <i className="fas fa-lock"></i>
-                  Payment Details
-                </h2>
-                
-                {clientSecret && stripePromise ? (
-                  <Elements 
-                    stripe={stripePromise} 
-                    options={{
-                      clientSecret,
-                      appearance: {
-                        theme: 'stripe',
-                        variables: {
-                          colorPrimary: '#222222',
-                          colorBackground: '#ffffff',
-                          colorText: '#222222',
-                          colorTextSecondary: '#6b7280',
-                          colorDanger: '#dc2626',
-                          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-                          fontSizeBase: '15px',
-                          borderRadius: '6px',
-                          spacingUnit: '4px'
-                        },
-                        rules: {
-                          '.Input': {
-                            border: '1px solid #e5e7eb',
-                            boxShadow: 'none',
-                            padding: '12px 14px',
-                            backgroundColor: '#ffffff'
-                          },
-                          '.Input:focus': {
-                            border: '1px solid #222222',
-                            boxShadow: '0 0 0 1px #222222',
-                            outline: 'none'
-                          },
-                          '.Input--invalid': {
-                            border: '1px solid #dc2626',
-                            boxShadow: 'none'
-                          },
-                          '.Label': {
-                            fontWeight: '500',
-                            marginBottom: '6px',
-                            fontSize: '14px',
-                            color: '#222222'
-                          },
-                          '.Tab': {
-                            border: '1px solid #e5e7eb',
-                            borderRadius: '6px',
-                            backgroundColor: '#ffffff',
-                            boxShadow: 'none'
-                          },
-                          '.Tab:hover': {
-                            backgroundColor: '#f9fafb',
-                            border: '1px solid #d1d5db'
-                          },
-                          '.Tab--selected': {
-                            border: '1px solid #222222',
-                            backgroundColor: '#ffffff',
-                            boxShadow: 'none',
-                            color: '#222222'
-                          },
-                          '.TabLabel': {
-                            color: '#374151'
-                          },
-                          '.TabLabel--selected': {
-                            color: '#222222',
-                            fontWeight: '600'
-                          },
-                          '.TabIcon': {
-                            fill: '#6b7280'
-                          },
-                          '.TabIcon--selected': {
-                            fill: '#222222'
-                          },
-                          '.Error': {
-                            fontSize: '13px',
-                            color: '#dc2626'
-                          }
-                        }
-                      }
-                    }}
-                  >
-                    <CheckoutForm 
-                      onSuccess={handleSuccess}
-                      onCancel={handleCancel}
-                      clientProvince={clientProvince}
-                      total={total}
-                      isProcessing={isProcessing}
-                      setIsProcessing={setIsProcessing}
-                    />
-                  </Elements>
-                ) : (
-                  <div className="payment-loading-state">
-                    <div className="spinner"></div>
-                    <p>Initializing secure payment...</p>
+              <div className="summary-divider"></div>
+
+              {/* Event Details */}
+              <div style={{ padding: '16px 0' }}>
+                {booking.EventName && (
+                  <div style={{ marginBottom: '12px' }}>
+                    <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#717171', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Event</div>
+                    <div style={{ fontSize: '1rem', color: '#222', fontWeight: 500 }}>{booking.EventName}</div>
+                  </div>
+                )}
+                {booking.EventType && (
+                  <div style={{ marginBottom: '12px' }}>
+                    <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#717171', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Type</div>
+                    <div style={{ fontSize: '0.95rem', color: '#222' }}>{booking.EventType.charAt(0).toUpperCase() + booking.EventType.slice(1).replace('-', ' ')}</div>
+                  </div>
+                )}
+                {booking.EventDate && (
+                  <div style={{ marginBottom: '12px' }}>
+                    <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#717171', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Date & Time</div>
+                    <div style={{ fontSize: '0.95rem', color: '#222', fontWeight: 500 }}>
+                      {new Date(booking.EventDate).toLocaleDateString('en-CA', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                    </div>
+                    {(booking.StartTime || booking.EventTime) && (booking.EndTime || booking.EventEndTime) && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+                        <span style={{ fontSize: '0.9rem', color: '#222' }}>{formatTime(booking.StartTime || booking.EventTime)}</span>
+                        <span style={{ color: '#9ca3af' }}>→</span>
+                        <span style={{ fontSize: '0.9rem', color: '#222' }}>{formatTime(booking.EndTime || booking.EventEndTime)}</span>
+                        {totalHours && (
+                          <span style={{ fontSize: '0.85rem', color: '#6b7280', marginLeft: '8px' }}>
+                            ({totalHours % 1 === 0 ? totalHours : totalHours.toFixed(1)} hrs)
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    {/* Show time even if only start time is available */}
+                    {(booking.StartTime || booking.EventTime) && !(booking.EndTime || booking.EventEndTime) && (
+                      <div style={{ fontSize: '0.9rem', color: '#222', marginTop: '4px' }}>
+                        {formatTime(booking.StartTime || booking.EventTime)}
+                      </div>
+                    )}
+                  </div>
+                )}
+                {booking.AttendeeCount && (
+                  <div style={{ marginBottom: '12px' }}>
+                    <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#717171', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Guests</div>
+                    <div style={{ fontSize: '0.95rem', color: '#222' }}>{booking.AttendeeCount} guests</div>
+                  </div>
+                )}
+                {(booking.EventLocation || booking.Location) && (
+                  <div>
+                    <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#717171', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Location</div>
+                    <div style={{ fontSize: '0.9rem', color: '#222' }}>{booking.EventLocation || booking.Location}</div>
                   </div>
                 )}
               </div>
+
+              <div className="summary-divider"></div>
+
+              {/* Price Breakdown */}
+              <div style={{ padding: '16px 0' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '0.95rem', color: '#222' }}>{booking.ServiceName || booking.PackageName || 'Service'}</span>
+                  <span style={{ fontSize: '0.95rem', color: '#222' }}>{formatCurrency(subtotal)}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '0.9rem', color: '#717171' }}>Subtotal</span>
+                  <span style={{ fontSize: '0.9rem', color: '#717171' }}>{formatCurrency(subtotal)}</span>
+                </div>
+                {platformFee > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <span style={{ fontSize: '0.9rem', color: '#717171' }}>Platform Service Fee</span>
+                    <span style={{ fontSize: '0.9rem', color: '#717171' }}>{formatCurrency(platformFee)}</span>
+                  </div>
+                )}
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '0.9rem', color: '#717171' }}>Tax ({taxInfo.label})</span>
+                  <span style={{ fontSize: '0.9rem', color: '#717171' }}>{formatCurrency(taxAmount)}</span>
+                </div>
+                {processingFee > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <span style={{ fontSize: '0.9rem', color: '#717171' }}>Payment Processing Fee</span>
+                    <span style={{ fontSize: '0.9rem', color: '#717171' }}>{formatCurrency(processingFee)}</span>
+                  </div>
+                )}
+                <div style={{ borderTop: '2px solid #222', paddingTop: '12px', marginTop: '12px', display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '1.1rem', fontWeight: 600, color: '#222' }}>Total</span>
+                  <span style={{ fontSize: '1.1rem', fontWeight: 600, color: '#222' }}>{formatCurrency(total)}</span>
+                </div>
+              </div>
+
+              {/* Policies Section */}
+              {(booking.InstantBookingEnabled || booking.CancellationPolicy || booking.MinBookingLeadTimeHours > 0) && (
+                <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #ebebeb' }}>
+                  {booking.InstantBookingEnabled && (
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: '16px' }}>
+                      <i className="fas fa-bolt" style={{ fontSize: '16px', color: '#222', width: '20px', marginTop: '2px' }}></i>
+                      <div>
+                        <div style={{ fontSize: '0.9rem', fontWeight: 500, color: '#222' }}>Instant Booking</div>
+                        <div style={{ fontSize: '0.8rem', color: '#717171' }}>Book and pay now without waiting for vendor approval</div>
+                      </div>
+                    </div>
+                  )}
+                  {booking.CancellationPolicy && (
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: '16px' }}>
+                      <i className="fas fa-calendar-check" style={{ fontSize: '16px', color: '#222', width: '20px', marginTop: '2px' }}></i>
+                      <div>
+                        <div style={{ fontSize: '0.9rem', fontWeight: 500, color: '#222' }}>{booking.CancellationPolicy}</div>
+                        <div style={{ fontSize: '0.8rem', color: '#717171' }}>Flexible cancellation policy</div>
+                      </div>
+                    </div>
+                  )}
+                  {booking.MinBookingLeadTimeHours > 0 && (
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                      <i className="fas fa-clock" style={{ fontSize: '16px', color: '#222', width: '20px', marginTop: '2px' }}></i>
+                      <div>
+                        <div style={{ fontSize: '0.9rem', fontWeight: 500, color: '#222' }}>Advance notice required</div>
+                        <div style={{ fontSize: '0.8rem', color: '#717171' }}>
+                          {booking.MinBookingLeadTimeHours >= 168 
+                            ? `Book at least ${Math.floor(booking.MinBookingLeadTimeHours / 168)} week${Math.floor(booking.MinBookingLeadTimeHours / 168) > 1 ? 's' : ''} in advance`
+                            : booking.MinBookingLeadTimeHours >= 24 
+                              ? `Book at least ${Math.floor(booking.MinBookingLeadTimeHours / 24)} day${Math.floor(booking.MinBookingLeadTimeHours / 24) > 1 ? 's' : ''} in advance`
+                              : `Book at least ${booking.MinBookingLeadTimeHours} hours in advance`}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           ) : null}
-          </div>
         </div>
       </div>
     </PageLayout>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useAlert } from '../context/AlertContext';
 import { GOOGLE_MAPS_API_KEY } from '../config';
 import { apiGet, apiPost } from '../utils/api';
 import { PageLayout } from '../components/PageWrapper';
@@ -19,6 +20,7 @@ import { Elements, CardElement, CardNumberElement, useStripe, useElements } from
 import { API_BASE_URL } from '../config';
 
 import { extractVendorIdFromSlug, parseQueryParams, trackPageView, buildVendorProfileUrl } from '../utils/urlHelpers';
+import { encodeUserId } from '../utils/hashIds';
 import { formatDateWithWeekday } from '../utils/helpers';
 import { getProvinceFromLocation, getTaxInfoForProvince, PROVINCE_TAX_RATES } from '../utils/taxCalculations';
 import { useLocalization } from '../context/LocalizationContext';
@@ -268,6 +270,7 @@ function BookingPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { currentUser } = useAuth();
+  const { showWarning } = useAlert();
   const { formatCurrency } = useLocalization();
   const { t } = useTranslation();
   
@@ -285,6 +288,7 @@ function BookingPage() {
   const [loadingPackages, setLoadingPackages] = useState(false);
   const [step2Tab, setStep2Tab] = useState('packages'); // 'packages' or 'services'
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successModalType, setSuccessModalType] = useState('request'); // 'request' or 'payment'
   const [submitting, setSubmitting] = useState(false);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
@@ -300,6 +304,8 @@ function BookingPage() {
   const [showLeaveConfirmModal, setShowLeaveConfirmModal] = useState(false);
   const [showNoSelectionModal, setShowNoSelectionModal] = useState(false);
   const [pendingStepAction, setPendingStepAction] = useState(null);
+  const [validationError, setValidationError] = useState(null);
+  const [fieldErrors, setFieldErrors] = useState({});
   const locationInputRef = useRef(null);
   const autocompleteRef = useRef(null);
 
@@ -317,8 +323,9 @@ function BookingPage() {
   // Initialize page and pre-fill data from URL params (from ProfileVendorWidget)
   useEffect(() => {
     if (!vendorId) {
-      alert('No vendor selected. Redirecting to home page.');
-      navigate('/');
+      showWarning('No vendor selected. Redirecting to home page.', 'Error').then(() => {
+        navigate('/');
+      });
       return;
     }
 
@@ -415,6 +422,11 @@ function BookingPage() {
     window.scrollTo({ top: 0, behavior: 'instant' });
   }, [vendorId]);
 
+  // Scroll to top when step changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [currentStep]);
+
   // Load vendor data
   const loadVendorData = useCallback(async () => {
     try {
@@ -433,18 +445,8 @@ function BookingPage() {
       }
     } catch (error) {
       console.error('Error loading vendor data:', error);
-      
-      // For development/testing, show a placeholder vendor
-      setVendorData({
-        profile: {
-          BusinessName: 'Sample Vendor',
-          AverageRating: 4.8,
-          ReviewCount: 24
-        },
-        categories: [{
-          CategoryName: 'Event Services'
-        }]
-      });
+      // Keep vendorData as null to show skeleton loading
+      setVendorData(null);
     }
   }, [vendorId]);
 
@@ -865,36 +867,41 @@ function BookingPage() {
     }
   };
 
-  // Validation
+  // Validation - uses inline field highlighting and scrolls to top
   const validateStep = (step) => {
+    // Clear previous errors
+    setFieldErrors({});
+    setValidationError(null);
+    
+    const errors = {};
+    
     if (step === 1) {
       if (!bookingData.eventName.trim()) {
-        alert('Please enter an event name');
-        return false;
+        errors.eventName = 'Please enter an event name';
       }
       if (!bookingData.eventType) {
-        alert('Please select an event type');
-        return false;
+        errors.eventType = 'Please select an event type';
       }
       if (!bookingData.eventDate) {
-        alert('Please select an event date');
-        return false;
+        errors.eventDate = 'Please select an event date';
       }
       if (!bookingData.eventTime) {
-        alert('Please select a start time');
-        return false;
+        errors.eventTime = 'Please select a start time';
       }
       if (!bookingData.eventEndTime) {
-        alert('Please select an end time');
-        return false;
+        errors.eventEndTime = 'Please select an end time';
       }
-      
       if (!bookingData.attendeeCount || bookingData.attendeeCount < 1) {
-        alert('Please enter the number of guests');
-        return false;
+        errors.attendeeCount = 'Please enter the number of guests';
       }
       if (!bookingData.eventLocation.trim()) {
-        alert('Please enter the event location');
+        errors.eventLocation = 'Please enter the event location';
+      }
+      
+      if (Object.keys(errors).length > 0) {
+        setFieldErrors(errors);
+        // Scroll to top of page to show errors
+        window.scrollTo({ top: 0, behavior: 'smooth' });
         return false;
       }
       return true;
@@ -911,12 +918,10 @@ function BookingPage() {
         const packageName = selectedPackage.PackageName || selectedPackage.name || 'This package';
         
         if (minAttendees && attendees < parseInt(minAttendees)) {
-          alert(`"${packageName}" requires at least ${minAttendees} guests. You entered ${attendees} guests.`);
-          return false;
+          return showValidationError(`"${packageName}" requires at least ${minAttendees} guests. You entered ${attendees} guests.`);
         }
         if (maxAttendees && attendees > parseInt(maxAttendees)) {
-          alert(`"${packageName}" allows a maximum of ${maxAttendees} guests. You entered ${attendees} guests.`);
-          return false;
+          return showValidationError(`"${packageName}" allows a maximum of ${maxAttendees} guests. You entered ${attendees} guests.`);
         }
       }
       
@@ -929,12 +934,10 @@ function BookingPage() {
           const serviceName = service.ServiceName || service.name || service.serviceName;
           
           if (minAttendees && attendees < parseInt(minAttendees)) {
-            alert(`"${serviceName}" requires at least ${minAttendees} guests. You entered ${attendees} guests.`);
-            return false;
+            return showValidationError(`"${serviceName}" requires at least ${minAttendees} guests. You entered ${attendees} guests.`);
           }
           if (maxAttendees && attendees > parseInt(maxAttendees)) {
-            alert(`"${serviceName}" allows a maximum of ${maxAttendees} guests. You entered ${attendees} guests.`);
-            return false;
+            return showValidationError(`"${serviceName}" allows a maximum of ${maxAttendees} guests. You entered ${attendees} guests.`);
           }
         }
       }
@@ -1118,10 +1121,11 @@ function BookingPage() {
         throw new Error(result.message || 'Failed to send booking request');
       }
 
+      setSuccessModalType('request');
       setShowSuccessModal(true);
     } catch (error) {
       console.error('Error submitting booking request:', error);
-      alert('Failed to send booking request: ' + error.message);
+      setValidationError('Failed to send booking request: ' + error.message);
     } finally {
       setSubmitting(false);
     }
@@ -1252,6 +1256,7 @@ function BookingPage() {
       }
 
       // Success!
+      setSuccessModalType('payment');
       setShowSuccessModal(true);
       setPaymentProcessing(false);
 
@@ -1379,7 +1384,7 @@ function BookingPage() {
 
   const profile = vendorData?.profile || {};
   const businessName = profile.BusinessName || profile.Name || 'Vendor';
-  const category = vendorData?.categories?.[0]?.CategoryName || vendorData?.categories?.[0]?.Category || '';
+  // Removed category - not useful to display
   const rating = profile.AverageRating || profile.Rating || 0;
   const reviewCount = profile.ReviewCount || profile.TotalReviews || 0;
   const profilePic = profile.LogoURL || profile.FeaturedImageURL || profile.ProfilePictureURL || profile.ProfilePicture || '';
@@ -1470,25 +1475,55 @@ function BookingPage() {
               </div>
               {currentStep === 1 && (
                 <div className="accordion-step-content">
+                  {/* Validation Error Summary Banner */}
+                  {Object.keys(fieldErrors).length > 0 && (
+                    <div style={{
+                      background: '#fef2f2',
+                      border: '1px solid #fecaca',
+                      borderRadius: '8px',
+                      padding: '16px',
+                      marginBottom: '20px'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                        <i className="fas fa-exclamation-circle" style={{ color: '#dc2626' }}></i>
+                        <span style={{ fontWeight: 600, color: '#dc2626' }}>Please fix the following errors:</span>
+                      </div>
+                      <ul style={{ margin: 0, paddingLeft: '24px', color: '#b91c1c', fontSize: '0.9rem' }}>
+                        {Object.values(fieldErrors).map((error, idx) => (
+                          <li key={idx} style={{ marginBottom: '4px' }}>{error}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
                   <div className="form-group">
-                    <label htmlFor="event-name" className="form-label">Event Name</label>
+                    <label htmlFor="event-name" className="form-label">Event Name <span style={{ color: '#dc2626' }}>*</span></label>
                     <input
                       type="text"
                       id="event-name"
                       className="form-input"
                       placeholder="e.g., Sarah & John's Wedding"
                       value={bookingData.eventName}
-                      onChange={handleInputChange}
+                      onChange={(e) => {
+                        handleInputChange(e);
+                        if (fieldErrors.eventName) setFieldErrors(prev => ({ ...prev, eventName: null }));
+                      }}
+                      style={fieldErrors.eventName ? { borderColor: '#dc2626', boxShadow: '0 0 0 1px #dc2626' } : {}}
                     />
+                    {fieldErrors.eventName && <span style={{ color: '#dc2626', fontSize: '0.8rem', marginTop: '4px', display: 'block' }}>{fieldErrors.eventName}</span>}
                   </div>
 
                   <div className="form-group">
-                    <label htmlFor="event-type" className="form-label">Event Type</label>
+                    <label htmlFor="event-type" className="form-label">Event Type <span style={{ color: '#dc2626' }}>*</span></label>
                     <select
                       id="event-type"
                       className="form-input"
                       value={bookingData.eventType}
-                      onChange={handleInputChange}
+                      onChange={(e) => {
+                        handleInputChange(e);
+                        if (fieldErrors.eventType) setFieldErrors(prev => ({ ...prev, eventType: null }));
+                      }}
+                      style={fieldErrors.eventType ? { borderColor: '#dc2626', boxShadow: '0 0 0 1px #dc2626' } : {}}
                     >
                       <option value="">Select event type</option>
                       <option value="wedding">Wedding</option>
@@ -1500,6 +1535,7 @@ function BookingPage() {
                       <option value="engagement">Engagement Party</option>
                       <option value="other">Other</option>
                     </select>
+                    {fieldErrors.eventType && <span style={{ color: '#dc2626', fontSize: '0.8rem', marginTop: '4px', display: 'block' }}>{fieldErrors.eventType}</span>}
                   </div>
 
                   <div className="form-group">
@@ -1511,12 +1547,13 @@ function BookingPage() {
                         alignItems: 'center',
                         justifyContent: 'space-between',
                         padding: '10px 14px',
-                        background: '#e0f2fe',
+                        background: '#f9fafb',
+                        border: '1px solid #e5e7eb',
                         borderRadius: '8px',
                         marginBottom: '12px',
                         fontSize: '0.9rem'
                       }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#0369a1' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#374151' }}>
                           <i className="fas fa-calendar-check"></i>
                           <span>Date pre-filled from your search</span>
                         </div>
@@ -1530,7 +1567,7 @@ function BookingPage() {
                           style={{
                             background: 'none',
                             border: 'none',
-                            color: '#0369a1',
+                            color: '#6b7280',
                             cursor: 'pointer',
                             fontSize: '0.85rem',
                             textDecoration: 'underline',
@@ -1748,7 +1785,7 @@ function BookingPage() {
             >
               <div 
                 className="accordion-step-header"
-                onClick={() => currentStep >= 3 && setCurrentStep(3)}
+                onClick={() => { if (currentStep >= 3) { setCurrentStep(3); window.scrollTo({ top: 0, behavior: 'smooth' }); } }}
               >
                 <span className="accordion-step-number">3.</span>
                 <span className="accordion-step-title">
@@ -1876,47 +1913,122 @@ function BookingPage() {
         {/* Right Side - Booking Summary */}
         <div className="booking-summary-section">
           <div className="booking-summary-card">
-            <div className="vendor-info" id="vendor-info">
-              {profilePic ? (
+            {!vendorData ? (
+              /* Skeleton loading for vendor info */
+              <div className="vendor-info" id="vendor-info">
                 <div style={{ 
-                  width: '80px', 
-                  height: '80px', 
+                  width: '64px', 
+                  height: '64px', 
                   borderRadius: '50%', 
-                  overflow: 'hidden', 
-                  border: '2px solid #DDDDDD',
-                  background: '#f7f7f7',
+                  background: 'linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)',
+                  backgroundSize: '200% 100%',
+                  animation: 'shimmer 1.5s infinite',
                   flexShrink: 0
-                }}>
-                  <img src={profilePic} alt={businessName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                }}></div>
+                <div className="vendor-details" style={{ flex: 1 }}>
+                  <div style={{ 
+                    height: '20px', 
+                    width: '140px', 
+                    background: 'linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)',
+                    backgroundSize: '200% 100%',
+                    animation: 'shimmer 1.5s infinite',
+                    borderRadius: '4px',
+                    marginBottom: '8px'
+                  }}></div>
+                  <div style={{ 
+                    height: '14px', 
+                    width: '100px', 
+                    background: 'linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)',
+                    backgroundSize: '200% 100%',
+                    animation: 'shimmer 1.5s infinite',
+                    borderRadius: '4px'
+                  }}></div>
                 </div>
-              ) : (
-                <div className="vendor-image-placeholder">
-                  <i className="fas fa-store"></i>
-                </div>
-              )}
-              <div className="vendor-details">
-                <h3 className="vendor-name">{businessName}</h3>
-                {category && <p className="vendor-category">{category}</p>}
-                {rating > 0 ? (
-                  <div className="vendor-rating">
-                    <i className="fas fa-star"></i>
-                    <span>{rating.toFixed(1)}</span>
-                    {reviewCount > 0 && (
-                      <span className="review-count">({reviewCount} review{reviewCount !== 1 ? 's' : ''})</span>
-                    )}
+              </div>
+            ) : (
+              <div className="vendor-info" id="vendor-info">
+                {profilePic ? (
+                  <div style={{ 
+                    width: '64px', 
+                    height: '64px', 
+                    borderRadius: '50%', 
+                    overflow: 'hidden', 
+                    border: '2px solid #DDDDDD',
+                    background: '#f7f7f7',
+                    flexShrink: 0
+                  }}>
+                    <img src={profilePic} alt={businessName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   </div>
                 ) : (
-                  <div style={{ fontSize: '0.85rem', color: '#717171', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <i className="fas fa-briefcase" style={{ color: '#5e72e4' }}></i>
-                    <span>Verified Vendor</span>
+                  <div style={{
+                    width: '64px',
+                    height: '64px',
+                    borderRadius: '50%',
+                    background: '#f7f7f7',
+                    border: '2px solid #DDDDDD',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0
+                  }}>
+                    <i className="fas fa-store" style={{ fontSize: '24px', color: '#717171' }}></i>
                   </div>
                 )}
+                <div className="vendor-details">
+                  <h3 className="vendor-name" style={{ fontSize: '1.1rem', fontWeight: 600, margin: '0 0 4px', color: '#222' }}>{businessName}</h3>
+                  {/* Show host name with profile picture - clickable to open profile */}
+                  {(() => {
+                    const hostName = vendorData?.profile?.HostName || vendorData?.HostName || 
+                      vendorData?.profile?.OwnerName || vendorData?.profile?.FirstName ||
+                      (vendorData?.profile?.ContactFirstName && vendorData?.profile?.ContactLastName 
+                        ? `${vendorData.profile.ContactFirstName} ${vendorData.profile.ContactLastName}` 
+                        : vendorData?.profile?.ContactFirstName);
+                    const hostProfilePic = vendorData?.profile?.HostProfileImage || vendorData?.profile?.ProfileImageURL;
+                    const hostUserId = vendorData?.profile?.HostUserID || vendorData?.profile?.UserID;
+                    return hostName ? (
+                      <p 
+                        style={{ fontSize: '0.875rem', color: '#717171', margin: '0 0 4px', display: 'flex', alignItems: 'center', gap: '6px', cursor: hostUserId ? 'pointer' : 'default' }}
+                        onClick={() => hostUserId && navigate(`/profile/${encodeUserId(hostUserId)}`)}
+                      >
+                        {hostProfilePic ? (
+                          <img src={hostProfilePic} alt={hostName} style={{ width: '16px', height: '16px', borderRadius: '50%', objectFit: 'cover' }} />
+                        ) : (
+                          <i className="fas fa-user" style={{ fontSize: '0.75rem' }}></i>
+                        )}
+                        Hosted by {hostName}
+                      </p>
+                    ) : null;
+                  })()}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    {rating > 0 ? (
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.875rem', color: '#222' }}>
+                        <i className="fas fa-star" style={{ color: '#5086E8', fontSize: '0.8rem' }}></i>
+                        {rating.toFixed(1)}
+                        {reviewCount > 0 && (
+                          <span style={{ color: '#717171' }}>({reviewCount} review{reviewCount !== 1 ? 's' : ''})</span>
+                        )}
+                      </span>
+                    ) : (
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.875rem', color: '#717171' }}>
+                        <i className="fas fa-check-circle" style={{ color: '#5086E8', fontSize: '0.8rem' }}></i>
+                        Verified
+                      </span>
+                    )}
+                    {vendorData?.profile?.City && (
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.875rem', color: '#717171' }}>
+                        <i className="fas fa-map-marker-alt" style={{ fontSize: '0.75rem' }}></i>
+                        {vendorData.profile.City}
+                      </span>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
+            
 
             <div className="summary-divider"></div>
 
-            {/* Enhanced Event Details Display */}
+            {/* Enhanced Event Details Display - Only show filled fields */}
             <div style={{ padding: '16px 0' }}>
               {/* Event Name */}
               {bookingData.eventName && (
@@ -2407,9 +2519,9 @@ function BookingPage() {
             }}>
               <i className="fas fa-check" style={{ fontSize: '28px', color: 'white' }}></i>
             </div>
-            <h2 style={{ marginBottom: '0.5rem' }}>{isInstantBookingEnabled ? 'Booking Confirmed!' : 'Request Sent Successfully!'}</h2>
+            <h2 style={{ marginBottom: '0.5rem' }}>{successModalType === 'payment' ? 'Booking Confirmed!' : 'Request Sent Successfully!'}</h2>
             <p style={{ color: '#6b7280', marginBottom: '1.5rem' }}>
-              {isInstantBookingEnabled 
+              {successModalType === 'payment' 
                 ? 'Your booking has been confirmed and payment processed successfully.' 
                 : 'Your booking request has been sent to the vendor.'}
             </p>
@@ -2419,7 +2531,7 @@ function BookingPage() {
                 What happens next?
               </div>
               <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem', lineHeight: 1.6 }}>
-                {isInstantBookingEnabled 
+                {successModalType === 'payment' 
                   ? 'The vendor has been notified of your booking. You can view your booking details and communicate with the vendor from your dashboard.'
                   : 'The vendor will review your request and respond within 24 hours. You\'ll receive a notification when they respond.'}
               </p>
@@ -2501,6 +2613,18 @@ function BookingPage() {
         cancelLabel="Go Back"
         onConfirm={handleNoSelectionConfirm}
         variant="info"
+      />
+
+      {/* Validation Error Modal */}
+      <ConfirmationModal
+        isOpen={!!validationError}
+        onClose={() => setValidationError(null)}
+        title="Missing Information"
+        message={validationError || ''}
+        confirmLabel="OK"
+        cancelLabel={null}
+        onConfirm={() => setValidationError(null)}
+        variant="warning"
       />
     </PageLayout>
   );

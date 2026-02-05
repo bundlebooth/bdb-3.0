@@ -521,7 +521,7 @@ const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavori
               analyticsBadgeType === 'rating' ? 'fa-star' :
               analyticsBadgeType === 'bookings' ? 'fa-calendar-check' :
               analyticsBadgeType === 'distance' ? 'fa-location-dot' :
-              analyticsBadgeType === 'trending' ? 'fa-fire-flame-curved' : 'fa-fire'
+              analyticsBadgeType === 'trending' ? 'fa-arrow-trend-up' : 'fa-arrow-trend-up'
             }`} style={{ fontSize: '11px' }}></i>
             <span>
               {/* Format distance using user's preferred unit if distance badge */}

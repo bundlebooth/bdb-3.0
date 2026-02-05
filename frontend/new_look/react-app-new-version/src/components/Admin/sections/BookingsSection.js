@@ -9,8 +9,10 @@ import { useDebounce } from '../../../hooks/useApi';
 import adminApi from '../../../services/adminApi';
 import UniversalModal, { FormModal } from '../../UniversalModal';
 import { FormTextareaField, FormSelectField, DetailRow, DetailSection } from '../../common/FormComponents';
+import { useAlert } from '../../../context/AlertContext';
 
 function BookingsSection() {
+  const { showError } = useAlert();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -81,7 +83,7 @@ function BookingsSection() {
       fetchBookings();
     } catch (err) {
       console.error('Error processing refund:', err);
-      alert('Failed to process refund: ' + err.message);
+      showError('Failed to process refund: ' + err.message);
     } finally {
       setActionLoading(false);
     }
@@ -102,7 +104,7 @@ function BookingsSection() {
       fetchBookings();
     } catch (err) {
       console.error('Error resolving dispute:', err);
-      alert('Failed to resolve dispute: ' + err.message);
+      showError('Failed to resolve dispute: ' + err.message);
     } finally {
       setActionLoading(false);
     }
@@ -134,7 +136,7 @@ function BookingsSection() {
       a.remove();
     } catch (err) {
       console.error('Error exporting bookings:', err);
-      alert('Failed to export bookings: ' + (err.message || 'Unknown error'));
+      showError('Failed to export bookings: ' + (err.message || 'Unknown error'));
     }
   };
 

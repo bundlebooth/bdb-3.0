@@ -467,7 +467,12 @@ const SingleBlogPost = ({ slug, navigate }) => {
               className="share-btn copy"
               onClick={() => {
                 navigator.clipboard.writeText(window.location.href);
-                alert('Link copied to clipboard!');
+                // Show a brief toast notification instead of alert
+                const toast = document.createElement('div');
+                toast.textContent = 'Link copied to clipboard!';
+                toast.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:12px 24px;border-radius:8px;z-index:9999;font-size:14px;';
+                document.body.appendChild(toast);
+                setTimeout(() => toast.remove(), 2000);
               }}
             >
               <i className="fas fa-link"></i>

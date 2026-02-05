@@ -7,8 +7,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { formatDate, formatRelativeTime } from '../../../utils/formatUtils';
 import adminApi from '../../../services/adminApi';
 import { ConfirmationModal } from '../../UniversalModal';
+import { useAlert } from '../../../context/AlertContext';
 
 function SecuritySection() {
+  const { showError, showInfo, showSuccess } = useAlert();
   const [activeTab, setActiveTab] = useState('login');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -54,7 +56,9 @@ function SecuritySection() {
     try {
       setLoading(true);
       const data = await adminApi.getLockedAccounts();
+      console.log('[SecuritySection] Locked accounts API response:', data);
       const accountsArray = Array.isArray(data?.accounts) ? data.accounts : Array.isArray(data) ? data : [];
+      console.log('[SecuritySection] Locked accounts array:', accountsArray);
       setLockedAccounts(accountsArray);
     } catch (err) {
       console.error('Error fetching locked accounts:', err);
@@ -117,7 +121,7 @@ function SecuritySection() {
       fetchLockedAccounts();
     } catch (err) {
       console.error('Error unlocking account:', err);
-      alert('Failed to unlock account: ' + err.message);
+      showError('Failed to unlock account: ' + err.message);
     } finally {
       setActionLoading(false);
     }
@@ -125,7 +129,7 @@ function SecuritySection() {
 
   const handleExport = () => {
     // Export functionality placeholder
-    alert('Export functionality coming soon');
+    showInfo('Export functionality coming soon');
   };
 
   const getLogIcon = (type) => {
@@ -414,7 +418,7 @@ function SecuritySection() {
           </h3>
         </div>
         <p style={{ padding: '0 1.25rem', color: '#6b7280', fontSize: '0.9rem', marginBottom: '1rem' }}>
-          Accounts that have been locked due to too many failed login attempts. You can unlock them to allow the user to log in again.
+          All locked accounts including security violations, policy breaches, chat misconduct, and failed login attempts. You can unlock them to restore access.
         </p>
         
         {loading ? (
@@ -446,9 +450,9 @@ function SecuritySection() {
                 <tr>
                   <th>User</th>
                   <th>Email</th>
-                  <th>Failed Attempts</th>
+                  <th>Lock Type</th>
+                  <th>Reason</th>
                   <th>Locked At</th>
-                  <th>IP Address</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -481,12 +485,21 @@ function SecuritySection() {
                     </td>
                     <td>{account.Email || account.email}</td>
                     <td>
-                      <span className="admin-badge admin-badge-danger">
-                        {account.FailedLoginAttempts || account.failedAttempts || 0} attempts
+                      <span className={`admin-badge ${
+                        (account.LockType || '').toLowerCase().includes('chat') || (account.LockType || '').toLowerCase().includes('violation') 
+                          ? 'admin-badge-danger' 
+                          : (account.LockType || '').toLowerCase().includes('login') 
+                            ? 'admin-badge-warning' 
+                            : 'admin-badge-neutral'
+                      }`}>
+                        {account.LockType || (account.FailedLoginAttempts > 0 ? 'Failed Logins' : 'Manual Lock')}
+                        {account.ViolationCount > 0 && ` (${account.ViolationCount})`}
                       </span>
                     </td>
-                    <td>{formatDate(account.LockedAt || account.lockedAt || account.UpdatedAt)}</td>
-                    <td>{account.LastLoginIP || account.lastIP || 'N/A'}</td>
+                    <td style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={account.LockReason || 'No reason provided'}>
+                      {account.LockReason || 'No reason provided'}
+                    </td>
+                    <td>{formatDate(account.LockedAt || account.LockHistoryCreatedAt || account.UpdatedAt)}</td>
                     <td>
                       <button
                         className="admin-btn admin-btn-success admin-btn-sm"
@@ -644,9 +657,9 @@ function SecuritySection() {
                     failedLoginLockout: twoFASettings.maxLoginAttempts,
                     lockDurationMinutes: twoFASettings.lockoutDuration
                   });
-                  alert('Settings saved successfully');
+                  showSuccess('Settings saved successfully');
                 } catch (err) {
-                  alert('Failed to save settings: ' + err.message);
+                  showError('Failed to save settings: ' + err.message);
                 }
               }}
             >

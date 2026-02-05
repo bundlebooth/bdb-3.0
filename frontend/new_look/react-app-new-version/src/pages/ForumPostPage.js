@@ -518,7 +518,12 @@ function ForumPostPage() {
                 <button
                   onClick={() => {
                     navigator.clipboard.writeText(window.location.href);
-                    alert('Link copied to clipboard!');
+                    // Show toast notification
+                    const toast = document.createElement('div');
+                    toast.textContent = 'Link copied to clipboard!';
+                    toast.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:12px 24px;border-radius:8px;z-index:9999;font-size:14px;';
+                    document.body.appendChild(toast);
+                    setTimeout(() => toast.remove(), 2000);
                   }}
                   style={{
                     background: 'none',
@@ -544,7 +549,12 @@ function ForumPostPage() {
                       setProfileModalOpen(true);
                       return;
                     }
-                    alert('Post saved!');
+                    // Show toast notification
+                    const toast = document.createElement('div');
+                    toast.textContent = 'Post saved!';
+                    toast.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:12px 24px;border-radius:8px;z-index:9999;font-size:14px;';
+                    document.body.appendChild(toast);
+                    setTimeout(() => toast.remove(), 2000);
                   }}
                   style={{
                     background: 'none',
@@ -570,7 +580,12 @@ function ForumPostPage() {
                       setProfileModalOpen(true);
                       return;
                     }
-                    alert('Thank you for your report. We will review this post.');
+                    // Show toast notification
+                    const toast = document.createElement('div');
+                    toast.textContent = 'Thank you for your report. We will review this post.';
+                    toast.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:12px 24px;border-radius:8px;z-index:9999;font-size:14px;';
+                    document.body.appendChild(toast);
+                    setTimeout(() => toast.remove(), 2000);
                   }}
                   style={{
                     background: 'none',

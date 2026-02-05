@@ -24,6 +24,7 @@ import SettingsSection from './sections/SettingsSection';
 import AutomationSection from './sections/AutomationSection';
 import ToolsSection from './sections/ToolsSection';
 import AnalyticsSection from './sections/AnalyticsSection';
+import GuestFavoritesSection from './sections/GuestFavoritesSection';
 
 const sectionTitles = {
   dashboard: { title: 'Dashboard', subtitle: 'At-a-glance metrics and quick access' },
@@ -39,10 +40,11 @@ const sectionTitles = {
   security: { title: 'Security & Audit', subtitle: 'Login activity, locked accounts, and 2FA' },
   settings: { title: 'Platform Settings', subtitle: 'Commission, fees, and maintenance' },
   automation: { title: 'Automation & Email', subtitle: 'Automated workflows and email management' },
-  tools: { title: 'Search & Impersonation', subtitle: 'Quick search and user impersonation tools' }
+  tools: { title: 'Search & Impersonation', subtitle: 'Quick search and user impersonation tools' },
+  'guest-favorites': { title: 'Badges & Favorites', subtitle: 'Manage vendor badges and Guest Favorite status' }
 };
 
-const validSections = ['dashboard', 'analytics', 'users', 'vendors', 'bookings', 'payments', 'reviews', 'content', 'support', 'chat', 'security', 'settings', 'automation', 'tools'];
+const validSections = ['dashboard', 'analytics', 'users', 'vendors', 'bookings', 'payments', 'reviews', 'content', 'support', 'chat', 'security', 'settings', 'automation', 'tools', 'guest-favorites'];
 
 function AdminDashboard() {
   const navigate = useNavigate();
@@ -116,6 +118,8 @@ function AdminDashboard() {
         return <AutomationSection />;
       case 'tools':
         return <ToolsSection />;
+      case 'guest-favorites':
+        return <GuestFavoritesSection />;
       default:
         return <DashboardSection />;
     }

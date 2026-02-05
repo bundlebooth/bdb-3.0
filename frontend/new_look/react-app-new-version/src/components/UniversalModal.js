@@ -290,6 +290,7 @@ export const DeleteModal = ({
 
 /**
  * Alert Modal - For showing alerts/info
+ * Clean, minimal design matching Airbnb/app style
  */
 export const AlertModal = ({
   isOpen,
@@ -299,40 +300,138 @@ export const AlertModal = ({
   variant = 'info',
   buttonLabel = 'OK'
 }) => {
-  const variantIcons = {
-    warning: <i className="fas fa-exclamation-triangle" style={{ color: '#f59e0b', fontSize: '28px' }}></i>,
-    danger: <i className="fas fa-exclamation-circle" style={{ color: '#ef4444', fontSize: '28px' }}></i>,
-    success: <i className="fas fa-check-circle" style={{ color: '#10b981', fontSize: '28px' }}></i>,
-    info: <i className="fas fa-info-circle" style={{ color: '#5086E8', fontSize: '28px' }}></i>
+  const variantConfig = {
+    warning: { icon: 'fas fa-exclamation-triangle', iconColor: '#f59e0b' },
+    danger: { icon: 'fas fa-times-circle', iconColor: '#ef4444' },
+    success: { icon: 'fas fa-check-circle', iconColor: '#10b981' },
+    info: { icon: 'fas fa-info-circle', iconColor: '#5086E8' }
   };
 
-  const variantColors = {
-    warning: '#fef3c7',
-    danger: '#fee2e2',
-    success: '#d1fae5',
-    info: '#dbeafe'
-  };
+  const config = variantConfig[variant] || variantConfig.info;
+
+  if (!isOpen) return null;
 
   return (
-    <UniversalModal
-      isOpen={isOpen}
-      onClose={onClose}
-      title={title}
-      size="small"
-      primaryAction={{ label: buttonLabel, onClick: onClose }}
-      secondaryAction={false}
-      footerCentered
+    <div 
+      className="um-overlay" 
+      onClick={onClose}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(0, 0, 0, 0.4)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 10000
+      }}
     >
-      <div className="um-confirmation-content">
-        <div 
-          className="um-confirmation-icon"
-          style={{ background: variantColors[variant] }}
-        >
-          {variantIcons[variant]}
+      <div 
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: '#fff',
+          borderRadius: '12px',
+          width: '100%',
+          maxWidth: '380px',
+          margin: '20px',
+          boxShadow: '0 10px 40px rgba(0, 0, 0, 0.15)',
+          overflow: 'hidden',
+          animation: 'modalSlideIn 0.2s ease-out'
+        }}
+      >
+        {/* Header with icon and close button */}
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'space-between',
+          padding: '16px 20px',
+          borderBottom: '1px solid #ebebeb'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <i className={config.icon} style={{ color: config.iconColor, fontSize: '18px' }}></i>
+            <h3 style={{
+              margin: 0,
+              fontSize: '1rem',
+              fontWeight: 600,
+              color: '#222'
+            }}>
+              {title}
+            </h3>
+          </div>
+          <button
+            onClick={onClose}
+            style={{
+              background: 'none',
+              border: 'none',
+              padding: '4px',
+              cursor: 'pointer',
+              color: '#717171',
+              fontSize: '18px',
+              lineHeight: 1,
+              borderRadius: '50%',
+              width: '28px',
+              height: '28px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
+            <i className="fas fa-times"></i>
+          </button>
         </div>
-        <p className="um-confirmation-message">{message}</p>
+        
+        {/* Content */}
+        <div style={{ padding: '20px' }}>
+          <p style={{
+            margin: 0,
+            fontSize: '0.95rem',
+            color: '#484848',
+            lineHeight: 1.6
+          }}>
+            {message}
+          </p>
+        </div>
+        
+        {/* Footer */}
+        <div style={{
+          padding: '16px 20px',
+          borderTop: '1px solid #ebebeb',
+          display: 'flex',
+          justifyContent: 'flex-end'
+        }}>
+          <button
+            onClick={onClose}
+            style={{
+              background: '#222',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '8px',
+              padding: '10px 24px',
+              fontSize: '0.9rem',
+              fontWeight: 500,
+              cursor: 'pointer',
+              transition: 'background 0.15s'
+            }}
+            onMouseEnter={(e) => e.target.style.background = '#000'}
+            onMouseLeave={(e) => e.target.style.background = '#222'}
+          >
+            {buttonLabel}
+          </button>
+        </div>
       </div>
-    </UniversalModal>
+      
+      <style>{`
+        @keyframes modalSlideIn {
+          from {
+            opacity: 0;
+            transform: translateY(-10px) scale(0.98);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+      `}</style>
+    </div>
   );
 };
 

@@ -9,8 +9,10 @@ import { useDebounce } from '../../../hooks/useApi';
 import adminApi from '../../../services/adminApi';
 import UniversalModal, { ConfirmationModal, FormModal } from '../../UniversalModal';
 import { FormField, FormTextareaField, DetailRow, DetailSection, ToggleSwitch } from '../../common/FormComponents';
+import { useAlert } from '../../../context/AlertContext';
 
 function ModerationSection() {
+  const { showError } = useAlert();
   const [activeTab, setActiveTab] = useState('reviews');
   const [reviews, setReviews] = useState([]);
   const [chats, setChats] = useState([]);
@@ -131,7 +133,7 @@ function ModerationSection() {
       fetchReviews();
     } catch (err) {
       console.error('Error flagging review:', err);
-      alert('Failed to flag review: ' + err.message);
+      showError('Failed to flag review: ' + err.message);
     } finally {
       setActionLoading(false);
     }
@@ -144,7 +146,7 @@ function ModerationSection() {
       fetchReviews();
     } catch (err) {
       console.error('Error unflagging review:', err);
-      alert('Failed to unflag review: ' + err.message);
+      showError('Failed to unflag review: ' + err.message);
     } finally {
       setActionLoading(false);
     }
@@ -160,7 +162,7 @@ function ModerationSection() {
       fetchReviews();
     } catch (err) {
       console.error('Error adding note:', err);
-      alert('Failed to add note: ' + err.message);
+      showError('Failed to add note: ' + err.message);
     } finally {
       setActionLoading(false);
     }
@@ -175,7 +177,7 @@ function ModerationSection() {
       fetchReviews();
     } catch (err) {
       console.error('Error deleting review:', err);
-      alert('Failed to delete review: ' + err.message);
+      showError('Failed to delete review: ' + err.message);
     } finally {
       setActionLoading(false);
     }
@@ -203,7 +205,7 @@ function ModerationSection() {
       setChatMessages(data.messages || data || []);
     } catch (err) {
       console.error('Error sending system message:', err);
-      alert('Failed to send message: ' + err.message);
+      showError('Failed to send message: ' + err.message);
     } finally {
       setActionLoading(false);
     }
@@ -219,7 +221,7 @@ function ModerationSection() {
       fetchBanners();
     } catch (err) {
       console.error('Error saving banner:', err);
-      alert('Failed to save banner: ' + err.message);
+      showError('Failed to save banner: ' + err.message);
     } finally {
       setActionLoading(false);
     }
@@ -235,7 +237,7 @@ function ModerationSection() {
       fetchFaqs();
     } catch (err) {
       console.error('Error saving FAQ:', err);
-      alert('Failed to save FAQ: ' + err.message);
+      showError('Failed to save FAQ: ' + err.message);
     } finally {
       setActionLoading(false);
     }

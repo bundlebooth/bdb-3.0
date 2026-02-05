@@ -44,6 +44,7 @@ import ReviewPage from './pages/ReviewPage';
 import CookieConsent from './components/CookieConsent';
 import ImpersonationBanner from './components/ImpersonationBanner';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { AlertProvider } from './context/AlertContext';
 import { LocalizationProvider } from './context/LocalizationContext';
 import { useHeartbeat } from './hooks/useOnlineStatus';
 import { useSocket } from './hooks/useSocket';
@@ -169,8 +170,9 @@ function App() {
   return (
     <LocalizationProvider>
       <AuthProvider>
-        <SessionTimeoutProvider>
-          <Router>
+        <AlertProvider>
+          <SessionTimeoutProvider>
+            <Router>
             <ImpersonationBanner />
             <ScrollToTop />
             <Routes>
@@ -233,8 +235,9 @@ function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
             <CookieConsent />
-          </Router>
-        </SessionTimeoutProvider>
+            </Router>
+          </SessionTimeoutProvider>
+        </AlertProvider>
       </AuthProvider>
     </LocalizationProvider>
   );

@@ -317,7 +317,7 @@ function UnifiedSidebar({ isOpen, onClose }) {
                 className="unified-sidebar-item"
                 onClick={() => handleNavigate('/become-a-vendor/setup?step=account')}
               >
-                <i className="fas fa-user-check"></i>
+                <i className="far fa-user-check"></i>
                 <span>Profile Setup</span>
                 {!profileStatus ? (
                   <div className="spinner" style={{ width: '16px', height: '16px', marginLeft: 'auto', borderWidth: '2px' }}></div>
@@ -335,7 +335,7 @@ function UnifiedSidebar({ isOpen, onClose }) {
               className="unified-sidebar-item"
               onClick={() => handleNavigate('/become-a-vendor')}
             >
-              <i className="fas fa-store"></i>
+              <i className="far fa-store"></i>
               <span>Become a Vendor</span>
               <i className="fas fa-arrow-right" style={{ marginLeft: 'auto', fontSize: '12px', color: '#9CA3AF' }}></i>
             </button>
@@ -346,15 +346,15 @@ function UnifiedSidebar({ isOpen, onClose }) {
         <div className="unified-sidebar-section">
           <div className="unified-sidebar-section-title">ACTIONS</div>
           <button className="unified-sidebar-item" onClick={() => handleNavigate('/')}>
-            <i className="fas fa-compass"></i>
+            <i className="far fa-compass"></i>
             <span>Explore Vendors</span>
           </button>
           <button className="unified-sidebar-item" onClick={() => handleNavigate('/forum')}>
-            <i className="fas fa-comments"></i>
+            <i className="far fa-comments"></i>
             <span>Forum</span>
           </button>
           <button className="unified-sidebar-item" onClick={() => handleNavigate('/blog')}>
-            <i className="fas fa-newspaper"></i>
+            <i className="far fa-newspaper"></i>
             <span>Blog</span>
           </button>
         </div>
@@ -364,12 +364,12 @@ function UnifiedSidebar({ isOpen, onClose }) {
           <div className="unified-sidebar-section-title">{t('nav.dashboard').toUpperCase()}</div>
           <button className={`unified-sidebar-item ${currentSection === 'dashboard' || currentSection === 'vendor-dashboard' ? 'active' : ''}`} onClick={() => handleNavigate('/dashboard?section=dashboard')}>
             {(currentSection === 'dashboard' || currentSection === 'vendor-dashboard') && <span className="unified-sidebar-active-dot"></span>}
-            <i className="fas fa-layer-group"></i>
+            <i className="far fa-th-large"></i>
             <span>{t('nav.dashboard')}</span>
           </button>
           <button className={`unified-sidebar-item ${currentSection === 'bookings' || currentSection === 'vendor-requests' ? 'active' : ''}`} onClick={() => handleNavigate('/dashboard?section=bookings')}>
             {(currentSection === 'bookings' || currentSection === 'vendor-requests') && <span className="unified-sidebar-active-dot"></span>}
-            <i className="fas fa-calendar-check"></i>
+            <i className="far fa-calendar-check"></i>
             <span>{t('sidebar.bookings')}</span>
             {notificationCounts.pendingBookings > 0 && (
               <span className="unified-sidebar-badge">{notificationCounts.pendingBookings}</span>
@@ -377,7 +377,7 @@ function UnifiedSidebar({ isOpen, onClose }) {
           </button>
           <button className={`unified-sidebar-item ${currentSection === 'messages' ? 'active' : ''}`} onClick={() => handleNavigate('/dashboard?section=messages')}>
             {currentSection === 'messages' && <span className="unified-sidebar-active-dot"></span>}
-            <i className="fas fa-comments"></i>
+            <i className="far fa-comment-dots"></i>
             <span>{t('sidebar.messages')}</span>
             {notificationCounts.unreadMessages > 0 && (
               <span className="unified-sidebar-badge">{notificationCounts.unreadMessages}</span>
@@ -385,17 +385,17 @@ function UnifiedSidebar({ isOpen, onClose }) {
           </button>
           <button className={`unified-sidebar-item ${currentSection === 'invoices' || currentSection === 'vendor-invoices' ? 'active' : ''}`} onClick={() => handleNavigate('/dashboard?section=invoices')}>
             {(currentSection === 'invoices' || currentSection === 'vendor-invoices') && <span className="unified-sidebar-active-dot"></span>}
-            <i className="fas fa-file-invoice-dollar"></i>
+            <i className="far fa-file-alt"></i>
             <span>{t('sidebar.invoices')}</span>
           </button>
           <button className={`unified-sidebar-item ${currentSection === 'favorites' ? 'active' : ''}`} onClick={() => handleNavigate('/dashboard?section=favorites')}>
             {currentSection === 'favorites' && <span className="unified-sidebar-active-dot"></span>}
-            <i className="fas fa-heart"></i>
+            <i className="far fa-heart"></i>
             <span>{t('sidebar.favorites')}</span>
           </button>
           <button className={`unified-sidebar-item ${currentSection === 'reviews' || currentSection === 'vendor-reviews' ? 'active' : ''}`} onClick={() => handleNavigate('/dashboard?section=reviews')}>
             {(currentSection === 'reviews' || currentSection === 'vendor-reviews') && <span className="unified-sidebar-active-dot"></span>}
-            <i className="fas fa-star"></i>
+            <i className="far fa-star"></i>
             <span>{t('sidebar.reviews')}</span>
             {notificationCounts.pendingReviews > 0 && (
               <span className="unified-sidebar-badge">{notificationCounts.pendingReviews}</span>
@@ -403,21 +403,26 @@ function UnifiedSidebar({ isOpen, onClose }) {
           </button>
           {hasVendorProfile && (
             <>
+              <button className={`unified-sidebar-item ${location.pathname.includes('/vendor/') ? 'active' : ''}`} onClick={() => handleNavigate('/vendor/dashboard')}>
+                {location.pathname.includes('/vendor/') && <span className="unified-sidebar-active-dot"></span>}
+                <i className="far fa-th-large"></i>
+                <span>Vendor Dashboard</span>
+              </button>
               <button className={`unified-sidebar-item ${currentSection === 'vendor-business-profile' ? 'active' : ''}`} onClick={() => handleNavigate('/dashboard?section=business-profile')}>
                 {currentSection === 'vendor-business-profile' && <span className="unified-sidebar-active-dot"></span>}
-                <i className="fas fa-store"></i>
+                <i className="far fa-store"></i>
                 <span>{t('sidebar.businessProfile')}</span>
               </button>
               <button className={`unified-sidebar-item ${currentSection === 'vendor-analytics' ? 'active' : ''}`} onClick={() => handleNavigate('/dashboard?section=analytics')}>
                 {currentSection === 'vendor-analytics' && <span className="unified-sidebar-active-dot"></span>}
-                <i className="fas fa-chart-line"></i>
+                <i className="far fa-chart-bar"></i>
                 <span>{t('sidebar.analytics')}</span>
               </button>
             </>
           )}
           <button className={`unified-sidebar-item ${currentSection === 'settings' || currentSection === 'vendor-settings' ? 'active' : ''}`} onClick={() => handleNavigate('/dashboard?section=settings')}>
             {(currentSection === 'settings' || currentSection === 'vendor-settings') && <span className="unified-sidebar-active-dot"></span>}
-            <i className="fas fa-cog"></i>
+            <i className="far fa-cog"></i>
             <span>{t('sidebar.settings')}</span>
           </button>
         </div>
@@ -425,7 +430,7 @@ function UnifiedSidebar({ isOpen, onClose }) {
         {/* Log Out */}
         <div className="unified-sidebar-section">
           <button className="unified-sidebar-item logout" onClick={handleLogout}>
-            <i className="fas fa-sign-out-alt"></i>
+            <i className="far fa-sign-out-alt"></i>
             <span>{t('nav.logOut')}</span>
           </button>
         </div>

@@ -125,25 +125,58 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
     checkProfileStatus();
   }, [currentUser]);
 
-  // Check if user has vendor profile
+  // Check if user has vendor profile - with caching to avoid repeated API calls
   useEffect(() => {
     if (!currentUser?.id) {
       setHasVendorProfile(false);
+      setVendorCheckLoading(false);
       return;
     }
     
+    const CACHE_KEY = `vendorProfileCache_${currentUser.id}`;
+    const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+    
     const checkVendorProfile = async () => {
+      // Check cache first
+      try {
+        const cached = localStorage.getItem(CACHE_KEY);
+        if (cached) {
+          const { hasVendor, logoUrl, timestamp } = JSON.parse(cached);
+          const isValid = Date.now() - timestamp < CACHE_TTL;
+          if (isValid) {
+            setHasVendorProfile(hasVendor);
+            if (logoUrl) setVendorLogoUrl(logoUrl);
+            setVendorCheckLoading(false);
+            return;
+          }
+        }
+      } catch (e) {
+        // Cache read failed, continue with API call
+      }
+      
       setVendorCheckLoading(true);
       try {
         const response = await apiGet(`/vendors/profile?userId=${currentUser.id}`);
         if (response.ok) {
           const data = await response.json();
-          setHasVendorProfile(!!data.vendorProfileId);
+          const hasVendor = !!data.vendorProfileId;
+          setHasVendorProfile(hasVendor);
           
           // Get vendor logo URL
           const logoUrl = data.logoUrl || data.LogoURL || data.data?.profile?.LogoURL || data.data?.profile?.logoUrl;
           if (logoUrl) {
             setVendorLogoUrl(logoUrl);
+          }
+          
+          // Cache the result
+          try {
+            localStorage.setItem(CACHE_KEY, JSON.stringify({
+              hasVendor,
+              logoUrl: logoUrl || null,
+              timestamp: Date.now()
+            }));
+          } catch (e) {
+            // Cache write failed, ignore
           }
         }
       } catch (error) {
@@ -154,6 +187,14 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
     };
     
     checkVendorProfile();
+    
+    // Listen for vendor profile changes (e.g., after becoming a vendor)
+    const handleVendorProfileChange = () => {
+      localStorage.removeItem(CACHE_KEY);
+      checkVendorProfile();
+    };
+    window.addEventListener('vendorProfileChanged', handleVendorProfileChange);
+    return () => window.removeEventListener('vendorProfileChanged', handleVendorProfileChange);
   }, [currentUser]);
 
   // Load notification badges
@@ -269,7 +310,7 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
         
       </div>
 
-      {(location.pathname === '/explore' || location.pathname === '/') && (
+      {location.pathname === '/explore' && (
         <div className="search-container" style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
           <EnhancedSearchBar 
             onSearch={onSearch} 

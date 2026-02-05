@@ -675,7 +675,7 @@ select.form-input:focus {
 }
 
 .vendor-rating i {
-    color: #FFB400;
+    color: #5086E8;
 }
 
 .vendor-rating .review-count {
@@ -1078,4 +1078,14 @@ select.form-input:focus {
 
 .animate-spin {
     animation: spin 1s linear infinite;
+}
+
+/* Shimmer animation for skeleton loading */
+@keyframes shimmer {
+    0% {
+        background-position: -200% 0;
+    }
+    100% {
+        background-position: 200% 0;
+    }
 }

@@ -9,8 +9,10 @@ import { useDebounce } from '../../../hooks/useApi';
 import adminApi from '../../../services/adminApi';
 import UniversalModal from '../../UniversalModal';
 import { DetailRow, DetailSection } from '../../common/FormComponents';
+import { useAlert } from '../../../context/AlertContext';
 
 function SupportSection() {
+  const { showError } = useAlert();
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -79,7 +81,7 @@ function SupportSection() {
       fetchTickets();
     } catch (err) {
       console.error('Error updating ticket:', err);
-      alert('Failed to update ticket: ' + err.message);
+      showError('Failed to update ticket: ' + err.message);
     } finally {
       setActionLoading(false);
     }
@@ -98,7 +100,7 @@ function SupportSection() {
       setTicketMessages(data.messages || data || []);
     } catch (err) {
       console.error('Error sending reply:', err);
-      alert('Failed to send reply: ' + err.message);
+      showError('Failed to send reply: ' + err.message);
     } finally {
       setActionLoading(false);
     }

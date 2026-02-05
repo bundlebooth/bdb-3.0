@@ -44,25 +44,25 @@ export const STATUS_CONFIG = {
     labelClient: 'Pending Approval'
   },
   confirmed: {
-    icon: 'fa-check-circle',
-    color: COLORS.success,
-    bg: COLORS.successBg,
+    icon: 'fa-clock',
+    color: COLORS.info,
+    bg: COLORS.infoBg,
     borderStyle: 'dashed',
     labelVendor: 'Awaiting Payment',
     labelClient: 'Awaiting Payment'
   },
   accepted: {
-    icon: 'fa-check-circle',
-    color: COLORS.success,
-    bg: COLORS.successBg,
+    icon: 'fa-clock',
+    color: COLORS.info,
+    bg: COLORS.infoBg,
     borderStyle: 'dashed',
     labelVendor: 'Awaiting Payment',
     labelClient: 'Awaiting Payment'
   },
   approved: {
-    icon: 'fa-check-circle',
-    color: COLORS.success,
-    bg: COLORS.successBg,
+    icon: 'fa-clock',
+    color: COLORS.info,
+    bg: COLORS.infoBg,
     borderStyle: 'dashed',
     labelVendor: 'Awaiting Payment',
     labelClient: 'Awaiting Payment'

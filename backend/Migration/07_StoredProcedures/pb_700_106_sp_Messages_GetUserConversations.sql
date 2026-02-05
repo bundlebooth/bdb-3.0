@@ -21,6 +21,23 @@ BEGIN
     DECLARE @UserVendorProfileID INT;
     SELECT @UserVendorProfileID = VendorProfileID FROM vendors.VendorProfiles WHERE UserID = @UserID;
     
+    -- Use CTEs for better performance instead of correlated subqueries
+    ;WITH LastMessages AS (
+        SELECT 
+            ConversationID,
+            Content,
+            CreatedAt,
+            ROW_NUMBER() OVER (PARTITION BY ConversationID ORDER BY CreatedAt DESC) as rn
+        FROM messages.Messages
+    ),
+    UnreadCounts AS (
+        SELECT 
+            ConversationID,
+            COUNT(*) as UnreadCount
+        FROM messages.Messages
+        WHERE IsRead = 0 AND SenderID != @UserID
+        GROUP BY ConversationID
+    )
     SELECT 
         c.ConversationID,
         c.VendorProfileID,
@@ -59,27 +76,18 @@ BEGIN
             WHEN v.UserID = @UserID THEN 1
             ELSE 0
         END AS IsVendorRole,
-        m.Content AS LastMessageContent,
-        m.CreatedAt AS LastMessageCreatedAt,
-        (SELECT COUNT(*) FROM messages.Messages WHERE ConversationID = c.ConversationID AND IsRead = 0 AND SenderID != @UserID) AS UnreadCount
+        lm.Content AS LastMessageContent,
+        lm.CreatedAt AS LastMessageCreatedAt,
+        ISNULL(uc.UnreadCount, 0) AS UnreadCount
     FROM messages.Conversations c
     LEFT JOIN users.Users u ON c.UserID = u.UserID
     LEFT JOIN vendors.VendorProfiles v ON c.VendorProfileID = v.VendorProfileID
-    LEFT JOIN users.Users vu ON v.UserID = vu.UserID  -- Vendor's user record (the host)
-    LEFT JOIN messages.Messages m ON c.ConversationID = m.ConversationID
-        AND m.MessageID = (
-            SELECT TOP 1 MessageID 
-            FROM messages.Messages 
-            WHERE ConversationID = c.ConversationID 
-            ORDER BY CreatedAt DESC
-        )
+    LEFT JOIN users.Users vu ON v.UserID = vu.UserID
+    LEFT JOIN LastMessages lm ON c.ConversationID = lm.ConversationID AND lm.rn = 1
+    LEFT JOIN UnreadCounts uc ON c.ConversationID = uc.ConversationID
     WHERE c.UserID = @UserID
-    GROUP BY c.ConversationID, c.VendorProfileID, c.CreatedAt, c.UserID, 
-             u.FirstName, u.LastName, u.ProfileImageURL,
-             v.BusinessName, v.LogoURL, v.UserID,
-             vu.FirstName, vu.LastName, vu.ProfileImageURL,
-             m.Content, m.CreatedAt
-    ORDER BY COALESCE(m.CreatedAt, c.CreatedAt) DESC;
+       OR c.VendorProfileID = @UserVendorProfileID
+    ORDER BY COALESCE(lm.CreatedAt, c.CreatedAt) DESC;
 END
 GO
 

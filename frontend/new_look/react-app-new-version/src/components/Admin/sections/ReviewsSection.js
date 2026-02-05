@@ -9,8 +9,10 @@ import { useDebounce } from '../../../hooks/useApi';
 import adminApi from '../../../services/adminApi';
 import UniversalModal, { ConfirmationModal, FormModal } from '../../UniversalModal';
 import { FormTextareaField, DetailRow, DetailSection } from '../../common/FormComponents';
+import { useAlert } from '../../../context/AlertContext';
 
 function ReviewsSection() {
+  const { showError } = useAlert();
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -65,7 +67,7 @@ function ReviewsSection() {
       fetchReviews();
     } catch (err) {
       console.error('Error flagging review:', err);
-      alert('Failed to flag review: ' + err.message);
+      showError('Failed to flag review: ' + err.message);
     } finally {
       setActionLoading(false);
     }
@@ -78,7 +80,7 @@ function ReviewsSection() {
       fetchReviews();
     } catch (err) {
       console.error('Error unflagging review:', err);
-      alert('Failed to unflag review: ' + err.message);
+      showError('Failed to unflag review: ' + err.message);
     } finally {
       setActionLoading(false);
     }
@@ -94,7 +96,7 @@ function ReviewsSection() {
       fetchReviews();
     } catch (err) {
       console.error('Error adding note:', err);
-      alert('Failed to add note: ' + err.message);
+      showError('Failed to add note: ' + err.message);
     } finally {
       setActionLoading(false);
     }
@@ -109,7 +111,7 @@ function ReviewsSection() {
       fetchReviews();
     } catch (err) {
       console.error('Error deleting review:', err);
-      alert('Failed to delete review: ' + err.message);
+      showError('Failed to delete review: ' + err.message);
     } finally {
       setActionLoading(false);
     }

@@ -104,3 +104,17 @@ export {
   ActionMenu,
   DashboardSectionHeader
 } from './DashboardComponents';
+
+// Inline Field Validation
+export {
+  default as InlineFieldValidation,
+  ValidationErrorBanner,
+  FieldError,
+  InputWrapper,
+  RequiredIndicator,
+  getErrorStyle,
+  useFieldValidation
+} from './InlineFieldValidation';
+
+// Centralized App Icons
+export { Icons, Icon, IconClasses } from './AppIcons';

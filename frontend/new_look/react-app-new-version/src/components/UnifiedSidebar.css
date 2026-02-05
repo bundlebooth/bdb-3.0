@@ -140,8 +140,8 @@
 
 /* Section Styles */
 .unified-sidebar-section {
-  padding: 16px 0;
-  border-bottom: 1px solid #e5e5e5;
+  padding: 8px 0;
+  border-bottom: none; /* Remove dividers for cleaner Airbnb look */
 }
 
 .unified-sidebar-section:last-child {
@@ -149,15 +149,10 @@
 }
 
 .unified-sidebar-section-title {
-  padding: 0 24px 8px;
-  font-size: 11px;
-  font-weight: 600;
-  color: #999;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  display: none; /* Hide section titles for cleaner Airbnb look */
 }
 
-/* Menu Items */
+/* Menu Items - Airbnb Style (clean, no colors, thin icons) */
 .unified-sidebar-item {
   display: flex;
   align-items: center;
@@ -166,7 +161,7 @@
   padding: 14px 24px;
   background: none;
   border: none;
-  font-size: 15px;
+  font-size: 16px;
   color: #222;
   cursor: pointer;
   text-align: left;
@@ -174,32 +169,53 @@
   position: relative;
 }
 
-.unified-sidebar-item:hover {
-  background: #f5f5f5;
+.unified-sidebar-item span {
+  color: #222;
+  flex: 1;
 }
 
+/* Chevron arrow on right side - Airbnb style */
+.unified-sidebar-item::after {
+  content: '\f054';
+  font-family: 'Font Awesome 6 Free';
+  font-weight: 900;
+  font-size: 10px;
+  color: #b0b0b0;
+  margin-left: auto;
+}
+
+.unified-sidebar-item:hover {
+  background: #f7f7f7;
+}
+
+/* Icons - thin outline style like Airbnb */
 .unified-sidebar-item i {
   width: 24px;
   text-align: center;
-  color: #666;
-  font-size: 16px;
+  color: #222;
+  font-size: 18px;
+  font-weight: 300;
 }
 
 .unified-sidebar-item.logout {
-  color: #c13515;
+  color: #222;
 }
 
 .unified-sidebar-item.logout i {
-  color: #c13515;
+  color: #222;
+}
+
+.unified-sidebar-item.logout::after {
+  display: none;
 }
 
 .unified-sidebar-item.active {
-  background: #f0f4ff;
-  color: var(--primary, #4F86E8);
+  background: transparent;
+  font-weight: 600;
 }
 
 .unified-sidebar-item.active i {
-  color: var(--primary, #4F86E8);
+  color: #222;
 }
 
 /* Active page blue dot indicator */
@@ -235,8 +251,8 @@
 .unified-sidebar-toggle-label i {
   width: 24px;
   text-align: center;
-  color: #666;
-  font-size: 16px;
+  color: #717171;
+  font-size: 18px;
 }
 
 .unified-sidebar-toggle-label span {

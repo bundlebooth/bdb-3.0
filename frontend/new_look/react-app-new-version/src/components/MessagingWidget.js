@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useAlert } from '../context/AlertContext';
 import { API_BASE_URL, GIPHY_API_KEY } from '../config';
 import { useVendorOnlineStatus } from '../hooks/useOnlineStatus';
 import Header from './Header';
@@ -7,6 +8,7 @@ import ImageUpload from './common/ImageUpload';
 
 function MessagingWidget() {
   const { currentUser } = useAuth();
+  const { showError, showWarning } = useAlert();
   const [isOpen, setIsOpen] = useState(false);
   const [mainView, setMainView] = useState('home'); // 'home', 'messages', 'help'
   const [view, setView] = useState('conversations'); // 'conversations' or 'chat'
@@ -559,11 +561,11 @@ function MessagingWidget() {
       } else {
         const errorData = await response.json();
         console.error('Failed to create support conversation:', errorData);
-        alert('Unable to start support chat. Please try again.');
+        showError('Unable to start support chat. Please try again.');
       }
     } catch (error) {
       console.error('Failed to start support chat:', error);
-      alert('Unable to start support chat. Please check your connection.');
+      showError('Unable to start support chat. Please check your connection.');
     }
   }, [currentUser, loadConversations, loadMessages]);
 
@@ -641,11 +643,11 @@ function MessagingWidget() {
         }, 2000);
       } else {
         const errorData = await response.json();
-        alert(errorData.message || 'Failed to submit ticket');
+        showError(errorData.message || 'Failed to submit ticket');
       }
     } catch (error) {
       console.error('Failed to submit ticket:', error);
-      alert('Failed to submit ticket. Please try again.');
+      showError('Failed to submit ticket. Please try again.');
     } finally {
       setTicketSubmitting(false);
     }
@@ -853,7 +855,7 @@ function MessagingWidget() {
   // Submit support ticket
   const submitSupportTicket = async () => {
     if (!ticketForm.subject.trim() || !ticketForm.description.trim()) {
-      alert('Please fill in all required fields');
+      showWarning('Please fill in all required fields');
       return;
     }
     
@@ -886,11 +888,11 @@ function MessagingWidget() {
           setTicketSuccess(null);
         }, 3000);
       } else {
-        alert('Failed to submit ticket. Please try again.');
+        showError('Failed to submit ticket. Please try again.');
       }
     } catch (error) {
       console.error('Failed to submit ticket:', error);
-      alert('Failed to submit ticket. Please try again.');
+      showError('Failed to submit ticket. Please try again.');
     } finally {
       setTicketSubmitting(false);
     }

@@ -8,8 +8,10 @@ import { formatDate, formatRelativeTime } from '../../../utils/formatUtils';
 import adminApi from '../../../services/adminApi';
 import UniversalModal, { FormModal, ConfirmationModal } from '../../UniversalModal';
 import { FormField, FormTextareaField, ToggleSwitch } from '../../common/FormComponents';
+import { useAlert } from '../../../context/AlertContext';
 
 function AutomationSection() {
+  const { showSuccess, showError } = useAlert();
   const [activeTab, setActiveTab] = useState('rules');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -106,10 +108,10 @@ function AutomationSection() {
       await adminApi.updateEmailTemplate(selectedTemplate.TemplateID || selectedTemplate.id, selectedTemplate);
       setShowTemplateModal(false);
       fetchEmailTemplates();
-      alert('Template saved successfully');
+      showSuccess('Template saved successfully');
     } catch (err) {
       console.error('Error saving template:', err);
-      alert('Failed to save template: ' + err.message);
+      showError('Failed to save template: ' + err.message);
     } finally {
       setSaving(false);
     }

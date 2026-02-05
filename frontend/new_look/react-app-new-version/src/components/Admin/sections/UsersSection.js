@@ -9,8 +9,10 @@ import { useDebounce } from '../../../hooks/useApi';
 import adminApi from '../../../services/adminApi';
 import UniversalModal, { ConfirmationModal, FormModal } from '../../UniversalModal';
 import { FormField, DetailRow, DetailSection } from '../../common/FormComponents';
+import { useAlert } from '../../../context/AlertContext';
 
 function UsersSection() {
+  const { showError } = useAlert();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -120,7 +122,7 @@ function UsersSection() {
       fetchUsers();
     } catch (err) {
       console.error('Error executing action:', err);
-      alert('Action failed: ' + err.message);
+      showError('Action failed: ' + err.message);
     } finally {
       setActionLoading(false);
     }
@@ -142,7 +144,7 @@ function UsersSection() {
       fetchUsers();
     } catch (err) {
       console.error('Error updating user:', err);
-      alert('Failed to update user: ' + err.message);
+      showError('Failed to update user: ' + err.message);
     } finally {
       setActionLoading(false);
     }

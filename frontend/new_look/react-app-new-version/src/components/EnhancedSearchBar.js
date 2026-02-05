@@ -551,6 +551,8 @@ const EnhancedSearchBar = ({ onSearch, isScrolled }) => {
         }}
         initialLocation={location}
         initialRadius={searchRadius}
+        onSwitchToDate={() => setShowDateModal(true)}
+        currentStep={1}
       />
       
       {/* Date Search Modal */}
@@ -580,6 +582,8 @@ const EnhancedSearchBar = ({ onSearch, isScrolled }) => {
         initialEndDate={endDate}
         initialStartTime={startTime}
         initialEndTime={endTime}
+        onSwitchToLocation={() => setShowLocationModal(true)}
+        currentStep={2}
       />
     </>
   );

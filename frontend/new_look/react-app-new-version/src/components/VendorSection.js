@@ -146,7 +146,7 @@ function VendorSection({
     if (icon) return { icon, color: '#FF385C' };
     
     const titleLower = title.toLowerCase();
-    if (titleLower.includes('trending')) return { icon: 'fa-fire', color: '#FF385C' };
+    if (titleLower.includes('trending')) return { icon: 'fa-arrow-trend-up', color: '#FF385C' };
     if (titleLower.includes('top rated') || titleLower.includes('rated')) return { icon: 'fa-star', color: '#FFB400' };
     if (titleLower.includes('responsive')) return { icon: 'fa-bolt', color: '#00A699' };
     if (titleLower.includes('reviewed') || titleLower.includes('review')) return { icon: 'fa-comment-dots', color: '#5E72E4' };
