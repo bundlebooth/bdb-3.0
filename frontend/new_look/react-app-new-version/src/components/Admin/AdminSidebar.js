@@ -16,6 +16,7 @@ const adminMenuItems = [
   { id: 'payments', label: 'Payments & Payouts', icon: 'fa-credit-card' },
   { id: 'reviews', label: 'Reviews & Moderation', icon: 'fa-star' },
   { id: 'content', label: 'Content Management', icon: 'fa-newspaper' },
+  { id: 'forum', label: 'Forum Moderation', icon: 'fa-comments-alt' },
   { id: 'support', label: 'Support Tickets', icon: 'fa-ticket-alt' },
   { id: 'chat', label: 'Live Chat', icon: 'fa-comments' },
   { id: 'security', label: 'Security & Audit', icon: 'fa-shield-alt' },

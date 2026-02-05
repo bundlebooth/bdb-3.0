@@ -4455,6 +4455,32 @@
   letter-spacing: -0.5px;
 }
 
+/* Landing Search Wrapper - Enhanced styling for hero section */
+.landing-search-wrapper {
+  position: relative;
+  z-index: 10;
+  max-width: 500px;
+}
+
+.landing-search-wrapper .enhanced-search-bar {
+  background: white;
+  border-radius: 50px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+  border: 1px solid #e5e7eb;
+}
+
+.landing-search-wrapper .enhanced-search-bar:hover {
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.15);
+}
+
+.landing-search-wrapper .search-button {
+  background: #5086E8 !important;
+}
+
+.landing-search-wrapper .search-button:hover {
+  background: #3A6FD4 !important;
+}
+
 /* Search Bar - Static position, extends into image area */
 .landing-search-bar {
   display: inline-flex;

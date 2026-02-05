@@ -662,6 +662,62 @@ export const getUserViolations = async (userId) => {
 };
 
 // ============================================================
+// FORUM MODERATION
+// ============================================================
+
+export const getForumPosts = async (params = {}) => {
+  const queryString = new URLSearchParams(params).toString();
+  const response = await apiGet(`/admin/forum/posts${queryString ? `?${queryString}` : ''}`);
+  return handleApiResponse(response);
+};
+
+export const getForumPost = async (postId) => {
+  const response = await apiGet(`/admin/forum/posts/${postId}`);
+  return handleApiResponse(response);
+};
+
+export const hideForumPost = async (postId, reason) => {
+  const response = await apiPost(`/admin/forum/posts/${postId}/hide`, { reason });
+  return handleApiResponse(response);
+};
+
+export const unhideForumPost = async (postId) => {
+  const response = await apiPost(`/admin/forum/posts/${postId}/unhide`);
+  return handleApiResponse(response);
+};
+
+export const pinForumPost = async (postId, pinned) => {
+  const response = await apiPost(`/admin/forum/posts/${postId}/pin`, { pinned });
+  return handleApiResponse(response);
+};
+
+export const deleteForumPost = async (postId) => {
+  const response = await apiDelete(`/admin/forum/posts/${postId}`);
+  return handleApiResponse(response);
+};
+
+export const getForumComments = async (params = {}) => {
+  const queryString = new URLSearchParams(params).toString();
+  const response = await apiGet(`/admin/forum/comments${queryString ? `?${queryString}` : ''}`);
+  return handleApiResponse(response);
+};
+
+export const hideForumComment = async (commentId) => {
+  const response = await apiPost(`/admin/forum/comments/${commentId}/hide`);
+  return handleApiResponse(response);
+};
+
+export const deleteForumComment = async (commentId) => {
+  const response = await apiDelete(`/admin/forum/comments/${commentId}`);
+  return handleApiResponse(response);
+};
+
+export const getForumStats = async () => {
+  const response = await apiGet('/admin/forum/stats');
+  return handleApiResponse(response);
+};
+
+// ============================================================
 // EXPORT ALL AS DEFAULT OBJECT
 // ============================================================
 
@@ -805,7 +861,19 @@ const adminApi = {
   reviewViolation,
   lockUserAccount,
   unlockUserAccount,
-  getUserViolations
+  getUserViolations,
+  
+  // Forum Moderation
+  getForumPosts,
+  getForumPost,
+  hideForumPost,
+  unhideForumPost,
+  pinForumPost,
+  deleteForumPost,
+  getForumComments,
+  hideForumComment,
+  deleteForumComment,
+  getForumStats
 };
 
 export default adminApi;

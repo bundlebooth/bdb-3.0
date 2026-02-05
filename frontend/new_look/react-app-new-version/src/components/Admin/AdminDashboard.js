@@ -25,6 +25,7 @@ import AutomationSection from './sections/AutomationSection';
 import ToolsSection from './sections/ToolsSection';
 import AnalyticsSection from './sections/AnalyticsSection';
 import GuestFavoritesSection from './sections/GuestFavoritesSection';
+import ForumSection from './sections/ForumSection';
 
 const sectionTitles = {
   dashboard: { title: 'Dashboard', subtitle: 'At-a-glance metrics and quick access' },
@@ -35,6 +36,7 @@ const sectionTitles = {
   payments: { title: 'Payments & Payouts', subtitle: 'Transactions, vendor payouts, and revenue' },
   reviews: { title: 'Reviews & Moderation', subtitle: 'Review management and content moderation' },
   content: { title: 'Content Management', subtitle: 'Blog posts, FAQs, and banners' },
+  forum: { title: 'Forum Moderation', subtitle: 'Manage forum posts and comments' },
   support: { title: 'Support Tickets', subtitle: 'Ticket management and responses' },
   chat: { title: 'Live Chat', subtitle: 'Real-time communication oversight' },
   security: { title: 'Security & Audit', subtitle: 'Login activity, locked accounts, and 2FA' },
@@ -44,7 +46,7 @@ const sectionTitles = {
   'guest-favorites': { title: 'Badges & Favorites', subtitle: 'Manage vendor badges and Guest Favorite status' }
 };
 
-const validSections = ['dashboard', 'analytics', 'users', 'vendors', 'bookings', 'payments', 'reviews', 'content', 'support', 'chat', 'security', 'settings', 'automation', 'tools', 'guest-favorites'];
+const validSections = ['dashboard', 'analytics', 'users', 'vendors', 'bookings', 'payments', 'reviews', 'content', 'forum', 'support', 'chat', 'security', 'settings', 'automation', 'tools', 'guest-favorites'];
 
 function AdminDashboard() {
   const navigate = useNavigate();
@@ -106,6 +108,8 @@ function AdminDashboard() {
         return <ReviewsSection />;
       case 'content':
         return <ContentSection />;
+      case 'forum':
+        return <ForumSection />;
       case 'support':
         return <SupportSection />;
       case 'chat':

@@ -3573,7 +3573,7 @@ router.get('/guest-favorites', async (req, res) => {
   try {
     const pool = await getPool();
     
-    // Get vendors - simplified query without IsGuestFavorite column
+    // Get vendors with IsGuestFavorite status and eligibility metrics
     const result = await pool.request().query(`
       SELECT 
         vp.VendorProfileID,
@@ -3581,19 +3581,28 @@ router.get('/guest-favorites', async (req, res) => {
         vp.LogoURL,
         vp.City,
         vp.State,
-        0 as IsGuestFavorite,
+        ISNULL(vp.IsGuestFavorite, 0) as IsGuestFavorite,
+        vp.GuestFavoriteGrantedAt,
         vp.IsVisible,
         vp.ProfileStatus,
         u.FirstName + ' ' + u.LastName as OwnerName,
         u.Email as OwnerEmail,
-        0 as AvgRating,
-        0 as TotalReviews,
-        0 as TotalBookings,
-        0 as MeetsEligibility
+        ISNULL(vp.AvgRating, 0) as AvgRating,
+        ISNULL(vp.TotalReviews, 0) as TotalReviews,
+        ISNULL(vp.TotalBookings, 0) as TotalBookings,
+        ISNULL(vp.ResponseRate, 0) as ResponseRate,
+        CASE 
+          WHEN ISNULL(vp.AvgRating, 0) >= 4.5 
+           AND ISNULL(vp.TotalReviews, 0) >= 5 
+           AND ISNULL(vp.TotalBookings, 0) >= 10 
+           AND ISNULL(vp.ResponseRate, 0) >= 90 
+          THEN 1 
+          ELSE 0 
+        END as MeetsEligibility
       FROM vendors.VendorProfiles vp
       LEFT JOIN users.Users u ON vp.UserID = u.UserID
       WHERE vp.IsVisible = 1 AND vp.ProfileStatus = 'approved'
-      ORDER BY vp.BusinessName
+      ORDER BY vp.IsGuestFavorite DESC, vp.BusinessName
     `);
     
     res.json({ 
@@ -4632,6 +4641,306 @@ router.get('/moderation/stats', async (req, res) => {
   } catch (error) {
     console.error('Error fetching moderation stats:', error);
     res.status(500).json({ error: 'Failed to fetch moderation stats', details: error.message });
+  }
+});
+
+// =============================================
+// FORUM MODERATION
+// =============================================
+
+// GET /admin/forum/posts - Get all forum posts for moderation
+router.get('/forum/posts', async (req, res) => {
+  try {
+    const { page = 1, limit = 20, status = 'all', search = '' } = req.query;
+    const pool = await getPool();
+    
+    let whereClause = '1=1';
+    if (status === 'flagged') whereClause += ' AND fp.IsFlagged = 1';
+    if (status === 'hidden') whereClause += ' AND fp.IsHidden = 1';
+    if (status === 'active') whereClause += ' AND fp.IsHidden = 0';
+    
+    const result = await pool.request()
+      .input('PageNumber', sql.Int, parseInt(page))
+      .input('PageSize', sql.Int, parseInt(limit))
+      .input('Search', sql.NVarChar(200), search || null)
+      .query(`
+        SELECT 
+          fp.PostID,
+          fp.Title,
+          fp.Slug,
+          LEFT(fp.Content, 200) as ContentPreview,
+          fp.CreatedAt,
+          fp.UpdatedAt,
+          fp.ViewCount,
+          fp.LikeCount,
+          fp.CommentCount,
+          fp.IsFlagged,
+          fp.IsHidden,
+          fp.IsPinned,
+          u.UserID,
+          u.FirstName + ' ' + u.LastName as AuthorName,
+          u.Email as AuthorEmail,
+          fc.CategoryName,
+          fc.Slug as CategorySlug
+        FROM forum.Posts fp
+        LEFT JOIN users.Users u ON fp.UserID = u.UserID
+        LEFT JOIN forum.Categories fc ON fp.CategoryID = fc.CategoryID
+        WHERE ${whereClause}
+          AND (@Search IS NULL OR fp.Title LIKE '%' + @Search + '%' OR fp.Content LIKE '%' + @Search + '%')
+        ORDER BY fp.CreatedAt DESC
+        OFFSET (@PageNumber - 1) * @PageSize ROWS
+        FETCH NEXT @PageSize ROWS ONLY;
+        
+        SELECT COUNT(*) as Total FROM forum.Posts fp WHERE ${whereClause}
+          AND (@Search IS NULL OR fp.Title LIKE '%' + @Search + '%' OR fp.Content LIKE '%' + @Search + '%')
+      `);
+    
+    res.json({
+      success: true,
+      posts: result.recordsets[0] || [],
+      total: result.recordsets[1]?.[0]?.Total || 0,
+      page: parseInt(page),
+      limit: parseInt(limit)
+    });
+  } catch (error) {
+    console.error('Error fetching forum posts:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch forum posts' });
+  }
+});
+
+// GET /admin/forum/posts/:id - Get single post details
+router.get('/forum/posts/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pool = await getPool();
+    
+    const result = await pool.request()
+      .input('PostID', sql.Int, parseInt(id))
+      .query(`
+        SELECT 
+          fp.*,
+          u.FirstName + ' ' + u.LastName as AuthorName,
+          u.Email as AuthorEmail,
+          fc.CategoryName
+        FROM forum.Posts fp
+        LEFT JOIN users.Users u ON fp.UserID = u.UserID
+        LEFT JOIN forum.Categories fc ON fp.CategoryID = fc.CategoryID
+        WHERE fp.PostID = @PostID
+      `);
+    
+    if (!result.recordset[0]) {
+      return res.status(404).json({ success: false, message: 'Post not found' });
+    }
+    
+    res.json({ success: true, post: result.recordset[0] });
+  } catch (error) {
+    console.error('Error fetching forum post:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch forum post' });
+  }
+});
+
+// POST /admin/forum/posts/:id/hide - Hide a forum post
+router.post('/forum/posts/:id/hide', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+    const pool = await getPool();
+    
+    await pool.request()
+      .input('PostID', sql.Int, parseInt(id))
+      .input('Reason', sql.NVarChar(500), reason || 'Hidden by admin')
+      .query(`
+        UPDATE forum.Posts 
+        SET IsHidden = 1, 
+            HiddenReason = @Reason,
+            HiddenAt = GETUTCDATE(),
+            UpdatedAt = GETUTCDATE()
+        WHERE PostID = @PostID
+      `);
+    
+    res.json({ success: true, message: 'Post hidden successfully' });
+  } catch (error) {
+    console.error('Error hiding forum post:', error);
+    res.status(500).json({ success: false, message: 'Failed to hide post' });
+  }
+});
+
+// POST /admin/forum/posts/:id/unhide - Unhide a forum post
+router.post('/forum/posts/:id/unhide', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pool = await getPool();
+    
+    await pool.request()
+      .input('PostID', sql.Int, parseInt(id))
+      .query(`
+        UPDATE forum.Posts 
+        SET IsHidden = 0, 
+            HiddenReason = NULL,
+            HiddenAt = NULL,
+            UpdatedAt = GETUTCDATE()
+        WHERE PostID = @PostID
+      `);
+    
+    res.json({ success: true, message: 'Post unhidden successfully' });
+  } catch (error) {
+    console.error('Error unhiding forum post:', error);
+    res.status(500).json({ success: false, message: 'Failed to unhide post' });
+  }
+});
+
+// POST /admin/forum/posts/:id/pin - Pin/unpin a forum post
+router.post('/forum/posts/:id/pin', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { pinned } = req.body;
+    const pool = await getPool();
+    
+    await pool.request()
+      .input('PostID', sql.Int, parseInt(id))
+      .input('IsPinned', sql.Bit, pinned ? 1 : 0)
+      .query(`
+        UPDATE forum.Posts 
+        SET IsPinned = @IsPinned,
+            UpdatedAt = GETUTCDATE()
+        WHERE PostID = @PostID
+      `);
+    
+    res.json({ success: true, message: pinned ? 'Post pinned' : 'Post unpinned' });
+  } catch (error) {
+    console.error('Error pinning forum post:', error);
+    res.status(500).json({ success: false, message: 'Failed to update pin status' });
+  }
+});
+
+// DELETE /admin/forum/posts/:id - Delete a forum post
+router.delete('/forum/posts/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pool = await getPool();
+    
+    // Delete comments first, then the post
+    await pool.request()
+      .input('PostID', sql.Int, parseInt(id))
+      .query(`
+        DELETE FROM forum.Comments WHERE PostID = @PostID;
+        DELETE FROM forum.Posts WHERE PostID = @PostID;
+      `);
+    
+    res.json({ success: true, message: 'Post deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting forum post:', error);
+    res.status(500).json({ success: false, message: 'Failed to delete post' });
+  }
+});
+
+// GET /admin/forum/comments - Get all comments for moderation
+router.get('/forum/comments', async (req, res) => {
+  try {
+    const { page = 1, limit = 20, status = 'all' } = req.query;
+    const pool = await getPool();
+    
+    let whereClause = '1=1';
+    if (status === 'flagged') whereClause += ' AND fc.IsFlagged = 1';
+    if (status === 'hidden') whereClause += ' AND fc.IsHidden = 1';
+    
+    const result = await pool.request()
+      .input('PageNumber', sql.Int, parseInt(page))
+      .input('PageSize', sql.Int, parseInt(limit))
+      .query(`
+        SELECT 
+          fc.CommentID,
+          fc.Content,
+          fc.CreatedAt,
+          fc.IsFlagged,
+          fc.IsHidden,
+          fc.LikeCount,
+          fp.PostID,
+          fp.Title as PostTitle,
+          fp.Slug as PostSlug,
+          u.UserID,
+          u.FirstName + ' ' + u.LastName as AuthorName,
+          u.Email as AuthorEmail
+        FROM forum.Comments fc
+        LEFT JOIN forum.Posts fp ON fc.PostID = fp.PostID
+        LEFT JOIN users.Users u ON fc.UserID = u.UserID
+        WHERE ${whereClause}
+        ORDER BY fc.CreatedAt DESC
+        OFFSET (@PageNumber - 1) * @PageSize ROWS
+        FETCH NEXT @PageSize ROWS ONLY;
+        
+        SELECT COUNT(*) as Total FROM forum.Comments fc WHERE ${whereClause}
+      `);
+    
+    res.json({
+      success: true,
+      comments: result.recordsets[0] || [],
+      total: result.recordsets[1]?.[0]?.Total || 0
+    });
+  } catch (error) {
+    console.error('Error fetching forum comments:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch comments' });
+  }
+});
+
+// POST /admin/forum/comments/:id/hide - Hide a comment
+router.post('/forum/comments/:id/hide', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pool = await getPool();
+    
+    await pool.request()
+      .input('CommentID', sql.Int, parseInt(id))
+      .query(`
+        UPDATE forum.Comments 
+        SET IsHidden = 1, UpdatedAt = GETUTCDATE()
+        WHERE CommentID = @CommentID
+      `);
+    
+    res.json({ success: true, message: 'Comment hidden' });
+  } catch (error) {
+    console.error('Error hiding comment:', error);
+    res.status(500).json({ success: false, message: 'Failed to hide comment' });
+  }
+});
+
+// DELETE /admin/forum/comments/:id - Delete a comment
+router.delete('/forum/comments/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pool = await getPool();
+    
+    await pool.request()
+      .input('CommentID', sql.Int, parseInt(id))
+      .query(`DELETE FROM forum.Comments WHERE CommentID = @CommentID`);
+    
+    res.json({ success: true, message: 'Comment deleted' });
+  } catch (error) {
+    console.error('Error deleting comment:', error);
+    res.status(500).json({ success: false, message: 'Failed to delete comment' });
+  }
+});
+
+// GET /admin/forum/stats - Get forum moderation stats
+router.get('/forum/stats', async (req, res) => {
+  try {
+    const pool = await getPool();
+    
+    const result = await pool.request().query(`
+      SELECT 
+        (SELECT COUNT(*) FROM forum.Posts) as TotalPosts,
+        (SELECT COUNT(*) FROM forum.Posts WHERE IsFlagged = 1) as FlaggedPosts,
+        (SELECT COUNT(*) FROM forum.Posts WHERE IsHidden = 1) as HiddenPosts,
+        (SELECT COUNT(*) FROM forum.Comments) as TotalComments,
+        (SELECT COUNT(*) FROM forum.Comments WHERE IsFlagged = 1) as FlaggedComments,
+        (SELECT COUNT(*) FROM forum.Posts WHERE CreatedAt >= DATEADD(DAY, -7, GETDATE())) as PostsLast7Days,
+        (SELECT COUNT(*) FROM forum.Comments WHERE CreatedAt >= DATEADD(DAY, -7, GETDATE())) as CommentsLast7Days
+    `);
+    
+    res.json({ success: true, stats: result.recordset[0] || {} });
+  } catch (error) {
+    console.error('Error fetching forum stats:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch forum stats' });
   }
 });
 

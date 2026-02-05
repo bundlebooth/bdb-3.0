@@ -14,6 +14,7 @@ import ProfileModal from '../components/ProfileModal';
 import { useTranslation } from '../hooks/useTranslation';
 import { encodeVendorId } from '../utils/hashIds';
 import { formatFromGooglePlace, getIPGeolocationServices } from '../utils/locationUtils';
+import EnhancedSearchBar from '../components/EnhancedSearchBar';
 import './LandingPage.css';
 
 function LandingPage() {
@@ -347,29 +348,25 @@ function LandingPage() {
               {t('landing.heroTitle3', 'imaginable')}
             </h1>
             
-            {/* CTA Button - Search bar removed, only on explore page */}
-            <button 
-              className="landing-hero-cta"
-              onClick={() => { window.scrollTo(0, 0); navigate('/explore'); }}
-              style={{
-                marginTop: '2rem',
-                padding: '16px 32px',
-                fontSize: '1.125rem',
-                fontWeight: 600,
-                background: '#222',
-                color: 'white',
-                border: 'none',
-                borderRadius: '12px',
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px',
-                transition: 'all 0.2s ease'
-              }}
-            >
-              {t('landing.startExploring', 'Start Exploring')}
-              <i className="fas fa-arrow-right"></i>
-            </button>
+            {/* Enhanced Search Bar - Same as explore page */}
+            <div className="landing-search-wrapper" style={{ marginTop: '2rem' }}>
+              <EnhancedSearchBar 
+                onSearch={(searchParams) => {
+                  // Build query string from search params
+                  const params = new URLSearchParams();
+                  if (searchParams.location) params.set('location', searchParams.location);
+                  if (searchParams.date) params.set('date', searchParams.date);
+                  if (searchParams.startTime) params.set('startTime', searchParams.startTime);
+                  if (searchParams.endTime) params.set('endTime', searchParams.endTime);
+                  if (searchParams.userLocation?.latitude) params.set('lat', searchParams.userLocation.latitude);
+                  if (searchParams.userLocation?.longitude) params.set('lng', searchParams.userLocation.longitude);
+                  
+                  window.scrollTo(0, 0);
+                  navigate(`/explore?${params.toString()}`);
+                }}
+                isScrolled={false}
+              />
+            </div>
           </div>
         </div>
       </section>

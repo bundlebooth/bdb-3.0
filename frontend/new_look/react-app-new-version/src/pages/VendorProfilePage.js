@@ -843,7 +843,7 @@ function VendorProfilePage() {
               gap: '16px',
               padding: '8px 0'
             }}>
-              <i className={`fas fa-${getFeatureIcon(feature.FeatureName, feature.CategoryName)}`} style={{ 
+              <i className={`far fa-${getFeatureIcon(feature.FeatureName, feature.CategoryName)}`} style={{ 
                 fontSize: '24px', 
                 color: '#222', 
                 width: '24px',
@@ -892,7 +892,7 @@ function VendorProfilePage() {
                 padding: '12px 0',
                 borderBottom: idx < vendorFeatures.length - 1 ? '1px solid #f0f0f0' : 'none'
               }}>
-                <i className={`fas fa-${getFeatureIcon(feature.FeatureName, feature.CategoryName)}`} style={{ 
+                <i className={`far fa-${getFeatureIcon(feature.FeatureName, feature.CategoryName)}`} style={{ 
                   fontSize: '24px', 
                   color: '#222', 
                   width: '24px',

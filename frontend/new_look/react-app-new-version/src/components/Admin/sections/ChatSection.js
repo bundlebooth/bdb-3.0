@@ -275,8 +275,37 @@ function ChatSection() {
     }
   };
 
+  // Fetch all vendor-client conversations
+  const fetchAllChats = useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await adminApi.getChats({ page: 1, limit: 50 });
+      const chatsArray = Array.isArray(data?.conversations) ? data.conversations : Array.isArray(data) ? data : [];
+      setConversations(chatsArray);
+    } catch (err) {
+      console.error('Error fetching all chats:', err);
+      setError('Failed to load chats');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Fetch messages for vendor-client conversation
+  const handleViewAllChat = async (conv) => {
+    setSelectedConversation(conv);
+    try {
+      const data = await adminApi.getChatMessages(conv.ConversationID || conv.id);
+      const msgs = Array.isArray(data?.messages) ? data.messages : Array.isArray(data) ? data : [];
+      setConversationMessages(msgs);
+    } catch (err) {
+      console.error('Error fetching chat messages:', err);
+      setConversationMessages([]);
+    }
+  };
+
   // Render flagged messages tab content
-  const renderFlaggedMessages = () => (
+  const renderFlaggedMessages = () => {
+    return (
     <div className="admin-card">
       {/* Stats Row */}
       {moderationStats && (
@@ -445,11 +474,77 @@ function ChatSection() {
         </div>
       )}
     </div>
-  );
+    );
+  };
+
+  // Load data based on active tab
+  useEffect(() => {
+    if (activeTab === 'support') {
+      fetchConversations();
+    } else if (activeTab === 'all-chats') {
+      fetchAllChats();
+    }
+  }, [activeTab, fetchConversations, fetchAllChats]);
 
   return (
     <div className="admin-section">
-      {/* Live Chat Content - Flagged Messages moved to Security & Audit section */}
+      {/* Tab Navigation */}
+      <div className="admin-tabs" style={{ marginBottom: '1.5rem', borderBottom: '1px solid #e5e7eb' }}>
+        <button
+          className={`admin-tab ${activeTab === 'support' ? 'active' : ''}`}
+          onClick={() => setActiveTab('support')}
+          style={{
+            padding: '0.75rem 1.5rem',
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'support' ? '2px solid #5086E8' : '2px solid transparent',
+            color: activeTab === 'support' ? '#5086E8' : '#6b7280',
+            fontWeight: activeTab === 'support' ? 600 : 400,
+            cursor: 'pointer'
+          }}
+        >
+          <i className="fas fa-headset" style={{ marginRight: '8px' }}></i>
+          Support Chat
+        </button>
+        <button
+          className={`admin-tab ${activeTab === 'all-chats' ? 'active' : ''}`}
+          onClick={() => setActiveTab('all-chats')}
+          style={{
+            padding: '0.75rem 1.5rem',
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'all-chats' ? '2px solid #5086E8' : '2px solid transparent',
+            color: activeTab === 'all-chats' ? '#5086E8' : '#6b7280',
+            fontWeight: activeTab === 'all-chats' ? 600 : 400,
+            cursor: 'pointer'
+          }}
+        >
+          <i className="fas fa-comments" style={{ marginRight: '8px' }}></i>
+          All Vendor-Client Messages
+        </button>
+        <button
+          className={`admin-tab ${activeTab === 'flagged' ? 'active' : ''}`}
+          onClick={() => setActiveTab('flagged')}
+          style={{
+            padding: '0.75rem 1.5rem',
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'flagged' ? '2px solid #5086E8' : '2px solid transparent',
+            color: activeTab === 'flagged' ? '#5086E8' : '#6b7280',
+            fontWeight: activeTab === 'flagged' ? 600 : 400,
+            cursor: 'pointer'
+          }}
+        >
+          <i className="fas fa-flag" style={{ marginRight: '8px' }}></i>
+          Flagged Messages
+        </button>
+      </div>
+
+      {/* Flagged Messages Tab */}
+      {activeTab === 'flagged' && renderFlaggedMessages()}
+
+      {/* Support Chat & All Chats Tabs */}
+      {(activeTab === 'support' || activeTab === 'all-chats') && (
       <div style={{ display: 'grid', gridTemplateColumns: '350px 1fr', gap: '1.5rem', height: '650px' }}>
         {/* Conversations List */}
         <div className="admin-card" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -708,6 +803,7 @@ function ChatSection() {
           )}
         </div>
       </div>
+      )}
 
       {/* Review Violation Modal */}
       {showReviewModal && selectedViolation && (
