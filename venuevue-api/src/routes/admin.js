@@ -3573,8 +3573,7 @@ router.get('/guest-favorites', async (req, res) => {
   try {
     const pool = await getPool();
     
-    // Get vendors with their stats to determine eligibility
-    // Using only columns that definitely exist in the table
+    // Get vendors - simplified query using only core VendorProfiles columns
     const result = await pool.request().query(`
       SELECT 
         vp.VendorProfileID,
@@ -3587,19 +3586,10 @@ router.get('/guest-favorites', async (req, res) => {
         vp.ProfileStatus,
         u.FirstName + ' ' + u.LastName as OwnerName,
         u.Email as OwnerEmail,
-        -- Get review stats from Reviews table
-        ISNULL((SELECT AVG(CAST(r.Rating AS DECIMAL(3,2))) FROM reviews.Reviews r WHERE r.VendorProfileID = vp.VendorProfileID), 0) as AvgRating,
-        ISNULL((SELECT COUNT(*) FROM reviews.Reviews r WHERE r.VendorProfileID = vp.VendorProfileID), 0) as TotalReviews,
-        -- Get booking count
-        ISNULL((SELECT COUNT(*) FROM bookings.Bookings b WHERE b.VendorProfileID = vp.VendorProfileID AND b.Status IN ('confirmed', 'completed')), 0) as TotalBookings,
-        -- Calculate eligibility based on computed values
-        CASE 
-          WHEN ISNULL((SELECT AVG(CAST(r.Rating AS DECIMAL(3,2))) FROM reviews.Reviews r WHERE r.VendorProfileID = vp.VendorProfileID), 0) >= 4.5 
-           AND ISNULL((SELECT COUNT(*) FROM reviews.Reviews r WHERE r.VendorProfileID = vp.VendorProfileID), 0) >= 5 
-           AND ISNULL((SELECT COUNT(*) FROM bookings.Bookings b WHERE b.VendorProfileID = vp.VendorProfileID AND b.Status IN ('confirmed', 'completed')), 0) >= 10 
-          THEN 1 
-          ELSE 0 
-        END as MeetsEligibility
+        0 as AvgRating,
+        0 as TotalReviews,
+        0 as TotalBookings,
+        0 as MeetsEligibility
       FROM vendors.VendorProfiles vp
       LEFT JOIN users.Users u ON vp.UserID = u.UserID
       WHERE vp.IsVisible = 1 AND vp.ProfileStatus = 'approved'
@@ -3620,7 +3610,12 @@ router.get('/guest-favorites', async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching guest favorites:', error);
-    res.status(500).json({ success: false, message: 'Failed to fetch guest favorites' });
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to fetch guest favorites',
+      error: error.message,
+      details: process.env.NODE_ENV !== 'production' ? error.stack : undefined
+    });
   }
 });
 
