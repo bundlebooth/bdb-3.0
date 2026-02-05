@@ -3573,7 +3573,7 @@ router.get('/guest-favorites', async (req, res) => {
   try {
     const pool = await getPool();
     
-    // Get vendors - simplified query using only core VendorProfiles columns
+    // Get vendors - simplified query without IsGuestFavorite column
     const result = await pool.request().query(`
       SELECT 
         vp.VendorProfileID,
@@ -3581,7 +3581,7 @@ router.get('/guest-favorites', async (req, res) => {
         vp.LogoURL,
         vp.City,
         vp.State,
-        ISNULL(vp.IsGuestFavorite, 0) as IsGuestFavorite,
+        0 as IsGuestFavorite,
         vp.IsVisible,
         vp.ProfileStatus,
         u.FirstName + ' ' + u.LastName as OwnerName,
@@ -3593,9 +3593,7 @@ router.get('/guest-favorites', async (req, res) => {
       FROM vendors.VendorProfiles vp
       LEFT JOIN users.Users u ON vp.UserID = u.UserID
       WHERE vp.IsVisible = 1 AND vp.ProfileStatus = 'approved'
-      ORDER BY 
-        ISNULL(vp.IsGuestFavorite, 0) DESC,
-        vp.BusinessName
+      ORDER BY vp.BusinessName
     `);
     
     res.json({ 
