@@ -3574,7 +3574,7 @@ router.get('/guest-favorites', async (req, res) => {
     const pool = await getPool();
     
     // Get vendors with their stats to determine eligibility
-    // Formula: AvgRating >= 4.5 AND TotalReviews >= 5 AND TotalBookings >= 10 AND ResponseRate >= 90
+    // Using only columns that definitely exist in the table
     const result = await pool.request().query(`
       SELECT 
         vp.VendorProfileID,
@@ -3583,22 +3583,20 @@ router.get('/guest-favorites', async (req, res) => {
         vp.City,
         vp.State,
         ISNULL(vp.IsGuestFavorite, 0) as IsGuestFavorite,
-        vp.GuestFavoriteGrantedAt,
-        vp.GuestFavoriteGrantedBy,
-        ISNULL(vp.AvgRating, 0) as AvgRating,
-        ISNULL(vp.TotalReviews, 0) as TotalReviews,
-        ISNULL(vp.TotalBookings, 0) as TotalBookings,
-        ISNULL(vp.ResponseRate, 0) as ResponseRate,
         vp.IsVisible,
         vp.ProfileStatus,
         u.FirstName + ' ' + u.LastName as OwnerName,
         u.Email as OwnerEmail,
-        -- Calculate eligibility
+        -- Get review stats from Reviews table
+        ISNULL((SELECT AVG(CAST(r.Rating AS DECIMAL(3,2))) FROM reviews.Reviews r WHERE r.VendorProfileID = vp.VendorProfileID), 0) as AvgRating,
+        ISNULL((SELECT COUNT(*) FROM reviews.Reviews r WHERE r.VendorProfileID = vp.VendorProfileID), 0) as TotalReviews,
+        -- Get booking count
+        ISNULL((SELECT COUNT(*) FROM bookings.Bookings b WHERE b.VendorProfileID = vp.VendorProfileID AND b.Status IN ('confirmed', 'completed')), 0) as TotalBookings,
+        -- Calculate eligibility based on computed values
         CASE 
-          WHEN ISNULL(vp.AvgRating, 0) >= 4.5 
-           AND ISNULL(vp.TotalReviews, 0) >= 5 
-           AND ISNULL(vp.TotalBookings, 0) >= 10 
-           AND ISNULL(vp.ResponseRate, 0) >= 90 
+          WHEN ISNULL((SELECT AVG(CAST(r.Rating AS DECIMAL(3,2))) FROM reviews.Reviews r WHERE r.VendorProfileID = vp.VendorProfileID), 0) >= 4.5 
+           AND ISNULL((SELECT COUNT(*) FROM reviews.Reviews r WHERE r.VendorProfileID = vp.VendorProfileID), 0) >= 5 
+           AND ISNULL((SELECT COUNT(*) FROM bookings.Bookings b WHERE b.VendorProfileID = vp.VendorProfileID AND b.Status IN ('confirmed', 'completed')), 0) >= 10 
           THEN 1 
           ELSE 0 
         END as MeetsEligibility
@@ -3607,16 +3605,7 @@ router.get('/guest-favorites', async (req, res) => {
       WHERE vp.IsVisible = 1 AND vp.ProfileStatus = 'approved'
       ORDER BY 
         ISNULL(vp.IsGuestFavorite, 0) DESC,
-        CASE 
-          WHEN ISNULL(vp.AvgRating, 0) >= 4.5 
-           AND ISNULL(vp.TotalReviews, 0) >= 5 
-           AND ISNULL(vp.TotalBookings, 0) >= 10 
-           AND ISNULL(vp.ResponseRate, 0) >= 90 
-          THEN 0 
-          ELSE 1 
-        END,
-        vp.AvgRating DESC,
-        vp.TotalBookings DESC
+        vp.BusinessName
     `);
     
     res.json({ 
