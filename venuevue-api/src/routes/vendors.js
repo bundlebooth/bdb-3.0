@@ -348,9 +348,7 @@ router.get('/trending', async (req, res) => {
         image: featuredImage?.url || vendor.LogoURL || '',
         featuredImage: featuredImage,
         images: images,
-        isPremium: vendor.IsPremium || false,
-        isEcoFriendly: vendor.IsEcoFriendly || false,
-        isAwardWinning: vendor.IsAwardWinning || false,
+        IsGuestFavorite: vendor.IsGuestFavorite || false,
         categories: vendor.Categories || vendor.PrimaryCategory || '',
         city: vendor.City || '',
         state: vendor.State || '',
@@ -488,14 +486,6 @@ router.get('/', async (req, res) => {
       minPrice, 
       maxPrice, 
       minRating,
-      isPremium,
-      isEcoFriendly,
-      isAwardWinning,
-      isLastMinute,
-      isCertified,
-      isInsured,
-      isLocal,
-      isMobile,
       latitude,
       longitude,
       radiusMiles,
@@ -572,14 +562,14 @@ router.get('/', async (req, res) => {
       request.input('MinPrice', sql.Decimal(10, 2), minPrice ? parseFloat(minPrice) : null);
       request.input('MaxPrice', sql.Decimal(10, 2), maxPrice ? parseFloat(maxPrice) : null);
       request.input('MinRating', sql.Decimal(2, 1), minRating ? parseFloat(minRating) : null);
-      request.input('IsPremium', sql.Bit, isPremium === 'true' ? 1 : isPremium === 'false' ? 0 : null);
-      request.input('IsEcoFriendly', sql.Bit, isEcoFriendly === 'true' ? 1 : isEcoFriendly === 'false' ? 0 : null);
-      request.input('IsAwardWinning', sql.Bit, isAwardWinning === 'true' ? 1 : isAwardWinning === 'false' ? 0 : null);
-      request.input('IsLastMinute', sql.Bit, isLastMinute === 'true' ? 1 : isLastMinute === 'false' ? 0 : null);
-      request.input('IsCertified', sql.Bit, isCertified === 'true' ? 1 : isCertified === 'false' ? 0 : null);
-      request.input('IsInsured', sql.Bit, isInsured === 'true' ? 1 : isInsured === 'false' ? 0 : null);
-      request.input('IsLocal', sql.Bit, isLocal === 'true' ? 1 : isLocal === 'false' ? 0 : null);
-      request.input('IsMobile', sql.Bit, isMobile === 'true' ? 1 : isMobile === 'false' ? 0 : null);
+      request.input('IsPremium', sql.Bit, null);
+      request.input('IsEcoFriendly', sql.Bit, null);
+      request.input('IsAwardWinning', sql.Bit, null);
+      request.input('IsLastMinute', sql.Bit, null);
+      request.input('IsCertified', sql.Bit, null);
+      request.input('IsInsured', sql.Bit, null);
+      request.input('IsLocal', sql.Bit, null);
+      request.input('IsMobile', sql.Bit, null);
       request.input('Latitude', sql.Decimal(10, 8), latitude ? parseFloat(latitude) : null);
       request.input('Longitude', sql.Decimal(11, 8), longitude ? parseFloat(longitude) : null);
       request.input('RadiusMiles', sql.Int, radiusMiles ? parseInt(radiusMiles) : 25);
@@ -610,14 +600,14 @@ router.get('/', async (req, res) => {
         enhancedRequest.input('MaxPrice', sql.Decimal(10, 2), maxPrice ? parseFloat(maxPrice) : null);
         enhancedRequest.input('MinRating', sql.Decimal(2, 1), minRating ? parseFloat(minRating) : null);
         enhancedRequest.input('MinReviewCount', sql.Int, minReviewCount ? parseInt(minReviewCount) : null);
-        enhancedRequest.input('IsPremium', sql.Bit, isPremium === 'true' ? 1 : null);
-        enhancedRequest.input('IsEcoFriendly', sql.Bit, isEcoFriendly === 'true' ? 1 : null);
-        enhancedRequest.input('IsAwardWinning', sql.Bit, isAwardWinning === 'true' ? 1 : null);
-        enhancedRequest.input('IsLastMinute', sql.Bit, isLastMinute === 'true' ? 1 : null);
-        enhancedRequest.input('IsCertified', sql.Bit, isCertified === 'true' ? 1 : null);
-        enhancedRequest.input('IsInsured', sql.Bit, isInsured === 'true' ? 1 : null);
-        enhancedRequest.input('IsLocal', sql.Bit, isLocal === 'true' ? 1 : null);
-        enhancedRequest.input('IsMobile', sql.Bit, isMobile === 'true' ? 1 : null);
+        enhancedRequest.input('IsPremium', sql.Bit, null);
+        enhancedRequest.input('IsEcoFriendly', sql.Bit, null);
+        enhancedRequest.input('IsAwardWinning', sql.Bit, null);
+        enhancedRequest.input('IsLastMinute', sql.Bit, null);
+        enhancedRequest.input('IsCertified', sql.Bit, null);
+        enhancedRequest.input('IsInsured', sql.Bit, null);
+        enhancedRequest.input('IsLocal', sql.Bit, null);
+        enhancedRequest.input('IsMobile', sql.Bit, null);
         enhancedRequest.input('InstantBookingOnly', sql.Bit, instantBookingOnly === 'true' ? 1 : null);
         enhancedRequest.input('FreshListingsDays', sql.Int, freshListingsDays ? parseInt(freshListingsDays) : null);
         enhancedRequest.input('HasGoogleReviews', sql.Bit, hasGoogleReviews === 'true' ? 1 : null);
@@ -680,12 +670,8 @@ router.get('/', async (req, res) => {
       averageRating: vendor.rating ? parseFloat(vendor.rating) : null,
       totalReviews: vendor.ReviewCount ?? 0,
       favoriteCount: vendor.FavoriteCount,
-      bookingCount: vendor.BookingCount,
       image: vendor.image || '', // Legacy image field
-      isPremium: vendor.IsPremium,
-      isEcoFriendly: vendor.IsEcoFriendly,
-      isAwardWinning: vendor.IsAwardWinning,
-      isLastMinute: vendor.IsLastMinute,
+      IsGuestFavorite: vendor.IsGuestFavorite || false,
       region: vendor.Region || '',
       distanceMiles: vendor.DistanceMiles,
       categories: vendor.Categories || '',
@@ -970,19 +956,6 @@ router.get('/', async (req, res) => {
         analyticsBadgeType: 'rating'
       });
       
-      // Premium Vendors
-      const premiumVendors = formattedVendors
-        .filter(v => v.isPremium)
-        .slice(0, 20);
-      if (premiumVendors.length > 0) {
-        discoverySections.push({
-          id: 'premium',
-          title: 'Premium Vendors',
-          description: 'Top-tier verified vendors',
-          vendors: premiumVendors
-        });
-      }
-      
       // Budget-Friendly - sorted by price low (show all vendors sorted by price)
       const budgetVendors = [...formattedVendors]
         .sort((a, b) => (a.startingPrice || 0) - (b.startingPrice || 0))
@@ -1172,9 +1145,7 @@ router.get('/map', async (req, res) => {
       priceLevel: vendor.PriceLevel,
       rating: vendor.AverageRating || 0,
       reviewCount: vendor.ReviewCount || 0,
-      isPremium: vendor.IsPremium || false,
-      isEcoFriendly: vendor.IsEcoFriendly || false,
-      isAwardWinning: vendor.IsAwardWinning || false,
+      IsGuestFavorite: vendor.IsGuestFavorite || false,
       categories: vendor.Categories || '',
       distanceFromEvent: vendor.DistanceMiles ? parseFloat(vendor.DistanceMiles).toFixed(2) : null,
       fullAddress: `${vendor.Address || ''}, ${vendor.City || ''}, ${vendor.State || ''} ${vendor.PostalCode || ''}`.replace(/^,\s*|,\s*$/g, '').replace(/,\s*,/g, ',')
@@ -1228,14 +1199,6 @@ router.get('/search-by-categories', async (req, res) => {
       minPrice,
       maxPrice,
       minRating,
-      isPremium,
-      isEcoFriendly,
-      isAwardWinning,
-      isLastMinute,
-      isCertified,
-      isInsured,
-      isLocal,
-      isMobile,
       latitude,
       longitude,
       radiusMiles,
@@ -1314,14 +1277,14 @@ router.get('/search-by-categories', async (req, res) => {
       request.input('MinPrice', sql.Decimal(10, 2), minPrice ? parseFloat(minPrice) : null);
       request.input('MaxPrice', sql.Decimal(10, 2), maxPrice ? parseFloat(maxPrice) : null);
       request.input('MinRating', sql.Decimal(2, 1), minRating ? parseFloat(minRating) : null);
-      request.input('IsPremium', sql.Bit, isPremium === 'true' ? 1 : isPremium === 'false' ? 0 : null);
-      request.input('IsEcoFriendly', sql.Bit, isEcoFriendly === 'true' ? 1 : isEcoFriendly === 'false' ? 0 : null);
-      request.input('IsAwardWinning', sql.Bit, isAwardWinning === 'true' ? 1 : isAwardWinning === 'false' ? 0 : null);
-      request.input('IsLastMinute', sql.Bit, isLastMinute === 'true' ? 1 : isLastMinute === 'false' ? 0 : null);
-      request.input('IsCertified', sql.Bit, isCertified === 'true' ? 1 : isCertified === 'false' ? 0 : null);
-      request.input('IsInsured', sql.Bit, isInsured === 'true' ? 1 : isInsured === 'false' ? 0 : null);
-      request.input('IsLocal', sql.Bit, isLocal === 'true' ? 1 : isLocal === 'false' ? 0 : null);
-      request.input('IsMobile', sql.Bit, isMobile === 'true' ? 1 : isMobile === 'false' ? 0 : null);
+      request.input('IsPremium', sql.Bit, null);
+      request.input('IsEcoFriendly', sql.Bit, null);
+      request.input('IsAwardWinning', sql.Bit, null);
+      request.input('IsLastMinute', sql.Bit, null);
+      request.input('IsCertified', sql.Bit, null);
+      request.input('IsInsured', sql.Bit, null);
+      request.input('IsLocal', sql.Bit, null);
+      request.input('IsMobile', sql.Bit, null);
       request.input('Latitude', sql.Decimal(10, 8), latitude ? parseFloat(latitude) : null);
       request.input('Longitude', sql.Decimal(11, 8), longitude ? parseFloat(longitude) : null);
       request.input('RadiusMiles', sql.Int, radiusMiles ? parseInt(radiusMiles) : 25);
@@ -1333,10 +1296,9 @@ router.get('/search-by-categories', async (req, res) => {
       request.input('FixedPricingTypeFilter', sql.NVarChar(20), fixedPricingType || null);
       request.input('Region', sql.NVarChar(50), region || null);
       request.input('PriceLevel', sql.NVarChar(10), priceLevel || null);
-      request.input('EventDateRaw', sql.NVarChar(50), null); // Legacy parameter
-      request.input('EventStartRaw', sql.NVarChar(20), null); // Legacy parameter
-      request.input('EventEndRaw', sql.NVarChar(20), null); // Legacy parameter
-      // Availability filters
+      request.input('EventDateRaw', sql.NVarChar(50), null);
+      request.input('EventStartRaw', sql.NVarChar(20), null);
+      request.input('EventEndRaw', sql.NVarChar(20), null);
       request.input('EventDate', sql.Date, eventDate ? new Date(eventDate) : null);
       request.input('DayOfWeek', sql.NVarChar(10), dayOfWeek || null);
       request.input('StartTime', sql.Time, startTime || null);
@@ -1360,12 +1322,8 @@ router.get('/search-by-categories', async (req, res) => {
         averageRating: vendor.rating ? parseFloat(vendor.rating) : null,
         totalReviews: vendor.ReviewCount ?? 0,
         favoriteCount: vendor.FavoriteCount,
-        bookingCount: vendor.BookingCount,
         image: vendor.image || '',
-        isPremium: vendor.IsPremium,
-        isEcoFriendly: vendor.IsEcoFriendly,
-        isAwardWinning: vendor.IsAwardWinning,
-        isLastMinute: vendor.IsLastMinute,
+        IsGuestFavorite: vendor.IsGuestFavorite || false,
         region: vendor.Region || '',
         distanceMiles: vendor.DistanceMiles,
         categories: vendor.Categories || '',
@@ -1627,19 +1585,6 @@ router.get('/search-by-categories', async (req, res) => {
         showAnalyticsBadge: true,
         analyticsBadgeType: 'rating'
       });
-      
-      // Premium Vendors
-      const premiumVendors = allVendors
-        .filter(v => v.isPremium)
-        .slice(0, 20);
-      if (premiumVendors.length > 0) {
-        discoverySections.push({
-          id: 'premium',
-          title: 'Premium Vendors',
-          description: 'Top-tier verified vendors',
-          vendors: premiumVendors
-        });
-      }
       
       // Budget-Friendly - sorted by price low (show all vendors sorted by price)
       const budgetVendors = [...allVendors]
@@ -3715,9 +3660,7 @@ router.post('/search-by-services', async (req, res) => {
         Location: vendor.location,
         Latitude: vendor.Latitude,
         Longitude: vendor.Longitude,
-        IsPremium: vendor.IsPremium,
-        IsEcoFriendly: vendor.IsEcoFriendly,
-        IsAwardWinning: vendor.IsAwardWinning,
+        IsGuestFavorite: vendor.IsGuestFavorite || false,
         LogoURL: vendor.image,
         MatchingServices: vendor.CategoryMatchCount || 1,
         MatchingServiceNames: vendor.MatchingServiceNames || services.map(s => s.ServiceName).join(', '),
@@ -5940,7 +5883,7 @@ router.post('/check-availability', async (req, res) => {
       logoUrl: vendor.LogoURL,
       averageRating: vendor.AverageRating,
       reviewCount: vendor.ReviewCount,
-      isPremium: vendor.IsPremium,
+      IsGuestFavorite: vendor.IsGuestFavorite || false,
       categoryName: vendor.PrimaryCategory || vendor.Categories
     }));
 
