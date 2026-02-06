@@ -38,19 +38,29 @@
 .compact-view {
   display: flex;
   align-items: center;
-  padding: 4px;
+  padding: 2px 4px;
   width: 100%;
   gap: 0;
   cursor: pointer;
-  min-width: 320px; /* Wider minimum width */
+  min-width: 280px;
 }
 
 .compact-field {
   cursor: pointer;
-  padding: 10px 20px;
+  padding: 6px 16px;
   display: flex;
-  align-items: center;
-  gap: 4px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+}
+
+.compact-label {
+  font-size: 9px;
+  font-weight: 600;
+  color: #717171;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  line-height: 1;
 }
 
 .compact-location {
@@ -72,14 +82,15 @@
 }
 
 .compact-value {
-  font-size: 14px;
+  font-size: 13px;
   color: #333333;
   font-weight: 400;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   display: block;
-  max-width: 200px; /* Allow more text to show */
+  max-width: 180px;
+  line-height: 1.2;
 }
 
 .compact-separator {
@@ -110,13 +121,14 @@
   background: var(--primary, #5086E8);
   border: none;
   color: white;
-  width: 34px;
-  height: 34px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  font-size: 12px;
   margin-left: auto;
   font-size: 14px;
   flex-shrink: 0;

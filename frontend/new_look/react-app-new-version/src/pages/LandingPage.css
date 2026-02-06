@@ -513,10 +513,21 @@
 .hero-field-content {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.hero-field-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: #717171;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .hero-field-value {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 500;
   color: #222;
   display: block;
@@ -5871,6 +5882,36 @@
   height: 100%;
   object-fit: cover;
   border-radius: 12px;
+}
+
+/* Slideshow Indicator Dots */
+.landing-hero-dots {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.landing-hero-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: none;
+  background: #d1d5db;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  padding: 0;
+}
+
+.landing-hero-dot:hover {
+  background: #9ca3af;
+}
+
+.landing-hero-dot.active {
+  background: #4F86E8;
+  width: 24px;
+  border-radius: 4px;
 }
 
 /* Responsive - Tablet */

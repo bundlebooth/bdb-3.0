@@ -522,6 +522,17 @@ function LandingPage() {
                 </div>
               ))}
             </div>
+            {/* Slideshow Indicator Dots */}
+            <div className="landing-hero-dots">
+              {heroSlides.map((_, index) => (
+                <button
+                  key={index}
+                  className={`landing-hero-dot ${index === activeSlide ? 'active' : ''}`}
+                  onClick={() => setActiveSlide(index)}
+                  aria-label={`Go to slide ${index + 1}`}
+                />
+              ))}
+            </div>
           </div>
           
           {/* Text Content and Search Bar - positioned on left */}
@@ -606,6 +617,7 @@ function LandingPage() {
                   >
                     <i className="fas fa-search hero-field-icon"></i>
                     <div className="hero-field-content">
+                      <span className="hero-field-label">CATEGORY</span>
                       <span className="hero-field-value">{getCategoryLabel(searchCategory)}</span>
                     </div>
                   </div>
@@ -638,6 +650,7 @@ function LandingPage() {
                   >
                     <i className="fas fa-map-marker-alt hero-field-icon"></i>
                     <div className="hero-field-content">
+                      <span className="hero-field-label">LOCATION</span>
                       <input
                         ref={locationInputRef}
                         type="text"
@@ -716,6 +729,7 @@ function LandingPage() {
                   >
                     <i className="fas fa-calendar hero-field-icon"></i>
                     <div className="hero-field-content">
+                      <span className="hero-field-label">EVENT DATE</span>
                       <span className="hero-field-value">
                         {searchDate 
                           ? `${new Date(searchDate + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} • ${searchStartTime ? (searchStartTime === '09:00' ? 'Morning' : searchStartTime === '12:00' ? 'Afternoon' : searchStartTime === '17:00' ? 'Evening' : searchStartTime) : 'Any time'}`

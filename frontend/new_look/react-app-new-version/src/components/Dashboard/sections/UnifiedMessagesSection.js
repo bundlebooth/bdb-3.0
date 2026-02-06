@@ -4,6 +4,7 @@ import { apiGet, apiPost } from '../../../utils/api';
 import { API_BASE_URL, GIPHY_API_KEY } from '../../../config';
 import { useUserOnlineStatus, useVendorOnlineStatus } from '../../../hooks/useOnlineStatus';
 import { decodeConversationId, isPublicId } from '../../../utils/hashIds';
+import { getBookingStatusConfig } from '../../../utils/bookingStatus';
 import BookingDetailsModal from '../BookingDetailsModal';
 
 function UnifiedMessagesSection({ onSectionChange, forceViewMode = null }) {
@@ -1314,21 +1315,9 @@ function UnifiedMessagesSection({ onSectionChange, forceViewMode = null }) {
             </div>
           </div>
           {(() => {
-            // Use same logic as BookingDetailsModal for consistency
-            const s = (bookingInfo.Status || bookingInfo.status || 'pending').toString().toLowerCase();
-            const isPaid = bookingInfo.FullAmountPaid === true || bookingInfo.FullAmountPaid === 1 || s === 'paid';
-            const statusMap = {
-              pending:   { icon: 'fa-clock', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.08)', label: 'Pending', borderStyle: 'dashed' },
-              confirmed: { icon: 'fa-check-circle', color: '#10b981', bg: 'rgba(16, 185, 129, 0.08)', label: 'Confirmed', borderStyle: 'dashed' },
-              accepted:  { icon: 'fa-check-circle', color: '#10b981', bg: 'rgba(16, 185, 129, 0.08)', label: 'Confirmed', borderStyle: 'dashed' },
-              approved:  { icon: 'fa-check-circle', color: '#10b981', bg: 'rgba(16, 185, 129, 0.08)', label: 'Confirmed', borderStyle: 'dashed' },
-              paid:      { icon: 'fa-check-circle', color: '#10b981', bg: 'rgba(16, 185, 129, 0.12)', label: 'Paid', borderStyle: 'solid' },
-              cancelled: { icon: 'fa-times-circle', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.08)', label: 'Cancelled', borderStyle: 'dashed' },
-              declined:  { icon: 'fa-times-circle', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.08)', label: 'Declined', borderStyle: 'dashed' },
-              expired:   { icon: 'fa-clock', color: '#6b7280', bg: 'rgba(107, 114, 128, 0.08)', label: 'Expired', borderStyle: 'dashed' }
-            };
-            const status = isPaid ? 'paid' : s;
-            const cfg = statusMap[status] || statusMap.pending;
+            // Use shared booking status utility for consistency across app
+            const isVendorView = messageRole === 'vendor';
+            const cfg = getBookingStatusConfig(bookingInfo, isVendorView);
             return (
               <span style={{
                 padding: '4px 10px',
@@ -1469,9 +1458,14 @@ function UnifiedMessagesSection({ onSectionChange, forceViewMode = null }) {
           <div style={{ 
             display: 'flex', 
             gap: '6px', 
-            flexWrap: 'wrap', 
-            marginBottom: '10px'
-          }}>
+            flexWrap: 'nowrap', 
+            marginBottom: '10px',
+            overflowX: 'auto',
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+            WebkitOverflowScrolling: 'touch',
+            paddingBottom: '2px'
+          }} className="quick-replies-scroll">
             {quickReplies.map((reply, idx) => (
               <button
                 key={idx}

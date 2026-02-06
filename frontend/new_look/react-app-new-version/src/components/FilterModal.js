@@ -61,6 +61,79 @@ const CheckboxTile = ({ label, checked, onChange }) => (
   </button>
 );
 
+// Blue Toggle Switch Component
+const ToggleSwitch = ({ checked, onChange, label, description }) => (
+  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem' }}>
+    <div style={{ flex: 1 }}>
+      <div style={{ fontWeight: 500, color: '#111827', marginBottom: '0.25rem' }}>{label}</div>
+      {description && <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>{description}</div>}
+    </div>
+    <button
+      type="button"
+      onClick={onChange}
+      style={{
+        width: '44px',
+        height: '24px',
+        backgroundColor: checked ? '#4F86E8' : '#d1d5db',
+        borderRadius: '12px',
+        position: 'relative',
+        border: 'none',
+        cursor: 'pointer',
+        transition: 'background-color 0.2s',
+        flexShrink: 0
+      }}
+    >
+      <div style={{
+        width: '20px',
+        height: '20px',
+        backgroundColor: 'white',
+        borderRadius: '50%',
+        position: 'absolute',
+        top: '2px',
+        left: checked ? '22px' : '2px',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+        transition: 'left 0.2s'
+      }}/>
+    </button>
+  </div>
+);
+
+// Rating Button with Blue Stars
+const RatingTile = ({ label, rating, checked, onChange }) => (
+  <button
+    type="button"
+    onClick={onChange}
+    style={{
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '0.375rem',
+      padding: '0.5rem 0.75rem',
+      borderRadius: '6px',
+      border: checked ? '1px solid #4F86E8' : '1px solid #e5e7eb',
+      background: checked ? '#EBF2FF' : 'white',
+      color: '#374151',
+      fontSize: '0.875rem',
+      fontWeight: 400,
+      cursor: 'pointer',
+      transition: 'all 0.15s ease',
+      whiteSpace: 'nowrap'
+    }}
+  >
+    {rating ? (
+      <>
+        {rating}+ <span style={{ color: '#4F86E8' }}>★</span>
+      </>
+    ) : label}
+    {checked && (
+      <span style={{ 
+        fontSize: '0.875rem', 
+        color: '#9ca3af',
+        marginLeft: '0.125rem'
+      }}>×</span>
+    )}
+  </button>
+);
+
 // Features Section Component with single "Show all" for entire section
 const FeaturesSection = ({ features, selectedFeatures, setSelectedFeatures }) => {
   const [expanded, setExpanded] = useState(false);
@@ -694,7 +767,7 @@ function FilterModal({ isOpen, onClose, filters, onFilterChange, userLocation, o
           setSelectedFeatures={setSelectedFeatures}
         />
 
-        {/* Quick Booking Options - Checkbox style */}
+        {/* Instant Book - Blue Toggle */}
         <div style={{ marginBottom: '1.5rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '1.5rem' }}>
           <h3 style={{ 
             fontSize: '1.1rem', 
@@ -702,21 +775,17 @@ function FilterModal({ isOpen, onClose, filters, onFilterChange, userLocation, o
             margin: '0 0 0.75rem 0',
             color: '#111827'
           }}>
-            Booking Options
+            Instant Book
           </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            <CheckboxTile
-              label="Instant Book"
-              checked={instantBookingOnly}
-              onChange={() => setInstantBookingOnly(!instantBookingOnly)}
-            />
-            <span style={{ fontSize: '0.8rem', color: '#6b7280', marginLeft: '1.75rem', marginTop: '-0.25rem' }}>
-              Listings you can book without waiting for Host approval.
-            </span>
-          </div>
+          <ToggleSwitch
+            checked={instantBookingOnly}
+            onChange={() => setInstantBookingOnly(!instantBookingOnly)}
+            label="Instant Book"
+            description="Listings you can book without waiting for Host approval."
+          />
         </div>
 
-        {/* Fresh Listings - Checkbox style */}
+        {/* Fresh Listings - Blue Toggle */}
         <div style={{ marginBottom: '1.5rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '1.5rem' }}>
           <h3 style={{ 
             fontSize: '1.1rem', 
@@ -726,14 +795,30 @@ function FilterModal({ isOpen, onClose, filters, onFilterChange, userLocation, o
           }}>
             Fresh Listings
           </h3>
-          <CheckboxTile
-            label="Fresh Listings"
+          <ToggleSwitch
             checked={!!freshListingsDays}
             onChange={() => setFreshListingsDays(freshListingsDays ? '' : '30')}
+            label="Fresh Listings"
+            description="Show vendors added in the last 30 days."
           />
-          <span style={{ fontSize: '0.8rem', color: '#6b7280', marginLeft: '1.75rem' }}>
-            Show vendors added in the last 30 days.
-          </span>
+        </div>
+
+        {/* Google Reviews Filter - Blue Toggle */}
+        <div style={{ marginBottom: '1.5rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '1.5rem' }}>
+          <h3 style={{ 
+            fontSize: '1.1rem', 
+            fontWeight: 700, 
+            margin: '0 0 0.75rem 0',
+            color: '#111827'
+          }}>
+            Google Reviews
+          </h3>
+          <ToggleSwitch
+            checked={hasGoogleReviews}
+            onChange={() => setHasGoogleReviews(!hasGoogleReviews)}
+            label="Has Google Reviews"
+            description="Show only vendors with imported Google reviews."
+          />
         </div>
 
         {/* Service Location Section - Checkbox tiles */}
@@ -780,7 +865,7 @@ function FilterModal({ isOpen, onClose, filters, onFilterChange, userLocation, o
           </div>
         </div>
 
-        {/* Minimum Rating Section - Checkbox tiles */}
+        {/* Minimum Rating Section - Blue Stars */}
         <div style={{ marginBottom: '1.5rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '1.5rem' }}>
           <h3 style={{ 
             fontSize: '1.1rem', 
@@ -791,19 +876,26 @@ function FilterModal({ isOpen, onClose, filters, onFilterChange, userLocation, o
             Minimum Rating
           </h3>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-            {[
-              { key: '', label: 'Any' },
-              { key: '3', label: '3+ ★' },
-              { key: '4', label: '4+ ★' },
-              { key: '4.5', label: '4.5+ ★' }
-            ].map((rating) => (
-              <CheckboxTile
-                key={rating.key}
-                label={rating.label}
-                checked={minRating === rating.key}
-                onChange={() => setMinRating(minRating === rating.key ? '' : rating.key)}
-              />
-            ))}
+            <RatingTile
+              label="Any"
+              checked={minRating === ''}
+              onChange={() => setMinRating('')}
+            />
+            <RatingTile
+              rating="3"
+              checked={minRating === '3'}
+              onChange={() => setMinRating(minRating === '3' ? '' : '3')}
+            />
+            <RatingTile
+              rating="4"
+              checked={minRating === '4'}
+              onChange={() => setMinRating(minRating === '4' ? '' : '4')}
+            />
+            <RatingTile
+              rating="4.5"
+              checked={minRating === '4.5'}
+              onChange={() => setMinRating(minRating === '4.5' ? '' : '4.5')}
+            />
           </div>
         </div>
 

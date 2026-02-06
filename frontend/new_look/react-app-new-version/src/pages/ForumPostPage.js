@@ -20,6 +20,7 @@ function ForumPostPage() {
   const [newComment, setNewComment] = useState('');
   const [replyTo, setReplyTo] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [hotPosts, setHotPosts] = useState([]);
   
   // Emoji and GIF picker state
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -52,12 +53,14 @@ function ForumPostPage() {
       const data = await response.json();
       
       if (data.data && data.data.length > 0) {
-        setGifs(data.data.map(gif => ({
+        const mappedGifs = data.data.map(gif => ({
           id: gif.id,
+          // Use fixed_height.url like messaging - this is the animated version
           url: gif.images.fixed_height.url,
           preview: gif.images.fixed_height_still?.url || gif.images.fixed_height.url,
           alt: gif.title || 'GIF'
-        })));
+        }));
+        setGifs(mappedGifs);
       } else {
         setGifs([]);
       }
@@ -94,7 +97,12 @@ function ForumPostPage() {
   // Check if content is a GIF URL
   const isGifUrl = (content) => {
     if (!content) return false;
-    return content.match(/\.(gif)$/i) || content.includes('giphy.com') || content.includes('tenor.com');
+    const trimmed = content.trim();
+    return trimmed.match(/\.(gif)($|\?)/i) || 
+           trimmed.includes('giphy.com') || 
+           trimmed.includes('tenor.com') ||
+           trimmed.includes('media.giphy.com') ||
+           trimmed.match(/^https?:\/\/[^\s]+\.(gif|webp)/i);
   };
   
   const [profileModalOpen, setProfileModalOpen] = useState(false);
@@ -126,6 +134,23 @@ function ForumPostPage() {
   useEffect(() => {
     loadPost();
   }, [loadPost]);
+
+  // Load hot posts for sidebar
+  useEffect(() => {
+    const fetchHotPosts = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/forum/posts?sortBy=hot&limit=5`);
+        const data = await response.json();
+        if (data.success && data.posts) {
+          // Filter out current post
+          setHotPosts(data.posts.filter(p => p.Slug !== slug).slice(0, 5));
+        }
+      } catch (err) {
+        console.error('Failed to load hot posts:', err);
+      }
+    };
+    fetchHotPosts();
+  }, [slug]);
 
   // Handle vote on post
   const handlePostVote = async (voteType) => {
@@ -253,17 +278,56 @@ function ForumPostPage() {
     return date.toLocaleDateString();
   };
 
-  // Render comment with nested replies
+  // State for collapsed comments
+  const [collapsedComments, setCollapsedComments] = useState(new Set());
+  
+  const toggleCollapse = (commentId) => {
+    setCollapsedComments(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(commentId)) {
+        newSet.delete(commentId);
+      } else {
+        newSet.add(commentId);
+      }
+      return newSet;
+    });
+  };
+
+  // Render comment with nested replies - Reddit style with connecting lines
   const renderComment = (comment, level = 0) => {
     const childComments = comments.filter(c => c.ParentCommentID === comment.CommentID);
+    const isCollapsed = collapsedComments.has(comment.CommentID);
     
     return (
-      <div key={comment.CommentID} style={{ marginLeft: level > 0 ? '2rem' : 0, marginTop: '1rem' }}>
+      <div 
+        key={comment.CommentID} 
+        id={`comment-${comment.CommentID}`}
+        style={{ 
+          marginLeft: level > 0 ? '20px' : 0, 
+          marginTop: level === 0 ? '16px' : '8px',
+          position: 'relative'
+        }}
+      >
+        {/* Reddit-style connecting line */}
+        {level > 0 && (
+          <div 
+            style={{
+              position: 'absolute',
+              left: '-12px',
+              top: 0,
+              bottom: 0,
+              width: '2px',
+              background: '#e5e7eb',
+              cursor: 'pointer'
+            }}
+            onClick={() => toggleCollapse(comment.CommentID)}
+            title={isCollapsed ? 'Expand thread' : 'Collapse thread'}
+          />
+        )}
         <div style={{
-          background: level > 0 ? '#f8f9fa' : 'white',
-          borderRadius: '8px',
-          padding: '1rem',
-          borderLeft: level > 0 ? '3px solid #e5e7eb' : 'none'
+          background: 'transparent',
+          padding: level > 0 ? '8px 0' : '12px 0',
+          borderRadius: '4px'
         }}>
           <div style={{ display: 'flex', gap: '0.75rem' }}>
             {/* Vote buttons */}
@@ -303,13 +367,26 @@ function ForumPostPage() {
             <div style={{ flex: 1 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
                 {comment.AuthorAvatar ? (
-                  <img src={comment.AuthorAvatar} alt="" style={{ width: '24px', height: '24px', borderRadius: '50%' }} />
+                  <img 
+                    src={comment.AuthorAvatar} 
+                    alt="" 
+                    style={{ width: '24px', height: '24px', borderRadius: '50%', cursor: 'pointer' }}
+                    onClick={() => navigate(`/profile/${comment.AuthorID}`)}
+                  />
                 ) : (
-                  <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div 
+                    style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                    onClick={() => navigate(`/profile/${comment.AuthorID}`)}
+                  >
                     <i className="fas fa-user" style={{ fontSize: '0.625rem', color: '#999' }}></i>
                   </div>
                 )}
-                <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>{comment.AuthorName}</span>
+                <span 
+                  style={{ fontWeight: 600, fontSize: '0.875rem', cursor: 'pointer', color: '#4F86E8' }}
+                  onClick={() => navigate(`/profile/${comment.AuthorID}`)}
+                >
+                  {comment.AuthorName}
+                </span>
                 <span style={{ color: '#999', fontSize: '0.75rem' }}>• {formatTimeAgo(comment.CreatedAt)}</span>
               </div>
               <div style={{ color: '#333', lineHeight: 1.6, marginBottom: '0.5rem' }}>
@@ -341,25 +418,97 @@ function ForumPostPage() {
                 )}
               </div>
               {!comment.IsDeleted && (
-                <button
-                  onClick={() => setReplyTo(comment)}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: '#6366f1',
-                    fontSize: '0.75rem',
-                    cursor: 'pointer',
-                    fontWeight: 500
-                  }}
-                >
-                  <i className="fas fa-reply" style={{ marginRight: '0.25rem' }}></i>
-                  Reply
-                </button>
+                <div style={{ display: 'flex', gap: '12px', marginTop: '4px' }}>
+                  <button
+                    onClick={() => {
+                      if (!currentUser) {
+                        setProfileModalOpen(true);
+                        return;
+                      }
+                      setReplyTo(comment);
+                      // Scroll to comment form and focus
+                      setTimeout(() => {
+                        const textarea = document.querySelector('textarea[placeholder*="thoughts"]');
+                        if (textarea) {
+                          textarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                          textarea.focus();
+                        }
+                      }, 100);
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#6b7280',
+                      fontSize: '0.75rem',
+                      cursor: 'pointer',
+                      fontWeight: 600,
+                      padding: '4px 8px',
+                      borderRadius: '4px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}
+                    onMouseEnter={(e) => e.target.style.background = '#f3f4f6'}
+                    onMouseLeave={(e) => e.target.style.background = 'transparent'}
+                  >
+                    <i className="fas fa-reply"></i>
+                    Reply
+                  </button>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(`${window.location.href}#comment-${comment.CommentID}`);
+                      const toast = document.createElement('div');
+                      toast.textContent = 'Link copied!';
+                      toast.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:12px 24px;border-radius:8px;z-index:9999;font-size:14px;';
+                      document.body.appendChild(toast);
+                      setTimeout(() => toast.remove(), 2000);
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#6b7280',
+                      fontSize: '0.75rem',
+                      cursor: 'pointer',
+                      fontWeight: 600,
+                      padding: '4px 8px',
+                      borderRadius: '4px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}
+                    onMouseEnter={(e) => e.target.style.background = '#f3f4f6'}
+                    onMouseLeave={(e) => e.target.style.background = 'transparent'}
+                  >
+                    <i className="fas fa-share"></i>
+                    Share
+                  </button>
+                </div>
               )}
             </div>
           </div>
         </div>
-        {childComments.map(child => renderComment(child, level + 1))}
+        {/* Child comments with collapse/expand */}
+        {childComments.length > 0 && !isCollapsed && (
+          childComments.map(child => renderComment(child, level + 1))
+        )}
+        {childComments.length > 0 && isCollapsed && (
+          <button
+            onClick={() => toggleCollapse(comment.CommentID)}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#4F86E8',
+              fontSize: '0.75rem',
+              cursor: 'pointer',
+              fontWeight: 600,
+              padding: '8px 0',
+              marginLeft: '20px'
+            }}
+          >
+            <i className="fas fa-plus-square" style={{ marginRight: '4px' }}></i>
+            {childComments.length} more {childComments.length === 1 ? 'reply' : 'replies'}
+          </button>
+        )}
       </div>
     );
   };
@@ -402,24 +551,26 @@ function ForumPostPage() {
       />
       <ProfileModal isOpen={profileModalOpen} onClose={() => setProfileModalOpen(false)} />
       
-      <ContentWrapper variant="narrow" style={{ padding: '2rem 0' }}>
-        {/* Back button */}
-        <button
-          onClick={() => navigate('/forum')}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: '#6366f1',
-            cursor: 'pointer',
-            marginBottom: '1rem',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem'
-          }}
-        >
-          <i className="fas fa-arrow-left"></i>
-          Back to Forum
-        </button>
+      <div className="page-wrapper" style={{ padding: '2rem 0', display: 'flex', gap: '24px', maxWidth: '1200px', margin: '0 auto' }}>
+        {/* Main Content */}
+        <div style={{ flex: 1, maxWidth: '800px' }}>
+          {/* Back button */}
+          <button
+            onClick={() => navigate('/forum')}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#6366f1',
+              cursor: 'pointer',
+              marginBottom: '1rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem'
+            }}
+          >
+            <i className="fas fa-arrow-left"></i>
+            Back to Forum
+          </button>
 
         {/* Post */}
         <div style={{
@@ -482,13 +633,16 @@ function ForumPostPage() {
                 <span style={{ color: '#999', fontSize: '0.8rem' }}>
                   Posted by
                 </span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                <div 
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', cursor: 'pointer' }}
+                  onClick={() => navigate(`/profile/${post.AuthorID}`)}
+                >
                   {post.AuthorAvatar ? (
                     <img src={post.AuthorAvatar} alt="" style={{ width: '20px', height: '20px', borderRadius: '50%' }} />
                   ) : (
                     <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: '#e5e7eb' }}></div>
                   )}
-                  <span style={{ fontWeight: 500, fontSize: '0.8rem' }}>{post.AuthorName}</span>
+                  <span style={{ fontWeight: 500, fontSize: '0.8rem', color: '#4F86E8' }}>{post.AuthorName}</span>
                 </div>
                 <span style={{ color: '#999', fontSize: '0.8rem' }}>
                   • {formatTimeAgo(post.CreatedAt)}
@@ -634,9 +788,23 @@ function ForumPostPage() {
               justifyContent: 'space-between',
               alignItems: 'flex-start'
             }}>
-              <p style={{ color: '#666', fontSize: '0.875rem', margin: 0 }}>
-                {replyTo.Content.length > 100 ? replyTo.Content.substring(0, 100) + '...' : replyTo.Content}
-              </p>
+              <div style={{ flex: 1 }}>
+                {isGifUrl(replyTo.Content) ? (
+                  <img 
+                    src={replyTo.Content.trim()} 
+                    alt="GIF" 
+                    style={{ 
+                      maxWidth: '150px', 
+                      maxHeight: '100px', 
+                      borderRadius: '6px'
+                    }} 
+                  />
+                ) : (
+                  <p style={{ color: '#666', fontSize: '0.875rem', margin: 0 }}>
+                    {replyTo.Content.length > 100 ? replyTo.Content.substring(0, 100) + '...' : replyTo.Content}
+                  </p>
+                )}
+              </div>
               <button
                 onClick={() => setReplyTo(null)}
                 className="modal-close-btn"
@@ -826,28 +994,48 @@ function ForumPostPage() {
                       <i className="fas fa-search"></i>
                     </button>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px', maxHeight: '200px', overflowY: 'auto' }}>
+                  <div style={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: 'repeat(2, 1fr)', 
+                    gap: '6px',
+                    maxHeight: '280px',
+                    overflowY: 'auto',
+                    paddingRight: '4px'
+                  }}>
                     {gifsLoading ? (
-                      <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '20px' }}>
-                        <div className="spinner" style={{ width: '24px', height: '24px', margin: '0 auto' }}></div>
+                      <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px 20px', color: '#6b7280' }}>
+                        <i className="fas fa-spinner fa-spin" style={{ marginRight: '8px' }}></i>
+                        Loading GIFs...
+                      </div>
+                    ) : gifs.length === 0 ? (
+                      <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '20px', color: '#6b7280', fontSize: '13px' }}>
+                        No GIFs found. Try searching for something!
                       </div>
                     ) : gifs.map(gif => (
-                      <img
+                      <button
                         key={gif.id}
-                        src={gif.preview}
-                        alt={gif.alt}
+                        type="button"
                         onClick={() => selectGif(gif.url)}
                         style={{
-                          width: '100%',
-                          height: '80px',
-                          objectFit: 'cover',
-                          borderRadius: '6px',
+                          padding: 0,
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '8px',
+                          background: '#f9fafb',
                           cursor: 'pointer',
-                          transition: 'transform 0.15s'
+                          overflow: 'hidden',
+                          height: '100px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
                         }}
-                        onMouseEnter={(e) => { e.target.src = gif.url; e.target.style.transform = 'scale(1.05)'; }}
-                        onMouseLeave={(e) => { e.target.src = gif.preview; e.target.style.transform = 'scale(1)'; }}
-                      />
+                      >
+                        <img 
+                          src={gif.url} 
+                          alt={gif.alt}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          loading="lazy"
+                        />
+                      </button>
                     ))}
                   </div>
                   <div style={{ marginTop: '8px', textAlign: 'center' }}>
@@ -900,7 +1088,7 @@ function ForumPostPage() {
               
               <button
                 type="submit"
-                disabled={!currentUser || !newComment.trim() || submitting || post.IsLocked}
+                disabled={!currentUser || (!newComment.trim() && !selectedGif) || submitting || post.IsLocked}
                 style={{
                   padding: '0.75rem 1.5rem',
                   background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
@@ -908,8 +1096,8 @@ function ForumPostPage() {
                   border: 'none',
                   borderRadius: '8px',
                   fontWeight: 600,
-                  cursor: (!currentUser || !newComment.trim() || submitting) ? 'not-allowed' : 'pointer',
-                  opacity: (!currentUser || !newComment.trim() || submitting) ? 0.5 : 1
+                  cursor: (!currentUser || (!newComment.trim() && !selectedGif) || submitting) ? 'not-allowed' : 'pointer',
+                  opacity: (!currentUser || (!newComment.trim() && !selectedGif) || submitting) ? 0.5 : 1
                 }}
               >
                 {submitting ? 'Posting...' : 'Post Comment'}
@@ -937,7 +1125,96 @@ function ForumPostPage() {
             topLevelComments.map(comment => renderComment(comment))
           )}
         </div>
-      </ContentWrapper>
+        </div>
+        
+        {/* Hot Posts Sidebar */}
+        <div style={{ 
+          width: '300px', 
+          flexShrink: 0,
+          display: 'none'
+        }} className="forum-sidebar-desktop">
+          <div style={{
+            background: 'white',
+            borderRadius: '12px',
+            padding: '16px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+            position: 'sticky',
+            top: '100px'
+          }}>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '8px',
+              marginBottom: '16px',
+              paddingBottom: '12px',
+              borderBottom: '1px solid #e5e7eb'
+            }}>
+              <i className="fas fa-fire" style={{ color: '#f59e0b' }}></i>
+              <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 600, color: '#374151' }}>
+                Hot Posts
+              </h3>
+            </div>
+            
+            {hotPosts.length === 0 ? (
+              <p style={{ color: '#9ca3af', fontSize: '13px', textAlign: 'center', padding: '16px 0' }}>
+                No hot posts yet
+              </p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {hotPosts.map((hotPost, idx) => (
+                  <div 
+                    key={hotPost.PostID}
+                    onClick={() => navigate(`/forum/post/${hotPost.Slug}`)}
+                    style={{
+                      display: 'flex',
+                      gap: '12px',
+                      cursor: 'pointer',
+                      padding: '8px',
+                      borderRadius: '8px',
+                      transition: 'background 0.15s'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = '#f9fafb'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                  >
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ 
+                        fontSize: '13px', 
+                        fontWeight: 500, 
+                        color: '#374151',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        lineHeight: 1.4,
+                        marginBottom: '4px'
+                      }}>
+                        {hotPost.Title}
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#9ca3af' }}>
+                        {hotPost.Score} upvotes · {hotPost.CommentCount} comments
+                      </div>
+                    </div>
+                    {hotPost.ImageURL && (
+                      <img 
+                        src={hotPost.ImageURL} 
+                        alt="" 
+                        style={{ 
+                          width: '60px', 
+                          height: '60px', 
+                          borderRadius: '6px',
+                          objectFit: 'cover',
+                          flexShrink: 0
+                        }}
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
 
       <Footer />
       {currentUser && <MessagingWidget />}

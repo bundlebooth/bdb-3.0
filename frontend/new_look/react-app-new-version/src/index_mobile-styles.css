@@ -30,7 +30,7 @@ label {
 }
 
 body {
-    background-color: #f8fafc;
+    background-color: #ffffff;
     color: var(--text);
 }
 
@@ -683,7 +683,7 @@ body {
 /* Smooth scrolling for vendor cards */
 .results-left {
     scroll-behavior: smooth;
-    background-color: #f8fafc; /* Match body background */
+    background-color: #ffffff; /* Match body background */
 }
 
 /* Custom scrollbar for vendor list - sleek design */
@@ -8657,28 +8657,28 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
 
 @media (max-width: 768px) {
     .mobile-map-button {
-        display: none !important;
+        display: flex !important;
         position: fixed !important;
-        bottom: 20px !important;
+        bottom: 80px !important;
         left: 50% !important;
         transform: translateX(-50%) !important;
-        background: #222 !important;
+        background: #4F86E8 !important;
         color: white !important;
         padding: 12px 20px !important;
         border-radius: 24px !important;
         font-size: 14px !important;
-        font-weight: 500 !important;
+        font-weight: 600 !important;
         align-items: center !important;
         gap: 8px !important;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
-        z-index: 100 !important;
+        box-shadow: 0 4px 12px rgba(79, 134, 232, 0.4) !important;
+        z-index: 9998 !important;
         border: none !important;
         cursor: pointer !important;
         transition: all 0.2s ease !important;
     }
     
     .mobile-map-button:hover {
-        background: #333 !important;
+        background: #3d6fc7 !important;
         transform: translateX(-50%) scale(1.02) !important;
     }
     

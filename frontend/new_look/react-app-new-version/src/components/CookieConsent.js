@@ -159,128 +159,103 @@ function CookieConsent() {
       {!showPreferences && (
         <div style={{
           position: 'fixed',
-          bottom: 0,
+          bottom: 'env(safe-area-inset-bottom, 70px)',
           left: 0,
           right: 0,
           backgroundColor: '#ffffff',
           boxShadow: '0 -4px 20px rgba(0, 0, 0, 0.15)',
           zIndex: 9999,
-          padding: '20px',
-          borderTop: '1px solid #e5e7eb'
+          padding: '16px',
+          borderTop: '1px solid #e5e7eb',
+          marginBottom: '70px'
         }}>
           <div style={{
             maxWidth: '1200px',
-            margin: '0 auto',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '16px'
+            margin: '0 auto'
           }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5B68F4" strokeWidth="2">
+                <circle cx="12" cy="12" r="10"/>
+                <circle cx="8" cy="9" r="1" fill="#5B68F4"/>
+                <circle cx="15" cy="8" r="1" fill="#5B68F4"/>
+                <circle cx="10" cy="14" r="1" fill="#5B68F4"/>
+                <circle cx="16" cy="13" r="1" fill="#5B68F4"/>
+                <circle cx="12" cy="17" r="1" fill="#5B68F4"/>
+              </svg>
+              <span style={{ fontWeight: '600', fontSize: '15px', color: '#1f2937' }}>
+                We use cookies
+              </span>
+            </div>
+            <p style={{ 
+              color: '#6b7280', 
+              fontSize: '13px', 
+              lineHeight: '1.4',
+              margin: '0 0 12px 0'
+            }}>
+              We use cookies to enhance your browsing experience, analyze site traffic, and personalize content. 
+              By clicking "Accept All", you consent to our use of cookies. You can manage your preferences anytime.
+            </p>
             <div style={{
               display: 'flex',
-              alignItems: 'flex-start',
-              gap: '16px',
-              flexWrap: 'wrap'
+              gap: '8px',
+              flexWrap: 'nowrap',
+              alignItems: 'center',
+              justifyContent: 'flex-start'
             }}>
-              <div style={{ flex: 1, minWidth: '280px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#5B68F4" strokeWidth="2">
-                    <circle cx="12" cy="12" r="10"/>
-                    <circle cx="8" cy="9" r="1" fill="#5B68F4"/>
-                    <circle cx="15" cy="8" r="1" fill="#5B68F4"/>
-                    <circle cx="10" cy="14" r="1" fill="#5B68F4"/>
-                    <circle cx="16" cy="13" r="1" fill="#5B68F4"/>
-                    <circle cx="12" cy="17" r="1" fill="#5B68F4"/>
-                  </svg>
-                  <span style={{ fontWeight: '600', fontSize: '16px', color: '#1f2937' }}>
-                    We use cookies
-                  </span>
-                </div>
-                <p style={{ 
-                  color: '#6b7280', 
-                  fontSize: '14px', 
-                  lineHeight: '1.5',
-                  margin: 0 
-                }}>
-                  We use cookies to enhance your browsing experience, analyze site traffic, and personalize content. 
-                  By clicking "Accept All", you consent to our use of cookies. You can manage your preferences anytime.
-                </p>
-              </div>
-              <div style={{
-                display: 'flex',
-                gap: '12px',
-                flexWrap: 'wrap',
-                alignItems: 'center'
-              }}>
-                <button
-                  onClick={() => setShowPreferences(true)}
-                  style={{
-                    padding: '10px 20px',
-                    backgroundColor: 'transparent',
-                    color: '#6b7280',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    fontWeight: '500',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    whiteSpace: 'nowrap'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.target.style.backgroundColor = '#f9fafb';
-                    e.target.style.borderColor = '#9ca3af';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.backgroundColor = 'transparent';
-                    e.target.style.borderColor = '#d1d5db';
-                  }}
-                >
-                  Manage Preferences
-                </button>
-                <button
-                  onClick={handleRejectAll}
-                  style={{
-                    padding: '10px 20px',
-                    backgroundColor: 'transparent',
-                    color: '#374151',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    fontWeight: '500',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    whiteSpace: 'nowrap'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.target.style.backgroundColor = '#f9fafb';
-                    e.target.style.borderColor = '#9ca3af';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.backgroundColor = 'transparent';
-                    e.target.style.borderColor = '#d1d5db';
-                  }}
-                >
-                  Reject All
-                </button>
-                <button
-                  onClick={handleAcceptAll}
-                  style={{
-                    padding: '10px 24px',
-                    backgroundColor: '#5B68F4',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    transition: 'background-color 0.2s',
-                    whiteSpace: 'nowrap'
-                  }}
-                  onMouseEnter={(e) => e.target.style.backgroundColor = '#4A56E2'}
-                  onMouseLeave={(e) => e.target.style.backgroundColor = '#5B68F4'}
-                >
-                  Accept All
-                </button>
-              </div>
+              <button
+                onClick={() => setShowPreferences(true)}
+                style={{
+                  padding: '8px 12px',
+                  backgroundColor: 'transparent',
+                  color: '#6b7280',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  whiteSpace: 'nowrap',
+                  flex: '0 0 auto'
+                }}
+              >
+                Preferences
+              </button>
+              <button
+                onClick={handleRejectAll}
+                style={{
+                  padding: '8px 12px',
+                  backgroundColor: 'transparent',
+                  color: '#374151',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  whiteSpace: 'nowrap',
+                  flex: '0 0 auto'
+                }}
+              >
+                Reject
+              </button>
+              <button
+                onClick={handleAcceptAll}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: '#4F86E8',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s',
+                  whiteSpace: 'nowrap',
+                  flex: '0 0 auto'
+                }}
+              >
+                Accept All
+              </button>
             </div>
           </div>
         </div>
@@ -349,8 +324,8 @@ function CookieConsent() {
                   borderRadius: '12px',
                   border: '1px solid #e5e7eb'
                 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
+                    <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: '600', color: '#1f2937', marginBottom: '4px' }}>
                         Necessary Cookies
                       </div>
@@ -360,11 +335,13 @@ function CookieConsent() {
                     </div>
                     <div style={{
                       width: '44px',
+                      minWidth: '44px',
                       height: '24px',
-                      backgroundColor: '#10b981',
+                      backgroundColor: '#4F86E8',
                       borderRadius: '12px',
                       position: 'relative',
-                      opacity: 0.6
+                      opacity: 0.6,
+                      flexShrink: 0
                     }}>
                       <div style={{
                         width: '20px',
@@ -387,8 +364,8 @@ function CookieConsent() {
                   borderRadius: '12px',
                   border: '1px solid #e5e7eb'
                 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
+                    <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: '600', color: '#1f2937', marginBottom: '4px' }}>
                         Analytics Cookies
                       </div>
@@ -400,13 +377,15 @@ function CookieConsent() {
                       onClick={() => setPreferences(p => ({ ...p, analytics: !p.analytics }))}
                       style={{
                         width: '44px',
+                        minWidth: '44px',
                         height: '24px',
-                        backgroundColor: preferences.analytics ? '#5B68F4' : '#d1d5db',
+                        backgroundColor: preferences.analytics ? '#4F86E8' : '#d1d5db',
                         borderRadius: '12px',
                         position: 'relative',
                         border: 'none',
                         cursor: 'pointer',
-                        transition: 'background-color 0.2s'
+                        transition: 'background-color 0.2s',
+                        flexShrink: 0
                       }}
                     >
                       <div style={{
@@ -431,8 +410,8 @@ function CookieConsent() {
                   borderRadius: '12px',
                   border: '1px solid #e5e7eb'
                 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
+                    <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: '600', color: '#1f2937', marginBottom: '4px' }}>
                         Marketing Cookies
                       </div>
@@ -444,13 +423,15 @@ function CookieConsent() {
                       onClick={() => setPreferences(p => ({ ...p, marketing: !p.marketing }))}
                       style={{
                         width: '44px',
+                        minWidth: '44px',
                         height: '24px',
-                        backgroundColor: preferences.marketing ? '#5B68F4' : '#d1d5db',
+                        backgroundColor: preferences.marketing ? '#4F86E8' : '#d1d5db',
                         borderRadius: '12px',
                         position: 'relative',
                         border: 'none',
                         cursor: 'pointer',
-                        transition: 'background-color 0.2s'
+                        transition: 'background-color 0.2s',
+                        flexShrink: 0
                       }}
                     >
                       <div style={{
@@ -475,8 +456,8 @@ function CookieConsent() {
                   borderRadius: '12px',
                   border: '1px solid #e5e7eb'
                 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
+                    <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: '600', color: '#1f2937', marginBottom: '4px' }}>
                         Functional Cookies
                       </div>
@@ -488,13 +469,15 @@ function CookieConsent() {
                       onClick={() => setPreferences(p => ({ ...p, functional: !p.functional }))}
                       style={{
                         width: '44px',
+                        minWidth: '44px',
                         height: '24px',
-                        backgroundColor: preferences.functional ? '#5B68F4' : '#d1d5db',
+                        backgroundColor: preferences.functional ? '#4F86E8' : '#d1d5db',
                         borderRadius: '12px',
                         position: 'relative',
                         border: 'none',
                         cursor: 'pointer',
-                        transition: 'background-color 0.2s'
+                        transition: 'background-color 0.2s',
+                        flexShrink: 0
                       }}
                     >
                       <div style={{

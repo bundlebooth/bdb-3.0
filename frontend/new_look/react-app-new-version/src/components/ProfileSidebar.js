@@ -31,6 +31,7 @@ function ProfileSidebar({ isOpen, onClose }) {
   const [notifications, setNotifications] = useState([]);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [vendorLogoUrl, setVendorLogoUrl] = useState(null);
+  const [userProfilePic, setUserProfilePic] = useState(null);
 
   // Lock body scroll when sidebar is open
   useEffect(() => {
@@ -72,6 +73,30 @@ function ProfileSidebar({ isOpen, onClose }) {
     };
     
     checkVendorProfile();
+  }, [currentUser?.id]);
+
+  // Fetch user profile picture
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    
+    const fetchUserProfile = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/users/${currentUser.id}/profile`, {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          const pic = data.ProfilePicture || data.profilePicture || data.ProfileImageURL || data.profileImageUrl;
+          if (pic) {
+            setUserProfilePic(pic);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch user profile:', error);
+      }
+    };
+    
+    fetchUserProfile();
   }, [currentUser?.id]);
 
   // Load notification counts
@@ -177,7 +202,7 @@ function ProfileSidebar({ isOpen, onClose }) {
     window.location.replace('/');
   };
 
-  const profilePic = currentUser?.profilePicture || currentUser?.ProfilePicture;
+  const profilePic = userProfilePic || currentUser?.profilePicture || currentUser?.ProfilePicture || vendorLogoUrl;
 
   if (!isOpen || !currentUser) return null;
 
@@ -371,32 +396,6 @@ function ProfileSidebar({ isOpen, onClose }) {
         
         {/* Menu Items */}
         <div className="profile-sidebar-menu">
-          {/* Bookings */}
-          <button className="profile-sidebar-menu-item" onClick={() => handleNavigate('/client/bookings')}>
-            <i className="far fa-calendar-check"></i>
-            <span>Bookings</span>
-            <i className="fas fa-chevron-right menu-item-arrow"></i>
-          </button>
-          
-          {/* Messages */}
-          <button className="profile-sidebar-menu-item" onClick={() => handleNavigate('/client/messages')}>
-            <i className="far fa-comment-dots"></i>
-            <span>Messages</span>
-            {notificationCounts.unreadMessages > 0 && (
-              <span className="menu-item-badge">{notificationCounts.unreadMessages}</span>
-            )}
-            <i className="fas fa-chevron-right menu-item-arrow"></i>
-          </button>
-          
-          {/* Favorites */}
-          <button className="profile-sidebar-menu-item" onClick={() => handleNavigate('/client/favorites')}>
-            <i className="far fa-heart"></i>
-            <span>Favorites</span>
-            <i className="fas fa-chevron-right menu-item-arrow"></i>
-          </button>
-          
-          <div className="profile-sidebar-menu-divider"></div>
-          
           {/* View Profile */}
           <button className="profile-sidebar-menu-item" onClick={() => handleNavigate(`/profile/${encodeUserId(currentUser?.id)}`)}>
             <i className="far fa-user-circle"></i>
@@ -458,7 +457,7 @@ function ProfileSidebar({ isOpen, onClose }) {
                 handleNavigate('/dashboard?section=vendor-dashboard');
               }}
             >
-              <i className="fas fa-key"></i>
+              <i className="fas fa-sync-alt"></i>
               <span>Switch to hosting</span>
             </button>
           </div>

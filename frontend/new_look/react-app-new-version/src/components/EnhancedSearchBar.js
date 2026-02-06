@@ -492,10 +492,12 @@ const EnhancedSearchBar = ({ onSearch, isScrolled }) => {
         {!isExpanded ? (
           <div className="compact-view">
             <div className="compact-field compact-location" onClick={(e) => { e.stopPropagation(); setShowLocationModal(true); }}>
+              <span className="compact-label">LOCATION</span>
               <span className="compact-value">{formatLocationDisplay(location, true) || 'Location'}</span>
             </div>
             <div className="compact-separator">|</div>
             <div className="compact-field compact-date" onClick={(e) => { e.stopPropagation(); setShowDateModal(true); }}>
+              <span className="compact-label">EVENT DATE</span>
               <span className="compact-value">{formatDateDisplay(selectedDate, true)}</span>
             </div>
             <button className="search-btn-compact" onClick={(e) => { e.stopPropagation(); handleSearch(); }} title="Search">
@@ -511,7 +513,7 @@ const EnhancedSearchBar = ({ onSearch, isScrolled }) => {
               ref={locationRef} 
               onClick={() => handleFieldClick('location')}
             >
-              <div className="field-label">Where?</div>
+              <div className="field-label">LOCATION</div>
               <div className="field-input-wrapper">
                 <input
                   type="text"
@@ -546,7 +548,7 @@ const EnhancedSearchBar = ({ onSearch, isScrolled }) => {
               ref={dateRef} 
               onClick={() => handleFieldClick('date')}
             >
-              <div className="field-label">When?</div>
+              <div className="field-label">EVENT DATE</div>
               <div className="field-value">
                 {formatDateDisplay(selectedDate)}
               </div>

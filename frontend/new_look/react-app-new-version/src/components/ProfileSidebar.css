@@ -140,7 +140,7 @@
   width: 80px;
   height: 80px;
   border-radius: 50%;
-  background: #222;
+  background: #4F86E8;
   color: #fff;
   display: flex;
   align-items: center;
@@ -410,7 +410,7 @@
   width: 100%;
   max-width: 280px;
   padding: 14px 24px;
-  background: #222;
+  background: #4F86E8;
   color: #fff;
   border: none;
   border-radius: 50px;
@@ -418,10 +418,11 @@
   font-weight: 600;
   cursor: pointer;
   transition: transform 0.1s, background 0.15s;
+  box-shadow: 0 2px 8px rgba(79, 134, 232, 0.3);
 }
 
 .profile-sidebar-switch-btn:hover {
-  background: #000;
+  background: #3d6fc7;
 }
 
 .profile-sidebar-switch-btn:active {

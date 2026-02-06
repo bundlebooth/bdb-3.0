@@ -288,10 +288,15 @@ function ForumPage() {
       <div className="forum-layout-wrapper page-wrapper" style={{ display: 'flex', minHeight: 'calc(100vh - 80px)' }}>
         {/* Left Sidebar - Categories (Reddit-style) */}
         <div className={`forum-sidebar ${mobileSidebarOpen ? 'mobile-open' : ''}`} style={{
-          width: '270px',
-          borderRight: '1px solid #edeff1',
-          background: '#fff',
-          flexShrink: 0
+          width: '280px',
+          minWidth: '280px',
+          borderRight: '1px solid #e5e7eb',
+          background: '#ffffff',
+          flexShrink: 0,
+          position: 'sticky',
+          top: '80px',
+          height: 'calc(100vh - 80px)',
+          overflowY: 'auto'
         }}>
           {/* Mobile Header for Sidebar */}
           <div className="forum-sidebar-header" style={{
@@ -308,7 +313,7 @@ function ForumPage() {
             </div>
           </div>
           
-          <div style={{ padding: '16px' }}>
+          <div style={{ padding: '20px' }}>
             {/* Create Post Button - at the top */}
             <button
               onClick={() => {
@@ -317,11 +322,11 @@ function ForumPage() {
               }}
               style={{
                 width: '100%',
-                padding: '10px 16px',
-                background: '#5e72e4',
+                padding: '12px 16px',
+                background: '#4F86E8',
                 color: 'white',
                 border: 'none',
-                borderRadius: '20px',
+                borderRadius: '24px',
                 fontWeight: 600,
                 cursor: 'pointer',
                 display: 'flex',
@@ -329,16 +334,28 @@ function ForumPage() {
                 justifyContent: 'center',
                 gap: '8px',
                 fontSize: '14px',
-                marginBottom: '16px'
+                marginBottom: '24px',
+                boxShadow: '0 2px 8px rgba(79, 134, 232, 0.3)',
+                transition: 'all 0.2s'
               }}
+              onMouseEnter={(e) => e.target.style.background = '#3d6fc7'}
+              onMouseLeave={(e) => e.target.style.background = '#4F86E8'}
             >
               <i className="fas fa-plus"></i>
               Create Post
             </button>
             
-            {/* Categories List */}
-            <div style={{ marginBottom: '16px' }}>
-              <div style={{ fontSize: '10px', fontWeight: 700, color: '#878a8c', textTransform: 'uppercase', letterSpacing: '0.5px', padding: '8px 12px' }}>
+            {/* Topics Section */}
+            <div style={{ marginBottom: '20px' }}>
+              <div style={{ 
+                fontSize: '11px', 
+                fontWeight: 700, 
+                color: '#6b7280', 
+                textTransform: 'uppercase', 
+                letterSpacing: '0.5px', 
+                padding: '8px 12px',
+                marginBottom: '4px'
+              }}>
                 Topics
               </div>
               
@@ -347,50 +364,90 @@ function ForumPage() {
                 style={{
                   width: '100%',
                   padding: '10px 12px',
-                  background: !selectedCategory ? '#f6f7f8' : 'transparent',
+                  background: !selectedCategory ? '#EBF2FF' : 'transparent',
                   border: 'none',
-                  borderRadius: '4px',
+                  borderRadius: '8px',
                   textAlign: 'left',
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '12px',
                   fontSize: '14px',
-                  fontWeight: !selectedCategory ? 600 : 400,
-                  color: '#1c1c1c'
+                  fontWeight: !selectedCategory ? 600 : 500,
+                  color: !selectedCategory ? '#4F86E8' : '#374151',
+                  transition: 'all 0.15s'
                 }}
+                onMouseEnter={(e) => { if (selectedCategory) e.target.style.background = '#f3f4f6'; }}
+                onMouseLeave={(e) => { if (selectedCategory) e.target.style.background = 'transparent'; }}
               >
-                <i className="fas fa-home" style={{ width: '20px', color: '#5e72e4' }}></i>
+                <i className="fas fa-home" style={{ width: '20px', color: '#4F86E8', fontSize: '16px' }}></i>
                 Home
               </button>
               
               <button
-                onClick={() => handleCategorySelect(null)}
+                onClick={() => { setSortBy('top'); setPage(1); }}
                 style={{
                   width: '100%',
                   padding: '10px 12px',
-                  background: 'transparent',
+                  background: sortBy === 'top' ? '#EBF2FF' : 'transparent',
                   border: 'none',
-                  borderRadius: '4px',
+                  borderRadius: '8px',
                   textAlign: 'left',
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '12px',
                   fontSize: '14px',
-                  color: '#1c1c1c'
+                  fontWeight: sortBy === 'top' ? 600 : 500,
+                  color: sortBy === 'top' ? '#4F86E8' : '#374151',
+                  transition: 'all 0.15s'
                 }}
+                onMouseEnter={(e) => { if (sortBy !== 'top') e.target.style.background = '#f3f4f6'; }}
+                onMouseLeave={(e) => { if (sortBy !== 'top') e.target.style.background = 'transparent'; }}
               >
-                <i className="fas fa-chart-line" style={{ width: '20px', color: '#46d160' }}></i>
+                <i className="fas fa-chart-line" style={{ width: '20px', color: '#10b981', fontSize: '16px' }}></i>
                 Popular
+              </button>
+              
+              <button
+                onClick={() => { setSortBy('hot'); setPage(1); }}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  background: sortBy === 'hot' ? '#EBF2FF' : 'transparent',
+                  border: 'none',
+                  borderRadius: '8px',
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  fontSize: '14px',
+                  fontWeight: sortBy === 'hot' ? 600 : 500,
+                  color: sortBy === 'hot' ? '#4F86E8' : '#374151',
+                  transition: 'all 0.15s'
+                }}
+                onMouseEnter={(e) => { if (sortBy !== 'hot') e.target.style.background = '#f3f4f6'; }}
+                onMouseLeave={(e) => { if (sortBy !== 'hot') e.target.style.background = 'transparent'; }}
+              >
+                <i className="fas fa-fire" style={{ width: '20px', color: '#f59e0b', fontSize: '16px' }}></i>
+                Hot
               </button>
             </div>
             
-            <div style={{ height: '1px', background: '#edeff1', margin: '8px 0' }}></div>
+            <div style={{ height: '1px', background: '#e5e7eb', margin: '16px 0' }}></div>
             
-            {/* Category List */}
+            {/* Categories Section */}
             <div>
-              <div style={{ fontSize: '10px', fontWeight: 700, color: '#878a8c', textTransform: 'uppercase', letterSpacing: '0.5px', padding: '8px 12px' }}>
+              <div style={{ 
+                fontSize: '11px', 
+                fontWeight: 700, 
+                color: '#6b7280', 
+                textTransform: 'uppercase', 
+                letterSpacing: '0.5px', 
+                padding: '8px 12px',
+                marginBottom: '4px'
+              }}>
                 Categories
               </div>
               
@@ -400,25 +457,70 @@ function ForumPage() {
                   onClick={() => handleCategorySelect(cat)}
                   style={{
                     width: '100%',
-                    padding: '8px 12px',
-                    background: selectedCategory?.CategoryID === cat.CategoryID ? '#f6f7f8' : 'transparent',
+                    padding: '10px 12px',
+                    background: selectedCategory?.CategoryID === cat.CategoryID ? '#EBF2FF' : 'transparent',
                     border: 'none',
-                    borderRadius: '4px',
+                    borderRadius: '8px',
                     textAlign: 'left',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '12px',
                     fontSize: '14px',
-                    fontWeight: selectedCategory?.CategoryID === cat.CategoryID ? 600 : 400,
-                    color: '#1c1c1c'
+                    fontWeight: selectedCategory?.CategoryID === cat.CategoryID ? 600 : 500,
+                    color: selectedCategory?.CategoryID === cat.CategoryID ? '#4F86E8' : '#374151',
+                    transition: 'all 0.15s'
                   }}
+                  onMouseEnter={(e) => { if (selectedCategory?.CategoryID !== cat.CategoryID) e.target.style.background = '#f3f4f6'; }}
+                  onMouseLeave={(e) => { if (selectedCategory?.CategoryID !== cat.CategoryID) e.target.style.background = 'transparent'; }}
                 >
                   <i className={`fas ${cat.Icon}`} style={{ width: '20px', color: cat.Color, fontSize: '16px' }}></i>
                   <span style={{ flex: 1 }}>{cat.Name}</span>
-                  <span style={{ fontSize: '12px', color: '#878a8c' }}>{cat.PostCount || 0}</span>
+                  <span style={{ 
+                    fontSize: '12px', 
+                    color: '#9ca3af',
+                    background: '#f3f4f6',
+                    padding: '2px 8px',
+                    borderRadius: '10px',
+                    fontWeight: 500
+                  }}>{cat.PostCount || 0}</span>
                 </button>
               ))}
+            </div>
+            
+            <div style={{ height: '1px', background: '#e5e7eb', margin: '16px 0' }}></div>
+            
+            {/* Community Guidelines */}
+            <div style={{ 
+              padding: '16px',
+              background: '#f9fafb',
+              borderRadius: '12px',
+              marginTop: '16px'
+            }}>
+              <div style={{ 
+                fontSize: '13px', 
+                fontWeight: 600, 
+                color: '#374151',
+                marginBottom: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                <i className="fas fa-info-circle" style={{ color: '#4F86E8' }}></i>
+                Community Guidelines
+              </div>
+              <ul style={{ 
+                margin: 0, 
+                paddingLeft: '16px', 
+                fontSize: '12px', 
+                color: '#6b7280',
+                lineHeight: 1.6
+              }}>
+                <li>Be respectful to others</li>
+                <li>No spam or self-promotion</li>
+                <li>Stay on topic</li>
+                <li>Report inappropriate content</li>
+              </ul>
             </div>
           </div>
         </div>

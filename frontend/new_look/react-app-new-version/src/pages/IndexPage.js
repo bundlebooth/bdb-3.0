@@ -2446,26 +2446,14 @@ function IndexPage() {
           onNotificationsClick={() => {}} 
         />
         <button 
-          className="mobile-map-close-btn"
+          className="modal-close-btn"
           onClick={() => setMobileMapOpen(false)}
           aria-label="Close map"
           style={{
             position: 'absolute',
             top: '12px',
             right: '12px',
-            zIndex: 1001,
-            width: '36px',
-            height: '36px',
-            borderRadius: '50%',
-            border: 'none',
-            background: 'white',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '20px',
-            color: '#374151'
+            zIndex: 1001
           }}
         >
           ×
