@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
 import { useTranslation } from '../hooks/useTranslation';
+import WhatsNewSidebar from './WhatsNewSidebar';
 import './UnifiedSidebar.css';
 
 function UnifiedSidebar({ isOpen, onClose }) {
@@ -21,6 +22,8 @@ function UnifiedSidebar({ isOpen, onClose }) {
     unreadMessages: 0,
     pendingReviews: 0
   });
+  const [announcementsSidebarOpen, setAnnouncementsSidebarOpen] = useState(false);
+  const [announcementsCount, setAnnouncementsCount] = useState(0);
   
   // Get view mode from localStorage
   const getViewMode = () => {
@@ -100,6 +103,23 @@ function UnifiedSidebar({ isOpen, onClose }) {
     
     checkVendorProfile();
   }, [currentUser?.id, currentUser?.isVendor]);
+
+  // Load announcements count
+  useEffect(() => {
+    const loadAnnouncementsCount = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/public/announcements/all`);
+        if (response.ok) {
+          const data = await response.json();
+          setAnnouncementsCount((data.announcements || []).length);
+        }
+      } catch (error) {
+        console.error('Error loading announcements count:', error);
+      }
+    };
+    
+    loadAnnouncementsCount();
+  }, []);
 
   // Load notification counts
   useEffect(() => {
@@ -349,6 +369,13 @@ function UnifiedSidebar({ isOpen, onClose }) {
             <i className="far fa-compass"></i>
             <span>Explore Vendors</span>
           </button>
+          <button className="unified-sidebar-item" onClick={() => setAnnouncementsSidebarOpen(true)}>
+            <i className="far fa-bullhorn"></i>
+            <span>Announcements</span>
+            {announcementsCount > 0 && (
+              <span className="unified-sidebar-badge">{announcementsCount}</span>
+            )}
+          </button>
           <button className="unified-sidebar-item" onClick={() => handleNavigate('/forum')}>
             <i className="far fa-comments"></i>
             <span>Forum</span>
@@ -435,6 +462,12 @@ function UnifiedSidebar({ isOpen, onClose }) {
           </button>
         </div>
       </div>
+      
+      {/* Announcements Sidebar */}
+      <WhatsNewSidebar 
+        isOpen={announcementsSidebarOpen} 
+        onClose={() => setAnnouncementsSidebarOpen(false)} 
+      />
     </>
   );
 }

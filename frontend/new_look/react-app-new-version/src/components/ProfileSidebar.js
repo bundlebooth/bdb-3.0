@@ -268,10 +268,35 @@ function ProfileSidebar({ isOpen, onClose }) {
                   
                   const notificationType = notification.type || notification.Type || 'general';
                   
+                  // Get icon and color based on notification type - realistic/intuitive colors
+                  const getNotificationStyle = (type) => {
+                    const styles = {
+                      'message': { icon: 'fa-envelope', iconColor: '#5086E8' },      // Blue envelope
+                      'new_message': { icon: 'fa-envelope', iconColor: '#5086E8' },  // Blue envelope
+                      'booking': { icon: 'fa-calendar-plus', iconColor: '#5086E8' }, // Blue calendar
+                      'booking_request': { icon: 'fa-calendar-plus', iconColor: '#5086E8' }, // Blue calendar
+                      'booking_approved': { icon: 'fa-check-circle', iconColor: '#10b981' }, // Green checkmark
+                      'booking_confirmed': { icon: 'fa-check-circle', iconColor: '#10b981' }, // Green checkmark
+                      'booking_declined': { icon: 'fa-times-circle', iconColor: '#ef4444' }, // Red X
+                      'booking_cancelled': { icon: 'fa-ban', iconColor: '#ef4444' },  // Red ban
+                      'booking_reminder': { icon: 'fa-bell', iconColor: '#f59e0b' },  // Yellow bell for reminder
+                      'payment': { icon: 'fa-credit-card', iconColor: '#10b981' },   // Green credit card
+                      'payment_received': { icon: 'fa-dollar-sign', iconColor: '#10b981' }, // Green dollar
+                      'invoice': { icon: 'fa-file-invoice-dollar', iconColor: '#8b5cf6' }, // Purple invoice
+                      'review': { icon: 'fa-star', iconColor: '#f59e0b' },            // Yellow/gold star
+                      'promotion': { icon: 'fa-tag', iconColor: '#f97316' },          // Orange tag
+                      'announcement': { icon: 'fa-bullhorn', iconColor: '#f97316' },  // Orange megaphone
+                      'general': { icon: 'fa-bell', iconColor: '#f59e0b' },           // Yellow bell
+                    };
+                    return styles[type] || { icon: 'fa-bell', iconColor: '#f59e0b' }; // Default yellow bell
+                  };
+                  
+                  const notifStyle = getNotificationStyle(notificationType);
+                  
                   return (
                     <div key={notification.id || notification.ID || index} className="notification-item">
-                      <div className="notification-icon">
-                        <i className={`fas ${notificationType === 'message' ? 'fa-envelope' : notificationType === 'booking' ? 'fa-calendar' : 'fa-bell'}`}></i>
+                      <div className="notification-icon" style={{ background: 'rgba(80, 134, 232, 0.15)' }}>
+                        <i className={`fas ${notifStyle.icon}`} style={{ color: notifStyle.iconColor }}></i>
                       </div>
                       <div className="notification-content">
                         <p className="notification-text">{notificationText}</p>

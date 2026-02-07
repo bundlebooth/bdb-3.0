@@ -836,7 +836,7 @@ function ProfilePage() {
                         }}
                         onClick={() => activity.TargetURL && navigate(activity.TargetURL)}
                       >
-                        {/* Activity Icon */}
+                        {/* Activity Icon - Light blue background with distinctive icon colors */}
                         <div style={{
                           width: '40px',
                           height: '40px',
@@ -845,14 +845,11 @@ function ProfilePage() {
                           alignItems: 'center',
                           justifyContent: 'center',
                           flexShrink: 0,
-                          background: activity.ActivityType === 'review' ? '#fef3c7' :
-                                     activity.ActivityType === 'forum_post' ? '#dbeafe' :
-                                     activity.ActivityType === 'forum_comment' ? '#e9d5ff' :
-                                     activity.ActivityType === 'favorite' ? '#fce7f3' : '#f3f4f6',
-                          color: activity.ActivityType === 'review' ? '#d97706' :
-                                activity.ActivityType === 'forum_post' ? '#2563eb' :
-                                activity.ActivityType === 'forum_comment' ? '#7c3aed' :
-                                activity.ActivityType === 'favorite' ? '#db2777' : '#6b7280'
+                          background: 'rgba(80, 134, 232, 0.15)',
+                          color: activity.ActivityType === 'review' ? '#f59e0b' :
+                                activity.ActivityType === 'forum_post' ? '#5086E8' :
+                                activity.ActivityType === 'forum_comment' ? '#8b5cf6' :
+                                activity.ActivityType === 'favorite' ? '#ef4444' : '#5086E8'
                         }}>
                           <i className={`fas ${
                             activity.ActivityType === 'review' ? 'fa-star' :

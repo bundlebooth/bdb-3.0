@@ -675,7 +675,7 @@
 .notification-icon {
   width: 40px;
   height: 40px;
-  background: #f7f7f7;
+  background: rgba(80, 134, 232, 0.15);
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -685,7 +685,7 @@
 
 .notification-icon i {
   font-size: 16px;
-  color: #222;
+  color: #5086E8;
 }
 
 .notification-content {

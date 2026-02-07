@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, memo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { apiGet } from '../utils/api';
-import NotificationDropdown from './NotificationDropdown';
+// NotificationDropdown removed - notifications now in sidebar
 import EnhancedSearchBar from './EnhancedSearchBar';
 import WhatsNewSidebar from './WhatsNewSidebar';
 import ProfileSidebar from './ProfileSidebar';
@@ -21,7 +21,7 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
   const [favoritesBadge, setFavoritesBadge] = useState(0);
   const [messagesBadge, setMessagesBadge] = useState(0);
   const [notificationsBadge, setNotificationsBadge] = useState(0);
-  const [notificationDropdownOpen, setNotificationDropdownOpen] = useState(false);
+  // notificationDropdownOpen removed - notifications now in sidebar
   const [isScrolled, setIsScrolled] = useState(false); // No longer used - kept for compatibility
   const [profileIncomplete, setProfileIncomplete] = useState(false);
   const [profileStatus, setProfileStatus] = useState(null); // 'live', 'submitted', 'incomplete'
@@ -283,14 +283,17 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
   };
 
   const handleNotificationClick = () => {
-    setNotificationDropdownOpen(!notificationDropdownOpen);
+    // Notifications now handled in sidebar - navigate to dashboard notifications
+    if (currentUser) {
+      navigate('/dashboard?section=notifications');
+    }
     if (onNotificationsClick) {
       onNotificationsClick();
     }
   };
 
   const handleNotificationDropdownClose = async () => {
-    setNotificationDropdownOpen(false);
+    // Notifications now in sidebar - this function kept for compatibility
     // Refresh notification count after closing
     if (currentUser?.id) {
       const notifCount = await getUnreadNotificationCount(currentUser.id);
@@ -511,16 +514,7 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
       </div>
 
       
-      {/* Notification Dropdown */}
-      <NotificationDropdown 
-        isOpen={notificationDropdownOpen} 
-        onClose={handleNotificationDropdownClose}
-        anchorEl={notificationBtnRef.current}
-        onBadgeCountChange={(count) => {
-          setNotificationsBadge(count);
-          updatePageTitle(count);
-        }}
-      />
+      {/* Notification Dropdown removed - notifications now in sidebar */}
     </header>
     
     {/* Airbnb-Style Profile Sidebar */}

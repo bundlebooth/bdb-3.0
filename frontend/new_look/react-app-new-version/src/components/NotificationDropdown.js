@@ -130,47 +130,51 @@ function NotificationDropdown({ isOpen, onClose, anchorEl, onBadgeCountChange })
   };
 
   // Get notification badge with all types matching email notification types
+  // Blue background (#5086E8) with distinctive icon colors per type
   const getNotificationBadge = (type) => {
     const badges = {
-      // Booking notifications
-      'booking_request': { text: 'booking', color: '#5086E8', icon: 'fa-calendar-plus' },
-      'new_booking_request': { text: 'booking', color: '#5086E8', icon: 'fa-calendar-plus' },
-      'booking_approved': { text: 'approved', color: '#10b981', icon: 'fa-check-circle' },
-      'booking_confirmed': { text: 'confirmed', color: '#10b981', icon: 'fa-check-circle' },
-      'booking_declined': { text: 'declined', color: '#ef4444', icon: 'fa-times-circle' },
-      'booking_rejected': { text: 'rejected', color: '#ef4444', icon: 'fa-times-circle' },
-      'booking_cancelled': { text: 'cancelled', color: '#ef4444', icon: 'fa-ban' },
-      'booking_reminder': { text: 'reminder', color: '#8b5cf6', icon: 'fa-clock' },
-      'booking_update': { text: 'update', color: '#6366f1', icon: 'fa-sync' },
+      // Booking notifications - calendar orange
+      'booking_request': { text: 'booking', bgColor: '#5086E8', iconColor: '#ffffff', icon: 'fa-calendar-plus' },
+      'new_booking_request': { text: 'booking', bgColor: '#5086E8', iconColor: '#ffffff', icon: 'fa-calendar-plus' },
+      'booking_approved': { text: 'approved', bgColor: '#5086E8', iconColor: '#10b981', icon: 'fa-check-circle' },
+      'booking_confirmed': { text: 'confirmed', bgColor: '#5086E8', iconColor: '#10b981', icon: 'fa-check-circle' },
+      'booking_declined': { text: 'declined', bgColor: '#5086E8', iconColor: '#ef4444', icon: 'fa-times-circle' },
+      'booking_rejected': { text: 'rejected', bgColor: '#5086E8', iconColor: '#ef4444', icon: 'fa-times-circle' },
+      'booking_cancelled': { text: 'cancelled', bgColor: '#5086E8', iconColor: '#ef4444', icon: 'fa-ban' },
+      'booking_reminder': { text: 'reminder', bgColor: '#5086E8', iconColor: '#fbbf24', icon: 'fa-clock' },
+      'booking_update': { text: 'update', bgColor: '#5086E8', iconColor: '#a78bfa', icon: 'fa-sync' },
       
-      // Message notifications
-      'message': { text: 'message', color: '#10b981', icon: 'fa-comment' },
-      'new_message': { text: 'message', color: '#10b981', icon: 'fa-comment' },
+      // Message notifications - envelope/chat teal
+      'message': { text: 'message', bgColor: '#5086E8', iconColor: '#ffffff', icon: 'fa-envelope' },
+      'new_message': { text: 'message', bgColor: '#5086E8', iconColor: '#ffffff', icon: 'fa-envelope' },
       
-      // Payment notifications
-      'payment': { text: 'payment', color: '#f59e0b', icon: 'fa-credit-card' },
-      'payment_received': { text: 'payment', color: '#10b981', icon: 'fa-dollar-sign' },
-      'payment_reminder': { text: 'reminder', color: '#f59e0b', icon: 'fa-exclamation-circle' },
+      // Payment notifications - dollar green
+      'payment': { text: 'payment', bgColor: '#5086E8', iconColor: '#34d399', icon: 'fa-credit-card' },
+      'payment_received': { text: 'payment', bgColor: '#5086E8', iconColor: '#34d399', icon: 'fa-dollar-sign' },
+      'payment_reminder': { text: 'reminder', bgColor: '#5086E8', iconColor: '#fbbf24', icon: 'fa-exclamation-circle' },
       
-      // Invoice notifications
-      'invoice': { text: 'invoice', color: '#6366f1', icon: 'fa-file-invoice' },
-      'new_invoice': { text: 'invoice', color: '#6366f1', icon: 'fa-file-invoice' },
+      // Invoice notifications - document purple
+      'invoice': { text: 'invoice', bgColor: '#5086E8', iconColor: '#c4b5fd', icon: 'fa-file-invoice' },
+      'new_invoice': { text: 'invoice', bgColor: '#5086E8', iconColor: '#c4b5fd', icon: 'fa-file-invoice' },
       
-      // Review notifications
-      'review': { text: 'review', color: '#ec4899', icon: 'fa-star' },
-      'new_review': { text: 'review', color: '#ec4899', icon: 'fa-star' },
+      // Review notifications - star gold
+      'review': { text: 'review', bgColor: '#5086E8', iconColor: '#fbbf24', icon: 'fa-star' },
+      'new_review': { text: 'review', bgColor: '#5086E8', iconColor: '#fbbf24', icon: 'fa-star' },
       
-      // Promotion notifications
-      'promotion': { text: 'promo', color: '#f97316', icon: 'fa-tag' },
-      'promotions': { text: 'promo', color: '#f97316', icon: 'fa-tag' },
+      // Promotion notifications - tag orange
+      'promotion': { text: 'promo', bgColor: '#5086E8', iconColor: '#fb923c', icon: 'fa-tag' },
+      'promotions': { text: 'promo', bgColor: '#5086E8', iconColor: '#fb923c', icon: 'fa-tag' },
       
-      // Newsletter
-      'newsletter': { text: 'news', color: '#0ea5e9', icon: 'fa-newspaper' },
+      // Newsletter - newspaper cyan
+      'newsletter': { text: 'news', bgColor: '#5086E8', iconColor: '#67e8f9', icon: 'fa-newspaper' },
       
-      // General
-      'notification': { text: 'notification', color: '#6b7280', icon: 'fa-bell' }
+      // Announcement - megaphone yellow
+      'announcement': { text: 'announcement', bgColor: '#5086E8', iconColor: '#fbbf24', icon: 'fa-bullhorn' },
+      
+      // General - bell white
+      'notification': { text: 'notification', bgColor: '#5086E8', iconColor: '#ffffff', icon: 'fa-bell' }
     };
-    return badges[type] || { text: 'notification', color: '#6b7280', icon: 'fa-bell' };
+    return badges[type] || { text: 'notification', bgColor: '#5086E8', iconColor: '#ffffff', icon: 'fa-bell' };
   };
 
   const formatTime = (dateString) => {
@@ -345,18 +349,18 @@ function NotificationDropdown({ isOpen, onClose, anchorEl, onBadgeCountChange })
                   e.currentTarget.style.backgroundColor = isUnread ? '#fafbfc' : 'white';
                 }}
               >
-                {/* Icon */}
+                {/* Icon - Blue background with distinctive icon colors */}
                 <div style={{
                   width: '40px',
                   height: '40px',
                   borderRadius: '50%',
-                  backgroundColor: `${badge.color}15`,
+                  backgroundColor: badge.bgColor,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   flexShrink: 0
                 }}>
-                  <i className={`fas ${badge.icon}`} style={{ color: badge.color, fontSize: '16px' }}></i>
+                  <i className={`fas ${badge.icon}`} style={{ color: badge.iconColor, fontSize: '16px' }}></i>
                 </div>
                 
                 {/* Content */}

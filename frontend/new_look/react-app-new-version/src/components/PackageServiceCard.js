@@ -141,104 +141,91 @@ export const ServiceCard = ({
     return `${minutes} min`;
   };
 
+  // Get pricing type label
+  const getPricingTypeLabel = () => {
+    const model = service.pricingModel || service.PricingModel || pricing.type;
+    switch (model) {
+      case 'fixed_price':
+      case 'fixed':
+        return { label: 'Fixed', icon: 'fa-tag' };
+      case 'per_hour':
+      case 'hourly':
+      case 'time_based':
+        return { label: 'Hourly', icon: 'fa-clock' };
+      case 'per_person':
+      case 'per_attendee':
+        return { label: `${minAttendees || ''}${minAttendees && maxAttendees ? '-' : ''}${maxAttendees || ''}`, icon: 'fa-users' };
+      default:
+        return { label: 'Service', icon: 'fa-concierge-bell' };
+    }
+  };
+
+  const pricingTypeInfo = getPricingTypeLabel();
+
+  // Fresha.com style - simple text-based card with no images
   return (
     <div 
-      className={`psc-card ${isSelected ? 'psc-card-selected' : ''} ${selectable ? 'psc-card-selectable' : ''}`}
-      onClick={onClick}
-      style={{ position: 'relative', overflow: 'visible' }}
+      className={`psc-card-fresha ${isSelected ? 'psc-card-fresha-selected' : ''}`}
+      style={{ position: 'relative' }}
     >
-      <div className="psc-card-content">
-        {/* Image/Icon */}
-        <div className="psc-card-image">
-          {imageURL ? (
-            <img src={imageURL} alt={name} />
-          ) : (
-            <i className={`fas ${getCategoryIcon(category, name)}`}></i>
-          )}
+      <div className="psc-card-fresha-content">
+        {/* Left side - Service info */}
+        <div className="psc-card-fresha-info">
+          <h3 className="psc-card-fresha-title">{name}</h3>
+          
+          {/* Price line with suffix */}
+          <p className="psc-card-fresha-price">
+            {isOnSale ? (
+              <>
+                {formatCurrency(parseFloat(salePrice), null, { showCents: false })}
+                <span style={{ textDecoration: 'line-through', color: '#9ca3af', marginLeft: '8px', fontWeight: 400 }}>
+                  {formatCurrency(parseFloat(regularPrice), null, { showCents: false })}
+                </span>
+              </>
+            ) : (
+              <>{priceDisplay}</>
+            )}
+            <span className="psc-card-fresha-price-suffix">{getPriceSuffix()}</span>
+          </p>
+          
+          {/* Tags row - pricing type, duration */}
+          <div className="psc-card-fresha-tags">
+            <span className="psc-card-fresha-tag">
+              <i className={`fas ${pricingTypeInfo.icon}`}></i>
+              {pricingTypeInfo.label}
+            </span>
+            {duration && (
+              <span className="psc-card-fresha-tag">
+                <i className="far fa-clock"></i>
+                {formatDuration(duration)}
+              </span>
+            )}
+          </div>
         </div>
         
-        {/* Details */}
-        <div className="psc-card-details">
-          <div className="psc-card-header">
-            <div className="psc-card-info">
-              <h3 className="psc-card-title">
-                {name}
-              </h3>
-              
-              {/* Pricing - with sale price support */}
-              <div className="psc-card-pricing">
-                {isOnSale ? (
-                  <>
-                    <span className="psc-price">{formatCurrency(parseFloat(salePrice), null, { showCents: false })}</span>
-                    <span className="psc-price-original">{formatCurrency(parseFloat(regularPrice), null, { showCents: false })}</span>
-                  </>
-                ) : (
-                  <span className="psc-price">{priceDisplay}</span>
-                )}
-                <span className="psc-price-suffix">{getPriceSuffix()}</span>
-              </div>
-              
-              {/* Tags - Pricing Model, Duration and Category */}
-              <div className="psc-card-tags">
-                {(() => {
-                  const pricingModel = service.pricingModel || service.PricingModel || pricing.type;
-                  if (pricingModel === 'time_based' || pricingModel === 'hourly' || pricingModel === 'per_hour') {
-                    return <span className="psc-tag"><i className="far fa-clock" style={{ marginRight: '4px' }}></i>Hourly</span>;
-                  } else if (pricingModel === 'fixed_price' || pricingModel === 'fixed') {
-                    return <span className="psc-tag"><i className="fas fa-tag" style={{ marginRight: '4px' }}></i>Fixed</span>;
-                  } else if (pricingModel === 'per_attendee' || pricingModel === 'per_person') {
-                    // Show attendee range instead of "Per Person" if min/max are set
-                    if (minAttendees && maxAttendees) {
-                      return <span className="psc-tag"><i className="fas fa-users" style={{ marginRight: '4px' }}></i>{minAttendees}-{maxAttendees}</span>;
-                    } else if (minAttendees) {
-                      return <span className="psc-tag"><i className="fas fa-users" style={{ marginRight: '4px' }}></i>Min {minAttendees}</span>;
-                    } else if (maxAttendees) {
-                      return <span className="psc-tag"><i className="fas fa-users" style={{ marginRight: '4px' }}></i>Max {maxAttendees}</span>;
-                    }
-                    return <span className="psc-tag"><i className="fas fa-users" style={{ marginRight: '4px' }}></i>Per Person</span>;
-                  }
-                  return null;
-                })()}
-                {formatDuration(duration) && (
-                  <span className="psc-tag">
-                    <i className="far fa-clock" style={{ marginRight: '4px' }}></i>
-                    {formatDuration(duration)}
-                  </span>
-                )}
-                {category && (
-                  <span className="psc-tag">{category}</span>
-                )}
-                {/* Cancellation Policy Badge */}
-                {cancellationPolicy && (
-                  <span 
-                    className="psc-tag" 
-                    style={{ 
-                      background: cancellationPolicy === 'flexible' ? '#d1fae5' : cancellationPolicy === 'moderate' ? '#fef3c7' : cancellationPolicy === 'strict' ? '#fee2e2' : '#f3f4f6',
-                      color: cancellationPolicy === 'flexible' ? '#065f46' : cancellationPolicy === 'moderate' ? '#92400e' : cancellationPolicy === 'strict' ? '#991b1b' : '#374151'
-                    }}
-                  >
-                    <i className="fas fa-shield-alt" style={{ marginRight: '4px' }}></i>
-                    {cancellationPolicy.charAt(0).toUpperCase() + cancellationPolicy.slice(1)}
-                  </span>
-                )}
-              </div>
+        {/* Right side - Book button or selection/actions */}
+        <div className="psc-card-fresha-actions">
+          {selectable ? (
+            <div 
+              className={`psc-selection-indicator ${isSelected ? 'selected' : ''}`}
+              onClick={onClick}
+              style={{ cursor: 'pointer' }}
+            >
+              {isSelected && <i className="fas fa-check"></i>}
             </div>
-            
-            {/* Selection Indicator or Actions */}
-            <div className="psc-card-actions">
-              {selectable && (
-                <div className={`psc-selection-indicator ${isSelected ? 'selected' : ''}`}>
-                  {isSelected && <i className="fas fa-check"></i>}
-                </div>
-              )}
-              {showActions && (
-                <ActionButtonGroup>
-                  {onEdit && <EditButton onClick={(e) => { e.stopPropagation(); onEdit(service); }} />}
-                  {onDelete && <DeleteButton onClick={(e) => { e.stopPropagation(); onDelete(service); }} title="Remove" />}
-                </ActionButtonGroup>
-              )}
-            </div>
-          </div>
+          ) : showActions ? (
+            <ActionButtonGroup>
+              {onEdit && <EditButton onClick={(e) => { e.stopPropagation(); onEdit(service); }} />}
+              {onDelete && <DeleteButton onClick={(e) => { e.stopPropagation(); onDelete(service); }} title="Remove" />}
+            </ActionButtonGroup>
+          ) : (
+            <button 
+              className="psc-book-btn"
+              onClick={onClick}
+            >
+              Book
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -308,113 +295,110 @@ export const PackageCard = ({
     return `${minutes} min`;
   };
 
+  // Get pricing type label for packages
+  const getPricingTypeLabel = () => {
+    switch (priceType) {
+      case 'fixed_price':
+      case 'fixed':
+        return { label: 'Fixed', icon: 'fa-tag' };
+      case 'time_based':
+      case 'hourly':
+        return { label: 'Hourly', icon: 'fa-clock' };
+      case 'per_attendee':
+      case 'per_person':
+        if (minAttendees && maxAttendees) {
+          return { label: `${minAttendees}-${maxAttendees}`, icon: 'fa-users' };
+        } else if (minAttendees) {
+          return { label: `Min ${minAttendees}`, icon: 'fa-users' };
+        } else if (maxAttendees) {
+          return { label: `Max ${maxAttendees}`, icon: 'fa-users' };
+        }
+        return { label: 'Per Person', icon: 'fa-users' };
+      default:
+        return { label: 'Fixed', icon: 'fa-tag' };
+    }
+  };
+
+  const pricingTypeInfo = getPricingTypeLabel();
+
+  // Fresha.com style - same as ServiceCard
   return (
     <div 
-      className={`psc-card ${isSelected ? 'psc-card-selected' : ''} ${selectable ? 'psc-card-selectable' : ''}`}
-      onClick={onClick}
-      style={{ position: 'relative', overflow: 'visible' }}
+      className={`psc-card-fresha ${isSelected ? 'psc-card-fresha-selected' : ''}`}
+      style={{ position: 'relative' }}
     >
-      <div className="psc-card-content">
-        {/* Image/Icon */}
-        <div className="psc-card-image">
-          {imageURL ? (
-            <img src={imageURL} alt={name} />
-          ) : (
-            <i className="fas fa-box"></i>
-          )}
+      <div className="psc-card-fresha-content">
+        {/* Left side - Package info */}
+        <div className="psc-card-fresha-info">
+          <h3 className="psc-card-fresha-title">{name}</h3>
+          
+          {/* Price line with suffix */}
+          <p className="psc-card-fresha-price">
+            {isOnSale ? (
+              <>
+                {formatCurrency(salePrice, null, { showCents: false })}
+                <span style={{ textDecoration: 'line-through', color: '#9ca3af', marginLeft: '8px', fontWeight: 400 }}>
+                  {formatCurrency(price, null, { showCents: false })}
+                </span>
+              </>
+            ) : (
+              <>{formatCurrency(price, null, { showCents: false })}</>
+            )}
+            <span className="psc-card-fresha-price-suffix">{getPriceSuffix()}</span>
+          </p>
+          
+          {/* Tags row - pricing type, duration, services count */}
+          <div className="psc-card-fresha-tags">
+            <span className="psc-card-fresha-tag">
+              <i className={`fas ${pricingTypeInfo.icon}`}></i>
+              {pricingTypeInfo.label}
+            </span>
+            {duration && (
+              <span className="psc-card-fresha-tag">
+                <i className="far fa-clock"></i>
+                {formatDuration(duration)}
+              </span>
+            )}
+            {includedServices.length > 0 && (
+              <span className="psc-card-fresha-tag">
+                <i className="fas fa-layer-group"></i>
+                {includedServices.length} service{includedServices.length > 1 ? 's' : ''}
+              </span>
+            )}
+          </div>
         </div>
         
-        {/* Details */}
-        <div className="psc-card-details">
-          <div className="psc-card-header">
-            <div className="psc-card-info">
-              <h3 className="psc-card-title">
-                {name}
-              </h3>
-              
-              {/* Pricing */}
-              <div className="psc-card-pricing">
-                {isOnSale ? (
-                  <>
-                    <span className="psc-price">{formatCurrency(salePrice, null, { showCents: false })}</span>
-                    <span className="psc-price-original">{formatCurrency(price, null, { showCents: false })}</span>
-                  </>
-                ) : (
-                  <span className="psc-price">{formatCurrency(price, null, { showCents: false })}</span>
-                )}
-                <span className="psc-price-suffix">{getPriceSuffix()}</span>
-              </div>
-              
-              {/* Tags - Pricing Model, Duration and Included Services */}
-              <div className="psc-card-tags">
-                {(() => {
-                  if (priceType === 'time_based') {
-                    return <span className="psc-tag"><i className="far fa-clock" style={{ marginRight: '4px' }}></i>Hourly</span>;
-                  } else if (priceType === 'fixed_price' || priceType === 'fixed') {
-                    return <span className="psc-tag"><i className="fas fa-tag" style={{ marginRight: '4px' }}></i>Fixed</span>;
-                  } else if (priceType === 'per_attendee' || priceType === 'per_person') {
-                    if (minAttendees && maxAttendees) {
-                      return <span className="psc-tag"><i className="fas fa-users" style={{ marginRight: '4px' }}></i>{minAttendees}-{maxAttendees}</span>;
-                    } else if (minAttendees) {
-                      return <span className="psc-tag"><i className="fas fa-users" style={{ marginRight: '4px' }}></i>Min {minAttendees}</span>;
-                    } else if (maxAttendees) {
-                      return <span className="psc-tag"><i className="fas fa-users" style={{ marginRight: '4px' }}></i>Max {maxAttendees}</span>;
-                    }
-                    return <span className="psc-tag"><i className="fas fa-users" style={{ marginRight: '4px' }}></i>Per Person</span>;
-                  }
-                  return null;
-                })()}
-                {formatDuration(duration) && (
-                  <span className="psc-tag">
-                    <i className="far fa-clock" style={{ marginRight: '4px' }}></i>
-                    {formatDuration(duration)}
-                  </span>
-                )}
-                {includedServices.length > 0 && (
-                  <span className="psc-tag">
-                    <i className="fas fa-layer-group" style={{ marginRight: '4px' }}></i>
-                    {includedServices.length} service{includedServices.length > 1 ? 's' : ''}
-                  </span>
-                )}
-                {/* Cancellation Policy Badge */}
-                {cancellationPolicy && (
-                  <span 
-                    className="psc-tag" 
-                    style={{ 
-                      background: cancellationPolicy === 'flexible' ? '#d1fae5' : cancellationPolicy === 'moderate' ? '#fef3c7' : cancellationPolicy === 'strict' ? '#fee2e2' : '#f3f4f6',
-                      color: cancellationPolicy === 'flexible' ? '#065f46' : cancellationPolicy === 'moderate' ? '#92400e' : cancellationPolicy === 'strict' ? '#991b1b' : '#374151'
-                    }}
-                  >
-                    <i className={`fas ${cancellationPolicy === 'flexible' ? 'fa-shield-alt' : cancellationPolicy === 'moderate' ? 'fa-shield-alt' : cancellationPolicy === 'strict' ? 'fa-shield-alt' : 'fa-shield-alt'}`} style={{ marginRight: '4px' }}></i>
-                    {cancellationPolicy.charAt(0).toUpperCase() + cancellationPolicy.slice(1)}
-                  </span>
-                )}
-              </div>
+        {/* Right side - Book button or selection/actions */}
+        <div className="psc-card-fresha-actions">
+          {selectable ? (
+            <div 
+              className={`psc-selection-indicator ${isSelected ? 'selected' : ''}`}
+              onClick={onClick}
+              style={{ cursor: 'pointer' }}
+            >
+              {isSelected && <i className="fas fa-check"></i>}
             </div>
-            
-            {/* Selection Indicator or Actions */}
-            <div className="psc-card-actions">
-              {selectable && (
-                <div className={`psc-selection-indicator ${isSelected ? 'selected' : ''}`}>
-                  {isSelected && <i className="fas fa-check"></i>}
-                </div>
-              )}
-              {showActions && (
-                <ActionButtonGroup>
-                  {onEdit && <EditButton onClick={(e) => { e.stopPropagation(); onEdit(pkg); }} />}
-                  {onDelete && <DeleteButton onClick={(e) => { e.stopPropagation(); onDelete(pkg); }} title="Remove" />}
-                </ActionButtonGroup>
-              )}
-            </div>
-          </div>
+          ) : showActions ? (
+            <ActionButtonGroup>
+              {onEdit && <EditButton onClick={(e) => { e.stopPropagation(); onEdit(pkg); }} />}
+              {onDelete && <DeleteButton onClick={(e) => { e.stopPropagation(); onDelete(pkg); }} title="Remove" />}
+            </ActionButtonGroup>
+          ) : (
+            <button 
+              className="psc-book-btn"
+              onClick={onClick}
+            >
+              Book
+            </button>
+          )}
         </div>
       </div>
     </div>
   );
 };
 
-// Packages/Services Toggle Tabs Component
-// Services tab is shown first (leftmost), then Packages
+// Packages/Services Toggle Tabs Component - Fresha.com style
+// Featured (Services) tab is shown first (leftmost), then Packages
 export const PackageServiceTabs = ({ 
   activeTab, 
   onTabChange, 
@@ -422,24 +406,20 @@ export const PackageServiceTabs = ({
   servicesCount = 0 
 }) => {
   return (
-    <div className="psc-tabs">
+    <div className="psc-tabs-fresha">
       <button
         type="button"
-        className={`psc-tab ${activeTab === 'services' ? 'active' : ''}`}
+        className={`psc-tab-fresha ${activeTab === 'services' ? 'active' : ''}`}
         onClick={() => onTabChange('services')}
       >
-        <i className="fas fa-concierge-bell"></i>
-        Services
-        {servicesCount > 0 && <span className="psc-tab-count">{servicesCount}</span>}
+        Featured
       </button>
       <button
         type="button"
-        className={`psc-tab ${activeTab === 'packages' ? 'active' : ''}`}
+        className={`psc-tab-fresha ${activeTab === 'packages' ? 'active' : ''}`}
         onClick={() => onTabChange('packages')}
       >
-        <i className="fas fa-box"></i>
         Packages
-        {packagesCount > 0 && <span className="psc-tab-count">{packagesCount}</span>}
       </button>
     </div>
   );

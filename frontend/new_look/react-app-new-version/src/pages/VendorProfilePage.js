@@ -90,7 +90,7 @@ function VendorProfilePage() {
   const [packages, setPackages] = useState([]);
   const [selectedPackage, setSelectedPackage] = useState(null);
   const [packageModalOpen, setPackageModalOpen] = useState(false);
-  const [offeringsTab, setOfferingsTab] = useState('packages'); // 'packages' or 'services'
+  const [offeringsTab, setOfferingsTab] = useState('services'); // 'services' (Featured) or 'packages'
   
   // Service detail modal state
   const [selectedService, setSelectedService] = useState(null);
@@ -1290,70 +1290,56 @@ function VendorProfilePage() {
     // Show nothing if no services and no packages
     if (!hasPackages && !hasServices) return null;
 
-    const policyType = cancellationPolicy?.PolicyType || null;
-    const policyBadge = policyType ? getCancellationPolicyBadge(policyType) : null;
-
-    // Build policy description
-    const getPolicyDescription = () => {
-      if (!cancellationPolicy) return null;
-      const type = cancellationPolicy.PolicyType;
-      if (type === 'flexible') {
-        return 'Full refund if cancelled at least 24 hours before the event.';
-      } else if (type === 'moderate') {
-        return 'Full refund if cancelled 7+ days before. 50% refund if cancelled 3-7 days before.';
-      } else if (type === 'strict') {
-        return '50% refund if cancelled 14+ days before. No refund within 14 days of event.';
-      } else if (type === 'custom') {
-        const parts = [];
-        if (cancellationPolicy.FullRefundDays > 0) {
-          parts.push(`Full refund if cancelled ${cancellationPolicy.FullRefundDays}+ days before`);
-        }
-        if (cancellationPolicy.PartialRefundDays > 0 && cancellationPolicy.PartialRefundPercent > 0) {
-          parts.push(`${cancellationPolicy.PartialRefundPercent}% refund if cancelled ${cancellationPolicy.PartialRefundDays}-${cancellationPolicy.FullRefundDays - 1} days before`);
-        }
-        if (cancellationPolicy.NoRefundDays > 0) {
-          parts.push(`No refund within ${cancellationPolicy.NoRefundDays} day(s) of event`);
-        }
-        return parts.join('. ') + (parts.length > 0 ? '.' : '');
-      }
-      return null;
-    };
-
-    // Combine all offerings for display
-    const allOfferings = [
-      ...packages.map(pkg => ({ type: 'package', data: pkg })),
-      ...services.map(svc => ({ type: 'service', data: svc }))
-    ];
-    const displayOfferings = allOfferings.slice(0, 3);
-    const hasMoreOfferings = allOfferings.length > 3;
+    // Get items based on active tab
+    const displayItems = offeringsTab === 'services' 
+      ? services.slice(0, 3)
+      : packages.slice(0, 3);
+    
+    const allItems = offeringsTab === 'services' ? services : packages;
+    const hasMoreItems = allItems.length > 3;
 
     return (
       <div className="content-section">
         <h2>{t('vendorProfile.whatWeOffer', 'What we offer')}</h2>
         
-        {/* Show first 3 offerings without tabs */}
+        {/* Fresha-style Tabs */}
+        <PackageServiceTabs
+          activeTab={offeringsTab}
+          onTabChange={setOfferingsTab}
+          packagesCount={packages.length}
+          servicesCount={services.length}
+        />
+        
+        {/* Show items based on active tab */}
         <PackageServiceList>
-          {displayOfferings.map((item, index) => (
-            item.type === 'package' ? (
-              <PackageCard
-                key={item.data.PackageID}
-                pkg={item.data}
-                onClick={() => { setSelectedPackage(item.data); setPackageModalOpen(true); }}
-                selectable={false}
-              />
-            ) : (
+          {offeringsTab === 'services' ? (
+            displayItems.map((service, index) => (
               <ServiceCard
-                key={item.data.ServiceID || item.data.VendorServiceID || item.data.VendorSelectedServiceID || `service-${index}`}
-                service={item.data}
-                onClick={() => { setSelectedService(item.data); setServiceModalOpen(true); }}
+                key={service.ServiceID || service.VendorServiceID || service.VendorSelectedServiceID || `service-${index}`}
+                service={service}
+                onClick={() => { setSelectedService(service); setServiceModalOpen(true); }}
                 selectable={false}
               />
-            )
-          ))}
+            ))
+          ) : (
+            displayItems.map((pkg) => (
+              <PackageCard
+                key={pkg.PackageID}
+                pkg={pkg}
+                onClick={() => { setSelectedPackage(pkg); setPackageModalOpen(true); }}
+                selectable={false}
+              />
+            ))
+          )}
         </PackageServiceList>
         
+        {/* Empty state */}
+        {displayItems.length === 0 && (
+          <PackageServiceEmpty type={offeringsTab} />
+        )}
+        
         {/* Show more button */}
-        {hasMoreOfferings && (
+        {hasMoreItems && (
           <button 
             onClick={() => setShowServicesModal(true)}
             style={{
@@ -1367,7 +1353,7 @@ function VendorProfilePage() {
               fontWeight: 600,
               cursor: 'pointer'
             }}>
-            Show all {allOfferings.length} offerings
+            Show all {allItems.length} {offeringsTab === 'services' ? 'services' : 'packages'}
           </button>
         )}
         
@@ -1375,27 +1361,29 @@ function VendorProfilePage() {
         <UniversalModal
           isOpen={showServicesModal}
           onClose={() => setShowServicesModal(false)}
-          title="What we offer"
+          title={offeringsTab === 'services' ? 'Featured Services' : 'Packages'}
           size="large"
         >
           <PackageServiceList>
-            {allOfferings.map((item, index) => (
-              item.type === 'package' ? (
-                <PackageCard
-                  key={item.data.PackageID}
-                  pkg={item.data}
-                  onClick={() => { setSelectedPackage(item.data); setPackageModalOpen(true); setShowServicesModal(false); }}
-                  selectable={false}
-                />
-              ) : (
+            {offeringsTab === 'services' ? (
+              services.map((service, index) => (
                 <ServiceCard
-                  key={item.data.ServiceID || item.data.VendorServiceID || item.data.VendorSelectedServiceID || `service-modal-${index}`}
-                  service={item.data}
-                  onClick={() => { setSelectedService(item.data); setServiceModalOpen(true); setShowServicesModal(false); }}
+                  key={service.ServiceID || service.VendorServiceID || service.VendorSelectedServiceID || `service-modal-${index}`}
+                  service={service}
+                  onClick={() => { setSelectedService(service); setServiceModalOpen(true); setShowServicesModal(false); }}
                   selectable={false}
                 />
-              )
-            ))}
+              ))
+            ) : (
+              packages.map((pkg) => (
+                <PackageCard
+                  key={pkg.PackageID}
+                  pkg={pkg}
+                  onClick={() => { setSelectedPackage(pkg); setPackageModalOpen(true); setShowServicesModal(false); }}
+                  selectable={false}
+                />
+              ))
+            )}
           </PackageServiceList>
         </UniversalModal>
       </div>
@@ -1693,7 +1681,7 @@ function VendorProfilePage() {
             textAlign: 'center',
             padding: '3rem 1.5rem',
             marginBottom: '2rem',
-            background: '#f7f7f7',
+            background: '#ffffff',
             borderRadius: '16px'
           }}>
             {/* Crown and Rating Display - positioned like Airbnb */}
