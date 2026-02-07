@@ -266,10 +266,7 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false, u
       mapTypeControl: false, // Remove Map/Satellite toggle
       streetViewControl: false,
       fullscreenControl: false, // Remove fullscreen button
-      zoomControl: true,
-      zoomControlOptions: {
-        position: window.google.maps.ControlPosition.RIGHT_CENTER
-      },
+      zoomControl: false, // Remove zoom +/- buttons
       gestureHandling: 'greedy', // Allow scroll zoom without Ctrl key
       styles: [
         {

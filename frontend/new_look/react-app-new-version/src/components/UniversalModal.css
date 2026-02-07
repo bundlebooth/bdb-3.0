@@ -354,3 +354,19 @@
     width: 100%;
   }
 }
+
+/**
+ * GROUND RULE: On mobile/tablet (≤768px), modals must always leave space
+ * for the bottom navigation bar. This ensures the nav bar remains visible
+ * and accessible when any modal is open.
+ */
+@media (max-width: 768px) {
+  .um-backdrop {
+    padding-bottom: 80px; /* Space for bottom nav bar */
+  }
+  
+  .um-modal {
+    max-height: calc(100vh - 100px); /* Account for top + bottom nav */
+    margin-bottom: 0;
+  }
+}

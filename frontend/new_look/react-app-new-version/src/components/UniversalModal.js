@@ -5,6 +5,10 @@ import './UniversalModal.css';
  * Universal Modal Component
  * Provides consistent modal styling across the application
  * 
+ * GROUND RULE: On mobile/tablet (≤768px), modals must always leave space
+ * for the bottom navigation bar. This is enforced via CSS in UniversalModal.css.
+ * Any modal using this component will automatically respect this rule.
+ * 
  * Props:
  * - isOpen: boolean - controls modal visibility
  * - onClose: function - called when modal should close

@@ -967,6 +967,19 @@ function VendorProfilePage() {
                   <circle cx="12" cy="12" r="5" fill="white"/>
                 </svg>
               </div>
+              
+              {/* Overlay to hide Google Maps fullscreen button in top-right corner */}
+              <div style={{
+                position: 'absolute',
+                top: 0,
+                right: 0,
+                width: '50px',
+                height: '50px',
+                background: '#e5e3df',
+                zIndex: 5,
+                pointerEvents: 'none',
+                borderBottomLeftRadius: '8px'
+              }} />
             </div>
           </div>
         )}

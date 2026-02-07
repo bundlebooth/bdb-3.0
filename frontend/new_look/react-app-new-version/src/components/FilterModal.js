@@ -64,36 +64,24 @@ const CheckboxTile = ({ label, checked, onChange }) => (
 // Blue Toggle Switch Component
 const ToggleSwitch = ({ checked, onChange, label, description }) => (
   <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem' }}>
-    <div style={{ flex: 1 }}>
+    <div style={{ flex: 1, minWidth: 0 }}>
       <div style={{ fontWeight: 500, color: '#111827', marginBottom: '0.25rem' }}>{label}</div>
       {description && <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>{description}</div>}
     </div>
     <button
       type="button"
       onClick={onChange}
+      className="filter-toggle-switch"
       style={{
-        width: '44px',
-        height: '24px',
-        backgroundColor: checked ? '#4F86E8' : '#d1d5db',
-        borderRadius: '12px',
-        position: 'relative',
-        border: 'none',
-        cursor: 'pointer',
-        transition: 'background-color 0.2s',
-        flexShrink: 0
+        backgroundColor: checked ? '#4F86E8' : '#d1d5db'
       }}
     >
-      <div style={{
-        width: '20px',
-        height: '20px',
-        backgroundColor: 'white',
-        borderRadius: '50%',
-        position: 'absolute',
-        top: '2px',
-        left: checked ? '22px' : '2px',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-        transition: 'left 0.2s'
-      }}/>
+      <div 
+        className="filter-toggle-knob"
+        style={{
+          left: checked ? '24px' : '2px'
+        }}
+      />
     </button>
   </div>
 );
@@ -712,22 +700,6 @@ function FilterModal({ isOpen, onClose, filters, onFilterChange, userLocation, o
           </div>
         </div>
 
-        {/* Subcategories Section - Checkbox tiles */}
-        {subcategories.length > 0 && (
-          <ExpandableCheckboxSection
-            title="Subcategories"
-            items={subcategories}
-            selectedIds={selectedSubcategories}
-            onToggle={(id) => {
-              setSelectedSubcategories(prev => 
-                prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
-              );
-            }}
-            getId={(item) => item.SubcategoryID}
-            getName={(item) => item.SubcategoryName}
-          />
-        )}
-
         {/* Event Types Section - Checkbox tiles */}
         {eventTypes.length > 0 && (
           <ExpandableCheckboxSection
@@ -760,67 +732,6 @@ function FilterModal({ isOpen, onClose, filters, onFilterChange, userLocation, o
           />
         )}
 
-        {/* Features Section - Categorized by vendor type with single Show all */}
-        <FeaturesSection
-          features={features}
-          selectedFeatures={selectedFeatures}
-          setSelectedFeatures={setSelectedFeatures}
-        />
-
-        {/* Instant Book - Blue Toggle */}
-        <div style={{ marginBottom: '1.5rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '1.5rem' }}>
-          <h3 style={{ 
-            fontSize: '1.1rem', 
-            fontWeight: 700, 
-            margin: '0 0 0.75rem 0',
-            color: '#111827'
-          }}>
-            Instant Book
-          </h3>
-          <ToggleSwitch
-            checked={instantBookingOnly}
-            onChange={() => setInstantBookingOnly(!instantBookingOnly)}
-            label="Instant Book"
-            description="Listings you can book without waiting for Host approval."
-          />
-        </div>
-
-        {/* Fresh Listings - Blue Toggle */}
-        <div style={{ marginBottom: '1.5rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '1.5rem' }}>
-          <h3 style={{ 
-            fontSize: '1.1rem', 
-            fontWeight: 700, 
-            margin: '0 0 0.75rem 0',
-            color: '#111827'
-          }}>
-            Fresh Listings
-          </h3>
-          <ToggleSwitch
-            checked={!!freshListingsDays}
-            onChange={() => setFreshListingsDays(freshListingsDays ? '' : '30')}
-            label="Fresh Listings"
-            description="Show vendors added in the last 30 days."
-          />
-        </div>
-
-        {/* Google Reviews Filter - Blue Toggle */}
-        <div style={{ marginBottom: '1.5rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '1.5rem' }}>
-          <h3 style={{ 
-            fontSize: '1.1rem', 
-            fontWeight: 700, 
-            margin: '0 0 0.75rem 0',
-            color: '#111827'
-          }}>
-            Google Reviews
-          </h3>
-          <ToggleSwitch
-            checked={hasGoogleReviews}
-            onChange={() => setHasGoogleReviews(!hasGoogleReviews)}
-            label="Has Google Reviews"
-            description="Show only vendors with imported Google reviews."
-          />
-        </div>
-
         {/* Service Location Section - Checkbox tiles */}
         <div style={{ marginBottom: '1.5rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '1.5rem' }}>
           <h3 style={{ 
@@ -843,7 +754,7 @@ function FilterModal({ isOpen, onClose, filters, onFilterChange, userLocation, o
           </div>
         </div>
 
-        {/* Years of Experience Section - Checkbox tiles */}
+        {/* Instant Book - Blue Toggle */}
         <div style={{ marginBottom: '1.5rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '1.5rem' }}>
           <h3 style={{ 
             fontSize: '1.1rem', 
@@ -851,18 +762,14 @@ function FilterModal({ isOpen, onClose, filters, onFilterChange, userLocation, o
             margin: '0 0 0.75rem 0',
             color: '#111827'
           }}>
-            Years of Experience
+            Instant Book
           </h3>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-            {EXPERIENCE_RANGES.map((range) => (
-              <CheckboxTile
-                key={range.key}
-                label={range.label}
-                checked={experienceRange === range.key}
-                onChange={() => setExperienceRange(experienceRange === range.key ? '' : range.key)}
-              />
-            ))}
-          </div>
+          <ToggleSwitch
+            checked={instantBookingOnly}
+            onChange={() => setInstantBookingOnly(!instantBookingOnly)}
+            label="Instant Book"
+            description="Listings you can book without waiting for Host approval."
+          />
         </div>
 
         {/* Minimum Rating Section - Blue Stars */}
@@ -897,6 +804,87 @@ function FilterModal({ isOpen, onClose, filters, onFilterChange, userLocation, o
               onChange={() => setMinRating(minRating === '4.5' ? '' : '4.5')}
             />
           </div>
+        </div>
+
+        {/* Google Reviews Filter - Blue Toggle */}
+        <div style={{ marginBottom: '1.5rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '1.5rem' }}>
+          <h3 style={{ 
+            fontSize: '1.1rem', 
+            fontWeight: 700, 
+            margin: '0 0 0.75rem 0',
+            color: '#111827'
+          }}>
+            Google Reviews
+          </h3>
+          <ToggleSwitch
+            checked={hasGoogleReviews}
+            onChange={() => setHasGoogleReviews(!hasGoogleReviews)}
+            label="Has Google Reviews"
+            description="Show only vendors with imported Google reviews."
+          />
+        </div>
+
+        {/* Features Section - Categorized by vendor type with single Show all */}
+        <FeaturesSection
+          features={features}
+          selectedFeatures={selectedFeatures}
+          setSelectedFeatures={setSelectedFeatures}
+        />
+
+        {/* Subcategories Section - Checkbox tiles */}
+        {subcategories.length > 0 && (
+          <ExpandableCheckboxSection
+            title="Subcategories"
+            items={subcategories}
+            selectedIds={selectedSubcategories}
+            onToggle={(id) => {
+              setSelectedSubcategories(prev => 
+                prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+              );
+            }}
+            getId={(item) => item.SubcategoryID}
+            getName={(item) => item.SubcategoryName}
+          />
+        )}
+
+        {/* Years of Experience Section - Checkbox tiles */}
+        <div style={{ marginBottom: '1.5rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '1.5rem' }}>
+          <h3 style={{ 
+            fontSize: '1.1rem', 
+            fontWeight: 700, 
+            margin: '0 0 0.75rem 0',
+            color: '#111827'
+          }}>
+            Years of Experience
+          </h3>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+            {EXPERIENCE_RANGES.map((range) => (
+              <CheckboxTile
+                key={range.key}
+                label={range.label}
+                checked={experienceRange === range.key}
+                onChange={() => setExperienceRange(experienceRange === range.key ? '' : range.key)}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Fresh Listings - Blue Toggle */}
+        <div style={{ marginBottom: '1.5rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '1.5rem' }}>
+          <h3 style={{ 
+            fontSize: '1.1rem', 
+            fontWeight: 700, 
+            margin: '0 0 0.75rem 0',
+            color: '#111827'
+          }}>
+            Fresh Listings
+          </h3>
+          <ToggleSwitch
+            checked={!!freshListingsDays}
+            onChange={() => setFreshListingsDays(freshListingsDays ? '' : '30')}
+            label="Fresh Listings"
+            description="Show vendors added in the last 30 days."
+          />
         </div>
 
         {/* Availability Section - REMOVED: Now handled by search bar at top */}
@@ -968,6 +956,34 @@ function FilterModal({ isOpen, onClose, filters, onFilterChange, userLocation, o
       <style>{`
         @keyframes spin {
           to { transform: rotate(360deg); }
+        }
+        
+        /* Toggle Switch - Override global button styles */
+        .filter-toggle-switch {
+          width: 48px !important;
+          min-width: 48px !important;
+          height: 26px !important;
+          min-height: 26px !important;
+          max-height: 26px !important;
+          padding: 0 !important;
+          border-radius: 13px !important;
+          position: relative !important;
+          border: none !important;
+          cursor: pointer !important;
+          transition: background-color 0.2s !important;
+          flex-shrink: 0 !important;
+          overflow: visible !important;
+        }
+        
+        .filter-toggle-knob {
+          width: 22px !important;
+          height: 22px !important;
+          background-color: white !important;
+          border-radius: 50% !important;
+          position: absolute !important;
+          top: 2px !important;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.2) !important;
+          transition: left 0.2s !important;
         }
         
         /* Custom range slider styling - enable pointer events on thumbs */

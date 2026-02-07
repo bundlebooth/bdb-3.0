@@ -34,12 +34,9 @@
     bottom: auto !important;
 }
 
-/* Fullscreen control - move to top-right */
+/* Fullscreen control - HIDDEN */
 .gm-fullscreen-control {
-    top: 10px !important;
-    right: 10px !important;
-    bottom: auto !important;
-    left: auto !important;
+    display: none !important;
 }
 
 /* Ensure map container doesn't have conflicting positioning */

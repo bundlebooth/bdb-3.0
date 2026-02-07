@@ -1821,6 +1821,15 @@ function IndexPage() {
         </div>
       )}
       
+      {/* Setup Banner - MOBILE ONLY (before vendor sections) */}
+      {isMobileView && currentUser?.isVendor && currentUser?.vendorProfileId && (
+        <div style={{ padding: '12px 16px 0 16px' }}>
+          <SetupIncompleteBanner 
+            onContinueSetup={() => navigate('/dashboard?section=vendor-settings')}
+          />
+        </div>
+      )}
+      
       {/* Vendor Discovery Sections - MOBILE ONLY (outside page-wrapper for full-width) */}
       {isMobileView && (filteredVendors.length > 0 || loading) && (
       <div className="vendor-discovery-sections-mobile" style={{ width: '100%', padding: 0, margin: 0 }}>
@@ -2044,8 +2053,8 @@ function IndexPage() {
       <div className={`app-container sidebar-collapsed ${mapActive ? 'map-active' : ''}`} id="app-container" style={{ display: 'flex', flexDirection: 'column', width: '100%', overflow: 'visible' }}>
         <div className="content-wrapper" style={{ display: 'flex', width: '100%', flex: 1, overflow: 'visible' }}>
           <main className="main-content index-main-content" style={{ width: mapActive ? '65%' : '100%', overflowY: 'auto', overflowX: 'visible', transition: 'width 0.3s ease', padding: '2rem 1.5rem 2rem 0' }}>
-          {/* Only show setup banner for users who are vendors with a vendor profile */}
-          {currentUser?.isVendor && currentUser?.vendorProfileId && (
+          {/* Only show setup banner for users who are vendors with a vendor profile - DESKTOP ONLY */}
+          {!isMobileView && currentUser?.isVendor && currentUser?.vendorProfileId && (
             <>
               <SetupIncompleteBanner 
                 onContinueSetup={() => navigate('/dashboard?section=vendor-settings')}

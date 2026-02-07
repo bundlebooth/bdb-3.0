@@ -684,12 +684,43 @@ function SetupIncompleteBanner({
       background: bannerStyles.background,
       border: bannerStyles.border,
       borderRadius: '8px',
-      marginBottom: '1rem'
+      marginBottom: '1rem',
+      position: 'relative'
     }}>
+      {/* Close/Dismiss Button */}
+      <button
+        onClick={handleDismiss}
+        style={{
+          position: 'absolute',
+          top: '8px',
+          right: '8px',
+          background: 'none',
+          border: 'none',
+          cursor: 'pointer',
+          padding: '4px 8px',
+          fontSize: '18px',
+          color: '#9ca3af',
+          lineHeight: 1,
+          borderRadius: '4px',
+          transition: 'all 0.15s'
+        }}
+        onMouseEnter={(e) => {
+          e.target.style.background = 'rgba(0,0,0,0.05)';
+          e.target.style.color = '#6b7280';
+        }}
+        onMouseLeave={(e) => {
+          e.target.style.background = 'none';
+          e.target.style.color = '#9ca3af';
+        }}
+        title="Dismiss banner"
+        aria-label="Dismiss banner"
+      >
+        ×
+      </button>
       <div style={{ fontSize: '20px', lineHeight: 1, color: bannerStyles.iconColor }}>
         <i className={`fas ${bannerIcon}`}></i>
       </div>
-      <div style={{ flex: 1 }}>
+      <div style={{ flex: 1, paddingRight: '24px' }}>
         <div style={{ fontWeight: 700, color: bannerStyles.titleColor, marginBottom: '4px' }}>{bannerTitle}</div>
         <div style={{ fontSize: '.9rem', color: bannerStyles.textColor, marginBottom: '12px' }}>
           {bannerMessage}

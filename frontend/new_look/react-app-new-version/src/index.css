@@ -1,6 +1,24 @@
 ﻿/* Import shared modal styles */
 @import './styles/shared-modal.css';
 
+/* Hide Google Maps fullscreen and zoom controls */
+.gm-fullscreen-control,
+.gm-style button[aria-label="Toggle fullscreen view"],
+.gm-style button[title="Toggle fullscreen view"],
+.gm-style [data-control-width][data-control-height] button[aria-label*="fullscreen"],
+.gm-bundled-control,
+.gm-style .gm-bundled-control-on-bottom,
+.gm-style > div > div > div > div > div > button,
+.gm-style button.gm-control-active {
+    display: none !important;
+    visibility: hidden !important;
+}
+
+/* Hide all Google Maps control buttons in the corners */
+.gm-style > div:first-child > div:last-child > div {
+    display: none !important;
+}
+
 /* Global body scroll lock - used when modals/sidebars are open */
 body.no-scroll {
     overflow: hidden !important;
