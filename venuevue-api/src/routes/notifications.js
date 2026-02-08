@@ -55,10 +55,17 @@ router.get('/user/:userId', async (req, res) => {
 
     const result = await request.execute('notifications.sp_GetUserNotifications');
     
+    // Convert dates to ISO strings for proper JSON serialization
+    const notifications = result.recordset.map(n => ({
+      ...n,
+      CreatedAt: n.CreatedAt ? new Date(n.CreatedAt).toISOString() : null,
+      ReadAt: n.ReadAt ? new Date(n.ReadAt).toISOString() : null
+    }));
+    
     res.json({
       success: true,
-      notifications: result.recordset,
-      count: result.recordset.length
+      notifications: notifications,
+      count: notifications.length
     });
 
   } catch (err) {
