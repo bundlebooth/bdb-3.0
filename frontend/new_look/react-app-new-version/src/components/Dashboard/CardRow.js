@@ -60,7 +60,7 @@ const CardRow = ({
       style={{ 
         display: 'flex', 
         alignItems: 'center', 
-        padding: '16px 20px', 
+        padding: '16px 12px 16px 8px', 
         cursor: onClick ? 'pointer' : 'default',
         background: isExpanded ? '#f8f9fa' : 'transparent',
         transition: 'background 0.2s'
@@ -71,7 +71,7 @@ const CardRow = ({
       <div style={{ 
         textAlign: 'center', 
         minWidth: '45px',
-        marginRight: '16px',
+        marginRight: '12px',
         flexShrink: 0
       }}>
         {date && !isNaN(date.getTime()) ? (

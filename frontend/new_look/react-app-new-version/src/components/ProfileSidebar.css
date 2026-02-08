@@ -188,17 +188,18 @@
   justify-content: center;
   padding: 24px 16px 20px;
   background: #F7F7F7;
-  border: none;
+  border: 1px solid #EBEBEB;
   border-radius: 16px;
   cursor: pointer;
   box-shadow: none;
-  transition: background 0.2s, transform 0.1s;
+  transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
   position: relative;
   min-height: 140px;
 }
 
 .profile-sidebar-action-card:hover {
-  background: #EBEBEB;
+  background: #F0F0F0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
 }
 
 .profile-sidebar-action-card:active {
@@ -434,6 +435,7 @@
 }
 
 /* Mobile Responsive - Full screen, slide from right */
+/* IMPORTANT: Keep dimensions identical to desktop for consistency */
 @media (max-width: 768px) {
   .profile-sidebar {
     position: fixed;
@@ -463,13 +465,14 @@
   }
   
   .profile-sidebar-header {
-    padding: 16px 20px 12px;
-    border-bottom: 1px solid #f0f0f0;
+    padding: 20px 24px 12px;
+    border-bottom: none;
     flex-shrink: 0;
   }
   
+  /* Keep title same size as desktop */
   .profile-sidebar-title {
-    font-size: 22px;
+    font-size: 26px;
   }
   
   /* Scrollable content wrapper */
@@ -479,54 +482,65 @@
     -webkit-overflow-scrolling: touch;
   }
   
+  /* Keep card dimensions same as desktop */
   .profile-sidebar-card {
-    margin: 16px 16px 16px;
-    padding: 20px 16px;
+    margin: 8px 24px 20px;
+    padding: 24px 20px;
     flex-shrink: 0;
   }
   
+  /* Keep avatar same size as desktop */
   .profile-sidebar-avatar,
   .profile-sidebar-avatar-placeholder {
-    width: 64px;
-    height: 64px;
-    font-size: 24px;
+    width: 80px;
+    height: 80px;
+    font-size: 32px;
   }
   
+  /* Keep name same size as desktop */
   .profile-sidebar-user-name {
-    font-size: 18px;
+    font-size: 22px;
   }
   
+  /* Keep quick actions same as desktop */
   .profile-sidebar-quick-actions {
-    padding: 0 16px;
-    gap: 12px;
+    padding: 0 24px;
+    gap: 16px;
   }
   
+  /* Keep action card same as desktop */
   .profile-sidebar-action-card {
-    padding: 20px 14px 18px;
+    padding: 24px 16px 20px;
+    min-height: 140px;
   }
   
+  /* Keep icon wrapper same as desktop */
   .action-card-icon-wrapper {
-    width: 64px;
-    height: 64px;
+    width: 72px;
+    height: 72px;
   }
   
+  /* Keep action card img same as desktop */
   .action-card-img {
-    width: 64px;
-    height: 64px;
+    width: 72px;
+    height: 72px;
   }
   
+  /* Keep icon fallback same as desktop */
   .action-card-icon-fallback {
-    width: 64px;
-    height: 64px;
+    width: 72px;
+    height: 72px;
   }
   
+  /* Keep promo card same as desktop */
   .profile-sidebar-promo-card {
-    margin: 12px 16px 20px;
+    margin: 8px 24px 20px;
     padding: 16px;
   }
   
+  /* Keep menu items same as desktop */
   .profile-sidebar-menu-item {
-    padding: 16px 20px;
+    padding: 16px 24px;
     font-size: 16px;
   }
   
@@ -535,14 +549,14 @@
     position: sticky;
     bottom: 0;
     background: #fff;
-    padding: 16px 20px;
+    padding: 16px 24px;
     border-top: 1px solid #f0f0f0;
     flex-shrink: 0;
     border-radius: 0;
   }
   
   .profile-sidebar-switch-btn {
-    padding: 14px 20px;
+    padding: 14px 24px;
     font-size: 15px;
     width: 100%;
   }
@@ -642,13 +656,13 @@
 
 .notifications-empty-icon i {
   font-size: 48px;
-  color: #222;
+  color: #717171;
 }
 
 .notifications-empty h3 {
   font-size: 18px;
   font-weight: 600;
-  color: #222;
+  color: #717171;
   margin: 0 0 8px 0;
 }
 

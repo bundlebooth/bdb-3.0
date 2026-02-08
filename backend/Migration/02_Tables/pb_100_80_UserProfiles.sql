@@ -2,7 +2,7 @@
     Migration Script: Create Table [UserProfiles]
     Phase: 100 - Tables
     Script: pb_100_80_UserProfiles.sql
-    Description: Creates the [users].[UserProfiles] table for Airbnb-style user profile information
+    Description: Creates the [users].[UserProfiles] table for Planbeau user profile information
 */
 
 SET NOCOUNT ON;
@@ -19,28 +19,28 @@ BEGIN
         
         -- Basic Info
         [DisplayName] NVARCHAR(100) NULL,
-        [BiographyTitle] NVARCHAR(100) NULL,
-        [Bio] NVARCHAR(MAX) NULL,
+        [LifeMotto] NVARCHAR(100) NULL,              -- "A phrase that defines you"
+        [Bio] NVARCHAR(MAX) NULL,                    -- "About me"
         [ProfileImageURL] NVARCHAR(500) NULL,
         
         -- Location
-        [City] NVARCHAR(100) NULL,
+        [City] NVARCHAR(100) NULL,                   -- "Where are you based?"
         [State] NVARCHAR(100) NULL,
         [Country] NVARCHAR(100) NULL,
         
         -- Personal Details
-        [Work] NVARCHAR(200) NULL,
-        [School] NVARCHAR(200) NULL,
-        [Languages] NVARCHAR(500) NULL,
-        [DecadeBorn] NVARCHAR(20) NULL,
+        [Occupation] NVARCHAR(200) NULL,             -- "What do you do?"
+        [Education] NVARCHAR(200) NULL,              -- "Where did you study?"
+        [Languages] NVARCHAR(500) NULL,              -- "What languages do you speak?"
+        [Generation] NVARCHAR(20) NULL,              -- "Which era are you from?"
         
-        -- Fun Facts (Airbnb-style)
-        [ObsessedWith] NVARCHAR(200) NULL,
-        [Pets] NVARCHAR(200) NULL,
-        [SpendTimeDoing] NVARCHAR(200) NULL,
-        [FunFact] NVARCHAR(300) NULL,
-        [UselessSkill] NVARCHAR(200) NULL,
-        [FavoriteQuote] NVARCHAR(500) NULL,
+        -- Fun Facts
+        [CurrentPassion] NVARCHAR(200) NULL,         -- "What excites you lately?"
+        [FurryFriends] NVARCHAR(200) NULL,           -- "Any pets at home?"
+        [FreeTimeActivity] NVARCHAR(200) NULL,       -- "How do you unwind?"
+        [InterestingTidbit] NVARCHAR(300) NULL,      -- "Something unique about you"
+        [HiddenTalent] NVARCHAR(200) NULL,           -- "A quirky skill you have"
+        [DreamDestination] NVARCHAR(500) NULL,       -- "A place on your bucket list"
         
         -- Stats & Status
         [ProfileCompleteness] INT NULL DEFAULT 0,

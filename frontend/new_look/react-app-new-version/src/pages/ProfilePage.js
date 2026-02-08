@@ -368,10 +368,10 @@ function ProfilePage() {
 
   // Check if there are any "about" details to show
   const hasAboutDetails = enhancedProfile && (
-    enhancedProfile.Work || enhancedProfile.BiographyTitle || enhancedProfile.Pets ||
-    enhancedProfile.School || enhancedProfile.SpendTimeDoing || enhancedProfile.Languages ||
-    enhancedProfile.DecadeBorn || enhancedProfile.ObsessedWith || enhancedProfile.FunFact ||
-    enhancedProfile.UselessSkill
+    enhancedProfile.Occupation || enhancedProfile.LifeMotto || enhancedProfile.FurryFriends ||
+    enhancedProfile.Education || enhancedProfile.FreeTimeActivity || enhancedProfile.Languages ||
+    enhancedProfile.Generation || enhancedProfile.CurrentPassion || enhancedProfile.InterestingTidbit ||
+    enhancedProfile.HiddenTalent
   );
 
   return (
@@ -400,20 +400,21 @@ function ProfilePage() {
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '8px',
-                  padding: '12px 24px',
-                  background: '#222',
-                  color: '#fff',
-                  border: 'none',
+                  padding: '10px 16px',
+                  background: '#fff',
+                  color: '#222',
+                  border: '1px solid #ddd',
                   borderRadius: '8px',
                   fontSize: '14px',
-                  fontWeight: '600',
+                  fontWeight: '500',
                   cursor: 'pointer',
-                  transition: 'background 0.2s'
+                  transition: 'all 0.2s',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.08)'
                 }}
-                onMouseEnter={(e) => e.target.style.background = '#000'}
-                onMouseLeave={(e) => e.target.style.background = '#222'}
+                onMouseEnter={(e) => { e.target.style.background = '#f7f7f7'; e.target.style.borderColor = '#222'; }}
+                onMouseLeave={(e) => { e.target.style.background = '#fff'; e.target.style.borderColor = '#ddd'; }}
               >
-                <i className="fas fa-pen"></i>
+                <i className="fas fa-pencil-alt"></i>
                 Edit profile
               </button>
             </div>
@@ -650,75 +651,75 @@ function ProfilePage() {
               <section className="host-section">
                 <h2 className="host-section-title">More about {firstName}</h2>
                 <div className="host-more-grid">
-                  {enhancedProfile?.Pets && (
+                  {enhancedProfile?.FurryFriends && (
                     <div className="host-more-card">
                       <i className="fas fa-paw"></i>
                       <div>
-                        <span className="host-more-label">Pets</span>
-                        <span className="host-more-value">{enhancedProfile.Pets}</span>
+                        <span className="host-more-label">Furry friends</span>
+                        <span className="host-more-value">{enhancedProfile.FurryFriends}</span>
                       </div>
                     </div>
                   )}
-                  {enhancedProfile?.School && (
+                  {enhancedProfile?.Education && (
                     <div className="host-more-card">
                       <i className="fas fa-graduation-cap"></i>
                       <div>
-                        <span className="host-more-label">Where I went to school</span>
-                        <span className="host-more-value">{enhancedProfile.School}</span>
+                        <span className="host-more-label">Education</span>
+                        <span className="host-more-value">{enhancedProfile.Education}</span>
                       </div>
                     </div>
                   )}
-                  {enhancedProfile?.SpendTimeDoing && (
+                  {enhancedProfile?.FreeTimeActivity && (
                     <div className="host-more-card">
                       <i className="fas fa-hourglass-half"></i>
                       <div>
-                        <span className="host-more-label">I spend too much time</span>
-                        <span className="host-more-value">{enhancedProfile.SpendTimeDoing}</span>
+                        <span className="host-more-label">Free time activity</span>
+                        <span className="host-more-value">{enhancedProfile.FreeTimeActivity}</span>
                       </div>
                     </div>
                   )}
-                  {enhancedProfile?.DecadeBorn && (
+                  {enhancedProfile?.Generation && (
                     <div className="host-more-card">
                       <i className="fas fa-birthday-cake"></i>
                       <div>
-                        <span className="host-more-label">Born in the</span>
-                        <span className="host-more-value">{enhancedProfile.DecadeBorn}</span>
+                        <span className="host-more-label">Generation</span>
+                        <span className="host-more-value">{enhancedProfile.Generation}</span>
                       </div>
                     </div>
                   )}
-                  {enhancedProfile?.ObsessedWith && (
+                  {enhancedProfile?.CurrentPassion && (
                     <div className="host-more-card">
                       <i className="fas fa-heart"></i>
                       <div>
-                        <span className="host-more-label">Obsessed with</span>
-                        <span className="host-more-value">{enhancedProfile.ObsessedWith}</span>
+                        <span className="host-more-label">Current passion</span>
+                        <span className="host-more-value">{enhancedProfile.CurrentPassion}</span>
                       </div>
                     </div>
                   )}
-                  {enhancedProfile?.FunFact && (
+                  {enhancedProfile?.InterestingTidbit && (
                     <div className="host-more-card">
                       <i className="fas fa-lightbulb"></i>
                       <div>
-                        <span className="host-more-label">Fun fact</span>
-                        <span className="host-more-value">{enhancedProfile.FunFact}</span>
+                        <span className="host-more-label">Interesting tidbit</span>
+                        <span className="host-more-value">{enhancedProfile.InterestingTidbit}</span>
                       </div>
                     </div>
                   )}
-                  {enhancedProfile?.UselessSkill && (
+                  {enhancedProfile?.HiddenTalent && (
                     <div className="host-more-card">
                       <i className="fas fa-magic"></i>
                       <div>
-                        <span className="host-more-label">My most useless skill</span>
-                        <span className="host-more-value">{enhancedProfile.UselessSkill}</span>
+                        <span className="host-more-label">Hidden talent</span>
+                        <span className="host-more-value">{enhancedProfile.HiddenTalent}</span>
                       </div>
                     </div>
                   )}
-                  {enhancedProfile?.FavoriteQuote && (
+                  {enhancedProfile?.DreamDestination && (
                     <div className="host-more-card quote-card">
-                      <i className="fas fa-quote-left"></i>
+                      <i className="fas fa-plane"></i>
                       <div>
-                        <span className="host-more-label">Favorite quote</span>
-                        <span className="host-more-value">"{enhancedProfile.FavoriteQuote}"</span>
+                        <span className="host-more-label">Dream destination</span>
+                        <span className="host-more-value">{enhancedProfile.DreamDestination}</span>
                       </div>
                     </div>
                   )}
@@ -760,13 +761,15 @@ function ProfilePage() {
                         display: 'flex',
                         alignItems: 'center',
                         gap: '8px',
-                        padding: '12px 16px',
-                        background: '#f0fdf4',
-                        borderRadius: '8px',
-                        color: '#166534'
+                        padding: '8px 16px',
+                        background: '#fff',
+                        border: '1px solid #e5e5e5',
+                        borderRadius: '50px',
+                        color: '#717171',
+                        fontSize: '14px'
                       }}>
-                        <i className="fas fa-star"></i>
-                        <span><strong>{activitySummary.reviews}</strong> reviews given</span>
+                        <i className="fas fa-star" style={{ color: '#f59e0b' }}></i>
+                        <span>{activitySummary.reviews} reviews given</span>
                       </div>
                     )}
                     {activitySummary.forumPosts > 0 && (
@@ -774,13 +777,15 @@ function ProfilePage() {
                         display: 'flex',
                         alignItems: 'center',
                         gap: '8px',
-                        padding: '12px 16px',
-                        background: '#eff6ff',
-                        borderRadius: '8px',
-                        color: '#1e40af'
+                        padding: '8px 16px',
+                        background: '#fff',
+                        border: '1px solid #e5e5e5',
+                        borderRadius: '50px',
+                        color: '#717171',
+                        fontSize: '14px'
                       }}>
-                        <i className="fas fa-comments"></i>
-                        <span><strong>{activitySummary.forumPosts}</strong> discussions started</span>
+                        <i className="fas fa-comments" style={{ color: '#3b82f6' }}></i>
+                        <span>{activitySummary.forumPosts} discussions started</span>
                       </div>
                     )}
                     {activitySummary.forumComments > 0 && (
@@ -788,13 +793,15 @@ function ProfilePage() {
                         display: 'flex',
                         alignItems: 'center',
                         gap: '8px',
-                        padding: '12px 16px',
-                        background: '#faf5ff',
-                        borderRadius: '8px',
-                        color: '#6b21a8'
+                        padding: '8px 16px',
+                        background: '#fff',
+                        border: '1px solid #e5e5e5',
+                        borderRadius: '50px',
+                        color: '#717171',
+                        fontSize: '14px'
                       }}>
-                        <i className="fas fa-reply"></i>
-                        <span><strong>{activitySummary.forumComments}</strong> forum replies</span>
+                        <i className="fas fa-reply" style={{ color: '#8b5cf6' }}></i>
+                        <span>{activitySummary.forumComments} forum replies</span>
                       </div>
                     )}
                     {activitySummary.favorites > 0 && (
@@ -802,13 +809,15 @@ function ProfilePage() {
                         display: 'flex',
                         alignItems: 'center',
                         gap: '8px',
-                        padding: '12px 16px',
-                        background: '#fef2f2',
-                        borderRadius: '8px',
-                        color: '#991b1b'
+                        padding: '8px 16px',
+                        background: '#fff',
+                        border: '1px solid #e5e5e5',
+                        borderRadius: '50px',
+                        color: '#717171',
+                        fontSize: '14px'
                       }}>
-                        <i className="fas fa-heart"></i>
-                        <span><strong>{activitySummary.favorites}</strong> vendors favorited</span>
+                        <i className="fas fa-heart" style={{ color: '#ef4444' }}></i>
+                        <span>{activitySummary.favorites} vendors favorited</span>
                       </div>
                     )}
                   </div>

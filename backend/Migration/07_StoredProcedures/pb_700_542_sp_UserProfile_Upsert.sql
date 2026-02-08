@@ -15,22 +15,22 @@ GO
 CREATE PROCEDURE [users].[sp_UpsertUserProfile]
     @UserID INT,
     @DisplayName NVARCHAR(100) = NULL,
-    @BiographyTitle NVARCHAR(100) = NULL,
+    @LifeMotto NVARCHAR(100) = NULL,
     @Bio NVARCHAR(MAX) = NULL,
     @ProfileImageURL NVARCHAR(500) = NULL,
     @City NVARCHAR(100) = NULL,
     @State NVARCHAR(100) = NULL,
     @Country NVARCHAR(100) = NULL,
-    @Work NVARCHAR(200) = NULL,
-    @School NVARCHAR(200) = NULL,
+    @Occupation NVARCHAR(200) = NULL,
+    @Education NVARCHAR(200) = NULL,
     @Languages NVARCHAR(500) = NULL,
-    @DecadeBorn NVARCHAR(20) = NULL,
-    @ObsessedWith NVARCHAR(200) = NULL,
-    @Pets NVARCHAR(200) = NULL,
-    @SpendTimeDoing NVARCHAR(200) = NULL,
-    @FunFact NVARCHAR(300) = NULL,
-    @UselessSkill NVARCHAR(200) = NULL,
-    @FavoriteQuote NVARCHAR(500) = NULL
+    @Generation NVARCHAR(20) = NULL,
+    @CurrentPassion NVARCHAR(200) = NULL,
+    @FurryFriends NVARCHAR(200) = NULL,
+    @FreeTimeActivity NVARCHAR(200) = NULL,
+    @InterestingTidbit NVARCHAR(300) = NULL,
+    @HiddenTalent NVARCHAR(200) = NULL,
+    @DreamDestination NVARCHAR(500) = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -46,22 +46,22 @@ BEGIN
         -- Update existing profile
         UPDATE users.UserProfiles SET
             DisplayName = @DisplayName,
-            BiographyTitle = @BiographyTitle,
+            LifeMotto = @LifeMotto,
             Bio = @Bio,
             ProfileImageURL = COALESCE(@ProfileImageURL, ProfileImageURL),
             City = @City,
             State = @State,
             Country = @Country,
-            Work = @Work,
-            School = @School,
+            Occupation = @Occupation,
+            Education = @Education,
             Languages = @Languages,
-            DecadeBorn = @DecadeBorn,
-            ObsessedWith = @ObsessedWith,
-            Pets = @Pets,
-            SpendTimeDoing = @SpendTimeDoing,
-            FunFact = @FunFact,
-            UselessSkill = @UselessSkill,
-            FavoriteQuote = @FavoriteQuote,
+            Generation = @Generation,
+            CurrentPassion = @CurrentPassion,
+            FurryFriends = @FurryFriends,
+            FreeTimeActivity = @FreeTimeActivity,
+            InterestingTidbit = @InterestingTidbit,
+            HiddenTalent = @HiddenTalent,
+            DreamDestination = @DreamDestination,
             UpdatedAt = GETDATE()
         WHERE UserProfileID = @UserProfileID;
     END
@@ -69,13 +69,13 @@ BEGIN
     BEGIN
         -- Create new profile
         INSERT INTO users.UserProfiles (
-            UserID, DisplayName, BiographyTitle, Bio, ProfileImageURL,
-            City, State, Country, Work, School, Languages, DecadeBorn,
-            ObsessedWith, Pets, SpendTimeDoing, FunFact, UselessSkill, FavoriteQuote
+            UserID, DisplayName, LifeMotto, Bio, ProfileImageURL,
+            City, State, Country, Occupation, Education, Languages, Generation,
+            CurrentPassion, FurryFriends, FreeTimeActivity, InterestingTidbit, HiddenTalent, DreamDestination
         ) VALUES (
-            @UserID, @DisplayName, @BiographyTitle, @Bio, @ProfileImageURL,
-            @City, @State, @Country, @Work, @School, @Languages, @DecadeBorn,
-            @ObsessedWith, @Pets, @SpendTimeDoing, @FunFact, @UselessSkill, @FavoriteQuote
+            @UserID, @DisplayName, @LifeMotto, @Bio, @ProfileImageURL,
+            @City, @State, @Country, @Occupation, @Education, @Languages, @Generation,
+            @CurrentPassion, @FurryFriends, @FreeTimeActivity, @InterestingTidbit, @HiddenTalent, @DreamDestination
         );
         
         SET @UserProfileID = SCOPE_IDENTITY();
@@ -86,15 +86,15 @@ BEGIN
         CASE WHEN DisplayName IS NOT NULL AND DisplayName != '' THEN 10 ELSE 0 END +
         CASE WHEN Bio IS NOT NULL AND Bio != '' THEN 15 ELSE 0 END +
         CASE WHEN ProfileImageURL IS NOT NULL AND ProfileImageURL != '' THEN 15 ELSE 0 END +
-        CASE WHEN Work IS NOT NULL AND Work != '' THEN 10 ELSE 0 END +
+        CASE WHEN Occupation IS NOT NULL AND Occupation != '' THEN 10 ELSE 0 END +
         CASE WHEN City IS NOT NULL AND City != '' THEN 10 ELSE 0 END +
         CASE WHEN Languages IS NOT NULL AND Languages != '' THEN 10 ELSE 0 END +
-        CASE WHEN School IS NOT NULL AND School != '' THEN 5 ELSE 0 END +
-        CASE WHEN ObsessedWith IS NOT NULL AND ObsessedWith != '' THEN 5 ELSE 0 END +
-        CASE WHEN FunFact IS NOT NULL AND FunFact != '' THEN 5 ELSE 0 END +
-        CASE WHEN BiographyTitle IS NOT NULL AND BiographyTitle != '' THEN 5 ELSE 0 END +
-        CASE WHEN FavoriteQuote IS NOT NULL AND FavoriteQuote != '' THEN 5 ELSE 0 END +
-        CASE WHEN Pets IS NOT NULL AND Pets != '' THEN 5 ELSE 0 END
+        CASE WHEN Education IS NOT NULL AND Education != '' THEN 5 ELSE 0 END +
+        CASE WHEN CurrentPassion IS NOT NULL AND CurrentPassion != '' THEN 5 ELSE 0 END +
+        CASE WHEN InterestingTidbit IS NOT NULL AND InterestingTidbit != '' THEN 5 ELSE 0 END +
+        CASE WHEN LifeMotto IS NOT NULL AND LifeMotto != '' THEN 5 ELSE 0 END +
+        CASE WHEN DreamDestination IS NOT NULL AND DreamDestination != '' THEN 5 ELSE 0 END +
+        CASE WHEN FurryFriends IS NOT NULL AND FurryFriends != '' THEN 5 ELSE 0 END
     FROM users.UserProfiles WHERE UserProfileID = @UserProfileID;
     
     IF @Completeness > 100 SET @Completeness = 100;

@@ -32,9 +32,9 @@
 .airbnb-profile-layout {
   display: flex;
   gap: 80px;
-  max-width: 900px;
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 40px 24px;
+  padding: 40px 80px;
 }
 
 /* Left Column - Avatar */
@@ -656,6 +656,7 @@
     flex-direction: column;
     gap: 32px;
     padding: 24px 16px;
+    max-width: 100%;
   }
   
   .airbnb-profile-avatar-section {

@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
 import { useTranslation } from '../hooks/useTranslation';
 import { buildBecomeVendorUrl } from '../utils/urlHelpers';
 import { encodeUserId } from '../utils/hashIds';
+import { formatTimeAgo } from '../utils/helpers';
 import './ProfileSidebar.css';
 
 /**
@@ -32,6 +33,11 @@ function ProfileSidebar({ isOpen, onClose }) {
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [vendorLogoUrl, setVendorLogoUrl] = useState(null);
   const [userProfilePic, setUserProfilePic] = useState(null);
+  
+  // What's New / Announcements state
+  const [showAnnouncements, setShowAnnouncements] = useState(false);
+  const [announcements, setAnnouncements] = useState([]);
+  const [announcementsLoading, setAnnouncementsLoading] = useState(false);
 
   // Lock body scroll when sidebar is open
   useEffect(() => {
@@ -166,7 +172,8 @@ function ProfileSidebar({ isOpen, onClose }) {
       });
       if (response.ok) {
         const data = await response.json();
-        setNotifications(Array.isArray(data) ? data : data.notifications || []);
+        const notifs = Array.isArray(data) ? data : data.notifications || [];
+        setNotifications(notifs);
       }
     } catch (error) {
       console.error('Error fetching notifications:', error);
@@ -182,6 +189,72 @@ function ProfileSidebar({ isOpen, onClose }) {
 
   const handleBackFromNotifications = () => {
     setShowNotifications(false);
+  };
+
+  // Mark notification as read
+  const markNotificationAsRead = async (notificationId) => {
+    if (!currentUser?.id || !notificationId) return;
+    try {
+      await fetch(`${API_BASE_URL}/notifications/${notificationId}/read`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      // Remove from list or mark as read
+      setNotifications(prev => prev.filter(n => (n.id || n.ID || n.NotificationID) !== notificationId));
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+    }
+  };
+
+  // Clear all notifications
+  const clearAllNotifications = async () => {
+    if (!currentUser?.id) return;
+    try {
+      await fetch(`${API_BASE_URL}/notifications/user/${currentUser.id}/read-all`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      setNotifications([]);
+    } catch (error) {
+      console.error('Error clearing notifications:', error);
+    }
+  };
+
+  // Fetch announcements
+  const fetchAnnouncements = useCallback(async () => {
+    setAnnouncementsLoading(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/public/announcements/all`);
+      if (response.ok) {
+        const data = await response.json();
+        setAnnouncements(data.announcements || []);
+      }
+    } catch (error) {
+      console.error('Error fetching announcements:', error);
+    } finally {
+      setAnnouncementsLoading(false);
+    }
+  }, []);
+
+  const handleAnnouncementsClick = () => {
+    setShowAnnouncements(true);
+    fetchAnnouncements();
+  };
+
+  const handleBackFromAnnouncements = () => {
+    setShowAnnouncements(false);
+  };
+
+  // Get announcement type styles
+  const getAnnouncementStyle = (type) => {
+    const styles = {
+      'warning': { icon: 'fa-exclamation-triangle', iconColor: '#f59e0b', bgColor: 'rgba(245, 158, 11, 0.15)' },
+      'success': { icon: 'fa-check-circle', iconColor: '#10b981', bgColor: 'rgba(16, 185, 129, 0.15)' },
+      'promo': { icon: 'fa-gift', iconColor: '#8b5cf6', bgColor: 'rgba(139, 92, 246, 0.15)' },
+      'news': { icon: 'fa-newspaper', iconColor: '#5086E8', bgColor: 'rgba(80, 134, 232, 0.15)' },
+      'info': { icon: 'fa-info-circle', iconColor: '#5086E8', bgColor: 'rgba(80, 134, 232, 0.15)' },
+    };
+    return styles[type] || styles['info'];
   };
 
   const handleNavigate = (path) => {
@@ -206,7 +279,83 @@ function ProfileSidebar({ isOpen, onClose }) {
 
   if (!isOpen || !currentUser) return null;
 
-  // Notifications View (like Image 2)
+  // Helper to get proper notification message
+  const getNotificationMessage = (notification) => {
+    const type = notification.type || notification.Type || '';
+    const title = notification.title || notification.Title || '';
+    const message = notification.message || notification.Message || '';
+    const data = notification.data || notification.Data || {};
+    
+    // If message looks like actual content (not just a word), use it
+    if (message && message.length > 10 && message.includes(' ')) {
+      return message;
+    }
+    
+    // If title looks like actual content, use it
+    if (title && title.length > 10 && title.includes(' ')) {
+      return title;
+    }
+    
+    // Generate contextual message based on type
+    const senderName = data.senderName || data.SenderName || data.from || 'Someone';
+    const vendorName = data.vendorName || data.VendorName || '';
+    const packageName = data.packageName || data.PackageName || data.serviceName || '';
+    
+    switch (type.toLowerCase()) {
+      case 'message':
+      case 'new_message':
+        return `You have a new message from ${senderName}`;
+      case 'booking':
+      case 'booking_request':
+        return packageName ? `New booking request for ${packageName}` : 'You have a new booking request';
+      case 'booking_approved':
+      case 'booking_confirmed':
+        return vendorName ? `${vendorName} accepted your booking request${packageName ? ` for ${packageName}` : ''}` : 'Your booking has been approved';
+      case 'booking_declined':
+        return 'Your booking request was declined';
+      case 'booking_cancelled':
+        return 'A booking has been cancelled';
+      case 'booking_reminder':
+        return 'Reminder: You have an upcoming booking';
+      case 'payment':
+      case 'payment_received':
+        return 'Payment received successfully';
+      case 'review':
+        return 'You have a new review';
+      case 'promotion':
+        return 'New promotion available';
+      case 'announcement':
+        return title || 'New announcement';
+      default:
+        // Fallback: use whatever we have
+        return message || title || 'New notification';
+    }
+  };
+
+  // Get notification icon style
+  const getNotificationStyle = (type) => {
+    const styles = {
+      'message': { icon: 'fa-envelope', iconColor: '#5086E8' },
+      'new_message': { icon: 'fa-envelope', iconColor: '#5086E8' },
+      'booking': { icon: 'fa-calendar-plus', iconColor: '#5086E8' },
+      'booking_request': { icon: 'fa-calendar-plus', iconColor: '#5086E8' },
+      'booking_approved': { icon: 'fa-check-circle', iconColor: '#10b981' },
+      'booking_confirmed': { icon: 'fa-check-circle', iconColor: '#10b981' },
+      'booking_declined': { icon: 'fa-times-circle', iconColor: '#ef4444' },
+      'booking_cancelled': { icon: 'fa-ban', iconColor: '#ef4444' },
+      'booking_reminder': { icon: 'fa-bell', iconColor: '#f59e0b' },
+      'payment': { icon: 'fa-credit-card', iconColor: '#10b981' },
+      'payment_received': { icon: 'fa-dollar-sign', iconColor: '#10b981' },
+      'invoice': { icon: 'fa-file-invoice-dollar', iconColor: '#8b5cf6' },
+      'review': { icon: 'fa-star', iconColor: '#f59e0b' },
+      'promotion': { icon: 'fa-tag', iconColor: '#f97316' },
+      'announcement': { icon: 'fa-bullhorn', iconColor: '#f97316' },
+      'general': { icon: 'fa-bell', iconColor: '#f59e0b' },
+    };
+    return styles[type] || { icon: 'fa-bell', iconColor: '#f59e0b' };
+  };
+
+  // Notifications View
   if (showNotifications) {
     return (
       <>
@@ -214,17 +363,38 @@ function ProfileSidebar({ isOpen, onClose }) {
         <div className="profile-sidebar">
           {/* Notifications Header */}
           <div className="profile-sidebar-header">
-            <button className="profile-sidebar-back-btn" onClick={handleBackFromNotifications}>
+            <button className="profile-sidebar-icon-btn" onClick={handleBackFromNotifications}>
               <i className="fas fa-arrow-left"></i>
             </button>
             <div style={{ flex: 1 }}></div>
-            <button className="profile-sidebar-close" onClick={onClose}>
+            <button className="profile-sidebar-icon-btn profile-sidebar-close" onClick={onClose}>
               <i className="fas fa-times"></i>
             </button>
           </div>
           
           <div className="profile-sidebar-content">
-            <h2 className="profile-sidebar-page-title">Notifications</h2>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+              <h2 className="profile-sidebar-page-title" style={{ margin: 0 }}>Notifications</h2>
+              {notifications.length > 0 && (
+                <button 
+                  onClick={clearAllNotifications}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#5086E8',
+                    fontSize: '0.875rem',
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    padding: '4px 8px',
+                    borderRadius: '4px'
+                  }}
+                  onMouseEnter={(e) => e.target.style.background = 'rgba(80, 134, 232, 0.1)'}
+                  onMouseLeave={(e) => e.target.style.background = 'none'}
+                >
+                  Clear all
+                </button>
+              )}
+            </div>
             
             {notificationsLoading ? (
               <div className="notifications-loading">
@@ -241,66 +411,118 @@ function ProfileSidebar({ isOpen, onClose }) {
             ) : (
               <div className="notifications-list">
                 {notifications.map((notification, index) => {
-                  // Safely extract notification text
-                  const notificationText = typeof notification.message === 'string' ? notification.message 
-                    : typeof notification.Message === 'string' ? notification.Message 
-                    : typeof notification.title === 'string' ? notification.title 
-                    : 'New notification';
+                  const notificationText = getNotificationMessage(notification);
+                  const notificationType = (notification.type || notification.Type || 'general').toLowerCase();
+                  const notifStyle = getNotificationStyle(notificationType);
+                  const notificationId = notification.id || notification.ID || notification.NotificationID;
                   
-                  // Safely format the date
-                  const rawDate = notification.createdAt || notification.CreatedAt || notification.created_at;
-                  let formattedTime = '';
-                  if (rawDate) {
-                    try {
-                      const date = new Date(rawDate);
-                      if (!isNaN(date.getTime())) {
-                        formattedTime = date.toLocaleDateString('en-US', { 
-                          month: 'short', 
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        });
-                      }
-                    } catch (e) {
-                      formattedTime = typeof rawDate === 'string' ? rawDate : '';
+                  // Format timestamp - database returns CreatedAt
+                  // Handle case where date comes as empty object {} from SQL Server
+                  let rawDate = notification.CreatedAt || notification.createdAt || notification.created_at;
+                  
+                  // Check if rawDate is an empty object (SQL Server date serialization issue)
+                  if (rawDate && typeof rawDate === 'object' && !(rawDate instanceof Date)) {
+                    // Try to extract date from object or use null
+                    if (Object.keys(rawDate).length === 0) {
+                      rawDate = null;
                     }
                   }
                   
-                  const notificationType = notification.type || notification.Type || 'general';
-                  
-                  // Get icon and color based on notification type - realistic/intuitive colors
-                  const getNotificationStyle = (type) => {
-                    const styles = {
-                      'message': { icon: 'fa-envelope', iconColor: '#5086E8' },      // Blue envelope
-                      'new_message': { icon: 'fa-envelope', iconColor: '#5086E8' },  // Blue envelope
-                      'booking': { icon: 'fa-calendar-plus', iconColor: '#5086E8' }, // Blue calendar
-                      'booking_request': { icon: 'fa-calendar-plus', iconColor: '#5086E8' }, // Blue calendar
-                      'booking_approved': { icon: 'fa-check-circle', iconColor: '#10b981' }, // Green checkmark
-                      'booking_confirmed': { icon: 'fa-check-circle', iconColor: '#10b981' }, // Green checkmark
-                      'booking_declined': { icon: 'fa-times-circle', iconColor: '#ef4444' }, // Red X
-                      'booking_cancelled': { icon: 'fa-ban', iconColor: '#ef4444' },  // Red ban
-                      'booking_reminder': { icon: 'fa-bell', iconColor: '#f59e0b' },  // Yellow bell for reminder
-                      'payment': { icon: 'fa-credit-card', iconColor: '#10b981' },   // Green credit card
-                      'payment_received': { icon: 'fa-dollar-sign', iconColor: '#10b981' }, // Green dollar
-                      'invoice': { icon: 'fa-file-invoice-dollar', iconColor: '#8b5cf6' }, // Purple invoice
-                      'review': { icon: 'fa-star', iconColor: '#f59e0b' },            // Yellow/gold star
-                      'promotion': { icon: 'fa-tag', iconColor: '#f97316' },          // Orange tag
-                      'announcement': { icon: 'fa-bullhorn', iconColor: '#f97316' },  // Orange megaphone
-                      'general': { icon: 'fa-bell', iconColor: '#f59e0b' },           // Yellow bell
-                    };
-                    return styles[type] || { icon: 'fa-bell', iconColor: '#f59e0b' }; // Default yellow bell
-                  };
-                  
-                  const notifStyle = getNotificationStyle(notificationType);
+                  const formattedTime = rawDate ? formatTimeAgo(rawDate) : '';
                   
                   return (
-                    <div key={notification.id || notification.ID || index} className="notification-item">
+                    <div 
+                      key={notificationId || index} 
+                      className="notification-item"
+                      onClick={() => markNotificationAsRead(notificationId)}
+                      style={{ cursor: 'pointer' }}
+                    >
                       <div className="notification-icon" style={{ background: 'rgba(80, 134, 232, 0.15)' }}>
                         <i className={`fas ${notifStyle.icon}`} style={{ color: notifStyle.iconColor }}></i>
                       </div>
                       <div className="notification-content">
                         <p className="notification-text">{notificationText}</p>
-                        <span className="notification-time">{formattedTime}</span>
+                        {formattedTime && <span className="notification-time">{formattedTime}</span>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  // Announcements / What's New View
+  if (showAnnouncements) {
+    return (
+      <>
+        <div className="profile-sidebar-overlay" onClick={onClose} />
+        <div className="profile-sidebar">
+          {/* Announcements Header */}
+          <div className="profile-sidebar-header">
+            <button className="profile-sidebar-icon-btn" onClick={handleBackFromAnnouncements}>
+              <i className="fas fa-arrow-left"></i>
+            </button>
+            <div style={{ flex: 1 }}></div>
+            <button className="profile-sidebar-icon-btn profile-sidebar-close" onClick={onClose}>
+              <i className="fas fa-times"></i>
+            </button>
+          </div>
+          
+          <div className="profile-sidebar-content">
+            <h2 className="profile-sidebar-page-title">What's New</h2>
+            <p style={{ color: '#666', fontSize: '0.875rem', marginTop: '-0.5rem', marginBottom: '1.5rem' }}>
+              Latest updates & announcements
+            </p>
+            
+            {announcementsLoading ? (
+              <div className="notifications-loading">
+                <div className="spinner"></div>
+              </div>
+            ) : announcements.length === 0 ? (
+              <div className="notifications-empty">
+                <div className="notifications-empty-icon">
+                  <i className="fas fa-bullhorn"></i>
+                </div>
+                <h3>No announcements yet</h3>
+                <p>Check back later for updates and news!</p>
+              </div>
+            ) : (
+              <div className="notifications-list">
+                {announcements.map((announcement) => {
+                  const announcementStyle = getAnnouncementStyle(announcement.Type);
+                  const formattedTime = announcement.CreatedAt ? formatTimeAgo(announcement.CreatedAt) : '';
+                  
+                  return (
+                    <div 
+                      key={announcement.AnnouncementID} 
+                      className="notification-item"
+                      style={{ cursor: announcement.LinkURL ? 'pointer' : 'default' }}
+                      onClick={() => announcement.LinkURL && window.open(announcement.LinkURL, '_blank')}
+                    >
+                      <div className="notification-icon" style={{ background: announcementStyle.bgColor }}>
+                        <i className={`fas ${announcementStyle.icon}`} style={{ color: announcementStyle.iconColor }}></i>
+                      </div>
+                      <div className="notification-content">
+                        <p className="notification-text" style={{ fontWeight: 600 }}>{announcement.Title}</p>
+                        {announcement.Content && (
+                          <p style={{ 
+                            fontSize: '0.875rem', 
+                            color: '#555', 
+                            margin: '4px 0',
+                            lineHeight: 1.4,
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden'
+                          }}>
+                            {announcement.Content}
+                          </p>
+                        )}
+                        {formattedTime && <span className="notification-time">{formattedTime}</span>}
                       </div>
                     </div>
                   );
@@ -318,14 +540,26 @@ function ProfileSidebar({ isOpen, onClose }) {
     <>
       <div className="profile-sidebar-overlay" onClick={onClose} />
       <div className="profile-sidebar">
-        {/* Header with notification bell and close button */}
+        {/* Header with notification bell, announcements, and close button */}
         <div className="profile-sidebar-header">
           <h1 className="profile-sidebar-title">Profile</h1>
           <div className="profile-sidebar-header-actions">
             <button 
               className="profile-sidebar-icon-btn" 
+              onClick={handleAnnouncementsClick}
+              aria-label="What's New"
+              title="What's New"
+            >
+              <i className="fas fa-bullhorn"></i>
+              {announcements.length > 0 && (
+                <span className="notification-dot" style={{ background: '#f97316' }}></span>
+              )}
+            </button>
+            <button 
+              className="profile-sidebar-icon-btn" 
               onClick={handleNotificationClick}
               aria-label="Notifications"
+              title="Notifications"
             >
               <i className="far fa-bell"></i>
               {(notificationCounts.unreadMessages > 0 || notificationCounts.pendingBookings > 0) && (
@@ -392,12 +626,33 @@ function ProfileSidebar({ isOpen, onClose }) {
           </div>
         </div>
         
-        {/* Become a Vendor Promo Card (only for non-vendors) */}
+        {/* Vendor Promo Card - Shows "Become a vendor" for non-vendors, "Switch to hosting" for vendors */}
         {vendorCheckLoading ? (
           <div className="profile-sidebar-promo-card" style={{ justifyContent: 'center' }}>
             <div className="spinner" style={{ width: 28, height: 28, borderWidth: 3 }}></div>
           </div>
-        ) : !hasVendorProfile && (
+        ) : hasVendorProfile ? (
+          <div 
+            className="profile-sidebar-promo-card"
+            onClick={() => {
+              localStorage.setItem('viewMode', 'vendor');
+              window.dispatchEvent(new CustomEvent('viewModeChanged', { detail: { mode: 'vendor' } }));
+              handleNavigate('/dashboard?section=vendor-dashboard');
+            }}
+          >
+            <div className="promo-card-image">
+              <img src="/images/sidebar/5efa06bd-abeb-4110-96e1-cb4d034c4da8.avif" alt="" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }} />
+              <div className="promo-card-icon-fallback" style={{ display: 'none' }}>
+                <i className="fas fa-sync-alt"></i>
+              </div>
+            </div>
+            <div className="promo-card-content">
+              <div className="promo-card-title">Switch to hosting</div>
+              <div className="promo-card-subtitle">Manage your vendor dashboard and bookings.</div>
+            </div>
+            <i className="fas fa-chevron-right promo-card-arrow"></i>
+          </div>
+        ) : (
           <div 
             className="profile-sidebar-promo-card"
             onClick={() => {
@@ -406,7 +661,7 @@ function ProfileSidebar({ isOpen, onClose }) {
             }}
           >
             <div className="promo-card-image">
-              <img src="/images/become-vendor-promo.svg" alt="" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }} />
+              <img src="/images/sidebar/5efa06bd-abeb-4110-96e1-cb4d034c4da8.avif" alt="" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }} />
               <div className="promo-card-icon-fallback" style={{ display: 'none' }}>
                 <i className="fas fa-store"></i>
               </div>
@@ -428,6 +683,20 @@ function ProfileSidebar({ isOpen, onClose }) {
             <i className="fas fa-chevron-right menu-item-arrow"></i>
           </button>
           
+          {/* Forums */}
+          <button className="profile-sidebar-menu-item" onClick={() => handleNavigate('/forum')}>
+            <i className="far fa-comments"></i>
+            <span>Forums</span>
+            <i className="fas fa-chevron-right menu-item-arrow"></i>
+          </button>
+          
+          {/* Blog */}
+          <button className="profile-sidebar-menu-item" onClick={() => handleNavigate('/blog')}>
+            <i className="far fa-newspaper"></i>
+            <span>Blog</span>
+            <i className="fas fa-chevron-right menu-item-arrow"></i>
+          </button>
+          
           {/* Account Settings */}
           <button className="profile-sidebar-menu-item" onClick={() => handleNavigate('/client/settings')}>
             <i className="fas fa-cog"></i>
@@ -444,22 +713,6 @@ function ProfileSidebar({ isOpen, onClose }) {
           
           <div className="profile-sidebar-menu-divider"></div>
           
-          {/* Forums */}
-          <button className="profile-sidebar-menu-item" onClick={() => handleNavigate('/forum')}>
-            <i className="far fa-comments"></i>
-            <span>Forums</span>
-            <i className="fas fa-chevron-right menu-item-arrow"></i>
-          </button>
-          
-          {/* Blogs */}
-          <button className="profile-sidebar-menu-item" onClick={() => handleNavigate('/blog')}>
-            <i className="fas fa-newspaper"></i>
-            <span>Blog</span>
-            <i className="fas fa-chevron-right menu-item-arrow"></i>
-          </button>
-          
-          <div className="profile-sidebar-menu-divider"></div>
-          
           {/* Log out */}
           <button className="profile-sidebar-menu-item" onClick={handleLogout}>
             <i className="fas fa-sign-out-alt"></i>
@@ -469,24 +722,6 @@ function ProfileSidebar({ isOpen, onClose }) {
         </div>
         
         </div>{/* End of profile-sidebar-scroll-content */}
-        
-        {/* Switch to hosting button - Fixed at bottom for vendors */}
-        {hasVendorProfile && (
-          <div className="profile-sidebar-footer">
-            <button 
-              className="profile-sidebar-switch-btn"
-              onClick={() => {
-                // Set vendor mode and navigate to vendor dashboard
-                localStorage.setItem('viewMode', 'vendor');
-                window.dispatchEvent(new CustomEvent('viewModeChanged', { detail: { mode: 'vendor' } }));
-                handleNavigate('/dashboard?section=vendor-dashboard');
-              }}
-            >
-              <i className="fas fa-sync-alt"></i>
-              <span>Switch to hosting</span>
-            </button>
-          </div>
-        )}
       </div>
     </>
   );

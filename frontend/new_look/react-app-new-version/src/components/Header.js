@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { apiGet } from '../utils/api';
 // NotificationDropdown removed - notifications now in sidebar
 import EnhancedSearchBar from './EnhancedSearchBar';
-import WhatsNewSidebar from './WhatsNewSidebar';
+// WhatsNewSidebar removed - now integrated into ProfileSidebar
 import ProfileSidebar from './ProfileSidebar';
 import { getUnreadNotificationCount, updatePageTitle } from '../utils/notifications';
 import { buildBecomeVendorUrl } from '../utils/urlHelpers';
@@ -25,7 +25,7 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
   const [isScrolled, setIsScrolled] = useState(false); // No longer used - kept for compatibility
   const [profileIncomplete, setProfileIncomplete] = useState(false);
   const [profileStatus, setProfileStatus] = useState(null); // 'live', 'submitted', 'incomplete'
-  const [whatsNewOpen, setWhatsNewOpen] = useState(false);
+  // whatsNewOpen removed - now integrated into ProfileSidebar
   const [announcementCount, setAnnouncementCount] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [hasVendorProfile, setHasVendorProfile] = useState(false);
@@ -408,26 +408,7 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
             Switch to exploring
           </button>
         )}
-        {/* What's New Button */}
-        <div 
-          className="nav-icon" 
-          id="whats-new-btn" 
-          onClick={() => {
-            setWhatsNewOpen(true);
-          }}
-          title="What's New"
-          style={{ position: 'relative', cursor: 'pointer' }}
-        >
-          <i className="fas fa-bullhorn"></i>
-          {announcementCount > 0 && (
-            <span
-              className="badge"
-              style={{ display: 'grid' }}
-            >
-              {announcementCount > 9 ? '9+' : announcementCount}
-            </span>
-          )}
-        </div>
+        {/* What's New Button removed - now in ProfileSidebar */}
         {/* Heart and Chat icons removed as per user request */}
         {/* Notification bell removed as per user request */}
         {/* User menu button - hamburger + avatar like dashboard - hidden on mobile via CSS */}
@@ -520,11 +501,7 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
     {/* Airbnb-Style Profile Sidebar */}
     <ProfileSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
     
-    {/* What's New Sidebar - Rendered outside header for proper z-index */}
-    <WhatsNewSidebar 
-      isOpen={whatsNewOpen} 
-      onClose={() => setWhatsNewOpen(false)} 
-    />
+    {/* What's New Sidebar removed - now integrated into ProfileSidebar */}
     </>
   );
 });

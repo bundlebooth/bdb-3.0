@@ -2027,7 +2027,7 @@ router.post('/cookie-consent', async (req, res) => {
   }
 });
 
-// ==================== USER PROFILES ENDPOINTS (Airbnb-style) ====================
+// ==================== USER PROFILES ENDPOINTS ====================
 
 // Get available languages (MUST be before /:id routes)
 router.get('/languages', async (req, res) => {
@@ -2109,9 +2109,9 @@ router.put('/:id/user-profile', async (req, res) => {
   try {
     const { id } = req.params;
     const {
-      displayName, biographyTitle, bio, profileImageURL,
-      city, state, country, work, school, languages, decadeBorn,
-      obsessedWith, pets, spendTimeDoing, funFact, uselessSkill, favoriteQuote
+      displayName, lifeMotto, bio, profileImageURL,
+      city, state, country, occupation, education, languages, generation,
+      currentPassion, furryFriends, freeTimeActivity, interestingTidbit, hiddenTalent, dreamDestination
     } = req.body;
     
     const pool = await poolPromise;
@@ -2119,22 +2119,22 @@ router.put('/:id/user-profile', async (req, res) => {
     const result = await pool.request()
       .input('UserID', sql.Int, parseInt(id))
       .input('DisplayName', sql.NVarChar(100), displayName || null)
-      .input('BiographyTitle', sql.NVarChar(100), biographyTitle || null)
+      .input('LifeMotto', sql.NVarChar(100), lifeMotto || null)
       .input('Bio', sql.NVarChar(sql.MAX), bio || null)
       .input('ProfileImageURL', sql.NVarChar(500), profileImageURL || null)
       .input('City', sql.NVarChar(100), city || null)
       .input('State', sql.NVarChar(100), state || null)
       .input('Country', sql.NVarChar(100), country || null)
-      .input('Work', sql.NVarChar(200), work || null)
-      .input('School', sql.NVarChar(200), school || null)
+      .input('Occupation', sql.NVarChar(200), occupation || null)
+      .input('Education', sql.NVarChar(200), education || null)
       .input('Languages', sql.NVarChar(500), languages || null)
-      .input('DecadeBorn', sql.NVarChar(20), decadeBorn || null)
-      .input('ObsessedWith', sql.NVarChar(200), obsessedWith || null)
-      .input('Pets', sql.NVarChar(200), pets || null)
-      .input('SpendTimeDoing', sql.NVarChar(200), spendTimeDoing || null)
-      .input('FunFact', sql.NVarChar(300), funFact || null)
-      .input('UselessSkill', sql.NVarChar(200), uselessSkill || null)
-      .input('FavoriteQuote', sql.NVarChar(500), favoriteQuote || null)
+      .input('Generation', sql.NVarChar(20), generation || null)
+      .input('CurrentPassion', sql.NVarChar(200), currentPassion || null)
+      .input('FurryFriends', sql.NVarChar(200), furryFriends || null)
+      .input('FreeTimeActivity', sql.NVarChar(200), freeTimeActivity || null)
+      .input('InterestingTidbit', sql.NVarChar(300), interestingTidbit || null)
+      .input('HiddenTalent', sql.NVarChar(200), hiddenTalent || null)
+      .input('DreamDestination', sql.NVarChar(500), dreamDestination || null)
       .execute('users.sp_UpsertUserProfile');
     
     const { UserProfileID, ProfileCompleteness } = result.recordset[0] || {};

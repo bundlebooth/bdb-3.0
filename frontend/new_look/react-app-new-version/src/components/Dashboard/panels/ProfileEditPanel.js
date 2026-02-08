@@ -8,8 +8,8 @@ import UniversalModal from '../../UniversalModal';
 import './ProfileEditPanel.css';
 
 /**
- * ProfileEditPanel - Airbnb-style profile editing component
- * Clean, visual layout matching Airbnb's profile editor
+ * ProfileEditPanel - Planbeau profile editing component
+ * Clean, visual layout for editing user profile
  */
 const ProfileEditPanel = ({ onClose, onSave }) => {
   const { currentUser, refreshUser } = useAuth();
@@ -32,20 +32,20 @@ const ProfileEditPanel = ({ onClose, onSave }) => {
     lastName: '',
     displayName: '',
     bio: '',
-    work: '',
+    occupation: '',
     city: '',
     state: '',
     country: '',
     languages: '',
-    decadeBorn: '',
-    school: '',
-    obsessedWith: '',
-    pets: '',
-    spendTimeDoing: '',
-    funFact: '',
-    uselessSkill: '',
-    biographyTitle: '',
-    favoriteQuote: '',
+    generation: '',
+    education: '',
+    currentPassion: '',
+    furryFriends: '',
+    freeTimeActivity: '',
+    interestingTidbit: '',
+    hiddenTalent: '',
+    lifeMotto: '',
+    dreamDestination: '',
     phone: ''
   });
   
@@ -103,20 +103,20 @@ const ProfileEditPanel = ({ onClose, onSave }) => {
           lastName: user.LastName || '',
           displayName: profile.DisplayName || '',
           bio: profile.Bio || '',
-          work: profile.Work || '',
+          occupation: profile.Occupation || '',
           city: profile.City || '',
           state: profile.State || '',
           country: profile.Country || '',
           languages: profile.Languages || '',
-          decadeBorn: profile.DecadeBorn || '',
-          school: profile.School || '',
-          obsessedWith: profile.ObsessedWith || '',
-          pets: profile.Pets || '',
-          spendTimeDoing: profile.SpendTimeDoing || '',
-          funFact: profile.FunFact || '',
-          uselessSkill: profile.UselessSkill || '',
-          biographyTitle: profile.BiographyTitle || '',
-          favoriteQuote: profile.FavoriteQuote || '',
+          generation: profile.Generation || '',
+          education: profile.Education || '',
+          currentPassion: profile.CurrentPassion || '',
+          furryFriends: profile.FurryFriends || '',
+          freeTimeActivity: profile.FreeTimeActivity || '',
+          interestingTidbit: profile.InterestingTidbit || '',
+          hiddenTalent: profile.HiddenTalent || '',
+          lifeMotto: profile.LifeMotto || '',
+          dreamDestination: profile.DreamDestination || '',
           phone: user.Phone || ''
         });
         
@@ -243,20 +243,20 @@ const ProfileEditPanel = ({ onClose, onSave }) => {
     }
   };
 
-  // Profile field definitions - Airbnb style
+  // Profile field definitions - Planbeau style
   const profileFields = [
-    { id: 'decadeBorn', icon: 'map-marker-alt', label: 'Decade I was born', placeholder: 'Decade I was born' },
-    { id: 'favoriteDestination', icon: 'plane', label: "Where I've always wanted to go", placeholder: "Where I've always wanted to go", field: 'favoriteQuote' },
-    { id: 'work', icon: 'briefcase', label: 'My work', placeholder: 'My work' },
-    { id: 'pets', icon: 'paw', label: 'Pets', placeholder: 'Pets' },
-    { id: 'school', icon: 'graduation-cap', label: 'Where I went to school', placeholder: 'Where I went to school' },
-    { id: 'uselessSkill', icon: 'pencil-alt', label: 'My most useless skill', placeholder: 'My most useless skill' },
-    { id: 'spendTimeDoing', icon: 'clock', label: 'I spend too much time', placeholder: 'I spend too much time' },
-    { id: 'funFact', icon: 'lightbulb', label: 'My fun fact', placeholder: 'My fun fact' },
-    { id: 'biographyTitle', icon: 'book', label: 'My biography title would be', placeholder: 'My biography title would be' },
-    { id: 'obsessedWith', icon: 'heart', label: 'My obsession', placeholder: 'My obsession' },
-    { id: 'city', icon: 'globe', label: 'Where I live', placeholder: 'Where I live', modal: 'location' },
-    { id: 'languages', icon: 'language', label: 'Languages I speak', placeholder: 'Languages I speak', modal: 'languages' },
+    { id: 'city', icon: 'map-marker-alt', label: 'Location', placeholder: 'Where are you based?', modal: 'location' },
+    { id: 'dreamDestination', icon: 'plane', label: 'Dream destination', placeholder: 'A place on your bucket list' },
+    { id: 'occupation', icon: 'briefcase', label: 'Occupation', placeholder: 'What do you do?' },
+    { id: 'furryFriends', icon: 'paw', label: 'Furry friends', placeholder: 'Any pets at home?' },
+    { id: 'education', icon: 'graduation-cap', label: 'Education', placeholder: 'Where did you study?' },
+    { id: 'hiddenTalent', icon: 'pencil-alt', label: 'Hidden talent', placeholder: 'A quirky skill you have' },
+    { id: 'freeTimeActivity', icon: 'clock', label: 'Free time activity', placeholder: 'How do you unwind?' },
+    { id: 'interestingTidbit', icon: 'lightbulb', label: 'Interesting tidbit', placeholder: 'Something unique about you' },
+    { id: 'lifeMotto', icon: 'book', label: 'Life motto', placeholder: 'A phrase that defines you' },
+    { id: 'currentPassion', icon: 'heart', label: 'Current passion', placeholder: 'What excites you lately?' },
+    { id: 'generation', icon: 'birthday-cake', label: 'Generation', placeholder: 'Which era are you from?' },
+    { id: 'languages', icon: 'language', label: 'Languages', placeholder: 'What languages do you speak?', modal: 'languages' },
   ];
 
   const getFieldValue = (field) => {
@@ -375,7 +375,7 @@ const ProfileEditPanel = ({ onClose, onSave }) => {
                 <textarea
                   value={formData.bio}
                   onChange={(e) => handleChange('bio', e.target.value)}
-                  placeholder="Write something fun and punchy."
+                  placeholder="Share a bit about yourself and what makes you unique."
                   autoFocus
                   onBlur={() => setEditingField(null)}
                   maxLength={500}
@@ -386,7 +386,7 @@ const ProfileEditPanel = ({ onClose, onSave }) => {
                     <p className="about-text">{formData.bio}</p>
                   ) : (
                     <p className="about-placeholder">
-                      Write something fun and punchy.<br />
+                      Share a bit about yourself and what makes you unique.<br />
                       <span className="add-link">Add intro</span>
                     </p>
                   )}

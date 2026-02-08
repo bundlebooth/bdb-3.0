@@ -231,27 +231,7 @@ function VendorDashboardSection({ data, loading, onSectionChange }) {
 
   return (
     <div id="vendor-dashboard-section">
-      {/* Vendor Dashboard Header */}
-      <div className="vendor-dashboard-header" style={{
-        marginBottom: '24px'
-      }}>
-        <h1 style={{ 
-          fontSize: '28px', 
-          fontWeight: '700', 
-          color: '#222', 
-          margin: 0,
-          letterSpacing: '-0.5px'
-        }}>
-          Vendor Dashboard
-        </h1>
-        <p style={{ 
-          fontSize: '14px', 
-          color: '#717171', 
-          margin: '4px 0 0 0' 
-        }}>
-          Manage your business and bookings
-        </p>
-      </div>
+      {/* Vendor Dashboard Header removed as per user request */}
       
       <div className="vendor-stats stats-top-grid" id="vendor-stats">
         <div className="kpi-grid two-col">

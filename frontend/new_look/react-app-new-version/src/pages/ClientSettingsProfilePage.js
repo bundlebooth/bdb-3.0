@@ -9,15 +9,9 @@ function ClientSettingsProfilePage() {
   const navigate = useNavigate();
   
   return (
-    <PageLayout variant="default" pageClassName="client-page">
+    <PageLayout variant="fullWidth" pageClassName="client-page client-settings-page">
       <Header />
-      <div className="client-page-container client-settings-full-width">
-        <main className="client-page-main">
-          <div className="client-page-content">
-            <ProfileEditPanel onClose={() => navigate('/client/settings')} onSave={() => navigate('/client/settings')} />
-          </div>
-        </main>
-      </div>
+      <ProfileEditPanel onClose={() => navigate('/client/settings')} onSave={() => navigate('/client/settings')} />
     </PageLayout>
   );
 }

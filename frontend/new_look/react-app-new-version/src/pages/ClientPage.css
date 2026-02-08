@@ -118,6 +118,11 @@
   width: 100%;
 }
 
+/* Settings pages - full width layout */
+.client-settings-page {
+  background: #fff;
+}
+
 /* Remove shadow/border from dashboard cards in client pages */
 .client-page .dashboard-card {
   box-shadow: none;
@@ -160,4 +165,5 @@
   .client-page-content {
     padding: 0;
   }
+  
 }

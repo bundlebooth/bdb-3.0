@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
 import { useTranslation } from '../hooks/useTranslation';
-import WhatsNewSidebar from './WhatsNewSidebar';
+// WhatsNewSidebar removed - now integrated into ProfileSidebar
 import './UnifiedSidebar.css';
 
 function UnifiedSidebar({ isOpen, onClose }) {
@@ -22,7 +22,7 @@ function UnifiedSidebar({ isOpen, onClose }) {
     unreadMessages: 0,
     pendingReviews: 0
   });
-  const [announcementsSidebarOpen, setAnnouncementsSidebarOpen] = useState(false);
+  // announcementsSidebarOpen removed - now integrated into ProfileSidebar
   const [announcementsCount, setAnnouncementsCount] = useState(0);
   
   // Get view mode from localStorage
@@ -369,13 +369,7 @@ function UnifiedSidebar({ isOpen, onClose }) {
             <i className="far fa-compass"></i>
             <span>Explore Vendors</span>
           </button>
-          <button className="unified-sidebar-item" onClick={() => setAnnouncementsSidebarOpen(true)}>
-            <i className="far fa-bullhorn"></i>
-            <span>Announcements</span>
-            {announcementsCount > 0 && (
-              <span className="unified-sidebar-badge">{announcementsCount}</span>
-            )}
-          </button>
+          {/* Announcements button removed - now in ProfileSidebar */}
           <button className="unified-sidebar-item" onClick={() => handleNavigate('/forum')}>
             <i className="far fa-comments"></i>
             <span>Forum</span>
@@ -463,11 +457,7 @@ function UnifiedSidebar({ isOpen, onClose }) {
         </div>
       </div>
       
-      {/* Announcements Sidebar */}
-      <WhatsNewSidebar 
-        isOpen={announcementsSidebarOpen} 
-        onClose={() => setAnnouncementsSidebarOpen(false)} 
-      />
+      {/* Announcements Sidebar removed - now integrated into ProfileSidebar */}
     </>
   );
 }
