@@ -833,9 +833,9 @@ function LandingPage() {
                   )}
                 </div>
 
-                {/* Search Button */}
-                <button type="button" className="hero-search-button" onClick={handleSearch}>
-                  Search
+                {/* Search Button - Circular with icon */}
+                <button type="button" className="hero-search-button-circular" onClick={handleSearch}>
+                  <i className="fas fa-search"></i>
                 </button>
               </div>
               )}

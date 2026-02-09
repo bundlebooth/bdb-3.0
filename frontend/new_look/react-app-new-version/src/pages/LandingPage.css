@@ -326,7 +326,7 @@
 }
 
 .hero-search-bar-simple .search-btn-simple {
-  background: #4F86E8;
+  background: #5086E8;
   color: white;
   border: none;
   padding: 14px 32px;
@@ -342,7 +342,7 @@
 }
 
 .hero-search-bar-simple .search-btn-simple:hover {
-  background: #4c63d2;
+  background: #3d6fc7;
 }
 
 /* Hero Search Bar - Pill Style (Image 2) */
@@ -418,7 +418,7 @@
 }
 
 .hero-search-bar-styled .search-btn-styled {
-  background: #4F86E8;
+  background: #5086E8;
   color: white;
   border: none;
   padding: 14px 24px;
@@ -435,7 +435,7 @@
 }
 
 .hero-search-bar-styled .search-btn-styled:hover {
-  background: #4c63d2;
+  background: #3d6fc7;
 }
 
 .hero-search-bar-styled .search-btn-styled i {
@@ -560,7 +560,7 @@
 }
 
 .hero-search-button {
-  background: #4F86E8;
+  background: #5086E8;
   color: #fff;
   border: none;
   border-radius: 50px;
@@ -576,6 +576,34 @@
 .hero-search-button:hover {
   background: #3d6fc7;
   transform: scale(1.02);
+}
+
+/* Circular Search Button - matches app blue color */
+.hero-search-button-circular {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  min-height: 48px;
+  background: #5086E8;
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+  flex-shrink: 0;
+  margin-left: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hero-search-button-circular i {
+  font-size: 18px;
+}
+
+.hero-search-button-circular:hover {
+  background: #3d6fc7;
+  transform: scale(1.05);
 }
 
 /* Hero Dropdown Base - Flush with search bar, curved edges */

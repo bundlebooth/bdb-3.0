@@ -32,6 +32,7 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
     priceType: 'fixed_price',
     durationMinutes: '',
     imageURL: '',
+    galleryImages: [], // Array of image URLs for gallery
     finePrint: '',
     isActive: true,
     baseRate: '',
@@ -43,6 +44,9 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
   });
   const [packageServiceSearch, setPackageServiceSearch] = useState('');
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [showGalleryModal, setShowGalleryModal] = useState(false);
+  const [galleryImages, setGalleryImages] = useState([]);
+  const [selectedGalleryIndex, setSelectedGalleryIndex] = useState(0);
 
   // Clear state when vendorProfileId changes
   useEffect(() => {
@@ -98,6 +102,7 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
       priceType: 'fixed_price',
       durationMinutes: '',
       imageURL: '',
+      galleryImages: [],
       finePrint: '',
       isActive: true,
       baseRate: '',
@@ -113,6 +118,16 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
   const handleEditPackage = (pkg) => {
     console.log('Editing package:', pkg); // Debug log
     setEditingPackage(pkg);
+    // Parse gallery images from JSON string if needed
+    let parsedGalleryImages = [];
+    if (pkg.GalleryImages || pkg.galleryImages) {
+      const rawGallery = pkg.GalleryImages || pkg.galleryImages;
+      if (typeof rawGallery === 'string') {
+        try { parsedGalleryImages = JSON.parse(rawGallery); } catch (e) { parsedGalleryImages = []; }
+      } else if (Array.isArray(rawGallery)) {
+        parsedGalleryImages = rawGallery;
+      }
+    }
     setPackageForm({
       name: pkg.PackageName || pkg.name || '',
       description: pkg.Description || pkg.description || '',
@@ -122,6 +137,7 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
       priceType: pkg.PriceType || pkg.priceType || 'time_based',
       durationMinutes: pkg.DurationMinutes || pkg.durationMinutes || '',
       imageURL: pkg.ImageURL || pkg.imageURL || '',
+      galleryImages: parsedGalleryImages,
       finePrint: pkg.FinePrint || pkg.finePrint || '',
       isActive: pkg.IsActive !== false,
       // Pricing model specific fields
@@ -175,6 +191,7 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
         priceType: packageForm.priceType,
         durationMinutes: packageForm.durationMinutes ? parseInt(packageForm.durationMinutes) : null,
         imageURL: packageForm.imageURL,
+        galleryImages: packageForm.galleryImages || [],
         finePrint: packageForm.finePrint,
         isActive: packageForm.isActive,
         baseRate: packageForm.baseRate ? parseFloat(packageForm.baseRate) : null,
@@ -260,6 +277,61 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
     } finally {
       setUploadingImage(false);
     }
+  };
+
+  // Handle multiple gallery image uploads
+  const handleGalleryImageUpload = async (e) => {
+    const files = Array.from(e.target.files);
+    if (!files.length) return;
+
+    try {
+      setUploadingImage(true);
+      const uploadedUrls = [];
+
+      for (const file of files) {
+        const formData = new FormData();
+        formData.append('image', file);
+
+        const response = await fetch(`${API_BASE_URL}/vendors/service-image/upload`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+          body: formData
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          uploadedUrls.push(data.imageUrl);
+        }
+      }
+
+      if (uploadedUrls.length > 0) {
+        setPackageForm(prev => ({
+          ...prev,
+          galleryImages: [...(prev.galleryImages || []), ...uploadedUrls]
+        }));
+        showBanner(`${uploadedUrls.length} image(s) uploaded successfully!`, 'success');
+      }
+    } catch (error) {
+      console.error('Error uploading gallery images:', error);
+      showBanner('Failed to upload some images', 'error');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  // Remove image from gallery
+  const handleRemoveGalleryImage = (index) => {
+    setPackageForm(prev => ({
+      ...prev,
+      galleryImages: prev.galleryImages.filter((_, i) => i !== index)
+    }));
+  };
+
+  // Open gallery modal to view images
+  const openGalleryView = (images, startIndex = 0) => {
+    setGalleryImages(images);
+    setSelectedGalleryIndex(startIndex);
+    setShowGalleryModal(true);
   };
 
   const toggleServiceInPackage = (service) => {
@@ -411,7 +483,15 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
       maximumAttendees: service.maximumAttendees ?? service.MaximumAttendees ?? '',
       minimumBookingFee: service.minimumBookingFee ?? service.MinimumBookingFee ?? '',
       vendorDescription: service.vendorDescription || service.VendorDescription || service.Description || '',
-      imageURL: service.imageURL || service.ImageURL || ''
+      imageURL: service.imageURL || service.ImageURL || '',
+      galleryImages: (() => {
+        const raw = service.galleryImages || service.GalleryImages;
+        if (!raw) return [];
+        if (typeof raw === 'string') {
+          try { return JSON.parse(raw); } catch (e) { return []; }
+        }
+        return Array.isArray(raw) ? raw : [];
+      })()
     };
     console.log('Setting editForm:', formData); // Debug log
     setEditForm(formData);
@@ -663,7 +743,8 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
         )}
 
         {/* Services Container - Airbnb-style Horizontal Cards */}
-        <div id="vendor-settings-services-container" style={{ display: !loading && activeTab === 'services' ? 'block' : 'none' }}>
+        {activeTab === 'services' && !loading && (
+        <div id="vendor-settings-services-container">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
             <h5 style={{ margin: 0, color: '#222', fontWeight: 600, fontSize: '1.25rem' }}>Your Services</h5>
             <button
@@ -705,6 +786,7 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
             </button>
           </div>
         </div>
+        )}
 
         {/* Service Picker Modal */}
         {showServicePicker && (
@@ -814,91 +896,6 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
         >
           {editingService && (
             <div>
-                {/* Service Image Upload */}
-                <div style={{ marginBottom: '24px' }}>
-                  <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    Service Image
-                  </label>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                    <div style={{
-                      width: '100px',
-                      height: '100px',
-                      borderRadius: '12px',
-                      background: '#f3f4f6',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      overflow: 'hidden',
-                      border: '1px solid #e5e7eb'
-                    }}>
-                      {editForm.imageURL ? (
-                        <img src={editForm.imageURL} alt="Service" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      ) : (
-                        <i className="fas fa-image" style={{ color: '#9ca3af', fontSize: '2rem' }}></i>
-                      )}
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleServiceImageUpload}
-                        style={{ display: 'none' }}
-                        id="service-image-upload"
-                      />
-                      <label
-                        htmlFor="service-image-upload"
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '8px',
-                          padding: '10px 16px',
-                          background: '#fff',
-                          border: '1px solid #e5e7eb',
-                          borderRadius: '8px',
-                          cursor: 'pointer',
-                          fontSize: '14px',
-                          fontWeight: 500,
-                          color: '#374151'
-                        }}
-                      >
-                        {uploadingImage ? (
-                          <>
-                            <i className="fas fa-spinner fa-spin"></i>
-                            Uploading...
-                          </>
-                        ) : (
-                          <>
-                            <i className="fas fa-upload"></i>
-                            {editForm.imageURL ? 'Change Image' : 'Upload Image'}
-                          </>
-                        )}
-                      </label>
-                      {editForm.imageURL && (
-                        <button
-                          type="button"
-                          onClick={() => setEditForm({ ...editForm, imageURL: '' })}
-                          style={{
-                            marginLeft: '8px',
-                            padding: '10px 16px',
-                            background: '#fef2f2',
-                            border: '1px solid #fecaca',
-                            borderRadius: '8px',
-                            cursor: 'pointer',
-                            fontSize: '14px',
-                            fontWeight: 500,
-                            color: '#dc2626'
-                          }}
-                        >
-                          Remove
-                        </button>
-                      )}
-                      <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#9ca3af' }}>
-                        Recommended: 400x400px, JPG or PNG
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
                 {/* Pricing Model */}
                 <div style={{ marginBottom: '16px' }}>
                   <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
@@ -1166,6 +1163,108 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
                     </p>
                   </div>
                 )}
+
+                {/* Gallery Images - At bottom */}
+                <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid #e5e7eb' }}>
+                  <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                    Gallery Images <span style={{ fontWeight: 400, textTransform: 'none' }}>(Click to view)</span>
+                  </label>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginBottom: '12px' }}>
+                    {(editForm.galleryImages || []).map((url, idx) => (
+                      <div 
+                        key={idx} 
+                        style={{ 
+                          position: 'relative', 
+                          width: '80px', 
+                          height: '80px', 
+                          borderRadius: '8px', 
+                          overflow: 'hidden',
+                          cursor: 'pointer',
+                          border: '1px solid #e5e7eb'
+                        }}
+                        onClick={() => openGalleryView(editForm.galleryImages, idx)}
+                      >
+                        <img src={url} alt={`Gallery ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <button
+                          onClick={(e) => { 
+                            e.stopPropagation(); 
+                            setEditForm({ ...editForm, galleryImages: editForm.galleryImages.filter((_, i) => i !== idx) });
+                          }}
+                          style={{
+                            position: 'absolute',
+                            top: '4px',
+                            right: '4px',
+                            width: '20px',
+                            height: '20px',
+                            borderRadius: '50%',
+                            background: 'rgba(0,0,0,0.6)',
+                            color: 'white',
+                            border: 'none',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '10px'
+                          }}
+                        >
+                          <i className="fas fa-times"></i>
+                        </button>
+                      </div>
+                    ))}
+                    {/* Add more images button */}
+                    <label 
+                      htmlFor="service-gallery-images-upload"
+                      style={{
+                        width: '80px',
+                        height: '80px',
+                        borderRadius: '8px',
+                        border: '2px dashed #d1d5db',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        background: '#fafafa',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      <i className="fas fa-plus" style={{ color: '#9ca3af', fontSize: '1.2rem', marginBottom: '4px' }}></i>
+                      <span style={{ fontSize: '10px', color: '#9ca3af' }}>Add</span>
+                    </label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={async (e) => {
+                        const files = Array.from(e.target.files);
+                        if (!files.length) return;
+                        for (const file of files) {
+                          try {
+                            const formData = new FormData();
+                            formData.append('image', file);
+                            const response = await fetch(`${API_BASE_URL}/vendors/service-image/upload`, {
+                              method: 'POST',
+                              headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+                              body: formData
+                            });
+                            if (response.ok) {
+                              const data = await response.json();
+                              setEditForm(prev => ({ ...prev, galleryImages: [...(prev.galleryImages || []), data.imageUrl] }));
+                            }
+                          } catch (error) {
+                            console.error('Error uploading gallery image:', error);
+                          }
+                        }
+                        e.target.value = '';
+                      }}
+                      style={{ display: 'none' }}
+                      id="service-gallery-images-upload"
+                    />
+                  </div>
+                  <p style={{ margin: 0, fontSize: '12px', color: '#9ca3af' }}>
+                    Upload multiple images to showcase your service. Clients can browse through these images.
+                  </p>
+                </div>
             </div>
           )}
         </UniversalModal>
@@ -1180,54 +1279,6 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
           secondaryAction={{ label: 'Cancel', onClick: () => setShowPackageModal(false) }}
         >
           <div>
-                {/* Package Image */}
-                <div style={{ marginBottom: '24px' }}>
-                  <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
-                    Package Image
-                  </label>
-                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                    <div style={{
-                      width: '120px',
-                      height: '90px',
-                      borderRadius: '8px',
-                      overflow: 'hidden',
-                      background: '#f3f4f6',
-                      border: '1px solid #e5e7eb'
-                    }}>
-                      {packageForm.imageURL ? (
-                        <img src={packageForm.imageURL} alt="Package" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      ) : (
-                        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <i className="fas fa-image" style={{ fontSize: '2rem', color: '#d1d5db' }}></i>
-                        </div>
-                      )}
-                    </div>
-                    <div>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handlePackageImageUpload}
-                        style={{ display: 'none' }}
-                        id="package-image-upload"
-                      />
-                      <label
-                        htmlFor="package-image-upload"
-                        style={{
-                          display: 'inline-block',
-                          padding: '8px 16px',
-                          background: '#f3f4f6',
-                          borderRadius: '6px',
-                          cursor: 'pointer',
-                          fontSize: '0.85rem',
-                          fontWeight: 500
-                        }}
-                      >
-                        {uploadingImage ? 'Uploading...' : 'Upload Image'}
-                      </label>
-                    </div>
-                  </div>
-                </div>
-
                 {/* Package Name */}
                 <div style={{ marginBottom: '16px' }}>
                   <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
@@ -1534,25 +1585,82 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
                   </div>
                 </div>
 
-                {/* Fine Print */}
-                <div style={{ marginBottom: '16px' }}>
+                {/* Gallery Images - Multiple uploads - At bottom */}
+                <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid #e5e7eb' }}>
                   <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
-                    Fine Print / Terms
+                    Gallery Images <span style={{ fontWeight: 400, textTransform: 'none' }}>(Click to view)</span>
                   </label>
-                  <textarea
-                    value={packageForm.finePrint}
-                    onChange={(e) => setPackageForm({ ...packageForm, finePrint: e.target.value })}
-                    placeholder="e.g., Available on Friday or Sunday. Not available on long weekends."
-                    rows={3}
-                    style={{
-                      width: '100%',
-                      padding: '12px 14px',
-                      border: '1px solid #e5e7eb',
-                      borderRadius: '8px',
-                      fontSize: '14px',
-                      resize: 'vertical'
-                    }}
-                  />
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginBottom: '12px' }}>
+                    {(packageForm.galleryImages || []).map((url, idx) => (
+                      <div 
+                        key={idx} 
+                        style={{ 
+                          position: 'relative', 
+                          width: '80px', 
+                          height: '80px', 
+                          borderRadius: '8px', 
+                          overflow: 'hidden',
+                          cursor: 'pointer',
+                          border: '1px solid #e5e7eb'
+                        }}
+                        onClick={() => openGalleryView(packageForm.galleryImages, idx)}
+                      >
+                        <img src={url} alt={`Gallery ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleRemoveGalleryImage(idx); }}
+                          style={{
+                            position: 'absolute',
+                            top: '4px',
+                            right: '4px',
+                            width: '20px',
+                            height: '20px',
+                            borderRadius: '50%',
+                            background: 'rgba(0,0,0,0.6)',
+                            color: 'white',
+                            border: 'none',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '10px'
+                          }}
+                        >
+                          <i className="fas fa-times"></i>
+                        </button>
+                      </div>
+                    ))}
+                    {/* Add more images button */}
+                    <label 
+                      htmlFor="gallery-images-upload"
+                      style={{
+                        width: '80px',
+                        height: '80px',
+                        borderRadius: '8px',
+                        border: '2px dashed #d1d5db',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        background: '#fafafa',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      <i className="fas fa-plus" style={{ color: '#9ca3af', fontSize: '1.2rem', marginBottom: '4px' }}></i>
+                      <span style={{ fontSize: '10px', color: '#9ca3af' }}>Add</span>
+                    </label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleGalleryImageUpload}
+                      style={{ display: 'none' }}
+                      id="gallery-images-upload"
+                    />
+                  </div>
+                  <p style={{ margin: 0, fontSize: '12px', color: '#9ca3af' }}>
+                    Upload multiple images to showcase your package. Clients can browse through these images.
+                  </p>
                 </div>
           </div>
         </UniversalModal>
@@ -1568,6 +1676,157 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
           onConfirm={confirmDeletePackage}
           variant="danger"
         />
+
+        {/* Gallery Lightbox Modal */}
+        {showGalleryModal && galleryImages.length > 0 && (
+          <div
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'rgba(0, 0, 0, 0.9)',
+              zIndex: 10001,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+            onClick={() => setShowGalleryModal(false)}
+          >
+            {/* Close button */}
+            <button
+              onClick={() => setShowGalleryModal(false)}
+              style={{
+                position: 'absolute',
+                top: '20px',
+                right: '20px',
+                background: 'rgba(255,255,255,0.1)',
+                border: 'none',
+                color: 'white',
+                width: '40px',
+                height: '40px',
+                borderRadius: '50%',
+                cursor: 'pointer',
+                fontSize: '1.2rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              <i className="fas fa-times"></i>
+            </button>
+
+            {/* Main image */}
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                maxWidth: '90vw',
+                maxHeight: '80vh',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              <img
+                src={galleryImages[selectedGalleryIndex]}
+                alt={`Gallery image ${selectedGalleryIndex + 1}`}
+                style={{
+                  maxWidth: '100%',
+                  maxHeight: '80vh',
+                  objectFit: 'contain',
+                  borderRadius: '8px'
+                }}
+              />
+            </div>
+
+            {/* Navigation arrows */}
+            {galleryImages.length > 1 && (
+              <>
+                {selectedGalleryIndex > 0 && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setSelectedGalleryIndex(prev => prev - 1); }}
+                    style={{
+                      position: 'absolute',
+                      left: '20px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'rgba(255,255,255,0.2)',
+                      border: 'none',
+                      color: 'white',
+                      width: '50px',
+                      height: '50px',
+                      borderRadius: '50%',
+                      cursor: 'pointer',
+                      fontSize: '1.5rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    <i className="fas fa-chevron-left"></i>
+                  </button>
+                )}
+                {selectedGalleryIndex < galleryImages.length - 1 && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setSelectedGalleryIndex(prev => prev + 1); }}
+                    style={{
+                      position: 'absolute',
+                      right: '20px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'rgba(255,255,255,0.2)',
+                      border: 'none',
+                      color: 'white',
+                      width: '50px',
+                      height: '50px',
+                      borderRadius: '50%',
+                      cursor: 'pointer',
+                      fontSize: '1.5rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    <i className="fas fa-chevron-right"></i>
+                  </button>
+                )}
+              </>
+            )}
+
+            {/* Thumbnail dots */}
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                display: 'flex',
+                gap: '8px',
+                marginTop: '20px'
+              }}
+            >
+              {galleryImages.map((url, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setSelectedGalleryIndex(idx)}
+                  style={{
+                    width: idx === selectedGalleryIndex ? '12px' : '8px',
+                    height: idx === selectedGalleryIndex ? '12px' : '8px',
+                    borderRadius: '50%',
+                    background: idx === selectedGalleryIndex ? 'white' : 'rgba(255,255,255,0.4)',
+                    border: 'none',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                />
+              ))}
+            </div>
+
+            {/* Image counter */}
+            <div style={{ color: 'rgba(255,255,255,0.7)', marginTop: '12px', fontSize: '14px' }}>
+              {selectedGalleryIndex + 1} / {galleryImages.length}
+            </div>
+          </div>
+        )}
 
       </div>
     </div>

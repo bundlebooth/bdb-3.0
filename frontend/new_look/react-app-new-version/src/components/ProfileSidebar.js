@@ -38,6 +38,10 @@ function ProfileSidebar({ isOpen, onClose }) {
   const [showAnnouncements, setShowAnnouncements] = useState(false);
   const [announcements, setAnnouncements] = useState([]);
   const [announcementsLoading, setAnnouncementsLoading] = useState(false);
+  
+  // Quick actions carousel state
+  const [activeQuickAction, setActiveQuickAction] = useState(0);
+  const carouselRef = React.useRef(null);
 
   // Lock body scroll when sidebar is open
   useEffect(() => {
@@ -601,29 +605,120 @@ function ProfileSidebar({ isOpen, onClose }) {
           <div className="profile-sidebar-view-profile">View your profile</div>
         </div>
         
-        {/* Quick Action Cards - With images */}
-        <div className="profile-sidebar-quick-actions">
+        {/* Quick Action Cards - Two visible, scroll for Messages */}
+        <div style={{ padding: '0 24px', marginBottom: '8px' }}>
           <div 
-            className="profile-sidebar-action-card"
-            onClick={() => handleNavigate('/client/bookings')}
+            ref={carouselRef}
+            onScroll={() => {
+              if (carouselRef.current) {
+                const scrollLeft = carouselRef.current.scrollLeft;
+                const containerWidth = carouselRef.current.offsetWidth;
+                const newIndex = Math.round(scrollLeft / containerWidth);
+                if (newIndex !== activeQuickAction && newIndex >= 0 && newIndex < 2) {
+                  setActiveQuickAction(newIndex);
+                }
+              }
+            }}
+            style={{
+              display: 'flex',
+              gap: '16px',
+              overflowX: 'auto',
+              overflowY: 'hidden',
+              scrollSnapType: 'x mandatory',
+              WebkitOverflowScrolling: 'touch',
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none'
+            }}
           >
-            <div className="action-card-icon-wrapper">
-              <img src="/images/sidebar/dfdbccc2-9ef2-409b-9b34-f3d71058dbe4.avif" alt="My Bookings" className="action-card-img" />
+            {/* Page 1: My Bookings + My Messages */}
+            <div style={{ 
+              display: 'flex', 
+              gap: '16px', 
+              flex: '0 0 100%', 
+              minWidth: '100%',
+              scrollSnapAlign: 'start'
+            }}>
+              <div 
+                className="profile-sidebar-action-card"
+                onClick={() => handleNavigate('/client/bookings')}
+                style={{ flex: 1 }}
+              >
+                <div className="action-card-icon-wrapper">
+                  <img src="/images/sidebar/dfdbccc2-9ef2-409b-9b34-f3d71058dbe4.avif" alt="My Bookings" className="action-card-img" />
+                </div>
+                <span className="action-card-label">My Bookings</span>
+                {notificationCounts.pendingBookings > 0 && (
+                  <span className="action-card-badge">NEW</span>
+                )}
+              </div>
+              <div 
+                className="profile-sidebar-action-card"
+                onClick={() => handleNavigate('/client/messages')}
+                style={{ flex: 1 }}
+              >
+                <div className="action-card-icon-wrapper">
+                  <img src="/images/sidebar/a0613f17-0174-4742-b003-e9992e5400fe.avif" alt="My Messages" className="action-card-img" />
+                </div>
+                <span className="action-card-label">My Messages</span>
+                {notificationCounts.unreadMessages > 0 && (
+                  <span className="action-card-badge">{notificationCounts.unreadMessages}</span>
+                )}
+              </div>
             </div>
-            <span className="action-card-label">My Bookings</span>
-            {notificationCounts.pendingBookings > 0 && (
-              <span className="action-card-badge">NEW</span>
-            )}
-          </div>
-          <div 
-            className="profile-sidebar-action-card"
-            onClick={() => handleNavigate('/client/favorites')}
-          >
-            <div className="action-card-icon-wrapper">
-              <img src="/images/sidebar/297263db-3cc6-45b5-97b6-5c4537a15be4.avif" alt="Favorites" className="action-card-img" />
+            
+            {/* Page 2: My Favorites */}
+            <div style={{ 
+              display: 'flex', 
+              gap: '16px', 
+              flex: '0 0 100%', 
+              minWidth: '100%',
+              scrollSnapAlign: 'start'
+            }}>
+              <div 
+                className="profile-sidebar-action-card"
+                onClick={() => handleNavigate('/client/favorites')}
+                style={{ flex: 1 }}
+              >
+                <div className="action-card-icon-wrapper">
+                  <img src="/images/sidebar/297263db-3cc6-45b5-97b6-5c4537a15be4.avif" alt="My Favorites" className="action-card-img" />
+                </div>
+                <span className="action-card-label">My Favorites</span>
+              </div>
+              <div style={{ flex: 1 }}></div>
             </div>
-            <span className="action-card-label">Favorites</span>
           </div>
+        </div>
+        
+        {/* Dot Navigation */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          gap: '8px',
+          marginBottom: '16px',
+          padding: '0 24px'
+        }}>
+          {[0, 1].map((idx) => (
+            <button
+              key={idx}
+              onClick={() => {
+                setActiveQuickAction(idx);
+                if (carouselRef.current) {
+                  const containerWidth = carouselRef.current.offsetWidth;
+                  carouselRef.current.scrollTo({ left: containerWidth * idx, behavior: 'smooth' });
+                }
+              }}
+              style={{
+                width: activeQuickAction === idx ? '20px' : '8px',
+                height: '8px',
+                borderRadius: '4px',
+                background: activeQuickAction === idx ? '#5086E8' : '#d1d5db',
+                border: 'none',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease',
+                padding: 0
+              }}
+            />
+          ))}
         </div>
         
         {/* Vendor Promo Card - Shows "Become a vendor" for non-vendors, "Switch to hosting" for vendors */}
@@ -676,13 +771,6 @@ function ProfileSidebar({ isOpen, onClose }) {
         
         {/* Menu Items */}
         <div className="profile-sidebar-menu">
-          {/* View Profile */}
-          <button className="profile-sidebar-menu-item" onClick={() => handleNavigate(`/profile/${encodeUserId(currentUser?.id)}`)}>
-            <i className="far fa-user-circle"></i>
-            <span>View Profile</span>
-            <i className="fas fa-chevron-right menu-item-arrow"></i>
-          </button>
-          
           {/* Forums */}
           <button className="profile-sidebar-menu-item" onClick={() => handleNavigate('/forum')}>
             <i className="far fa-comments"></i>

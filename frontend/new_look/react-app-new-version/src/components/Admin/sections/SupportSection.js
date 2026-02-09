@@ -261,7 +261,115 @@ function SupportSection() {
               <DetailRow label="Category" value={selectedTicket.Category || selectedTicket.category} />
               <DetailRow label="Priority" value={getPriorityBadge(selectedTicket.Priority || selectedTicket.priority)} />
               <DetailRow label="Created" value={formatDate(selectedTicket.CreatedAt || selectedTicket.createdAt)} />
+              {/* Description */}
+              {(selectedTicket.Description || selectedTicket.description) && (
+                <div style={{ marginTop: '1rem', padding: '1rem', background: '#f9fafb', borderRadius: '8px' }}>
+                  <label style={{ display: 'block', fontWeight: 500, marginBottom: '0.5rem', color: '#374151' }}>Description</label>
+                  <p style={{ margin: 0, color: '#4b5563', whiteSpace: 'pre-wrap' }}>{selectedTicket.Description || selectedTicket.description}</p>
+                </div>
+              )}
             </DetailSection>
+
+            {/* Attachments Section */}
+            {(() => {
+              // Parse attachments - could be JSON string or array
+              let attachments = [];
+              const rawAttachments = selectedTicket.Attachments || selectedTicket.attachments;
+              if (rawAttachments) {
+                if (typeof rawAttachments === 'string') {
+                  try { attachments = JSON.parse(rawAttachments); } catch (e) { attachments = []; }
+                } else if (Array.isArray(rawAttachments)) {
+                  attachments = rawAttachments;
+                }
+              }
+              
+              if (attachments.length === 0) return null;
+              
+              return (
+                <div style={{ marginBottom: '1rem' }}>
+                  <h4 style={{ marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <i className="fas fa-paperclip" style={{ color: '#6b7280' }}></i>
+                    Attachments ({attachments.length})
+                  </h4>
+                  <div style={{ 
+                    display: 'flex', 
+                    flexWrap: 'wrap', 
+                    gap: '12px',
+                    padding: '1rem',
+                    background: '#f9fafb',
+                    borderRadius: '8px',
+                    border: '1px solid #e5e7eb'
+                  }}>
+                    {attachments.map((attachment, idx) => {
+                      const url = attachment.url || attachment.URL || attachment;
+                      const name = attachment.name || attachment.Name || `Attachment ${idx + 1}`;
+                      const isImage = /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(url) || 
+                                     (attachment.type && attachment.type.startsWith('image/'));
+                      
+                      return (
+                        <div key={idx} style={{ position: 'relative' }}>
+                          {isImage ? (
+                            <a 
+                              href={url} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              style={{ display: 'block' }}
+                            >
+                              <img 
+                                src={url} 
+                                alt={name}
+                                style={{
+                                  width: '120px',
+                                  height: '120px',
+                                  objectFit: 'cover',
+                                  borderRadius: '8px',
+                                  border: '1px solid #e5e7eb',
+                                  cursor: 'pointer',
+                                  transition: 'transform 0.2s, box-shadow 0.2s'
+                                }}
+                                onMouseOver={(e) => {
+                                  e.currentTarget.style.transform = 'scale(1.05)';
+                                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+                                }}
+                                onMouseOut={(e) => {
+                                  e.currentTarget.style.transform = 'scale(1)';
+                                  e.currentTarget.style.boxShadow = 'none';
+                                }}
+                              />
+                            </a>
+                          ) : (
+                            <a 
+                              href={url} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                width: '120px',
+                                height: '120px',
+                                background: '#fff',
+                                borderRadius: '8px',
+                                border: '1px solid #e5e7eb',
+                                textDecoration: 'none',
+                                color: '#374151',
+                                transition: 'all 0.2s'
+                              }}
+                            >
+                              <i className="fas fa-file" style={{ fontSize: '2rem', color: '#6b7280', marginBottom: '8px' }}></i>
+                              <span style={{ fontSize: '0.75rem', textAlign: 'center', padding: '0 8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>
+                                {name}
+                              </span>
+                            </a>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
 
             <div style={{ marginBottom: '1rem' }}>
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Status</label>

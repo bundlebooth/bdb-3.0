@@ -1058,30 +1058,56 @@ function BrowsePage() {
               
               <div className="browse-hero-right">
                 <div className="browse-hero-image-wrapper">
-                  <img 
-                    src={dynamicHeroImage?.url || heroContent.image} 
-                    alt={dynamicHeroImage?.alt || pageInfo.title}
-                    className="browse-hero-image"
-                  />
-                  {dynamicHeroImage?.photographer && (
-                    <a 
-                      href={dynamicHeroImage.photographerUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{
-                        position: 'absolute',
-                        bottom: '8px',
-                        right: '8px',
-                        fontSize: '10px',
-                        color: 'rgba(255,255,255,0.7)',
-                        textDecoration: 'none',
-                        backgroundColor: 'rgba(0,0,0,0.3)',
-                        padding: '2px 6px',
-                        borderRadius: '4px'
-                      }}
-                    >
-                      Photo by {dynamicHeroImage.photographer}
-                    </a>
+                  {dynamicHeroImage?.url ? (
+                    <>
+                      <img 
+                        src={dynamicHeroImage.url} 
+                        alt={dynamicHeroImage?.alt || pageInfo.title}
+                        className="browse-hero-image"
+                      />
+                      {dynamicHeroImage?.photographer && (
+                        <a 
+                          href={dynamicHeroImage.photographerUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            position: 'absolute',
+                            bottom: '8px',
+                            right: '8px',
+                            fontSize: '10px',
+                            color: 'rgba(255,255,255,0.7)',
+                            textDecoration: 'none',
+                            backgroundColor: 'rgba(0,0,0,0.3)',
+                            padding: '2px 6px',
+                            borderRadius: '4px'
+                          }}
+                        >
+                          Photo by {dynamicHeroImage.photographer}
+                        </a>
+                      )}
+                    </>
+                  ) : (
+                    <div style={{
+                      width: '100%',
+                      height: '100%',
+                      minHeight: '300px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      background: '#f3f4f6',
+                      borderRadius: '16px'
+                    }}>
+                      <div 
+                        className="spinner"
+                        style={{
+                          width: '40px',
+                          height: '40px',
+                          border: '3px solid #e5e7eb',
+                          borderTopColor: '#4F86E8',
+                          borderRadius: '50%'
+                        }}
+                      />
+                    </div>
                   )}
                 </div>
               </div>

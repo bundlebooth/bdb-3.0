@@ -6,6 +6,8 @@ import { useLocalization } from '../context/LocalizationContext';
 const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavorite, onView, onHighlight, showViewCount, showResponseTime, showAnalyticsBadge, analyticsBadgeType, onlineStatus, showBio = false }) {
   const [isHovered, setIsHovered] = React.useState(false);
   const [currentImageIndex, setCurrentImageIndex] = React.useState(0);
+  const [imageLoading, setImageLoading] = React.useState(true);
+  const [imageError, setImageError] = React.useState(false);
   const { formatCurrency, formatDistance } = useLocalization();
   const vendorId = vendor.VendorProfileID || vendor.id;
   
@@ -43,15 +45,24 @@ const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavori
       if (!images.includes(url)) images.push(url);
     });
     
-    // Return at least placeholder if no images
-    return images.length > 0 ? images : ['https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png'];
+    // Return empty array if no images - we'll show spinner instead of placeholder
+    return images;
   };
   
   const allImages = getAllImages();
   const hasMultipleImages = allImages.length > 1;
+  const hasImages = allImages.length > 0;
   
   // Image URL resolution - use current index from carousel
-  const imageUrl = allImages[currentImageIndex] || 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png';
+  const imageUrl = hasImages ? allImages[currentImageIndex] : null;
+  
+  // Reset loading state when image index changes
+  React.useEffect(() => {
+    if (hasImages) {
+      setImageLoading(true);
+      setImageError(false);
+    }
+  }, [currentImageIndex, hasImages]);
   
   // Logo URL resolution
   const logoUrl = vendor.LogoURL || 
@@ -199,23 +210,55 @@ const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavori
     >
       {/* Image Container - Square aspect ratio like Airbnb */}
       <div style={{ position: 'relative', width: '100%', paddingTop: '100%', overflow: 'hidden', borderRadius: '12px', background: '#f3f4f6' }}>
-        <img
-          src={imageUrl}
-          alt={vendor.BusinessName || vendor.name}
-          onError={(e) => {
-            e.target.src = 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png';
-          }}
-          style={{
+        {/* Loading Spinner - show while image is loading or if no images */}
+        {(imageLoading || !hasImages) && (
+          <div style={{
             position: 'absolute',
             top: 0,
             left: 0,
             width: '100%',
             height: '100%',
-            objectFit: 'cover',
-            objectPosition: 'center'
-          }}
-          className="vendor-card-image"
-        />
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: '#f3f4f6',
+            zIndex: 2
+          }}>
+            <div 
+              className="spinner"
+              style={{
+                width: '32px',
+                height: '32px',
+                border: '3px solid #e5e7eb',
+                borderTopColor: '#4F86E8',
+                borderRadius: '50%'
+              }}
+            />
+          </div>
+        )}
+        {hasImages && (
+          <img
+            src={imageUrl}
+            alt={vendor.BusinessName || vendor.name}
+            onLoad={() => setImageLoading(false)}
+            onError={(e) => {
+              setImageLoading(false);
+              setImageError(true);
+            }}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              objectPosition: 'center',
+              opacity: imageLoading ? 0 : 1,
+              transition: 'opacity 0.3s ease'
+            }}
+            className="vendor-card-image"
+          />
+        )}
         
         {/* Image Navigation Arrows - Only show on hover and if multiple images */}
         {hasMultipleImages && isHovered && (

@@ -857,80 +857,6 @@ function ServicesStep({ formData, setFormData }) {
       >
         {editingService && (
           <div>
-              {/* Service Image Upload */}
-              <div style={{ marginBottom: '24px' }}>
-                <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  Service Image
-                </label>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  <div style={{
-                    width: '100px',
-                    height: '100px',
-                    borderRadius: '12px',
-                    background: '#f3f4f6',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    overflow: 'hidden',
-                    border: '1px solid #e5e7eb'
-                  }}>
-                    {editingService.imageURL ? (
-                      <img src={editingService.imageURL} alt="Service" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    ) : (
-                      <i className="fas fa-image" style={{ color: '#9ca3af', fontSize: '2rem' }}></i>
-                    )}
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={async (e) => {
-                        const file = e.target.files[0];
-                        if (!file) return;
-                        try {
-                          const uploadFormData = new FormData();
-                          uploadFormData.append('image', file);
-                          const response = await fetch(`${API_BASE_URL}/vendors/service-image/upload`, {
-                            method: 'POST',
-                            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
-                            body: uploadFormData
-                          });
-                          if (response.ok) {
-                            const data = await response.json();
-                            handleEditModalUpdate('imageURL', data.imageUrl);
-                          }
-                        } catch (error) {
-                          console.error('Error uploading image:', error);
-                        }
-                      }}
-                      style={{ display: 'none' }}
-                      id="service-image-upload-become-vendor"
-                    />
-                    <label
-                      htmlFor="service-image-upload-become-vendor"
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        padding: '10px 16px',
-                        background: '#fff',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '8px',
-                        cursor: 'pointer',
-                        fontSize: '14px',
-                        fontWeight: 500,
-                        color: '#374151'
-                      }}
-                    >
-                      Upload Image
-                    </label>
-                    <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#9ca3af' }}>
-                      Recommended: 400x400px, JPG or PNG
-                    </p>
-                  </div>
-                </div>
-              </div>
-
               {/* Pricing Model */}
               <div style={{ marginBottom: '16px' }}>
                 <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
@@ -1138,6 +1064,107 @@ function ServicesStep({ formData, setFormData }) {
                   </p>
                 </div>
               )}
+
+              {/* Gallery Images - At bottom */}
+              <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid #e5e7eb' }}>
+                <label style={{ display: 'block', fontWeight: 600, fontSize: '12px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>
+                  Gallery Images <span style={{ fontWeight: 400, textTransform: 'none' }}>(Click to view)</span>
+                </label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginBottom: '12px' }}>
+                  {(editingService.galleryImages || []).map((url, idx) => (
+                    <div 
+                      key={idx} 
+                      style={{ 
+                        position: 'relative', 
+                        width: '80px', 
+                        height: '80px', 
+                        borderRadius: '8px', 
+                        overflow: 'hidden',
+                        cursor: 'pointer',
+                        border: '1px solid #e5e7eb'
+                      }}
+                    >
+                      <img src={url} alt={`Gallery ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <button
+                        onClick={(e) => { 
+                          e.stopPropagation(); 
+                          handleEditModalUpdate('galleryImages', (editingService.galleryImages || []).filter((_, i) => i !== idx));
+                        }}
+                        style={{
+                          position: 'absolute',
+                          top: '4px',
+                          right: '4px',
+                          width: '20px',
+                          height: '20px',
+                          borderRadius: '50%',
+                          background: 'rgba(0,0,0,0.6)',
+                          color: 'white',
+                          border: 'none',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '10px'
+                        }}
+                      >
+                        <i className="fas fa-times"></i>
+                      </button>
+                    </div>
+                  ))}
+                  {/* Add more images button */}
+                  <label 
+                    htmlFor="service-gallery-images-upload-become-vendor"
+                    style={{
+                      width: '80px',
+                      height: '80px',
+                      borderRadius: '8px',
+                      border: '2px dashed #d1d5db',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      background: '#fafafa',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    <i className="fas fa-plus" style={{ color: '#9ca3af', fontSize: '1.2rem', marginBottom: '4px' }}></i>
+                    <span style={{ fontSize: '10px', color: '#9ca3af' }}>Add</span>
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={async (e) => {
+                      const files = Array.from(e.target.files);
+                      if (!files.length) return;
+                      for (const file of files) {
+                        try {
+                          const uploadFormData = new FormData();
+                          uploadFormData.append('image', file);
+                          const response = await fetch(`${API_BASE_URL}/vendors/service-image/upload`, {
+                            method: 'POST',
+                            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+                            body: uploadFormData
+                          });
+                          if (response.ok) {
+                            const data = await response.json();
+                            handleEditModalUpdate('galleryImages', [...(editingService.galleryImages || []), data.imageUrl]);
+                          }
+                        } catch (error) {
+                          console.error('Error uploading gallery image:', error);
+                        }
+                      }
+                      e.target.value = '';
+                    }}
+                    style={{ display: 'none' }}
+                    id="service-gallery-images-upload-become-vendor"
+                  />
+                </div>
+                <p style={{ margin: 0, fontSize: '12px', color: '#9ca3af' }}>
+                  Upload multiple images to showcase your service. Clients can browse through these images.
+                </p>
+              </div>
           </div>
         )}
       </UniversalModal>
