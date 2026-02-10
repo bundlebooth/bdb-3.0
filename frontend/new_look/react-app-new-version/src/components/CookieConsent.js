@@ -164,7 +164,7 @@ function CookieConsent() {
           right: 0,
           backgroundColor: '#ffffff',
           boxShadow: '0 -4px 20px rgba(0, 0, 0, 0.15)',
-          zIndex: 9999,
+          zIndex: 1000000,
           padding: '16px',
           borderTop: '1px solid #e5e7eb'
         }}>

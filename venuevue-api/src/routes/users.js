@@ -2065,6 +2065,81 @@ router.post('/cookie-consent', async (req, res) => {
   }
 });
 
+// GET /users/:id/cookie-consent - Get cookie consent preferences for a user
+router.get('/:id/cookie-consent', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pool = await poolPromise;
+    
+    const result = await pool.request()
+      .input('UserID', sql.Int, parseInt(id))
+      .execute('users.sp_GetUserCookieConsent');
+    
+    if (result.recordset.length === 0) {
+      // Return default preferences if no consent record exists
+      return res.json({
+        success: true,
+        preferences: {
+          necessary: true,
+          analytics: false,
+          marketing: false,
+          functional: true,
+          consentDate: null
+        }
+      });
+    }
+    
+    const consent = result.recordset[0];
+    res.json({
+      success: true,
+      preferences: {
+        necessary: consent.NecessaryCookies === true || consent.NecessaryCookies === 1,
+        analytics: consent.AnalyticsCookies === true || consent.AnalyticsCookies === 1,
+        marketing: consent.MarketingCookies === true || consent.MarketingCookies === 1,
+        functional: consent.FunctionalCookies === true || consent.FunctionalCookies === 1,
+        consentDate: consent.ConsentDate || consent.LastUpdated
+      }
+    });
+  } catch (error) {
+    console.error('Error getting cookie consent:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// PUT /users/:id/cookie-consent - Update cookie consent preferences for a logged-in user
+router.put('/:id/cookie-consent', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { 
+      necessary = true, 
+      analytics = false, 
+      marketing = false, 
+      functional = true 
+    } = req.body;
+    
+    const ipAddress = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+    const userAgent = req.headers['user-agent'];
+    
+    const pool = await poolPromise;
+    
+    await pool.request()
+      .input('UserID', sql.Int, parseInt(id))
+      .input('SessionID', sql.NVarChar(100), null)
+      .input('IPAddress', sql.NVarChar(50), ipAddress)
+      .input('NecessaryCookies', sql.Bit, necessary ? 1 : 0)
+      .input('AnalyticsCookies', sql.Bit, analytics ? 1 : 0)
+      .input('MarketingCookies', sql.Bit, marketing ? 1 : 0)
+      .input('FunctionalCookies', sql.Bit, functional ? 1 : 0)
+      .input('UserAgent', sql.NVarChar(500), userAgent)
+      .execute('users.sp_SaveCookieConsent');
+    
+    res.json({ success: true, message: 'Cookie preferences updated' });
+  } catch (error) {
+    console.error('Error updating cookie consent:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // ==================== USER PROFILES ENDPOINTS ====================
 
 // Get user profile (from UserProfiles table)
