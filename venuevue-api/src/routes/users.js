@@ -2033,14 +2033,7 @@ router.post('/cookie-consent', async (req, res) => {
 router.get('/languages', async (req, res) => {
   try {
     const pool = await poolPromise;
-    // Query directly from admin.Languages table
-    const result = await pool.request()
-      .query(`
-        SELECT LanguageID, Code, Name, NativeName
-        FROM admin.Languages
-        WHERE IsActive = 1
-        ORDER BY DisplayOrder, Name
-      `);
+    const result = await pool.request().execute('admin.sp_GetLanguages');
     res.json({ success: true, languages: result.recordset || [] });
   } catch (err) {
     console.error('Get languages error:', err);
@@ -2053,14 +2046,8 @@ router.get('/interest-options', async (req, res) => {
   try {
     const pool = await poolPromise;
     
-    // Query directly from admin.InterestOptions table
     const result = await pool.request()
-      .query(`
-        SELECT InterestOptionID, Interest, Category, Icon
-        FROM admin.InterestOptions
-        WHERE IsActive = 1
-        ORDER BY Category, Interest
-      `);
+      .execute('users.sp_GetInterestOptions');
     
     // Group by category
     const grouped = {};
