@@ -887,6 +887,125 @@ The Planbeau Team
   }
 }
 
+/**
+ * Send chat summary email when support chat ends
+ * @param {string} recipientEmail - Email to send summary to
+ * @param {string} recipientName - Name of the recipient
+ * @param {string} referenceNumber - Chat reference number
+ * @param {string} subject - Chat subject
+ * @param {string} category - Support category
+ * @param {Array} messages - Array of chat messages
+ * @param {boolean} isGuest - Whether this is a guest user
+ */
+async function sendChatSummaryEmail(recipientEmail, recipientName, referenceNumber, subject, category, messages, isGuest = false) {
+  if (!recipientEmail) {
+    console.log('[Email] No recipient email provided for chat summary');
+    return { success: false, error: 'No email provided' };
+  }
+  
+  const supportEmail = process.env.EMAIL_SUPPORT || 'support@planbeau.com';
+  const emailSubject = `Your Support Chat Summary - ${referenceNumber}`;
+  
+  // Format messages for email
+  const formattedMessages = messages.map(msg => {
+    const senderName = msg.SenderType === 'support' ? 'Planbeau Support' : 
+                       msg.SenderType === 'guest' ? recipientName : 
+                       msg.SenderName || 'You';
+    const time = new Date(msg.CreatedAt).toLocaleString('en-US', {
+      month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true
+    });
+    const isSupport = msg.SenderType === 'support';
+    
+    return `
+      <div style="margin-bottom: 16px; padding: 12px; background: ${isSupport ? '#f0f4ff' : '#f9fafb'}; border-radius: 8px; border-left: 3px solid ${isSupport ? '#5e72e4' : '#d1d5db'};">
+        <div style="font-size: 12px; color: #6b7280; margin-bottom: 4px;">
+          <strong>${senderName}</strong> • ${time}
+        </div>
+        <div style="font-size: 14px; color: #374151; white-space: pre-wrap;">${msg.Content}</div>
+      </div>
+    `;
+  }).join('');
+  
+  const htmlContent = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <div style="background: linear-gradient(135deg, #5e72e4 0%, #4c63d2 100%); padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
+        <h1 style="color: white; margin: 0; font-size: 24px;">💬 Chat Summary</h1>
+        <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 14px;">Reference: ${referenceNumber}</p>
+      </div>
+      <div style="background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 8px 8px;">
+        <p style="font-size: 16px; color: #333;">Hi ${recipientName},</p>
+        <p style="font-size: 16px; color: #333;">Thank you for contacting Planbeau Support. Here's a summary of your conversation:</p>
+        
+        <div style="background: #f9fafb; border-radius: 8px; padding: 16px; margin: 20px 0;">
+          <p style="margin: 0 0 8px 0; font-size: 14px;"><strong>Subject:</strong> ${subject}</p>
+          <p style="margin: 0 0 8px 0; font-size: 14px;"><strong>Category:</strong> ${category}</p>
+          <p style="margin: 0; font-size: 14px;"><strong>Reference:</strong> ${referenceNumber}</p>
+        </div>
+        
+        <h3 style="font-size: 16px; color: #111; margin: 24px 0 16px 0; border-bottom: 1px solid #e5e7eb; padding-bottom: 8px;">Conversation</h3>
+        ${formattedMessages}
+        
+        <div style="background: #FFF9E6; border-left: 4px solid #F59E0B; padding: 15px; margin: 24px 0; border-radius: 4px;">
+          <p style="margin: 0; font-size: 14px; color: #92400E;">
+            <strong>Need more help?</strong><br>
+            Reply to this email or start a new chat at <a href="https://www.planbeau.com" style="color: #5e72e4;">planbeau.com</a>. 
+            Use your reference number <strong>${referenceNumber}</strong> to continue this conversation.
+          </p>
+        </div>
+        
+        <p style="font-size: 16px; color: #333; margin-top: 20px;">Thank you for choosing Planbeau!<br><strong>The Planbeau Support Team</strong></p>
+      </div>
+      <div style="text-align: center; padding: 20px; color: #9ca3af; font-size: 12px;">
+        <p>© ${new Date().getFullYear()} Planbeau. All rights reserved.</p>
+      </div>
+    </div>
+  `;
+  
+  const textContent = `
+Hi ${recipientName},
+
+Thank you for contacting Planbeau Support. Here's a summary of your conversation:
+
+Subject: ${subject}
+Category: ${category}
+Reference: ${referenceNumber}
+
+--- Conversation ---
+${messages.map(msg => {
+  const senderName = msg.SenderType === 'support' ? 'Planbeau Support' : 
+                     msg.SenderType === 'guest' ? recipientName : 
+                     msg.SenderName || 'You';
+  const time = new Date(msg.CreatedAt).toLocaleString('en-US', {
+    month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true
+  });
+  return `[${senderName} - ${time}]\n${msg.Content}\n`;
+}).join('\n')}
+
+Need more help? Reply to this email or start a new chat at planbeau.com.
+Use your reference number ${referenceNumber} to continue this conversation.
+
+Thank you for choosing Planbeau!
+The Planbeau Support Team
+  `;
+  
+  try {
+    await sendEmail({ 
+      to: recipientEmail, 
+      subject: emailSubject, 
+      html: htmlContent, 
+      text: textContent,
+      templateKey: 'chat_summary',
+      emailCategory: 'support'
+    });
+    
+    console.log(`[Email] Chat summary email sent to ${recipientEmail}`);
+    return { success: true };
+  } catch (error) {
+    console.error(`[Email] Failed to send chat summary email to ${recipientEmail}:`, error.message);
+    return { success: false, error: error.message };
+  }
+}
+
 module.exports = {
   sendEmail,
   sendTemplatedEmail,
@@ -918,5 +1037,6 @@ module.exports = {
   sendAccountLockedEmail,
   sendAccountUnlockedEmail,
   sendPolicyWarningEmail,
+  sendChatSummaryEmail,
   checkEmailCooldown
 };

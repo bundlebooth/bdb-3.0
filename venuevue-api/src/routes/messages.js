@@ -780,6 +780,99 @@ router.post('/guest', async (req, res) => {
   }
 });
 
+// End chat and send summary email
+router.post('/conversations/end-chat', async (req, res) => {
+  try {
+    const { conversationId, recipientEmail, recipientName, referenceNumber, subject, category, isGuest } = req.body;
+    
+    if (!conversationId) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Conversation ID is required' 
+      });
+    }
+
+    const pool = await poolPromise;
+    
+    // Get all messages from the conversation
+    const messagesResult = await pool.request()
+      .input('ConversationID', sql.Int, conversationId)
+      .query(`
+        SELECT m.MessageID, m.ConversationID, m.SenderID, m.SenderType, m.Content, m.CreatedAt,
+               u.FirstName + ' ' + u.LastName AS SenderName
+        FROM messages.Messages m
+        LEFT JOIN dbo.Users u ON m.SenderID = u.UserID AND m.SenderType NOT IN ('support', 'guest')
+        WHERE m.ConversationID = @ConversationID
+        ORDER BY m.CreatedAt ASC
+      `);
+    
+    const messages = messagesResult.recordset;
+    
+    // Get conversation details if not provided
+    let emailRecipient = recipientEmail;
+    let emailName = recipientName;
+    let chatSubject = subject;
+    let chatCategory = category;
+    let chatReference = referenceNumber;
+    
+    if (!emailRecipient || !chatSubject) {
+      const convResult = await pool.request()
+        .input('ConversationID', sql.Int, conversationId)
+        .query(`
+          SELECT c.Subject, c.Category, c.GuestName, c.GuestEmail, c.ReferenceNumber, c.UserID,
+                 u.Email AS UserEmail, u.FirstName + ' ' + u.LastName AS UserName
+          FROM messages.Conversations c
+          LEFT JOIN dbo.Users u ON c.UserID = u.UserID
+          WHERE c.ConversationID = @ConversationID
+        `);
+      
+      if (convResult.recordset.length > 0) {
+        const conv = convResult.recordset[0];
+        emailRecipient = emailRecipient || conv.GuestEmail || conv.UserEmail;
+        emailName = emailName || conv.GuestName || conv.UserName || 'Valued Customer';
+        chatSubject = chatSubject || conv.Subject || 'Support Request';
+        chatCategory = chatCategory || conv.Category || 'General';
+        chatReference = chatReference || conv.ReferenceNumber || `PB-${conversationId}`;
+      }
+    }
+    
+    // Send chat summary email
+    const { sendChatSummaryEmail } = require('../services/email');
+    const emailResult = await sendChatSummaryEmail(
+      emailRecipient,
+      emailName,
+      chatReference,
+      chatSubject,
+      chatCategory,
+      messages,
+      isGuest
+    );
+    
+    // Update conversation status to closed
+    await pool.request()
+      .input('ConversationID', sql.Int, conversationId)
+      .query(`
+        UPDATE messages.Conversations 
+        SET UpdatedAt = GETDATE()
+        WHERE ConversationID = @ConversationID
+      `);
+
+    res.json({
+      success: true,
+      emailSent: emailResult.success,
+      message: emailResult.success ? 'Chat ended and summary email sent' : 'Chat ended but email failed to send'
+    });
+
+  } catch (err) {
+    console.error('End chat error:', err);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to end chat',
+      error: err.message 
+    });
+  }
+});
+
 // Get vendor conversations
 router.get('/conversations/vendor/:vendorId', async (req, res) => {
   try {
