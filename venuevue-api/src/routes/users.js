@@ -740,6 +740,44 @@ router.get('/me', async (req, res) => {
   }
 });
 
+// ==================== STATIC ROUTES (MUST BE BEFORE /:id ROUTES) ====================
+
+// Get available languages
+router.get('/languages', async (req, res) => {
+  try {
+    const pool = await poolPromise;
+    const result = await pool.request().execute('admin.sp_GetLanguages');
+    res.json({ success: true, languages: result.recordset || [] });
+  } catch (err) {
+    console.error('Get languages error:', err);
+    res.status(500).json({ success: false, message: 'Failed to get languages', error: err.message });
+  }
+});
+
+// Get available interest options
+router.get('/interest-options', async (req, res) => {
+  try {
+    const pool = await poolPromise;
+    
+    const result = await pool.request()
+      .execute('users.sp_GetInterestOptions');
+    
+    // Group by category
+    const grouped = {};
+    (result.recordset || []).forEach(opt => {
+      if (!grouped[opt.Category]) grouped[opt.Category] = [];
+      grouped[opt.Category].push(opt);
+    });
+    
+    res.json({ success: true, options: result.recordset || [], grouped });
+  } catch (err) {
+    console.error('Get interest options error:', err);
+    res.status(500).json({ success: false, message: 'Failed to get interest options', error: err.message });
+  }
+});
+
+// ==================== USER ID ROUTES ====================
+
 // Get user dashboard
 router.get('/:id/dashboard', async (req, res) => {
   try {
@@ -2028,40 +2066,6 @@ router.post('/cookie-consent', async (req, res) => {
 });
 
 // ==================== USER PROFILES ENDPOINTS ====================
-
-// Get available languages (MUST be before /:id routes)
-router.get('/languages', async (req, res) => {
-  try {
-    const pool = await poolPromise;
-    const result = await pool.request().execute('admin.sp_GetLanguages');
-    res.json({ success: true, languages: result.recordset || [] });
-  } catch (err) {
-    console.error('Get languages error:', err);
-    res.status(500).json({ success: false, message: 'Failed to get languages', error: err.message });
-  }
-});
-
-// Get available interest options (MUST be before /:id routes to avoid matching 'interest-options' as an ID)
-router.get('/interest-options', async (req, res) => {
-  try {
-    const pool = await poolPromise;
-    
-    const result = await pool.request()
-      .execute('users.sp_GetInterestOptions');
-    
-    // Group by category
-    const grouped = {};
-    (result.recordset || []).forEach(opt => {
-      if (!grouped[opt.Category]) grouped[opt.Category] = [];
-      grouped[opt.Category].push(opt);
-    });
-    
-    res.json({ success: true, options: result.recordset || [], grouped });
-  } catch (err) {
-    console.error('Get interest options error:', err);
-    res.status(500).json({ success: false, message: 'Failed to get interest options', error: err.message });
-  }
-});
 
 // Get user profile (from UserProfiles table)
 router.get('/:id/user-profile', async (req, res) => {
