@@ -197,6 +197,13 @@ const ProfileEditPanel = ({ onClose, onSave, embedded = false }) => {
         if (locationDisplay) {
           setLocationSearch(locationDisplay);
         }
+        
+        // Update AuthContext with fresh profile picture if available
+        const profilePic = profile.ProfileImageURL || user.ProfileImageURL;
+        if (profilePic && refreshUser) {
+          // Trigger a refresh to update the profile picture in AuthContext
+          refreshUser();
+        }
       }
     } catch (error) {
       console.error('Error loading profile:', error);

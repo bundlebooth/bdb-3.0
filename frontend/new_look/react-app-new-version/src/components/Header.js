@@ -31,6 +31,7 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
   const [hasVendorProfile, setHasVendorProfile] = useState(false);
   const [vendorCheckLoading, setVendorCheckLoading] = useState(true);
   const [vendorLogoUrl, setVendorLogoUrl] = useState(null);
+  const [userProfilePic, setUserProfilePic] = useState(null);
   const notificationBtnRef = useRef(null);
   
   // Get view mode from localStorage
@@ -196,6 +197,29 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
     window.addEventListener('vendorProfileChanged', handleVendorProfileChange);
     return () => window.removeEventListener('vendorProfileChanged', handleVendorProfileChange);
   }, [currentUser]);
+
+  // Fetch user profile picture
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    
+    const fetchUserProfile = async () => {
+      try {
+        const response = await apiGet(`/users/${currentUser.id}/user-profile`);
+        if (response.ok) {
+          const data = await response.json();
+          const pic = data.profile?.ProfileImageURL || data.user?.ProfileImageURL || 
+                      data.ProfilePicture || data.profilePicture;
+          if (pic) {
+            setUserProfilePic(pic);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch user profile:', error);
+      }
+    };
+    
+    fetchUserProfile();
+  }, [currentUser?.id]);
 
   // Load notification badges
   useEffect(() => {
@@ -433,39 +457,50 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
           onMouseLeave={(e) => e.currentTarget.style.boxShadow = 'none'}
         >
           <i className="fas fa-bars" style={{ fontSize: '14px', color: '#222', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '32px', width: '16px' }}></i>
-          {/* Show profile pic based on mode */}
-          {(isVendorMode && vendorLogoUrl) || currentUser?.profilePicture || currentUser?.profileImageURL ? (
-            <img
-              src={isVendorMode && vendorLogoUrl ? vendorLogoUrl : (currentUser?.profilePicture || currentUser?.profileImageURL)}
-              alt="Profile"
-              style={{
-                borderRadius: '50%',
-                width: '32px',
-                height: '32px',
-                objectFit: 'cover',
-                position: 'relative',
-                border: '1px solid #e0e0e0'
-              }}
-            />
-          ) : (
-            <div
-              style={{
-                backgroundColor: currentUser ? 'var(--primary)' : '#717171',
-                color: 'white',
-                borderRadius: '50%',
-                width: '32px',
-                height: '32px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '14px',
-                fontWeight: 600,
-                position: 'relative'
-              }}
-            >
-              {currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : <i className="fas fa-user" style={{ fontSize: '14px' }}></i>}
-            </div>
-          )}
+          {/* Show profile pic based on current page context:
+              - On vendor dashboard pages (/dashboard with vendor sections): show vendor logo
+              - On all other pages (explore, client, forums, etc.): show client profile pic
+              Never show vendor logo on client pages regardless of viewMode */}
+          {(() => {
+            const isOnVendorDashboard = location.pathname === '/dashboard' && 
+              (new URLSearchParams(location.search).get('section')?.startsWith('vendor') || 
+               ['business-profile', 'analytics', 'vendor-requests', 'vendor-invoices', 'vendor-reviews', 'vendor-settings'].includes(new URLSearchParams(location.search).get('section')));
+            const shouldShowVendorLogo = isOnVendorDashboard && vendorLogoUrl;
+            const profilePicToShow = shouldShowVendorLogo ? vendorLogoUrl : (userProfilePic || currentUser?.profilePicture || currentUser?.profileImageURL);
+            
+            return profilePicToShow ? (
+              <img
+                src={profilePicToShow}
+                alt="Profile"
+                style={{
+                  borderRadius: '50%',
+                  width: '32px',
+                  height: '32px',
+                  objectFit: 'cover',
+                  position: 'relative',
+                  border: '1px solid #e0e0e0'
+                }}
+              />
+            ) : (
+              <div
+                style={{
+                  backgroundColor: currentUser ? 'var(--primary)' : '#717171',
+                  color: 'white',
+                  borderRadius: '50%',
+                  width: '32px',
+                  height: '32px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  position: 'relative'
+                }}
+              >
+                {currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : <i className="fas fa-user" style={{ fontSize: '14px' }}></i>}
+              </div>
+            );
+          })()}
           {/* Exclamation mark indicator for incomplete profile - only show if NOT live */}
           {profileIncomplete && profileStatus !== 'live' && (
             <div

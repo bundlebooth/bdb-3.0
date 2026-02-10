@@ -85,18 +85,21 @@ function ProfileSidebar({ isOpen, onClose }) {
     checkVendorProfile();
   }, [currentUser?.id]);
 
-  // Fetch user profile picture
+  // Fetch user profile picture from UserProfiles table
   useEffect(() => {
     if (!currentUser?.id) return;
     
     const fetchUserProfile = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/users/${currentUser.id}/profile`, {
+        // Use user-profile endpoint which returns data from UserProfiles table
+        const response = await fetch(`${API_BASE_URL}/users/${currentUser.id}/user-profile`, {
           headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
         });
         if (response.ok) {
           const data = await response.json();
-          const pic = data.ProfilePicture || data.profilePicture || data.ProfileImageURL || data.profileImageUrl;
+          // Extract profile picture from the nested response structure
+          const pic = data.profile?.ProfileImageURL || data.user?.ProfileImageURL || 
+                      data.ProfilePicture || data.profilePicture || data.ProfileImageURL;
           if (pic) {
             setUserProfilePic(pic);
           }
@@ -279,7 +282,9 @@ function ProfileSidebar({ isOpen, onClose }) {
     window.location.replace('/');
   };
 
-  const profilePic = userProfilePic || currentUser?.profilePicture || currentUser?.profileImageURL || currentUser?.ProfilePicture || vendorLogoUrl;
+  // Client profile sidebar should ONLY show user profile picture, never vendor logo
+  // Vendor logo is only for vendor dashboard/vendor mode contexts
+  const profilePic = userProfilePic || currentUser?.profilePicture || currentUser?.profileImageURL || currentUser?.ProfilePicture;
 
   if (!isOpen || !currentUser) return null;
 

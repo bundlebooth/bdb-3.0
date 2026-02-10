@@ -14,6 +14,7 @@ function MobileBottomNav({ onOpenDashboard, onOpenProfile, onOpenMessages, onOpe
   const [mobileMapOpen, setMobileMapOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
   const [vendorLogoUrl, setVendorLogoUrl] = useState(null);
+  const [userProfilePic, setUserProfilePic] = useState(null);
   const lastScrollY = useRef(0);
   const scrollTimeout = useRef(null);
   
@@ -56,6 +57,31 @@ function MobileBottomNav({ onOpenDashboard, onOpenProfile, onOpenMessages, onOpe
     };
     
     fetchVendorLogo();
+  }, [currentUser?.id]);
+
+  // Fetch user profile picture
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    
+    const fetchUserProfile = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/users/${currentUser.id}/user-profile`, {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          const pic = data.profile?.ProfileImageURL || data.user?.ProfileImageURL || 
+                      data.ProfilePicture || data.profilePicture;
+          if (pic) {
+            setUserProfilePic(pic);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch user profile:', error);
+      }
+    };
+    
+    fetchUserProfile();
   }, [currentUser?.id]);
 
   // Pages where bottom nav should be visible
@@ -302,24 +328,33 @@ function MobileBottomNav({ onOpenDashboard, onOpenProfile, onOpenMessages, onOpe
         onClick={handleAccountClick}
       >
         {currentUser ? (
-          (isVendorMode && vendorLogoUrl) || currentUser?.profilePicture || currentUser?.profileImageURL ? (
-            <img
-              src={isVendorMode && vendorLogoUrl ? vendorLogoUrl : (currentUser?.profilePicture || currentUser?.profileImageURL)}
-              alt="Profile"
-              className="nav-user-avatar-img"
-              style={{
-                width: '24px',
-                height: '24px',
-                borderRadius: '50%',
-                objectFit: 'cover',
-                border: '1px solid #e0e0e0'
-              }}
-            />
-          ) : (
-            <div className="nav-user-avatar">
-              {currentUser.name?.charAt(0).toUpperCase() || 'U'}
-            </div>
-          )
+          (() => {
+            // Only show vendor logo on vendor dashboard pages, never on client/explore/forum pages
+            const isOnVendorDashboard = location.pathname === '/dashboard' && 
+              (new URLSearchParams(location.search).get('section')?.startsWith('vendor') || 
+               ['business-profile', 'analytics', 'vendor-requests', 'vendor-invoices', 'vendor-reviews', 'vendor-settings'].includes(new URLSearchParams(location.search).get('section')));
+            const shouldShowVendorLogo = isOnVendorDashboard && vendorLogoUrl;
+            const profilePicToShow = shouldShowVendorLogo ? vendorLogoUrl : (userProfilePic || currentUser?.profilePicture || currentUser?.profileImageURL);
+            
+            return profilePicToShow ? (
+              <img
+                src={profilePicToShow}
+                alt="Profile"
+                className="nav-user-avatar-img"
+                style={{
+                  width: '24px',
+                  height: '24px',
+                  borderRadius: '50%',
+                  objectFit: 'cover',
+                  border: '1px solid #e0e0e0'
+                }}
+              />
+            ) : (
+              <div className="nav-user-avatar">
+                {currentUser.name?.charAt(0).toUpperCase() || 'U'}
+              </div>
+            );
+          })()
         ) : (
           <i className="fas fa-user"></i>
         )}

@@ -25,6 +25,27 @@ export function AuthProvider({ children }) {
         setCurrentUser(userData);
         window.currentUser = userData;
         
+        // Fetch fresh profile picture if not present in stored session
+        if (!userData.profilePicture && userData.id) {
+          try {
+            const profileResp = await fetch(`${API_BASE_URL}/users/${userData.id}/user-profile`, {
+              headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+            });
+            if (profileResp.ok) {
+              const profileData = await profileResp.json();
+              const profilePic = profileData.profile?.ProfileImageURL || profileData.user?.ProfileImageURL || null;
+              if (profilePic) {
+                const updatedUser = { ...userData, profilePicture: profilePic, profileImageURL: profilePic };
+                setCurrentUser(updatedUser);
+                window.currentUser = updatedUser;
+                localStorage.setItem('userSession', JSON.stringify(updatedUser));
+              }
+            }
+          } catch (error) {
+            console.error('Failed to fetch profile picture:', error);
+          }
+        }
+        
         // Also fetch vendor status if user is a vendor
         if (userData.isVendor && !userData.vendorProfileId) {
           try {
@@ -247,11 +268,15 @@ export function AuthProvider({ children }) {
         const user = data.user || {};
         const profile = data.profile || {};
         
+        // Get profile picture - prioritize UserProfiles table, then Users table
+        // Use consistent field name 'profilePicture' throughout the app
+        const profilePic = profile.ProfileImageURL || user.ProfileImageURL || null;
+        
         // Update with fresh profile picture
         const updatedData = {
           ...currentUser,
-          profilePicture: profile.ProfileImageURL || user.ProfileImageURL || currentUser.profilePicture,
-          profileImageURL: profile.ProfileImageURL || user.ProfileImageURL || currentUser.profileImageURL,
+          profilePicture: profilePic,
+          profileImageURL: profilePic, // Keep both for backwards compatibility
           firstName: user.FirstName || currentUser.firstName,
           lastName: user.LastName || currentUser.lastName,
           name: user.FirstName ? `${user.FirstName} ${user.LastName || ''}`.trim() : currentUser.name
