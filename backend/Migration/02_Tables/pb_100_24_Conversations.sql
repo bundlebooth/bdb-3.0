@@ -25,6 +25,10 @@ BEGIN
 	[CreatedAt] [datetime] NULL,
 	[UpdatedAt] [datetime] NULL,
 	[ConversationType] [nvarchar](50) NULL,
+	[GuestName] [nvarchar](255) NULL,
+	[GuestEmail] [nvarchar](255) NULL,
+	[ReferenceNumber] [nvarchar](50) NULL,
+	[Category] [nvarchar](100) NULL,
 PRIMARY KEY CLUSTERED 
 (
 	[ConversationID] ASC

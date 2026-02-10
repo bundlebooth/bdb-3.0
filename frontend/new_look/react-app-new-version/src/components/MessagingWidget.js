@@ -40,10 +40,40 @@ function MessagingWidget() {
   const [isWidgetExpanded, setIsWidgetExpanded] = useState(false); // For expanding widget when viewing article
   const [helpSearchQuery, setHelpSearchQuery] = useState(''); // Search within help
   
-  // Guest name state for non-logged-in users
+  // Guest state for non-logged-in users
   const [guestName, setGuestName] = useState('');
-  const [showGuestNamePrompt, setShowGuestNamePrompt] = useState(false);
+  const [guestEmail, setGuestEmail] = useState('');
+  const [showGuestForm, setShowGuestForm] = useState(false); // Pre-chat form for guests
+  const [guestReferenceNumber, setGuestReferenceNumber] = useState(''); // Reference # for guest support
   const [isFreshSupportChat, setIsFreshSupportChat] = useState(false); // Prevent polling from overwriting welcome message
+  
+  // Support chat topic selection (like ticket form)
+  const [supportTopic, setSupportTopic] = useState({
+    category: '',
+    subject: '',
+    description: ''
+  });
+  const [supportFormStep, setSupportFormStep] = useState(1); // 1=topic, 2=details (name/email for guests)
+  
+  // Support category options
+  const supportCategories = [
+    { value: 'general', label: 'General Inquiry' },
+    { value: 'booking_issue', label: 'Booking Issue' },
+    { value: 'payment_refund', label: 'Payment & Refunds' },
+    { value: 'vendor_complaint', label: 'Vendor Complaint' },
+    { value: 'technical_bug', label: 'Technical Bug' },
+    { value: 'account_access', label: 'Account Access' },
+    { value: 'feature_request', label: 'Feature Request' },
+    { value: 'vendor_onboarding', label: 'Vendor Onboarding Help' },
+    { value: 'other', label: 'Other' }
+  ];
+  
+  // Generate reference number for guest support
+  const generateReferenceNumber = () => {
+    const timestamp = Date.now().toString(36).toUpperCase();
+    const random = Math.random().toString(36).substring(2, 6).toUpperCase();
+    return `PB-${timestamp}-${random}`;
+  };
 
   // FAQ Categories matching help-centre page
   const faqCategories = [
@@ -436,6 +466,11 @@ function MessagingWidget() {
   const sendMessage = useCallback(async () => {
     if (!messageInput.trim() || !currentConversation) return;
     
+    // For guest users, require name first
+    if (!currentUser?.id && showGuestForm) {
+      return; // Don't send until guest enters name
+    }
+    
     const messageText = messageInput.trim();
     setMessageInput('');
     
@@ -444,37 +479,59 @@ function MessagingWidget() {
       setIsFreshSupportChat(false);
     }
     
+    // For guest users, use a guest identifier
+    const senderId = currentUser?.id || 'guest';
+    const isGuestUser = !currentUser?.id && currentConversation.isGuest;
+    
     // Optimistic update - show message immediately
     const optimisticMessage = {
       MessageID: `temp-${Date.now()}`,
       ConversationID: currentConversation.id,
-      SenderID: currentUser.id,
+      SenderID: senderId,
       Content: messageText,
       SentAt: new Date().toISOString(),
       IsRead: false,
-      _optimistic: true
+      _optimistic: true,
+      _isCurrentUser: true // Flag to identify as current user's message
     };
     setMessages(prev => [...prev, optimisticMessage]);
     setTimeout(scrollToBottom, 50);
     
     try {
-      const response = await fetch(`${API_BASE_URL}/messages`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          conversationId: currentConversation.id,
-          senderId: currentUser.id,
-          content: messageText
-        })
-      });
+      let response;
+      
+      if (isGuestUser) {
+        // Use guest message endpoint (no auth required)
+        response = await fetch(`${API_BASE_URL}/messages/guest`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            conversationId: currentConversation.id,
+            guestEmail: currentConversation.guestEmail || guestEmail,
+            referenceNumber: currentConversation.referenceNumber || guestReferenceNumber,
+            content: messageText
+          })
+        });
+      } else {
+        // Regular authenticated message
+        response = await fetch(`${API_BASE_URL}/messages`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            conversationId: currentConversation.id,
+            senderId: currentUser?.id || 'guest',
+            content: messageText
+          })
+        });
+      }
       
       if (response.ok) {
         // For support conversations, don't reload messages to preserve clean slate
         // Just update the optimistic message to confirmed
-        if (currentConversation.ConversationType === 'support' || currentConversation.isSupport) {
+        if (currentConversation.ConversationType === 'support' || currentConversation.isSupport || currentConversation.isGuest) {
           // Keep the optimistic message, just remove the _optimistic flag
           setMessages(prev => prev.map(m => 
             m.MessageID === optimisticMessage.MessageID 
@@ -494,7 +551,7 @@ function MessagingWidget() {
       // Remove optimistic message on error
       setMessages(prev => prev.filter(m => m.MessageID !== optimisticMessage.MessageID));
     }
-  }, [messageInput, currentConversation, currentUser, loadMessages, isFreshSupportChat]);
+  }, [messageInput, currentConversation, currentUser, loadMessages, isFreshSupportChat, showGuestForm, guestEmail, guestReferenceNumber]);
 
   // Open conversation
   const openConversation = useCallback((conversation) => {
@@ -538,36 +595,46 @@ function MessagingWidget() {
     }
   }, [loadConversations]);
 
-  // Start or open support conversation - always starts fresh
+  // Start or open support conversation - reuses today's conversation or creates new one for new day
   const openSupportChat = useCallback(async () => {
-    // If no user logged in, show guest name prompt
+    // If no user logged in, show pre-chat form for name/email
     if (!currentUser?.id) {
-      setShowGuestNamePrompt(true);
+      setShowGuestForm(true);
       setMainView('messages');
-      setView('chat');
-      // Set up a temporary support conversation for guests
-      const guestConversation = {
-        id: 'guest-support',
-        ConversationID: 'guest-support',
-        OtherPartyName: 'Planbeau Support',
-        ConversationType: 'support',
-        isGuest: true
-      };
-      setCurrentConversation(guestConversation);
-      // Show welcome message for guests
-      setMessages([{
-        id: 'welcome-msg',
-        content: "👋 Hi there! Welcome to Planbeau Support. Please enter your name above so we can assist you better. How can we help you today?",
-        senderId: 'support',
-        SenderID: 'support',
-        isSupport: true,
-        CreatedAt: new Date().toISOString()
-      }]);
+      setView('guest-form'); // Show guest form view instead of chat
       return;
     }
     
     try {
-      // Always create a NEW support conversation (clean slate)
+      // First check if user has a support conversation from TODAY
+      const checkResponse = await fetch(`${API_BASE_URL}/messages/conversations/support/today?userId=${currentUser.id}`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      
+      if (checkResponse.ok) {
+        const checkData = await checkResponse.json();
+        
+        if (checkData.conversationId) {
+          // Use existing today's conversation - load messages
+          const supportConversation = {
+            id: checkData.conversationId,
+            ConversationID: checkData.conversationId,
+            OtherPartyName: 'Planbeau Support',
+            ConversationType: 'support',
+            isSupport: true
+          };
+          
+          setCurrentConversation(supportConversation);
+          setMainView('messages');
+          setView('chat');
+          
+          // Load existing messages for today's conversation
+          loadMessages(checkData.conversationId);
+          return;
+        }
+      }
+      
+      // No conversation today - create a NEW support conversation (clean slate for new day)
       const response = await fetch(`${API_BASE_URL}/messages/conversations/support`, {
         method: 'POST',
         headers: {
@@ -599,10 +666,11 @@ function MessagingWidget() {
           setMainView('messages'); // Must set mainView to 'messages' for chat to render
           setView('chat');
           
-          // Start with clean slate - show only welcome message
+          // Start with clean slate - show only welcome message (personalized like Intercom)
+          const userName = currentUser.firstName || currentUser.name?.split(' ')[0] || 'there';
           setMessages([{
             id: 'welcome-msg',
-            content: `👋 Hi ${currentUser.name || currentUser.firstName || 'there'}! Welcome to Planbeau Support. How can we help you today?`,
+            content: `👋 Hi ${userName}! I'm here to help with any questions about Planbeau.\n\nYou can ask me about bookings, vendors, your account, or anything else. How can I help you today?`,
             senderId: 'support',
             SenderID: 'support',
             isSupport: true,
@@ -624,7 +692,80 @@ function MessagingWidget() {
       console.error('Failed to start support chat:', error);
       showError('Unable to start support chat. Please check your connection.');
     }
-  }, [currentUser, loadConversations]);
+  }, [currentUser, loadConversations, loadMessages]);
+
+  // Start guest chat after form submission - calls backend API
+  const startGuestChat = useCallback(async () => {
+    if (!guestName.trim() || !guestEmail.trim()) return;
+    if (!supportTopic.category || !supportTopic.subject.trim()) return;
+    
+    // Generate reference number
+    const refNumber = generateReferenceNumber();
+    setGuestReferenceNumber(refNumber);
+    
+    try {
+      // Call backend API to create guest support conversation
+      const response = await fetch(`${API_BASE_URL}/messages/conversations/support/guest`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          guestName: guestName.trim(),
+          guestEmail: guestEmail.trim(),
+          category: supportTopic.category,
+          subject: supportTopic.subject.trim(),
+          description: supportTopic.description.trim(),
+          referenceNumber: refNumber
+        })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        
+        // Set up guest conversation with real ID from backend
+        const guestConversation = {
+          id: data.conversationId || 'guest-support',
+          ConversationID: data.conversationId || 'guest-support',
+          OtherPartyName: 'Planbeau Support',
+          ConversationType: 'guest_support',
+          isSupport: true,
+          isGuest: true,
+          guestName: guestName.trim(),
+          guestEmail: guestEmail.trim(),
+          referenceNumber: refNumber,
+          ticketNumber: data.ticketNumber
+        };
+        
+        setCurrentConversation(guestConversation);
+        setShowGuestForm(false);
+        setSupportFormStep(1); // Reset form step
+        setView('chat');
+        
+        // Load messages from backend (includes welcome message)
+        if (data.conversationId) {
+          loadMessages(data.conversationId);
+        } else {
+          // Fallback: show local welcome message
+          const categoryLabel = supportCategories.find(c => c.value === supportTopic.category)?.label || supportTopic.category;
+          setMessages([{
+            id: 'welcome-msg',
+            content: `👋 Hi ${guestName.trim()}! Thanks for reaching out to Planbeau Support.\n\nYour reference number is: **${refNumber}**\nPlease save this for future reference.\n\nWe'll send a response to ${guestEmail.trim()} when we reply.\n\n**Topic:** ${categoryLabel}\n**Subject:** ${supportTopic.subject}\n\nHow can we help you today?`,
+            senderId: 'support',
+            SenderID: 'support',
+            isSupport: true,
+            CreatedAt: new Date().toISOString()
+          }]);
+        }
+        
+        setIsFreshSupportChat(true);
+      } else {
+        console.error('Failed to create guest conversation');
+        showError('Unable to start support chat. Please try again.');
+      }
+    } catch (error) {
+      console.error('Failed to start guest chat:', error);
+      showError('Unable to start support chat. Please check your connection.');
+    }
+  }, [guestName, guestEmail, supportTopic, loadMessages, supportCategories]);
 
   // Upload file to Cloudinary
   const uploadToCloudinary = async (file) => {
@@ -1576,7 +1717,7 @@ function MessagingWidget() {
           )}
 
           {/* Messages View - Support Only (Show intro only when not in chat) */}
-          {mainView === 'messages' && view !== 'chat' && (
+          {mainView === 'messages' && view !== 'chat' && view !== 'guest-form' && (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'white', padding: '20px' }}>
               {/* Support Chat Header */}
               <div style={{ textAlign: 'center', marginBottom: '24px' }}>
@@ -1601,71 +1742,224 @@ function MessagingWidget() {
                 <p style={{ margin: 0, fontSize: '14px', color: '#6b7280' }}>Chat with our support team</p>
               </div>
 
-              {/* Start Chat Button */}
-              <div 
-                onClick={() => openSupportChat()}
-                style={{
-                  display: 'flex',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  padding: '16px 24px',
-                  background: '#5e72e4',
-                  borderRadius: '12px',
-                  cursor: 'pointer',
-                  marginBottom: '20px',
-                  gap: '10px'
-                }}
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                  <path d="M21 15C21 15.5304 20.7893 16.0391 20.4142 16.4142C20.0391 16.7893 19.5304 17 19 17H7L3 21V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H19C19.5304 3 20.0391 3.21071 20.4142 3.58579C20.7893 3.96086 21 4.46957 21 5V15Z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-                <span style={{ color: 'white', fontWeight: 600, fontSize: '15px' }}>Start a Conversation</span>
-              </div>
+              {/* Step 1: Topic Selection */}
+              {supportFormStep === 1 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '16px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#374151', marginBottom: '4px' }}>
+                      What can we help you with? *
+                    </label>
+                    <select
+                      value={supportTopic.category}
+                      onChange={(e) => setSupportTopic({ ...supportTopic, category: e.target.value })}
+                      style={{
+                        width: '100%',
+                        padding: '10px 12px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        outline: 'none',
+                        boxSizing: 'border-box',
+                        background: 'white',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <option value="">Select a topic...</option>
+                      {supportCategories.map(cat => (
+                        <option key={cat.value} value={cat.value}>{cat.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#374151', marginBottom: '4px' }}>
+                      Subject *
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Brief description of your issue"
+                      value={supportTopic.subject}
+                      onChange={(e) => setSupportTopic({ ...supportTopic, subject: e.target.value })}
+                      style={{
+                        width: '100%',
+                        padding: '10px 12px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        outline: 'none',
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#374151', marginBottom: '4px' }}>
+                      Description *
+                    </label>
+                    <textarea
+                      placeholder="Please describe your issue in detail..."
+                      value={supportTopic.description}
+                      onChange={(e) => setSupportTopic({ ...supportTopic, description: e.target.value })}
+                      rows={3}
+                      style={{
+                        width: '100%',
+                        padding: '10px 12px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        outline: 'none',
+                        boxSizing: 'border-box',
+                        resize: 'vertical',
+                        minHeight: '80px'
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
 
-              {/* Info */}
-              <div style={{ 
-                background: '#f9fafb', 
-                borderRadius: '12px', 
-                padding: '16px',
-                border: '1px solid #e5e7eb'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: '12px' }}>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, marginTop: '2px' }}>
-                    <circle cx="12" cy="12" r="10" stroke="#5e72e4" strokeWidth="2"/>
-                    <path d="M12 16V12" stroke="#5e72e4" strokeWidth="2" strokeLinecap="round"/>
-                    <circle cx="12" cy="8" r="1" fill="#5e72e4"/>
-                  </svg>
+              {/* Step 2: Name/Email for guests */}
+              {supportFormStep === 2 && !currentUser?.id && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '16px' }}>
+                  <div style={{ 
+                    padding: '10px 12px', 
+                    background: '#f0f4ff', 
+                    borderRadius: '8px', 
+                    marginBottom: '4px',
+                    fontSize: '13px',
+                    color: '#5e72e4'
+                  }}>
+                    <strong>Topic:</strong> {supportCategories.find(c => c.value === supportTopic.category)?.label || supportTopic.category}
+                    <br />
+                    <strong>Subject:</strong> {supportTopic.subject}
+                  </div>
                   <div>
-                    <div style={{ fontWeight: 600, fontSize: '14px', color: '#111', marginBottom: '4px' }}>How it works</div>
-                    <div style={{ fontSize: '13px', color: '#6b7280', lineHeight: '1.5' }}>
-                      Start a chat and our support team will respond as soon as possible. You'll receive notifications when we reply.
-                    </div>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#374151', marginBottom: '4px' }}>
+                      Your Name *
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Enter your full name"
+                      value={guestName}
+                      onChange={(e) => setGuestName(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '10px 12px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        outline: 'none',
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#374151', marginBottom: '4px' }}>
+                      Email Address *
+                    </label>
+                    <input
+                      type="email"
+                      placeholder="you@example.com"
+                      value={guestEmail}
+                      onChange={(e) => setGuestEmail(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '10px 12px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        outline: 'none',
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                    <p style={{ margin: '4px 0 0', fontSize: '11px', color: '#6b7280' }}>
+                      We'll email you when we respond
+                    </p>
                   </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: '12px' }}>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, marginTop: '2px' }}>
-                    <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" stroke="#10b981" strokeWidth="2"/>
-                    <path d="M9 12L11 14L15 10" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: '14px', color: '#111', marginBottom: '4px' }}>Response time</div>
-                    <div style={{ fontSize: '13px', color: '#6b7280', lineHeight: '1.5' }}>
-                      We typically respond within a few hours during business hours.
-                    </div>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, marginTop: '2px' }}>
-                    <path d="M14.5 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V7.5L14.5 2Z" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M14 2V8H20" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: '14px', color: '#111', marginBottom: '4px' }}>Reporting issues?</div>
-                    <div style={{ fontSize: '13px', color: '#6b7280', lineHeight: '1.5' }}>
-                      Please include screenshots of any errors. On desktop, press <strong>F12</strong> → <strong>Console</strong> tab and copy any red error messages to help us diagnose the issue faster.
-                    </div>
-                  </div>
-                </div>
+              )}
+
+              {/* Navigation Buttons */}
+              <div style={{ display: 'flex', gap: '10px' }}>
+                {supportFormStep === 2 && (
+                  <button
+                    onClick={() => setSupportFormStep(1)}
+                    style={{
+                      flex: 1,
+                      padding: '14px',
+                      background: 'white',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '10px',
+                      fontSize: '14px',
+                      fontWeight: 500,
+                      color: '#374151',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    ← Back
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    if (supportFormStep === 1) {
+                      // Validate step 1
+                      if (supportTopic.category && supportTopic.subject.trim() && supportTopic.description.trim()) {
+                        if (currentUser?.id) {
+                          // Logged in user - go directly to chat
+                          openSupportChat();
+                        } else {
+                          // Guest - go to step 2 for name/email
+                          setSupportFormStep(2);
+                        }
+                      }
+                    } else if (supportFormStep === 2) {
+                      // Validate step 2 and start chat
+                      if (guestName.trim() && guestEmail.trim() && guestEmail.includes('@')) {
+                        startGuestChat();
+                      }
+                    }
+                  }}
+                  disabled={
+                    (supportFormStep === 1 && (!supportTopic.category || !supportTopic.subject.trim() || !supportTopic.description.trim())) ||
+                    (supportFormStep === 2 && (!guestName.trim() || !guestEmail.trim() || !guestEmail.includes('@')))
+                  }
+                  style={{
+                    flex: supportFormStep === 2 ? 2 : 1,
+                    padding: '14px',
+                    background: (
+                      (supportFormStep === 1 && (!supportTopic.category || !supportTopic.subject.trim() || !supportTopic.description.trim())) ||
+                      (supportFormStep === 2 && (!guestName.trim() || !guestEmail.trim() || !guestEmail.includes('@')))
+                    ) ? '#d1d5db' : '#5e72e4',
+                    border: 'none',
+                    borderRadius: '10px',
+                    fontSize: '14px',
+                    fontWeight: 600,
+                    color: 'white',
+                    cursor: (
+                      (supportFormStep === 1 && (!supportTopic.category || !supportTopic.subject.trim() || !supportTopic.description.trim())) ||
+                      (supportFormStep === 2 && (!guestName.trim() || !guestEmail.trim() || !guestEmail.includes('@')))
+                    ) ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px'
+                  }}
+                >
+                  {supportFormStep === 1 ? (
+                    currentUser?.id ? (
+                      <>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                          <path d="M21 15C21 15.5304 20.7893 16.0391 20.4142 16.4142C20.0391 16.7893 19.5304 17 19 17H7L3 21V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H19C19.5304 3 20.0391 3.21071 20.4142 3.58579C20.7893 3.96086 21 4.46957 21 5V15Z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                        Start Chat
+                      </>
+                    ) : 'Continue →'
+                  ) : (
+                    <>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                        <path d="M21 15C21 15.5304 20.7893 16.0391 20.4142 16.4142C20.0391 16.7893 19.5304 17 19 17H7L3 21V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H19C19.5304 3 20.0391 3.21071 20.4142 3.58579C20.7893 3.96086 21 4.46957 21 5V15Z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                      Start Chat
+                    </>
+                  )}
+                </button>
               </div>
             </div>
           )}
@@ -1687,89 +1981,225 @@ function MessagingWidget() {
             </div>
           )}
 
+          {/* Guest Pre-Chat Form - Name & Email before starting chat */}
+          {mainView === 'messages' && view === 'guest-form' && (
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'white', padding: '24px' }}>
+              {/* Header */}
+              <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+                <div style={{ 
+                  width: '64px', 
+                  height: '64px', 
+                  borderRadius: '50%', 
+                  background: 'linear-gradient(135deg, #5e72e4 0%, #825ee4 100%)', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  margin: '0 auto 16px',
+                  color: 'white',
+                  fontSize: '24px',
+                  fontWeight: 700
+                }}>
+                  PB
+                </div>
+                <h2 style={{ margin: '0 0 8px 0', fontSize: '20px', fontWeight: 600, color: '#111' }}>
+                  Contact Planbeau Support
+                </h2>
+                <p style={{ margin: 0, fontSize: '14px', color: '#6b7280' }}>
+                  Please provide your details so we can assist you
+                </p>
+              </div>
+
+              {/* Form */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: '#374151', marginBottom: '6px' }}>
+                    Your Name *
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Enter your full name"
+                    value={guestName}
+                    onChange={(e) => setGuestName(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '12px 14px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '8px',
+                      fontSize: '15px',
+                      outline: 'none',
+                      boxSizing: 'border-box'
+                    }}
+                    onFocus={(e) => e.target.style.borderColor = '#5e72e4'}
+                    onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+                  />
+                </div>
+                
+                <div>
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: '#374151', marginBottom: '6px' }}>
+                    Email Address *
+                  </label>
+                  <input
+                    type="email"
+                    placeholder="you@example.com"
+                    value={guestEmail}
+                    onChange={(e) => setGuestEmail(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '12px 14px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '8px',
+                      fontSize: '15px',
+                      outline: 'none',
+                      boxSizing: 'border-box'
+                    }}
+                    onFocus={(e) => e.target.style.borderColor = '#5e72e4'}
+                    onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+                  />
+                  <p style={{ margin: '6px 0 0', fontSize: '12px', color: '#6b7280' }}>
+                    We'll send you an email when we respond to your message
+                  </p>
+                </div>
+
+                <button
+                  onClick={startGuestChat}
+                  disabled={!guestName.trim() || !guestEmail.trim() || !guestEmail.includes('@')}
+                  style={{
+                    width: '100%',
+                    padding: '14px',
+                    background: (guestName.trim() && guestEmail.trim() && guestEmail.includes('@')) 
+                      ? 'linear-gradient(135deg, #5e72e4 0%, #825ee4 100%)' 
+                      : '#d1d5db',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '10px',
+                    fontSize: '15px',
+                    fontWeight: 600,
+                    cursor: (guestName.trim() && guestEmail.trim() && guestEmail.includes('@')) ? 'pointer' : 'not-allowed',
+                    marginTop: '8px'
+                  }}
+                >
+                  Start Chat
+                </button>
+              </div>
+
+              {/* Info note */}
+              <div style={{ 
+                marginTop: '24px', 
+                padding: '12px 14px', 
+                background: '#f9fafb', 
+                borderRadius: '8px',
+                border: '1px solid #e5e7eb'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                  <i className="fas fa-info-circle" style={{ color: '#5e72e4', marginTop: '2px' }}></i>
+                  <div style={{ fontSize: '13px', color: '#6b7280', lineHeight: '1.5' }}>
+                    You'll receive a reference number after starting the chat. Save it to continue your conversation later.
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Chat View */}
           {mainView === 'messages' && view === 'chat' && currentConversation && (
             <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+              {/* Clean Chat Header */}
               <div className="chat-header" style={{
-                padding: '16px',
-                borderBottom: '1px solid #e0e0e0',
+                padding: '12px 16px',
+                borderBottom: '1px solid #e5e7eb',
                 display: 'flex',
                 alignItems: 'center',
-                background: 'white'
+                background: 'white',
+                gap: '12px'
               }}>
                 <button className="back-button" onClick={backToConversations} style={{
                   background: 'none',
                   border: 'none',
-                  color: '#222',
+                  color: '#374151',
                   cursor: 'pointer',
                   padding: '8px',
-                  marginRight: '12px',
-                  fontSize: '18px'
+                  fontSize: '16px',
+                  display: 'flex',
+                  alignItems: 'center'
                 }}>
                   <i className="fas fa-arrow-left"></i>
                 </button>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
-                  <div style={{ position: 'relative' }}>
-                    {currentConversation.OtherPartyAvatar || currentConversation.OtherPartyLogo ? (
-                      <img
-                        src={currentConversation.OtherPartyAvatar || currentConversation.OtherPartyLogo}
-                        alt={currentConversation.OtherPartyName}
-                        style={{
-                          width: '40px',
-                          height: '40px',
-                          borderRadius: '50%',
-                          objectFit: 'cover'
-                        }}
-                        onError={(e) => {
-                          e.target.style.display = 'none';
-                          e.target.nextSibling.style.display = 'flex';
-                        }}
-                      />
-                    ) : null}
-                    <div style={{
-                      width: '40px',
-                      height: '40px',
-                      borderRadius: '50%',
-                      background: '#5e72e4',
-                      display: currentConversation.OtherPartyAvatar || currentConversation.OtherPartyLogo ? 'none' : 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: 'white',
-                      fontSize: '16px',
-                      fontWeight: 600
-                    }}>
-                      {(currentConversation.OtherPartyName || 'U')[0].toUpperCase()}
-                    </div>
-                    {/* Online status dot on avatar */}
-                    {otherPartyOnlineStatus && (
-                      <span style={{
-                        position: 'absolute',
-                        bottom: '0',
-                        right: '0',
-                        width: '12px',
-                        height: '12px',
-                        borderRadius: '50%',
-                        backgroundColor: otherPartyOnlineStatus.isOnline ? '#22c55e' : '#9ca3af',
-                        border: '2px solid white'
-                      }} />
-                    )}
+                {/* Avatar */}
+                <div style={{ position: 'relative' }}>
+                  <div style={{
+                    width: '40px',
+                    height: '40px',
+                    borderRadius: '50%',
+                    background: (currentConversation.isSupport || currentConversation.ConversationType === 'support') 
+                      ? 'linear-gradient(135deg, #5e72e4 0%, #825ee4 100%)' 
+                      : '#5e72e4',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'white',
+                    fontSize: '14px',
+                    fontWeight: 700
+                  }}>
+                    {(currentConversation.isSupport || currentConversation.ConversationType === 'support') 
+                      ? 'PB' 
+                      : (currentConversation.OtherPartyName || 'U')[0].toUpperCase()}
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    <span style={{ fontWeight: 600, fontSize: '16px', color: '#222' }}>
-                      {currentConversation.OtherPartyName || 'Unknown'}
-                    </span>
-                    {/* Online status text */}
-                    {otherPartyOnlineStatus && (
-                      <span style={{ 
-                        fontSize: '12px', 
-                        color: otherPartyOnlineStatus.isOnline ? '#22c55e' : '#666'
-                      }}>
-                        {otherPartyOnlineStatus.isOnline ? 'Online' : otherPartyOnlineStatus.lastActiveText || 'Offline'}
-                      </span>
-                    )}
-                  </div>
+                  {/* Online indicator */}
+                  <span style={{
+                    position: 'absolute',
+                    bottom: '0',
+                    right: '0',
+                    width: '12px',
+                    height: '12px',
+                    borderRadius: '50%',
+                    backgroundColor: '#22c55e',
+                    border: '2px solid white'
+                  }} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+                  <span style={{ fontWeight: 600, fontSize: '15px', color: '#111' }}>
+                    {(currentConversation.isSupport || currentConversation.ConversationType === 'support') 
+                      ? 'Planbeau Support' 
+                      : (currentConversation.OtherPartyName || 'Unknown')}
+                  </span>
+                  <span style={{ fontSize: '12px', color: '#6b7280' }}>
+                    {(currentConversation.isSupport || currentConversation.ConversationType === 'support') 
+                      ? "You'll receive an email when we respond" 
+                      : 'Online'}
+                  </span>
                 </div>
               </div>
+              
+              {/* Reference Number Banner - show for guests */}
+              {currentConversation?.isGuest && guestReferenceNumber && (
+                <div style={{
+                  padding: '10px 16px',
+                  background: '#f0fdf4',
+                  borderBottom: '1px solid #bbf7d0',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px'
+                }}>
+                  <i className="fas fa-bookmark" style={{ color: '#22c55e', fontSize: '14px' }}></i>
+                  <div style={{ flex: 1, fontSize: '13px', color: '#166534' }}>
+                    <span style={{ fontWeight: 600 }}>Reference:</span> {guestReferenceNumber}
+                  </div>
+                  <button
+                    onClick={() => navigator.clipboard.writeText(guestReferenceNumber)}
+                    style={{
+                      padding: '4px 10px',
+                      background: '#dcfce7',
+                      border: '1px solid #bbf7d0',
+                      borderRadius: '6px',
+                      fontSize: '12px',
+                      color: '#166534',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Copy
+                  </button>
+                </div>
+              )}
               
               {/* Booking Info Banner */}
               {activeBookingInfo && (
@@ -1848,10 +2278,14 @@ function MessagingWidget() {
                       return true;
                     })
                     .map((msg, index) => {
-                    const isSent = msg.SenderID === currentUser.id;
+                    // Determine if message is from current user - handle guests and support messages
+                    const isSent = msg._isCurrentUser || (currentUser?.id && msg.SenderID === currentUser.id);
+                    // Support/system messages are never "sent" by user
+                    const isFromSupport = msg.isSupport || msg.SenderID === 'support' || msg.senderId === 'support';
+                    const isSentFinal = isSent && !isFromSupport;
                     const isRead = msg.IsRead === true || msg.IsRead === 1;
                     // Only show read receipt on the last sent message
-                    const isLastSentMessage = isSent && !messages.slice(index + 1).some(m => m.SenderID === currentUser.id);
+                    const isLastSentMessage = isSentFinal && !messages.slice(index + 1).some(m => m._isCurrentUser || (currentUser?.id && m.SenderID === currentUser.id));
                     // Check if this is a new day compared to previous message
                     const showDateDivider = index === 0 || (() => {
                       const prevDate = new Date(messages[index - 1]?.CreatedAt || messages[index - 1]?.SentAt);
@@ -1895,40 +2329,63 @@ function MessagingWidget() {
                           style={{
                             display: 'flex',
                             flexDirection: 'column',
-                            alignItems: isSent ? 'flex-end' : 'flex-start',
+                            alignItems: isSentFinal ? 'flex-end' : 'flex-start',
                             marginBottom: '16px'
                           }}
                         >
-                          {/* Sender name for received messages */}
-                          {!isSent && (
+                          {/* Sender name for received messages (from support) */}
+                          {!isSentFinal && (
                             <div style={{ 
-                              fontSize: '12px', 
-                              fontWeight: 600, 
-                              color: '#6b7280', 
-                              marginBottom: '4px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              marginBottom: '6px',
                               marginLeft: '4px'
                             }}>
-                              {currentConversation?.OtherPartyName || 'Support'}
+                              {/* Support avatar */}
+                              <div style={{
+                                width: '24px',
+                                height: '24px',
+                                borderRadius: '50%',
+                                background: 'linear-gradient(135deg, #5e72e4 0%, #825ee4 100%)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: 'white',
+                                fontSize: '10px',
+                                fontWeight: 700
+                              }}>
+                                PB
+                              </div>
+                              <span style={{ 
+                                fontSize: '12px', 
+                                fontWeight: 600, 
+                                color: '#374151'
+                              }}>
+                                {(currentConversation?.isSupport || currentConversation?.ConversationType === 'support') 
+                                  ? 'Planbeau' 
+                                  : (currentConversation?.OtherPartyName || 'Support')}
+                              </span>
                             </div>
                           )}
                           <div style={{
                             maxWidth: isWidgetExpanded ? '60%' : '75%',
                             padding: '12px 16px',
-                            borderRadius: isSent ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
-                            background: isSent ? '#5e72e4' : '#f3f4f6',
-                            color: isSent ? 'white' : '#1f2937',
+                            borderRadius: isSentFinal ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
+                            background: isSentFinal ? '#5e72e4' : '#f3f4f6',
+                            color: isSentFinal ? 'white' : '#1f2937',
                             wordWrap: 'break-word',
                             boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
                           }}>
-                            <div style={{ fontSize: '14px', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>{msg.Content || msg.MessageText}</div>
+                            <div style={{ fontSize: '14px', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>{msg.Content || msg.content || msg.MessageText}</div>
                           </div>
                           {/* Timestamp below message */}
                           <div style={{ 
                             fontSize: '11px', 
                             marginTop: '4px',
                             color: '#9ca3af',
-                            marginLeft: isSent ? '0' : '4px',
-                            marginRight: isSent ? '4px' : '0'
+                            marginLeft: isSentFinal ? '0' : '4px',
+                            marginRight: isSentFinal ? '4px' : '0'
                           }}>
                             {(() => {
                               const dateStr = msg.CreatedAt || msg.SentAt;
@@ -1945,6 +2402,61 @@ function MessagingWidget() {
                     );
                   })
                 )}
+                {/* Quick reply suggestions for support chat - show only when fresh chat with just welcome message */}
+                {(currentConversation?.isSupport || currentConversation?.ConversationType === 'support') && 
+                 messages.length === 1 && 
+                 messages[0]?.SenderID !== currentUser?.id && (
+                  <div style={{ 
+                    display: 'flex', 
+                    flexWrap: 'wrap', 
+                    gap: '8px', 
+                    marginBottom: '16px',
+                    marginTop: '-8px'
+                  }}>
+                    {[
+                      { text: 'How can I help?', icon: '💬' },
+                      { text: 'I have a booking question', icon: '📅' },
+                      { text: 'I need help with my account', icon: '👤' },
+                      { text: 'Report an issue', icon: '🔧' }
+                    ].map((suggestion, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => {
+                          setMessageInput(suggestion.text);
+                          // Focus the input
+                          document.querySelector('.chat-input-field')?.focus();
+                        }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          padding: '8px 14px',
+                          background: 'white',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '20px',
+                          fontSize: '13px',
+                          fontWeight: 500,
+                          color: '#374151',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease',
+                          boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.target.style.borderColor = '#5e72e4';
+                          e.target.style.background = '#f8f9ff';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.target.style.borderColor = '#e5e7eb';
+                          e.target.style.background = 'white';
+                        }}
+                      >
+                        <span>{suggestion.icon}</span>
+                        <span>{suggestion.text}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                
                 {/* Typing indicator */}
                 {otherUserTyping && (
                   <div style={{
@@ -3445,100 +3957,314 @@ function MessagingWidget() {
                   <p style={{ margin: 0, fontSize: '14px', color: '#6b7280' }}>Chat with our support team</p>
                 </div>
 
-                {/* Start Chat Button */}
-                <div 
-                  onClick={() => openSupportChat()}
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    padding: '16px 24px',
-                    background: '#5e72e4',
-                    borderRadius: '12px',
-                    cursor: 'pointer',
-                    marginBottom: '20px',
-                    gap: '10px'
-                  }}
-                >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                    <path d="M21 15C21 15.5304 20.7893 16.0391 20.4142 16.4142C20.0391 16.7893 19.5304 17 19 17H7L3 21V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H19C19.5304 3 20.0391 3.21071 20.4142 3.58579C20.7893 3.96086 21 4.46957 21 5V15Z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                  <span style={{ color: 'white', fontWeight: 600, fontSize: '15px' }}>Start a Conversation</span>
-                </div>
+                {/* Step 1: Topic Selection (Desktop) */}
+                {supportFormStep === 1 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '16px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#374151', marginBottom: '4px' }}>
+                        What can we help you with? *
+                      </label>
+                      <select
+                        value={supportTopic.category}
+                        onChange={(e) => setSupportTopic({ ...supportTopic, category: e.target.value })}
+                        style={{
+                          width: '100%',
+                          padding: '10px 12px',
+                          border: '1px solid #d1d5db',
+                          borderRadius: '8px',
+                          fontSize: '14px',
+                          outline: 'none',
+                          boxSizing: 'border-box',
+                          background: 'white',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <option value="">Select a topic...</option>
+                        {supportCategories.map(cat => (
+                          <option key={cat.value} value={cat.value}>{cat.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#374151', marginBottom: '4px' }}>
+                        Subject *
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Brief description of your issue"
+                        value={supportTopic.subject}
+                        onChange={(e) => setSupportTopic({ ...supportTopic, subject: e.target.value })}
+                        style={{
+                          width: '100%',
+                          padding: '10px 12px',
+                          border: '1px solid #d1d5db',
+                          borderRadius: '8px',
+                          fontSize: '14px',
+                          outline: 'none',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#374151', marginBottom: '4px' }}>
+                        Description *
+                      </label>
+                      <textarea
+                        placeholder="Please describe your issue in detail..."
+                        value={supportTopic.description}
+                        onChange={(e) => setSupportTopic({ ...supportTopic, description: e.target.value })}
+                        rows={3}
+                        style={{
+                          width: '100%',
+                          padding: '10px 12px',
+                          border: '1px solid #d1d5db',
+                          borderRadius: '8px',
+                          fontSize: '14px',
+                          outline: 'none',
+                          boxSizing: 'border-box',
+                          resize: 'vertical',
+                          minHeight: '80px'
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
 
-                {/* Info */}
-                <div style={{ 
-                  background: '#f9fafb', 
-                  borderRadius: '12px', 
-                  padding: '16px',
-                  border: '1px solid #e5e7eb'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: '12px' }}>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, marginTop: '2px' }}>
-                      <circle cx="12" cy="12" r="10" stroke="#5e72e4" strokeWidth="2"/>
-                      <path d="M12 16V12" stroke="#5e72e4" strokeWidth="2" strokeLinecap="round"/>
-                      <circle cx="12" cy="8" r="1" fill="#5e72e4"/>
-                    </svg>
+                {/* Step 2: Name/Email for guests (Desktop) */}
+                {supportFormStep === 2 && !currentUser?.id && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '16px' }}>
+                    <div style={{ 
+                      padding: '10px 12px', 
+                      background: '#f0f4ff', 
+                      borderRadius: '8px', 
+                      marginBottom: '4px',
+                      fontSize: '13px',
+                      color: '#5e72e4'
+                    }}>
+                      <strong>Topic:</strong> {supportCategories.find(c => c.value === supportTopic.category)?.label || supportTopic.category}
+                      <br />
+                      <strong>Subject:</strong> {supportTopic.subject}
+                    </div>
                     <div>
-                      <div style={{ fontWeight: 600, fontSize: '14px', color: '#111', marginBottom: '4px' }}>How it works</div>
-                      <div style={{ fontSize: '13px', color: '#6b7280', lineHeight: '1.5' }}>
-                        Start a chat and our support team will respond as soon as possible.
-                      </div>
+                      <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#374151', marginBottom: '4px' }}>
+                        Your Name *
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Enter your full name"
+                        value={guestName}
+                        onChange={(e) => setGuestName(e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: '10px 12px',
+                          border: '1px solid #d1d5db',
+                          borderRadius: '8px',
+                          fontSize: '14px',
+                          outline: 'none',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#374151', marginBottom: '4px' }}>
+                        Email Address *
+                      </label>
+                      <input
+                        type="email"
+                        placeholder="you@example.com"
+                        value={guestEmail}
+                        onChange={(e) => setGuestEmail(e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: '10px 12px',
+                          border: '1px solid #d1d5db',
+                          borderRadius: '8px',
+                          fontSize: '14px',
+                          outline: 'none',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                      <p style={{ margin: '4px 0 0', fontSize: '11px', color: '#6b7280' }}>
+                        We'll email you when we respond
+                      </p>
                     </div>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, marginTop: '2px' }}>
-                      <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" stroke="#10b981" strokeWidth="2"/>
-                      <path d="M9 12L11 14L15 10" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                    <div>
-                      <div style={{ fontWeight: 600, fontSize: '14px', color: '#111', marginBottom: '4px' }}>Response time</div>
-                      <div style={{ fontSize: '13px', color: '#6b7280', lineHeight: '1.5' }}>
-                        We typically respond within a few hours during business hours.
-                      </div>
-                    </div>
-                  </div>
+                )}
+
+                {/* Navigation Buttons (Desktop) */}
+                <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+                  {supportFormStep === 2 && (
+                    <button
+                      onClick={() => setSupportFormStep(1)}
+                      style={{
+                        flex: 1,
+                        padding: '14px',
+                        background: 'white',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '10px',
+                        fontSize: '14px',
+                        fontWeight: 500,
+                        color: '#374151',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      ← Back
+                    </button>
+                  )}
+                  <button
+                    onClick={() => {
+                      if (supportFormStep === 1) {
+                        if (supportTopic.category && supportTopic.subject.trim() && supportTopic.description.trim()) {
+                          if (currentUser?.id) {
+                            openSupportChat();
+                          } else {
+                            setSupportFormStep(2);
+                          }
+                        }
+                      } else if (supportFormStep === 2) {
+                        if (guestName.trim() && guestEmail.trim() && guestEmail.includes('@')) {
+                          startGuestChat();
+                        }
+                      }
+                    }}
+                    disabled={
+                      (supportFormStep === 1 && (!supportTopic.category || !supportTopic.subject.trim() || !supportTopic.description.trim())) ||
+                      (supportFormStep === 2 && (!guestName.trim() || !guestEmail.trim() || !guestEmail.includes('@')))
+                    }
+                    style={{
+                      flex: supportFormStep === 2 ? 2 : 1,
+                      padding: '14px',
+                      background: (
+                        (supportFormStep === 1 && (!supportTopic.category || !supportTopic.subject.trim() || !supportTopic.description.trim())) ||
+                        (supportFormStep === 2 && (!guestName.trim() || !guestEmail.trim() || !guestEmail.includes('@')))
+                      ) ? '#d1d5db' : '#5e72e4',
+                      border: 'none',
+                      borderRadius: '10px',
+                      fontSize: '14px',
+                      fontWeight: 600,
+                      color: 'white',
+                      cursor: (
+                        (supportFormStep === 1 && (!supportTopic.category || !supportTopic.subject.trim() || !supportTopic.description.trim())) ||
+                        (supportFormStep === 2 && (!guestName.trim() || !guestEmail.trim() || !guestEmail.includes('@')))
+                      ) ? 'not-allowed' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px'
+                    }}
+                  >
+                    {supportFormStep === 1 ? (
+                      currentUser?.id ? (
+                        <>
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                            <path d="M21 15C21 15.5304 20.7893 16.0391 20.4142 16.4142C20.0391 16.7893 19.5304 17 19 17H7L3 21V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H19C19.5304 3 20.0391 3.21071 20.4142 3.58579C20.7893 3.96086 21 4.46957 21 5V15Z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                          Start Chat
+                        </>
+                      ) : 'Continue →'
+                    ) : (
+                      <>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                          <path d="M21 15C21 15.5304 20.7893 16.0391 20.4142 16.4142C20.0391 16.7893 19.5304 17 19 17H7L3 21V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H19C19.5304 3 20.0391 3.21071 20.4142 3.58579C20.7893 3.96086 21 4.46957 21 5V15Z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                        Start Chat
+                      </>
+                    )}
+                  </button>
                 </div>
               </div>
             )}
 
-            {/* Desktop Chat View - Compact header with online status */}
+            {/* Desktop Chat View */}
             {mainView === 'messages' && view === 'chat' && currentConversation && (
               <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
-                {/* Compact chat header - no duplicate back button, shows online status */}
+                {/* Clean Support Chat Header */}
                 <div style={{
-                  padding: '10px 12px',
+                  padding: '12px 16px',
                   borderBottom: '1px solid #e5e7eb',
                   display: 'flex',
                   alignItems: 'center',
                   background: 'white',
-                  gap: '10px'
+                  gap: '12px'
                 }}>
-                  <div style={{
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '50%',
-                    background: '#5e72e4',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'white',
-                    fontSize: '13px',
-                    fontWeight: 600,
-                    flexShrink: 0
-                  }}>
-                    P
+                  {/* Avatar */}
+                  <div style={{ position: 'relative' }}>
+                    <div style={{
+                      width: '40px',
+                      height: '40px',
+                      borderRadius: '50%',
+                      background: (currentConversation.isSupport || currentConversation.ConversationType === 'support') 
+                        ? 'linear-gradient(135deg, #5e72e4 0%, #825ee4 100%)' 
+                        : '#5e72e4',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'white',
+                      fontSize: '14px',
+                      fontWeight: 700
+                    }}>
+                      {(currentConversation.isSupport || currentConversation.ConversationType === 'support') 
+                        ? 'PB' 
+                        : (currentConversation.OtherPartyName || 'U')[0].toUpperCase()}
+                    </div>
+                    {/* Online indicator */}
+                    <span style={{
+                      position: 'absolute',
+                      bottom: '0',
+                      right: '0',
+                      width: '12px',
+                      height: '12px',
+                      borderRadius: '50%',
+                      backgroundColor: '#22c55e',
+                      border: '2px solid white'
+                    }} />
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
-                    <span style={{ fontWeight: 600, fontSize: '14px', color: '#222' }}>
-                      Planbeau Support
+                  <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+                    <span style={{ fontWeight: 600, fontSize: '15px', color: '#111' }}>
+                      {(currentConversation.isSupport || currentConversation.ConversationType === 'support') 
+                        ? 'Planbeau Support' 
+                        : (currentConversation.OtherPartyName || 'Unknown')}
                     </span>
-                    <span style={{ fontSize: '11px', color: '#22c55e', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#22c55e' }}></span>
-                      Online
+                    <span style={{ fontSize: '12px', color: '#6b7280' }}>
+                      {(currentConversation.isSupport || currentConversation.ConversationType === 'support') 
+                        ? "You'll receive an email when we respond" 
+                        : 'Online'}
                     </span>
                   </div>
                 </div>
+                
+                {/* Reference Number Banner - show for guests */}
+                {currentConversation?.isGuest && guestReferenceNumber && (
+                  <div style={{
+                    padding: '10px 16px',
+                    background: '#f0fdf4',
+                    borderBottom: '1px solid #bbf7d0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px'
+                  }}>
+                    <i className="fas fa-bookmark" style={{ color: '#22c55e', fontSize: '14px' }}></i>
+                    <div style={{ flex: 1, fontSize: '13px', color: '#166534' }}>
+                      <span style={{ fontWeight: 600 }}>Reference:</span> {guestReferenceNumber}
+                    </div>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(guestReferenceNumber);
+                      }}
+                      style={{
+                        padding: '4px 10px',
+                        background: '#dcfce7',
+                        border: '1px solid #bbf7d0',
+                        borderRadius: '6px',
+                        fontSize: '12px',
+                        color: '#166534',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Copy
+                    </button>
+                  </div>
+                )}
                 
                 {/* Messages container - EXACT SAME AS DASHBOARD */}
                 <div 
@@ -3560,7 +4286,11 @@ function MessagingWidget() {
                   ) : (
                     <>
                       {messages.map((msg, index, allMsgs) => {
-                        const isSent = msg.SenderID === currentUser?.id;
+                        // Determine if message is from current user - handle guests and support messages
+                        const isSentByUser = msg._isCurrentUser || (currentUser?.id && msg.SenderID === currentUser.id);
+                        // Support/system messages are never "sent" by user
+                        const isFromSupport = msg.isSupport || msg.SenderID === 'support' || msg.senderId === 'support';
+                        const isSent = isSentByUser && !isFromSupport;
                         const isGif = msg.Content && (msg.Content.includes('giphy.com') || msg.Content.match(/\.(gif)$/i));
                         const currentDate = msg.CreatedAt ? new Date(msg.CreatedAt).toDateString() : '';
                         const prevMessage = index > 0 ? allMsgs[index - 1] : null;
@@ -3580,7 +4310,7 @@ function MessagingWidget() {
                         };
                         
                         return (
-                          <React.Fragment key={msg.MessageID || index}>
+                          <React.Fragment key={msg.MessageID || msg.id || index}>
                             {showDayDivider && (
                               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '16px 0', gap: '12px' }}>
                                 <div style={{ flex: 1, height: '1px', backgroundColor: '#e5e7eb' }}></div>
@@ -3590,9 +4320,29 @@ function MessagingWidget() {
                                 <div style={{ flex: 1, height: '1px', backgroundColor: '#e5e7eb' }}></div>
                               </div>
                             )}
-                            <div style={{ marginBottom: '10px', display: 'flex', justifyContent: isSent ? 'flex-end' : 'flex-start' }}>
+                            <div style={{ marginBottom: '12px', display: 'flex', flexDirection: 'column', alignItems: isSent ? 'flex-end' : 'flex-start' }}>
+                              {/* Show avatar and name for support messages */}
+                              {!isSent && (currentConversation?.isSupport || currentConversation?.ConversationType === 'support') && (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                                  <div style={{
+                                    width: '24px',
+                                    height: '24px',
+                                    borderRadius: '50%',
+                                    background: 'linear-gradient(135deg, #5e72e4 0%, #825ee4 100%)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    color: 'white',
+                                    fontSize: '10px',
+                                    fontWeight: 700
+                                  }}>
+                                    PB
+                                  </div>
+                                  <span style={{ fontSize: '12px', fontWeight: 600, color: '#374151' }}>Planbeau</span>
+                                </div>
+                              )}
                               <div style={{
-                                padding: isGif ? '4px' : '8px 12px',
+                                padding: isGif ? '4px' : '10px 14px',
                                 borderRadius: isSent ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
                                 backgroundColor: isGif ? 'transparent' : (isSent ? '#5e72e4' : '#f0f0f0'),
                                 color: isSent ? 'white' : '#1a1a1a',
@@ -3600,13 +4350,13 @@ function MessagingWidget() {
                                 boxShadow: isGif ? 'none' : '0 1px 2px rgba(0,0,0,0.08)'
                               }}>
                                 {isGif ? (
-                                  <img src={msg.Content} alt="GIF" style={{ maxWidth: '200px', maxHeight: '200px', borderRadius: '12px', display: 'block' }} />
+                                  <img src={msg.Content || msg.content} alt="GIF" style={{ maxWidth: '200px', maxHeight: '200px', borderRadius: '12px', display: 'block' }} />
                                 ) : (
-                                  <div style={{ marginBottom: '3px', wordBreak: 'break-word', fontSize: '13px' }}>{msg.Content}</div>
+                                  <div style={{ wordBreak: 'break-word', fontSize: '14px', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>{msg.Content || msg.content}</div>
                                 )}
-                                <div style={{ fontSize: '10px', opacity: 0.7, textAlign: isSent ? 'right' : 'left' }}>
-                                  {msg.CreatedAt ? new Date(msg.CreatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
-                                </div>
+                              </div>
+                              <div style={{ fontSize: '10px', color: '#9ca3af', marginTop: '4px' }}>
+                                {msg.CreatedAt ? new Date(msg.CreatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                               </div>
                             </div>
                           </React.Fragment>

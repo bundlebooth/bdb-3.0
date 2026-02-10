@@ -32,9 +32,11 @@ BEGIN
     
     SET @ConversationID = SCOPE_IDENTITY();
     
-    -- Add initial welcome message from support
+    -- Add initial welcome message from support (Intercom-style greeting)
     INSERT INTO messages.Messages (ConversationID, SenderID, Content, IsRead, CreatedAt)
-    VALUES (@ConversationID, @AdminID, 'Welcome to Planbeau Support! How can we help you today? Our team typically responds within a few hours during business hours.', 0, GETDATE());
+    VALUES (@ConversationID, @AdminID, '👋 Hi there! I''m here to help with any questions about Planbeau.
+
+You can ask me about bookings, vendors, your account, or anything else. How can I help you today?', 0, GETDATE());
     
     SELECT @ConversationID AS ConversationID;
 END

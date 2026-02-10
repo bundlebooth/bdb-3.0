@@ -324,19 +324,26 @@
         visibility: hidden !important;
     }
     
-    /* FORCE HIDE mobile map button - it's in the bottom nav */
+    /* Mobile map button - show floating button on mobile */
     .mobile-map-button {
-        display: none !important;
-        visibility: hidden !important;
-        background: var(--primary, #007bff) !important;
+        display: flex !important;
+        visibility: visible !important;
+        position: fixed !important;
+        bottom: 80px !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        background: #4F86E8 !important;
         color: white !important;
         border: none !important;
-        border-radius: 8px !important;
-        font-size: 0.9rem !important;
-        font-weight: 500 !important;
+        border-radius: 24px !important;
+        padding: 12px 20px !important;
+        font-size: 14px !important;
+        font-weight: 600 !important;
         cursor: pointer !important;
         align-items: center !important;
-        gap: 0.5rem !important;
+        gap: 8px !important;
+        box-shadow: 0 4px 12px rgba(79, 134, 232, 0.4) !important;
+        z-index: 999998 !important;
     }
     
     /* FORCE mobile map modal to work properly */

@@ -19,6 +19,7 @@ BEGIN
 	[MessageID] [int] IDENTITY(1,1) NOT NULL,
 	[ConversationID] [int] NULL,
 	[SenderID] [int] NULL,
+	[SenderType] [nvarchar](50) NULL,
 	[Content] [nvarchar](max) NOT NULL,
 	[IsRead] [bit] NULL,
 	[ReadAt] [datetime] NULL,
