@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { ToggleSwitch } from './common/FormComponents';
+import UniversalModal from './UniversalModal';
 
 const COOKIE_CONSENT_KEY = 'planbeau_cookie_consent';
 const COOKIE_PREFERENCES_KEY = 'planbeau_cookie_preferences';
@@ -173,14 +175,7 @@ function CookieConsent() {
             margin: '0 auto'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5B68F4" strokeWidth="2">
-                <circle cx="12" cy="12" r="10"/>
-                <circle cx="8" cy="9" r="1" fill="#5B68F4"/>
-                <circle cx="15" cy="8" r="1" fill="#5B68F4"/>
-                <circle cx="10" cy="14" r="1" fill="#5B68F4"/>
-                <circle cx="16" cy="13" r="1" fill="#5B68F4"/>
-                <circle cx="12" cy="17" r="1" fill="#5B68F4"/>
-              </svg>
+              <i className="fas fa-cookie-bite" style={{ fontSize: '20px', color: '#5B68F4' }}></i>
               <span style={{ fontWeight: '600', fontSize: '15px', color: '#1f2937' }}>
                 We use cookies
               </span>
@@ -260,308 +255,140 @@ function CookieConsent() {
         </div>
       )}
 
-      {/* Preferences Modal */}
-      {showPreferences && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          zIndex: 10000,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '20px'
-        }}>
+      {/* Preferences Modal - Using UniversalModal */}
+      <UniversalModal
+        isOpen={showPreferences}
+        onClose={() => setShowPreferences(false)}
+        title="Cookie Preferences"
+        size="medium"
+        footer={
+          <>
+            <button
+              type="button"
+              className="um-btn um-btn-secondary"
+              onClick={handleRejectAll}
+            >
+              Reject All
+            </button>
+            <button
+              type="button"
+              className="um-btn um-btn-primary"
+              onClick={handleSavePreferences}
+            >
+              Save Preferences
+            </button>
+          </>
+        }
+      >
+        <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '24px', lineHeight: '1.5' }}>
+          Manage your cookie preferences below. Some cookies are essential for the website to function properly.
+        </p>
+
+        {/* Cookie Categories */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {/* Necessary Cookies */}
           <div style={{
-            backgroundColor: 'white',
-            borderRadius: '16px',
-            maxWidth: '500px',
-            width: '100%',
-            maxHeight: '90vh',
-            overflow: 'auto',
-            boxShadow: '0 20px 50px rgba(0, 0, 0, 0.2)'
+            padding: '16px',
+            backgroundColor: '#f9fafb',
+            borderRadius: '12px',
+            border: '1px solid #e5e7eb'
           }}>
-            <div style={{ padding: '24px' }}>
-              <div style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'center',
-                marginBottom: '20px'
-              }}>
-                <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '600', color: '#1f2937' }}>
-                  Cookie Preferences
-                </h2>
-                <button
-                  onClick={() => setShowPreferences(false)}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    padding: '4px',
-                    color: '#9ca3af'
-                  }}
-                >
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M18 6L6 18M6 6l12 12"/>
-                  </svg>
-                </button>
-              </div>
-
-              <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '24px', lineHeight: '1.5' }}>
-                Manage your cookie preferences below. Some cookies are essential for the website to function properly.
-              </p>
-
-              {/* Cookie Categories */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                {/* Necessary Cookies */}
-                <div style={{
-                  padding: '16px',
-                  backgroundColor: '#f9fafb',
-                  borderRadius: '12px',
-                  border: '1px solid #e5e7eb'
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: '600', color: '#1f2937', marginBottom: '4px' }}>
-                        Necessary Cookies
-                      </div>
-                      <div style={{ fontSize: '13px', color: '#6b7280' }}>
-                        Required for the website to function. Cannot be disabled.
-                      </div>
-                    </div>
-                    <div style={{
-                      width: '44px',
-                      minWidth: '44px',
-                      height: '24px',
-                      backgroundColor: '#4F86E8',
-                      borderRadius: '12px',
-                      position: 'relative',
-                      opacity: 0.6,
-                      flexShrink: 0
-                    }}>
-                      <div style={{
-                        width: '20px',
-                        height: '20px',
-                        backgroundColor: 'white',
-                        borderRadius: '50%',
-                        position: 'absolute',
-                        top: '2px',
-                        right: '2px',
-                        boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
-                      }}/>
-                    </div>
-                  </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: '600', color: '#1f2937', marginBottom: '4px' }}>
+                  Necessary Cookies
                 </div>
-
-                {/* Analytics Cookies */}
-                <div style={{
-                  padding: '16px',
-                  backgroundColor: '#f9fafb',
-                  borderRadius: '12px',
-                  border: '1px solid #e5e7eb'
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: '600', color: '#1f2937', marginBottom: '4px' }}>
-                        Analytics Cookies
-                      </div>
-                      <div style={{ fontSize: '13px', color: '#6b7280' }}>
-                        Help us understand how visitors interact with our website (Google Analytics).
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => setPreferences(p => ({ ...p, analytics: !p.analytics }))}
-                      style={{
-                        width: '44px',
-                        minWidth: '44px',
-                        height: '24px',
-                        backgroundColor: preferences.analytics ? '#4F86E8' : '#d1d5db',
-                        borderRadius: '12px',
-                        position: 'relative',
-                        border: 'none',
-                        cursor: 'pointer',
-                        transition: 'background-color 0.2s',
-                        flexShrink: 0
-                      }}
-                    >
-                      <div style={{
-                        width: '20px',
-                        height: '20px',
-                        backgroundColor: 'white',
-                        borderRadius: '50%',
-                        position: 'absolute',
-                        top: '2px',
-                        left: preferences.analytics ? '22px' : '2px',
-                        boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-                        transition: 'left 0.2s'
-                      }}/>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Marketing Cookies */}
-                <div style={{
-                  padding: '16px',
-                  backgroundColor: '#f9fafb',
-                  borderRadius: '12px',
-                  border: '1px solid #e5e7eb'
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: '600', color: '#1f2937', marginBottom: '4px' }}>
-                        Marketing Cookies
-                      </div>
-                      <div style={{ fontSize: '13px', color: '#6b7280' }}>
-                        Used to deliver personalized advertisements and track ad performance.
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => setPreferences(p => ({ ...p, marketing: !p.marketing }))}
-                      style={{
-                        width: '44px',
-                        minWidth: '44px',
-                        height: '24px',
-                        backgroundColor: preferences.marketing ? '#4F86E8' : '#d1d5db',
-                        borderRadius: '12px',
-                        position: 'relative',
-                        border: 'none',
-                        cursor: 'pointer',
-                        transition: 'background-color 0.2s',
-                        flexShrink: 0
-                      }}
-                    >
-                      <div style={{
-                        width: '20px',
-                        height: '20px',
-                        backgroundColor: 'white',
-                        borderRadius: '50%',
-                        position: 'absolute',
-                        top: '2px',
-                        left: preferences.marketing ? '22px' : '2px',
-                        boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-                        transition: 'left 0.2s'
-                      }}/>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Functional Cookies */}
-                <div style={{
-                  padding: '16px',
-                  backgroundColor: '#f9fafb',
-                  borderRadius: '12px',
-                  border: '1px solid #e5e7eb'
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: '600', color: '#1f2937', marginBottom: '4px' }}>
-                        Functional Cookies
-                      </div>
-                      <div style={{ fontSize: '13px', color: '#6b7280' }}>
-                        Enable enhanced functionality like remembering your preferences.
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => setPreferences(p => ({ ...p, functional: !p.functional }))}
-                      style={{
-                        width: '44px',
-                        minWidth: '44px',
-                        height: '24px',
-                        backgroundColor: preferences.functional ? '#4F86E8' : '#d1d5db',
-                        borderRadius: '12px',
-                        position: 'relative',
-                        border: 'none',
-                        cursor: 'pointer',
-                        transition: 'background-color 0.2s',
-                        flexShrink: 0
-                      }}
-                    >
-                      <div style={{
-                        width: '20px',
-                        height: '20px',
-                        backgroundColor: 'white',
-                        borderRadius: '50%',
-                        position: 'absolute',
-                        top: '2px',
-                        left: preferences.functional ? '22px' : '2px',
-                        boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-                        transition: 'left 0.2s'
-                      }}/>
-                    </button>
-                  </div>
+                <div style={{ fontSize: '13px', color: '#6b7280' }}>
+                  Required for the website to function. Cannot be disabled.
                 </div>
               </div>
+              <ToggleSwitch
+                checked={true}
+                onChange={() => {}}
+                disabled={true}
+              />
+            </div>
+          </div>
 
-              {/* Action Buttons */}
-              <div style={{
-                display: 'flex',
-                gap: '12px',
-                marginTop: '24px',
-                flexWrap: 'wrap'
-              }}>
-                <button
-                  onClick={handleRejectAll}
-                  style={{
-                    flex: 1,
-                    minWidth: '120px',
-                    padding: '12px 20px',
-                    backgroundColor: 'transparent',
-                    color: '#374151',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    fontWeight: '500',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.target.style.backgroundColor = '#f9fafb';
-                    e.target.style.borderColor = '#9ca3af';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.backgroundColor = 'transparent';
-                    e.target.style.borderColor = '#d1d5db';
-                  }}
-                >
-                  Reject All
-                </button>
-                <button
-                  onClick={handleSavePreferences}
-                  style={{
-                    flex: 1,
-                    minWidth: '120px',
-                    padding: '12px 20px',
-                    backgroundColor: '#1f2937',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    transition: 'background-color 0.2s'
-                  }}
-                  onMouseEnter={(e) => e.target.style.backgroundColor = '#374151'}
-                  onMouseLeave={(e) => e.target.style.backgroundColor = '#1f2937'}
-                >
-                  Save Preferences
-                </button>
+          {/* Analytics Cookies */}
+          <div style={{
+            padding: '16px',
+            backgroundColor: '#f9fafb',
+            borderRadius: '12px',
+            border: '1px solid #e5e7eb'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: '600', color: '#1f2937', marginBottom: '4px' }}>
+                  Analytics Cookies
+                </div>
+                <div style={{ fontSize: '13px', color: '#6b7280' }}>
+                  Help us understand how visitors interact with our website (Google Analytics).
+                </div>
               </div>
+              <ToggleSwitch
+                checked={preferences.analytics}
+                onChange={() => setPreferences(p => ({ ...p, analytics: !p.analytics }))}
+              />
+            </div>
+          </div>
 
-              <p style={{
-                fontSize: '12px',
-                color: '#9ca3af',
-                marginTop: '16px',
-                textAlign: 'center'
-              }}>
-                Learn more in our <a href="/privacy-policy" style={{ color: '#5B68F4' }}>Privacy Policy</a>
-              </p>
+          {/* Marketing Cookies */}
+          <div style={{
+            padding: '16px',
+            backgroundColor: '#f9fafb',
+            borderRadius: '12px',
+            border: '1px solid #e5e7eb'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: '600', color: '#1f2937', marginBottom: '4px' }}>
+                  Marketing Cookies
+                </div>
+                <div style={{ fontSize: '13px', color: '#6b7280' }}>
+                  Used to deliver personalized advertisements and track ad performance.
+                </div>
+              </div>
+              <ToggleSwitch
+                checked={preferences.marketing}
+                onChange={() => setPreferences(p => ({ ...p, marketing: !p.marketing }))}
+              />
+            </div>
+          </div>
+
+          {/* Functional Cookies */}
+          <div style={{
+            padding: '16px',
+            backgroundColor: '#f9fafb',
+            borderRadius: '12px',
+            border: '1px solid #e5e7eb'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: '600', color: '#1f2937', marginBottom: '4px' }}>
+                  Functional Cookies
+                </div>
+                <div style={{ fontSize: '13px', color: '#6b7280' }}>
+                  Enable enhanced functionality like remembering your preferences.
+                </div>
+              </div>
+              <ToggleSwitch
+                checked={preferences.functional}
+                onChange={() => setPreferences(p => ({ ...p, functional: !p.functional }))}
+              />
             </div>
           </div>
         </div>
-      )}
+
+        <p style={{
+          fontSize: '12px',
+          color: '#9ca3af',
+          marginTop: '16px',
+          textAlign: 'center'
+        }}>
+          Learn more in our <a href="/privacy-policy" style={{ color: '#5B68F4' }}>Privacy Policy</a>
+        </p>
+      </UniversalModal>
     </>
   );
 }

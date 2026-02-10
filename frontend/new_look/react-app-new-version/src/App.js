@@ -31,6 +31,7 @@ import ClientSettingsLanguagePage from './pages/ClientSettingsLanguagePage';
 import ClientSettingsPrivacyPage from './pages/ClientSettingsPrivacyPage';
 import ClientSettingsSecurityPage from './pages/ClientSettingsSecurityPage';
 import ClientSettingsDeletePage from './pages/ClientSettingsDeletePage';
+import ClientSettingsCookiesPage from './pages/ClientSettingsCookiesPage';
 import BlogPage from './components/BlogPage';
 import AdminDashboard from './components/Admin/AdminDashboard';
 import AdminProtectedRoute from './components/Admin/AdminProtectedRoute';
@@ -223,6 +224,7 @@ function App() {
           <Route path="/client/settings/privacy" element={<ClientSettingsPrivacyPage />} />
           <Route path="/client/settings/security" element={<ClientSettingsSecurityPage />} />
           <Route path="/client/settings/delete" element={<ClientSettingsDeletePage />} />
+          <Route path="/client/settings/cookies" element={<ClientSettingsCookiesPage />} />
           <Route path="/blog" element={<BlogPage />} />
           <Route path="/blog/:slug" element={<BlogPage />} />
           {/* Browse page routes for category/city/discovery filtering */}

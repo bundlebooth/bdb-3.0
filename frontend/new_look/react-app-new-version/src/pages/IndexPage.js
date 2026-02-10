@@ -1810,6 +1810,25 @@ function IndexPage() {
         </div>
       )}
       
+      {/* Recently Viewed Carousel - MOBILE (at top of discoveries) */}
+      {isMobileView && !loadingDiscovery && recentlyViewed.length > 0 && (
+        <div className="vendor-recently-viewed-section-mobile" style={{ width: '100%', padding: 0, margin: 0 }}>
+          <VendorSection
+            title="Recently Viewed"
+            description="Continue where you left off"
+            vendors={recentlyViewed.slice(0, 12)}
+            favorites={favorites}
+            onToggleFavorite={handleToggleFavorite}
+            onViewVendor={handleViewVendor}
+            onHighlightVendor={handleHighlightVendor}
+            icon="fa-clock-rotate-left"
+            sectionType="recently-viewed"
+            cityFilter={detectedCity || filters.location}
+            categoryFilter={currentCategory}
+          />
+        </div>
+      )}
+      
       {/* Vendor Discovery Sections - MOBILE ONLY (outside page-wrapper for full-width) */}
       {isMobileView && (filteredVendors.length > 0 || loading) && (
       <div className="vendor-discovery-sections-mobile" style={{ width: '100%', padding: 0, margin: 0 }}>
@@ -1841,24 +1860,7 @@ function IndexPage() {
           ))
         )}
         
-        {/* Recently Viewed Carousel - MOBILE */}
-        {!loadingDiscovery && recentlyViewed.length > 0 && (
-          <VendorSection
-            title="Recently Viewed"
-            description="Continue where you left off"
-            vendors={recentlyViewed.slice(0, 12)}
-            favorites={favorites}
-            onToggleFavorite={handleToggleFavorite}
-            onViewVendor={handleViewVendor}
-            onHighlightVendor={handleHighlightVendor}
-            icon="fa-clock-rotate-left"
-            sectionType="recently-viewed"
-            cityFilter={detectedCity || filters.location}
-            categoryFilter={currentCategory}
-          />
-        )}
-        
-        {/* Category-based carousels - MOBILE */}
+{/* Category-based carousels - MOBILE */}
         {!loadingDiscovery && categorySections.length > 0 && currentCategory === 'all' && (
           <>
             {categorySections.map((section) => (
@@ -2154,6 +2156,25 @@ function IndexPage() {
           </div>
           <div className="map-overlay"></div>
           
+          {/* Recently Viewed Carousel - DESKTOP (at top of discoveries) */}
+          {!isMobileView && !loadingDiscovery && recentlyViewed.length > 0 && (
+            <div className="vendor-recently-viewed-section" style={{ marginBottom: '16px' }}>
+              <VendorSection
+                title="Recently Viewed"
+                description="Continue where you left off"
+                vendors={recentlyViewed.slice(0, 12)}
+                favorites={favorites}
+                onToggleFavorite={handleToggleFavorite}
+                onViewVendor={handleViewVendor}
+                onHighlightVendor={handleHighlightVendor}
+                icon="fa-clock-rotate-left"
+                sectionType="recently-viewed"
+                cityFilter={detectedCity || filters.location}
+                categoryFilter={currentCategory}
+              />
+            </div>
+          )}
+          
           {/* Vendor Discovery Sections - DESKTOP ONLY (inside page-wrapper) */}
           {!isMobileView && (filteredVendors.length > 0 || loading) && (
           <div className="vendor-discovery-sections">
@@ -2201,25 +2222,6 @@ function IndexPage() {
               <i className="fas fa-store-slash" style={{ fontSize: '56px', color: '#9ca3af', marginBottom: '20px' }}></i>
               <h3 style={{ margin: '0 0 12px 0', fontSize: '22px', fontWeight: 600, color: '#374151' }}>No vendors to display</h3>
               <p style={{ margin: 0, fontSize: '15px', color: '#6b7280', maxWidth: '360px' }}>Try adjusting your filters or search in a different location</p>
-            </div>
-          )}
-          
-          {/* Recently Viewed Carousel - DESKTOP */}
-          {!isMobileView && !loadingDiscovery && recentlyViewed.length > 0 && (
-            <div className="vendor-recently-viewed-section" style={{ marginTop: discoverySections.length > 0 ? '16px' : '0' }}>
-              <VendorSection
-                title="Recently Viewed"
-                description="Continue where you left off"
-                vendors={recentlyViewed.slice(0, 12)}
-                favorites={favorites}
-                onToggleFavorite={handleToggleFavorite}
-                onViewVendor={handleViewVendor}
-                onHighlightVendor={handleHighlightVendor}
-                icon="fa-clock-rotate-left"
-                sectionType="recently-viewed"
-                cityFilter={detectedCity || filters.location}
-                categoryFilter={currentCategory}
-              />
             </div>
           )}
           
