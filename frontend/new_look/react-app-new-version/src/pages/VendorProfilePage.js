@@ -3602,17 +3602,6 @@ function VendorProfilePage() {
             
             {/* Scrollable Content */}
             <div style={{ maxHeight: 'calc(85vh - 140px)', overflowY: 'auto' }}>
-              {/* Package Image */}
-              {selectedPackage.ImageURL && (
-                <div style={{ width: '100%', aspectRatio: '16/9', background: '#f7f7f7' }}>
-                  <img 
-                    src={selectedPackage.ImageURL} 
-                    alt={selectedPackage.PackageName} 
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                  />
-                </div>
-              )}
-              
               {/* Modal Content */}
               <div style={{ padding: '20px' }}>
                 {/* Pricing - Prominent */}
@@ -3667,6 +3656,60 @@ function VendorProfilePage() {
                     <p style={{ margin: 0, color: '#717171', fontSize: '0.85rem', lineHeight: 1.5 }}>{selectedPackage.FinePrint}</p>
                   </div>
                 )}
+                
+                {/* Gallery Images */}
+                {(() => {
+                  const mainImage = selectedPackage.ImageURL;
+                  const rawGallery = selectedPackage.GalleryImages 
+                    ? (typeof selectedPackage.GalleryImages === 'string' 
+                        ? JSON.parse(selectedPackage.GalleryImages) 
+                        : selectedPackage.GalleryImages)
+                    : [];
+                  const allImages = mainImage ? [mainImage, ...rawGallery] : rawGallery;
+                  
+                  return allImages.length > 0 ? (
+                    <div style={{ marginBottom: '20px' }}>
+                      <h4 style={{ fontSize: '0.85rem', fontWeight: 600, color: '#717171', margin: '0 0 12px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        Gallery Images <span style={{ fontWeight: 400, textTransform: 'none' }}>(Click to view)</span>
+                      </h4>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+                        {allImages.map((img, idx) => (
+                          <div 
+                            key={idx}
+                            onClick={() => {
+                              setLightboxImages(allImages.map(url => ({ url })));
+                              setLightboxIndex(idx);
+                              setLightboxOpen(true);
+                            }}
+                            style={{ 
+                              width: '70px', 
+                              height: '70px', 
+                              borderRadius: '8px', 
+                              overflow: 'hidden',
+                              border: '1px solid #ddd',
+                              cursor: 'pointer',
+                              transition: 'transform 0.2s, box-shadow 0.2s'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.transform = 'scale(1.05)';
+                              e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.transform = 'scale(1)';
+                              e.currentTarget.style.boxShadow = 'none';
+                            }}
+                          >
+                            <img 
+                              src={img} 
+                              alt={`Gallery ${idx + 1}`}
+                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null;
+                })()}
               </div>
             </div>
             
@@ -3759,17 +3802,6 @@ function VendorProfilePage() {
             
             {/* Scrollable Content */}
             <div style={{ maxHeight: 'calc(85vh - 140px)', overflowY: 'auto' }}>
-              {/* Service Image */}
-              {(selectedService.ImageURL || selectedService.imageURL) && (
-                <div style={{ width: '100%', aspectRatio: '16/9', background: '#f7f7f7' }}>
-                  <img 
-                    src={selectedService.ImageURL || selectedService.imageURL} 
-                    alt={selectedService.Name || selectedService.ServiceName} 
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                  />
-                </div>
-              )}
-              
               <div style={{ padding: '20px' }}>
                 {/* Pricing - Prominent */}
                 <div style={{ marginBottom: '20px' }}>
@@ -3858,6 +3890,59 @@ function VendorProfilePage() {
                     </p>
                   </div>
                 )}
+                
+                {/* Gallery Images */}
+                {(() => {
+                  const mainImage = selectedService.ImageURL || selectedService.imageURL;
+                  const rawGallery = selectedService.GalleryImages || selectedService.galleryImages;
+                  const galleryImages = rawGallery
+                    ? (typeof rawGallery === 'string' ? JSON.parse(rawGallery) : rawGallery)
+                    : [];
+                  const allImages = mainImage ? [mainImage, ...galleryImages] : galleryImages;
+                  
+                  return allImages.length > 0 ? (
+                    <div style={{ marginBottom: '20px' }}>
+                      <h4 style={{ fontSize: '0.85rem', fontWeight: 600, color: '#717171', margin: '0 0 12px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        Gallery Images <span style={{ fontWeight: 400, textTransform: 'none' }}>(Click to view)</span>
+                      </h4>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+                        {allImages.map((img, idx) => (
+                          <div 
+                            key={idx}
+                            onClick={() => {
+                              setLightboxImages(allImages.map(url => ({ url })));
+                              setLightboxIndex(idx);
+                              setLightboxOpen(true);
+                            }}
+                            style={{ 
+                              width: '70px', 
+                              height: '70px', 
+                              borderRadius: '8px', 
+                              overflow: 'hidden',
+                              border: '1px solid #ddd',
+                              cursor: 'pointer',
+                              transition: 'transform 0.2s, box-shadow 0.2s'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.transform = 'scale(1.05)';
+                              e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.transform = 'scale(1)';
+                              e.currentTarget.style.boxShadow = 'none';
+                            }}
+                          >
+                            <img 
+                              src={img} 
+                              alt={`Gallery ${idx + 1}`}
+                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null;
+                })()}
               </div>
             </div>
             
