@@ -697,6 +697,89 @@ router.post('/conversations/support', async (req, res) => {
   }
 });
 
+// Create guest support conversation (for non-logged-in users)
+router.post('/conversations/support/guest', async (req, res) => {
+  try {
+    const { guestName, guestEmail, category, subject, description, referenceNumber } = req.body;
+    
+    if (!guestName || !guestEmail || !subject) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Guest name, email, and subject are required' 
+      });
+    }
+
+    const pool = await poolPromise;
+    
+    // Create guest support conversation using stored procedure
+    const createResult = await pool.request()
+      .input('GuestName', sql.NVarChar(255), guestName)
+      .input('GuestEmail', sql.NVarChar(255), guestEmail)
+      .input('Category', sql.NVarChar(100), category || 'general')
+      .input('Subject', sql.NVarChar(255), subject)
+      .input('Description', sql.NVarChar(sql.MAX), description || '')
+      .input('ReferenceNumber', sql.NVarChar(50), referenceNumber)
+      .execute('messages.sp_CreateGuestSupportConversation');
+    
+    const conversationId = createResult.recordset[0]?.ConversationID;
+    const ticketNumber = createResult.recordset[0]?.TicketNumber;
+
+    res.json({
+      success: true,
+      conversationId: conversationId,
+      ticketNumber: ticketNumber,
+      referenceNumber: referenceNumber
+    });
+
+  } catch (err) {
+    console.error('Create guest support conversation error:', err);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to create guest support conversation',
+      error: err.message 
+    });
+  }
+});
+
+// Send guest message (for non-logged-in users)
+router.post('/guest', async (req, res) => {
+  try {
+    const { conversationId, guestEmail, content, referenceNumber } = req.body;
+    
+    if (!content || (!conversationId && !referenceNumber)) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Content and either conversationId or referenceNumber are required' 
+      });
+    }
+
+    const pool = await poolPromise;
+    
+    // Send guest message using stored procedure
+    const result = await pool.request()
+      .input('ConversationID', sql.Int, conversationId || null)
+      .input('ReferenceNumber', sql.NVarChar(50), referenceNumber || null)
+      .input('GuestEmail', sql.NVarChar(255), guestEmail || null)
+      .input('Content', sql.NVarChar(sql.MAX), content)
+      .execute('messages.sp_SendGuestMessage');
+    
+    const messageId = result.recordset[0]?.MessageID;
+
+    res.json({
+      success: true,
+      messageId: messageId
+    });
+
+  } catch (err) {
+    console.error('Send guest message error:', err);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to send guest message',
+      error: err.message 
+    });
+  }
+});
+
 // Get vendor conversations
 router.get('/conversations/vendor/:vendorId', async (req, res) => {
   try {
