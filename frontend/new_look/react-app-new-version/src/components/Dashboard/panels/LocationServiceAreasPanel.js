@@ -38,8 +38,11 @@ const loadGoogleMapsAPI = () => {
 
 function LocationServiceAreasPanel({ onBack, vendorProfileId }) {
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [serviceAreaInput, setServiceAreaInput] = useState('');
   const [serviceLocationScopes, setServiceLocationScopes] = useState(['Local']);
+  const [originalScopes, setOriginalScopes] = useState(['Local']);
+  const [originalData, setOriginalData] = useState(null);
   const [serviceLocations, setServiceLocations] = useState([
     { key: 'Local', label: 'Local (within city)' },
     { key: 'Regional', label: 'Regional (within province)' },
@@ -256,6 +259,7 @@ function LocationServiceAreasPanel({ onBack, vendorProfileId }) {
           }))
         };
         setFormData(newFormData);
+        setOriginalData(newFormData);
         
         // Load service location scope from attributes
         if (data.serviceLocationScope) {
@@ -264,6 +268,7 @@ function LocationServiceAreasPanel({ onBack, vendorProfileId }) {
             ? data.serviceLocationScope 
             : [data.serviceLocationScope];
           setServiceLocationScopes(scopes);
+          setOriginalScopes(scopes);
         }
         
         // Manually update the address input value since we're using ref
@@ -310,10 +315,22 @@ function LocationServiceAreasPanel({ onBack, vendorProfileId }) {
     });
   };
 
+  // Check if there are changes
+  const hasChanges = originalData ? (
+    formData.address !== originalData.address ||
+    formData.city !== originalData.city ||
+    formData.state !== originalData.state ||
+    formData.postalCode !== originalData.postalCode ||
+    formData.country !== originalData.country ||
+    JSON.stringify(formData.serviceAreas) !== JSON.stringify(originalData.serviceAreas) ||
+    JSON.stringify([...serviceLocationScopes].sort()) !== JSON.stringify([...originalScopes].sort())
+  ) : false;
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
     try {
+      setSaving(true);
       const payload = {
         address: formData.address.trim(),
         city: formData.city.trim(),
@@ -337,6 +354,8 @@ function LocationServiceAreasPanel({ onBack, vendorProfileId }) {
       
       if (response.ok) {
         showBanner('Location saved successfully!', 'success');
+        setOriginalData({ ...formData });
+        setOriginalScopes([...serviceLocationScopes]);
       } else {
         const errData = await response.json().catch(() => ({}));
         throw new Error(errData.message || 'Failed to save location');
@@ -344,6 +363,8 @@ function LocationServiceAreasPanel({ onBack, vendorProfileId }) {
     } catch (error) {
       console.error('Error saving location:', error);
       showBanner('Failed to save changes: ' + error.message, 'error');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -571,8 +592,22 @@ function LocationServiceAreasPanel({ onBack, vendorProfileId }) {
             </SelectableTileGroup>
           </div>
 
-          <button type="submit" className="btn btn-primary" style={{ marginTop: '2rem' }}>
-            Save
+          <button 
+            type="submit" 
+            disabled={!hasChanges || saving}
+            style={{ 
+              marginTop: '2rem',
+              backgroundColor: (!hasChanges || saving) ? '#9ca3af' : '#3d3d3d', 
+              border: 'none', 
+              color: 'white',
+              padding: '12px 20px',
+              borderRadius: '8px',
+              fontWeight: 500,
+              fontSize: '14px',
+              cursor: (!hasChanges || saving) ? 'not-allowed' : 'pointer'
+            }}
+          >
+            {saving ? 'Saving...' : 'Save'}
           </button>
         </form>
       </div>

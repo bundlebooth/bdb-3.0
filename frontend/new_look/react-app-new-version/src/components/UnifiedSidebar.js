@@ -275,7 +275,7 @@ function UnifiedSidebar({ isOpen, onClose }) {
     if (isVendorMode && vendorLogoUrl) {
       return vendorLogoUrl;
     }
-    return currentUser?.profilePicture || currentUser?.ProfilePicture;
+    return currentUser?.profilePicture || currentUser?.profileImageURL || currentUser?.ProfilePicture;
   };
 
   const profilePic = getProfilePicture();

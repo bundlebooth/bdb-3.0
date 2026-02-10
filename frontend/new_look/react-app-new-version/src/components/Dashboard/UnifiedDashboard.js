@@ -155,8 +155,7 @@ function UnifiedDashboard({ activeSection, onSectionChange, onLogout, mobileMenu
       { id: 'vendor-invoices', icon: 'fa-file-invoice', label: 'Invoices' },
       { id: 'vendor-business-profile', icon: 'fa-building', label: 'Business Profile' },
       { id: 'vendor-reviews', icon: 'fa-star', label: 'Reviews' },
-      { id: 'vendor-analytics', icon: 'fa-chart-line', label: 'Analytics' },
-      { id: 'vendor-settings', icon: 'fa-cog', label: 'Settings' }
+      { id: 'vendor-analytics', icon: 'fa-chart-line', label: 'Analytics' }
     ]}
   ];
 

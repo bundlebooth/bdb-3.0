@@ -5,14 +5,20 @@ import { API_BASE_URL } from '../../../config';
 
 function VendorQuestionnairePanel({ onBack, vendorProfileId }) {
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [categories, setCategories] = useState([]);
   const [selectedFeatureIds, setSelectedFeatureIds] = useState(new Set());
+  const [originalFeatureIds, setOriginalFeatureIds] = useState(new Set());
   const [vendorCategories, setVendorCategories] = useState([]);
+
+  // Check if there are changes
+  const hasChanges = JSON.stringify([...selectedFeatureIds].sort()) !== JSON.stringify([...originalFeatureIds].sort());
 
   // Clear state when vendorProfileId changes
   useEffect(() => {
     setCategories([]);
     setSelectedFeatureIds(new Set());
+    setOriginalFeatureIds(new Set());
     setVendorCategories([]);
   }, [vendorProfileId]);
 
@@ -73,6 +79,7 @@ function VendorQuestionnairePanel({ onBack, vendorProfileId }) {
             (selectionsData.selectedFeatures || []).map(f => f.FeatureID)
           );
           setSelectedFeatureIds(selectedIds);
+          setOriginalFeatureIds(new Set(selectedIds));
         }
       }
     } catch (error) {
@@ -96,6 +103,7 @@ function VendorQuestionnairePanel({ onBack, vendorProfileId }) {
 
   const handleSubmit = async () => {
     try {
+      setSaving(true);
       if (!vendorProfileId) {
         throw new Error('Vendor profile ID not found');
       }
@@ -117,12 +125,15 @@ function VendorQuestionnairePanel({ onBack, vendorProfileId }) {
       
       if (response.ok) {
         showBanner('Features saved successfully!', 'success');
+        setOriginalFeatureIds(new Set(selectedFeatureIds));
       } else {
         throw new Error(responseData.message || 'Failed to save features');
       }
     } catch (error) {
       console.error('[Questionnaire] Error saving features:', error);
       showBanner('Failed to save changes: ' + error.message, 'error');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -324,10 +335,20 @@ function VendorQuestionnairePanel({ onBack, vendorProfileId }) {
           <div style={{ marginTop: '2rem' }}>
             <button
               type="button"
-              className="btn btn-primary"
               onClick={handleSubmit}
+              disabled={!hasChanges || saving}
+              style={{ 
+                backgroundColor: (!hasChanges || saving) ? '#9ca3af' : '#3d3d3d', 
+                border: 'none', 
+                color: 'white',
+                padding: '12px 20px',
+                borderRadius: '8px',
+                fontWeight: 500,
+                fontSize: '14px',
+                cursor: (!hasChanges || saving) ? 'not-allowed' : 'pointer'
+              }}
             >
-              Save
+              {saving ? 'Saving...' : 'Save'}
             </button>
           </div>
         )}

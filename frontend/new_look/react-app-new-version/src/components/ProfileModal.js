@@ -505,7 +505,7 @@ function ProfileModal({ isOpen, onClose, defaultView = 'login', defaultAccountTy
         // If vendor account, trigger dashboard modal for setup
         setTimeout(() => {
           window.dispatchEvent(new CustomEvent('openDashboard', { 
-            detail: { section: 'vendor-settings' } 
+            detail: { section: 'vendor-business-profile' } 
           }));
         }, 500);
       } else {

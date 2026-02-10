@@ -279,7 +279,7 @@ function ProfileSidebar({ isOpen, onClose }) {
     window.location.replace('/');
   };
 
-  const profilePic = userProfilePic || currentUser?.profilePicture || currentUser?.ProfilePicture || vendorLogoUrl;
+  const profilePic = userProfilePic || currentUser?.profilePicture || currentUser?.profileImageURL || currentUser?.ProfilePicture || vendorLogoUrl;
 
   if (!isOpen || !currentUser) return null;
 
@@ -698,7 +698,7 @@ function ProfileSidebar({ isOpen, onClose }) {
           padding: '0 24px'
         }}>
           {[0, 1].map((idx) => (
-            <button
+            <span
               key={idx}
               onClick={() => {
                 setActiveQuickAction(idx);
@@ -709,13 +709,18 @@ function ProfileSidebar({ isOpen, onClose }) {
               }}
               style={{
                 width: activeQuickAction === idx ? '20px' : '8px',
+                minWidth: activeQuickAction === idx ? '20px' : '8px',
+                maxWidth: activeQuickAction === idx ? '20px' : '8px',
                 height: '8px',
+                minHeight: '8px',
+                maxHeight: '8px',
                 borderRadius: '4px',
                 background: activeQuickAction === idx ? '#5086E8' : '#d1d5db',
                 border: 'none',
                 cursor: 'pointer',
                 transition: 'all 0.3s ease',
-                padding: 0
+                padding: 0,
+                display: 'inline-block'
               }}
             />
           ))}

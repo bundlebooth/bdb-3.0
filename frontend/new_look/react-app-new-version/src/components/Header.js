@@ -434,9 +434,9 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
         >
           <i className="fas fa-bars" style={{ fontSize: '14px', color: '#222', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '32px', width: '16px' }}></i>
           {/* Show profile pic based on mode */}
-          {(isVendorMode && vendorLogoUrl) || currentUser?.profilePicture ? (
+          {(isVendorMode && vendorLogoUrl) || currentUser?.profilePicture || currentUser?.profileImageURL ? (
             <img
-              src={isVendorMode && vendorLogoUrl ? vendorLogoUrl : currentUser?.profilePicture}
+              src={isVendorMode && vendorLogoUrl ? vendorLogoUrl : (currentUser?.profilePicture || currentUser?.profileImageURL)}
               alt="Profile"
               style={{
                 borderRadius: '50%',

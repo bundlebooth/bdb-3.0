@@ -1825,7 +1825,7 @@ function IndexPage() {
       {isMobileView && currentUser?.isVendor && currentUser?.vendorProfileId && (
         <div style={{ padding: '12px 16px 0 16px' }}>
           <SetupIncompleteBanner 
-            onContinueSetup={() => navigate('/dashboard?section=vendor-settings')}
+            onContinueSetup={() => navigate('/dashboard?section=vendor-business-profile')}
           />
         </div>
       )}
@@ -2057,7 +2057,7 @@ function IndexPage() {
           {!isMobileView && currentUser?.isVendor && currentUser?.vendorProfileId && (
             <>
               <SetupIncompleteBanner 
-                onContinueSetup={() => navigate('/dashboard?section=vendor-settings')}
+                onContinueSetup={() => navigate('/dashboard?section=vendor-business-profile')}
               />
             </>
           )}

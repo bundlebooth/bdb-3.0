@@ -800,10 +800,12 @@
   /* Messages on mobile */
   .dashboard-page .messages-section,
   .dashboard-page .unified-messages-section {
-    height: calc(100vh - 56px - 60px - 16px);
-    max-height: calc(100vh - 56px - 60px - 16px);
-    border-radius: 8px;
+    height: calc(100dvh - 56px - 60px) !important;
+    max-height: calc(100dvh - 56px - 60px) !important;
+    min-height: 0;
+    border-radius: 0;
     margin: 0;
+    overflow: hidden;
   }
 
   /* User menu button - keep hamburger and avatar centered */

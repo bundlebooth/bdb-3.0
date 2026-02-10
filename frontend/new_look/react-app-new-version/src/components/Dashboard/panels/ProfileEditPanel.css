@@ -31,10 +31,10 @@
 /* Two Column Layout */
 .airbnb-profile-layout {
   display: flex;
-  gap: 80px;
-  max-width: 1200px;
+  gap: 48px;
+  max-width: 900px;
   margin: 0 auto;
-  padding: 40px 80px;
+  padding: 0;
 }
 
 /* Left Column - Avatar */

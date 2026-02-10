@@ -4,7 +4,7 @@ import { apiDelete } from '../../../utils/api';
 import { showBanner } from '../../../utils/helpers';
 import UniversalModal from '../../UniversalModal';
 
-function DeleteAccountPanel({ onBack }) {
+function DeleteAccountPanel({ onBack, embedded = false }) {
   const { currentUser, logout } = useAuth();
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [password, setPassword] = useState('');
@@ -48,33 +48,23 @@ function DeleteAccountPanel({ onBack }) {
   };
 
   return (
-    <div className="settings-panel">
-      {/* Back Button */}
-      <button 
-        onClick={onBack}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          background: 'none',
-          border: 'none',
-          color: '#666',
-          fontSize: '14px',
-          cursor: 'pointer',
-          padding: '0',
-          marginBottom: '24px'
-        }}
-      >
-        <i className="fas fa-arrow-left"></i>
-        Back to Settings
-      </button>
-
-      <h2 style={{ fontSize: '24px', fontWeight: '600', marginBottom: '8px', color: '#111' }}>
-        Delete Account
-      </h2>
-      <p style={{ color: '#666', marginBottom: '32px' }}>
-        Permanently delete your account and all associated data.
-      </p>
+    <div>
+      {!embedded && (
+        <button className="btn btn-outline back-to-menu-btn" style={{ marginBottom: '1rem' }} onClick={onBack}>
+          <i className="fas fa-arrow-left"></i> Back to Settings
+        </button>
+      )}
+      <div className="dashboard-card">
+        <h2 className="dashboard-card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <span style={{ width: '36px', height: '36px', borderRadius: '8px', background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#dc2626', fontSize: '1.1rem' }}>
+            <i className="fas fa-trash-alt"></i>
+          </span>
+          Delete Account
+        </h2>
+        <p style={{ color: 'var(--text-light)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
+          Permanently delete your account and all associated data.
+        </p>
+        <hr style={{ border: 'none', borderTop: '1px solid #e5e7eb', margin: '1.5rem 0' }} />
 
       {/* Warning Section */}
       <div style={{
@@ -140,23 +130,19 @@ function DeleteAccountPanel({ onBack }) {
       <button
         onClick={() => setShowConfirmModal(true)}
         style={{
-          display: 'flex',
+          display: 'inline-flex',
           alignItems: 'center',
           justifyContent: 'center',
           gap: '8px',
-          width: '100%',
-          padding: '16px 24px',
-          background: '#dc2626',
+          backgroundColor: '#3d3d3d',
           color: 'white',
           border: 'none',
+          padding: '12px 20px',
           borderRadius: '8px',
-          fontSize: '16px',
-          fontWeight: '500',
-          cursor: 'pointer',
-          transition: 'background 0.2s'
+          fontSize: '14px',
+          fontWeight: 500,
+          cursor: 'pointer'
         }}
-        onMouseEnter={(e) => e.target.style.background = '#b91c1c'}
-        onMouseLeave={(e) => e.target.style.background = '#dc2626'}
       >
         <i className="fas fa-trash-alt"></i>
         Delete My Account
@@ -315,6 +301,7 @@ function DeleteAccountPanel({ onBack }) {
           </div>
         </div>
       </UniversalModal>
+      </div>
     </div>
   );
 }

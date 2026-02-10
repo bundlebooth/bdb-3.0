@@ -7,11 +7,14 @@ import { API_BASE_URL } from '../../../config';
 function BusinessInformationPanel({ onBack, vendorProfileId }) {
   const { currentUser } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [categories, setCategories] = useState([]);
   const [subcategoriesOptions, setSubcategoriesOptions] = useState([]);
   const [selectedSubcategories, setSelectedSubcategories] = useState([]);
+  const [originalSubcategories, setOriginalSubcategories] = useState([]);
   const [loadingSubcategories, setLoadingSubcategories] = useState(false);
+  const [originalData, setOriginalData] = useState(null);
   const [formData, setFormData] = useState({
     businessName: '',
     displayName: '',
@@ -25,6 +28,21 @@ function BusinessInformationPanel({ onBack, vendorProfileId }) {
     priceLevel: '$$',
     logoUrl: ''
   });
+
+  // Check if there are changes
+  const hasChanges = originalData ? (
+    formData.businessName !== originalData.businessName ||
+    formData.displayName !== originalData.displayName ||
+    formData.email !== originalData.email ||
+    formData.phone !== originalData.phone ||
+    formData.website !== originalData.website ||
+    formData.yearsInBusiness !== originalData.yearsInBusiness ||
+    formData.description !== originalData.description ||
+    formData.category !== originalData.category ||
+    formData.priceLevel !== originalData.priceLevel ||
+    JSON.stringify([...formData.additionalCategories].sort()) !== JSON.stringify([...originalData.additionalCategories].sort()) ||
+    JSON.stringify([...selectedSubcategories].sort()) !== JSON.stringify([...originalSubcategories].sort())
+  ) : false;
 
   // Clear form data when vendorProfileId changes
   useEffect(() => {
@@ -105,7 +123,9 @@ function BusinessInformationPanel({ onBack, vendorProfileId }) {
       });
       if (response.ok) {
         const data = await response.json();
-        setSelectedSubcategories((data.subcategories || []).map(s => s.SubcategoryID));
+        const subcats = (data.subcategories || []).map(s => s.SubcategoryID);
+        setSelectedSubcategories(subcats);
+        setOriginalSubcategories(subcats);
       }
     } catch (error) {
       console.error('Error loading vendor subcategories:', error);
@@ -241,7 +261,7 @@ function BusinessInformationPanel({ onBack, vendorProfileId }) {
           additionalCategories = catArray.slice(1);
         }
         
-        setFormData({
+        const loadedData = {
           businessName: profile.BusinessName || '',
           displayName: profile.DisplayName || profile.BusinessName || '',
           email: profile.BusinessEmail || currentUser?.email || '',
@@ -253,7 +273,9 @@ function BusinessInformationPanel({ onBack, vendorProfileId }) {
           additionalCategories: additionalCategories,
           priceLevel: profile.PriceLevel || '$$',
           logoUrl: profile.LogoURL || profile.FeaturedImageURL || profile.logoUrl || ''
-        });
+        };
+        setFormData(loadedData);
+        setOriginalData(loadedData);
         
         // Load vendor's selected subcategories
         await loadVendorSubcategories();
@@ -274,6 +296,7 @@ function BusinessInformationPanel({ onBack, vendorProfileId }) {
     e.preventDefault();
     
     try {
+      setSaving(true);
       const allCategories = [formData.category, ...formData.additionalCategories].filter(Boolean).join(',');
       
       const response = await fetch(`${API_BASE_URL}/vendors/setup/step1-business-basics`, {
@@ -309,6 +332,9 @@ function BusinessInformationPanel({ onBack, vendorProfileId }) {
       
       if (response.ok) {
         showBanner('Profile updated successfully!', 'success');
+        // Update original data after successful save
+        setOriginalData({ ...formData });
+        setOriginalSubcategories([...selectedSubcategories]);
       } else {
         const errorData = await response.json().catch(() => ({}));
         console.error('Save failed:', response.status, errorData);
@@ -317,6 +343,8 @@ function BusinessInformationPanel({ onBack, vendorProfileId }) {
     } catch (error) {
       console.error('Error saving profile:', error);
       showBanner(`Failed to save changes: ${error.message}`, 'error');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -505,7 +533,22 @@ function BusinessInformationPanel({ onBack, vendorProfileId }) {
             ></textarea>
           </div>
 
-          <button type="submit" className="btn btn-primary">Save</button>
+          <button 
+            type="submit" 
+            disabled={!hasChanges || saving}
+            style={{ 
+              backgroundColor: (!hasChanges || saving) ? '#9ca3af' : '#3d3d3d', 
+              border: 'none', 
+              color: 'white',
+              padding: '12px 20px',
+              borderRadius: '8px',
+              fontWeight: 500,
+              fontSize: '14px',
+              cursor: (!hasChanges || saving) ? 'not-allowed' : 'pointer'
+            }}
+          >
+            {saving ? 'Saving...' : 'Save'}
+          </button>
         </form>
       </div>
     </div>

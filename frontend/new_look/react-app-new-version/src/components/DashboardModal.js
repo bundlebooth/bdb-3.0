@@ -27,8 +27,7 @@ function DashboardModal({ isOpen, onClose, initialSection = 'dashboard' }) {
       'vendor-business-profile': 'Business Profile',
       'vendor-messages': 'Messages',
       'vendor-reviews': 'Reviews',
-      'vendor-analytics': 'Analytics',
-      'vendor-settings': 'Settings'
+      'vendor-analytics': 'Analytics'
     };
     return sectionTitles[activeSection] || 'Dashboard';
   };

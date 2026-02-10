@@ -23,6 +23,20 @@ function VendorAttributesPanel({ onBack, vendorProfileId }) {
   const [instantBookingEnabled, setInstantBookingEnabled] = useState(false);
   const [minBookingLeadTimeHours, setMinBookingLeadTimeHours] = useState(24);
   const [primaryCategory, setPrimaryCategory] = useState('');
+  
+  // Original values for change tracking
+  const [originalData, setOriginalData] = useState(null);
+
+  // Check if there are changes
+  const hasChanges = originalData ? (
+    JSON.stringify(selectedEventTypes.sort()) !== JSON.stringify((originalData.eventTypes || []).sort()) ||
+    JSON.stringify(selectedCultures.sort()) !== JSON.stringify((originalData.cultures || []).sort()) ||
+    JSON.stringify(selectedSubcategories.sort()) !== JSON.stringify((originalData.subcategories || []).sort()) ||
+    serviceLocationScope !== originalData.serviceLocationScope ||
+    yearsOfExperienceRange !== originalData.yearsOfExperienceRange ||
+    instantBookingEnabled !== originalData.instantBookingEnabled ||
+    minBookingLeadTimeHours !== originalData.minBookingLeadTimeHours
+  ) : false;
 
   useEffect(() => {
     loadData();
@@ -71,13 +85,32 @@ function VendorAttributesPanel({ onBack, vendorProfileId }) {
       if (attributesRes.ok) {
         const data = await attributesRes.json();
         const attrs = data.attributes || {};
-        setSelectedEventTypes(attrs.eventTypes?.map(et => et.EventTypeID) || []);
-        setSelectedCultures(attrs.cultures?.map(c => c.CultureID) || []);
-        setSelectedSubcategories(attrs.subcategories?.map(s => s.SubcategoryID) || []);
-        setServiceLocationScope(attrs.serviceLocationScope || 'Local');
-        setYearsOfExperienceRange(attrs.yearsOfExperienceRange || '');
-        setInstantBookingEnabled(attrs.instantBookingEnabled || false);
-        setMinBookingLeadTimeHours(attrs.minBookingLeadTimeHours || 24);
+        const eventTypes = attrs.eventTypes?.map(et => et.EventTypeID) || [];
+        const cultures = attrs.cultures?.map(c => c.CultureID) || [];
+        const subcategories = attrs.subcategories?.map(s => s.SubcategoryID) || [];
+        const locationScope = attrs.serviceLocationScope || 'Local';
+        const experienceRange = attrs.yearsOfExperienceRange || '';
+        const instantBooking = attrs.instantBookingEnabled || false;
+        const leadTime = attrs.minBookingLeadTimeHours || 24;
+        
+        setSelectedEventTypes(eventTypes);
+        setSelectedCultures(cultures);
+        setSelectedSubcategories(subcategories);
+        setServiceLocationScope(locationScope);
+        setYearsOfExperienceRange(experienceRange);
+        setInstantBookingEnabled(instantBooking);
+        setMinBookingLeadTimeHours(leadTime);
+        
+        // Store original data for change tracking
+        setOriginalData({
+          eventTypes,
+          cultures,
+          subcategories,
+          serviceLocationScope: locationScope,
+          yearsOfExperienceRange: experienceRange,
+          instantBookingEnabled: instantBooking,
+          minBookingLeadTimeHours: leadTime
+        });
         
         // Get primary category from categories
         const primaryCat = attrs.categories?.find(c => c.IsPrimary)?.Category || attrs.categories?.[0]?.Category || '';
@@ -162,6 +195,16 @@ function VendorAttributesPanel({ onBack, vendorProfileId }) {
       
       if (attrRes.ok && eventTypesRes.ok && culturesRes.ok && subcatRes.ok && bookingRes.ok) {
         showBanner('Vendor attributes saved successfully!', 'success');
+        // Update original data after successful save
+        setOriginalData({
+          eventTypes: [...selectedEventTypes],
+          cultures: [...selectedCultures],
+          subcategories: [...selectedSubcategories],
+          serviceLocationScope,
+          yearsOfExperienceRange,
+          instantBookingEnabled,
+          minBookingLeadTimeHours
+        });
       } else {
         throw new Error('Failed to save some attributes');
       }
@@ -265,8 +308,17 @@ function VendorAttributesPanel({ onBack, vendorProfileId }) {
         {/* Save Button */}
         <button
           onClick={handleSave}
-          disabled={saving}
-          className="btn btn-primary"
+          disabled={!hasChanges || saving}
+          style={{ 
+            backgroundColor: (!hasChanges || saving) ? '#9ca3af' : '#3d3d3d', 
+            border: 'none', 
+            color: 'white',
+            padding: '12px 20px',
+            borderRadius: '8px',
+            fontWeight: 500,
+            fontSize: '14px',
+            cursor: (!hasChanges || saving) ? 'not-allowed' : 'pointer'
+          }}
         >
           {saving ? 'Saving...' : 'Save'}
         </button>

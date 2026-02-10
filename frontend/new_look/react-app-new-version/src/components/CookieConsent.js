@@ -159,15 +159,14 @@ function CookieConsent() {
       {!showPreferences && (
         <div style={{
           position: 'fixed',
-          bottom: 'env(safe-area-inset-bottom, 70px)',
+          bottom: 0,
           left: 0,
           right: 0,
           backgroundColor: '#ffffff',
           boxShadow: '0 -4px 20px rgba(0, 0, 0, 0.15)',
           zIndex: 9999,
           padding: '16px',
-          borderTop: '1px solid #e5e7eb',
-          marginBottom: '70px'
+          borderTop: '1px solid #e5e7eb'
         }}>
           <div style={{
             maxWidth: '1200px',
@@ -242,7 +241,7 @@ function CookieConsent() {
                 onClick={handleAcceptAll}
                 style={{
                   padding: '8px 16px',
-                  backgroundColor: '#4F86E8',
+                  backgroundColor: '#1f2937',
                   color: 'white',
                   border: 'none',
                   borderRadius: '6px',
@@ -535,7 +534,7 @@ function CookieConsent() {
                     flex: 1,
                     minWidth: '120px',
                     padding: '12px 20px',
-                    backgroundColor: '#5B68F4',
+                    backgroundColor: '#1f2937',
                     color: 'white',
                     border: 'none',
                     borderRadius: '8px',
@@ -544,8 +543,8 @@ function CookieConsent() {
                     cursor: 'pointer',
                     transition: 'background-color 0.2s'
                   }}
-                  onMouseEnter={(e) => e.target.style.backgroundColor = '#4A56E2'}
-                  onMouseLeave={(e) => e.target.style.backgroundColor = '#5B68F4'}
+                  onMouseEnter={(e) => e.target.style.backgroundColor = '#374151'}
+                  onMouseLeave={(e) => e.target.style.backgroundColor = '#1f2937'}
                 >
                   Save Preferences
                 </button>

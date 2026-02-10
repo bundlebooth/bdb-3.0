@@ -5,7 +5,7 @@ import { apiGet, apiPut } from '../../../utils/api';
 import { API_BASE_URL } from '../../../config';
 import pushService from '../../../services/pushNotificationService';
 
-function CommunicationPreferencesPanel({ onBack }) {
+function CommunicationPreferencesPanel({ onBack, isVendorMode = false, embedded = false }) {
   const { currentUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -21,14 +21,27 @@ function CommunicationPreferencesPanel({ onBack }) {
       messages: true,
       payments: true,
       promotions: false,
-      newsletter: false
+      newsletter: false,
+      // Vendor-specific
+      newBookingRequests: true,
+      bookingCancellations: true,
+      newReviews: true,
+      inquiryMessages: true
     },
     push: {
       bookingUpdates: true,
       messages: true,
-      promotions: false
+      promotions: false,
+      // Vendor-specific
+      newBookingRequests: true,
+      newReviews: true
     }
   });
+  const [originalPreferences, setOriginalPreferences] = useState(null);
+
+  // Check if there are changes
+  const hasChanges = originalPreferences ? 
+    JSON.stringify(preferences) !== JSON.stringify(originalPreferences) : false;
 
   useEffect(() => {
     loadPreferences();
@@ -61,12 +74,18 @@ function CommunicationPreferencesPanel({ onBack }) {
       if (response.ok) {
         const data = await response.json();
         if (data.preferences) {
-          setPreferences(prev => ({
-            email: { ...prev.email, ...data.preferences.email },
-            push: { ...prev.push, ...data.preferences.push }
-          }));
+          const loadedPrefs = {
+            email: { ...preferences.email, ...data.preferences.email },
+            push: { ...preferences.push, ...data.preferences.push }
+          };
+          setPreferences(loadedPrefs);
+          setOriginalPreferences(loadedPrefs);
+        } else {
+          setOriginalPreferences(preferences);
         }
         setUnsubscribedFromAll(data.unsubscribedFromAll || false);
+      } else {
+        setOriginalPreferences(preferences);
       }
     } catch (error) {
       console.error('Error loading preferences:', error);
@@ -139,6 +158,7 @@ function CommunicationPreferencesPanel({ onBack }) {
       
       if (response.ok) {
         showBanner('Communication preferences updated!', 'success');
+        setOriginalPreferences({ ...preferences });
       } else {
         throw new Error('Failed to update preferences');
       }
@@ -220,15 +240,17 @@ function CommunicationPreferencesPanel({ onBack }) {
 
   return (
     <div>
-      <button className="btn btn-outline back-to-menu-btn" style={{ marginBottom: '1rem' }} onClick={onBack}>
-        <i className="fas fa-arrow-left"></i> Back to Settings
-      </button>
+      {!embedded && (
+        <button className="btn btn-outline back-to-menu-btn" style={{ marginBottom: '1rem' }} onClick={onBack}>
+          <i className="fas fa-arrow-left"></i> Back to Settings
+        </button>
+      )}
       <div className="dashboard-card">
         <h2 className="dashboard-card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <span style={{ width: '36px', height: '36px', borderRadius: '8px', background: 'var(--secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', fontSize: '1.1rem' }}>
-            <i className="fas fa-envelope"></i>
+            <i className={`fas ${isVendorMode ? 'fa-bell' : 'fa-envelope'}`}></i>
           </span>
-          Communication Preferences
+          {isVendorMode ? 'Vendor Notifications' : 'Communication Preferences'}
         </h2>
         <p style={{ color: 'var(--text-light)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
           Customise the email and push notifications you receive.
@@ -324,6 +346,44 @@ function CommunicationPreferencesPanel({ onBack }) {
             disabled={unsubscribedFromAll}
           />
 
+          {/* Vendor-Specific Email Notifications */}
+          {isVendorMode && (
+            <>
+              <h3 style={{ fontSize: '1rem', fontWeight: 600, margin: '2rem 0 0.5rem', color: 'var(--text)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <i className="fas fa-store" style={{ color: 'var(--primary)' }}></i>
+                Vendor Alerts
+              </h3>
+              <ToggleSwitch
+                checked={preferences.email.newBookingRequests}
+                onChange={() => handleToggle('email', 'newBookingRequests')}
+                label="New Booking Requests"
+                description="Get notified when clients request a booking"
+                disabled={unsubscribedFromAll}
+              />
+              <ToggleSwitch
+                checked={preferences.email.bookingCancellations}
+                onChange={() => handleToggle('email', 'bookingCancellations')}
+                label="Booking Cancellations"
+                description="Get notified when clients cancel a booking"
+                disabled={unsubscribedFromAll}
+              />
+              <ToggleSwitch
+                checked={preferences.email.newReviews}
+                onChange={() => handleToggle('email', 'newReviews')}
+                label="New Reviews"
+                description="Get notified when clients leave a review"
+                disabled={unsubscribedFromAll}
+              />
+              <ToggleSwitch
+                checked={preferences.email.inquiryMessages}
+                onChange={() => handleToggle('email', 'inquiryMessages')}
+                label="Inquiry Messages"
+                description="Get notified when clients send inquiry messages"
+                disabled={unsubscribedFromAll}
+              />
+            </>
+          )}
+
           {/* Push Notifications */}
           <h3 style={{ fontSize: '1rem', fontWeight: 600, margin: '2rem 0 0.5rem', color: 'var(--text)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <i className="fas fa-bell" style={{ color: 'var(--primary)' }}></i>
@@ -372,13 +432,43 @@ function CommunicationPreferencesPanel({ onBack }) {
                     label="Promotions"
                     description="Get notified about special offers"
                   />
+                  {/* Vendor-specific push notifications */}
+                  {isVendorMode && (
+                    <>
+                      <ToggleSwitch
+                        checked={preferences.push.newBookingRequests}
+                        onChange={() => handleToggle('push', 'newBookingRequests')}
+                        label="New Booking Requests"
+                        description="Get instant alerts for new booking requests"
+                      />
+                      <ToggleSwitch
+                        checked={preferences.push.newReviews}
+                        onChange={() => handleToggle('push', 'newReviews')}
+                        label="New Reviews"
+                        description="Get instant alerts when you receive a review"
+                      />
+                    </>
+                  )}
                 </>
               )}
             </>
           )}
 
           <div style={{ marginTop: '2rem' }}>
-            <button type="submit" className="btn btn-primary" disabled={saving}>
+            <button 
+              type="submit" 
+              disabled={!hasChanges || saving}
+              style={{ 
+                backgroundColor: (!hasChanges || saving) ? '#9ca3af' : '#3d3d3d', 
+                border: 'none', 
+                color: 'white',
+                padding: '12px 20px',
+                borderRadius: '8px',
+                fontWeight: 500,
+                fontSize: '14px',
+                cursor: (!hasChanges || saving) ? 'not-allowed' : 'pointer'
+              }}
+            >
               {saving ? 'Saving...' : 'Save'}
             </button>
           </div>

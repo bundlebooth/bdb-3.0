@@ -26,8 +26,7 @@ function VendorDashboard({ activeSection, onSectionChange, onLogout }) {
     { id: 'vendor-business-profile', icon: 'fa-building', label: 'Business Profile' },
     { id: 'vendor-messages', icon: 'fa-comments', label: 'Messages' },
     { id: 'vendor-reviews', icon: 'fa-star', label: 'Reviews' },
-    { id: 'vendor-analytics', icon: 'fa-chart-line', label: 'Analytics' },
-    { id: 'vendor-settings', icon: 'fa-cog', label: 'Settings' }
+    { id: 'vendor-analytics', icon: 'fa-chart-line', label: 'Analytics' }
   ];
 
   const loadDashboardData = useCallback(async () => {

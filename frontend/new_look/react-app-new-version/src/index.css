@@ -8116,18 +8116,53 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
     cursor: not-allowed;
 }
 
-/* Mobile Responsive */
+/* Mobile Responsive - Messaging Widget */
 @media (max-width: 768px) {
     .messaging-widget {
-        bottom: 10px;
-        right: 10px;
+        bottom: 0;
+        right: 0;
+        left: 0;
+        z-index: 9999;
     }
 
     .widget-container {
-        width: calc(100vw - 20px);
-        height: calc(100vh - 100px);
-        bottom: 70px;
-        right: -10px;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        width: 100vw;
+        height: 100vh;
+        height: 100dvh; /* Dynamic viewport height for mobile browsers */
+        max-height: -webkit-fill-available;
+        border-radius: 0;
+        z-index: 10000;
+    }
+
+    .widget-container.open {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .chat-header {
+        padding: 12px 16px;
+        flex-shrink: 0;
+    }
+
+    .chat-messages-container {
+        flex: 1;
+        min-height: 0;
+        padding: 12px 16px;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .chat-input-container {
+        padding: 12px 16px;
+        padding-bottom: max(12px, env(safe-area-inset-bottom));
+        flex-shrink: 0;
+        background: white;
+        border-top: 1px solid #e1e5e9;
     }
 
     .chat-button {
@@ -8140,6 +8175,17 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
 
     .chat-button-text {
         font-size: 14px;
+    }
+
+    /* Conversation list mobile styles */
+    .conversation-list {
+        height: 100%;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .conversation-item {
+        padding: 12px 16px;
     }
 }
 

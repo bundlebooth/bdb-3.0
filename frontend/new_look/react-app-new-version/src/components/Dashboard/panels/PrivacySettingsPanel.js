@@ -3,7 +3,7 @@ import { useAuth } from '../../../context/AuthContext';
 import { API_BASE_URL } from '../../../config';
 import { showBanner } from '../../../utils/helpers';
 
-function PrivacySettingsPanel({ onBack }) {
+function PrivacySettingsPanel({ onBack, embedded = false }) {
   const { currentUser, updateUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -14,6 +14,21 @@ function PrivacySettingsPanel({ onBack }) {
     showFavorites: true,
     showOnlineStatus: true
   });
+  const [originalSettings, setOriginalSettings] = useState({
+    showReviews: true,
+    showForumPosts: true,
+    showForumComments: true,
+    showFavorites: true,
+    showOnlineStatus: true
+  });
+
+  // Check if there are changes
+  const hasChanges = 
+    settings.showReviews !== originalSettings.showReviews ||
+    settings.showForumPosts !== originalSettings.showForumPosts ||
+    settings.showForumComments !== originalSettings.showForumComments ||
+    settings.showFavorites !== originalSettings.showFavorites ||
+    settings.showOnlineStatus !== originalSettings.showOnlineStatus;
 
   useEffect(() => {
     loadPrivacySettings();
@@ -29,13 +44,15 @@ function PrivacySettingsPanel({ onBack }) {
       });
       if (response.ok) {
         const data = await response.json();
-        setSettings({
+        const loadedSettings = {
           showReviews: data.ShowReviews !== false,
           showForumPosts: data.ShowForumPosts !== false,
           showForumComments: data.ShowForumComments !== false,
           showFavorites: data.ShowFavorites !== false,
           showOnlineStatus: data.ShowOnlineStatus !== false
-        });
+        };
+        setSettings(loadedSettings);
+        setOriginalSettings(loadedSettings);
       }
     } catch (error) {
       console.error('Error loading privacy settings:', error);
@@ -64,6 +81,7 @@ function PrivacySettingsPanel({ onBack }) {
 
       if (response.ok) {
         showBanner('Privacy settings saved successfully', 'success');
+        setOriginalSettings({ ...settings });
         // Update user context if needed
         if (updateUser) {
           updateUser({ ...currentUser, privacySettings: settings });
@@ -85,246 +103,131 @@ function PrivacySettingsPanel({ onBack }) {
 
   if (loading) {
     return (
-      <div className="settings-panel">
-        <div className="settings-panel-header">
-          <button className="back-button" onClick={onBack}>
-            <i className="fas fa-arrow-left"></i>
-          </button>
-          <h2>Privacy Settings</h2>
-        </div>
-        <div style={{ padding: '2rem', textAlign: 'center' }}>
-          <div className="skeleton" style={{ width: '100%', height: '60px', marginBottom: '1rem' }}></div>
-          <div className="skeleton" style={{ width: '100%', height: '60px', marginBottom: '1rem' }}></div>
-          <div className="skeleton" style={{ width: '100%', height: '60px' }}></div>
+      <div>
+        <button className="btn btn-outline back-to-menu-btn" style={{ marginBottom: '1rem' }} onClick={onBack}>
+          <i className="fas fa-arrow-left"></i> Back to Settings
+        </button>
+        <div className="dashboard-card">
+          <div style={{ textAlign: 'center', padding: '3rem' }}>
+            <div className="spinner" style={{ margin: '0 auto' }}></div>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="settings-panel">
-      <div className="settings-panel-header">
-        <button className="back-button" onClick={onBack}>
-          <i className="fas fa-arrow-left"></i>
+    <div>
+      {!embedded && (
+        <button className="btn btn-outline back-to-menu-btn" style={{ marginBottom: '1rem' }} onClick={onBack}>
+          <i className="fas fa-arrow-left"></i> Back to Settings
         </button>
-        <h2>Privacy Settings</h2>
-      </div>
-
-      <div className="settings-panel-content" style={{ padding: '1.5rem' }}>
-        <p style={{ color: '#666', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
+      )}
+      <div className="dashboard-card">
+        <h2 className="dashboard-card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <span style={{ width: '36px', height: '36px', borderRadius: '8px', background: 'var(--secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', fontSize: '1.1rem' }}>
+            <i className="fas fa-eye-slash"></i>
+          </span>
+          Privacy Settings
+        </h2>
+        <p style={{ color: 'var(--text-light)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
           Control what activities are visible to others on your public profile.
         </p>
+        <hr style={{ border: 'none', borderTop: '1px solid #e5e7eb', margin: '1.5rem 0' }} />
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <div>
           {/* Show Reviews */}
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            padding: '1rem',
-            background: '#f9fafb',
-            borderRadius: '8px',
-            border: '1px solid #e5e7eb'
-          }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 0', borderBottom: '1px solid #f3f4f6' }}>
             <div>
-              <div style={{ fontWeight: 500, color: '#111827', marginBottom: '4px' }}>
-                <i className="fas fa-star" style={{ marginRight: '8px', color: '#f59e0b' }}></i>
-                Reviews Given
-              </div>
-              <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>
-                Show reviews you've written for vendors
-              </div>
+              <div style={{ fontWeight: 500, color: 'var(--text)', marginBottom: '0.25rem' }}>Reviews Given</div>
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-light)' }}>Show reviews you've written for vendors</div>
             </div>
-            <label className="toggle-switch">
-              <input
-                type="checkbox"
-                checked={settings.showReviews}
-                onChange={() => toggleSetting('showReviews')}
-              />
-              <span className="toggle-slider"></span>
+            <label style={{ position: 'relative', display: 'inline-block', width: '44px', height: '24px', cursor: 'pointer' }}>
+              <input type="checkbox" checked={settings.showReviews} onChange={() => toggleSetting('showReviews')} style={{ opacity: 0, width: 0, height: 0 }} />
+              <span style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: settings.showReviews ? '#5086E8' : '#E5E7EB', borderRadius: '24px', transition: 'background-color 0.3s' }}>
+                <span style={{ position: 'absolute', height: '20px', width: '20px', left: settings.showReviews ? '22px' : '2px', top: '2px', backgroundColor: 'white', borderRadius: '50%', transition: 'left 0.3s', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}></span>
+              </span>
             </label>
           </div>
 
           {/* Show Forum Posts */}
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            padding: '1rem',
-            background: '#f9fafb',
-            borderRadius: '8px',
-            border: '1px solid #e5e7eb'
-          }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 0', borderBottom: '1px solid #f3f4f6' }}>
             <div>
-              <div style={{ fontWeight: 500, color: '#111827', marginBottom: '4px' }}>
-                <i className="fas fa-comments" style={{ marginRight: '8px', color: '#3b82f6' }}></i>
-                Forum Discussions
-              </div>
-              <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>
-                Show discussions you've started in the forum
-              </div>
+              <div style={{ fontWeight: 500, color: 'var(--text)', marginBottom: '0.25rem' }}>Forum Discussions</div>
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-light)' }}>Show discussions you've started in the forum</div>
             </div>
-            <label className="toggle-switch">
-              <input
-                type="checkbox"
-                checked={settings.showForumPosts}
-                onChange={() => toggleSetting('showForumPosts')}
-              />
-              <span className="toggle-slider"></span>
+            <label style={{ position: 'relative', display: 'inline-block', width: '44px', height: '24px', cursor: 'pointer' }}>
+              <input type="checkbox" checked={settings.showForumPosts} onChange={() => toggleSetting('showForumPosts')} style={{ opacity: 0, width: 0, height: 0 }} />
+              <span style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: settings.showForumPosts ? '#5086E8' : '#E5E7EB', borderRadius: '24px', transition: 'background-color 0.3s' }}>
+                <span style={{ position: 'absolute', height: '20px', width: '20px', left: settings.showForumPosts ? '22px' : '2px', top: '2px', backgroundColor: 'white', borderRadius: '50%', transition: 'left 0.3s', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}></span>
+              </span>
             </label>
           </div>
 
           {/* Show Forum Comments */}
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            padding: '1rem',
-            background: '#f9fafb',
-            borderRadius: '8px',
-            border: '1px solid #e5e7eb'
-          }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 0', borderBottom: '1px solid #f3f4f6' }}>
             <div>
-              <div style={{ fontWeight: 500, color: '#111827', marginBottom: '4px' }}>
-                <i className="fas fa-reply" style={{ marginRight: '8px', color: '#8b5cf6' }}></i>
-                Forum Replies
-              </div>
-              <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>
-                Show your replies to forum discussions
-              </div>
+              <div style={{ fontWeight: 500, color: 'var(--text)', marginBottom: '0.25rem' }}>Forum Replies</div>
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-light)' }}>Show your replies to forum discussions</div>
             </div>
-            <label className="toggle-switch">
-              <input
-                type="checkbox"
-                checked={settings.showForumComments}
-                onChange={() => toggleSetting('showForumComments')}
-              />
-              <span className="toggle-slider"></span>
+            <label style={{ position: 'relative', display: 'inline-block', width: '44px', height: '24px', cursor: 'pointer' }}>
+              <input type="checkbox" checked={settings.showForumComments} onChange={() => toggleSetting('showForumComments')} style={{ opacity: 0, width: 0, height: 0 }} />
+              <span style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: settings.showForumComments ? '#5086E8' : '#E5E7EB', borderRadius: '24px', transition: 'background-color 0.3s' }}>
+                <span style={{ position: 'absolute', height: '20px', width: '20px', left: settings.showForumComments ? '22px' : '2px', top: '2px', backgroundColor: 'white', borderRadius: '50%', transition: 'left 0.3s', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}></span>
+              </span>
             </label>
           </div>
 
           {/* Show Favorites */}
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            padding: '1rem',
-            background: '#f9fafb',
-            borderRadius: '8px',
-            border: '1px solid #e5e7eb'
-          }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 0', borderBottom: '1px solid #f3f4f6' }}>
             <div>
-              <div style={{ fontWeight: 500, color: '#111827', marginBottom: '4px' }}>
-                <i className="fas fa-heart" style={{ marginRight: '8px', color: '#ec4899' }}></i>
-                Favorited Vendors
-              </div>
-              <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>
-                Show vendors you've added to favorites
-              </div>
+              <div style={{ fontWeight: 500, color: 'var(--text)', marginBottom: '0.25rem' }}>Favorited Vendors</div>
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-light)' }}>Show vendors you've added to favorites</div>
             </div>
-            <label className="toggle-switch">
-              <input
-                type="checkbox"
-                checked={settings.showFavorites}
-                onChange={() => toggleSetting('showFavorites')}
-              />
-              <span className="toggle-slider"></span>
+            <label style={{ position: 'relative', display: 'inline-block', width: '44px', height: '24px', cursor: 'pointer' }}>
+              <input type="checkbox" checked={settings.showFavorites} onChange={() => toggleSetting('showFavorites')} style={{ opacity: 0, width: 0, height: 0 }} />
+              <span style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: settings.showFavorites ? '#5086E8' : '#E5E7EB', borderRadius: '24px', transition: 'background-color 0.3s' }}>
+                <span style={{ position: 'absolute', height: '20px', width: '20px', left: settings.showFavorites ? '22px' : '2px', top: '2px', backgroundColor: 'white', borderRadius: '50%', transition: 'left 0.3s', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}></span>
+              </span>
             </label>
           </div>
 
           {/* Show Online Status */}
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            padding: '1rem',
-            background: '#f9fafb',
-            borderRadius: '8px',
-            border: '1px solid #e5e7eb'
-          }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 0' }}>
             <div>
-              <div style={{ fontWeight: 500, color: '#111827', marginBottom: '4px' }}>
-                <i className="fas fa-circle" style={{ marginRight: '8px', color: '#22c55e' }}></i>
-                Online Status
-              </div>
-              <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>
-                Show when you're online to other users
-              </div>
+              <div style={{ fontWeight: 500, color: 'var(--text)', marginBottom: '0.25rem' }}>Online Status</div>
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-light)' }}>Show when you're online to other users</div>
             </div>
-            <label className="toggle-switch">
-              <input
-                type="checkbox"
-                checked={settings.showOnlineStatus}
-                onChange={() => toggleSetting('showOnlineStatus')}
-              />
-              <span className="toggle-slider"></span>
+            <label style={{ position: 'relative', display: 'inline-block', width: '44px', height: '24px', cursor: 'pointer' }}>
+              <input type="checkbox" checked={settings.showOnlineStatus} onChange={() => toggleSetting('showOnlineStatus')} style={{ opacity: 0, width: 0, height: 0 }} />
+              <span style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: settings.showOnlineStatus ? '#5086E8' : '#E5E7EB', borderRadius: '24px', transition: 'background-color 0.3s' }}>
+                <span style={{ position: 'absolute', height: '20px', width: '20px', left: settings.showOnlineStatus ? '22px' : '2px', top: '2px', backgroundColor: 'white', borderRadius: '50%', transition: 'left 0.3s', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}></span>
+              </span>
             </label>
           </div>
         </div>
 
         {/* Save Button */}
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          style={{
-            width: '100%',
-            padding: '14px',
-            marginTop: '2rem',
-            background: saving ? '#ccc' : 'var(--primary)',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            fontSize: '1rem',
-            fontWeight: 600,
-            cursor: saving ? 'not-allowed' : 'pointer'
-          }}
-        >
-          {saving ? 'Saving...' : 'Save Privacy Settings'}
-        </button>
+        <div style={{ marginTop: '2rem' }}>
+          <button 
+            type="button" 
+            onClick={handleSave} 
+            disabled={!hasChanges || saving}
+            style={{ 
+              backgroundColor: (!hasChanges || saving) ? '#9ca3af' : '#3d3d3d', 
+              border: 'none', 
+              color: 'white',
+              padding: '12px 20px',
+              borderRadius: '8px',
+              fontWeight: 500,
+              fontSize: '14px',
+              cursor: (!hasChanges || saving) ? 'not-allowed' : 'pointer'
+            }}
+          >
+            {saving ? 'Saving...' : 'Save'}
+          </button>
+        </div>
       </div>
-
-      <style>{`
-        .toggle-switch {
-          position: relative;
-          display: inline-block;
-          width: 50px;
-          height: 28px;
-          flex-shrink: 0;
-        }
-        .toggle-switch input {
-          opacity: 0;
-          width: 0;
-          height: 0;
-        }
-        .toggle-slider {
-          position: absolute;
-          cursor: pointer;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background-color: #ccc;
-          transition: 0.3s;
-          border-radius: 28px;
-        }
-        .toggle-slider:before {
-          position: absolute;
-          content: "";
-          height: 22px;
-          width: 22px;
-          left: 3px;
-          bottom: 3px;
-          background-color: white;
-          transition: 0.3s;
-          border-radius: 50%;
-        }
-        .toggle-switch input:checked + .toggle-slider {
-          background-color: var(--primary);
-        }
-        .toggle-switch input:checked + .toggle-slider:before {
-          transform: translateX(22px);
-        }
-      `}</style>
     </div>
   );
 }

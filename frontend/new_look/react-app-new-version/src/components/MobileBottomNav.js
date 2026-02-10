@@ -302,9 +302,9 @@ function MobileBottomNav({ onOpenDashboard, onOpenProfile, onOpenMessages, onOpe
         onClick={handleAccountClick}
       >
         {currentUser ? (
-          (isVendorMode && vendorLogoUrl) || currentUser?.profilePicture ? (
+          (isVendorMode && vendorLogoUrl) || currentUser?.profilePicture || currentUser?.profileImageURL ? (
             <img
-              src={isVendorMode && vendorLogoUrl ? vendorLogoUrl : currentUser?.profilePicture}
+              src={isVendorMode && vendorLogoUrl ? vendorLogoUrl : (currentUser?.profilePicture || currentUser?.profileImageURL)}
               alt="Profile"
               className="nav-user-avatar-img"
               style={{

@@ -11,7 +11,7 @@ import './ProfileEditPanel.css';
  * ProfileEditPanel - Planbeau profile editing component
  * Clean, visual layout for editing user profile
  */
-const ProfileEditPanel = ({ onClose, onSave }) => {
+const ProfileEditPanel = ({ onClose, onSave, embedded = false }) => {
   const { currentUser, refreshUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -24,6 +24,8 @@ const ProfileEditPanel = ({ onClose, onSave }) => {
   const [availableLanguages, setAvailableLanguages] = useState([]);
   const [selectedLanguages, setSelectedLanguages] = useState([]);
   const [locationSearch, setLocationSearch] = useState('');
+  const [originalData, setOriginalData] = useState(null);
+  const [originalInterests, setOriginalInterests] = useState([]);
   const autocompleteRef = useRef(null);
   const inputRef = useRef(null);
   
@@ -50,12 +52,66 @@ const ProfileEditPanel = ({ onClose, onSave }) => {
   });
   
   const [selectedInterests, setSelectedInterests] = useState([]);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     loadProfile();
     loadInterestOptions();
     loadLanguages();
   }, []);
+
+  // Handle profile picture upload
+  const handleProfilePictureUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      showBanner('Please select an image file', 'error');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      showBanner('Image must be less than 5MB', 'error');
+      return;
+    }
+
+    try {
+      setUploadingPhoto(true);
+      const formDataUpload = new FormData();
+      formDataUpload.append('profilePicture', file);
+
+      const response = await fetch(`${API_BASE_URL}/users/${currentUser.id}/profile-picture`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: formDataUpload
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // Refresh user data to get new profile picture
+        if (refreshUser) {
+          await refreshUser();
+        }
+        showBanner('Profile picture updated!', 'success');
+      } else {
+        throw new Error('Upload failed');
+      }
+    } catch (error) {
+      console.error('Error uploading profile picture:', error);
+      showBanner('Failed to upload profile picture', 'error');
+    } finally {
+      setUploadingPhoto(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
 
   // Initialize Google Places Autocomplete when location modal opens
   useEffect(() => {
@@ -98,7 +154,7 @@ const ProfileEditPanel = ({ onClose, onSave }) => {
         const user = data.user || {};
         const profile = data.profile || {};
         
-        setFormData({
+        const loadedFormData = {
           firstName: user.FirstName || '',
           lastName: user.LastName || '',
           displayName: profile.DisplayName || '',
@@ -118,9 +174,12 @@ const ProfileEditPanel = ({ onClose, onSave }) => {
           lifeMotto: profile.LifeMotto || '',
           dreamDestination: profile.DreamDestination || '',
           phone: user.Phone || ''
-        });
+        };
+        setFormData(loadedFormData);
         
         setSelectedInterests(data.interests || []);
+        setOriginalInterests(data.interests || []);
+        setOriginalData(loadedFormData);
         
         // Parse languages from comma-separated string
         if (profile.Languages) {
@@ -205,6 +264,13 @@ const ProfileEditPanel = ({ onClose, onSave }) => {
     window.open(`/profile/${encodeUserId(currentUser?.id)}`, '_blank');
   };
 
+  // Check if there are changes
+  const hasChanges = originalData ? (
+    JSON.stringify(formData) !== JSON.stringify(originalData) ||
+    JSON.stringify(selectedInterests.map(i => i.Interest || i.interest || i).sort()) !== 
+    JSON.stringify(originalInterests.map(i => i.Interest || i.interest || i).sort())
+  ) : false;
+
   const handleSave = async () => {
     try {
       setSaving(true);
@@ -232,6 +298,8 @@ const ProfileEditPanel = ({ onClose, onSave }) => {
       if (!interestsResponse.ok) throw new Error('Failed to save interests');
       
       showBanner('Profile updated successfully!', 'success');
+      setOriginalData({ ...formData });
+      setOriginalInterests([...selectedInterests]);
       if (refreshUser) refreshUser();
       if (onSave) onSave();
       
@@ -287,46 +355,89 @@ const ProfileEditPanel = ({ onClose, onSave }) => {
 
   if (loading) {
     return (
-      <div className="airbnb-profile-panel">
-        <div className="airbnb-profile-loading">
-          <div className="spinner"></div>
-          <p>Loading your profile...</p>
+      <div>
+        <button className="btn btn-outline back-to-menu-btn" style={{ marginBottom: '1rem' }} onClick={onClose}>
+          <i className="fas fa-arrow-left"></i> Back to Settings
+        </button>
+        <div className="dashboard-card">
+          <div style={{ textAlign: 'center', padding: '3rem' }}>
+            <div className="spinner" style={{ margin: '0 auto' }}></div>
+            <p style={{ marginTop: '1rem', color: 'var(--text-light)' }}>Loading your profile...</p>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="airbnb-profile-panel">
+    <div>
+      {!embedded && (
+        <button className="btn btn-outline back-to-menu-btn" style={{ marginBottom: '1rem' }} onClick={onClose}>
+          <i className="fas fa-arrow-left"></i> Back to Settings
+        </button>
+      )}
+      <div className="dashboard-card">
+        <h2 className="dashboard-card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <span style={{ width: '36px', height: '36px', borderRadius: '8px', background: 'var(--secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', fontSize: '1.1rem' }}>
+            <i className="fas fa-id-card"></i>
+          </span>
+          Your Profile
+        </h2>
+        <p style={{ color: 'var(--text-light)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
+          Manage your profile picture, bio, and fun facts that others can see.
+        </p>
+        <hr style={{ border: 'none', borderTop: '1px solid #e5e7eb', margin: '1.5rem 0' }} />
+        
+      <div className="airbnb-profile-panel">
       {/* Two Column Layout */}
       <div className="airbnb-profile-layout">
         {/* Left Column - Avatar */}
         <div className="airbnb-profile-avatar-section">
           <div className="airbnb-avatar-container">
             <div className="airbnb-avatar">
-              {currentUser?.profileImageURL ? (
-                <img src={currentUser.profileImageURL} alt={formData.firstName} />
+              {currentUser?.profileImageURL || currentUser?.profilePicture ? (
+                <img src={currentUser.profileImageURL || currentUser.profilePicture} alt={formData.firstName} />
               ) : (
                 <span className="airbnb-avatar-letter">
                   {(formData.firstName || currentUser?.firstName || 'U').charAt(0).toUpperCase()}
                 </span>
               )}
+              {uploadingPhoto && (
+                <div style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  background: 'rgba(0,0,0,0.5)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: '50%'
+                }}>
+                  <div className="spinner" style={{ width: '24px', height: '24px', borderColor: 'white', borderTopColor: 'transparent' }}></div>
+                </div>
+              )}
             </div>
-            <button className="airbnb-avatar-add-btn">
-              <i className="fas fa-camera"></i> Add
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept="image/*"
+              onChange={handleProfilePictureUpload}
+              style={{ display: 'none' }}
+            />
+            <button 
+              className="airbnb-avatar-add-btn"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploadingPhoto}
+            >
+              <i className="fas fa-camera"></i> {currentUser?.profileImageURL || currentUser?.profilePicture ? 'Change' : 'Add'}
             </button>
           </div>
         </div>
 
         {/* Right Column - Profile Content */}
         <div className="airbnb-profile-content">
-          <div className="airbnb-profile-header">
-            <h1>My profile</h1>
-            <p className="airbnb-profile-subtitle">
-              Hosts and guests can see your profile, and it may appear across Planbeau to help us build trust in our community. <a href="#">Learn more</a>
-            </p>
-          </div>
-
           {/* Profile Fields Grid */}
           <div className="airbnb-profile-fields">
             {profileFields.map((field) => {
@@ -438,12 +549,26 @@ const ProfileEditPanel = ({ onClose, onSave }) => {
       </div>
 
       {/* Footer */}
-      <div className="airbnb-profile-footer">
-        <button className="airbnb-view-profile-btn" onClick={viewProfile}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid #e5e7eb' }}>
+        <button className="btn btn-outline" onClick={viewProfile}>
           <i className="fas fa-external-link-alt"></i> View Profile
         </button>
-        <button className="airbnb-done-btn" onClick={handleSave} disabled={saving}>
-          {saving ? 'Saving...' : 'Done'}
+        <button 
+          type="button"
+          onClick={handleSave} 
+          disabled={!hasChanges || saving}
+          style={{ 
+            backgroundColor: (!hasChanges || saving) ? '#9ca3af' : '#3d3d3d', 
+            border: 'none', 
+            color: 'white',
+            padding: '12px 20px',
+            borderRadius: '8px',
+            fontWeight: 500,
+            fontSize: '14px',
+            cursor: (!hasChanges || saving) ? 'not-allowed' : 'pointer'
+          }}
+        >
+          {saving ? 'Saving...' : 'Save'}
         </button>
       </div>
 
@@ -576,6 +701,8 @@ const ProfileEditPanel = ({ onClose, onSave }) => {
           </div>
         </div>
       )}
+      </div>
+      </div>
     </div>
   );
 };

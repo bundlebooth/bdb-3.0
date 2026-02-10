@@ -233,6 +233,39 @@ export function AuthProvider({ children }) {
     updateUserInterface(newUserData);
   }
 
+  // Refresh user data from API (useful after profile picture upload)
+  async function refreshUser() {
+    if (!currentUser?.id) return;
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/users/${currentUser.id}/user-profile`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        const user = data.user || {};
+        const profile = data.profile || {};
+        
+        // Update with fresh profile picture
+        const updatedData = {
+          ...currentUser,
+          profilePicture: profile.ProfileImageURL || user.ProfileImageURL || currentUser.profilePicture,
+          profileImageURL: profile.ProfileImageURL || user.ProfileImageURL || currentUser.profileImageURL,
+          firstName: user.FirstName || currentUser.firstName,
+          lastName: user.LastName || currentUser.lastName,
+          name: user.FirstName ? `${user.FirstName} ${user.LastName || ''}`.trim() : currentUser.name
+        };
+        
+        setCurrentUser(updatedData);
+        window.currentUser = updatedData;
+        localStorage.setItem('userSession', JSON.stringify(updatedData));
+      }
+    } catch (error) {
+      console.error('Error refreshing user data:', error);
+    }
+  }
+
   async function getVendorProfileId() {
     if (currentUser?.vendorProfileId) {
       return currentUser.vendorProfileId;
@@ -272,6 +305,7 @@ export function AuthProvider({ children }) {
     handleGoogleLogin,
     logout,
     handleSessionExpired,
+    refreshUser,
     updateUser,
     getVendorProfileId,
     loading

@@ -27,7 +27,9 @@ function UnifiedMessagesSection({ onSectionChange, forceViewMode = null }) {
   const [vendorProfileChecked, setVendorProfileChecked] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const [isNarrowDesktop, setIsNarrowDesktop] = useState(window.innerWidth > 768 && window.innerWidth <= 1024);
   const [showChatView, setShowChatView] = useState(false); // For mobile: show chat instead of list
+  const [isListCollapsed, setIsListCollapsed] = useState(false); // For narrow desktop: collapse conversation list
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showGifPicker, setShowGifPicker] = useState(false);
   const [gifSearchQuery, setGifSearchQuery] = useState('');
@@ -227,12 +229,20 @@ function UnifiedMessagesSection({ onSectionChange, forceViewMode = null }) {
     }
   };
   
-  // Handle window resize for mobile detection
+  // Handle window resize for mobile and narrow desktop detection
   useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    const handleResize = () => {
+      const width = window.innerWidth;
+      setIsMobile(width <= 768);
+      setIsNarrowDesktop(width > 768 && width <= 1024);
+      // Auto-collapse list on narrow desktop when a conversation is selected
+      if (width > 768 && width <= 1024 && selectedConversation) {
+        setIsListCollapsed(true);
+      }
+    };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  }, [selectedConversation]);
 
   // Listen for message-blocked and force-logout socket events
   useEffect(() => {
@@ -1064,20 +1074,70 @@ function UnifiedMessagesSection({ onSectionChange, forceViewMode = null }) {
   };
 
   // Render conversation list (sidebar on desktop, full screen on mobile)
-  const renderConversationList = () => (
+  const renderConversationList = () => {
+    // On narrow desktop with collapsed list, show only a thin sidebar with toggle
+    const listWidth = isMobile ? '100%' : (isNarrowDesktop && isListCollapsed ? '60px' : '350px');
+    
+    return (
     <div style={{ 
-      width: isMobile ? '100%' : '350px', 
+      width: listWidth, 
+      minWidth: isNarrowDesktop && isListCollapsed ? '60px' : undefined,
       borderRight: isMobile ? 'none' : '1px solid #e5e5e5',
       display: 'flex',
       flexDirection: 'column',
       backgroundColor: 'white',
-      height: '100%'
+      height: '100%',
+      transition: 'width 0.3s ease',
+      overflow: 'hidden'
     }}>
+      {/* Collapsed state - show only expand button */}
+      {isNarrowDesktop && isListCollapsed ? (
+        <div style={{ 
+          display: 'flex', 
+          flexDirection: 'column', 
+          alignItems: 'center', 
+          padding: '12px 0',
+          gap: '12px'
+        }}>
+          <button
+            onClick={() => setIsListCollapsed(false)}
+            style={{
+              width: '40px',
+              height: '40px',
+              borderRadius: '8px',
+              border: '1px solid #e5e5e5',
+              background: 'white',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#666'
+            }}
+            title="Expand conversations"
+          >
+            <i className="fas fa-chevron-right"></i>
+          </button>
+          <div style={{ 
+            fontSize: '11px', 
+            color: '#999', 
+            writingMode: 'vertical-rl', 
+            textOrientation: 'mixed',
+            transform: 'rotate(180deg)'
+          }}>
+            {filteredConversations.length} chats
+          </div>
+        </div>
+      ) : (
+        <>
       {/* Header - compact, no title since it's in the dashboard nav */}
       <div style={{ 
         padding: '12px 16px', 
-        borderBottom: '1px solid #e5e5e5'
+        borderBottom: '1px solid #e5e5e5',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between'
       }}>
+        <div>
         {(loading || !vendorProfileChecked) ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <div className="spinner" style={{ width: '14px', height: '14px', borderWidth: '2px' }}></div>
@@ -1087,6 +1147,28 @@ function UnifiedMessagesSection({ onSectionChange, forceViewMode = null }) {
           <p style={{ margin: 0, fontSize: '13px', color: '#666' }}>
             {filteredConversations.length} conversation{filteredConversations.length !== 1 ? 's' : ''}
           </p>
+        )}
+        </div>
+        {isNarrowDesktop && (
+          <button
+            onClick={() => setIsListCollapsed(true)}
+            style={{
+              width: '28px',
+              height: '28px',
+              borderRadius: '6px',
+              border: '1px solid #e5e5e5',
+              background: 'white',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#666',
+              fontSize: '12px'
+            }}
+            title="Collapse conversations"
+          >
+            <i className="fas fa-chevron-left"></i>
+          </button>
         )}
       </div>
       
@@ -1110,6 +1192,8 @@ function UnifiedMessagesSection({ onSectionChange, forceViewMode = null }) {
           }}
         />
       </div>
+        </>
+      )}
       
       {/* Conversations list */}
       <div style={{ flex: 1, overflowY: 'auto' }}>
@@ -1130,6 +1214,7 @@ function UnifiedMessagesSection({ onSectionChange, forceViewMode = null }) {
       </div>
     </div>
   );
+  };
 
   // Render chat area
   const renderChatArea = () => (
@@ -1148,8 +1233,8 @@ function UnifiedMessagesSection({ onSectionChange, forceViewMode = null }) {
         alignItems: 'center',
         gap: '12px'
       }}>
-        {/* Back button for mobile */}
-        {isMobile && (
+        {/* Back button for mobile and narrow desktop */}
+        {(isMobile || isNarrowDesktop) && (
           <button
             onClick={handleBackToList}
             style={{
@@ -1822,8 +1907,11 @@ function UnifiedMessagesSection({ onSectionChange, forceViewMode = null }) {
       {/* Mobile: Show either list or chat */}
       {isMobile ? (
         showChatView ? renderChatArea() : renderConversationList()
+      ) : isNarrowDesktop ? (
+        /* Narrow Desktop: Show list OR chat based on selection (like mobile) */
+        selectedConversation ? renderChatArea() : renderConversationList()
       ) : (
-        /* Desktop: Show both side by side */
+        /* Wide Desktop: Show both side by side */
         <>
           {renderConversationList()}
           {renderChatArea()}

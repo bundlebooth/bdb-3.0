@@ -1,18 +1,43 @@
 import React from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import Header from '../components/Header';
-import { PageLayout } from '../components/PageWrapper';
+import MobileBottomNav from '../components/MobileBottomNav';
 import DeleteAccountPanel from '../components/Dashboard/panels/DeleteAccountPanel';
-import { useNavigate } from 'react-router-dom';
+import { clientNavItems } from '../config/clientNavItems';
 import './ClientPage.css';
 
 function ClientSettingsDeletePage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const navItems = clientNavItems;
   
   return (
-    <PageLayout variant="fullWidth" pageClassName="client-page client-settings-page">
+    <div className="client-page">
       <Header />
-      <DeleteAccountPanel onBack={() => navigate('/client/settings')} />
-    </PageLayout>
+      <div className="client-page-container">
+        <aside className="client-page-sidebar">
+          <h1 className="client-page-sidebar-title">Settings</h1>
+          <nav className="client-page-sidebar-nav">
+            {navItems.map(item => (
+              <button
+                key={item.path}
+                className={`client-page-nav-item ${location.pathname === item.path ? 'active' : ''}`}
+                onClick={() => navigate(item.path)}
+              >
+                <i className={item.icon}></i>
+                {item.label}
+              </button>
+            ))}
+          </nav>
+        </aside>
+        <main className="client-page-main">
+          <div className="client-page-content">
+            <DeleteAccountPanel onBack={() => navigate('/client/settings')} />
+          </div>
+        </main>
+      </div>
+      <MobileBottomNav />
+    </div>
   );
 }
 

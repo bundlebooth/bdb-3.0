@@ -6,7 +6,10 @@ import { FormRow, ToggleSwitch, SelectDropdown, TextArea, SectionHeader } from '
 
 function AvailabilityHoursPanel({ onBack, vendorProfileId }) {
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [timezone, setTimezone] = useState('');
+  const [originalTimezone, setOriginalTimezone] = useState('');
+  const [originalHours, setOriginalHours] = useState(null);
   const [hours, setHours] = useState({
     monday: { open: '09:00', close: '17:00', closed: false },
     tuesday: { open: '09:00', close: '17:00', closed: false },
@@ -77,8 +80,15 @@ function AvailabilityHoursPanel({ onBack, vendorProfileId }) {
           });
           
           // Merge with defaults for any missing days
-          setHours(prev => ({ ...prev, ...hoursObj }));
+          setHours(prev => {
+            const merged = { ...prev, ...hoursObj };
+            setOriginalHours(merged);
+            return merged;
+          });
+        } else {
+          setOriginalHours(hours);
         }
+        setOriginalTimezone(tz || timezone);
       }
     } catch (error) {
       console.error('Error loading hours:', error);
@@ -142,10 +152,17 @@ function AvailabilityHoursPanel({ onBack, vendorProfileId }) {
     }));
   };
 
+  // Check if there are changes
+  const hasChanges = originalHours ? (
+    timezone !== originalTimezone ||
+    JSON.stringify(hours) !== JSON.stringify(originalHours)
+  ) : false;
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
     try {
+      setSaving(true);
       // Convert day names to DayOfWeek numbers (0=Sunday, 1=Monday, etc.)
       const dayMap = { sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 };
       const businessHoursData = Object.entries(hours).map(([day, data]) => ({
@@ -170,12 +187,16 @@ function AvailabilityHoursPanel({ onBack, vendorProfileId }) {
       
       if (response.ok) {
         showBanner('Business hours updated successfully!', 'success');
+        setOriginalHours({ ...hours });
+        setOriginalTimezone(timezone);
       } else {
         throw new Error('Failed to update');
       }
     } catch (error) {
       console.error('Error saving:', error);
       showBanner('Failed to save changes', 'error');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -334,13 +355,21 @@ function AvailabilityHoursPanel({ onBack, vendorProfileId }) {
           </div>
 
           <button 
-            className="btn btn-primary" 
             id="save-business-hours-btn" 
             onClick={handleSubmit}
-            disabled={!!timeError}
-            style={{ opacity: timeError ? 0.5 : 1, cursor: timeError ? 'not-allowed' : 'pointer' }}
+            disabled={!hasChanges || saving || !!timeError}
+            style={{ 
+              backgroundColor: (!hasChanges || saving || !!timeError) ? '#9ca3af' : '#3d3d3d', 
+              border: 'none', 
+              color: 'white',
+              padding: '12px 20px',
+              borderRadius: '8px',
+              fontWeight: 500,
+              fontSize: '14px',
+              cursor: (!hasChanges || saving || !!timeError) ? 'not-allowed' : 'pointer'
+            }}
           >
-            Save
+            {saving ? 'Saving...' : 'Save'}
           </button>
         </form>
       </div>

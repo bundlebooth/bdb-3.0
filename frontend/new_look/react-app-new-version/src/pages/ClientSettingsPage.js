@@ -18,26 +18,18 @@ function ClientSettingsPage() {
     { 
       id: 'profile', 
       icon: 'fa-id-card', 
-      title: 'Your Profile', 
-      description: 'Add personal details, interests, and fun facts to help others get to know you',
+      title: 'Edit Profile', 
+      description: 'Update your bio, interests, and profile information',
       category: 'personal',
       route: '/client/settings/profile'
     },
     { 
       id: 'personal', 
       icon: 'fa-user', 
-      title: t('settings.personalDetails'), 
-      description: t('settings.personalDetailsDesc'),
-      category: 'personal',
+      title: 'Account Details', 
+      description: 'Update your name, email, and phone number',
+      category: 'account',
       route: '/client/settings/personal'
-    },
-    { 
-      id: 'location', 
-      icon: 'fa-map-marker-alt', 
-      title: 'Location & Tax', 
-      description: 'Set your province for accurate tax calculation on payments.',
-      category: 'personal',
-      route: '/client/settings/location'
     },
     { 
       id: 'communication', 
@@ -49,7 +41,7 @@ function ClientSettingsPage() {
     },
     { 
       id: 'language', 
-      icon: 'fa-globe', 
+      icon: 'fa-language', 
       title: t('settings.languageCurrency'), 
       description: t('settings.languageCurrencyDesc'),
       category: 'personal',
@@ -108,16 +100,16 @@ function ClientSettingsPage() {
           <div className="client-page-content">
             {/* Personal Settings Category */}
             <div className="settings-category">
-              <h2 className="settings-category-title">Personal settings</h2>
+              <h2 className="settings-category-title">Profile Settings</h2>
               <div className="settings-grid">
                 {personalCards.map(card => (
                   <div 
                     key={card.id}
                     className="settings-card" 
                     onClick={() => navigate(card.route)}
-                    style={{ cursor: 'pointer' }}
+                    style={{ cursor: 'pointer', padding: '1rem' }}
                   >
-                    <div className="settings-card-icon">
+                    <div style={{ width: '40px', height: '40px', backgroundColor: '#f0f7ff', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#5086E8', fontSize: '1.2rem', marginBottom: '0.5rem' }}>
                       <i className={`fas ${card.icon}`}></i>
                     </div>
                     <h3 className="settings-card-title">{card.title}</h3>
@@ -136,9 +128,9 @@ function ClientSettingsPage() {
                     key={card.id}
                     className={`settings-card ${card.danger ? 'danger' : ''}`}
                     onClick={() => navigate(card.route)}
-                    style={{ cursor: 'pointer' }}
+                    style={{ cursor: 'pointer', padding: '1rem' }}
                   >
-                    <div className="settings-card-icon">
+                    <div style={{ width: '40px', height: '40px', backgroundColor: card.danger ? '#fee2e2' : '#f0f7ff', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: card.danger ? '#dc2626' : '#5086E8', fontSize: '1.2rem', marginBottom: '0.5rem' }}>
                       <i className={`fas ${card.icon}`}></i>
                     </div>
                     <h3 className="settings-card-title">{card.title}</h3>

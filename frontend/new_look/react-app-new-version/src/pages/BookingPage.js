@@ -343,6 +343,7 @@ function BookingPage() {
     const prefilledStartTime = searchParams.get('startTime');
     const prefilledEndTime = searchParams.get('endTime');
     const prefilledPackageId = searchParams.get('packageId');
+    const prefilledServiceId = searchParams.get('serviceId');
 
     if (prefilledDate || prefilledStartTime || prefilledEndTime) {
       setBookingData(prev => ({
@@ -360,6 +361,13 @@ function BookingPage() {
     // Store prefilled package ID to select after packages load
     if (prefilledPackageId) {
       sessionStorage.setItem('prefilledPackageId', prefilledPackageId);
+    }
+
+    // Store prefilled service ID to select after services load
+    if (prefilledServiceId) {
+      sessionStorage.setItem('prefilledServiceId', prefilledServiceId);
+      // Switch to services tab if coming from a service selection
+      setStep2Tab('services');
     }
 
     loadVendorData();
@@ -603,6 +611,33 @@ function BookingPage() {
       }
     }
   }, [packages]);
+
+  // Auto-select prefilled service after services load
+  useEffect(() => {
+    if (services.length > 0) {
+      const prefilledServiceId = sessionStorage.getItem('prefilledServiceId');
+      if (prefilledServiceId) {
+        const svc = services.find(s => 
+          (s.ServiceID === parseInt(prefilledServiceId)) || 
+          (s.VendorServiceID === parseInt(prefilledServiceId)) ||
+          (s.serviceId === parseInt(prefilledServiceId))
+        );
+        if (svc) {
+          // Add service to selectedServices if not already selected
+          setSelectedServices(prev => {
+            const isAlreadySelected = prev.some(s => 
+              (s.ServiceID || s.VendorServiceID || s.id) === (svc.ServiceID || svc.VendorServiceID || svc.id)
+            );
+            if (!isAlreadySelected) {
+              return [...prev, svc];
+            }
+            return prev;
+          });
+        }
+        sessionStorage.removeItem('prefilledServiceId');
+      }
+    }
+  }, [services]);
 
   // Handle input changes
   const handleInputChange = (e) => {

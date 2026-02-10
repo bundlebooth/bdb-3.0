@@ -6,6 +6,7 @@ import { ToggleSwitch } from '../../common/FormFields';
 function BookingSettingsPanel({ onBack, vendorProfileId }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [originalData, setOriginalData] = useState(null);
   
   // Booking settings
   const [instantBookingEnabled, setInstantBookingEnabled] = useState(false);
@@ -98,16 +99,25 @@ function BookingSettingsPanel({ onBack, vendorProfileId }) {
       if (policyRes.ok) {
         const data = await policyRes.json();
         if (data.policy) {
-          setPolicy({
+          const loadedPolicy = {
             policyType: data.policy.PolicyType || 'flexible',
             fullRefundDays: data.policy.FullRefundDays || 7,
             partialRefundDays: data.policy.PartialRefundDays || 3,
             partialRefundPercent: data.policy.PartialRefundPercent || 50,
             noRefundDays: data.policy.NoRefundDays || 1,
             customTerms: data.policy.CustomTerms || ''
-          });
+          };
+          setPolicy(loadedPolicy);
+          setOriginalData(prev => ({ ...prev, policy: loadedPolicy }));
         }
       }
+      
+      // Set original data for change tracking
+      setOriginalData(prev => ({
+        ...prev,
+        instantBookingEnabled,
+        minBookingLeadTimeHours
+      }));
     } catch (error) {
       console.error('Error loading booking settings:', error);
     } finally {
@@ -129,6 +139,13 @@ function BookingSettingsPanel({ onBack, vendorProfileId }) {
       ...defaults[type]
     });
   };
+
+  // Check if there are changes
+  const hasChanges = originalData ? (
+    instantBookingEnabled !== originalData.instantBookingEnabled ||
+    minBookingLeadTimeHours !== originalData.minBookingLeadTimeHours ||
+    JSON.stringify(policy) !== JSON.stringify(originalData.policy)
+  ) : false;
 
   const handleSave = async () => {
     try {
@@ -161,6 +178,11 @@ function BookingSettingsPanel({ onBack, vendorProfileId }) {
       
       if (bookingRes.ok && policyRes.ok) {
         showBanner('Booking settings saved successfully!', 'success');
+        setOriginalData({
+          instantBookingEnabled,
+          minBookingLeadTimeHours,
+          policy: { ...policy }
+        });
       } else {
         throw new Error('Failed to save');
       }
@@ -446,8 +468,17 @@ function BookingSettingsPanel({ onBack, vendorProfileId }) {
         {/* Save Button */}
         <button
           onClick={handleSave}
-          disabled={saving}
-          className="btn btn-primary"
+          disabled={!hasChanges || saving}
+          style={{ 
+            backgroundColor: (!hasChanges || saving) ? '#9ca3af' : '#3d3d3d', 
+            border: 'none', 
+            color: 'white',
+            padding: '12px 20px',
+            borderRadius: '8px',
+            fontWeight: 500,
+            fontSize: '14px',
+            cursor: (!hasChanges || saving) ? 'not-allowed' : 'pointer'
+          }}
         >
           {saving ? 'Saving...' : 'Save'}
         </button>

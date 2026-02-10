@@ -26,7 +26,6 @@ import ClientInvoicesPage from './pages/ClientInvoicesPage';
 import ClientSettingsPage from './pages/ClientSettingsPage';
 import ClientSettingsProfilePage from './pages/ClientSettingsProfilePage';
 import ClientSettingsPersonalPage from './pages/ClientSettingsPersonalPage';
-import ClientSettingsLocationPage from './pages/ClientSettingsLocationPage';
 import ClientSettingsCommunicationPage from './pages/ClientSettingsCommunicationPage';
 import ClientSettingsLanguagePage from './pages/ClientSettingsLanguagePage';
 import ClientSettingsPrivacyPage from './pages/ClientSettingsPrivacyPage';
@@ -219,8 +218,7 @@ function App() {
           <Route path="/client/settings" element={<ClientSettingsPage />} />
           <Route path="/client/settings/profile" element={<ClientSettingsProfilePage />} />
           <Route path="/client/settings/personal" element={<ClientSettingsPersonalPage />} />
-          <Route path="/client/settings/location" element={<ClientSettingsLocationPage />} />
-          <Route path="/client/settings/communication" element={<ClientSettingsCommunicationPage />} />
+                    <Route path="/client/settings/communication" element={<ClientSettingsCommunicationPage />} />
           <Route path="/client/settings/language" element={<ClientSettingsLanguagePage />} />
           <Route path="/client/settings/privacy" element={<ClientSettingsPrivacyPage />} />
           <Route path="/client/settings/security" element={<ClientSettingsSecurityPage />} />

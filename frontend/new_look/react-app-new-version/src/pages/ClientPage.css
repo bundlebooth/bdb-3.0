@@ -9,9 +9,9 @@
 .client-page-container {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 48px 80px 80px;
+  padding: 48px 40px 80px;
   display: flex;
-  gap: 80px;
+  gap: 40px;
   flex: 1;
   width: 100%;
   box-sizing: border-box;
@@ -138,9 +138,36 @@
     gap: 32px;
   }
   
+  .client-page.messages-page {
+    height: 100vh;
+    height: 100dvh;
+  }
+  
   .client-page.messages-page .client-page-container {
-    height: calc(100vh - 140px); /* Account for header and bottom nav */
-    padding-bottom: 16px;
+    height: calc(100dvh - 60px - 70px); /* Header + bottom nav */
+    padding: 0;
+    gap: 0;
+    max-width: 100%;
+  }
+  
+  .client-page.messages-page .client-page-sidebar {
+    display: none;
+  }
+  
+  .client-page.messages-page .client-page-main {
+    height: 100%;
+    padding: 0;
+    border: none;
+  }
+  
+  .client-page.messages-page .client-page-content {
+    height: 100%;
+    padding: 0;
+  }
+  
+  .client-page.messages-page .unified-messages-section {
+    height: 100% !important;
+    border-radius: 0;
   }
   
   .client-page-sidebar {

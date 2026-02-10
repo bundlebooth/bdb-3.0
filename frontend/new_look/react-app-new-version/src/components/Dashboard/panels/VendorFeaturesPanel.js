@@ -45,6 +45,10 @@ function VendorFeaturesPanel({ onBack, vendorProfileId }) {
   const [vendorCategory, setVendorCategory] = useState(null);
   const [featureCategories, setFeatureCategories] = useState([]);
   const [selectedFeatures, setSelectedFeatures] = useState([]);
+  const [originalFeatures, setOriginalFeatures] = useState([]);
+
+  // Check if there are changes
+  const hasChanges = JSON.stringify([...selectedFeatures].sort()) !== JSON.stringify([...originalFeatures].sort());
 
   useEffect(() => {
     loadVendorCategory();
@@ -115,7 +119,9 @@ function VendorFeaturesPanel({ onBack, vendorProfileId }) {
       
       if (response.ok) {
         const data = await response.json();
-        setSelectedFeatures((data.features || []).map(f => f.FeatureID));
+        const features = (data.features || []).map(f => f.FeatureID);
+        setSelectedFeatures(features);
+        setOriginalFeatures(features);
       }
     } catch (error) {
       console.error('Error loading selected features:', error);
@@ -145,6 +151,7 @@ function VendorFeaturesPanel({ onBack, vendorProfileId }) {
 
       if (response.ok) {
         showBanner('Features saved successfully!', 'success');
+        setOriginalFeatures([...selectedFeatures]);
       } else {
         throw new Error('Failed to save features');
       }
@@ -326,8 +333,17 @@ function VendorFeaturesPanel({ onBack, vendorProfileId }) {
         <div style={{ marginTop: '2rem' }}>
           <button
             onClick={handleSave}
-            disabled={saving}
-            className="btn btn-primary"
+            disabled={!hasChanges || saving}
+            style={{ 
+              backgroundColor: (!hasChanges || saving) ? '#9ca3af' : '#3d3d3d', 
+              border: 'none', 
+              color: 'white',
+              padding: '12px 20px',
+              borderRadius: '8px',
+              fontWeight: 500,
+              fontSize: '14px',
+              cursor: (!hasChanges || saving) ? 'not-allowed' : 'pointer'
+            }}
           >
             {saving ? 'Saving...' : 'Save Features'}
           </button>

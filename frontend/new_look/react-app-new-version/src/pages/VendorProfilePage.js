@@ -843,7 +843,7 @@ function VendorProfilePage() {
               gap: '16px',
               padding: '8px 0'
             }}>
-              <i className={`far fa-${getFeatureIcon(feature.FeatureName, feature.CategoryName)}`} style={{ 
+              <i className={`fas fa-${getFeatureIcon(feature.FeatureName, feature.CategoryName)}`} style={{ 
                 fontSize: '24px', 
                 color: '#222', 
                 width: '24px',
@@ -892,7 +892,7 @@ function VendorProfilePage() {
                 padding: '12px 0',
                 borderBottom: idx < vendorFeatures.length - 1 ? '1px solid #f0f0f0' : 'none'
               }}>
-                <i className={`far fa-${getFeatureIcon(feature.FeatureName, feature.CategoryName)}`} style={{ 
+                <i className={`fas fa-${getFeatureIcon(feature.FeatureName, feature.CategoryName)}`} style={{ 
                   fontSize: '24px', 
                   color: '#222', 
                   width: '24px',
@@ -3677,8 +3677,9 @@ function VendorProfilePage() {
               <button
                 onClick={() => {
                   setPackageModalOpen(false);
+                  const pkgId = selectedPackage.PackageID;
                   setSelectedPackage(null);
-                  navigate(`/booking/${encodeVendorId(vendorId)}`);
+                  navigate(`/booking/${encodeVendorId(vendorId)}?packageId=${pkgId}`);
                 }}
                 style={{
                   width: '100%',
@@ -3865,8 +3866,13 @@ function VendorProfilePage() {
               <button
                 onClick={() => {
                   setServiceModalOpen(false);
+                  const svcId = selectedService.ServiceID || selectedService.VendorServiceID || selectedService.VendorSelectedServiceID || selectedService.serviceId || selectedService.id;
                   setSelectedService(null);
-                  navigate(`/booking/${encodeVendorId(vendorId)}`);
+                  if (svcId) {
+                    navigate(`/booking/${encodeVendorId(vendorId)}?serviceId=${svcId}`);
+                  } else {
+                    navigate(`/booking/${encodeVendorId(vendorId)}`);
+                  }
                 }}
                 style={{
                   width: '100%',

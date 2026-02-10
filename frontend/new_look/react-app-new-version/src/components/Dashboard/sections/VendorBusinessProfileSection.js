@@ -12,6 +12,7 @@ import GoogleReviewsPanel from '../panels/GoogleReviewsPanel';
 import CategoryServicesPanel from '../panels/CategoryServicesPanel';
 import FAQsPanel from '../panels/FAQsPanel';
 import BookingSettingsPanel from '../panels/BookingSettingsPanel';
+import CommunicationPreferencesPanel from '../panels/CommunicationPreferencesPanel';
 
 // Map panel IDs to URL-friendly keys
 const PANEL_URL_MAP = {
@@ -25,7 +26,8 @@ const PANEL_URL_MAP = {
   'vendor-availability-panel': 'availability',
   'vendor-booking-settings-panel': 'booking-settings',
   'vendor-google-reviews-panel': 'google-reviews',
-  'vendor-stripe-panel': 'stripe'
+  'vendor-stripe-panel': 'stripe',
+  'vendor-notifications-panel': 'notifications'
 };
 
 // Reverse map for URL to panel ID
@@ -81,7 +83,8 @@ function VendorBusinessProfileSection() {
     { id: 'vendor-stripe-panel', icon: 'fa-stripe', title: 'Stripe Setup', description: 'Connect Stripe to accept online payments and deposits', iconClass: 'fab', useStripeLogo: true },
     { id: 'vendor-qa-panel', icon: 'fa-question-circle', title: 'FAQs', description: 'Add common questions and answers for your clients' },
     { id: 'vendor-google-reviews-panel', icon: 'fa-google', title: 'Google Reviews', description: 'Import and display reviews from your Google Business Profile', iconClass: 'fab', useGoogleLogo: true },
-    { id: 'vendor-social-panel', icon: 'fa-share-alt', title: 'Social Media', description: 'Connect your social accounts and add booking links' }
+    { id: 'vendor-social-panel', icon: 'fa-share-alt', title: 'Social Media', description: 'Connect your social accounts and add booking links' },
+    { id: 'vendor-notifications-panel', icon: 'fa-bell', title: 'Vendor Notifications', description: 'Manage booking alerts, inquiry notifications, and review alerts' }
   ];
 
   const renderPanel = () => {
@@ -109,6 +112,8 @@ function VendorBusinessProfileSection() {
         return <GoogleReviewsPanel key={vendorProfileId} onBack={() => handlePanelChange(null)} vendorProfileId={vendorProfileId} />;
       case 'vendor-stripe-panel':
         return <StripeSetupPanel key={vendorProfileId} onBack={() => handlePanelChange(null)} vendorProfileId={vendorProfileId} />;
+      case 'vendor-notifications-panel':
+        return <CommunicationPreferencesPanel key={vendorProfileId} onBack={() => handlePanelChange(null)} isVendorMode={true} />;
       default:
         return null;
     }

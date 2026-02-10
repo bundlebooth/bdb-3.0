@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useLocalization } from '../../../context/LocalizationContext';
 
-function LanguageCurrencyPanel({ onBack }) {
+function LanguageCurrencyPanel({ onBack, embedded = false }) {
   const {
     language,
     currency,
@@ -46,26 +46,23 @@ function LanguageCurrencyPanel({ onBack }) {
     translateEnabled !== autoTranslate;
 
   return (
-    <div className="settings-panel">
-      {/* Panel Header */}
-      <div className="panel-header" style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
-        <button 
-          onClick={onBack}
-          style={{
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            padding: '8px',
-            borderRadius: '8px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}
-        >
-          <i className="fas fa-arrow-left" style={{ fontSize: '18px', color: '#374151' }}></i>
+    <div>
+      {!embedded && (
+        <button className="btn btn-outline back-to-menu-btn" style={{ marginBottom: '1rem' }} onClick={onBack}>
+          <i className="fas fa-arrow-left"></i> Back to Settings
         </button>
-        <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 600 }}>Language & Currency</h2>
-      </div>
+      )}
+      <div className="dashboard-card">
+        <h2 className="dashboard-card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <span style={{ width: '36px', height: '36px', borderRadius: '8px', background: 'var(--secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', fontSize: '1.1rem' }}>
+            <i className="fas fa-language"></i>
+          </span>
+          Language & Currency
+        </h2>
+        <p style={{ color: 'var(--text-light)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
+          Choose your preferred language, currency, and distance units.
+        </p>
+        <hr style={{ border: 'none', borderTop: '1px solid #e5e7eb', margin: '1.5rem 0' }} />
 
       {/* Auto-translate Section */}
       <div style={{
@@ -99,7 +96,7 @@ function LanguageCurrencyPanel({ onBack }) {
               left: 0,
               right: 0,
               bottom: 0,
-              backgroundColor: translateEnabled ? '#111827' : '#d1d5db',
+              backgroundColor: translateEnabled ? '#5086E8' : '#d1d5db',
               transition: '0.3s',
               borderRadius: '28px'
             }}>
@@ -135,7 +132,7 @@ function LanguageCurrencyPanel({ onBack }) {
                 flexDirection: 'column',
                 alignItems: 'flex-start',
                 padding: '14px 16px',
-                border: selectedLanguage === lang.code ? '2px solid #111827' : '1px solid #e5e7eb',
+                border: selectedLanguage === lang.code ? '2px solid #5086E8' : '1px solid #e5e7eb',
                 borderRadius: '10px',
                 background: selectedLanguage === lang.code ? '#fafafa' : 'white',
                 cursor: 'pointer',
@@ -172,7 +169,7 @@ function LanguageCurrencyPanel({ onBack }) {
                 flexDirection: 'column',
                 alignItems: 'flex-start',
                 padding: '14px 16px',
-                border: selectedCurrency === curr.code ? '2px solid #111827' : '1px solid #e5e7eb',
+                border: selectedCurrency === curr.code ? '2px solid #5086E8' : '1px solid #e5e7eb',
                 borderRadius: '10px',
                 background: selectedCurrency === curr.code ? '#fafafa' : 'white',
                 cursor: 'pointer',
@@ -209,7 +206,7 @@ function LanguageCurrencyPanel({ onBack }) {
                 flexDirection: 'column',
                 alignItems: 'flex-start',
                 padding: '14px 16px',
-                border: selectedDistanceUnit === unit.code ? '2px solid #111827' : '1px solid #e5e7eb',
+                border: selectedDistanceUnit === unit.code ? '2px solid #5086E8' : '1px solid #e5e7eb',
                 borderRadius: '10px',
                 background: selectedDistanceUnit === unit.code ? '#fafafa' : 'white',
                 cursor: 'pointer',
@@ -229,53 +226,25 @@ function LanguageCurrencyPanel({ onBack }) {
       </div>
 
       {/* Save Button */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', paddingTop: '16px', borderTop: '1px solid #e5e7eb' }}>
+      <div style={{ marginTop: '2rem' }}>
         <button
-          onClick={onBack}
-          style={{
-            padding: '10px 20px',
-            borderRadius: '8px',
-            border: '1px solid #e5e7eb',
-            background: 'white',
-            color: '#374151',
-            fontWeight: 500,
-            fontSize: '14px',
-            cursor: 'pointer'
-          }}
-        >
-          Cancel
-        </button>
-        <button
+          type="button"
           onClick={handleSave}
           disabled={!hasChanges || saving}
-          style={{
-            padding: '10px 24px',
-            borderRadius: '8px',
-            border: 'none',
-            background: hasChanges ? '#111827' : '#9ca3af',
+          style={{ 
+            backgroundColor: (!hasChanges || saving) ? '#9ca3af' : '#3d3d3d', 
+            border: 'none', 
             color: 'white',
+            padding: '12px 20px',
+            borderRadius: '8px',
             fontWeight: 500,
             fontSize: '14px',
-            cursor: hasChanges ? 'pointer' : 'not-allowed',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
+            cursor: (!hasChanges || saving) ? 'not-allowed' : 'pointer'
           }}
         >
-          {saving ? (
-            <>
-              <i className="fas fa-spinner fa-spin"></i>
-              Saving...
-            </>
-          ) : saved ? (
-            <>
-              <i className="fas fa-check"></i>
-              Saved!
-            </>
-          ) : (
-            'Save Changes'
-          )}
+          {saving ? 'Saving...' : 'Save'}
         </button>
+      </div>
       </div>
     </div>
   );

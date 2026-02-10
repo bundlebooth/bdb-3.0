@@ -366,15 +366,15 @@
 .profile-sidebar-menu-item i:first-child {
   width: 24px;
   font-size: 20px;
-  color: #717171;
+  color: #6b7280 !important;
   text-align: center;
 }
 
 .profile-sidebar-menu-item span {
   flex: 1;
   font-size: 15px;
-  font-weight: 400;
-  color: #222;
+  font-weight: 500;
+  color: #111827 !important;
 }
 
 .menu-item-arrow {

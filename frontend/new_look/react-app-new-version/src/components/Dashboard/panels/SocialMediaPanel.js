@@ -5,6 +5,8 @@ import { API_BASE_URL } from '../../../config';
 
 function SocialMediaPanel({ onBack, vendorProfileId }) {
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [originalData, setOriginalData] = useState(null);
   const [formData, setFormData] = useState({
     facebook: '',
     instagram: '',
@@ -43,14 +45,16 @@ function SocialMediaPanel({ onBack, vendorProfileId }) {
       
       if (response.ok) {
         const data = await response.json();
-        setFormData({
+        const loadedData = {
           facebook: data.facebook || '',
           instagram: data.instagram || '',
           twitter: data.twitter || '',
           linkedin: data.linkedin || '',
           youtube: data.youtube || '',
           tiktok: data.tiktok || ''
-        });
+        };
+        setFormData(loadedData);
+        setOriginalData(loadedData);
       }
     } catch (error) {
       console.error('Error loading social media:', error);
@@ -59,10 +63,21 @@ function SocialMediaPanel({ onBack, vendorProfileId }) {
     }
   };
 
+  // Check if there are changes
+  const hasChanges = originalData ? (
+    formData.facebook !== originalData.facebook ||
+    formData.instagram !== originalData.instagram ||
+    formData.twitter !== originalData.twitter ||
+    formData.linkedin !== originalData.linkedin ||
+    formData.youtube !== originalData.youtube ||
+    formData.tiktok !== originalData.tiktok
+  ) : false;
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
     try {
+      setSaving(true);
       const response = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/social`, {
         method: 'POST',
         headers: {
@@ -81,12 +96,15 @@ function SocialMediaPanel({ onBack, vendorProfileId }) {
       
       if (response.ok) {
         showBanner('Social media links updated successfully!', 'success');
+        setOriginalData({ ...formData });
       } else {
         throw new Error('Failed to update');
       }
     } catch (error) {
       console.error('Error saving:', error);
       showBanner('Failed to save changes', 'error');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -248,7 +266,22 @@ function SocialMediaPanel({ onBack, vendorProfileId }) {
             </div>
           </div>
 
-          <button type="submit" className="btn btn-primary">Save</button>
+          <button 
+            type="submit" 
+            disabled={!hasChanges || saving}
+            style={{ 
+              backgroundColor: (!hasChanges || saving) ? '#9ca3af' : '#3d3d3d', 
+              border: 'none', 
+              color: 'white',
+              padding: '12px 20px',
+              borderRadius: '8px',
+              fontWeight: 500,
+              fontSize: '14px',
+              cursor: (!hasChanges || saving) ? 'not-allowed' : 'pointer'
+            }}
+          >
+            {saving ? 'Saving...' : 'Save'}
+          </button>
         </form>
       </div>
     </div>
