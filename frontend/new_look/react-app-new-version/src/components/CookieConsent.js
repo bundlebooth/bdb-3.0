@@ -157,7 +157,7 @@ function CookieConsent() {
 
   return (
     <>
-      {/* Cookie Banner */}
+      {/* Cookie Banner - Full width bottom bar */}
       {!showPreferences && (
         <div style={{
           position: 'fixed',

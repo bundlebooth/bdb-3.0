@@ -169,6 +169,28 @@ function ProfileSidebar({ isOpen, onClose }) {
     loadNotificationCounts();
   }, [currentUser?.id]);
 
+  // Fetch notifications when sidebar opens (for badge count)
+  useEffect(() => {
+    if (isOpen && currentUser?.id) {
+      // Fetch notifications silently for badge count
+      const fetchNotificationsForBadge = async () => {
+        try {
+          const response = await fetch(`${API_BASE_URL}/notifications/user/${currentUser.id}`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+          });
+          if (response.ok) {
+            const data = await response.json();
+            const notifs = Array.isArray(data) ? data : data.notifications || [];
+            setNotifications(notifs);
+          }
+        } catch (error) {
+          console.error('Error fetching notifications for badge:', error);
+        }
+      };
+      fetchNotificationsForBadge();
+    }
+  }, [isOpen, currentUser?.id]);
+
   // Fetch notifications when opening notifications view
   const fetchNotifications = async () => {
     if (!currentUser?.id) return;
@@ -198,7 +220,7 @@ function ProfileSidebar({ isOpen, onClose }) {
     setShowNotifications(false);
   };
 
-  // Mark notification as read
+  // Mark notification as read (keep in list, just mark as read)
   const markNotificationAsRead = async (notificationId) => {
     if (!currentUser?.id || !notificationId) return;
     try {
@@ -206,14 +228,95 @@ function ProfileSidebar({ isOpen, onClose }) {
         method: 'PUT',
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
-      // Remove from list or mark as read
-      setNotifications(prev => prev.filter(n => (n.id || n.ID || n.NotificationID) !== notificationId));
+      // Mark as read locally instead of removing
+      setNotifications(prev => prev.map(n => {
+        const nId = n.id || n.ID || n.NotificationID;
+        if (nId === notificationId) {
+          return { ...n, IsRead: true, isRead: true };
+        }
+        return n;
+      }));
     } catch (error) {
       console.error('Error marking notification as read:', error);
     }
   };
 
-  // Clear all notifications
+  // Handle notification click - mark as read and navigate to relevant page
+  const handleNotificationItemClick = async (notification, notificationId) => {
+    // Mark as read first
+    await markNotificationAsRead(notificationId);
+    
+    // Get notification type and related ID for navigation
+    const notificationType = (notification.type || notification.Type || '').toLowerCase();
+    const relatedId = notification.RelatedID || notification.relatedId || notification.related_id;
+    
+    // Navigate based on notification type
+    let targetPath = null;
+    
+    switch (notificationType) {
+      case 'booking':
+      case 'booking_request':
+      case 'booking_confirmed':
+      case 'booking_cancelled':
+      case 'booking_pending':
+      case 'booking_completed':
+        targetPath = '/bookings';
+        break;
+      case 'message':
+      case 'new_message':
+      case 'chat':
+        targetPath = '/messages';
+        break;
+      case 'review':
+      case 'new_review':
+      case 'review_received':
+        targetPath = '/reviews';
+        break;
+      case 'payment':
+      case 'payout':
+      case 'payment_received':
+      case 'payment_sent':
+        targetPath = '/payments';
+        break;
+      case 'vendor':
+      case 'vendor_update':
+      case 'vendor_approved':
+      case 'vendor_rejected':
+        targetPath = '/vendor/dashboard';
+        break;
+      case 'profile':
+      case 'profile_update':
+      case 'account':
+        targetPath = '/settings';
+        break;
+      case 'favorite':
+      case 'favourited':
+      case 'liked':
+        targetPath = '/favorites';
+        break;
+      case 'inquiry':
+      case 'new_inquiry':
+        targetPath = '/inquiries';
+        break;
+      case 'system':
+      case 'announcement':
+      case 'general':
+      case 'info':
+      case 'welcome':
+        // System notifications - just mark as read, no navigation
+        break;
+      default:
+        // For unknown types, navigate to notifications or just mark as read
+        break;
+    }
+    
+    if (targetPath) {
+      navigate(targetPath);
+      onClose();
+    }
+  };
+
+  // Clear all NEW notifications (mark as read, don't delete)
   const clearAllNotifications = async () => {
     if (!currentUser?.id) return;
     try {
@@ -221,7 +324,8 @@ function ProfileSidebar({ isOpen, onClose }) {
         method: 'PUT',
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
-      setNotifications([]);
+      // Mark all as read locally instead of removing them
+      setNotifications(prev => prev.map(n => ({ ...n, IsRead: true, isRead: true })));
     } catch (error) {
       console.error('Error clearing notifications:', error);
     }
@@ -384,25 +488,46 @@ function ProfileSidebar({ isOpen, onClose }) {
           <div className="profile-sidebar-content">
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
               <h2 className="profile-sidebar-page-title" style={{ margin: 0 }}>Notifications</h2>
-              {notifications.length > 0 && (
-                <button 
-                  onClick={clearAllNotifications}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: '#5086E8',
-                    fontSize: '0.875rem',
-                    fontWeight: 500,
-                    cursor: 'pointer',
-                    padding: '4px 8px',
-                    borderRadius: '4px'
-                  }}
-                  onMouseEnter={(e) => e.target.style.background = 'rgba(80, 134, 232, 0.1)'}
-                  onMouseLeave={(e) => e.target.style.background = 'none'}
-                >
-                  Clear all
-                </button>
-              )}
+              <div style={{ display: 'flex', gap: '8px' }}>
+                {notifications.filter(n => !n.IsRead && !n.isRead).length > 0 && (
+                  <button 
+                    onClick={clearAllNotifications}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#5086E8',
+                      fontSize: '0.875rem',
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                      padding: '4px 8px',
+                      borderRadius: '4px'
+                    }}
+                    onMouseEnter={(e) => e.target.style.background = 'rgba(80, 134, 232, 0.1)'}
+                    onMouseLeave={(e) => e.target.style.background = 'none'}
+                  >
+                    Mark as read
+                  </button>
+                )}
+                {notifications.length > 0 && (
+                  <button 
+                    onClick={clearAllNotifications}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#717171',
+                      fontSize: '0.875rem',
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                      padding: '4px 8px',
+                      borderRadius: '4px'
+                    }}
+                    onMouseEnter={(e) => e.target.style.background = 'rgba(113, 113, 113, 0.1)'}
+                    onMouseLeave={(e) => e.target.style.background = 'none'}
+                  >
+                    Clear all
+                  </button>
+                )}
+              </div>
             </div>
             
             {notificationsLoading ? (
@@ -443,14 +568,29 @@ function ProfileSidebar({ isOpen, onClose }) {
                     <div 
                       key={notificationId || index} 
                       className="notification-item"
-                      onClick={() => markNotificationAsRead(notificationId)}
-                      style={{ cursor: 'pointer' }}
+                      onClick={() => handleNotificationItemClick(notification, notificationId)}
+                      style={{ 
+                        cursor: 'pointer',
+                        background: (!notification.IsRead && !notification.isRead) ? 'rgba(80, 134, 232, 0.08)' : 'transparent',
+                        borderLeft: (!notification.IsRead && !notification.isRead) ? '3px solid #5086E8' : '3px solid transparent'
+                      }}
                     >
                       <div className="notification-icon" style={{ background: 'rgba(80, 134, 232, 0.15)' }}>
                         <i className={`fas ${notifStyle.icon}`} style={{ color: notifStyle.iconColor }}></i>
                       </div>
                       <div className="notification-content">
-                        <p className="notification-text">{notificationText}</p>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <p className="notification-text" style={{ margin: 0 }}>{notificationText}</p>
+                          {(!notification.IsRead && !notification.isRead) && (
+                            <span style={{
+                              width: '8px',
+                              height: '8px',
+                              borderRadius: '50%',
+                              background: '#5086E8',
+                              flexShrink: 0
+                            }}></span>
+                          )}
+                        </div>
                         {formattedTime && <span className="notification-time">{formattedTime}</span>}
                       </div>
                     </div>
@@ -569,9 +709,29 @@ function ProfileSidebar({ isOpen, onClose }) {
               onClick={handleNotificationClick}
               aria-label="Notifications"
               title="Notifications"
+              style={{ position: 'relative' }}
             >
               <i className="far fa-bell"></i>
-              {(notificationCounts.unreadMessages > 0 || notificationCounts.pendingBookings > 0) && (
+              {notifications.filter(n => !n.IsRead && !n.isRead).length > 0 ? (
+                <span style={{
+                  position: 'absolute',
+                  top: '2px',
+                  right: '2px',
+                  background: '#5086E8',
+                  color: 'white',
+                  fontSize: '10px',
+                  fontWeight: 600,
+                  minWidth: '16px',
+                  height: '16px',
+                  borderRadius: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '0 4px'
+                }}>
+                  {notifications.filter(n => !n.IsRead && !n.isRead).length > 9 ? '9+' : notifications.filter(n => !n.IsRead && !n.isRead).length}
+                </span>
+              ) : (notificationCounts.unreadMessages > 0 || notificationCounts.pendingBookings > 0) && (
                 <span className="notification-dot"></span>
               )}
             </button>

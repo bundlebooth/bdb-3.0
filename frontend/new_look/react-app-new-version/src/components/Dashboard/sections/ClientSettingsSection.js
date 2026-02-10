@@ -64,6 +64,14 @@ function ClientSettingsSection() {
       route: '/client/settings/security'
     },
     { 
+      id: 'cookies', 
+      icon: 'fa-cookie-bite', 
+      title: 'Cookie Preferences', 
+      description: 'Manage how we use cookies to personalize your experience',
+      category: 'account',
+      route: '/client/settings/cookies'
+    },
+    { 
       id: 'delete', 
       icon: 'fa-trash-alt', 
       title: t('settings.deleteAccount'), 

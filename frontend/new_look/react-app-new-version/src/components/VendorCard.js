@@ -2,6 +2,7 @@ import React, { memo } from 'react';
 import { getCategoryIconHtml, mapTypeToCategory, formatLocationShort } from '../utils/helpers';
 import { buildVendorProfileUrl } from '../utils/urlHelpers';
 import { useLocalization } from '../context/LocalizationContext';
+import './common/LoadingSpinner.css';
 
 const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavorite, onView, onHighlight, showViewCount, showResponseTime, showAnalyticsBadge, analyticsBadgeType, onlineStatus, showBio = false }) {
   const [isHovered, setIsHovered] = React.useState(false);
@@ -43,15 +44,17 @@ const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavori
       if (!images.includes(url)) images.push(url);
     });
     
-    // Return at least placeholder if no images
-    return images.length > 0 ? images : ['https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png'];
+    // Return at least empty array if no images - we'll show loading spinner
+    return images;
   };
   
   const allImages = getAllImages();
   const hasMultipleImages = allImages.length > 1;
   
   // Image URL resolution - use current index from carousel
-  const imageUrl = allImages[currentImageIndex] || 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png';
+  const imageUrl = allImages[currentImageIndex] || null;
+  const [imageLoading, setImageLoading] = React.useState(true);
+  const [imageError, setImageError] = React.useState(false);
   
   // Logo URL resolution
   const logoUrl = vendor.LogoURL || 
@@ -199,23 +202,62 @@ const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavori
     >
       {/* Image Container - Square aspect ratio like Airbnb */}
       <div style={{ position: 'relative', width: '100%', paddingTop: '100%', overflow: 'hidden', borderRadius: '12px', background: '#f3f4f6' }}>
-        <img
-          src={imageUrl}
-          alt={vendor.BusinessName || vendor.name}
-          onError={(e) => {
-            e.target.src = 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png';
-          }}
-          style={{
+        {/* Loading Spinner - shown while image is loading or if no image */}
+        {(imageLoading || !imageUrl) && !imageError && (
+          <div style={{
             position: 'absolute',
             top: 0,
             left: 0,
             width: '100%',
             height: '100%',
-            objectFit: 'cover',
-            objectPosition: 'center'
-          }}
-          className="vendor-card-image"
-        />
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: '#f3f4f6',
+            zIndex: 2
+          }}>
+            <div className="spinner" style={{ width: '32px', height: '32px' }} />
+          </div>
+        )}
+        {imageUrl && (
+          <img
+            src={imageUrl}
+            alt={vendor.BusinessName || vendor.name}
+            onLoad={() => setImageLoading(false)}
+            onError={() => {
+              setImageLoading(false);
+              setImageError(true);
+            }}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              objectPosition: 'center',
+              opacity: imageLoading ? 0 : 1,
+              transition: 'opacity 0.3s ease'
+            }}
+            className="vendor-card-image"
+          />
+        )}
+        {/* Error state - show placeholder icon */}
+        {imageError && (
+          <div style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: '#f3f4f6'
+          }}>
+            <i className="fas fa-image" style={{ fontSize: '32px', color: '#d1d5db' }}></i>
+          </div>
+        )}
         
         {/* Image Navigation Arrows - Only show on hover and if multiple images */}
         {hasMultipleImages && isHovered && (
@@ -336,58 +378,74 @@ const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavori
           }}
         />
         
-        {/* Guest Favourite Badge - Frosted glass effect, only shows if admin granted status */}
-        {isGuestFavorite && (
-          <div style={{
-            position: 'absolute',
-            top: '12px',
-            left: '12px',
-            background: 'rgba(255, 255, 255, 0.85)',
-            backdropFilter: 'blur(10px)',
-            WebkitBackdropFilter: 'blur(10px)',
-            color: '#222222',
-            padding: '6px 12px',
-            borderRadius: '20px',
-            fontSize: '12px',
-            fontWeight: 600,
-            boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
-            border: '1px solid rgba(255,255,255,0.5)'
-          }}>
-            Guest favourite
-          </div>
-        )}
-        
-        {/* Heart Icon - Top Right */}
-        <button
-          onClick={handleFavoriteClick}
-          className={isFavorite ? 'active' : ''}
-          style={{
-            position: 'absolute',
-            top: '12px',
-            right: '12px',
-            background: 'transparent',
-            border: 'none',
-            padding: 0,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            zIndex: 10
-          }}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" style={{ 
-            display: 'block', 
-            fill: isFavorite ? '#FF385C' : 'rgba(0,0,0,0.5)', 
-            height: '24px', 
-            width: '24px', 
-            stroke: 'white', 
-            strokeWidth: 2, 
-            overflow: 'visible',
-            filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))'
-          }}>
-            <path d="M16 28c7-4.73 14-10 14-17a6.98 6.98 0 0 0-7-7c-1.8 0-3.58.68-4.95 2.05L16 8.1l-2.05-2.05a6.98 6.98 0 0 0-9.9 0A6.98 6.98 0 0 0 2 11c0 7 7 12.27 14 17z"></path>
-          </svg>
-        </button>
+        {/* Top Row Container - Guest Favourite Badge and Heart on same row */}
+        <div style={{
+          position: 'absolute',
+          top: '10px',
+          left: '10px',
+          right: '10px',
+          display: 'flex',
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          zIndex: 10,
+          pointerEvents: 'none',
+          height: '28px'
+        }}>
+          {/* Guest Favourite Badge - Frosted glass effect, only shows if admin granted status */}
+          {isGuestFavorite ? (
+            <div className="vendor-card-guest-favorite" style={{
+              background: 'rgba(255, 255, 255, 0.95)',
+              backdropFilter: 'blur(10px)',
+              WebkitBackdropFilter: 'blur(10px)',
+              color: '#222222',
+              padding: '4px 10px',
+              borderRadius: '14px',
+              fontSize: '11px',
+              fontWeight: 600,
+              boxShadow: '0 2px 6px rgba(0,0,0,0.12)',
+              border: '1px solid rgba(255,255,255,0.5)',
+              whiteSpace: 'nowrap',
+              pointerEvents: 'auto',
+              lineHeight: '1.2'
+            }}>
+              Guest favourite
+            </div>
+          ) : (
+            <div style={{ flex: 1 }}></div>
+          )}
+          
+          {/* Heart Icon - Top Right */}
+          <button
+            onClick={handleFavoriteClick}
+            className={isFavorite ? 'active' : ''}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              padding: 0,
+              margin: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              pointerEvents: 'auto',
+              flexShrink: 0
+            }}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" style={{ 
+              display: 'block', 
+              fill: isFavorite ? '#FF385C' : 'rgba(0,0,0,0.5)', 
+              height: '24px', 
+              width: '24px', 
+              stroke: 'white', 
+              strokeWidth: 2, 
+              overflow: 'visible',
+              filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))'
+            }}>
+              <path d="M16 28c7-4.73 14-10 14-17a6.98 6.98 0 0 0-7-7c-1.8 0-3.58.68-4.95 2.05L16 8.1l-2.05-2.05a6.98 6.98 0 0 0-9.9 0A6.98 6.98 0 0 0 2 11c0 7 7 12.27 14 17z"></path>
+            </svg>
+          </button>
+        </div>
       </div>
       
       {/* Card Content - Airbnb Style */}

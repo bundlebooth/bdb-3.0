@@ -39,6 +39,11 @@ function MessagingWidget() {
   const [helpBreadcrumb, setHelpBreadcrumb] = useState([]); // Navigation trail: ['home'] or ['home', 'category'] or ['home', 'category', 'article']
   const [isWidgetExpanded, setIsWidgetExpanded] = useState(false); // For expanding widget when viewing article
   const [helpSearchQuery, setHelpSearchQuery] = useState(''); // Search within help
+  
+  // Guest name state for non-logged-in users
+  const [guestName, setGuestName] = useState('');
+  const [showGuestNamePrompt, setShowGuestNamePrompt] = useState(false);
+  const [isFreshSupportChat, setIsFreshSupportChat] = useState(false); // Prevent polling from overwriting welcome message
 
   // FAQ Categories matching help-centre page
   const faqCategories = [
@@ -434,6 +439,11 @@ function MessagingWidget() {
     const messageText = messageInput.trim();
     setMessageInput('');
     
+    // Clear fresh support chat flag so polling can resume after user sends a message
+    if (isFreshSupportChat) {
+      setIsFreshSupportChat(false);
+    }
+    
     // Optimistic update - show message immediately
     const optimisticMessage = {
       MessageID: `temp-${Date.now()}`,
@@ -462,8 +472,19 @@ function MessagingWidget() {
       });
       
       if (response.ok) {
-        // Reload messages to get server-confirmed version
-        loadMessages(currentConversation.id);
+        // For support conversations, don't reload messages to preserve clean slate
+        // Just update the optimistic message to confirmed
+        if (currentConversation.ConversationType === 'support' || currentConversation.isSupport) {
+          // Keep the optimistic message, just remove the _optimistic flag
+          setMessages(prev => prev.map(m => 
+            m.MessageID === optimisticMessage.MessageID 
+              ? { ...m, _optimistic: false } 
+              : m
+          ));
+        } else {
+          // For regular conversations, reload to get server-confirmed version
+          loadMessages(currentConversation.id);
+        }
       } else {
         // Remove optimistic message on failure
         setMessages(prev => prev.filter(m => m.MessageID !== optimisticMessage.MessageID));
@@ -473,7 +494,7 @@ function MessagingWidget() {
       // Remove optimistic message on error
       setMessages(prev => prev.filter(m => m.MessageID !== optimisticMessage.MessageID));
     }
-  }, [messageInput, currentConversation, currentUser, loadMessages]);
+  }, [messageInput, currentConversation, currentUser, loadMessages, isFreshSupportChat]);
 
   // Open conversation
   const openConversation = useCallback((conversation) => {
@@ -517,14 +538,36 @@ function MessagingWidget() {
     }
   }, [loadConversations]);
 
-  // Start or open support conversation
+  // Start or open support conversation - always starts fresh
   const openSupportChat = useCallback(async () => {
+    // If no user logged in, show guest name prompt
     if (!currentUser?.id) {
+      setShowGuestNamePrompt(true);
+      setMainView('messages');
+      setView('chat');
+      // Set up a temporary support conversation for guests
+      const guestConversation = {
+        id: 'guest-support',
+        ConversationID: 'guest-support',
+        OtherPartyName: 'Planbeau Support',
+        ConversationType: 'support',
+        isGuest: true
+      };
+      setCurrentConversation(guestConversation);
+      // Show welcome message for guests
+      setMessages([{
+        id: 'welcome-msg',
+        content: "👋 Hi there! Welcome to Planbeau Support. Please enter your name above so we can assist you better. How can we help you today?",
+        senderId: 'support',
+        SenderID: 'support',
+        isSupport: true,
+        CreatedAt: new Date().toISOString()
+      }]);
       return;
     }
     
     try {
-      // Create or get support conversation from API
+      // Always create a NEW support conversation (clean slate)
       const response = await fetch(`${API_BASE_URL}/messages/conversations/support`, {
         method: 'POST',
         headers: {
@@ -533,7 +576,8 @@ function MessagingWidget() {
         },
         body: JSON.stringify({
           userId: currentUser.id,
-          subject: 'Support Request'
+          subject: 'Support Request',
+          createNew: true // Flag to always create new conversation
         })
       });
       
@@ -546,14 +590,27 @@ function MessagingWidget() {
             id: data.conversationId,
             ConversationID: data.conversationId,
             OtherPartyName: 'Planbeau Support',
-            ConversationType: 'support'
+            ConversationType: 'support',
+            isSupport: true
           };
           
           // Set the conversation and switch to chat view
           setCurrentConversation(supportConversation);
           setMainView('messages'); // Must set mainView to 'messages' for chat to render
           setView('chat');
-          loadMessages(data.conversationId);
+          
+          // Start with clean slate - show only welcome message
+          setMessages([{
+            id: 'welcome-msg',
+            content: `👋 Hi ${currentUser.name || currentUser.firstName || 'there'}! Welcome to Planbeau Support. How can we help you today?`,
+            senderId: 'support',
+            SenderID: 'support',
+            isSupport: true,
+            CreatedAt: new Date().toISOString()
+          }]);
+          
+          // Mark as fresh support chat to prevent polling from overwriting welcome message
+          setIsFreshSupportChat(true);
           
           // Reload conversations in background
           loadConversations();
@@ -567,7 +624,7 @@ function MessagingWidget() {
       console.error('Failed to start support chat:', error);
       showError('Unable to start support chat. Please check your connection.');
     }
-  }, [currentUser, loadConversations, loadMessages]);
+  }, [currentUser, loadConversations]);
 
   // Upload file to Cloudinary
   const uploadToCloudinary = async (file) => {
@@ -752,8 +809,11 @@ function MessagingWidget() {
       
       pollingIntervalRef.current = setInterval(() => {
         if (currentConversation && view === 'chat') {
-          // Silent polling - pass true to avoid loading state/scroll
-                    loadMessages(currentConversation.id, true);
+          // Skip polling for fresh support chats to preserve welcome message
+          if (!isFreshSupportChat) {
+            // Silent polling - pass true to avoid loading state/scroll
+            loadMessages(currentConversation.id, true);
+          }
           // Also check typing status
           checkTypingStatus();
         }
@@ -766,7 +826,7 @@ function MessagingWidget() {
         clearInterval(pollingIntervalRef.current);
       }
     };
-  }, [isOpen, currentUser, currentConversation, view, loadConversations, loadMessages, checkTypingStatus]);
+  }, [isOpen, currentUser, currentConversation, view, loadConversations, loadMessages, checkTypingStatus, isFreshSupportChat]);
 
   // Poll for unread count even when closed
   useEffect(() => {

@@ -5133,6 +5133,11 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
     to { transform: rotate(360deg); }
 }
 
+/* Vendor Card Loading Spinner */
+.vendor-card-spinner {
+    animation: spin 1s linear infinite;
+}
+
 /* Settings Modal */
 .settings-modal-overlay {
     display: none;
@@ -12037,7 +12042,8 @@ html, body {
     }
     
     /* Mobile vendor sections - OUTSIDE page-wrapper, full width */
-    .vendor-discovery-sections-mobile {
+    .vendor-discovery-sections-mobile,
+    .vendor-recently-viewed-section-mobile {
         width: 100% !important;
         padding: 0 !important;
         margin: 0 !important;
@@ -12045,7 +12051,8 @@ html, body {
     }
     
     /* Vendor section */
-    .vendor-discovery-sections-mobile .vendor-section {
+    .vendor-discovery-sections-mobile .vendor-section,
+    .vendor-recently-viewed-section-mobile .vendor-section {
         overflow: visible !important;
         width: 100% !important;
         padding: 0 !important;
@@ -12053,13 +12060,15 @@ html, body {
     }
     
     /* Header stays aligned with page content */
-    .vendor-discovery-sections-mobile .vendor-section-header {
+    .vendor-discovery-sections-mobile .vendor-section-header,
+    .vendor-recently-viewed-section-mobile .vendor-section-header {
         padding-left: 1rem !important;
         padding-right: 1rem !important;
     }
     
     /* FULL WIDTH CAROUSEL - 100vw starting at left edge */
-    .vendor-discovery-sections-mobile .vendor-section-scroll-container {
+    .vendor-discovery-sections-mobile .vendor-section-scroll-container,
+    .vendor-recently-viewed-section-mobile .vendor-section-scroll-container {
         overflow-x: scroll !important;
         overflow-y: hidden !important;
         width: 100vw !important;
@@ -12071,7 +12080,9 @@ html, body {
     
     /* Carousel track - NO padding/margin */
     .vendor-discovery-sections-mobile .vendor-section-carousel,
-    .vendor-discovery-sections-mobile .vendor-section-grid-row {
+    .vendor-discovery-sections-mobile .vendor-section-grid-row,
+    .vendor-recently-viewed-section-mobile .vendor-section-carousel,
+    .vendor-recently-viewed-section-mobile .vendor-section-grid-row {
         display: flex !important;
         flex-wrap: nowrap !important;
         padding: 0 !important;
@@ -12082,7 +12093,9 @@ html, body {
     
     /* Card sizing - 44vw for 2 cards + peek */
     .vendor-discovery-sections-mobile .vendor-section-carousel > div,
-    .vendor-discovery-sections-mobile .vendor-section-grid-row > div {
+    .vendor-discovery-sections-mobile .vendor-section-grid-row > div,
+    .vendor-recently-viewed-section-mobile .vendor-section-carousel > div,
+    .vendor-recently-viewed-section-mobile .vendor-section-grid-row > div {
         flex: 0 0 44vw !important;
         width: 44vw !important;
         min-width: 44vw !important;
@@ -12092,7 +12105,9 @@ html, body {
     
     /* Show navigation arrows for scrolling */
     .vendor-discovery-sections-mobile .vendor-section-nav button,
-    .vendor-discovery-sections-mobile .vendor-section-nav-btn {
+    .vendor-discovery-sections-mobile .vendor-section-nav-btn,
+    .vendor-recently-viewed-section-mobile .vendor-section-nav button,
+    .vendor-recently-viewed-section-mobile .vendor-section-nav-btn {
         display: flex !important;
         opacity: 1 !important;
     }

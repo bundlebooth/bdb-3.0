@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { encodeVendorId } from '../utils/hashIds';
 
 function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false, userLocation = null, onMapBoundsChange = null, searchOnDrag = false }) {
   const mapRef = useRef(null);
@@ -107,88 +108,24 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false, u
     })();
     const businessName = vendor.BusinessName || vendor.name || 'Vendor';
     
-    // Match the main vendor card style with proper image display - smaller size for map
+    // Compact map info window card - smaller size
     return `
-      <div class="map-vendor-card" style="width: 220px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer;">
-        <!-- Image Container with padding to create border effect -->
-        <div style="padding: 2px 6px 0 6px;">
-          <div style="position: relative; width: 100%; padding-top: 66.67%; overflow: hidden; border-radius: 6px;">
-            <img 
-              src="${imageUrl}" 
-              alt="${businessName}"
-              onerror="this.src='https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png';"
-              style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover;"
-            />
-            
-            ${isGuestFavorite ? `
-            <div style="position: absolute; top: 8px; left: 8px; background: white; color: #222222; padding: 4px 8px; border-radius: 16px; font-size: 10px; font-weight: 600; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: flex; align-items: center; gap: 3px;">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="display: block; height: 11px; width: 11px; fill: #FF385C;">
-                <path d="M8 12.5l-4.5 2.5 1-5L0 6l5-.5L8 1l3 4.5 5 .5-4.5 4 1 5z"/>
-              </svg>
-              Guest favorite
-            </div>
-            ` : ''}
-            
-            <!-- Heart and Share Icons -->
-            <div style="position: absolute; top: 8px; right: 8px; display: flex; gap: 6px;">
-              <button onclick="event.stopPropagation();" style="background: rgba(255,255,255,0.9); border: none; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.08);">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" style="display: block; fill: none; height: 14px; width: 14px; stroke: rgba(0,0,0,0.5); stroke-width: 2; overflow: visible;">
-                  <path d="M16 28c7-4.73 14-10 14-17a6.98 6.98 0 0 0-7-7c-1.8 0-3.58.68-4.95 2.05L16 8.1l-2.05-2.05a6.98 6.98 0 0 0-9.9 0A6.98 6.98 0 0 0 2 11c0 7 7 12.27 14 17z"></path>
-                </svg>
-              </button>
-              <button onclick="event.stopPropagation();" style="background: rgba(255,255,255,0.9); border: none; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.08);">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" style="display: block; fill: none; height: 14px; width: 14px; stroke: rgba(0,0,0,0.5); stroke-width: 2; overflow: visible;">
-                  <g fill="none">
-                    <path d="M27 18v9a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-9"></path>
-                    <polyline points="16 3 16 17"></polyline>
-                    <polyline points="22 10 16 3 10 10"></polyline>
-                  </g>
-                </svg>
-              </button>
-            </div>
-          </div>
-        </div>
-        
+      <div class="map-vendor-card" style="width: 180px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.15); cursor: pointer; margin: 0; padding: 0;">
+        <!-- Image Container -->
+        <img 
+          src="${imageUrl}" 
+          alt="${businessName}"
+          onerror="this.src='https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png';"
+          style="width: 100%; height: 120px; object-fit: cover; object-position: center; display: block; margin: 0; padding: 0; border-radius: 10px 10px 0 0;"
+        />
         <!-- Card Content -->
-        <div style="padding: 10px; display: flex; flex-direction: column; gap: 3px;">
-          <!-- Business Name - Blue Link Style -->
-          <div style="font-size: 13px; color: #0066CC; line-height: 18px; font-weight: 400;">
-            ${businessName}
+        <div style="padding: 8px 10px 10px;">
+          <div style="font-size: 13px; color: #222; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin: 0 0 2px 0;">${businessName}</div>
+          ${locationText ? `<div style="font-size: 11px; color: #717171; margin: 0 0 2px 0;">${locationText}</div>` : ''}
+          <div style="font-size: 11px; color: #717171; display: flex; align-items: center; gap: 4px;">
+            <span>Contact for pricing</span>
+            ${reviewCount > 0 ? `<span>·</span><span style="color: #5e72e4;">★</span><span style="color: #222; font-weight: 500;">${rating > 0 ? rating.toFixed(1) : '5.0'}</span><span>(${reviewCount})</span>` : ''}
           </div>
-          
-          <!-- Price, Rating, Response Time -->
-          <div style="display: flex; align-items: center; gap: 3px; font-size: 12px; line-height: 16px; flex-wrap: wrap;">
-            ${hourlyRate > 0 ? `
-              <span style="font-weight: 400; color: #222222;">Starting from </span>
-              <span style="font-weight: 600; color: #222222;">$${hourlyRate}</span>
-              <span style="color: #222222; margin: 0 2px;">·</span>
-            ` : ''}
-            
-            <!-- Rating with blue star -->
-            <span style="display: flex; align-items: center; gap: 2px;">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" style="display: block; height: 11px; width: 11px; fill: #0066CC;">
-                <path fill-rule="evenodd" d="M15.1 1.58l-4.13 8.88-9.86 1.27a1 1 0 0 0-.54 1.74l7.3 6.57-1.97 9.85a1 1 0 0 0 1.48 1.06l8.62-5 8.63 5a1 1 0 0 0 1.48-1.06l-1.97-9.85 7.3-6.57a1 1 0 0 0-.55-1.73l-9.86-1.28-4.12-8.88a1 1 0 0 0-1.82 0z"></path>
-              </svg>
-              <span style="font-weight: 400; color: #222222;">
-                ${rating > 0 ? rating.toFixed(1) : '5.0'}
-              </span>
-              <span style="color: #222222;">
-                ${reviewCount > 0 ? `(${reviewCount})` : '(0)'}
-              </span>
-            </span>
-            
-            <span style="color: #222222; margin: 0 2px;">·</span>
-            
-            <!-- Response Time - Blue -->
-            <span style="color: #0066CC;">Responds ${responseTime}</span>
-          </div>
-          
-          <!-- Location -->
-          ${locationText ? `
-          <div style="font-size: 12px; color: #222222; line-height: 16px;">
-            ${locationText}
-          </div>
-          ` : ''}
         </div>
       </div>
     `;
@@ -484,27 +421,48 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false, u
             closeButton.style.display = 'none';
           }
           
-          // Style InfoWindow containers
+          // Add global close function for the X button in the card
+          window.closeMapInfoWindow = () => {
+            if (infoWindowRef.current) {
+              infoWindowRef.current.close();
+              // Reset marker to grey
+              marker.setIcon({
+                url: greyIcon,
+                scaledSize: new window.google.maps.Size(20, 30),
+                anchor: new window.google.maps.Point(10, 30)
+              });
+            }
+          };
+          
+          // Style InfoWindow - remove padding but keep content visible
           const iwContainer = document.querySelector('.gm-style-iw-c');
           if (iwContainer) {
             iwContainer.style.padding = '0';
-            iwContainer.style.borderRadius = '12px';
+            iwContainer.style.borderRadius = '10px';
+            iwContainer.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
             iwContainer.style.overflow = 'hidden';
           }
-          
           const iwContent = document.querySelector('.gm-style-iw-d');
           if (iwContent) {
-            iwContent.style.overflow = 'hidden';
             iwContent.style.padding = '0';
+            iwContent.style.margin = '0';
+            iwContent.style.overflow = 'visible';
           }
+          // Hide close button container (causes top gap) and arrow
+          const closeBtn = document.querySelector('.gm-style-iw-chr');
+          if (closeBtn) closeBtn.style.display = 'none';
+          const arrow = document.querySelector('.gm-style-iw-tc');
+          if (arrow) arrow.style.display = 'none';
+          const hoverBtn = document.querySelector('.gm-ui-hover-effect');
+          if (hoverBtn) hoverBtn.style.display = 'none';
           
           // Click on card to navigate to vendor profile page
           const cardDiv = document.querySelector('.map-vendor-card');
           if (cardDiv) {
             cardDiv.addEventListener('click', () => {
               const vendorId = marker.vendorId;
-              // Navigate to vendor profile page
-              window.location.href = `/vendor/${vendorId}`;
+              // Navigate to vendor profile page with encoded ID
+              window.location.href = `/vendor/${encodeVendorId(vendorId)}`;
             });
           }
         });
