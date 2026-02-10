@@ -41,6 +41,7 @@ BEGIN
         t.UpdatedAt,
         t.ResolvedAt,
         t.ClosedAt,
+        t.Attachments,
         ISNULL(t.UserName, CONCAT(u.FirstName, ' ', ISNULL(u.LastName, ''))) as UserName,
         ISNULL(t.UserEmail, u.Email) as UserEmail,
         (SELECT COUNT(*) FROM admin.SupportTicketMessages tm WHERE tm.TicketID = t.TicketID) as MessageCount

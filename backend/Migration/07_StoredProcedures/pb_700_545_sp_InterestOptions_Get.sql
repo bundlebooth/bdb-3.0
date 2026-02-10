@@ -18,7 +18,7 @@ BEGIN
     SET NOCOUNT ON;
     
     SELECT InterestOptionID, Interest, Category, Icon
-    FROM users.InterestOptions
+    FROM admin.InterestOptions
     WHERE IsActive = 1
     ORDER BY Category, Interest;
 END
