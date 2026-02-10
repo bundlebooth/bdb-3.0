@@ -77,7 +77,8 @@
     
     /* FORCE HIDE vendor buttons */
     .become-vendor-btn,
-    .complete-profile-btn {
+    .complete-profile-btn,
+    .switch-to-hosting-btn {
         display: none !important;
         visibility: hidden !important;
         opacity: 0 !important;

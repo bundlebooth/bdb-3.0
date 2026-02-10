@@ -102,7 +102,7 @@ function PersonalDetailsPanel({ onBack, embedded = false }) {
     
     try {
       setSendingReset(true);
-      const response = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
+      const response = await fetch(`${API_BASE_URL}/users/forgot-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: formData.email })
@@ -282,7 +282,7 @@ function PersonalDetailsPanel({ onBack, embedded = false }) {
               fontWeight: 500,
               fontSize: '14px',
               cursor: sendingReset ? 'not-allowed' : 'pointer',
-              marginBottom: '1.5rem'
+              display: 'block'
             }}
           >
             <i className="fas fa-envelope" style={{ marginRight: '8px' }}></i>
@@ -300,7 +300,9 @@ function PersonalDetailsPanel({ onBack, embedded = false }) {
               borderRadius: '8px',
               fontWeight: 500,
               fontSize: '14px',
-              cursor: (!hasChanges || saving) ? 'not-allowed' : 'pointer'
+              cursor: (!hasChanges || saving) ? 'not-allowed' : 'pointer',
+              marginTop: '1.5rem',
+              display: 'block'
             }}
           >
             {saving ? 'Saving...' : 'Save'}

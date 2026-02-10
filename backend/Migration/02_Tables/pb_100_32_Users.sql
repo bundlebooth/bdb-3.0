@@ -53,6 +53,8 @@ BEGIN
 	-- Email unsubscribe columns
 	[UnsubscribedFromAll] [bit] NOT NULL CONSTRAINT DF_Users_UnsubscribedFromAll DEFAULT 0,
 	[UnsubscribedAt] [datetime2] NULL,
+	-- Two-factor authentication
+	[TwoFactorEnabled] [bit] NOT NULL CONSTRAINT DF_Users_TwoFactorEnabled DEFAULT 0,
 PRIMARY KEY CLUSTERED 
 (
 	[UserID] ASC

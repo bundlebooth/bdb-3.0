@@ -1798,26 +1798,6 @@ function IndexPage() {
               </span>
             )}
           </button>
-          <select 
-            value={sortBy} 
-            onChange={handleSortChange} 
-            style={{ 
-              flex: 1,
-              padding: '10px 12px', 
-              borderRadius: '8px', 
-              border: '1px solid #ddd', 
-              backgroundColor: 'white', 
-              fontSize: '14px', 
-              color: '#222', 
-              cursor: 'pointer' 
-            }}
-          >
-            <option value="recommended">Recommended</option>
-            <option value="price-low">Price: Low to High</option>
-            <option value="price-high">Price: High to Low</option>
-            <option value="nearest">Nearest to Me</option>
-            <option value="rating">Highest Rated</option>
-          </select>
         </div>
       )}
       
@@ -2049,6 +2029,22 @@ function IndexPage() {
       </div>
       )}
       
+      {/* No vendors message - MOBILE */}
+      {isMobileView && !loading && !loadingDiscovery && filteredVendors.length === 0 && (
+        <div style={{ 
+          padding: '60px 24px', 
+          textAlign: 'center',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}>
+          <i className="fas fa-store-slash" style={{ fontSize: '48px', color: '#9ca3af', marginBottom: '16px' }}></i>
+          <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: 600, color: '#374151' }}>No vendors to display</h3>
+          <p style={{ margin: 0, fontSize: '14px', color: '#6b7280', maxWidth: '280px' }}>Try adjusting your filters or search in a different location</p>
+        </div>
+      )}
+      
       <div className="page-wrapper" style={{ paddingTop: 0, paddingBottom: 0 }}>
       <div className={`app-container sidebar-collapsed ${mapActive ? 'map-active' : ''}`} id="app-container" style={{ display: 'flex', flexDirection: 'column', width: '100%', overflow: 'visible' }}>
         <div className="content-wrapper" style={{ display: 'flex', width: '100%', flex: 1, overflow: 'visible' }}>
@@ -2116,7 +2112,6 @@ function IndexPage() {
                       </span>
                     )}
                   </button>
-                  <select id="sort-select" value={sortBy} onChange={handleSortChange} style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'white', fontSize: '0.9rem', color: 'var(--text)', cursor: 'pointer' }}><option value="recommended">Recommended</option><option value="price-low">Price: Low to High</option><option value="price-high">Price: High to Low</option><option value="nearest">Nearest to Me</option><option value="rating">Highest Rated</option></select>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <span style={{ fontSize: '0.9rem', color: 'var(--text)' }}>{mapActive ? 'Hide map' : 'Show map'}</span>
                     <label style={{ position: 'relative', display: 'inline-block', width: '44px', height: '24px', cursor: 'pointer' }}>
@@ -2191,6 +2186,22 @@ function IndexPage() {
               ))
             )}
           </div>
+          )}
+          
+          {/* No vendors message - DESKTOP */}
+          {!isMobileView && !loading && !loadingDiscovery && filteredVendors.length === 0 && (
+            <div style={{ 
+              padding: '80px 24px', 
+              textAlign: 'center',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <i className="fas fa-store-slash" style={{ fontSize: '56px', color: '#9ca3af', marginBottom: '20px' }}></i>
+              <h3 style={{ margin: '0 0 12px 0', fontSize: '22px', fontWeight: 600, color: '#374151' }}>No vendors to display</h3>
+              <p style={{ margin: 0, fontSize: '15px', color: '#6b7280', maxWidth: '360px' }}>Try adjusting your filters or search in a different location</p>
+            </div>
           )}
           
           {/* Recently Viewed Carousel - DESKTOP */}
