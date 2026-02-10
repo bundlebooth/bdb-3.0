@@ -2369,52 +2369,20 @@ router.get('/:userId/security/sessions', async (req, res) => {
     
     const pool = await poolPromise;
     
-    // Get login sessions from SecurityLogs
+    // Call stored procedure to get all security session data
     const result = await pool.request()
       .input('UserID', sql.Int, userId)
       .input('Limit', sql.Int, parseInt(limit))
-      .query(`
-        SELECT TOP (@Limit)
-          LogID,
-          Action,
-          ActionStatus,
-          IPAddress,
-          UserAgent,
-          Location,
-          Device,
-          Details,
-          CreatedAt
-        FROM users.SecurityLogs
-        WHERE UserID = @UserID
-          AND Action IN ('Login', 'Logout', 'LoginFailed', 'PasswordResetRequested', 'PasswordResetCompleted')
-        ORDER BY CreatedAt DESC
-      `);
+      .execute('users.sp_GetSecuritySessions');
     
-    // Get last successful login
-    const lastLoginResult = await pool.request()
-      .input('UserID', sql.Int, userId)
-      .query(`
-        SELECT TOP 1 CreatedAt, IPAddress, Location, Device, UserAgent
-        FROM users.SecurityLogs
-        WHERE UserID = @UserID AND Action = 'Login' AND ActionStatus = 'Success'
-        ORDER BY CreatedAt DESC
-      `);
-    
-    // Get user's 2FA status
-    const userResult = await pool.request()
-      .input('UserID', sql.Int, userId)
-      .query(`
-        SELECT TwoFactorEnabled, LastLogin
-        FROM users.Users
-        WHERE UserID = @UserID
-      `);
-    
-    const user = userResult.recordset[0] || {};
-    const lastLogin = lastLoginResult.recordset[0] || null;
+    // Result has 3 recordsets: sessions, lastLogin, 2FA status
+    const sessions = result.recordsets[0] || [];
+    const lastLoginData = result.recordsets[1]?.[0] || null;
+    const twoFactorEnabled = result.recordsets[2]?.[0]?.TwoFactorEnabled || false;
     
     res.json({
       success: true,
-      sessions: result.recordset.map(s => ({
+      sessions: sessions.map(s => ({
         id: s.LogID,
         action: s.Action,
         status: s.ActionStatus,
@@ -2425,14 +2393,14 @@ router.get('/:userId/security/sessions', async (req, res) => {
         details: s.Details,
         timestamp: s.CreatedAt
       })),
-      lastLogin: lastLogin ? {
-        timestamp: lastLogin.CreatedAt,
-        ipAddress: lastLogin.IPAddress,
-        location: lastLogin.Location,
-        device: lastLogin.Device,
-        userAgent: lastLogin.UserAgent
+      lastLogin: lastLoginData ? {
+        timestamp: lastLoginData.CreatedAt,
+        ipAddress: lastLoginData.IPAddress,
+        location: lastLoginData.Location,
+        device: lastLoginData.Device,
+        userAgent: lastLoginData.UserAgent
       } : null,
-      twoFactorEnabled: user.TwoFactorEnabled || false
+      twoFactorEnabled: twoFactorEnabled
     });
   } catch (err) {
     console.error('Get security sessions error:', err);
@@ -2461,15 +2429,11 @@ router.post('/:userId/security/2fa/toggle', async (req, res) => {
     
     const pool = await poolPromise;
     
-    // Update 2FA status
+    // Update 2FA status using stored procedure
     await pool.request()
       .input('UserID', sql.Int, userId)
-      .input('TwoFactorEnabled', sql.Bit, enabled ? 1 : 0)
-      .query(`
-        UPDATE users.Users
-        SET TwoFactorEnabled = @TwoFactorEnabled, UpdatedAt = GETDATE()
-        WHERE UserID = @UserID
-      `);
+      .input('Enabled', sql.Bit, enabled ? 1 : 0)
+      .execute('users.sp_Toggle2FA');
     
     // Log the action
     try {
