@@ -11,6 +11,8 @@ function SecurityPanel({ onBack, embedded = false }) {
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
   const [toggling2FA, setToggling2FA] = useState(false);
   const [loggingOutAll, setLoggingOutAll] = useState(false);
+  const [showAllActivity, setShowAllActivity] = useState(false);
+  const INITIAL_ACTIVITY_COUNT = 5;
 
   useEffect(() => {
     loadSecurityData();
@@ -103,14 +105,19 @@ function SecurityPanel({ onBack, embedded = false }) {
 
   const formatDate = (dateString) => {
     if (!dateString) return 'Unknown';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric', 
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return 'Unknown';
+      return date.toLocaleDateString('en-US', { 
+        month: 'short', 
+        day: 'numeric', 
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (e) {
+      return 'Unknown';
+    }
   };
 
   const parseUserAgent = (userAgent) => {
@@ -269,7 +276,7 @@ function SecurityPanel({ onBack, embedded = false }) {
                 left: 0,
                 right: 0,
                 bottom: 0,
-                backgroundColor: twoFactorEnabled ? '#10b981' : '#E5E7EB',
+                backgroundColor: twoFactorEnabled ? '#4F86E8' : '#E5E7EB',
                 borderRadius: '26px',
                 transition: 'background-color 0.3s'
               }}>
@@ -316,76 +323,176 @@ function SecurityPanel({ onBack, embedded = false }) {
             </button>
           </div>
           
-          {sessions.length === 0 ? (
-            <div style={{ 
-              padding: '2rem',
-              background: '#f9fafb',
-              borderRadius: '8px',
-              border: '1px solid var(--border)',
-              textAlign: 'center',
-              color: 'var(--text-light)'
-            }}>
-              <i className="fas fa-history" style={{ fontSize: '2rem', marginBottom: '0.5rem', opacity: 0.5 }}></i>
-              <p>No login activity found</p>
-            </div>
-          ) : (
-            <div style={{ 
-              border: '1px solid var(--border)',
-              borderRadius: '8px',
-              overflow: 'hidden'
-            }}>
-              {sessions.map((session, index) => {
-                const { browser, os } = parseUserAgent(session.userAgent);
-                return (
-                  <div 
-                    key={session.id}
-                    style={{ 
-                      padding: '1rem',
-                      background: index % 2 === 0 ? '#fff' : '#f9fafb',
-                      borderBottom: index < sessions.length - 1 ? '1px solid var(--border)' : 'none',
-                      display: 'flex',
-                      alignItems: 'flex-start',
-                      gap: '1rem'
-                    }}
-                  >
-                    <div style={{
-                      width: '32px',
-                      height: '32px',
-                      borderRadius: '50%',
-                      background: `${getActionColor(session.action, session.status)}15`,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      flexShrink: 0
+          {(() => {
+            // Separate active sessions (successful logins) from activity history
+            const activeDevices = sessions.filter(s => s.action === 'Login' && s.status === 'Success');
+            const activityToShow = showAllActivity ? sessions : sessions.slice(0, INITIAL_ACTIVITY_COUNT);
+            
+            return (
+              <>
+                {/* Currently Logged In Devices */}
+                {activeDevices.length > 0 && (
+                  <div style={{ marginBottom: '1.5rem' }}>
+                    <h4 style={{ fontSize: '0.9rem', fontWeight: 500, color: 'var(--text)', marginBottom: '0.75rem' }}>
+                      <i className="fas fa-desktop" style={{ marginRight: '0.5rem', color: '#4F86E8' }}></i>
+                      Active Devices ({activeDevices.length})
+                    </h4>
+                    <div style={{ 
+                      border: '1px solid var(--border)',
+                      borderRadius: '8px',
+                      overflow: 'hidden'
                     }}>
-                      <i className={`fas ${getActionIcon(session.action)}`} style={{ color: getActionColor(session.action, session.status), fontSize: '0.85rem' }}></i>
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem' }}>
-                        <div>
-                          <p style={{ fontSize: '0.9rem', fontWeight: 500, color: 'var(--text)', margin: 0 }}>
-                            {session.action === 'Login' && session.status === 'Success' ? 'Successful login' :
-                             session.action === 'LoginFailed' ? 'Failed login attempt' :
-                             session.action === 'Logout' ? 'Logged out' :
-                             session.action === 'PasswordResetRequested' ? 'Password reset requested' :
-                             session.action === 'PasswordResetCompleted' ? 'Password reset completed' :
-                             session.action}
-                          </p>
-                          <p style={{ fontSize: '0.8rem', color: 'var(--text-light)', margin: '0.25rem 0 0 0' }}>
-                            {session.device || `${browser} on ${os}`} • {session.ipAddress || 'Unknown IP'}
-                            {session.location && ` • ${session.location}`}
-                          </p>
-                        </div>
-                        <p style={{ fontSize: '0.75rem', color: 'var(--text-light)', margin: 0, whiteSpace: 'nowrap' }}>
-                          {formatDate(session.timestamp)}
-                        </p>
-                      </div>
+                      {activeDevices.slice(0, 3).map((device, index) => {
+                        const { browser, os } = parseUserAgent(device.userAgent);
+                        return (
+                          <div 
+                            key={device.id}
+                            style={{ 
+                              padding: '0.75rem 1rem',
+                              background: index % 2 === 0 ? '#fff' : '#f9fafb',
+                              borderBottom: index < Math.min(activeDevices.length, 3) - 1 ? '1px solid var(--border)' : 'none',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.75rem'
+                            }}
+                          >
+                            <div style={{
+                              width: '28px',
+                              height: '28px',
+                              borderRadius: '6px',
+                              background: '#4F86E815',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0
+                            }}>
+                              <i className={`fas ${os === 'Windows' ? 'fa-windows' : os === 'macOS' ? 'fa-apple' : os === 'iOS' ? 'fa-mobile-alt' : os === 'Android' ? 'fa-android' : 'fa-desktop'}`} style={{ color: '#4F86E8', fontSize: '0.8rem' }}></i>
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <p style={{ fontSize: '0.85rem', fontWeight: 500, color: 'var(--text)', margin: 0 }}>
+                                {browser} on {os}
+                              </p>
+                              <p style={{ fontSize: '0.75rem', color: 'var(--text-light)', margin: 0 }}>
+                                {device.ipAddress || 'Unknown IP'} • Last active {formatDate(device.timestamp)}
+                              </p>
+                            </div>
+                            <span style={{ 
+                              fontSize: '0.7rem', 
+                              padding: '2px 8px', 
+                              background: '#10b98115', 
+                              color: '#10b981', 
+                              borderRadius: '4px',
+                              fontWeight: 500
+                            }}>Active</span>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          )}
+                )}
+
+                {/* Recent Activity */}
+                <h4 style={{ fontSize: '0.9rem', fontWeight: 500, color: 'var(--text)', marginBottom: '0.75rem' }}>
+                  Recent Activity
+                </h4>
+                {sessions.length === 0 ? (
+                  <div style={{ 
+                    padding: '2rem',
+                    background: '#f9fafb',
+                    borderRadius: '8px',
+                    border: '1px solid var(--border)',
+                    textAlign: 'center',
+                    color: 'var(--text-light)'
+                  }}>
+                    <i className="fas fa-history" style={{ fontSize: '2rem', marginBottom: '0.5rem', opacity: 0.5 }}></i>
+                    <p>No login activity found</p>
+                  </div>
+                ) : (
+                  <>
+                    <div style={{ 
+                      border: '1px solid var(--border)',
+                      borderRadius: '8px',
+                      overflow: 'hidden'
+                    }}>
+                      {activityToShow.map((session, index) => {
+                        const { browser, os } = parseUserAgent(session.userAgent);
+                        return (
+                          <div 
+                            key={session.id}
+                            style={{ 
+                              padding: '1rem',
+                              background: index % 2 === 0 ? '#fff' : '#f9fafb',
+                              borderBottom: index < activityToShow.length - 1 ? '1px solid var(--border)' : 'none',
+                              display: 'flex',
+                              alignItems: 'flex-start',
+                              gap: '1rem'
+                            }}
+                          >
+                            <div style={{
+                              width: '32px',
+                              height: '32px',
+                              borderRadius: '50%',
+                              background: `${getActionColor(session.action, session.status)}15`,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0
+                            }}>
+                              <i className={`fas ${getActionIcon(session.action)}`} style={{ color: getActionColor(session.action, session.status), fontSize: '0.85rem' }}></i>
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem' }}>
+                                <div>
+                                  <p style={{ fontSize: '0.9rem', fontWeight: 500, color: 'var(--text)', margin: 0 }}>
+                                    {session.action === 'Login' && session.status === 'Success' ? 'Successful login' :
+                                     session.action === 'LoginFailed' ? 'Failed login attempt' :
+                                     session.action === 'Logout' ? 'Logged out' :
+                                     session.action === 'PasswordResetRequested' ? 'Password reset requested' :
+                                     session.action === 'PasswordResetCompleted' ? 'Password reset completed' :
+                                     session.action}
+                                  </p>
+                                  <p style={{ fontSize: '0.8rem', color: 'var(--text-light)', margin: '0.25rem 0 0 0' }}>
+                                    {session.device || `${browser} on ${os}`} • {session.ipAddress || 'Unknown IP'}
+                                    {session.location && ` • ${session.location}`}
+                                  </p>
+                                </div>
+                                <p style={{ fontSize: '0.75rem', color: 'var(--text-light)', margin: 0, whiteSpace: 'nowrap' }}>
+                                  {formatDate(session.timestamp)}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {sessions.length > INITIAL_ACTIVITY_COUNT && (
+                      <button
+                        onClick={() => setShowAllActivity(!showAllActivity)}
+                        style={{
+                          width: '100%',
+                          padding: '0.75rem',
+                          marginTop: '0.75rem',
+                          background: 'transparent',
+                          border: '1px solid var(--border)',
+                          borderRadius: '8px',
+                          color: '#4F86E8',
+                          fontSize: '0.85rem',
+                          fontWeight: 500,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {showAllActivity ? (
+                          <><i className="fas fa-chevron-up" style={{ marginRight: '0.5rem' }}></i>Show Less</>
+                        ) : (
+                          <><i className="fas fa-chevron-down" style={{ marginRight: '0.5rem' }}></i>Show More ({sessions.length - INITIAL_ACTIVITY_COUNT} more)</>  
+                        )}
+                      </button>
+                    )}
+                  </>
+                )}
+              </>
+            );
+          })()}
         </div>
 
         {/* Security Tips */}

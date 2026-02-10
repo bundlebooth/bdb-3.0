@@ -10,7 +10,7 @@ export const clientNavItems = [
   { path: '/client/favorites', label: 'Favorites', icon: 'far fa-heart' },
   { path: '/client/reviews', label: 'Reviews', icon: 'far fa-star' },
   { path: '/client/invoices', label: 'Invoices', icon: 'far fa-file-alt' },
-  { path: '/client/settings', label: 'Settings', icon: 'far fa-cog' },
+  { path: '/client/settings', label: 'Settings', icon: 'fas fa-cog' },
 ];
 
 export default clientNavItems;

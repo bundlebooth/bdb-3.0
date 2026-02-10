@@ -157,34 +157,49 @@ function LanguageCurrencyPanel({ onBack, embedded = false }) {
           Currency
         </h3>
         <p style={{ fontSize: '13px', color: '#6b7280', marginBottom: '16px' }}>
-          Prices will be shown in your selected currency. CAD is recommended for Canadian users.
+          Currently only Canadian Dollar (CAD) is available. More currencies coming soon.
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: '12px' }}>
-          {supportedCurrencies.map((curr) => (
-            <button
-              key={curr.code}
-              onClick={() => setSelectedCurrency(curr.code)}
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'flex-start',
-                padding: '14px 16px',
-                border: selectedCurrency === curr.code ? '2px solid #5086E8' : '1px solid #e5e7eb',
-                borderRadius: '10px',
-                background: selectedCurrency === curr.code ? '#fafafa' : 'white',
-                cursor: 'pointer',
-                textAlign: 'left',
-                transition: 'all 0.2s'
-              }}
-            >
-              <span style={{ fontSize: '14px', fontWeight: 500, color: '#111827', marginBottom: '2px' }}>
-                {curr.name}
-              </span>
-              <span style={{ fontSize: '12px', color: '#6b7280' }}>
-                {curr.code} – {curr.symbol}
-              </span>
-            </button>
-          ))}
+          {supportedCurrencies.map((curr) => {
+            const isDisabled = curr.code !== 'CAD';
+            return (
+              <button
+                key={curr.code}
+                onClick={() => !isDisabled && setSelectedCurrency(curr.code)}
+                disabled={isDisabled}
+                title={isDisabled ? 'Coming soon - Currently only CAD is available' : ''}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'flex-start',
+                  padding: '14px 16px',
+                  border: selectedCurrency === curr.code ? '2px solid #5086E8' : '1px solid #e5e7eb',
+                  borderRadius: '10px',
+                  background: isDisabled ? '#f3f4f6' : (selectedCurrency === curr.code ? '#fafafa' : 'white'),
+                  cursor: isDisabled ? 'not-allowed' : 'pointer',
+                  textAlign: 'left',
+                  transition: 'all 0.2s',
+                  opacity: isDisabled ? 0.6 : 1,
+                  position: 'relative'
+                }}
+              >
+                <span style={{ fontSize: '14px', fontWeight: 500, color: isDisabled ? '#9ca3af' : '#111827', marginBottom: '2px' }}>
+                  {curr.name}
+                </span>
+                <span style={{ fontSize: '12px', color: '#6b7280' }}>
+                  {curr.code} – {curr.symbol}
+                </span>
+                {isDisabled && (
+                  <span style={{ 
+                    fontSize: '10px', 
+                    color: '#9ca3af', 
+                    marginTop: '4px',
+                    fontStyle: 'italic'
+                  }}>Coming soon</span>
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -194,34 +209,49 @@ function LanguageCurrencyPanel({ onBack, embedded = false }) {
           Distance Unit
         </h3>
         <p style={{ fontSize: '13px', color: '#6b7280', marginBottom: '16px' }}>
-          Choose how distances are displayed. Kilometers is the default for Canada.
+          Currently only Kilometers is available for Canada. Miles coming soon.
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '12px' }}>
-          {supportedDistanceUnits.map((unit) => (
-            <button
-              key={unit.code}
-              onClick={() => setSelectedDistanceUnit(unit.code)}
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'flex-start',
-                padding: '14px 16px',
-                border: selectedDistanceUnit === unit.code ? '2px solid #5086E8' : '1px solid #e5e7eb',
-                borderRadius: '10px',
-                background: selectedDistanceUnit === unit.code ? '#fafafa' : 'white',
-                cursor: 'pointer',
-                textAlign: 'left',
-                transition: 'all 0.2s'
-              }}
-            >
-              <span style={{ fontSize: '14px', fontWeight: 500, color: '#111827', marginBottom: '2px' }}>
-                {unit.name}
-              </span>
-              <span style={{ fontSize: '12px', color: '#6b7280' }}>
-                {unit.abbreviation}
-              </span>
-            </button>
-          ))}
+          {supportedDistanceUnits.map((unit) => {
+            const isDisabled = unit.code !== 'km';
+            return (
+              <button
+                key={unit.code}
+                onClick={() => !isDisabled && setSelectedDistanceUnit(unit.code)}
+                disabled={isDisabled}
+                title={isDisabled ? 'Coming soon - Currently only Kilometers is available' : ''}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'flex-start',
+                  padding: '14px 16px',
+                  border: selectedDistanceUnit === unit.code ? '2px solid #5086E8' : '1px solid #e5e7eb',
+                  borderRadius: '10px',
+                  background: isDisabled ? '#f3f4f6' : (selectedDistanceUnit === unit.code ? '#fafafa' : 'white'),
+                  cursor: isDisabled ? 'not-allowed' : 'pointer',
+                  textAlign: 'left',
+                  transition: 'all 0.2s',
+                  opacity: isDisabled ? 0.6 : 1,
+                  position: 'relative'
+                }}
+              >
+                <span style={{ fontSize: '14px', fontWeight: 500, color: isDisabled ? '#9ca3af' : '#111827', marginBottom: '2px' }}>
+                  {unit.name}
+                </span>
+                <span style={{ fontSize: '12px', color: '#6b7280' }}>
+                  {unit.abbreviation}
+                </span>
+                {isDisabled && (
+                  <span style={{ 
+                    fontSize: '10px', 
+                    color: '#9ca3af', 
+                    marginTop: '4px',
+                    fontStyle: 'italic'
+                  }}>Coming soon</span>
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
 

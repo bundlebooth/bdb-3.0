@@ -398,7 +398,7 @@ const ProfileEditPanel = ({ onClose, onSave, embedded = false }) => {
               width: '150px',
               height: '150px',
               borderRadius: '50%',
-              backgroundColor: '#111827',
+              backgroundColor: '#4F86E8',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -596,20 +596,21 @@ const ProfileEditPanel = ({ onClose, onSave, embedded = false }) => {
                           type="button"
                           onClick={() => toggleInterest(opt.Interest, category)}
                           style={{
-                            padding: '0.5rem 1rem',
-                            border: isSelected ? '2px solid #111827' : '1px solid #d1d5db',
-                            borderRadius: '20px',
-                            backgroundColor: isSelected ? '#f3f4f6' : 'white',
-                            color: '#111827',
+                            padding: '8px 16px',
+                            border: isSelected ? '1px solid #4F86E8' : '1px solid #d1d5db',
+                            borderRadius: '8px',
+                            backgroundColor: isSelected ? '#EBF2FF' : 'white',
+                            color: isSelected ? '#4F86E8' : '#374151',
                             cursor: 'pointer',
                             display: 'flex',
                             alignItems: 'center',
                             gap: '0.5rem',
-                            fontSize: '0.9rem',
-                            fontWeight: isSelected ? 500 : 400
+                            fontSize: '0.875rem',
+                            fontWeight: 500,
+                            transition: 'all 0.15s ease'
                           }}
                         >
-                          {isSelected && <i className="fas fa-check" style={{ fontSize: '0.75rem' }}></i>}
+                          {isSelected && <i className="fas fa-times" style={{ fontSize: '0.7rem' }}></i>}
                           {opt.Interest}
                         </button>
                       );
