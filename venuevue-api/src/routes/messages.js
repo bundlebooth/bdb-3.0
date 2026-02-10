@@ -604,7 +604,7 @@ router.post('/conversations', async (req, res) => {
 // Create or get support conversation
 router.post('/conversations/support', async (req, res) => {
   try {
-    const { userId, subject } = req.body;
+    const { userId, subject, createNew } = req.body;
     
     if (!userId) {
       return res.status(400).json({ 
@@ -615,17 +615,20 @@ router.post('/conversations/support', async (req, res) => {
 
     const pool = await poolPromise;
     
-    // Check if user already has a support conversation using stored procedure
-    const existingResult = await pool.request()
-      .input('UserID', sql.Int, userId)
-      .execute('messages.sp_CheckSupportConversation');
-    
-    if (existingResult.recordset.length > 0) {
-      return res.json({
-        success: true,
-        conversationId: existingResult.recordset[0].ConversationID,
-        isExisting: true
-      });
+    // If createNew is true, always create a new conversation (clean slate)
+    if (!createNew) {
+      // Check if user already has a support conversation using stored procedure
+      const existingResult = await pool.request()
+        .input('UserID', sql.Int, userId)
+        .execute('messages.sp_CheckSupportConversation');
+      
+      if (existingResult.recordset.length > 0) {
+        return res.json({
+          success: true,
+          conversationId: existingResult.recordset[0].ConversationID,
+          isExisting: true
+        });
+      }
     }
     
     // Create new support conversation using stored procedure
@@ -639,7 +642,8 @@ router.post('/conversations/support', async (req, res) => {
     res.json({
       success: true,
       conversationId: conversationId,
-      isExisting: false
+      isExisting: false,
+      isNew: true
     });
 
   } catch (err) {
