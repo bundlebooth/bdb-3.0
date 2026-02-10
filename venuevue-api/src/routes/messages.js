@@ -601,6 +601,47 @@ router.post('/conversations', async (req, res) => {
   }
 });
 
+// Get today's support conversation (for daily reset behavior)
+router.get('/conversations/support/today', async (req, res) => {
+  try {
+    const { userId } = req.query;
+    
+    if (!userId) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'User ID is required' 
+      });
+    }
+
+    const pool = await poolPromise;
+    
+    // Check if user has a support conversation from TODAY
+    const result = await pool.request()
+      .input('UserID', sql.Int, userId)
+      .execute('messages.sp_GetTodaySupportConversation');
+    
+    if (result.recordset.length > 0) {
+      return res.json({
+        success: true,
+        conversationId: result.recordset[0].ConversationID
+      });
+    }
+    
+    res.json({
+      success: true,
+      conversationId: null
+    });
+
+  } catch (err) {
+    console.error('Get today support conversation error:', err);
+    // Return null on error - will create new conversation
+    res.json({ 
+      success: true,
+      conversationId: null
+    });
+  }
+});
+
 // Create or get support conversation
 router.post('/conversations/support', async (req, res) => {
   try {
