@@ -801,7 +801,7 @@ router.post('/conversations/end-chat', async (req, res) => {
         SELECT m.MessageID, m.ConversationID, m.SenderID, m.SenderType, m.Content, m.CreatedAt,
                u.FirstName + ' ' + u.LastName AS SenderName
         FROM messages.Messages m
-        LEFT JOIN dbo.Users u ON m.SenderID = u.UserID AND m.SenderType NOT IN ('support', 'guest')
+        LEFT JOIN users.Users u ON m.SenderID = u.UserID AND m.SenderType NOT IN ('support', 'guest')
         WHERE m.ConversationID = @ConversationID
         ORDER BY m.CreatedAt ASC
       `);
