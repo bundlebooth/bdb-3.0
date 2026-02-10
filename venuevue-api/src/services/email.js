@@ -474,7 +474,7 @@ async function sendTemplatedEmail(templateKey, recipientEmail, recipientName, va
 }
 
 // Direct send (for non-templated emails)
-async function sendEmail({ to, subject, text, html, from, templateKey = null, emailCategory = null }) {
+async function sendEmail({ to, subject, text, html, from, templateKey = null, emailCategory = null, attachments = null }) {
   // Get the appropriate sender email
   const senderEmail = from || getSenderEmail(templateKey, emailCategory);
   
@@ -482,7 +482,7 @@ async function sendEmail({ to, subject, text, html, from, templateKey = null, em
 
   // Try Brevo REST API first (proper BCC support)
   try {
-    await sendViaBrevoAPI(to, subject, html, text, senderEmail);
+    await sendViaBrevoAPI(to, subject, html, text, senderEmail, null, attachments);
     emailSent = true;
     return;
   } catch (apiError) {
@@ -495,14 +495,22 @@ async function sendEmail({ to, subject, text, html, from, templateKey = null, em
     if (t) {
       try {
         console.log(`📧 [SMTP] Sending email from: ${senderEmail} to: ${to} with BCC: ${senderEmail}`);
-        await t.sendMail({ 
+        const mailOptions = { 
           from: senderEmail, 
           to, 
           bcc: senderEmail, // BCC to sender so it appears in Zoho inbox
           subject, 
           text, 
           html 
-        });
+        };
+        // Add attachments for SMTP (nodemailer format)
+        if (attachments && attachments.length > 0) {
+          mailOptions.attachments = attachments.map(att => ({
+            filename: att.name,
+            content: Buffer.from(att.content, 'base64')
+          }));
+        }
+        await t.sendMail(mailOptions);
         return;
       } catch (smtpError) {
         console.error('SMTP also failed:', smtpError.message);
@@ -988,6 +996,46 @@ Thank you for choosing Planbeau!
 The Planbeau Support Team
   `;
   
+  // Create text file attachment with full conversation transcript
+  const transcriptContent = `PLANBEAU SUPPORT CHAT TRANSCRIPT
+================================
+Reference: ${referenceNumber}
+Subject: ${subject}
+Category: ${category}
+Date: ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+Recipient: ${recipientName} (${recipientEmail})
+
+================================
+CONVERSATION
+================================
+
+${messages.map(msg => {
+  const senderName = msg.SenderType === 'support' ? 'Planbeau Support' : 
+                     msg.SenderType === 'guest' ? recipientName : 
+                     msg.SenderName || 'User';
+  const time = new Date(msg.CreatedAt).toLocaleString('en-US', {
+    month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true
+  });
+  return `[${time}] ${senderName}:\n${msg.Content}\n`;
+}).join('\n---\n\n')}
+
+================================
+END OF TRANSCRIPT
+================================
+
+Need more help? Reply to this email or start a new chat at planbeau.com.
+Use your reference number ${referenceNumber} to continue this conversation.
+
+Thank you for choosing Planbeau!
+`;
+
+  // Base64 encode the transcript for Brevo API
+  const transcriptBase64 = Buffer.from(transcriptContent).toString('base64');
+  const attachments = [{
+    name: `chat-transcript-${referenceNumber}.txt`,
+    content: transcriptBase64
+  }];
+  
   try {
     await sendEmail({ 
       to: recipientEmail, 
@@ -995,10 +1043,11 @@ The Planbeau Support Team
       html: htmlContent, 
       text: textContent,
       templateKey: 'chat_summary',
-      emailCategory: 'support'
+      emailCategory: 'support',
+      attachments
     });
     
-    console.log(`[Email] Chat summary email sent to ${recipientEmail}`);
+    console.log(`[Email] Chat summary email sent to ${recipientEmail} with transcript attachment`);
     return { success: true };
   } catch (error) {
     console.error(`[Email] Failed to send chat summary email to ${recipientEmail}:`, error.message);
