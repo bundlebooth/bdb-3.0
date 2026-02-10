@@ -110,7 +110,7 @@
   background: #fff;
   border: 1px solid #EBEBEB;
   border-radius: 16px;
-  box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
   cursor: pointer;
   transition: box-shadow 0.2s, transform 0.1s;
 }
@@ -179,18 +179,18 @@
   align-items: center;
   justify-content: center;
   padding: 24px 16px 20px;
-  background: #F7F7F7;
+  background: #fff;
   border: 1px solid #EBEBEB;
   border-radius: 16px;
   cursor: pointer;
-  box-shadow: none;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
   transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
   position: relative;
   min-height: 140px;
 }
 
 .profile-sidebar-action-card:hover {
-  background: #F0F0F0;
+  background: #f9f9f9;
   box-shadow: 0 2px 8px rgba(0,0,0,0.08);
 }
 
@@ -272,15 +272,16 @@
   gap: 14px;
   padding: 16px;
   margin: 8px 24px 20px;
-  background: #F7F7F7;
+  background: #fff;
   border: 1px solid #EBEBEB;
   border-radius: 16px;
   cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
   transition: background 0.15s, box-shadow 0.2s;
 }
 
 .profile-sidebar-promo-card:hover {
-  background: #F0F0F0;
+  background: #f9f9f9;
   box-shadow: 0 2px 8px rgba(0,0,0,0.08);
 }
 
