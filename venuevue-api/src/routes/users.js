@@ -2361,7 +2361,15 @@ router.get('/:userId/security/sessions', async (req, res) => {
     }
     
     const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (jwtErr) {
+      if (jwtErr.name === 'TokenExpiredError') {
+        return res.status(401).json({ success: false, message: 'Session expired. Please log in again.' });
+      }
+      return res.status(401).json({ success: false, message: 'Invalid token' });
+    }
     
     if (String(decoded.id) !== String(userId)) {
       return res.status(403).json({ success: false, message: 'Access denied' });
@@ -2421,7 +2429,15 @@ router.post('/:userId/security/2fa/toggle', async (req, res) => {
     }
     
     const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (jwtErr) {
+      if (jwtErr.name === 'TokenExpiredError') {
+        return res.status(401).json({ success: false, message: 'Session expired. Please log in again.' });
+      }
+      return res.status(401).json({ success: false, message: 'Invalid token' });
+    }
     
     if (String(decoded.id) !== String(userId)) {
       return res.status(403).json({ success: false, message: 'Access denied' });
@@ -2471,7 +2487,15 @@ router.post('/:userId/security/logout-all', async (req, res) => {
     }
     
     const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (jwtErr) {
+      if (jwtErr.name === 'TokenExpiredError') {
+        return res.status(401).json({ success: false, message: 'Session expired. Please log in again.' });
+      }
+      return res.status(401).json({ success: false, message: 'Invalid token' });
+    }
     
     if (String(decoded.id) !== String(userId)) {
       return res.status(403).json({ success: false, message: 'Access denied' });
