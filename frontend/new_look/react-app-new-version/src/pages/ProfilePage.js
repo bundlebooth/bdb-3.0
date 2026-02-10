@@ -38,7 +38,8 @@ function ProfilePage() {
   const [isUserProfile, setIsUserProfile] = useState(false);
   const [showAllAbout, setShowAllAbout] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState(false);
-  const [activeTab, setActiveTab] = useState('activity'); // 'activity', 'about', 'listings'
+  const [showAllActivities, setShowAllActivities] = useState(false);
+  const activitiesLimit = 5; // Show 5 activities initially
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportForm, setReportForm] = useState({ reason: '', details: '' });
   const [reportSubmitting, setReportSubmitting] = useState(false);
@@ -235,10 +236,8 @@ function ProfilePage() {
   }, [userId]);
 
   useEffect(() => {
-    if (activeTab === 'activity') {
-      loadActivities();
-    }
-  }, [activeTab, loadActivities]);
+    loadActivities();
+  }, [loadActivities]);
 
   // Pagination for reviews
   const totalPages = Math.ceil(reviews.length / reviewsPerPage);
@@ -414,7 +413,7 @@ function ProfilePage() {
                 onMouseEnter={(e) => { e.target.style.background = '#f7f7f7'; e.target.style.borderColor = '#222'; }}
                 onMouseLeave={(e) => { e.target.style.background = '#fff'; e.target.style.borderColor = '#ddd'; }}
               >
-                <i className="fas fa-pencil-alt"></i>
+                <i className="fas fa-pen"></i>
                 Edit profile
               </button>
             </div>
@@ -558,435 +557,294 @@ function ProfilePage() {
             </div>
           </div>
 
-          {/* Main Content */}
+          {/* Main Content - Single Scrollable Page */}
           <div className="host-content">
             
-            {/* Tab Navigation - Order: Activity, About More, Listings */}
-            <div style={{
-              display: 'flex',
-              gap: '0',
-              borderBottom: '1px solid var(--border)',
-              marginBottom: '2rem'
-            }}>
-              <button
-                onClick={() => setActiveTab('activity')}
-                style={{
-                  padding: '1rem 1.5rem',
-                  background: 'none',
-                  border: 'none',
-                  borderBottom: activeTab === 'activity' ? '2px solid var(--primary)' : '2px solid transparent',
-                  color: activeTab === 'activity' ? 'var(--primary)' : 'var(--text-light)',
-                  fontWeight: activeTab === 'activity' ? 600 : 400,
-                  fontSize: '0.95rem',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s'
-                }}
-              >
-                <i className="fas fa-stream" style={{ marginRight: '8px' }}></i>
-                Activity
-                {activitySummary?.total > 0 && (
-                  <span style={{
-                    marginLeft: '6px',
-                    background: 'var(--bg-light)',
-                    padding: '2px 8px',
-                    borderRadius: '12px',
-                    fontSize: '0.75rem'
-                  }}>
-                    {activitySummary.total}
-                  </span>
-                )}
-              </button>
-              <button
-                onClick={() => setActiveTab('about')}
-                style={{
-                  padding: '1rem 1.5rem',
-                  background: 'none',
-                  border: 'none',
-                  borderBottom: activeTab === 'about' ? '2px solid var(--primary)' : '2px solid transparent',
-                  color: activeTab === 'about' ? 'var(--primary)' : 'var(--text-light)',
-                  fontWeight: activeTab === 'about' ? 600 : 400,
-                  fontSize: '0.95rem',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s'
-                }}
-              >
-                <i className="fas fa-user" style={{ marginRight: '8px' }}></i>
-                About More
-              </button>
-              <button
-                onClick={() => setActiveTab('listings')}
-                style={{
-                  padding: '1rem 1.5rem',
-                  background: 'none',
-                  border: 'none',
-                  borderBottom: activeTab === 'listings' ? '2px solid var(--primary)' : '2px solid transparent',
-                  color: activeTab === 'listings' ? 'var(--primary)' : 'var(--text-light)',
-                  fontWeight: activeTab === 'listings' ? 600 : 400,
-                  fontSize: '0.95rem',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s'
-                }}
-              >
-                <i className="fas fa-store" style={{ marginRight: '8px' }}></i>
-                Listings
-                {listings.length > 0 && (
-                  <span style={{
-                    marginLeft: '6px',
-                    background: 'var(--bg-light)',
-                    padding: '2px 8px',
-                    borderRadius: '12px',
-                    fontSize: '0.75rem'
-                  }}>
-                    {listings.length}
-                  </span>
-                )}
-              </button>
-            </div>
-
-            {/* Activity Tab Content */}
-            {activeTab === 'about' && (
-              <>
-                {/* More About Section */}
-                {hasAboutDetails && (
-              <section className="host-section">
-                <h2 className="host-section-title">More about {firstName}</h2>
-                <div className="host-more-grid">
-                  {enhancedProfile?.FurryFriends && (
-                    <div className="host-more-card">
-                      <i className="fas fa-paw"></i>
-                      <div>
-                        <span className="host-more-label">Furry friends</span>
-                        <span className="host-more-value">{enhancedProfile.FurryFriends}</span>
-                      </div>
-                    </div>
-                  )}
-                  {enhancedProfile?.Education && (
-                    <div className="host-more-card">
-                      <i className="fas fa-graduation-cap"></i>
-                      <div>
-                        <span className="host-more-label">Education</span>
-                        <span className="host-more-value">{enhancedProfile.Education}</span>
-                      </div>
-                    </div>
-                  )}
-                  {enhancedProfile?.FreeTimeActivity && (
-                    <div className="host-more-card">
-                      <i className="fas fa-hourglass-half"></i>
-                      <div>
-                        <span className="host-more-label">Free time activity</span>
-                        <span className="host-more-value">{enhancedProfile.FreeTimeActivity}</span>
-                      </div>
-                    </div>
-                  )}
-                  {enhancedProfile?.Generation && (
-                    <div className="host-more-card">
-                      <i className="fas fa-birthday-cake"></i>
-                      <div>
-                        <span className="host-more-label">Generation</span>
-                        <span className="host-more-value">{enhancedProfile.Generation}</span>
-                      </div>
-                    </div>
-                  )}
-                  {enhancedProfile?.CurrentPassion && (
-                    <div className="host-more-card">
-                      <i className="fas fa-heart"></i>
-                      <div>
-                        <span className="host-more-label">Current passion</span>
-                        <span className="host-more-value">{enhancedProfile.CurrentPassion}</span>
-                      </div>
-                    </div>
-                  )}
-                  {enhancedProfile?.InterestingTidbit && (
-                    <div className="host-more-card">
-                      <i className="fas fa-lightbulb"></i>
-                      <div>
-                        <span className="host-more-label">Interesting tidbit</span>
-                        <span className="host-more-value">{enhancedProfile.InterestingTidbit}</span>
-                      </div>
-                    </div>
-                  )}
-                  {enhancedProfile?.HiddenTalent && (
-                    <div className="host-more-card">
-                      <i className="fas fa-magic"></i>
-                      <div>
-                        <span className="host-more-label">Hidden talent</span>
-                        <span className="host-more-value">{enhancedProfile.HiddenTalent}</span>
-                      </div>
+            {/* About Section - Profile Details */}
+            {(enhancedProfile?.Occupation || enhancedProfile?.Education || enhancedProfile?.Languages || 
+              enhancedProfile?.Generation || enhancedProfile?.DreamDestination || enhancedProfile?.FurryFriends ||
+              enhancedProfile?.HiddenTalent || enhancedProfile?.FreeTimeActivity || enhancedProfile?.InterestingTidbit ||
+              enhancedProfile?.LifeMotto || enhancedProfile?.CurrentPassion) && (
+              <section style={{ marginBottom: '3rem' }}>
+                <h2 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '1.5rem', color: '#111827' }}>
+                  {firstName}'s profile
+                </h2>
+                
+                {/* Two Column Grid of Profile Fields */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0', borderTop: '1px solid #e5e7eb' }}>
+                  {enhancedProfile?.Occupation && (
+                    <div style={{ padding: '1rem 0', borderBottom: '1px solid #e5e7eb', borderRight: '1px solid #e5e7eb', paddingRight: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <i className="fas fa-briefcase" style={{ color: '#6b7280', width: '20px', fontSize: '0.9rem' }}></i>
+                      <span style={{ color: '#111827', fontSize: '0.95rem' }}>My work: {enhancedProfile.Occupation}</span>
                     </div>
                   )}
                   {enhancedProfile?.DreamDestination && (
-                    <div className="host-more-card quote-card">
-                      <i className="fas fa-plane"></i>
-                      <div>
-                        <span className="host-more-label">Dream destination</span>
-                        <span className="host-more-value">{enhancedProfile.DreamDestination}</span>
-                      </div>
+                    <div style={{ padding: '1rem 0', borderBottom: '1px solid #e5e7eb', paddingLeft: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <i className="fas fa-plane" style={{ color: '#6b7280', width: '20px', fontSize: '0.9rem' }}></i>
+                      <span style={{ color: '#111827', fontSize: '0.95rem' }}>Dream destination: {enhancedProfile.DreamDestination}</span>
+                    </div>
+                  )}
+                  {enhancedProfile?.FurryFriends && (
+                    <div style={{ padding: '1rem 0', borderBottom: '1px solid #e5e7eb', borderRight: '1px solid #e5e7eb', paddingRight: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <i className="fas fa-paw" style={{ color: '#6b7280', width: '20px', fontSize: '0.9rem' }}></i>
+                      <span style={{ color: '#111827', fontSize: '0.95rem' }}>Pets: {enhancedProfile.FurryFriends}</span>
+                    </div>
+                  )}
+                  {enhancedProfile?.Education && (
+                    <div style={{ padding: '1rem 0', borderBottom: '1px solid #e5e7eb', paddingLeft: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <i className="fas fa-graduation-cap" style={{ color: '#6b7280', width: '20px', fontSize: '0.9rem' }}></i>
+                      <span style={{ color: '#111827', fontSize: '0.95rem' }}>Where I went to school: {enhancedProfile.Education}</span>
+                    </div>
+                  )}
+                  {enhancedProfile?.FreeTimeActivity && (
+                    <div style={{ padding: '1rem 0', borderBottom: '1px solid #e5e7eb', borderRight: '1px solid #e5e7eb', paddingRight: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <i className="fas fa-clock" style={{ color: '#6b7280', width: '20px', fontSize: '0.9rem' }}></i>
+                      <span style={{ color: '#111827', fontSize: '0.95rem' }}>My hobbies: {enhancedProfile.FreeTimeActivity}</span>
+                    </div>
+                  )}
+                  {enhancedProfile?.HiddenTalent && (
+                    <div style={{ padding: '1rem 0', borderBottom: '1px solid #e5e7eb', paddingLeft: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <i className="fas fa-magic" style={{ color: '#6b7280', width: '20px', fontSize: '0.9rem' }}></i>
+                      <span style={{ color: '#111827', fontSize: '0.95rem' }}>My most useless skill: {enhancedProfile.HiddenTalent}</span>
+                    </div>
+                  )}
+                  {enhancedProfile?.InterestingTidbit && (
+                    <div style={{ padding: '1rem 0', borderBottom: '1px solid #e5e7eb', borderRight: '1px solid #e5e7eb', paddingRight: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <i className="fas fa-lightbulb" style={{ color: '#6b7280', width: '20px', fontSize: '0.9rem' }}></i>
+                      <span style={{ color: '#111827', fontSize: '0.95rem' }}>My fun fact: {enhancedProfile.InterestingTidbit}</span>
+                    </div>
+                  )}
+                  {enhancedProfile?.CurrentPassion && (
+                    <div style={{ padding: '1rem 0', borderBottom: '1px solid #e5e7eb', paddingLeft: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <i className="fas fa-heart" style={{ color: '#6b7280', width: '20px', fontSize: '0.9rem' }}></i>
+                      <span style={{ color: '#111827', fontSize: '0.95rem' }}>My obsession: {enhancedProfile.CurrentPassion}</span>
+                    </div>
+                  )}
+                  {enhancedProfile?.LifeMotto && (
+                    <div style={{ padding: '1rem 0', borderBottom: '1px solid #e5e7eb', borderRight: '1px solid #e5e7eb', paddingRight: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <i className="fas fa-book" style={{ color: '#6b7280', width: '20px', fontSize: '0.9rem' }}></i>
+                      <span style={{ color: '#111827', fontSize: '0.95rem' }}>My biography title would be: {enhancedProfile.LifeMotto}</span>
+                    </div>
+                  )}
+                  {enhancedProfile?.Generation && (
+                    <div style={{ padding: '1rem 0', borderBottom: '1px solid #e5e7eb', paddingLeft: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <i className="fas fa-birthday-cake" style={{ color: '#6b7280', width: '20px', fontSize: '0.9rem' }}></i>
+                      <span style={{ color: '#111827', fontSize: '0.95rem' }}>Decade I was born: {enhancedProfile.Generation}</span>
+                    </div>
+                  )}
+                  {enhancedProfile?.Languages && (
+                    <div style={{ padding: '1rem 0', borderBottom: '1px solid #e5e7eb', borderRight: '1px solid #e5e7eb', paddingRight: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <i className="fas fa-language" style={{ color: '#6b7280', width: '20px', fontSize: '0.9rem' }}></i>
+                      <span style={{ color: '#111827', fontSize: '0.95rem' }}>Languages I speak: {enhancedProfile.Languages}</span>
+                    </div>
+                  )}
+                  {(enhancedProfile?.City || enhancedProfile?.State) && (
+                    <div style={{ padding: '1rem 0', borderBottom: '1px solid #e5e7eb', paddingLeft: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <i className="fas fa-map-marker-alt" style={{ color: '#6b7280', width: '20px', fontSize: '0.9rem' }}></i>
+                      <span style={{ color: '#111827', fontSize: '0.95rem' }}>Where I live: {getProfileLocation(enhancedProfile)}</span>
                     </div>
                   )}
                 </div>
               </section>
             )}
 
-              {/* Interests Section */}
-              {enhancedProfile?.Interests && enhancedProfile.Interests.length > 0 && (
-                <section className="host-section">
-                  <h2 className="host-section-title">Ask {firstName} about</h2>
-                  <div className="host-interests">
-                    {enhancedProfile.Interests.map((interest, i) => (
-                      <span key={i} className="host-interest-tag">
-                        {interest.Interest || interest}
-                      </span>
-                    ))}
-                  </div>
-                </section>
-              )}
-              </>
+            {/* Interests Section */}
+            {enhancedProfile?.Interests && enhancedProfile.Interests.length > 0 && (
+              <section style={{ marginBottom: '3rem' }}>
+                <h2 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '0.5rem', color: '#111827' }}>
+                  What {firstName}'s into
+                </h2>
+                <p style={{ color: '#6b7280', fontSize: '0.9rem', marginBottom: '1rem' }}>
+                  Find common ground with {firstName} by exploring their interests.
+                </p>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  {enhancedProfile.Interests.map((interest, i) => (
+                    <span 
+                      key={i} 
+                      style={{
+                        padding: '0.5rem 1rem',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '20px',
+                        backgroundColor: 'white',
+                        color: '#111827',
+                        fontSize: '0.9rem'
+                      }}
+                    >
+                      {interest.Interest || interest}
+                    </span>
+                  ))}
+                </div>
+              </section>
             )}
 
-            {/* Activity Tab Content */}
-            {activeTab === 'activity' && (
-              <section className="host-section">
-                <h2 className="host-section-title">{firstName}'s Activity</h2>
-                
-                {/* Activity Summary */}
-                {activitySummary && (
-                  <div style={{
-                    display: 'flex',
-                    gap: '1.5rem',
-                    marginBottom: '2rem',
-                    flexWrap: 'wrap'
-                  }}>
-                    {activitySummary.reviews > 0 && (
-                      <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        padding: '8px 16px',
-                        background: '#fff',
-                        border: '1px solid #e5e5e5',
-                        borderRadius: '50px',
-                        color: '#717171',
-                        fontSize: '14px'
-                      }}>
-                        <i className="fas fa-star" style={{ color: '#f59e0b' }}></i>
-                        <span>{activitySummary.reviews} reviews given</span>
-                      </div>
-                    )}
-                    {activitySummary.forumPosts > 0 && (
-                      <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        padding: '8px 16px',
-                        background: '#fff',
-                        border: '1px solid #e5e5e5',
-                        borderRadius: '50px',
-                        color: '#717171',
-                        fontSize: '14px'
-                      }}>
-                        <i className="fas fa-comments" style={{ color: '#3b82f6' }}></i>
-                        <span>{activitySummary.forumPosts} discussions started</span>
-                      </div>
-                    )}
-                    {activitySummary.forumComments > 0 && (
-                      <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        padding: '8px 16px',
-                        background: '#fff',
-                        border: '1px solid #e5e5e5',
-                        borderRadius: '50px',
-                        color: '#717171',
-                        fontSize: '14px'
-                      }}>
-                        <i className="fas fa-reply" style={{ color: '#8b5cf6' }}></i>
-                        <span>{activitySummary.forumComments} forum replies</span>
-                      </div>
-                    )}
-                    {activitySummary.favorites > 0 && (
-                      <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        padding: '8px 16px',
-                        background: '#fff',
-                        border: '1px solid #e5e5e5',
-                        borderRadius: '50px',
-                        color: '#717171',
-                        fontSize: '14px'
-                      }}>
-                        <i className="fas fa-heart" style={{ color: '#ef4444' }}></i>
-                        <span>{activitySummary.favorites} vendors favorited</span>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Activity Feed */}
-                {activitiesLoading ? (
-                  <div style={{ textAlign: 'center', padding: '3rem' }}>
-                    <div className="skeleton" style={{ width: '100%', height: '80px', marginBottom: '1rem' }}></div>
-                    <div className="skeleton" style={{ width: '100%', height: '80px', marginBottom: '1rem' }}></div>
-                    <div className="skeleton" style={{ width: '100%', height: '80px' }}></div>
-                  </div>
-                ) : activities.length > 0 ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
-                    {activities.map((activity, index) => (
-                      <div 
-                        key={`${activity.ActivityType}-${activity.ActivityID}`}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'flex-start',
-                          gap: '1rem',
-                          padding: '1.25rem 0',
-                          borderBottom: index < activities.length - 1 ? '1px solid var(--border)' : 'none',
-                          cursor: activity.TargetURL ? 'pointer' : 'default'
+            {/* Listings Section */}
+            {listings.filter(l => l.businessName).length > 0 && (
+              <section style={{ marginBottom: '3rem' }}>
+                <h2 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '1.5rem', color: '#111827' }}>
+                  {firstName}'s Listings
+                </h2>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
+                  {listings.filter(l => l.businessName).map((listing) => (
+                    <div key={listing.id} style={{ width: '200px', maxWidth: '200px' }}>
+                      <VendorCard
+                        vendor={{
+                          VendorProfileID: listing.id,
+                          BusinessName: listing.businessName,
+                          FeaturedImageURL: listing.featuredImage,
+                          City: listing.city,
+                          State: listing.state,
+                          AverageRating: listing.rating,
+                          TotalReviews: listing.reviewCount,
+                          PrimaryCategory: listing.category
                         }}
-                        onClick={() => activity.TargetURL && navigate(activity.TargetURL)}
-                      >
-                        {/* Activity Icon - Light blue background with distinctive icon colors */}
-                        <div style={{
-                          width: '40px',
-                          height: '40px',
-                          borderRadius: '50%',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          flexShrink: 0,
-                          background: 'rgba(80, 134, 232, 0.15)',
-                          color: activity.ActivityType === 'review' ? '#f59e0b' :
-                                activity.ActivityType === 'forum_post' ? '#5086E8' :
-                                activity.ActivityType === 'forum_comment' ? '#8b5cf6' :
-                                activity.ActivityType === 'favorite' ? '#ef4444' : '#5086E8'
-                        }}>
-                          <i className={`fas ${
-                            activity.ActivityType === 'review' ? 'fa-star' :
-                            activity.ActivityType === 'forum_post' ? 'fa-comments' :
-                            activity.ActivityType === 'forum_comment' ? 'fa-reply' :
-                            activity.ActivityType === 'favorite' ? 'fa-heart' : 'fa-circle'
-                          }`}></i>
-                        </div>
-
-                        {/* Activity Content */}
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ 
-                            fontWeight: 600, 
-                            color: 'var(--text)', 
-                            fontSize: '0.95rem',
-                            marginBottom: '4px'
-                          }}>
-                            {activity.Title}
-                          </div>
-                          {activity.Description && (
-                            <div style={{ 
-                              color: 'var(--text-light)', 
-                              fontSize: '0.875rem',
-                              lineHeight: 1.5,
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              display: '-webkit-box',
-                              WebkitLineClamp: 2,
-                              WebkitBoxOrient: 'vertical'
-                            }}>
-                              {activity.Description}
-                            </div>
-                          )}
-                          {activity.Rating && (
-                            <div style={{ color: '#fbbf24', fontSize: '0.85rem', marginTop: '4px' }}>
-                              {'★'.repeat(activity.Rating)}{'☆'.repeat(5 - activity.Rating)}
-                            </div>
-                          )}
-                          <div style={{ 
-                            color: '#9ca3af', 
-                            fontSize: '0.8rem',
-                            marginTop: '6px'
-                          }}>
-                            {(() => {
-                              const date = new Date(activity.CreatedAt);
-                              if (isNaN(date.getTime())) return '';
-                              const now = new Date();
-                              const diffMs = now - date;
-                              const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-                              if (diffDays === 0) return 'Today';
-                              if (diffDays === 1) return 'Yesterday';
-                              if (diffDays < 7) return `${diffDays} days ago`;
-                              if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
-                              if (diffDays < 365) return `${Math.floor(diffDays / 30)} months ago`;
-                              return `${Math.floor(diffDays / 365)} years ago`;
-                            })()}
-                          </div>
-                        </div>
-
-                        {/* Activity Image */}
-                        {activity.ImageURL && (
-                          <div style={{
-                            width: '60px',
-                            height: '60px',
-                            borderRadius: '8px',
-                            overflow: 'hidden',
-                            flexShrink: 0
-                          }}>
-                            <img 
-                              src={activity.ImageURL} 
-                              alt=""
-                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                              onError={(e) => { e.target.style.display = 'none'; }}
-                            />
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-light)' }}>
-                    <i className="fas fa-stream" style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.3 }}></i>
-                    <div style={{ fontSize: '0.9rem' }}>No public activity yet.</div>
-                  </div>
-                )}
+                        isFavorite={false}
+                        onToggleFavorite={() => {}}
+                      />
+                    </div>
+                  ))}
+                </div>
               </section>
             )}
 
-            {/* Listings Tab Content */}
-            {activeTab === 'listings' && (
-              <section className="host-section">
-                <h2 className="host-section-title">{firstName}'s Listings</h2>
-                {listings.filter(l => l.businessName).length > 0 ? (
-                  <div style={{
-                    display: 'flex',
-                    flexWrap: 'wrap',
-                    gap: '16px'
-                  }}>
-                    {listings.filter(l => l.businessName).map((listing) => (
-                      <div key={listing.id} style={{ width: '200px', maxWidth: '200px' }}>
-                        <VendorCard
-                          vendor={{
-                            VendorProfileID: listing.id,
-                            BusinessName: listing.businessName,
-                            FeaturedImageURL: listing.featuredImage,
-                            City: listing.city,
-                            State: listing.state,
-                            AverageRating: listing.rating,
-                            TotalReviews: listing.reviewCount,
-                            PrimaryCategory: listing.category
+            {/* Activity Section */}
+            {activities.length > 0 && (
+              <section style={{ marginBottom: '3rem' }}>
+                <h2 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '1.5rem', color: '#111827' }}>
+                  {firstName}'s Activity
+                </h2>
+
+                {/* Activity Feed - Limited with Show More */}
+                {activitiesLoading ? (
+                  <div style={{ textAlign: 'center', padding: '2rem' }}>
+                    <div className="skeleton" style={{ width: '100%', height: '60px', marginBottom: '0.75rem' }}></div>
+                    <div className="skeleton" style={{ width: '100%', height: '60px', marginBottom: '0.75rem' }}></div>
+                    <div className="skeleton" style={{ width: '100%', height: '60px' }}></div>
+                  </div>
+                ) : (
+                  <>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
+                      {(showAllActivities ? activities : activities.slice(0, activitiesLimit)).map((activity, index, arr) => (
+                        <div 
+                          key={`${activity.ActivityType}-${activity.ActivityID}`}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'flex-start',
+                            gap: '1rem',
+                            padding: '1rem 0',
+                            borderBottom: index < arr.length - 1 ? '1px solid #e5e7eb' : 'none',
+                            cursor: activity.TargetURL ? 'pointer' : 'default'
                           }}
-                          isFavorite={false}
-                          onToggleFavorite={() => {}}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-light)' }}>
-                    <i className="fas fa-store" style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.3 }}></i>
-                    <div style={{ fontSize: '0.9rem' }}>No listings yet.</div>
-                  </div>
+                          onClick={() => activity.TargetURL && navigate(activity.TargetURL)}
+                        >
+                          {/* Activity Icon */}
+                          <div style={{
+                            width: '36px',
+                            height: '36px',
+                            borderRadius: '50%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0,
+                            background: '#f3f4f6',
+                            color: activity.ActivityType === 'review' ? '#f59e0b' :
+                                  activity.ActivityType === 'forum_post' ? '#3b82f6' :
+                                  activity.ActivityType === 'forum_comment' ? '#8b5cf6' :
+                                  activity.ActivityType === 'favorite' ? '#ef4444' : '#6b7280'
+                          }}>
+                            <i className={`fas ${
+                              activity.ActivityType === 'review' ? 'fa-star' :
+                              activity.ActivityType === 'forum_post' ? 'fa-comments' :
+                              activity.ActivityType === 'forum_comment' ? 'fa-reply' :
+                              activity.ActivityType === 'favorite' ? 'fa-heart' : 'fa-circle'
+                            }`} style={{ fontSize: '0.85rem' }}></i>
+                          </div>
+
+                          {/* Activity Content */}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontWeight: 500, color: '#111827', fontSize: '0.9rem', marginBottom: '2px' }}>
+                              {activity.Title}
+                            </div>
+                            {activity.Description && (
+                              <div style={{ 
+                                color: '#6b7280', 
+                                fontSize: '0.85rem',
+                                lineHeight: 1.4,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap'
+                              }}>
+                                {activity.Description}
+                              </div>
+                            )}
+                            {activity.Rating && (
+                              <div style={{ color: '#fbbf24', fontSize: '0.8rem', marginTop: '2px' }}>
+                                {'★'.repeat(activity.Rating)}{'☆'.repeat(5 - activity.Rating)}
+                              </div>
+                            )}
+                            <div style={{ color: '#9ca3af', fontSize: '0.75rem', marginTop: '4px' }}>
+                              {(() => {
+                                const date = new Date(activity.CreatedAt);
+                                if (isNaN(date.getTime())) return '';
+                                const now = new Date();
+                                const diffMs = now - date;
+                                const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                                if (diffDays === 0) return 'Today';
+                                if (diffDays === 1) return 'Yesterday';
+                                if (diffDays < 7) return `${diffDays} days ago`;
+                                if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+                                if (diffDays < 365) return `${Math.floor(diffDays / 30)} months ago`;
+                                return `${Math.floor(diffDays / 365)} years ago`;
+                              })()}
+                            </div>
+                          </div>
+
+                          {/* Activity Image */}
+                          {activity.ImageURL && (
+                            <div style={{
+                              width: '50px',
+                              height: '50px',
+                              borderRadius: '6px',
+                              overflow: 'hidden',
+                              flexShrink: 0
+                            }}>
+                              <img 
+                                src={activity.ImageURL} 
+                                alt=""
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                onError={(e) => { e.target.style.display = 'none'; }}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    
+                    {/* Show More Button */}
+                    {activities.length > activitiesLimit && (
+                      <button
+                        onClick={() => setShowAllActivities(!showAllActivities)}
+                        style={{
+                          marginTop: '1rem',
+                          background: 'none',
+                          border: 'none',
+                          color: '#111827',
+                          fontSize: '0.9rem',
+                          fontWeight: 500,
+                          cursor: 'pointer',
+                          textDecoration: 'underline',
+                          padding: 0
+                        }}
+                      >
+                        {showAllActivities ? 'Show less' : `Show all ${activities.length} activities`}
+                      </button>
+                    )}
+                  </>
                 )}
               </section>
             )}
 
-            {/* Reviews Tab Content - Hidden, reviews shown in About section */}
-            {activeTab === 'reviews_hidden' && (
+            {/* Reviews Section - Hidden for now */}
+            {false && (
               <section className="host-section">
                 <h2 style={{ marginBottom: '1.5rem' }}>Reviews for {firstName}</h2>
                 

@@ -56,10 +56,12 @@ const ProfileEditPanel = ({ onClose, onSave, embedded = false }) => {
   const fileInputRef = useRef(null);
 
   useEffect(() => {
-    loadProfile();
+    if (currentUser?.id) {
+      loadProfile();
+    }
     loadInterestOptions();
     loadLanguages();
-  }, []);
+  }, [currentUser?.id]);
 
   // Handle profile picture upload
   const handleProfilePictureUpload = async (e) => {
@@ -143,6 +145,10 @@ const ProfileEditPanel = ({ onClose, onSave, embedded = false }) => {
   }, [showLocationModal]);
 
   const loadProfile = async () => {
+    if (!currentUser?.id) {
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
       const response = await fetch(`${API_BASE_URL}/users/${currentUser.id}/user-profile`, {
@@ -204,7 +210,10 @@ const ProfileEditPanel = ({ onClose, onSave, embedded = false }) => {
       const response = await fetch(`${API_BASE_URL}/users/languages`);
       if (response.ok) {
         const data = await response.json();
+        console.log('Languages API response:', data);
         setAvailableLanguages(data.languages || []);
+      } else {
+        console.error('Languages API error:', response.status);
       }
     } catch (error) {
       console.error('Error loading languages:', error);
@@ -217,7 +226,10 @@ const ProfileEditPanel = ({ onClose, onSave, embedded = false }) => {
       const response = await fetch(`${API_BASE_URL}/users/interest-options`);
       if (response.ok) {
         const data = await response.json();
+        console.log('Interest options API response:', data);
         setInterestOptions(data.grouped || {});
+      } else {
+        console.error('Interest options API error:', response.status);
       }
     } catch (error) {
       console.error('Error loading interest options:', error);
@@ -313,18 +325,18 @@ const ProfileEditPanel = ({ onClose, onSave, embedded = false }) => {
 
   // Profile field definitions - Planbeau style
   const profileFields = [
-    { id: 'city', icon: 'map-marker-alt', label: 'Location', placeholder: 'Where are you based?', modal: 'location' },
-    { id: 'dreamDestination', icon: 'plane', label: 'Dream destination', placeholder: 'A place on your bucket list' },
-    { id: 'occupation', icon: 'briefcase', label: 'Occupation', placeholder: 'What do you do?' },
-    { id: 'furryFriends', icon: 'paw', label: 'Furry friends', placeholder: 'Any pets at home?' },
-    { id: 'education', icon: 'graduation-cap', label: 'Education', placeholder: 'Where did you study?' },
-    { id: 'hiddenTalent', icon: 'pencil-alt', label: 'Hidden talent', placeholder: 'A quirky skill you have' },
-    { id: 'freeTimeActivity', icon: 'clock', label: 'Free time activity', placeholder: 'How do you unwind?' },
-    { id: 'interestingTidbit', icon: 'lightbulb', label: 'Interesting tidbit', placeholder: 'Something unique about you' },
-    { id: 'lifeMotto', icon: 'book', label: 'Life motto', placeholder: 'A phrase that defines you' },
-    { id: 'currentPassion', icon: 'heart', label: 'Current passion', placeholder: 'What excites you lately?' },
-    { id: 'generation', icon: 'birthday-cake', label: 'Generation', placeholder: 'Which era are you from?' },
-    { id: 'languages', icon: 'language', label: 'Languages', placeholder: 'What languages do you speak?', modal: 'languages' },
+    { id: 'city', icon: 'map-marker-alt', label: 'Location', placeholder: 'e.g. Toronto, ON, Canada', modal: 'location' },
+    { id: 'dreamDestination', icon: 'plane', label: 'Dream destination', placeholder: 'e.g. Bali, Indonesia' },
+    { id: 'occupation', icon: 'briefcase', label: 'Occupation', placeholder: 'e.g. Software Engineer' },
+    { id: 'furryFriends', icon: 'paw', label: 'Furry friends', placeholder: 'e.g. Golden Retriever named Max' },
+    { id: 'education', icon: 'graduation-cap', label: 'Education', placeholder: 'e.g. University of Toronto' },
+    { id: 'hiddenTalent', icon: 'pencil-alt', label: 'Hidden talent', placeholder: 'e.g. Can solve a Rubik\'s cube in under a minute' },
+    { id: 'freeTimeActivity', icon: 'clock', label: 'Free time activity', placeholder: 'e.g. Hiking and photography' },
+    { id: 'interestingTidbit', icon: 'lightbulb', label: 'Interesting tidbit', placeholder: 'e.g. I\'ve visited 30 countries' },
+    { id: 'lifeMotto', icon: 'book', label: 'Life motto', placeholder: 'e.g. Live life to the fullest' },
+    { id: 'currentPassion', icon: 'heart', label: 'Current passion', placeholder: 'e.g. Learning to play piano' },
+    { id: 'generation', icon: 'birthday-cake', label: 'Generation', placeholder: 'e.g. 90s kid' },
+    { id: 'languages', icon: 'language', label: 'Languages', placeholder: 'e.g. English, French', modal: 'languages' },
   ];
 
   const getFieldValue = (field) => {
@@ -376,29 +388,30 @@ const ProfileEditPanel = ({ onClose, onSave, embedded = false }) => {
           <i className="fas fa-arrow-left"></i> Back to Settings
         </button>
       )}
-      <div className="dashboard-card">
-        <h2 className="dashboard-card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <span style={{ width: '36px', height: '36px', borderRadius: '8px', background: 'var(--secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', fontSize: '1.1rem' }}>
-            <i className="fas fa-id-card"></i>
-          </span>
-          Your Profile
-        </h2>
-        <p style={{ color: 'var(--text-light)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
-          Manage your profile picture, bio, and fun facts that others can see.
-        </p>
-        <hr style={{ border: 'none', borderTop: '1px solid #e5e7eb', margin: '1.5rem 0' }} />
-        
-      <div className="airbnb-profile-panel">
-      {/* Two Column Layout */}
-      <div className="airbnb-profile-layout">
+      
+      {/* Main Layout - Avatar on left, content on right */}
+      <div style={{ display: 'flex', gap: '3rem', alignItems: 'flex-start' }}>
         {/* Left Column - Avatar */}
-        <div className="airbnb-profile-avatar-section">
-          <div className="airbnb-avatar-container">
-            <div className="airbnb-avatar">
+        <div style={{ flexShrink: 0, textAlign: 'center' }}>
+          <div style={{ position: 'relative', display: 'inline-block' }}>
+            <div style={{
+              width: '150px',
+              height: '150px',
+              borderRadius: '50%',
+              backgroundColor: '#111827',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              overflow: 'hidden'
+            }}>
               {currentUser?.profileImageURL || currentUser?.profilePicture ? (
-                <img src={currentUser.profileImageURL || currentUser.profilePicture} alt={formData.firstName} />
+                <img 
+                  src={currentUser.profileImageURL || currentUser.profilePicture} 
+                  alt={formData.firstName}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
               ) : (
-                <span className="airbnb-avatar-letter">
+                <span style={{ fontSize: '4rem', fontWeight: 600, color: 'white' }}>
                   {(formData.firstName || currentUser?.firstName || 'U').charAt(0).toUpperCase()}
                 </span>
               )}
@@ -427,132 +440,190 @@ const ProfileEditPanel = ({ onClose, onSave, embedded = false }) => {
               style={{ display: 'none' }}
             />
             <button 
-              className="airbnb-avatar-add-btn"
               onClick={() => fileInputRef.current?.click()}
               disabled={uploadingPhoto}
+              style={{
+                marginTop: '0.75rem',
+                background: 'none',
+                border: 'none',
+                color: '#111827',
+                fontSize: '0.9rem',
+                fontWeight: 500,
+                cursor: uploadingPhoto ? 'not-allowed' : 'pointer',
+                textDecoration: 'underline',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                margin: '0.75rem auto 0'
+              }}
             >
-              <i className="fas fa-camera"></i> {currentUser?.profileImageURL || currentUser?.profilePicture ? 'Change' : 'Add'}
+              <i className="fas fa-camera"></i>
+              {uploadingPhoto ? 'Uploading...' : 'Add'}
             </button>
           </div>
         </div>
 
         {/* Right Column - Profile Content */}
-        <div className="airbnb-profile-content">
-          {/* Profile Fields Grid */}
-          <div className="airbnb-profile-fields">
-            {profileFields.map((field) => {
+        <div style={{ flex: 1 }}>
+          <h1 style={{ fontSize: '1.75rem', fontWeight: 600, marginBottom: '0.5rem', color: '#111827' }}>My profile</h1>
+          <p style={{ color: '#6b7280', fontSize: '0.9rem', marginBottom: '2rem' }}>
+            The information you share will be used across Planbeau to help other guests and hosts get to know you. <a href="#" onClick={(e) => { e.preventDefault(); viewProfile(); }} style={{ color: '#111827', fontWeight: 500 }}>Learn more</a>
+          </p>
+
+          {/* Profile Fields - Two Column Grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0', borderTop: '1px solid #e5e7eb' }}>
+            {profileFields.map((field, index) => {
               const value = getFieldValue(field);
-              const isEditing = editingField === field.id;
+              const hasModal = field.modal === 'location' || field.modal === 'languages';
+              const isRightColumn = index % 2 === 1;
               
               return (
-                <div key={field.id} className="airbnb-profile-field">
-                  {isEditing ? (
-                    <div className="airbnb-field-edit">
-                      <i className={`fas fa-${field.icon}`}></i>
-                      <input
-                        type="text"
-                        value={value}
-                        onChange={(e) => setFieldValue(field, e.target.value)}
-                        placeholder={field.placeholder}
-                        autoFocus
-                        onBlur={() => setEditingField(null)}
-                        onKeyDown={(e) => e.key === 'Enter' && setEditingField(null)}
-                      />
+                <div 
+                  key={field.id}
+                  style={{
+                    padding: '1rem 0',
+                    borderBottom: '1px solid #e5e7eb',
+                    borderRight: !isRightColumn ? '1px solid #e5e7eb' : 'none',
+                    paddingRight: !isRightColumn ? '1.5rem' : 0,
+                    paddingLeft: isRightColumn ? '1.5rem' : 0,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between'
+                  }}
+                  onClick={() => hasModal ? handleFieldClick(field) : document.getElementById(`field-${field.id}`)?.focus()}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1 }}>
+                    <i className={`fas fa-${field.icon}`} style={{ color: '#6b7280', width: '20px', fontSize: '0.9rem' }}></i>
+                    <div style={{ flex: 1 }}>
+                      {hasModal ? (
+                        <span style={{ color: value ? '#111827' : '#6b7280', fontSize: '0.95rem' }}>
+                          {value || field.label}
+                        </span>
+                      ) : (
+                        <input
+                          id={`field-${field.id}`}
+                          type="text"
+                          value={value}
+                          onChange={(e) => setFieldValue(field, e.target.value)}
+                          placeholder={field.label}
+                          style={{
+                            width: '100%',
+                            border: 'none',
+                            outline: 'none',
+                            fontSize: '0.95rem',
+                            color: value ? '#111827' : '#6b7280',
+                            background: 'transparent',
+                            padding: 0
+                          }}
+                        />
+                      )}
                     </div>
-                  ) : (
-                    <div 
-                      className={`airbnb-field-display ${value ? 'has-value' : ''}`}
-                      onClick={() => handleFieldClick(field)}
-                    >
-                      <i className={`fas fa-${field.icon}`}></i>
-                      <span className={value ? 'field-value' : 'field-placeholder'}>
-                        {value || field.placeholder}
-                      </span>
-                    </div>
-                  )}
+                  </div>
+                  <i className="fas fa-chevron-right" style={{ color: '#9ca3af', fontSize: '0.75rem' }}></i>
                 </div>
               );
             })}
           </div>
 
           {/* About Me Section */}
-          <div className="airbnb-about-section">
-            <h2>About me</h2>
-            <div 
-              className="airbnb-about-box"
-              onClick={() => setEditingField('bio')}
-            >
-              {editingField === 'bio' ? (
-                <textarea
-                  value={formData.bio}
-                  onChange={(e) => handleChange('bio', e.target.value)}
-                  placeholder="Share a bit about yourself and what makes you unique."
-                  autoFocus
-                  onBlur={() => setEditingField(null)}
-                  maxLength={500}
-                />
-              ) : (
-                <>
-                  {formData.bio ? (
-                    <p className="about-text">{formData.bio}</p>
-                  ) : (
-                    <p className="about-placeholder">
-                      Share a bit about yourself and what makes you unique.<br />
-                      <span className="add-link">Add intro</span>
-                    </p>
-                  )}
-                </>
-              )}
+          <div style={{ marginTop: '2rem' }}>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '1rem', color: '#111827' }}>About me</h2>
+            <div style={{ border: '1px solid #e5e7eb', borderRadius: '8px', padding: '1rem' }}>
+              <textarea
+                value={formData.bio}
+                onChange={(e) => handleChange('bio', e.target.value)}
+                placeholder="Write something fun and punchy."
+                maxLength={500}
+                rows={3}
+                style={{
+                  width: '100%',
+                  border: 'none',
+                  outline: 'none',
+                  fontSize: '0.95rem',
+                  resize: 'none',
+                  fontFamily: 'inherit',
+                  color: formData.bio ? '#111827' : '#6b7280'
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => document.querySelector('textarea')?.focus()}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#111827',
+                  fontSize: '0.9rem',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  textDecoration: 'underline',
+                  padding: 0,
+                  marginTop: '0.5rem'
+                }}
+              >
+                Add intro
+              </button>
             </div>
           </div>
 
-          {/* My Interests Section */}
-          <div className="airbnb-interests-section">
-            <h2>My interests</h2>
-            <p className="airbnb-interests-subtitle">
+          {/* Interests Section */}
+          <div style={{ marginTop: '2rem' }}>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.5rem', color: '#111827' }}>What you're into</h2>
+            <p style={{ color: '#6b7280', fontSize: '0.9rem', marginBottom: '1rem' }}>
               Find common ground with other guests and hosts by adding interests to your profile.
             </p>
             
-            <div className="airbnb-interests-display">
-              {selectedInterests.length > 0 ? (
-                <div className="airbnb-interest-tags">
-                  {selectedInterests.map((interest, idx) => (
-                    <span key={idx} className="airbnb-interest-tag">
-                      {interest.Interest || interest.interest || interest}
-                      <button 
-                        type="button"
-                        onClick={() => toggleInterest(interest.Interest || interest.interest || interest, interest.Category || interest.category)}
-                      >
-                        <i className="fas fa-times"></i>
-                      </button>
-                    </span>
-                  ))}
+            {interestsLoading ? (
+              <div style={{ display: 'flex', justifyContent: 'center', padding: '2rem' }}>
+                <div className="spinner" style={{ width: '32px', height: '32px' }}></div>
+              </div>
+            ) : Object.keys(interestOptions).length === 0 ? (
+              <p style={{ color: '#9ca3af' }}>No interests available</p>
+            ) : (
+              Object.entries(interestOptions).map(([category, interests]) => (
+                <div key={category} style={{ marginBottom: '1.5rem' }}>
+                  <label style={{ display: 'block', marginBottom: '0.75rem', fontWeight: 500, fontSize: '0.9rem', color: '#374151' }}>
+                    {category}
+                  </label>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    {interests.map(opt => {
+                      const isSelected = selectedInterests.some(
+                        i => (i.Interest || i.interest || i) === opt.Interest
+                      );
+                      return (
+                        <button
+                          key={opt.InterestOptionID}
+                          type="button"
+                          onClick={() => toggleInterest(opt.Interest, category)}
+                          style={{
+                            padding: '0.5rem 1rem',
+                            border: isSelected ? '2px solid #111827' : '1px solid #d1d5db',
+                            borderRadius: '20px',
+                            backgroundColor: isSelected ? '#f3f4f6' : 'white',
+                            color: '#111827',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            fontSize: '0.9rem',
+                            fontWeight: isSelected ? 500 : 400
+                          }}
+                        >
+                          {isSelected && <i className="fas fa-check" style={{ fontSize: '0.75rem' }}></i>}
+                          {opt.Interest}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-              ) : (
-                <div className="airbnb-interest-placeholders">
-                  <div className="interest-placeholder-circle"><i className="fas fa-plus"></i></div>
-                  <div className="interest-placeholder-circle"><i className="fas fa-plus"></i></div>
-                  <div className="interest-placeholder-circle"><i className="fas fa-plus"></i></div>
-                  <div className="interest-placeholder-circle"><i className="fas fa-plus"></i></div>
-                </div>
-              )}
-            </div>
-            
-            <button 
-              className="airbnb-add-interests-btn"
-              onClick={() => setShowInterestsModal(true)}
-            >
-              Add interests
-            </button>
+              ))
+            )}
           </div>
         </div>
       </div>
 
       {/* Footer */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid #e5e7eb' }}>
-        <button className="btn btn-outline" onClick={viewProfile}>
-          <i className="fas fa-external-link-alt"></i> View Profile
-        </button>
+      <div style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid #e5e7eb' }}>
         <button 
           type="button"
           onClick={handleSave} 
@@ -571,58 +642,6 @@ const ProfileEditPanel = ({ onClose, onSave, embedded = false }) => {
           {saving ? 'Saving...' : 'Save'}
         </button>
       </div>
-
-      {/* Interests Modal */}
-      {showInterestsModal && (
-        <div className="airbnb-modal-overlay" onClick={() => setShowInterestsModal(false)}>
-          <div className="airbnb-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="airbnb-modal-header">
-              <h2>Add interests</h2>
-              <button className="airbnb-modal-close" onClick={() => setShowInterestsModal(false)}>
-                <i className="fas fa-times"></i>
-              </button>
-            </div>
-            <div className="airbnb-modal-content">
-              {interestsLoading ? (
-                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '40px' }}>
-                  <div className="spinner" style={{ width: '32px', height: '32px' }}></div>
-                </div>
-              ) : Object.keys(interestOptions).length === 0 ? (
-                <p className="no-options">No interests available</p>
-              ) : (
-                Object.entries(interestOptions).map(([category, interests]) => (
-                  <div key={category} className="airbnb-interest-category">
-                    <h3>{category}</h3>
-                    <div className="airbnb-interest-options">
-                      {interests.map(opt => {
-                        const isSelected = selectedInterests.some(
-                          i => (i.Interest || i.interest || i) === opt.Interest
-                        );
-                        return (
-                          <button
-                            key={opt.InterestOptionID}
-                            type="button"
-                            className={`airbnb-interest-option ${isSelected ? 'selected' : ''}`}
-                            onClick={() => toggleInterest(opt.Interest, category)}
-                          >
-                            {opt.Icon && <i className={`fas fa-${opt.Icon}`}></i>}
-                            {opt.Interest}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-            <div className="airbnb-modal-footer">
-              <button className="airbnb-modal-done" onClick={() => setShowInterestsModal(false)}>
-                Done
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Location Modal */}
       {showLocationModal && (
@@ -664,45 +683,100 @@ const ProfileEditPanel = ({ onClose, onSave, embedded = false }) => {
 
       {/* Languages Modal */}
       {showLanguagesModal && (
-        <div className="airbnb-modal-overlay" onClick={() => setShowLanguagesModal(false)}>
-          <div className="airbnb-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="airbnb-modal-header">
-              <h2>Languages you speak</h2>
-              <button className="airbnb-modal-close" onClick={() => setShowLanguagesModal(false)}>
+        <div 
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000
+          }}
+          onClick={() => setShowLanguagesModal(false)}
+        >
+          <div 
+            style={{
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              width: '90%',
+              maxWidth: '500px',
+              maxHeight: '80vh',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ padding: '1.25rem', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>Languages you speak</h2>
+              <button 
+                onClick={() => setShowLanguagesModal(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', color: '#6b7280' }}
+              >
                 <i className="fas fa-times"></i>
               </button>
             </div>
-            <div className="airbnb-modal-content">
-              <div className="languages-grid">
-                {availableLanguages.map(lang => {
-                  const isSelected = selectedLanguages.includes(lang.Name);
-                  return (
-                    <button
-                      key={lang.LanguageID}
-                      type="button"
-                      className={`language-option ${isSelected ? 'selected' : ''}`}
-                      onClick={() => toggleLanguage(lang.Name)}
-                    >
-                      <span className="lang-name">{lang.Name}</span>
-                      {lang.NativeName && lang.NativeName !== lang.Name && (
-                        <span className="lang-native">{lang.NativeName}</span>
-                      )}
-                      {isSelected && <i className="fas fa-check"></i>}
-                    </button>
-                  );
-                })}
-              </div>
+            <div style={{ padding: '1.25rem', overflowY: 'auto', flex: 1 }}>
+              {availableLanguages.length === 0 ? (
+                <p style={{ color: '#6b7280', textAlign: 'center' }}>Loading languages...</p>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem' }}>
+                  {availableLanguages.map(lang => {
+                    const isSelected = selectedLanguages.includes(lang.Name);
+                    return (
+                      <button
+                        key={lang.LanguageID}
+                        type="button"
+                        onClick={() => toggleLanguage(lang.Name)}
+                        style={{
+                          padding: '0.75rem 1rem',
+                          border: isSelected ? '2px solid #111827' : '1px solid #d1d5db',
+                          borderRadius: '8px',
+                          backgroundColor: isSelected ? '#f3f4f6' : 'white',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          textAlign: 'left'
+                        }}
+                      >
+                        <div>
+                          <span style={{ fontWeight: 500, color: '#111827' }}>{lang.Name}</span>
+                          {lang.NativeName && lang.NativeName !== lang.Name && (
+                            <span style={{ display: 'block', fontSize: '0.8rem', color: '#6b7280' }}>{lang.NativeName}</span>
+                          )}
+                        </div>
+                        {isSelected && <i className="fas fa-check" style={{ color: '#111827' }}></i>}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
-            <div className="airbnb-modal-footer">
-              <button className="airbnb-modal-done" onClick={saveLanguages}>
+            <div style={{ padding: '1.25rem', borderTop: '1px solid #e5e7eb' }}>
+              <button 
+                onClick={saveLanguages}
+                style={{
+                  width: '100%',
+                  backgroundColor: '#111827',
+                  color: 'white',
+                  border: 'none',
+                  padding: '0.75rem',
+                  borderRadius: '8px',
+                  fontWeight: 500,
+                  cursor: 'pointer'
+                }}
+              >
                 Done
               </button>
             </div>
           </div>
         </div>
       )}
-      </div>
-      </div>
     </div>
   );
 };
