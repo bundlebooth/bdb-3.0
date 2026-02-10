@@ -1,6 +1,7 @@
 /*
     Stored Procedure: admin.sp_GetUpcomingEventReminders
     Description: Gets bookings that need event reminders queued
+    Updated: Use LEFT JOIN for Services to handle NULL ServiceID bookings
 */
 IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND OBJECT_ID = OBJECT_ID('admin.sp_GetUpcomingEventReminders'))
     DROP PROCEDURE admin.sp_GetUpcomingEventReminders
@@ -14,11 +15,11 @@ BEGIN
     
     SELECT 
         b.BookingID, b.EventDate, b.EventTime AS StartTime, b.EventEndTime AS EndTime, b.TimeZone AS Timezone, b.EventLocation,
-        s.Name AS ServiceName,
+        COALESCE(s.Name, 'Service') AS ServiceName,
         cu.UserID AS ClientUserID, cu.Email AS ClientEmail, CONCAT(cu.FirstName, ' ', ISNULL(cu.LastName, '')) AS ClientName,
         vu.UserID AS VendorUserID, vu.Email AS VendorEmail, v.BusinessName AS VendorName
     FROM bookings.Bookings b
-    INNER JOIN vendors.Services s ON b.ServiceID = s.ServiceID
+    LEFT JOIN vendors.Services s ON b.ServiceID = s.ServiceID
     INNER JOIN users.Users cu ON b.UserID = cu.UserID
     INNER JOIN vendors.VendorProfiles v ON b.VendorProfileID = v.VendorProfileID
     INNER JOIN users.Users vu ON v.UserID = vu.UserID

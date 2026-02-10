@@ -7210,7 +7210,7 @@ router.post('/:id/packages', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid vendor profile ID' });
     }
 
-    const { packageId, name, description, includedServices, price, salePrice, priceType, durationMinutes, imageURL, finePrint, isActive, baseRate, overtimeRate, fixedPrice, pricePerPerson, minAttendees, maxAttendees } = req.body;
+    const { packageId, name, description, includedServices, price, salePrice, priceType, durationMinutes, imageURL, galleryImages, finePrint, isActive, baseRate, overtimeRate, fixedPrice, pricePerPerson, minAttendees, maxAttendees } = req.body;
     
     if (!name || !price) {
       return res.status(400).json({ success: false, message: 'Package name and price are required' });
@@ -7236,6 +7236,7 @@ router.post('/:id/packages', async (req, res) => {
     request.input('PricePerPerson', sql.Decimal(10, 2), pricePerPerson || null);
     request.input('MinAttendees', sql.Int, minAttendees || null);
     request.input('MaxAttendees', sql.Int, maxAttendees || null);
+    request.input('GalleryImages', sql.NVarChar(sql.MAX), galleryImages ? JSON.stringify(galleryImages) : null);
     
     // Try stored procedure first, fallback to direct query
     try {
@@ -7264,6 +7265,7 @@ router.post('/:id/packages', async (req, res) => {
         updateRequest.input('PricePerPerson', sql.Decimal(10, 2), pricePerPerson || null);
         updateRequest.input('MinAttendees', sql.Int, minAttendees || null);
         updateRequest.input('MaxAttendees', sql.Int, maxAttendees || null);
+        updateRequest.input('GalleryImages', sql.NVarChar(sql.MAX), galleryImages ? JSON.stringify(galleryImages) : null);
         await updateRequest.execute('vendors.sp_UpdatePackageFull');
         res.json({ success: true, packageId, message: 'Package updated successfully' });
       } else {
@@ -7286,6 +7288,7 @@ router.post('/:id/packages', async (req, res) => {
         insertRequest.input('PricePerPerson', sql.Decimal(10, 2), pricePerPerson || null);
         insertRequest.input('MinAttendees', sql.Int, minAttendees || null);
         insertRequest.input('MaxAttendees', sql.Int, maxAttendees || null);
+        insertRequest.input('GalleryImages', sql.NVarChar(sql.MAX), galleryImages ? JSON.stringify(galleryImages) : null);
         const insertResult = await insertRequest.execute('vendors.sp_InsertPackageFull');
         res.json({ success: true, packageId: insertResult.recordset[0]?.PackageID, message: 'Package created successfully' });
       }

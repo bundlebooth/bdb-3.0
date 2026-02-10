@@ -21,6 +21,7 @@ BEGIN
 	[SalePrice] [decimal](10, 2) NULL,
 	[PriceType] [nvarchar](50) NOT NULL CONSTRAINT [DF__Packages__PriceT__50E5F592] DEFAULT ('fixed'),
 	[ImageURL] [nvarchar](500) NULL,
+	[GalleryImages] [nvarchar](max) NULL,
 	[FinePrint] [nvarchar](max) NULL,
 	[IncludedServices] [nvarchar](max) NULL,
 	[IsActive] [bit] NOT NULL CONSTRAINT [DF__Packages__IsActi__4FF1D159] DEFAULT ((1)),

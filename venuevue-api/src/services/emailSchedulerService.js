@@ -117,9 +117,14 @@ async function queueUpcomingEventReminders() {
   try {
     const pool = await poolPromise;
     let queued = 0;
+    console.log('[SCHEDULER] Checking for upcoming event reminders for days ahead:', REMINDER_INTERVALS.EVENT_REMINDERS);
     for (const daysAhead of REMINDER_INTERVALS.EVENT_REMINDERS) {
+      console.log('[SCHEDULER] Querying bookings ' + daysAhead + ' days ahead...');
       const result = await pool.request().input('DaysAhead', sql.Int, daysAhead).execute('admin.sp_GetUpcomingEventReminders');
-      for (const booking of (result.recordset || [])) {
+      const bookings = result.recordset || [];
+      console.log('[SCHEDULER] Found ' + bookings.length + ' bookings for ' + daysAhead + ' days ahead');
+      for (const booking of bookings) {
+        console.log('[SCHEDULER] Processing booking ' + booking.BookingID + ' - Event: ' + booking.EventDate + ', Client: ' + booking.ClientEmail);
         const eventTime = booking.StartTime ? booking.StartTime + ' - ' + (booking.EndTime || '') : 'TBD';
         const daysText = daysAhead === 1 ? '1 day' : daysAhead + ' days';
         const eventDate = new Date(booking.EventDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
@@ -127,12 +132,13 @@ async function queueUpcomingEventReminders() {
         await queueEmail('event_reminder', booking.ClientEmail, booking.ClientName, { recipientName: booking.ClientName, daysUntilEvent: daysText, serviceName: booking.ServiceName, eventDate, eventTime, location: booking.EventLocation || 'TBD', otherPartyLabel: 'Vendor', otherPartyName: booking.VendorName }, scheduledAt, booking.ClientUserID, booking.BookingID, 'bookingReminders', 3, { daysAhead });
         await queueEmail('event_reminder', booking.VendorEmail, booking.VendorName, { recipientName: booking.VendorName, daysUntilEvent: daysText, serviceName: booking.ServiceName, eventDate, eventTime, location: booking.EventLocation || 'TBD', otherPartyLabel: 'Client', otherPartyName: booking.ClientName }, scheduledAt, booking.VendorUserID, booking.BookingID, 'bookingReminders', 3, { daysAhead });
         queued += 2;
+        console.log('[SCHEDULER] Queued reminders for booking ' + booking.BookingID);
       }
     }
-    if (queued > 0) console.log('[SCHEDULER] Queued ' + queued + ' event reminders');
+    console.log('[SCHEDULER] Total event reminders queued: ' + queued);
     return queued;
   } catch (error) {
-    console.error('[SCHEDULER] Error queuing event reminders:', error.message);
+    console.error('[SCHEDULER] Error queuing event reminders:', error.message, error.stack);
     return 0;
   }
 }
@@ -234,13 +240,20 @@ async function sendPostEventReviewRequests() {
 }
 
 async function runScheduledEmails() {
-  console.log('[SCHEDULER] Running scheduled email tasks...');
-  await queueUpcomingEventReminders();
+  console.log('[SCHEDULER] ========================================');
+  console.log('[SCHEDULER] Running scheduled email tasks at ' + new Date().toISOString());
+  console.log('[SCHEDULER] ========================================');
+  
+  const eventReminders = await queueUpcomingEventReminders();
+  console.log('[SCHEDULER] Event reminders queued: ' + eventReminders);
+  
   await sendPendingApprovalReminders();
   await sendPendingPaymentReminders();
   await sendPostEventReviewRequests();
+  
   const result = await processEmailQueue();
   console.log('[SCHEDULER] Queue processed: ' + result.sent + ' sent, ' + result.failed + ' failed');
+  console.log('[SCHEDULER] ========================================');
 }
 
 function startEmailScheduler() {

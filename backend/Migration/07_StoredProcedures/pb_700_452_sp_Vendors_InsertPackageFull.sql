@@ -2,6 +2,7 @@
 -- Vendors - Insert Package Full
 -- Created: API Audit - Security Enhancement
 -- Updated: Added pricing model columns (BaseRate, OvertimeRate, FixedPrice, PricePerPerson, MinAttendees, MaxAttendees)
+-- Updated: Added GalleryImages column for package gallery support
 -- =============================================
 IF OBJECT_ID('vendors.sp_InsertPackageFull', 'P') IS NOT NULL
     DROP PROCEDURE vendors.sp_InsertPackageFull;
@@ -24,13 +25,14 @@ CREATE PROCEDURE vendors.sp_InsertPackageFull
     @FixedPrice DECIMAL(10,2) = NULL,
     @PricePerPerson DECIMAL(10,2) = NULL,
     @MinAttendees INT = NULL,
-    @MaxAttendees INT = NULL
+    @MaxAttendees INT = NULL,
+    @GalleryImages NVARCHAR(MAX) = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
     
-    INSERT INTO vendors.Packages (VendorProfileID, PackageName, Description, Price, SalePrice, PriceType, DurationMinutes, ImageURL, FinePrint, IncludedServices, IsActive, CreatedAt, UpdatedAt, BaseRate, OvertimeRate, FixedPrice, PricePerPerson, MinAttendees, MaxAttendees)
+    INSERT INTO vendors.Packages (VendorProfileID, PackageName, Description, Price, SalePrice, PriceType, DurationMinutes, ImageURL, FinePrint, IncludedServices, IsActive, CreatedAt, UpdatedAt, BaseRate, OvertimeRate, FixedPrice, PricePerPerson, MinAttendees, MaxAttendees, GalleryImages)
     OUTPUT INSERTED.PackageID
-    VALUES (@VendorProfileID, @PackageName, @Description, @Price, @SalePrice, @PriceType, @DurationMinutes, @ImageURL, @FinePrint, @IncludedServices, @IsActive, GETDATE(), GETDATE(), @BaseRate, @OvertimeRate, @FixedPrice, @PricePerPerson, @MinAttendees, @MaxAttendees);
+    VALUES (@VendorProfileID, @PackageName, @Description, @Price, @SalePrice, @PriceType, @DurationMinutes, @ImageURL, @FinePrint, @IncludedServices, @IsActive, GETDATE(), GETDATE(), @BaseRate, @OvertimeRate, @FixedPrice, @PricePerPerson, @MinAttendees, @MaxAttendees, @GalleryImages);
 END
 GO

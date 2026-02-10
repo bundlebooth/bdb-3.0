@@ -2,6 +2,7 @@
 -- Vendors - Get Packages Fallback
 -- Created: API Audit - Security Enhancement
 -- Updated: Added pricing model columns
+-- Updated: Added GalleryImages column for package gallery support
 -- =============================================
 IF OBJECT_ID('vendors.sp_GetPackagesFallback', 'P') IS NOT NULL
     DROP PROCEDURE vendors.sp_GetPackagesFallback;
@@ -17,7 +18,8 @@ BEGIN
         PackageID, VendorProfileID, PackageName, Description,
         Price, SalePrice, PriceType, DurationMinutes, ImageURL, FinePrint,
         IncludedServices, IsActive, CreatedAt, UpdatedAt,
-        BaseRate, OvertimeRate, FixedPrice, PricePerPerson, MinAttendees, MaxAttendees
+        BaseRate, OvertimeRate, FixedPrice, PricePerPerson, MinAttendees, MaxAttendees,
+        GalleryImages
     FROM vendors.Packages
     WHERE VendorProfileID = @VendorProfileID AND IsActive = 1
     ORDER BY CreatedAt DESC;

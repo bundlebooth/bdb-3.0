@@ -2,6 +2,7 @@
 -- Vendors - Update Package Full
 -- Created: API Audit - Security Enhancement
 -- Updated: Added pricing model columns (BaseRate, OvertimeRate, FixedPrice, PricePerPerson, MinAttendees, MaxAttendees)
+-- Updated: Added GalleryImages column for package gallery support
 -- =============================================
 IF OBJECT_ID('vendors.sp_UpdatePackageFull', 'P') IS NOT NULL
     DROP PROCEDURE vendors.sp_UpdatePackageFull;
@@ -25,7 +26,8 @@ CREATE PROCEDURE vendors.sp_UpdatePackageFull
     @FixedPrice DECIMAL(10,2) = NULL,
     @PricePerPerson DECIMAL(10,2) = NULL,
     @MinAttendees INT = NULL,
-    @MaxAttendees INT = NULL
+    @MaxAttendees INT = NULL,
+    @GalleryImages NVARCHAR(MAX) = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -47,6 +49,7 @@ BEGIN
         PricePerPerson = @PricePerPerson,
         MinAttendees = @MinAttendees,
         MaxAttendees = @MaxAttendees,
+        GalleryImages = @GalleryImages,
         UpdatedAt = GETDATE()
     WHERE PackageID = @PackageID AND VendorProfileID = @VendorProfileID;
 END
