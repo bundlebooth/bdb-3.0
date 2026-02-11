@@ -86,13 +86,8 @@ function AdminSidebar({
   const getInitialExpandedGroups = () => {
     const expanded = {};
     adminMenuGroups.forEach(group => {
-      const hasActiveItem = group.items.some(item => item.id === activeSection);
-      expanded[group.id] = hasActiveItem;
+      expanded[group.id] = true; // Always expanded
     });
-    // If no group has active section, expand the first group
-    if (!Object.values(expanded).some(v => v)) {
-      expanded['overview'] = true;
-    }
     return expanded;
   };
   

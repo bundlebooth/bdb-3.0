@@ -28,7 +28,7 @@ function AutomationSection() {
   // Email logs
   const [emailLogs, setEmailLogs] = useState([]);
   const [emailQueue, setEmailQueue] = useState([]);
-  const [emailQueueStats, setEmailQueueStats] = useState(null);
+  const [emailQueueStats, setEmailQueueStats] = useState({ pending: 0, processing: 0, sent: 0, failed: 0 });
   const [selectedEmail, setSelectedEmail] = useState(null);
   const [showEmailPreview, setShowEmailPreview] = useState(false);
   const [logsPage, setLogsPage] = useState(1);
@@ -78,11 +78,18 @@ function AutomationSection() {
       setLoading(true);
       const [queueData, statsData] = await Promise.all([
         adminApi.getEmailQueue({ page: logsPage, limit: logsLimit }),
-        adminApi.getEmailQueueStats().catch(() => null)
+        adminApi.getEmailQueueStats().catch((err) => { console.error('Stats error:', err); return null; })
       ]);
       const queueArray = Array.isArray(queueData?.emails) ? queueData.emails : Array.isArray(queueData) ? queueData : [];
       setEmailQueue(queueArray);
-      setEmailQueueStats(statsData);
+      // API returns { success: true, stats: { pending, processing, sent, failed } }
+      if (statsData && statsData.stats) {
+        setEmailQueueStats(statsData.stats);
+      } else if (statsData && typeof statsData === 'object') {
+        setEmailQueueStats(statsData);
+      } else {
+        setEmailQueueStats({ pending: 0, processing: 0, sent: 0, failed: 0 });
+      }
       setLogsTotal(queueData.total || 0);
     } catch (err) {
       console.error('Error fetching email queue:', err);
@@ -151,6 +158,28 @@ function AutomationSection() {
   const handleCancelEmail = (emailId) => {
     setEmailToCancel(emailId);
     setShowCancelEmailModal(true);
+  };
+
+  const handlePreviewQueueEmail = async (email) => {
+    try {
+      const queueId = email.QueueID || email.id;
+      const result = await adminApi.getEmailQueuePreview(queueId);
+      if (result.success && result.preview) {
+        setSelectedEmail({
+          ...email,
+          htmlBody: result.preview.htmlBody,
+          Subject: result.preview.subject || email.Subject,
+          RecipientEmail: result.preview.recipientEmail || email.RecipientEmail
+        });
+      } else {
+        setSelectedEmail(email);
+      }
+      setShowEmailPreview(true);
+    } catch (err) {
+      console.error('Failed to fetch email preview:', err);
+      setSelectedEmail(email);
+      setShowEmailPreview(true);
+    }
   };
 
   const confirmCancelEmail = async () => {
@@ -359,14 +388,12 @@ function AutomationSection() {
 
   const renderEmailQueue = () => (
     <>
-      {emailQueueStats && (
-        <div className="admin-stats-grid" style={{ marginBottom: '1.5rem' }}>
-          <div className="admin-stat-card"><div className="admin-stat-icon blue"><i className="fas fa-clock"></i></div><div className="admin-stat-content"><div className="admin-stat-value">{emailQueueStats.pending || 0}</div><div className="admin-stat-label">Pending</div></div></div>
-          <div className="admin-stat-card"><div className="admin-stat-icon orange"><i className="fas fa-spinner"></i></div><div className="admin-stat-content"><div className="admin-stat-value">{emailQueueStats.processing || 0}</div><div className="admin-stat-label">Processing</div></div></div>
-          <div className="admin-stat-card"><div className="admin-stat-icon green"><i className="fas fa-check"></i></div><div className="admin-stat-content"><div className="admin-stat-value">{emailQueueStats.sent || 0}</div><div className="admin-stat-label">Sent Today</div></div></div>
-          <div className="admin-stat-card"><div className="admin-stat-icon red"><i className="fas fa-times"></i></div><div className="admin-stat-content"><div className="admin-stat-value">{emailQueueStats.failed || 0}</div><div className="admin-stat-label">Failed</div></div></div>
+      <div className="admin-stats-grid" style={{ marginBottom: '1.5rem' }}>
+          <div className="admin-stat-card"><div className="admin-stat-icon blue"><i className="fas fa-clock"></i></div><div className="admin-stat-content"><div className="admin-stat-value">{emailQueueStats?.pending || 0}</div><div className="admin-stat-label">Pending</div></div></div>
+          <div className="admin-stat-card"><div className="admin-stat-icon orange"><i className="fas fa-spinner"></i></div><div className="admin-stat-content"><div className="admin-stat-value">{emailQueueStats?.processing || 0}</div><div className="admin-stat-label">Processing</div></div></div>
+          <div className="admin-stat-card"><div className="admin-stat-icon green"><i className="fas fa-check"></i></div><div className="admin-stat-content"><div className="admin-stat-value">{emailQueueStats?.sent || 0}</div><div className="admin-stat-label">Sent Today</div></div></div>
+          <div className="admin-stat-card"><div className="admin-stat-icon red"><i className="fas fa-times"></i></div><div className="admin-stat-content"><div className="admin-stat-value">{emailQueueStats?.failed || 0}</div><div className="admin-stat-label">Failed</div></div></div>
         </div>
-      )}
       <div className="admin-card">
         <div className="admin-card-header">
           <h3 className="admin-card-title">Email Queue</h3>
@@ -388,7 +415,10 @@ function AutomationSection() {
                     <td><span className={`admin-badge ${email.Status === 'pending' ? 'admin-badge-warning' : email.Status === 'sent' ? 'admin-badge-success' : 'admin-badge-danger'}`}>{email.Status || email.status}</span></td>
                     <td>{formatRelativeTime(email.ScheduledAt || email.scheduledAt)}</td>
                     <td>{email.Attempts || 0}</td>
-                    <td>{(email.Status === 'pending') && (<button className="admin-btn admin-btn-danger admin-btn-sm" onClick={() => handleCancelEmail(email.QueueID || email.id)}><i className="fas fa-times"></i></button>)}</td>
+                    <td style={{ display: 'flex', gap: '0.25rem' }}>
+                      <button className="admin-btn admin-btn-secondary admin-btn-sm" onClick={() => handlePreviewQueueEmail(email)}><i className="fas fa-eye"></i></button>
+                      {(email.Status === 'pending') && (<button className="admin-btn admin-btn-danger admin-btn-sm" onClick={() => handleCancelEmail(email.QueueID || email.id)}><i className="fas fa-times"></i></button>)}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -546,7 +576,19 @@ function AutomationSection() {
               </div>
             </div>
             <div style={{ border: '1px solid #e5e7eb', borderRadius: '8px', padding: '1rem', maxHeight: '400px', overflow: 'auto' }}>
-              <div dangerouslySetInnerHTML={{ __html: selectedEmail.htmlBody || selectedEmail.HtmlBody || selectedEmail.body || '<p>No preview available</p>' }} />
+              {(selectedEmail.htmlBody || selectedEmail.HtmlBody || selectedEmail.body) ? (
+                <div dangerouslySetInnerHTML={{ __html: selectedEmail.htmlBody || selectedEmail.HtmlBody || selectedEmail.body }} />
+              ) : selectedEmail.Variables ? (
+                <div>
+                  <p style={{ color: '#6b7280', marginBottom: '0.5rem' }}><strong>Template:</strong> {selectedEmail.TemplateName || selectedEmail.TemplateKey}</p>
+                  <p style={{ color: '#6b7280', marginBottom: '0.5rem' }}><strong>Variables:</strong></p>
+                  <pre style={{ background: '#f3f4f6', padding: '0.75rem', borderRadius: '6px', fontSize: '0.85rem', overflow: 'auto' }}>
+                    {typeof selectedEmail.Variables === 'string' ? selectedEmail.Variables : JSON.stringify(selectedEmail.Variables, null, 2)}
+                  </pre>
+                </div>
+              ) : (
+                <p style={{ color: '#9ca3af' }}>No preview available</p>
+              )}
             </div>
           </div>
         )}

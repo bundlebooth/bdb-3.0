@@ -1087,5 +1087,43 @@ module.exports = {
   sendAccountUnlockedEmail,
   sendPolicyWarningEmail,
   sendChatSummaryEmail,
-  checkEmailCooldown
+  checkEmailCooldown,
+  renderEmailPreview
 };
+
+// Render email preview without sending - for admin preview functionality
+async function renderEmailPreview(templateKey, variables = {}) {
+  try {
+    // Auto-inject platform variables
+    const frontendUrl = 'https://www.planbeau.com';
+    const productionUrl = 'https://www.planbeau.com';
+    
+    const platformVars = {
+      platformName: process.env.PLATFORM_NAME || 'PlanBeau',
+      platformUrl: process.env.PLATFORM_URL || 'planbeau.com',
+      frontendUrl: frontendUrl,
+      logoUrl: `${productionUrl}/images/logo.png`,
+      faviconUrl: `${productionUrl}/planbeau_fav_icon.png`,
+      currentYear: new Date().getFullYear().toString(),
+      unsubscribeUrl: '#',
+      preferencesUrl: '#',
+      ...variables
+    };
+
+    // Get template from database
+    const template = await getEmailTemplate(templateKey);
+    
+    // Replace variables in subject and HTML
+    const subject = replaceVariables(template.subject, platformVars);
+    const html = replaceVariables(template.htmlContent, platformVars);
+
+    return {
+      subject,
+      htmlBody: html,
+      templateName: template.templateName
+    };
+  } catch (error) {
+    console.error('Error rendering email preview:', error);
+    throw error;
+  }
+}

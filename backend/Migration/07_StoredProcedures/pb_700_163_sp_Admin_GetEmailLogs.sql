@@ -35,8 +35,8 @@ BEGIN
         UserID as userId,
         BookingID as bookingId,
         Metadata as metadata,
-        JSON_VALUE(Metadata, '$.htmlBody') as htmlBody
-    FROM EmailLogs
+        COALESCE(HtmlBody, JSON_VALUE(Metadata, '$.htmlBody')) as htmlBody
+    FROM [admin].EmailLogs
     WHERE (@TemplateKey IS NULL OR TemplateKey = @TemplateKey)
         AND (@Status IS NULL OR Status = @Status)
     ORDER BY SentAt DESC

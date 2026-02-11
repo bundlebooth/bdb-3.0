@@ -549,6 +549,11 @@ export const cancelQueuedEmail = async (emailId, reason) => {
   return handleApiResponse(response);
 };
 
+export const getEmailQueuePreview = async (emailId) => {
+  const response = await apiGet(`/admin/email-queue/${emailId}/preview`);
+  return handleApiResponse(response);
+};
+
 // ============================================================
 // ANALYTICS & REPORTS
 // ============================================================
@@ -837,6 +842,7 @@ const adminApi = {
   getEmailQueueStats,
   getEmailQueue,
   cancelQueuedEmail,
+  getEmailQueuePreview,
   
   // Analytics
   getAnalytics,

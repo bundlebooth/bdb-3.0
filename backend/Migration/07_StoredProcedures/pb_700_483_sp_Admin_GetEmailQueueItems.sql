@@ -23,12 +23,14 @@ BEGIN
         eq.ScheduledAt,
         eq.Status,
         eq.Priority,
-        eq.AttemptCount,
+        eq.AttemptCount AS Attempts,
         eq.SentAt,
         eq.CancelledAt,
         eq.ErrorMessage,
         eq.CreatedAt,
-        eq.BookingID
+        eq.BookingID,
+        COALESCE(eq.Subject, et.Subject) AS Subject,
+        eq.Variables
     FROM admin.EmailQueue eq
     LEFT JOIN admin.EmailTemplates et ON eq.TemplateKey = et.TemplateKey
     WHERE (@Status IS NULL OR eq.Status = @Status)

@@ -52,7 +52,7 @@ BEGIN
     )
     VALUES (
         @ActualConversationID,
-        0, -- Guest sender (no user ID)
+        NULL, -- Guest sender (no user ID)
         'guest',
         @Content,
         GETDATE(),

@@ -8,7 +8,7 @@ import ImageUpload from './common/ImageUpload';
 
 function MessagingWidget() {
   const { currentUser } = useAuth();
-  const { showError, showWarning } = useAlert();
+  const { showError, showWarning, showSuccess } = useAlert();
   const [isOpen, setIsOpen] = useState(false);
   const [mainView, setMainView] = useState('home'); // 'home', 'messages', 'help'
   const [view, setView] = useState('conversations'); // 'conversations' or 'chat'
@@ -393,15 +393,21 @@ function MessagingWidget() {
 
   // Load messages for a conversation - silent refresh to avoid flicker
   const loadMessages = useCallback(async (conversationId, isPolling = false) => {
-    if (!conversationId || !currentUser?.id) return;
+    if (!conversationId) return;
     
     // Only show loading on initial load, not on polling refreshes
     if (!isPolling) {
       setLoading(true);
     }
     try {
-      const response = await fetch(`${API_BASE_URL}/messages/conversation/${conversationId}?userId=${currentUser.id}`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      // For guest users, fetch without auth; for logged-in users, use auth
+      const userId = currentUser?.id || 0;
+      const headers = currentUser?.id 
+        ? { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        : { 'Content-Type': 'application/json' };
+      
+      const response = await fetch(`${API_BASE_URL}/messages/conversation/${conversationId}?userId=${userId}`, {
+        headers
       });
       
       if (response.ok) {
@@ -740,21 +746,16 @@ function MessagingWidget() {
         setSupportFormStep(1); // Reset form step
         setView('chat');
         
-        // Load messages from backend (includes welcome message)
-        if (data.conversationId) {
-          loadMessages(data.conversationId);
-        } else {
-          // Fallback: show local welcome message
-          const categoryLabel = supportCategories.find(c => c.value === supportTopic.category)?.label || supportTopic.category;
-          setMessages([{
-            id: 'welcome-msg',
-            content: `👋 Hi ${guestName.trim()}! Thanks for reaching out to Planbeau Support.\n\nYour reference number is: **${refNumber}**\nPlease save this for future reference.\n\nWe'll send a response to ${guestEmail.trim()} when we reply.\n\n**Topic:** ${categoryLabel}\n**Subject:** ${supportTopic.subject}\n\nHow can we help you today?`,
-            senderId: 'support',
-            SenderID: 'support',
-            isSupport: true,
-            CreatedAt: new Date().toISOString()
-          }]);
-        }
+        // Show welcome message immediately (don't wait for loadMessages)
+        const categoryLabel = supportCategories.find(c => c.value === supportTopic.category)?.label || supportTopic.category;
+        setMessages([{
+          MessageID: 'welcome-msg',
+          Content: `👋 Hi ${guestName.trim()}! Thanks for reaching out to Planbeau Support.\n\nYour reference number is: **${refNumber}**\nPlease save this for future reference.\n\nWe'll send a response to ${guestEmail.trim()} when we reply.\n\n**Topic:** ${categoryLabel}\n**Subject:** ${supportTopic.subject}\n\nHow can we help you today?`,
+          SenderID: null,
+          SenderType: 'support',
+          isSupport: true,
+          CreatedAt: new Date().toISOString()
+        }]);
         
         setIsFreshSupportChat(true);
       } else {
@@ -2168,6 +2169,53 @@ function MessagingWidget() {
                       : 'Online'}
                   </span>
                 </div>
+                {/* End Chat Button - for support chats */}
+                {(currentConversation.isSupport || currentConversation.ConversationType === 'support' || currentConversation.isGuest) && (
+                  <button
+                    onClick={async () => {
+                      try {
+                        const response = await fetch(`${API_BASE_URL}/messages/conversations/end-chat`, {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            conversationId: currentConversation.id || currentConversation.ConversationID,
+                            recipientEmail: currentConversation.guestEmail || guestEmail || currentUser?.email,
+                            recipientName: currentConversation.guestName || guestName || currentUser?.firstName,
+                            referenceNumber: currentConversation.referenceNumber || guestReferenceNumber,
+                            subject: supportTopic.subject || currentConversation.Subject || 'Support Request',
+                            category: supportTopic.category || currentConversation.Category || 'General',
+                            isGuest: currentConversation.isGuest || !currentUser?.id
+                          })
+                        });
+                        if (response.ok) {
+                          showSuccess('Chat ended. A summary has been sent to your email.');
+                          backToConversations();
+                        } else {
+                          showError('Failed to end chat. Please try again.');
+                        }
+                      } catch (error) {
+                        console.error('End chat error:', error);
+                        showError('Failed to end chat. Please try again.');
+                      }
+                    }}
+                    style={{
+                      padding: '6px 12px',
+                      background: '#fee2e2',
+                      border: '1px solid #fecaca',
+                      borderRadius: '6px',
+                      fontSize: '12px',
+                      fontWeight: 500,
+                      color: '#dc2626',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}
+                  >
+                    <i className="fas fa-times-circle" style={{ fontSize: '11px' }}></i>
+                    End Chat
+                  </button>
+                )}
               </div>
               
               {/* Reference Number Banner - show for guests */}
@@ -2280,9 +2328,12 @@ function MessagingWidget() {
                     .map((msg, index) => {
                     // Determine if message is from current user - handle guests and support messages
                     const isSent = msg._isCurrentUser || (currentUser?.id && msg.SenderID === currentUser.id);
-                    // Support/system messages are never "sent" by user
-                    const isFromSupport = msg.isSupport || msg.SenderID === 'support' || msg.senderId === 'support';
-                    const isSentFinal = isSent && !isFromSupport;
+                    // Support/system messages are never "sent" by user - check SenderType from database
+                    const isFromSupport = msg.isSupport || msg.SenderID === 'support' || msg.senderId === 'support' || 
+                                          msg.SenderType === 'support' || msg.SenderID === null || msg.SenderID === 0;
+                    // Guest messages are "sent" by the guest user
+                    const isGuestMessage = msg.SenderType === 'guest';
+                    const isSentFinal = (isSent || isGuestMessage) && !isFromSupport;
                     const isRead = msg.IsRead === true || msg.IsRead === 1;
                     // Only show read receipt on the last sent message
                     const isLastSentMessage = isSentFinal && !messages.slice(index + 1).some(m => m._isCurrentUser || (currentUser?.id && m.SenderID === currentUser.id));
@@ -4231,6 +4282,54 @@ function MessagingWidget() {
                         : 'Online'}
                     </span>
                   </div>
+                  {/* End Chat Button - Desktop */}
+                  {(currentConversation.isSupport || currentConversation.ConversationType === 'support' || currentConversation.isGuest) && (
+                    <button
+                      onClick={async () => {
+                        try {
+                          const response = await fetch(`${API_BASE_URL}/messages/conversations/end-chat`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              conversationId: currentConversation.id || currentConversation.ConversationID,
+                              recipientEmail: currentConversation.guestEmail || guestEmail || currentUser?.email,
+                              recipientName: currentConversation.guestName || guestName || currentUser?.firstName,
+                              referenceNumber: currentConversation.referenceNumber || guestReferenceNumber,
+                              subject: supportTopic.subject || currentConversation.Subject || 'Support Request',
+                              category: supportTopic.category || currentConversation.Category || 'General',
+                              isGuest: currentConversation.isGuest || !currentUser?.id
+                            })
+                          });
+                          if (response.ok) {
+                            showSuccess('Chat ended. A summary has been sent to your email.');
+                            setView('conversations');
+                            setCurrentConversation(null);
+                          } else {
+                            showError('Failed to end chat. Please try again.');
+                          }
+                        } catch (error) {
+                          console.error('End chat error:', error);
+                          showError('Failed to end chat. Please try again.');
+                        }
+                      }}
+                      style={{
+                        padding: '6px 12px',
+                        background: '#fee2e2',
+                        border: '1px solid #fecaca',
+                        borderRadius: '6px',
+                        fontSize: '12px',
+                        fontWeight: 500,
+                        color: '#dc2626',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}
+                    >
+                      <i className="fas fa-times-circle" style={{ fontSize: '11px' }}></i>
+                      End Chat
+                    </button>
+                  )}
                 </div>
                 
                 {/* Reference Number Banner - show for guests */}
@@ -4289,8 +4388,10 @@ function MessagingWidget() {
                         // Determine if message is from current user - handle guests and support messages
                         const isSentByUser = msg._isCurrentUser || (currentUser?.id && msg.SenderID === currentUser.id);
                         // Support/system messages are never "sent" by user
-                        const isFromSupport = msg.isSupport || msg.SenderID === 'support' || msg.senderId === 'support';
-                        const isSent = isSentByUser && !isFromSupport;
+                        const isFromSupport = msg.isSupport || msg.SenderID === 'support' || msg.senderId === 'support' || 
+                                              msg.SenderType === 'support' || msg.SenderID === null || msg.SenderID === 0;
+                        const isGuestMessage = msg.SenderType === 'guest';
+                        const isSent = (isSentByUser || isGuestMessage) && !isFromSupport;
                         const isGif = msg.Content && (msg.Content.includes('giphy.com') || msg.Content.match(/\.(gif)$/i));
                         const currentDate = msg.CreatedAt ? new Date(msg.CreatedAt).toDateString() : '';
                         const prevMessage = index > 0 ? allMsgs[index - 1] : null;

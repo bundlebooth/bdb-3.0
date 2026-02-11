@@ -82,7 +82,7 @@ We''ll send a response to ' + @GuestEmail + N' when we reply.
         )
         VALUES (
             @ConversationID,
-            0, -- System/Support sender
+            NULL, -- No user ID for system/support messages
             'support',
             @WelcomeMessage,
             GETDATE(),

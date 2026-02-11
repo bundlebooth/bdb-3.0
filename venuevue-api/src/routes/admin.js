@@ -3717,6 +3717,53 @@ router.get('/email-queue', async (req, res) => {
   }
 });
 
+// GET /admin/email-queue/:id/preview - Get rendered preview of a queued email
+router.get('/email-queue/:id/preview', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pool = await getPool();
+    
+    // Get the queue item
+    const result = await pool.request()
+      .input('QueueID', sql.Int, parseInt(id))
+      .query(`
+        SELECT eq.QueueID, eq.TemplateKey, eq.RecipientEmail, eq.RecipientName, 
+               eq.Variables, eq.Subject, eq.ScheduledAt, et.TemplateName
+        FROM admin.EmailQueue eq
+        LEFT JOIN admin.EmailTemplates et ON eq.TemplateKey = et.TemplateKey
+        WHERE eq.QueueID = @QueueID
+      `);
+    
+    if (result.recordset.length === 0) {
+      return res.status(404).json({ success: false, message: 'Queue item not found' });
+    }
+    
+    const queueItem = result.recordset[0];
+    const variables = queueItem.Variables ? JSON.parse(queueItem.Variables) : {};
+    
+    // Render the email preview
+    const { renderEmailPreview } = require('../services/email');
+    const preview = await renderEmailPreview(queueItem.TemplateKey, {
+      ...variables,
+      recipientEmail: queueItem.RecipientEmail,
+      recipientName: queueItem.RecipientName
+    });
+    
+    res.json({
+      success: true,
+      preview: {
+        ...preview,
+        recipientEmail: queueItem.RecipientEmail,
+        recipientName: queueItem.RecipientName,
+        scheduledAt: queueItem.ScheduledAt
+      }
+    });
+  } catch (error) {
+    console.error('Error generating email preview:', error);
+    res.status(500).json({ success: false, message: 'Failed to generate preview', error: error.message });
+  }
+});
+
 // POST /admin/email-queue/:id/cancel - Cancel a queued email
 router.post('/email-queue/:id/cancel', async (req, res) => {
   try {
