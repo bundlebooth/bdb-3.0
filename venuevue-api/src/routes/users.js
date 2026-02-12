@@ -11,6 +11,7 @@ const { upload } = require('../middlewares/uploadMiddleware');
 const cloudinaryService = require('../services/cloudinaryService');
 const { decodeUserId, isPublicId } = require('../utils/hashIds');
 const { authRateLimiter } = require('../middlewares/rateLimitMiddleware');
+const { decryptMiddleware } = require('../utils/crypto');
 
 // Helper to resolve user ID (handles both public ID and numeric ID)
 function resolveUserId(idParam) {
@@ -32,8 +33,8 @@ const validatePassword = (password) => {
   return password && password.length >= 8;
 };
 
-// User Registration
-router.post('/register', async (req, res) => {
+// User Registration (with credential decryption)
+router.post('/register', decryptMiddleware, async (req, res) => {
   try {
     const { firstName, lastName, email, password, isVendor = false, accountType } = req.body;
     
@@ -131,8 +132,8 @@ router.post('/register', async (req, res) => {
   }
 });
 
-// User Login (with rate limiting)
-router.post('/login', authRateLimiter, async (req, res) => {
+// User Login (with rate limiting and credential decryption)
+router.post('/login', authRateLimiter, decryptMiddleware, async (req, res) => {
   try {
     const { email, password } = req.body;
 
