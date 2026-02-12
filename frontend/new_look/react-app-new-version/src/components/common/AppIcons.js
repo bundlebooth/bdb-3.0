@@ -361,11 +361,15 @@ export const UnifiedNotificationIcons = {
   // Booking notifications
   'booking_request': '/images/planbeau-platform-assets/icons/notification/notif-booking-request.svg',
   'new_booking_request': '/images/planbeau-platform-assets/icons/notification/notif-booking-request.svg',
+  'new_request': '/images/planbeau-platform-assets/icons/notification/notif-booking-request.svg',
   'booking': '/images/planbeau-platform-assets/icons/notification/notif-calendar.svg',
   'booking_approved': '/images/planbeau-platform-assets/icons/notification/notif-booking-approved.svg',
+  'booking_accepted': '/images/planbeau-platform-assets/icons/notification/notif-booking-approved.svg',
+  'request_approved': '/images/planbeau-platform-assets/icons/notification/notif-booking-approved.svg',
   'booking_confirmed': '/images/planbeau-platform-assets/icons/notification/notif-booking-confirmed.svg',
   'booking_declined': '/images/planbeau-platform-assets/icons/notification/notif-booking-declined.svg',
   'booking_rejected': '/images/planbeau-platform-assets/icons/notification/notif-booking-declined.svg',
+  'request_declined': '/images/planbeau-platform-assets/icons/notification/notif-booking-declined.svg',
   'booking_cancelled': '/images/planbeau-platform-assets/icons/notification/notif-booking-cancelled.svg',
   'booking_reminder': '/images/planbeau-platform-assets/icons/notification/notif-booking-reminder.svg',
   'booking_update': '/images/planbeau-platform-assets/icons/notification/notif-booking-update.svg',
@@ -418,8 +422,26 @@ export const UnifiedNotificationIcons = {
 };
 
 // Helper function to get unified notification icon path
+// Handles case-insensitive matching and common variations
 export const getUnifiedNotificationIcon = (type) => {
-  return UnifiedNotificationIcons[type] || UnifiedNotificationIcons['notification'];
+  if (!type) return UnifiedNotificationIcons['notification'];
+  
+  // Normalize: lowercase and trim
+  const normalizedType = type.toLowerCase().trim();
+  
+  // Direct match
+  if (UnifiedNotificationIcons[normalizedType]) {
+    return UnifiedNotificationIcons[normalizedType];
+  }
+  
+  // Try with underscores replaced by nothing (e.g., 'newmessage' -> 'new_message')
+  const withUnderscores = normalizedType.replace(/([a-z])([A-Z])/g, '$1_$2').toLowerCase();
+  if (UnifiedNotificationIcons[withUnderscores]) {
+    return UnifiedNotificationIcons[withUnderscores];
+  }
+  
+  // Fallback to default
+  return UnifiedNotificationIcons['notification'];
 };
 
 export const EmailIconPaths = {

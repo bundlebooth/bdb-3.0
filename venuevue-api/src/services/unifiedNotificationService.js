@@ -48,8 +48,8 @@ class UnifiedNotificationService {
    */
   async getPool() {
     if (!this.pool) {
-      const dbConfig = require('../config/database');
-      this.pool = await sql.connect(dbConfig);
+      const { poolPromise } = require('../config/db');
+      this.pool = await poolPromise;
     }
     return this.pool;
   }
