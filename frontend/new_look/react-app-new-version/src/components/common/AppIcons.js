@@ -249,4 +249,122 @@ export const IconClasses = {
   star: 'fas fa-star',
 };
 
+// ============================================================================
+// NOTIFICATION ICON STYLES
+// Centralized notification type styling for use across ProfileSidebar,
+// NotificationDropdown, and any other notification-related components.
+// This ensures consistent icons and colors for all notification types.
+// ============================================================================
+
+export const NotificationIconStyles = {
+  // Booking notifications
+  'booking_request': { icon: 'fa-calendar-plus', iconColor: '#ffffff', bgColor: '#5086E8' },
+  'new_booking_request': { icon: 'fa-calendar-plus', iconColor: '#ffffff', bgColor: '#5086E8' },
+  'booking': { icon: 'fa-calendar-plus', iconColor: '#5086E8', bgColor: 'rgba(80, 134, 232, 0.15)' },
+  'booking_approved': { icon: 'fa-check-circle', iconColor: '#10b981', bgColor: '#5086E8' },
+  'booking_confirmed': { icon: 'fa-check-circle', iconColor: '#10b981', bgColor: '#5086E8' },
+  'booking_declined': { icon: 'fa-times-circle', iconColor: '#ef4444', bgColor: '#5086E8' },
+  'booking_rejected': { icon: 'fa-times-circle', iconColor: '#ef4444', bgColor: '#5086E8' },
+  'booking_cancelled': { icon: 'fa-ban', iconColor: '#ef4444', bgColor: '#5086E8' },
+  'booking_reminder': { icon: 'fa-clock', iconColor: '#fbbf24', bgColor: '#5086E8' },
+  'booking_update': { icon: 'fa-sync', iconColor: '#a78bfa', bgColor: '#5086E8' },
+  
+  // Message notifications
+  'message': { icon: 'fa-envelope', iconColor: '#ffffff', bgColor: '#5086E8' },
+  'new_message': { icon: 'fa-envelope', iconColor: '#ffffff', bgColor: '#5086E8' },
+  
+  // Payment notifications
+  'payment': { icon: 'fa-credit-card', iconColor: '#34d399', bgColor: '#5086E8' },
+  'payment_received': { icon: 'fa-dollar-sign', iconColor: '#34d399', bgColor: '#5086E8' },
+  'payment_reminder': { icon: 'fa-exclamation-circle', iconColor: '#fbbf24', bgColor: '#5086E8' },
+  
+  // Invoice notifications
+  'invoice': { icon: 'fa-file-invoice-dollar', iconColor: '#c4b5fd', bgColor: '#5086E8' },
+  'new_invoice': { icon: 'fa-file-invoice-dollar', iconColor: '#c4b5fd', bgColor: '#5086E8' },
+  
+  // Review notifications
+  'review': { icon: 'fa-star', iconColor: '#fbbf24', bgColor: '#5086E8' },
+  'new_review': { icon: 'fa-star', iconColor: '#fbbf24', bgColor: '#5086E8' },
+  
+  // Promotion notifications
+  'promotion': { icon: 'fa-tag', iconColor: '#fb923c', bgColor: '#5086E8' },
+  'promotions': { icon: 'fa-tag', iconColor: '#fb923c', bgColor: '#5086E8' },
+  
+  // Newsletter
+  'newsletter': { icon: 'fa-newspaper', iconColor: '#67e8f9', bgColor: '#5086E8' },
+  
+  // Announcement
+  'announcement': { icon: 'fa-bullhorn', iconColor: '#fbbf24', bgColor: '#5086E8' },
+  
+  // General/default
+  'notification': { icon: 'fa-bell', iconColor: '#ffffff', bgColor: '#5086E8' },
+  'general': { icon: 'fa-bell', iconColor: '#f59e0b', bgColor: 'rgba(80, 134, 232, 0.15)' },
+};
+
+// Helper function to get notification style with fallback
+export const getNotificationIconStyle = (type) => {
+  return NotificationIconStyles[type] || NotificationIconStyles['notification'];
+};
+
+// ============================================================================
+// SVG ICON PATHS
+// Centralized SVG paths for use across the app, emails, and notifications.
+// These match the icons in /public/images/planbeau-platform-assets/icons/ui/
+// ============================================================================
+
+export const SvgIconPaths = {
+  'check-circle': '/images/planbeau-platform-assets/icons/ui/check-circle.svg',
+  'check': '/images/planbeau-platform-assets/icons/ui/check.svg',
+  'x-circle': '/images/planbeau-platform-assets/icons/ui/x-circle.svg',
+  'calendar': '/images/planbeau-platform-assets/icons/ui/calendar.svg',
+  'calendar-plus': '/images/planbeau-platform-assets/icons/ui/calendar-plus.svg',
+  'bell': '/images/planbeau-platform-assets/icons/ui/bell.svg',
+  'heart': '/images/planbeau-platform-assets/icons/ui/heart.svg',
+  'star': '/images/planbeau-platform-assets/icons/ui/star.svg',
+  'envelope': '/images/planbeau-platform-assets/icons/ui/envelope.svg',
+  'clock': '/images/planbeau-platform-assets/icons/ui/clock.svg',
+  'dollar-sign': '/images/planbeau-platform-assets/icons/ui/dollar-sign.svg',
+  'credit-card': '/images/planbeau-platform-assets/icons/ui/credit-card.svg',
+  'user': '/images/planbeau-platform-assets/icons/ui/user.svg',
+  'lock': '/images/planbeau-platform-assets/icons/ui/lock.svg',
+  'unlock': '/images/planbeau-platform-assets/icons/ui/unlock.svg',
+  'gift': '/images/planbeau-platform-assets/icons/ui/gift.svg',
+  'message-square': '/images/planbeau-platform-assets/icons/ui/message-square.svg',
+  'file-text': '/images/planbeau-platform-assets/icons/ui/file-text.svg',
+  'tag': '/images/planbeau-platform-assets/icons/ui/tag.svg',
+  'megaphone': '/images/planbeau-platform-assets/icons/ui/megaphone.svg',
+  'ban': '/images/planbeau-platform-assets/icons/ui/ban.svg',
+  'refresh-cw': '/images/planbeau-platform-assets/icons/ui/refresh-cw.svg',
+  'alert-circle': '/images/planbeau-platform-assets/icons/ui/alert-circle.svg',
+  'info': '/images/planbeau-platform-assets/icons/ui/info.svg',
+  'map-pin': '/images/planbeau-platform-assets/icons/ui/map-pin.svg',
+  'search': '/images/planbeau-platform-assets/icons/ui/search.svg',
+  'newspaper': '/images/planbeau-platform-assets/icons/ui/newspaper.svg',
+};
+
+// ============================================================================
+// EMAIL ICON PATHS
+// Paths to email-specific icons with colored backgrounds (64x64 circular)
+// ============================================================================
+
+export const EmailIconPaths = {
+  'check-green': '/images/email-icons/icon-check-green.svg',
+  'calendar-blue': '/images/email-icons/icon-calendar-blue.svg',
+  'bell-yellow': '/images/email-icons/icon-bell-yellow.svg',
+  'alert-yellow': '/images/email-icons/icon-alert-yellow.svg',
+  'clock-yellow': '/images/email-icons/icon-clock-yellow.svg',
+  'dollar-green': '/images/email-icons/icon-dollar-green.svg',
+  'gift-purple': '/images/email-icons/icon-gift-purple.svg',
+  'heart-red': '/images/email-icons/icon-heart-red.svg',
+  'lock-blue': '/images/email-icons/icon-lock-blue.svg',
+  'lock-red': '/images/email-icons/icon-lock-red.svg',
+  'message-blue': '/images/email-icons/icon-message-blue.svg',
+  'receipt-green': '/images/email-icons/icon-receipt-green.svg',
+  'star-yellow': '/images/email-icons/icon-star-yellow.svg',
+  'support-blue': '/images/email-icons/icon-support-blue.svg',
+  'unlock-green': '/images/email-icons/icon-unlock-green.svg',
+  'user-blue': '/images/email-icons/icon-user-blue.svg',
+  'x-red': '/images/email-icons/icon-x-red.svg',
+};
+
 export default Icons;

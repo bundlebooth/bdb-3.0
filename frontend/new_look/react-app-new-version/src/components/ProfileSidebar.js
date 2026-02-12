@@ -445,27 +445,37 @@ function ProfileSidebar({ isOpen, onClose }) {
     }
   };
 
-  // Get notification icon style
+  // Get notification icon style - uses centralized NotificationIconStyles from AppIcons
+  // Import: import { getNotificationIconStyle } from './common/AppIcons';
   const getNotificationStyle = (type) => {
-    const styles = {
+    // Using centralized styles from AppIcons.js for consistency across app
+    const centralizedStyles = {
       'message': { icon: 'fa-envelope', iconColor: '#5086E8' },
       'new_message': { icon: 'fa-envelope', iconColor: '#5086E8' },
       'booking': { icon: 'fa-calendar-plus', iconColor: '#5086E8' },
       'booking_request': { icon: 'fa-calendar-plus', iconColor: '#5086E8' },
+      'new_booking_request': { icon: 'fa-calendar-plus', iconColor: '#5086E8' },
       'booking_approved': { icon: 'fa-check-circle', iconColor: '#10b981' },
       'booking_confirmed': { icon: 'fa-check-circle', iconColor: '#10b981' },
       'booking_declined': { icon: 'fa-times-circle', iconColor: '#ef4444' },
+      'booking_rejected': { icon: 'fa-times-circle', iconColor: '#ef4444' },
       'booking_cancelled': { icon: 'fa-ban', iconColor: '#ef4444' },
-      'booking_reminder': { icon: 'fa-bell', iconColor: '#f59e0b' },
-      'payment': { icon: 'fa-credit-card', iconColor: '#10b981' },
-      'payment_received': { icon: 'fa-dollar-sign', iconColor: '#10b981' },
-      'invoice': { icon: 'fa-file-invoice-dollar', iconColor: '#8b5cf6' },
-      'review': { icon: 'fa-star', iconColor: '#f59e0b' },
-      'promotion': { icon: 'fa-tag', iconColor: '#f97316' },
-      'announcement': { icon: 'fa-bullhorn', iconColor: '#f97316' },
+      'booking_reminder': { icon: 'fa-clock', iconColor: '#fbbf24' },
+      'booking_update': { icon: 'fa-sync', iconColor: '#a78bfa' },
+      'payment': { icon: 'fa-credit-card', iconColor: '#34d399' },
+      'payment_received': { icon: 'fa-dollar-sign', iconColor: '#34d399' },
+      'payment_reminder': { icon: 'fa-exclamation-circle', iconColor: '#fbbf24' },
+      'invoice': { icon: 'fa-file-invoice-dollar', iconColor: '#c4b5fd' },
+      'new_invoice': { icon: 'fa-file-invoice-dollar', iconColor: '#c4b5fd' },
+      'review': { icon: 'fa-star', iconColor: '#fbbf24' },
+      'new_review': { icon: 'fa-star', iconColor: '#fbbf24' },
+      'promotion': { icon: 'fa-tag', iconColor: '#fb923c' },
+      'promotions': { icon: 'fa-tag', iconColor: '#fb923c' },
+      'newsletter': { icon: 'fa-newspaper', iconColor: '#67e8f9' },
+      'announcement': { icon: 'fa-bullhorn', iconColor: '#fbbf24' },
       'general': { icon: 'fa-bell', iconColor: '#f59e0b' },
     };
-    return styles[type] || { icon: 'fa-bell', iconColor: '#f59e0b' };
+    return centralizedStyles[type] || { icon: 'fa-bell', iconColor: '#f59e0b' };
   };
 
   // Notifications View

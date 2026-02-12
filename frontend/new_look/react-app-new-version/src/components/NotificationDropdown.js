@@ -154,8 +154,8 @@ function NotificationDropdown({ isOpen, onClose, anchorEl, onBadgeCountChange })
       'payment_reminder': { text: 'reminder', bgColor: '#5086E8', iconColor: '#fbbf24', icon: 'fa-exclamation-circle' },
       
       // Invoice notifications - document purple
-      'invoice': { text: 'invoice', bgColor: '#5086E8', iconColor: '#c4b5fd', icon: 'fa-file-invoice' },
-      'new_invoice': { text: 'invoice', bgColor: '#5086E8', iconColor: '#c4b5fd', icon: 'fa-file-invoice' },
+      'invoice': { text: 'invoice', bgColor: '#5086E8', iconColor: '#c4b5fd', icon: 'fa-file-invoice-dollar' },
+      'new_invoice': { text: 'invoice', bgColor: '#5086E8', iconColor: '#c4b5fd', icon: 'fa-file-invoice-dollar' },
       
       // Review notifications - star gold
       'review': { text: 'review', bgColor: '#5086E8', iconColor: '#fbbf24', icon: 'fa-star' },
