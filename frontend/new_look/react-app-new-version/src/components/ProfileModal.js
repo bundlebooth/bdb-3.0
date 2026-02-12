@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { showBanner } from '../utils/helpers';
 import { apiGet, apiPost } from '../utils/api';
+import { encryptCredentials, encryptRegistrationData } from '../utils/crypto';
 import UniversalModal from './UniversalModal';
 
 function ProfileModal({ isOpen, onClose, defaultView = 'login', defaultAccountType = 'client', hideAccountTypeSelector = false }) {
@@ -36,6 +37,11 @@ function ProfileModal({ isOpen, onClose, defaultView = 'login', defaultAccountTy
   // Google Sign-In states
   const [googleAccountType, setGoogleAccountType] = useState('client');
   const [pendingGoogleCredential, setPendingGoogleCredential] = useState(null);
+
+  // Facebook Sign-In states
+  const [facebookInitialized, setFacebookInitialized] = useState(false);
+  const [pendingFacebookData, setPendingFacebookData] = useState(null);
+  const FACEBOOK_APP_ID = process.env.REACT_APP_FACEBOOK_APP_ID;
 
   // Session timeout message state
   const [sessionMessage, setSessionMessage] = useState('');
@@ -200,10 +206,80 @@ function ProfileModal({ isOpen, onClose, defaultView = 'login', defaultAccountTy
     }
   }, [handleGoogleLogin, onClose, hideAccountTypeSelector, defaultAccountType]);
 
-  // Handle Google Sign-In after account type selection
-  const handleGoogleSignInWithAccountType = async () => {
+  // Handle Google/Facebook Sign-In after account type selection
+  const handleSocialSignInWithAccountType = async () => {
+    // Handle Facebook signup with account type
+    if (pendingFacebookData) {
+      try {
+        setLoading(true);
+        const response = await apiPost('/users/social-login', {
+          email: pendingFacebookData.email,
+          name: pendingFacebookData.name,
+          authProvider: 'facebook',
+          avatar: pendingFacebookData.avatar,
+          accountType: googleAccountType
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.message || 'Facebook sign-up failed');
+        }
+
+        const data = await response.json();
+        if (data.token) localStorage.setItem('token', data.token);
+
+        const userData = {
+          id: data.userId,
+          userId: data.userId,
+          name: data.name || pendingFacebookData.name,
+          email: data.email,
+          userType: data.isVendor ? 'vendor' : 'client',
+          isVendor: data.isVendor || false,
+          isAdmin: data.isAdmin || false,
+          vendorProfileId: data.vendorProfileId || null,
+          authProvider: 'facebook',
+          profilePicture: data.profilePicture || pendingFacebookData.avatar
+        };
+
+        setCurrentUser(userData);
+        window.currentUser = userData;
+        localStorage.setItem('userSession', JSON.stringify(userData));
+        
+        if (userData.id) {
+          localStorage.removeItem(`vv_hideSetupReminderUntilComplete_${userData.id}`);
+        }
+
+        showBanner('Successfully signed in with Facebook!', 'success');
+        onClose();
+
+        if (userData.isVendor && data.isNewUser) {
+          setTimeout(() => {
+            window.location.href = '/become-a-vendor';
+          }, 500);
+        } else {
+          const postLoginRedirect = sessionStorage.getItem('postLoginRedirect');
+          if (postLoginRedirect) {
+            sessionStorage.removeItem('postLoginRedirect');
+            setTimeout(() => {
+              window.location.href = postLoginRedirect;
+            }, 300);
+          }
+        }
+
+        setPendingFacebookData(null);
+        setGoogleAccountType('client');
+        return;
+      } catch (error) {
+        console.error('Facebook sign-up error:', error);
+        showBanner(error.message || 'Failed to sign in with Facebook', 'error');
+        setLoading(false);
+        return;
+      }
+    }
+
+    // Handle Google signup with account type
     if (!pendingGoogleCredential) {
-      showBanner('Please try signing in with Google again', 'error');
+      showBanner('Please try signing in again', 'error');
       setView('login');
       return;
     }
@@ -292,6 +368,168 @@ function ProfileModal({ isOpen, onClose, defaultView = 'login', defaultAccountTy
   const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID;
   const [googleInitialized, setGoogleInitialized] = useState(false);
 
+  // Initialize Facebook SDK
+  useEffect(() => {
+    if (!FACEBOOK_APP_ID) return;
+    
+    window.fbAsyncInit = function() {
+      window.FB.init({
+        appId: FACEBOOK_APP_ID,
+        cookie: true,
+        xfbml: true,
+        version: 'v18.0'
+      });
+      setFacebookInitialized(true);
+    };
+    
+    // If FB already loaded
+    if (window.FB) {
+      window.FB.init({
+        appId: FACEBOOK_APP_ID,
+        cookie: true,
+        xfbml: true,
+        version: 'v18.0'
+      });
+      setFacebookInitialized(true);
+    }
+  }, [FACEBOOK_APP_ID]);
+
+  // Handle Facebook login
+  const handleFacebookLogin = async () => {
+    if (!FACEBOOK_APP_ID) {
+      showBanner('Facebook Sign-In is not configured. Please use email/password to sign up.', 'info');
+      return;
+    }
+    if (!window.FB) {
+      showBanner('Facebook SDK not loaded. Please refresh and try again.', 'error');
+      return;
+    }
+
+    window.FB.login(async (response) => {
+      if (response.authResponse) {
+        window.FB.api('/me', { fields: 'name,email,picture.type(large)' }, async (userData) => {
+          if (!userData.email) {
+            showBanner('Email permission is required for Facebook login.', 'error');
+            return;
+          }
+          
+          try {
+            // Check if user exists
+            const checkResponse = await apiGet(`/users/check-email?email=${encodeURIComponent(userData.email)}`);
+            const checkData = await checkResponse.json();
+
+            if (checkData.exists) {
+              // Existing user - login directly
+              setLoading(true);
+              const loginResponse = await apiPost('/users/social-login', {
+                email: userData.email,
+                name: userData.name,
+                authProvider: 'facebook',
+                avatar: userData.picture?.data?.url
+              });
+
+              if (!loginResponse.ok) {
+                const error = await loginResponse.json();
+                throw new Error(error.message || 'Facebook login failed');
+              }
+
+              const data = await loginResponse.json();
+              if (data.token) localStorage.setItem('token', data.token);
+
+              const userDataObj = {
+                id: data.userId,
+                userId: data.userId,
+                name: data.name || userData.name,
+                email: data.email,
+                userType: data.isVendor ? 'vendor' : 'client',
+                isVendor: data.isVendor || false,
+                isAdmin: data.isAdmin || false,
+                vendorProfileId: data.vendorProfileId || null,
+                authProvider: 'facebook',
+                profilePicture: data.profilePicture || userData.picture?.data?.url
+              };
+
+              setCurrentUser(userDataObj);
+              window.currentUser = userDataObj;
+              localStorage.setItem('userSession', JSON.stringify(userDataObj));
+              
+              if (userDataObj.id) {
+                localStorage.removeItem(`vv_hideSetupReminderUntilComplete_${userDataObj.id}`);
+              }
+              
+              showBanner('Successfully logged in with Facebook!', 'success');
+              onClose();
+              setLoading(false);
+            } else {
+              // New user - show account type selection (reuse Google account type view)
+              if (hideAccountTypeSelector) {
+                // Skip account type selection, directly sign up with the default account type
+                setLoading(true);
+                const signupResponse = await apiPost('/users/social-login', {
+                  email: userData.email,
+                  name: userData.name,
+                  authProvider: 'facebook',
+                  avatar: userData.picture?.data?.url,
+                  accountType: defaultAccountType
+                });
+
+                if (!signupResponse.ok) {
+                  const error = await signupResponse.json();
+                  throw new Error(error.message || 'Facebook sign-up failed');
+                }
+
+                const data = await signupResponse.json();
+                if (data.token) localStorage.setItem('token', data.token);
+
+                const userDataObj = {
+                  id: data.userId,
+                  userId: data.userId,
+                  name: data.name || userData.name,
+                  email: data.email,
+                  userType: data.isVendor ? 'vendor' : 'client',
+                  isVendor: data.isVendor || false,
+                  isAdmin: data.isAdmin || false,
+                  vendorProfileId: data.vendorProfileId || null,
+                  authProvider: 'facebook',
+                  profilePicture: data.profilePicture || userData.picture?.data?.url
+                };
+
+                setCurrentUser(userDataObj);
+                window.currentUser = userDataObj;
+                localStorage.setItem('userSession', JSON.stringify(userDataObj));
+                
+                showBanner('Successfully signed in with Facebook!', 'success');
+                onClose();
+                setLoading(false);
+                
+                // Check for pending vendor redirect
+                const pendingVendorRedirect = sessionStorage.getItem('pendingVendorRedirect');
+                if (pendingVendorRedirect === 'true') {
+                  sessionStorage.removeItem('pendingVendorRedirect');
+                  setTimeout(() => {
+                    window.location.href = '/become-a-vendor/setup';
+                  }, 300);
+                }
+              } else {
+                // Show account type selection
+                setPendingFacebookData({
+                  email: userData.email,
+                  name: userData.name,
+                  avatar: userData.picture?.data?.url
+                });
+                setView('googleAccountType');
+              }
+            }
+          } catch (error) {
+            console.error('Facebook login error:', error);
+            showBanner(error.message || 'Facebook login failed. Please try again.', 'error');
+            setLoading(false);
+          }
+        });
+      }
+    }, { scope: 'email,public_profile' });
+  };
+
   // Initialize Google Sign-In when modal opens and render button
   useEffect(() => {
     if (window.google && isOpen && GOOGLE_CLIENT_ID) {
@@ -351,7 +589,10 @@ function ProfileModal({ isOpen, onClose, defaultView = 'login', defaultAccountTy
 
     try {
       setLoading(true);
-      const response = await apiPost('/users/login', { email: loginEmail, password: loginPassword });
+      
+      // Encrypt credentials before sending to hide from Network tab
+      const encrypted = await encryptCredentials(loginEmail, loginPassword);
+      const response = await apiPost('/users/login', { encrypted });
 
       if (!response.ok) {
         const error = await response.json();
@@ -448,13 +689,16 @@ function ProfileModal({ isOpen, onClose, defaultView = 'login', defaultAccountTy
 
     try {
       setLoading(true);
-      const response = await apiPost('/users/register', {
+      
+      // Encrypt registration data before sending to hide from Network tab
+      const encrypted = await encryptRegistrationData({
         firstName: signupFirstName,
         lastName: signupLastName,
         email: signupEmail,
         password: signupPassword,
         accountType: accountType
       });
+      const response = await apiPost('/users/register', { encrypted });
 
       if (!response.ok) {
         const error = await response.json();
@@ -884,7 +1128,7 @@ function ProfileModal({ isOpen, onClose, defaultView = 'login', defaultAccountTy
                 </div>
                 <button
                   type="button"
-                  onClick={() => {}}
+                  onClick={handleFacebookLogin}
                   style={{
                     width: '100%',
                     padding: '12px',
@@ -1197,7 +1441,7 @@ function ProfileModal({ isOpen, onClose, defaultView = 'login', defaultAccountTy
               )}
 
               <button 
-                onClick={handleGoogleSignInWithAccountType}
+                onClick={handleSocialSignInWithAccountType}
                 disabled={loading}
                 style={{
                   width: '100%',
@@ -1216,13 +1460,14 @@ function ProfileModal({ isOpen, onClose, defaultView = 'login', defaultAccountTy
                 onMouseEnter={(e) => !loading && (e.target.style.backgroundColor = '#4070D0')}
                 onMouseLeave={(e) => !loading && (e.target.style.backgroundColor = '#5086E8')}
               >
-                {loading ? 'Signing in...' : 'Continue with Google'}
+                {loading ? 'Signing in...' : (pendingFacebookData ? 'Continue with Facebook' : 'Continue with Google')}
               </button>
 
               <button 
                 onClick={() => {
                   setView('login');
                   setPendingGoogleCredential(null);
+                  setPendingFacebookData(null);
                   setGoogleAccountType('client');
                 }}
                 style={{

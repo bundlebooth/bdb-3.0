@@ -102,20 +102,49 @@ function NotificationDropdown({ isOpen, onClose, anchorEl, onBadgeCountChange })
         navigate('/dashboard?section=bookings');
         break;
       case 'booking_reminder':
+      case 'booking_rescheduled':
+      case 'booking_reminder_24h':
+      case 'booking_reminder_1_week':
+      case 'event_reminder':
+      case 'booking_action_reminder':
         navigate('/dashboard?section=bookings');
         break;
       case 'payment':
       case 'payment_received':
       case 'payment_reminder':
+      case 'payment_failed':
+      case 'deposit_due':
+      case 'final_payment_due':
+      case 'refund_processed':
         navigate('/dashboard?section=payments');
+        break;
+      case 'payout_processed':
+        navigate('/dashboard?section=earnings');
         break;
       case 'invoice':
       case 'new_invoice':
+      case 'invoice_sent':
+      case 'quote_received':
         navigate('/dashboard?section=invoices');
         break;
       case 'review':
       case 'new_review':
+      case 'review_request':
         navigate('/dashboard?section=reviews');
+        break;
+      case 'vendor_approved':
+      case 'vendor_rejected':
+      case 'vendor_featured':
+      case 'vendor_profile_incomplete':
+        navigate('/dashboard');
+        break;
+      case 'support_ticket_opened':
+      case 'support_ticket_reply':
+      case 'support_ticket_closed':
+        navigate('/dashboard?section=support');
+        break;
+      case 'account_unlocked':
+        navigate('/dashboard');
         break;
       case 'promotion':
       case 'promotions':
@@ -144,6 +173,11 @@ function NotificationDropdown({ isOpen, onClose, anchorEl, onBadgeCountChange })
       'booking_cancelled': { text: 'cancelled', bgColor: '#5086E8', iconColor: '#ef4444', icon: 'fa-ban' },
       'booking_reminder': { text: 'reminder', bgColor: '#5086E8', iconColor: '#fbbf24', icon: 'fa-clock' },
       'booking_update': { text: 'update', bgColor: '#5086E8', iconColor: '#a78bfa', icon: 'fa-sync' },
+      'booking_rescheduled': { text: 'rescheduled', bgColor: '#5086E8', iconColor: '#fbbf24', icon: 'fa-calendar-alt' },
+      'booking_reminder_24h': { text: 'reminder', bgColor: '#5086E8', iconColor: '#fbbf24', icon: 'fa-clock' },
+      'booking_reminder_1_week': { text: 'reminder', bgColor: '#5086E8', iconColor: '#fbbf24', icon: 'fa-clock' },
+      'event_reminder': { text: 'reminder', bgColor: '#5086E8', iconColor: '#fbbf24', icon: 'fa-calendar-check' },
+      'booking_action_reminder': { text: 'action', bgColor: '#5086E8', iconColor: '#ef4444', icon: 'fa-exclamation-triangle' },
       
       // Message notifications - envelope/chat teal
       'message': { text: 'message', bgColor: '#5086E8', iconColor: '#ffffff', icon: 'fa-envelope' },
@@ -153,14 +187,38 @@ function NotificationDropdown({ isOpen, onClose, anchorEl, onBadgeCountChange })
       'payment': { text: 'payment', bgColor: '#5086E8', iconColor: '#34d399', icon: 'fa-credit-card' },
       'payment_received': { text: 'payment', bgColor: '#5086E8', iconColor: '#34d399', icon: 'fa-dollar-sign' },
       'payment_reminder': { text: 'reminder', bgColor: '#5086E8', iconColor: '#fbbf24', icon: 'fa-exclamation-circle' },
+      'payment_failed': { text: 'failed', bgColor: '#5086E8', iconColor: '#ef4444', icon: 'fa-times-circle' },
+      'deposit_due': { text: 'deposit', bgColor: '#5086E8', iconColor: '#ef4444', icon: 'fa-exclamation-circle' },
+      'final_payment_due': { text: 'payment', bgColor: '#5086E8', iconColor: '#ef4444', icon: 'fa-exclamation-circle' },
+      'refund_processed': { text: 'refund', bgColor: '#5086E8', iconColor: '#34d399', icon: 'fa-undo' },
+      'payout_processed': { text: 'payout', bgColor: '#5086E8', iconColor: '#34d399', icon: 'fa-money-bill-wave' },
       
       // Invoice notifications - document purple
       'invoice': { text: 'invoice', bgColor: '#5086E8', iconColor: '#c4b5fd', icon: 'fa-file-invoice-dollar' },
       'new_invoice': { text: 'invoice', bgColor: '#5086E8', iconColor: '#c4b5fd', icon: 'fa-file-invoice-dollar' },
+      'invoice_sent': { text: 'invoice', bgColor: '#5086E8', iconColor: '#c4b5fd', icon: 'fa-file-invoice-dollar' },
+      
+      // Quote notifications
+      'quote_received': { text: 'quote', bgColor: '#5086E8', iconColor: '#a78bfa', icon: 'fa-file-alt' },
       
       // Review notifications - star gold
       'review': { text: 'review', bgColor: '#5086E8', iconColor: '#fbbf24', icon: 'fa-star' },
       'new_review': { text: 'review', bgColor: '#5086E8', iconColor: '#fbbf24', icon: 'fa-star' },
+      'review_request': { text: 'review', bgColor: '#5086E8', iconColor: '#fbbf24', icon: 'fa-star-half-alt' },
+      
+      // Vendor notifications
+      'vendor_approved': { text: 'approved', bgColor: '#5086E8', iconColor: '#10b981', icon: 'fa-check-circle' },
+      'vendor_rejected': { text: 'rejected', bgColor: '#5086E8', iconColor: '#ef4444', icon: 'fa-times-circle' },
+      'vendor_featured': { text: 'featured', bgColor: '#5086E8', iconColor: '#fbbf24', icon: 'fa-award' },
+      'vendor_profile_incomplete': { text: 'profile', bgColor: '#5086E8', iconColor: '#fbbf24', icon: 'fa-user-edit' },
+      
+      // Support notifications
+      'support_ticket_opened': { text: 'support', bgColor: '#5086E8', iconColor: '#67e8f9', icon: 'fa-ticket-alt' },
+      'support_ticket_reply': { text: 'support', bgColor: '#5086E8', iconColor: '#67e8f9', icon: 'fa-reply' },
+      'support_ticket_closed': { text: 'resolved', bgColor: '#5086E8', iconColor: '#10b981', icon: 'fa-check-circle' },
+      
+      // Account notifications
+      'account_unlocked': { text: 'account', bgColor: '#5086E8', iconColor: '#10b981', icon: 'fa-unlock' },
       
       // Promotion notifications - tag orange
       'promotion': { text: 'promo', bgColor: '#5086E8', iconColor: '#fb923c', icon: 'fa-tag' },
