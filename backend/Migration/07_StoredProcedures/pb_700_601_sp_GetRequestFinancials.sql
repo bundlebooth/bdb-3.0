@@ -13,16 +13,16 @@ BEGIN
     SET NOCOUNT ON;
     
     SELECT 
-        r.Subtotal,
-        r.PlatformFee,
-        r.TaxAmount,
-        r.TaxPercent,
-        r.TaxLabel,
-        r.ProcessingFee,
-        r.GrandTotal,
-        r.EventLocation,
-        r.Budget
-    FROM bookings.BookingRequests r
-    WHERE r.RequestID = @RequestID
+        b.Subtotal,
+        b.PlatformFee,
+        b.TaxAmount,
+        b.TaxPercent,
+        b.TaxLabel,
+        b.ProcessingFee,
+        b.GrandTotal,
+        b.EventLocation,
+        b.Budget
+    FROM bookings.Bookings b
+    WHERE b.RequestID = @RequestID
 END
 GO

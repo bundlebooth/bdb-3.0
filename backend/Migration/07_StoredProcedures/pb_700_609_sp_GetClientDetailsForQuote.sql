@@ -17,12 +17,13 @@ BEGIN
         u.FirstName, 
         u.LastName, 
         v.BusinessName, 
-        br.ServiceName, 
-        br.EventDate, 
-        br.TotalAmount
-    FROM bookings.BookingRequests br
-    JOIN users.Users u ON br.UserID = u.UserID
-    JOIN vendors.VendorProfiles v ON br.VendorProfileID = v.VendorProfileID
-    WHERE br.RequestID = @RequestID
+        s.Name AS ServiceName, 
+        b.EventDate, 
+        b.TotalAmount
+    FROM bookings.Bookings b
+    JOIN users.Users u ON b.UserID = u.UserID
+    JOIN vendors.VendorProfiles v ON b.VendorProfileID = v.VendorProfileID
+    LEFT JOIN vendors.Services s ON b.ServiceID = s.ServiceID
+    WHERE b.RequestID = @RequestID
 END
 GO
