@@ -19,8 +19,8 @@ if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
   console.warn('[PushService] VAPID keys not configured - push notifications disabled');
 }
 
-// Icon base URL for notifications - use email-icons for consistency across all channels
-const ICON_BASE_URL = process.env.ICON_BASE_URL || 'https://www.planbeau.com/images/email-icons/';
+// Icon base URL for notifications
+const ICON_BASE_URL = process.env.ICON_BASE_URL || 'https://www.planbeau.com/images/planbeau-platform-assets/icons/notification/';
 
 class PushNotificationService {
   
