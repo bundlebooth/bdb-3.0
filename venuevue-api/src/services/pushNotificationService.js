@@ -189,6 +189,331 @@ class PushNotificationService {
       type
     });
   }
+
+  // ============================================
+  // BOOKING & EVENT NOTIFICATIONS
+  // ============================================
+
+  /**
+   * Notify user of booking rescheduled
+   */
+  async notifyBookingRescheduled(userId, serviceName, newDate) {
+    return await this.sendWithIcon(userId, 'booking_rescheduled', 
+      'Booking Rescheduled', 
+      `Your booking for ${serviceName} has been rescheduled to ${newDate}`,
+      '/dashboard?tab=bookings'
+    );
+  }
+
+  /**
+   * Notify user of 24h booking reminder
+   */
+  async notifyBookingReminder24h(userId, vendorName, serviceName) {
+    return await this.sendWithIcon(userId, 'booking_reminder_24h',
+      'Event Tomorrow!',
+      `Your event with ${vendorName} is tomorrow`,
+      '/dashboard?tab=bookings'
+    );
+  }
+
+  /**
+   * Notify user of 1 week booking reminder
+   */
+  async notifyBookingReminder1Week(userId, vendorName, serviceName) {
+    return await this.sendWithIcon(userId, 'booking_reminder_1_week',
+      'Event in 1 Week',
+      `Your event with ${vendorName} is in 1 week`,
+      '/dashboard?tab=bookings'
+    );
+  }
+
+  /**
+   * Notify user of event reminder
+   */
+  async notifyEventReminder(userId, serviceName, daysUntilEvent) {
+    return await this.sendWithIcon(userId, 'event_reminder',
+      'Event Reminder',
+      `Your event for ${serviceName} is in ${daysUntilEvent}`,
+      '/dashboard?tab=bookings'
+    );
+  }
+
+  /**
+   * Notify user of booking action required
+   */
+  async notifyBookingActionReminder(userId, actionSubject) {
+    return await this.sendWithIcon(userId, 'booking_action_reminder',
+      'Action Required',
+      actionSubject,
+      '/dashboard?tab=bookings'
+    );
+  }
+
+  /**
+   * Notify user of deposit due
+   */
+  async notifyDepositDue(userId, vendorName, depositAmount, dueDate) {
+    return await this.sendWithIcon(userId, 'deposit_due',
+      'Deposit Due',
+      `Deposit of ${depositAmount} due for your booking with ${vendorName}`,
+      '/dashboard?tab=bookings'
+    );
+  }
+
+  /**
+   * Notify user of final payment due
+   */
+  async notifyFinalPaymentDue(userId, vendorName, amountDue, dueDate) {
+    return await this.sendWithIcon(userId, 'final_payment_due',
+      'Final Payment Due',
+      `Final payment of ${amountDue} due for your event with ${vendorName}`,
+      '/dashboard?tab=bookings'
+    );
+  }
+
+  // ============================================
+  // PAYMENT & FINANCIAL NOTIFICATIONS
+  // ============================================
+
+  /**
+   * Notify user of invoice received
+   */
+  async notifyInvoiceReceived(userId, vendorName, amount) {
+    return await this.sendWithIcon(userId, 'invoice_sent',
+      'Invoice Received',
+      `New invoice from ${vendorName} for ${amount}`,
+      '/dashboard?tab=bookings'
+    );
+  }
+
+  /**
+   * Notify user of refund processed
+   */
+  async notifyRefundProcessed(userId, refundAmount, serviceName) {
+    return await this.sendWithIcon(userId, 'refund_processed',
+      'Refund Processed',
+      `Your refund of ${refundAmount} for ${serviceName} has been processed`,
+      '/dashboard?tab=bookings'
+    );
+  }
+
+  /**
+   * Notify vendor of payout processed
+   */
+  async notifyPayoutProcessed(userId, payoutAmount) {
+    return await this.sendWithIcon(userId, 'payout_processed',
+      'Payout Sent',
+      `Your payout of ${payoutAmount} is on its way`,
+      '/dashboard?tab=earnings'
+    );
+  }
+
+  /**
+   * Notify user of payment failed
+   */
+  async notifyPaymentFailed(userId, vendorName) {
+    return await this.sendWithIcon(userId, 'payment_failed',
+      'Payment Failed',
+      `Your payment to ${vendorName} could not be processed`,
+      '/dashboard?tab=bookings'
+    );
+  }
+
+  /**
+   * Notify user of quote received
+   */
+  async notifyQuoteReceived(userId, vendorName, quoteAmount) {
+    return await this.sendWithIcon(userId, 'quote_received',
+      'New Quote',
+      `New quote from ${vendorName} for ${quoteAmount}`,
+      '/dashboard?tab=bookings'
+    );
+  }
+
+  // ============================================
+  // REVIEW NOTIFICATIONS
+  // ============================================
+
+  /**
+   * Notify vendor of new review received
+   */
+  async notifyNewReviewReceived(userId, clientName, rating) {
+    return await this.sendWithIcon(userId, 'new_review',
+      'New Review!',
+      `${clientName} left you a ${rating}-star review`,
+      '/dashboard?tab=reviews'
+    );
+  }
+
+  /**
+   * Notify client to leave a review
+   */
+  async notifyReviewRequest(userId, vendorName) {
+    return await this.sendWithIcon(userId, 'review_request',
+      'Share Your Experience',
+      `How was your experience with ${vendorName}?`,
+      '/dashboard?tab=bookings'
+    );
+  }
+
+  // ============================================
+  // VENDOR STATUS NOTIFICATIONS
+  // ============================================
+
+  /**
+   * Notify vendor of profile approval
+   */
+  async notifyVendorApproved(userId, businessName) {
+    return await this.sendWithIcon(userId, 'vendor_approved',
+      'Profile Approved!',
+      `Your vendor profile for ${businessName} has been approved`,
+      '/dashboard'
+    );
+  }
+
+  /**
+   * Notify vendor of profile rejection
+   */
+  async notifyVendorRejected(userId) {
+    return await this.sendWithIcon(userId, 'vendor_rejected',
+      'Profile Review Update',
+      'Your vendor profile needs attention',
+      '/dashboard'
+    );
+  }
+
+  /**
+   * Notify vendor of being featured
+   */
+  async notifyVendorFeatured(userId) {
+    return await this.sendWithIcon(userId, 'vendor_featured',
+      "You're Featured!",
+      'Congratulations! You are now a featured vendor',
+      '/dashboard'
+    );
+  }
+
+  /**
+   * Notify vendor of incomplete profile
+   */
+  async notifyVendorProfileIncomplete(userId, completionPercentage) {
+    return await this.sendWithIcon(userId, 'vendor_profile_incomplete',
+      'Complete Your Profile',
+      `Your profile is ${completionPercentage}% complete`,
+      '/dashboard'
+    );
+  }
+
+  // ============================================
+  // SUPPORT NOTIFICATIONS
+  // ============================================
+
+  /**
+   * Notify user of support ticket opened
+   */
+  async notifySupportTicketOpened(userId, ticketId) {
+    return await this.sendWithIcon(userId, 'support_ticket_opened',
+      'Ticket Received',
+      `Support ticket #${ticketId} has been created`,
+      '/dashboard?tab=support'
+    );
+  }
+
+  /**
+   * Notify user of support ticket reply
+   */
+  async notifySupportTicketReply(userId, ticketId) {
+    return await this.sendWithIcon(userId, 'support_ticket_reply',
+      'New Reply',
+      `New reply on ticket #${ticketId}`,
+      '/dashboard?tab=support'
+    );
+  }
+
+  /**
+   * Notify user of support ticket closed
+   */
+  async notifySupportTicketClosed(userId, ticketId) {
+    return await this.sendWithIcon(userId, 'support_ticket_closed',
+      'Ticket Resolved',
+      `Support ticket #${ticketId} has been resolved`,
+      '/dashboard?tab=support'
+    );
+  }
+
+  // ============================================
+  // ACCOUNT NOTIFICATIONS
+  // ============================================
+
+  /**
+   * Notify user of account unlocked
+   */
+  async notifyAccountUnlocked(userId) {
+    return await this.sendWithIcon(userId, 'account_unlocked',
+      'Account Unlocked',
+      'Your account has been unlocked',
+      '/dashboard'
+    );
+  }
+
+  // ============================================
+  // EXISTING METHODS (for reference - already in emailService.js)
+  // ============================================
+
+  /**
+   * Notify vendor of new booking request
+   */
+  async notifyNewBookingRequest(userId, clientName, serviceName) {
+    return await this.sendWithIcon(userId, 'booking_request',
+      'New Booking Request',
+      `You have a new booking request from ${clientName}`,
+      '/dashboard?tab=bookings'
+    );
+  }
+
+  /**
+   * Notify user of booking status update
+   */
+  async notifyBookingUpdate(userId, status, vendorName) {
+    const titles = {
+      'accepted': 'Booking Approved!',
+      'rejected': 'Booking Update',
+      'cancelled': 'Booking Cancelled'
+    };
+    const bodies = {
+      'accepted': `${vendorName} accepted your booking`,
+      'rejected': `${vendorName} could not accept your booking`,
+      'cancelled': `Your booking with ${vendorName} has been cancelled`
+    };
+    return await this.sendWithIcon(userId, `booking_${status}`,
+      titles[status] || 'Booking Update',
+      bodies[status] || 'Your booking has been updated',
+      '/dashboard?tab=bookings'
+    );
+  }
+
+  /**
+   * Notify user of new message
+   */
+  async notifyNewMessage(userId, senderName, messagePreview) {
+    const preview = messagePreview.length > 50 ? messagePreview.substring(0, 50) + '...' : messagePreview;
+    return await this.sendWithIcon(userId, 'message',
+      'New Message',
+      `${senderName}: ${preview}`,
+      '/dashboard?tab=messages'
+    );
+  }
+
+  /**
+   * Notify vendor of payment received
+   */
+  async notifyPaymentReceived(userId, amount, clientName) {
+    return await this.sendWithIcon(userId, 'payment_received',
+      'Payment Received',
+      `You received ${amount} from ${clientName}`,
+      '/dashboard?tab=earnings'
+    );
+  }
 }
 
 module.exports = new PushNotificationService();

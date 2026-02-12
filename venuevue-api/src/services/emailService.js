@@ -22,13 +22,52 @@ const {
   sendVendorApproved,
   sendVendorRejected,
   sendClientWelcome,
-  sendClientToVendorWelcome
+  sendClientToVendorWelcome,
+  sendBookingRescheduled,
+  sendBookingReminder,
+  sendEventReminder,
+  sendBookingActionReminder,
+  sendBookingDepositDue,
+  sendFinalPaymentDue,
+  sendInvoice,
+  sendRefundProcessed,
+  sendPayoutProcessed,
+  sendPaymentFailed,
+  sendQuoteReceived,
+  sendNewReviewReceived,
+  sendReviewRequest,
+  sendVendorFeatured,
+  sendVendorProfileIncomplete,
+  sendSupportTicketOpened,
+  sendSupportTicketReply,
+  sendSupportTicketClosed,
+  sendAccountUnlockedEmail
 } = require('./email');
 const pushService = require('./pushNotificationService');
 const { encodeBookingId } = require('../utils/hashIds');
 
 // ALWAYS use production URL for email links - never localhost
 const FRONTEND_URL = 'https://www.planbeau.com';
+
+/**
+ * Get user info for notifications using stored procedure
+ * @param {number} userId - The user ID
+ * @returns {Object|null} - User info with Email, FirstName, LastName, FullName
+ */
+async function getUserForNotification(userId) {
+  try {
+    const pool = await poolPromise;
+    const result = await pool.request()
+      .input('UserID', sql.Int, userId)
+      .execute('notifications.sp_GetUserForNotification');
+    
+    if (result.recordset.length === 0) return null;
+    return result.recordset[0];
+  } catch (error) {
+    console.error('[NotificationService] Failed to get user for notification:', error.message);
+    return null;
+  }
+}
 
 /**
  * Create an in-app notification for a user
@@ -750,6 +789,7 @@ async function notifyVendorOfApproval(vendorProfileId) {
     const vendorName = data.DisplayName || data.Name || 'Vendor';
     const businessName = data.BusinessName || 'Your Business';
     
+    // Email
     await sendVendorApproved(
       data.Email,
       vendorName,
@@ -758,6 +798,17 @@ async function notifyVendorOfApproval(vendorProfileId) {
       data.UserID
     );
     console.log(`[NotificationService] Vendor approval email sent successfully to ${data.Email}`);
+    
+    // Push notification
+    await pushService.notifyVendorApproved(data.UserID, businessName);
+    
+    // In-App notification
+    await createInAppNotification(
+      data.UserID,
+      'vendor_approved',
+      'Profile Approved!',
+      `Congratulations! Your vendor profile for ${businessName} has been approved. You can now receive bookings.`
+    );
   } catch (error) {
     console.error('[NotificationService] Failed to notify vendor of approval:', error.message);
     console.error('[NotificationService] Full error:', error);
@@ -790,6 +841,7 @@ async function notifyVendorOfRejection(vendorProfileId, rejectionReason) {
     const vendorName = data.DisplayName || data.Name || 'Vendor';
     const businessName = data.BusinessName || 'Your Business';
     
+    // Email
     await sendVendorRejected(
       data.Email,
       vendorName,
@@ -799,6 +851,17 @@ async function notifyVendorOfRejection(vendorProfileId, rejectionReason) {
       data.UserID
     );
     console.log(`[NotificationService] Vendor rejection email sent successfully to ${data.Email}`);
+    
+    // Push notification
+    await pushService.notifyVendorRejected(data.UserID);
+    
+    // In-App notification
+    await createInAppNotification(
+      data.UserID,
+      'vendor_rejected',
+      'Profile Review Update',
+      'Your vendor profile was not approved. Please review the feedback and resubmit.'
+    );
   } catch (error) {
     console.error('[NotificationService] Failed to notify vendor of rejection:', error.message);
     console.error('[NotificationService] Full error:', error);
@@ -860,6 +923,451 @@ async function notifyClientToVendor(userId, businessName) {
   }
 }
 
+// ============================================
+// NEW UNIFIED NOTIFICATION FUNCTIONS
+// These send Email + Push + In-App simultaneously
+// ============================================
+
+/**
+ * Notify user of booking rescheduled (Email + Push + In-App)
+ */
+async function notifyOfBookingRescheduled(userId, serviceName, originalDate, newDate, dashboardUrl) {
+  try {
+    const user = await getUserForNotification(userId);
+    if (!user) return;
+    const userName = user.FullName || 'there';
+    
+    // Email
+    await sendBookingRescheduled(user.Email, userName, serviceName, originalDate, null, newDate, null, dashboardUrl || `${FRONTEND_URL}/dashboard?tab=bookings`, userId);
+    
+    // Push
+    await pushService.notifyBookingRescheduled(userId, serviceName, newDate);
+    
+    // In-App
+    await createInAppNotification(userId, 'booking_rescheduled', 'Booking Rescheduled', `Your booking for ${serviceName} has been rescheduled to ${newDate}`);
+  } catch (error) {
+    console.error('[NotificationService] Failed to notify of booking rescheduled:', error.message);
+  }
+}
+
+/**
+ * Notify user of booking reminder 24h (Email + Push + In-App)
+ */
+async function notifyOfBookingReminder24h(userId, vendorName, serviceName, eventDate, eventTime, location, dashboardUrl) {
+  try {
+    const user = await getUserForNotification(userId);
+    if (!user) return;
+    const userName = user.FullName || 'there';
+    
+    // Email
+    await sendBookingReminder(user.Email, userName, serviceName, eventDate, eventTime, location, vendorName, 'Vendor', dashboardUrl || `${FRONTEND_URL}/dashboard?tab=bookings`, '24h', userId);
+    
+    // Push
+    await pushService.notifyBookingReminder24h(userId, vendorName, serviceName);
+    
+    // In-App
+    await createInAppNotification(userId, 'booking_reminder_24h', 'Event Tomorrow!', `Your event with ${vendorName} is tomorrow`);
+  } catch (error) {
+    console.error('[NotificationService] Failed to notify of booking reminder 24h:', error.message);
+  }
+}
+
+/**
+ * Notify user of booking reminder 1 week (Email + Push + In-App)
+ */
+async function notifyOfBookingReminder1Week(userId, vendorName, serviceName, eventDate, eventTime, location, dashboardUrl) {
+  try {
+    const user = await getUserForNotification(userId);
+    if (!user) return;
+    const userName = user.FullName || 'there';
+    
+    // Email
+    await sendBookingReminder(user.Email, userName, serviceName, eventDate, eventTime, location, vendorName, 'Vendor', dashboardUrl || `${FRONTEND_URL}/dashboard?tab=bookings`, '1_week', userId);
+    
+    // Push
+    await pushService.notifyBookingReminder1Week(userId, vendorName, serviceName);
+    
+    // In-App
+    await createInAppNotification(userId, 'booking_reminder_1_week', 'Event in 1 Week', `Your event with ${vendorName} is in 1 week`);
+  } catch (error) {
+    console.error('[NotificationService] Failed to notify of booking reminder 1 week:', error.message);
+  }
+}
+
+/**
+ * Notify user of event reminder (Email + Push + In-App)
+ */
+async function notifyOfEventReminder(userId, serviceName, daysUntilEvent, eventDate, eventTime, location, otherPartyName, otherPartyLabel, bookingId) {
+  try {
+    const user = await getUserForNotification(userId);
+    if (!user) return;
+    const userName = user.FullName || 'there';
+    
+    // Email
+    await sendEventReminder(user.Email, userName, daysUntilEvent, serviceName, eventDate, eventTime, location, otherPartyLabel, otherPartyName, userId, bookingId);
+    
+    // Push
+    await pushService.notifyEventReminder(userId, serviceName, daysUntilEvent);
+    
+    // In-App
+    await createInAppNotification(userId, 'event_reminder', 'Event Reminder', `Your event for ${serviceName} is in ${daysUntilEvent}`, bookingId);
+  } catch (error) {
+    console.error('[NotificationService] Failed to notify of event reminder:', error.message);
+  }
+}
+
+/**
+ * Notify user of booking action reminder (Email + Push + In-App)
+ */
+async function notifyOfBookingActionReminder(userId, actionMessage, actionSubject, serviceName, eventDate, otherPartyName, otherPartyLabel, actionUrl, actionButtonText, bookingId) {
+  try {
+    const user = await getUserForNotification(userId);
+    if (!user) return;
+    const userName = user.FullName || 'there';
+    
+    // Email
+    await sendBookingActionReminder(user.Email, userName, actionMessage, actionSubject, serviceName, eventDate, otherPartyLabel, otherPartyName, actionUrl, actionButtonText, userId, bookingId);
+    
+    // Push
+    await pushService.notifyBookingActionReminder(userId, actionSubject);
+    
+    // In-App
+    await createInAppNotification(userId, 'booking_action_reminder', 'Action Required', actionMessage, bookingId);
+  } catch (error) {
+    console.error('[NotificationService] Failed to notify of booking action reminder:', error.message);
+  }
+}
+
+/**
+ * Notify user of deposit due (Email + Push + In-App)
+ */
+async function notifyOfDepositDue(userId, vendorName, serviceName, eventDate, depositAmount, dueDate, paymentUrl, bookingId) {
+  try {
+    const user = await getUserForNotification(userId);
+    if (!user) return;
+    const userName = user.FullName || 'there';
+    
+    // Email
+    await sendBookingDepositDue(user.Email, userName, vendorName, serviceName, eventDate, depositAmount, dueDate, paymentUrl, userId);
+    
+    // Push
+    await pushService.notifyDepositDue(userId, vendorName, depositAmount, dueDate);
+    
+    // In-App
+    await createInAppNotification(userId, 'deposit_due', 'Deposit Due', `Deposit of ${depositAmount} is due by ${dueDate} for your booking with ${vendorName}`, bookingId);
+  } catch (error) {
+    console.error('[NotificationService] Failed to notify of deposit due:', error.message);
+  }
+}
+
+/**
+ * Notify user of final payment due (Email + Push + In-App)
+ */
+async function notifyOfFinalPaymentDue(userId, vendorName, serviceName, eventDate, amountDue, dueDate, paymentUrl, bookingId) {
+  try {
+    const user = await getUserForNotification(userId);
+    if (!user) return;
+    const userName = user.FullName || 'there';
+    
+    // Email
+    await sendFinalPaymentDue(user.Email, userName, vendorName, serviceName, eventDate, amountDue, dueDate, paymentUrl, userId);
+    
+    // Push
+    await pushService.notifyFinalPaymentDue(userId, vendorName, amountDue, dueDate);
+    
+    // In-App
+    await createInAppNotification(userId, 'final_payment_due', 'Final Payment Due', `Final payment of ${amountDue} is due by ${dueDate} for your event with ${vendorName}`, bookingId);
+  } catch (error) {
+    console.error('[NotificationService] Failed to notify of final payment due:', error.message);
+  }
+}
+
+/**
+ * Notify user of invoice received (Email + Push + In-App)
+ */
+async function notifyOfInvoiceReceived(userId, vendorName, invoiceNumber, serviceName, eventDate, amount, dueDate, paymentUrl, bookingId) {
+  try {
+    const user = await getUserForNotification(userId);
+    if (!user) return;
+    const userName = user.FullName || 'there';
+    
+    // Email
+    await sendInvoice(user.Email, userName, vendorName, invoiceNumber, serviceName, eventDate, amount, dueDate, paymentUrl, userId);
+    
+    // Push
+    await pushService.notifyInvoiceReceived(userId, vendorName, amount);
+    
+    // In-App
+    await createInAppNotification(userId, 'invoice_sent', 'Invoice Received', `You received an invoice from ${vendorName} for ${amount}`, bookingId);
+  } catch (error) {
+    console.error('[NotificationService] Failed to notify of invoice received:', error.message);
+  }
+}
+
+/**
+ * Notify user of refund processed (Email + Push + In-App)
+ */
+async function notifyOfRefundProcessed(userId, refundAmount, serviceName, refundMethod, dashboardUrl, bookingId) {
+  try {
+    const user = await getUserForNotification(userId);
+    if (!user) return;
+    const userName = user.FullName || 'there';
+    
+    // Email
+    await sendRefundProcessed(user.Email, userName, refundAmount, serviceName, refundMethod, dashboardUrl || `${FRONTEND_URL}/dashboard?tab=bookings`, userId);
+    
+    // Push
+    await pushService.notifyRefundProcessed(userId, refundAmount, serviceName);
+    
+    // In-App
+    await createInAppNotification(userId, 'refund_processed', 'Refund Processed', `Your refund of ${refundAmount} for ${serviceName} has been processed`, bookingId);
+  } catch (error) {
+    console.error('[NotificationService] Failed to notify of refund processed:', error.message);
+  }
+}
+
+/**
+ * Notify vendor of payout processed (Email + Push + In-App)
+ */
+async function notifyOfPayoutProcessed(userId, payoutAmount, lastFourDigits, arrivalDate, dashboardUrl) {
+  try {
+    const user = await getUserForNotification(userId);
+    if (!user) return;
+    const userName = user.FullName || 'there';
+    
+    // Email
+    await sendPayoutProcessed(user.Email, userName, payoutAmount, lastFourDigits, arrivalDate, dashboardUrl || `${FRONTEND_URL}/dashboard?tab=earnings`, userId);
+    
+    // Push
+    await pushService.notifyPayoutProcessed(userId, payoutAmount);
+    
+    // In-App
+    await createInAppNotification(userId, 'payout_processed', 'Payout Processed', `Your payout of ${payoutAmount} has been sent to your account ending in ${lastFourDigits}`);
+  } catch (error) {
+    console.error('[NotificationService] Failed to notify of payout processed:', error.message);
+  }
+}
+
+/**
+ * Notify user of payment failed (Email + Push + In-App)
+ */
+async function notifyOfPaymentFailed(userId, amount, vendorName, retryUrl, bookingId) {
+  try {
+    const user = await getUserForNotification(userId);
+    if (!user) return;
+    const userName = user.FullName || 'there';
+    
+    // Email
+    await sendPaymentFailed(user.Email, userName, amount, vendorName, retryUrl, userId);
+    
+    // Push
+    await pushService.notifyPaymentFailed(userId, vendorName);
+    
+    // In-App
+    await createInAppNotification(userId, 'payment_failed', 'Payment Failed', `Your payment to ${vendorName} could not be processed. Please try again.`, bookingId);
+  } catch (error) {
+    console.error('[NotificationService] Failed to notify of payment failed:', error.message);
+  }
+}
+
+/**
+ * Notify user of quote received (Email + Push + In-App)
+ */
+async function notifyOfQuoteReceived(userId, vendorName, serviceName, eventDate, quoteAmount, validUntil, quoteUrl, bookingId) {
+  try {
+    const user = await getUserForNotification(userId);
+    if (!user) return;
+    const userName = user.FullName || 'there';
+    
+    // Email
+    await sendQuoteReceived(user.Email, userName, vendorName, serviceName, eventDate, quoteAmount, validUntil, quoteUrl, userId);
+    
+    // Push
+    await pushService.notifyQuoteReceived(userId, vendorName, quoteAmount);
+    
+    // In-App
+    await createInAppNotification(userId, 'quote_received', 'New Quote Received', `You received a quote from ${vendorName} for ${quoteAmount}. Valid until ${validUntil}.`, bookingId);
+  } catch (error) {
+    console.error('[NotificationService] Failed to notify of quote received:', error.message);
+  }
+}
+
+/**
+ * Notify vendor of new review received (Email + Push + In-App)
+ */
+async function notifyOfNewReviewReceived(userId, clientName, rating, reviewPreview, reviewUrl) {
+  try {
+    const user = await getUserForNotification(userId);
+    if (!user) return;
+    const userName = user.FullName || 'there';
+    
+    // Email
+    await sendNewReviewReceived(user.Email, userName, clientName, rating, reviewPreview, reviewUrl || `${FRONTEND_URL}/dashboard?tab=reviews`, userId);
+    
+    // Push
+    await pushService.notifyNewReviewReceived(userId, clientName, rating);
+    
+    // In-App
+    await createInAppNotification(userId, 'new_review', 'New Review!', `${clientName} left you a ${rating}-star review`);
+  } catch (error) {
+    console.error('[NotificationService] Failed to notify of new review received:', error.message);
+  }
+}
+
+/**
+ * Notify client to leave a review (Email + Push + In-App)
+ */
+async function notifyOfReviewRequest(userId, vendorName, serviceName, eventDate, reviewUrl, bookingId) {
+  try {
+    const user = await getUserForNotification(userId);
+    if (!user) return;
+    const userName = user.FullName || 'there';
+    
+    // Email
+    await sendReviewRequest(user.Email, userName, vendorName, serviceName, eventDate, reviewUrl || `${FRONTEND_URL}/dashboard?tab=bookings`, userId);
+    
+    // Push
+    await pushService.notifyReviewRequest(userId, vendorName);
+    
+    // In-App
+    await createInAppNotification(userId, 'review_request', 'Share Your Experience', `How was your experience with ${vendorName}? Leave a review!`, bookingId);
+  } catch (error) {
+    console.error('[NotificationService] Failed to notify of review request:', error.message);
+  }
+}
+
+/**
+ * Notify vendor of being featured (Email + Push + In-App)
+ */
+async function notifyOfVendorFeatured(userId, dashboardUrl) {
+  try {
+    const user = await getUserForNotification(userId);
+    if (!user) return;
+    const userName = user.FullName || 'there';
+    
+    // Email
+    await sendVendorFeatured(user.Email, userName, dashboardUrl || `${FRONTEND_URL}/dashboard`, userId);
+    
+    // Push
+    await pushService.notifyVendorFeatured(userId);
+    
+    // In-App
+    await createInAppNotification(userId, 'vendor_featured', "You're Featured!", 'Congratulations! You have been selected as a featured vendor.');
+  } catch (error) {
+    console.error('[NotificationService] Failed to notify of vendor featured:', error.message);
+  }
+}
+
+/**
+ * Notify vendor of incomplete profile (Email + Push + In-App)
+ */
+async function notifyOfVendorProfileIncomplete(userId, completionPercentage, incompleteSectionsHtml, dashboardUrl) {
+  try {
+    const user = await getUserForNotification(userId);
+    if (!user) return;
+    const userName = user.FullName || 'there';
+    
+    // Email
+    await sendVendorProfileIncomplete(user.Email, userName, completionPercentage, incompleteSectionsHtml, dashboardUrl || `${FRONTEND_URL}/dashboard`, userId);
+    
+    // Push
+    await pushService.notifyVendorProfileIncomplete(userId, completionPercentage);
+    
+    // In-App
+    await createInAppNotification(userId, 'vendor_profile_incomplete', 'Complete Your Profile', `Your profile is ${completionPercentage}% complete. Complete it to start receiving bookings.`);
+  } catch (error) {
+    console.error('[NotificationService] Failed to notify of vendor profile incomplete:', error.message);
+  }
+}
+
+/**
+ * Notify user of support ticket opened (Email + Push + In-App)
+ */
+async function notifyOfSupportTicketOpened(userId, ticketId, ticketSubject, ticketCategory, dashboardUrl) {
+  try {
+    const user = await getUserForNotification(userId);
+    if (!user) return;
+    const userName = user.FullName || 'there';
+    
+    // Email
+    await sendSupportTicketOpened(user.Email, userName, ticketId, ticketSubject, ticketCategory, dashboardUrl || `${FRONTEND_URL}/dashboard?tab=support`, userId);
+    
+    // Push
+    await pushService.notifySupportTicketOpened(userId, ticketId);
+    
+    // In-App
+    await createInAppNotification(userId, 'support_ticket_opened', 'Support Ticket Created', `Your support ticket #${ticketId} has been created. We'll respond shortly.`);
+  } catch (error) {
+    console.error('[NotificationService] Failed to notify of support ticket opened:', error.message);
+  }
+}
+
+/**
+ * Notify user of support ticket reply (Email + Push + In-App)
+ */
+async function notifyOfSupportTicketReply(userId, ticketId, ticketSubject, replyContent, dashboardUrl) {
+  try {
+    const user = await getUserForNotification(userId);
+    if (!user) return;
+    const userName = user.FullName || 'there';
+    
+    // Email
+    await sendSupportTicketReply(user.Email, userName, ticketId, ticketSubject, replyContent, dashboardUrl || `${FRONTEND_URL}/dashboard?tab=support`, userId);
+    
+    // Push
+    await pushService.notifySupportTicketReply(userId, ticketId);
+    
+    // In-App
+    await createInAppNotification(userId, 'support_ticket_reply', 'New Reply on Ticket', `You have a new reply on support ticket #${ticketId}.`);
+  } catch (error) {
+    console.error('[NotificationService] Failed to notify of support ticket reply:', error.message);
+  }
+}
+
+/**
+ * Notify user of support ticket closed (Email + Push + In-App)
+ */
+async function notifyOfSupportTicketClosed(userId, ticketId, ticketSubject, resolution, dashboardUrl) {
+  try {
+    const user = await getUserForNotification(userId);
+    if (!user) return;
+    const userName = user.FullName || 'there';
+    
+    // Email
+    await sendSupportTicketClosed(user.Email, userName, ticketId, ticketSubject, resolution, dashboardUrl || `${FRONTEND_URL}/dashboard?tab=support`, userId);
+    
+    // Push
+    await pushService.notifySupportTicketClosed(userId, ticketId);
+    
+    // In-App
+    await createInAppNotification(userId, 'support_ticket_closed', 'Ticket Resolved', `Your support ticket #${ticketId} has been resolved.`);
+  } catch (error) {
+    console.error('[NotificationService] Failed to notify of support ticket closed:', error.message);
+  }
+}
+
+/**
+ * Notify user of account unlocked (Email + Push + In-App)
+ */
+async function notifyOfAccountUnlocked(userId, unlockReason) {
+  try {
+    const user = await getUserForNotification(userId);
+    if (!user) return;
+    const userName = user.FullName || 'there';
+    
+    // Email
+    await sendAccountUnlockedEmail(user.Email, userName, unlockReason, userId);
+    
+    // Push
+    await pushService.notifyAccountUnlocked(userId);
+    
+    // In-App
+    await createInAppNotification(userId, 'account_unlocked', 'Account Unlocked', 'Your account has been unlocked. You can now access all features.');
+  } catch (error) {
+    console.error('[NotificationService] Failed to notify of account unlocked:', error.message);
+  }
+}
+
 module.exports = {
   notifyVendorOfNewRequest,
   notifyClientOfApproval,
@@ -873,5 +1381,26 @@ module.exports = {
   notifyVendorOfApproval,
   notifyVendorOfRejection,
   notifyClientOfRegistration,
-  notifyClientToVendor
+  notifyClientToVendor,
+  // New unified notification functions (Email + Push + In-App)
+  notifyOfBookingRescheduled,
+  notifyOfBookingReminder24h,
+  notifyOfBookingReminder1Week,
+  notifyOfEventReminder,
+  notifyOfBookingActionReminder,
+  notifyOfDepositDue,
+  notifyOfFinalPaymentDue,
+  notifyOfInvoiceReceived,
+  notifyOfRefundProcessed,
+  notifyOfPayoutProcessed,
+  notifyOfPaymentFailed,
+  notifyOfQuoteReceived,
+  notifyOfNewReviewReceived,
+  notifyOfReviewRequest,
+  notifyOfVendorFeatured,
+  notifyOfVendorProfileIncomplete,
+  notifyOfSupportTicketOpened,
+  notifyOfSupportTicketReply,
+  notifyOfSupportTicketClosed,
+  notifyOfAccountUnlocked
 };
