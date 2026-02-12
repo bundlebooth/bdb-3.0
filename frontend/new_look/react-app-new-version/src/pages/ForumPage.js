@@ -308,7 +308,7 @@ function ForumPage() {
             background: 'white'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <img src="/images/logo.png" alt="Planbeau" style={{ height: '28px' }} />
+              <img src="/images/planbeau-platform-assets/branding/logo.png" alt="Planbeau" style={{ height: '28px' }} />
               <span style={{ fontSize: '16px', fontWeight: '600', color: '#1f2937' }}>Categories</span>
             </div>
           </div>

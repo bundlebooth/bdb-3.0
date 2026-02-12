@@ -350,7 +350,7 @@ function NotificationDropdown({ isOpen, onClose, anchorEl, onBadgeCountChange })
                   e.currentTarget.style.backgroundColor = isUnread ? '#fafbfc' : 'white';
                 }}
               >
-                {/* Icon - Unified SVG notification icon */}
+                {/* Icon - Unified SVG notification icon with fallback */}
                 <div style={{
                   width: '40px',
                   height: '40px',
@@ -362,6 +362,18 @@ function NotificationDropdown({ isOpen, onClose, anchorEl, onBadgeCountChange })
                     src={getUnifiedNotificationIcon(notification.type)} 
                     alt={notification.type}
                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    onError={(e) => {
+                      // Fallback to Font Awesome icon if SVG fails to load
+                      e.target.style.display = 'none';
+                      e.target.parentElement.style.background = '#4285f4';
+                      e.target.parentElement.style.display = 'flex';
+                      e.target.parentElement.style.alignItems = 'center';
+                      e.target.parentElement.style.justifyContent = 'center';
+                      const fallbackIcon = document.createElement('i');
+                      fallbackIcon.className = `fas ${badge.icon}`;
+                      fallbackIcon.style.cssText = 'color: #ffffff; font-size: 18px;';
+                      e.target.parentElement.appendChild(fallbackIcon);
+                    }}
                   />
                 </div>
                 

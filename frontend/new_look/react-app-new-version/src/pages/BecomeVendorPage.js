@@ -1620,7 +1620,7 @@ const BecomeVendorPage = () => {
       >
         <div className="header-content">
           <div className="logo" onClick={() => navigate('/')} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-            <img src="/images/logo.png" alt="Planbeau" style={{ height: '50px', width: 'auto' }} />
+            <img src="/images/planbeau-platform-assets/branding/logo.png" alt="Planbeau" style={{ height: '50px', width: 'auto' }} />
           </div>
           <div className="header-actions">
             <button className="btn-text" onClick={() => navigate('/')}>

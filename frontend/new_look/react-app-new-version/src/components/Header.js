@@ -332,7 +332,7 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
       <div className="header-inner page-wrapper" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
       <div className="header-left" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
         <div className="logo" style={{ cursor: 'pointer', marginRight: '8px' }} onClick={() => window.location.href = '/'}>
-          <img src="/images/logo.png" alt="Planbeau" className="header-logo-img" />
+          <img src="/images/planbeau-platform-assets/branding/logo.png" alt="Planbeau" className="header-logo-img" />
         </div>
         
       </div>

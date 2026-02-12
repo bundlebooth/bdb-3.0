@@ -135,7 +135,7 @@ export function generateInvoiceHTML(invoice) {
       <!-- Header -->
       <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; padding-bottom: 20px; border-bottom: 1px solid #e5e7eb;">
         <div style="display: flex; flex-direction: column;">
-          <img src="/images/logo.png" alt="Planbeau" style="height: 48px; width: auto; margin-bottom: 8px;" />
+          <img src="/images/planbeau-platform-assets/branding/logo.png" alt="Planbeau" style="height: 48px; width: auto; margin-bottom: 8px;" />
           <p style="color: #6b7280; font-size: 14px; margin: 0;">Event Booking Platform</p>
         </div>
         <div style="text-align: right;">

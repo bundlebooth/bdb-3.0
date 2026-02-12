@@ -39,7 +39,7 @@ function Footer() {
       <div className="vv-wrap">
         <div className="vv-brand">
           <div className="vv-logo" onClick={() => handleNavigate('/')} style={{ cursor: 'pointer' }}>
-            <img src="/images/logo.png" alt="Planbeau" style={{ height: '80px', width: 'auto' }} />
+            <img src="/images/planbeau-platform-assets/branding/logo.png" alt="Planbeau" style={{ height: '80px', width: 'auto' }} />
           </div>
           <div className="vv-tagline">{t('footer.getTheApp')}</div>
           <div className="vv-badges">

@@ -189,7 +189,7 @@ const BecomeVendorLanding = () => {
       <header className={`vendor-landing-header ${isScrolled ? 'scrolled' : ''}`}>
         <div className="vendor-landing-header-content">
           <div className="vendor-landing-logo" onClick={() => navigate('/')}>
-            <img src="/images/logo.png" alt="Planbeau" className="header-logo-img" />
+            <img src="/images/planbeau-platform-assets/branding/logo.png" alt="Planbeau" className="header-logo-img" />
           </div>
           <nav className="vendor-landing-nav">
             <a href="/explore" className="nav-link">Browse Vendors</a>
@@ -229,7 +229,7 @@ const BecomeVendorLanding = () => {
         </div>
         <div className="vendor-hero-image animate-on-scroll fade-left">
           <img 
-            src="/images/landing/vendor-hero.jpg" 
+            src="/images/planbeau-platform-assets/landing/vendor-hero.jpg" 
             alt="Successful vendor"
           />
         </div>
@@ -275,7 +275,7 @@ const BecomeVendorLanding = () => {
             </div>
             <div className="why-vendor-image animate-on-scroll fade-left">
               <img 
-                src="/images/landing/venue-feature.jpg" 
+                src="/images/planbeau-platform-assets/landing/venue-feature.jpg" 
                 alt="Event venue"
               />
             </div>
@@ -508,9 +508,9 @@ const BecomeVendorLanding = () => {
             </div>
             <div className="vendor-feature-visual">
               <div className="portfolio-grid-visual">
-                <img src="/images/landing/slide-photography.jpg" alt="Portfolio 1" className="pg-img pg-img-1" />
-                <img src="/images/landing/slide-catering.jpg" alt="Portfolio 2" className="pg-img pg-img-2" />
-                <img src="/images/landing/slide-events.jpg" alt="Portfolio 3" className="pg-img pg-img-3" />
+                <img src="/images/planbeau-platform-assets/landing/slide-photography.jpg" alt="Portfolio 1" className="pg-img pg-img-1" />
+                <img src="/images/planbeau-platform-assets/landing/slide-catering.jpg" alt="Portfolio 2" className="pg-img pg-img-2" />
+                <img src="/images/planbeau-platform-assets/landing/slide-events.jpg" alt="Portfolio 3" className="pg-img pg-img-3" />
                 <div className="review-float">
                   <div className="rf-stars">
                     <Star size={12} fill="#fbbf24" />
@@ -583,7 +583,7 @@ const BecomeVendorLanding = () => {
           <div className="testimonial-content">
             <div className="testimonial-image">
               <img 
-                src="/images/landing/slide-photography.jpg" 
+                src="/images/planbeau-platform-assets/landing/slide-photography.jpg" 
                 alt="Happy vendor"
               />
             </div>

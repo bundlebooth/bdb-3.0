@@ -181,8 +181,8 @@ export async function showLocalNotification(title, options = {}) {
   try {
     const registration = await navigator.serviceWorker.ready;
     await registration.showNotification(title, {
-      icon: '/images/logo.png',
-      badge: '/images/logo.png',
+      icon: '/images/planbeau-platform-assets/branding/logo.png',
+      badge: '/images/planbeau-platform-assets/branding/logo.png',
       ...options
     });
     return true;

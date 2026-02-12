@@ -586,11 +586,30 @@ function ProfileSidebar({ isOpen, onClose }) {
                         borderLeft: (!notification.IsRead && !notification.isRead) ? '3px solid #5086E8' : '3px solid transparent'
                       }}
                     >
-                      <div className="notification-icon" style={{ background: 'transparent', padding: 0, overflow: 'hidden' }}>
+                      <div className="notification-icon" style={{ 
+                        padding: 0, 
+                        overflow: 'hidden',
+                        width: 40,
+                        height: 40,
+                        borderRadius: '50%',
+                        flexShrink: 0
+                      }}>
                         <img 
                           src={getUnifiedNotificationIcon(notificationType)} 
                           alt={notificationType}
-                          style={{ width: 40, height: 40, borderRadius: '50%' }}
+                          style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
+                          onError={(e) => {
+                            // Fallback to Font Awesome icon if SVG fails to load
+                            e.target.style.display = 'none';
+                            e.target.parentElement.style.background = '#4285f4';
+                            e.target.parentElement.style.display = 'flex';
+                            e.target.parentElement.style.alignItems = 'center';
+                            e.target.parentElement.style.justifyContent = 'center';
+                            const fallbackIcon = document.createElement('i');
+                            fallbackIcon.className = `fas ${notifStyle.icon}`;
+                            fallbackIcon.style.cssText = 'color: #ffffff; font-size: 18px;';
+                            e.target.parentElement.appendChild(fallbackIcon);
+                          }}
                         />
                       </div>
                       <div className="notification-content">
@@ -824,7 +843,7 @@ function ProfileSidebar({ isOpen, onClose }) {
                 style={{ flex: 1 }}
               >
                 <div className="action-card-icon-wrapper">
-                  <img src="/images/sidebar/dfdbccc2-9ef2-409b-9b34-f3d71058dbe4.avif" alt="My Bookings" className="action-card-img" />
+                  <img src="/images/planbeau-platform-assets/sidebar/dfdbccc2-9ef2-409b-9b34-f3d71058dbe4.avif" alt="My Bookings" className="action-card-img" />
                 </div>
                 <span className="action-card-label">My Bookings</span>
                 {notificationCounts.pendingBookings > 0 && (
@@ -837,7 +856,7 @@ function ProfileSidebar({ isOpen, onClose }) {
                 style={{ flex: 1 }}
               >
                 <div className="action-card-icon-wrapper">
-                  <img src="/images/sidebar/a0613f17-0174-4742-b003-e9992e5400fe.avif" alt="My Messages" className="action-card-img" />
+                  <img src="/images/planbeau-platform-assets/sidebar/a0613f17-0174-4742-b003-e9992e5400fe.avif" alt="My Messages" className="action-card-img" />
                 </div>
                 <span className="action-card-label">My Messages</span>
                 {notificationCounts.unreadMessages > 0 && (
@@ -860,7 +879,7 @@ function ProfileSidebar({ isOpen, onClose }) {
                 style={{ flex: 1 }}
               >
                 <div className="action-card-icon-wrapper">
-                  <img src="/images/sidebar/297263db-3cc6-45b5-97b6-5c4537a15be4.avif" alt="My Favorites" className="action-card-img" />
+                  <img src="/images/planbeau-platform-assets/sidebar/297263db-3cc6-45b5-97b6-5c4537a15be4.avif" alt="My Favorites" className="action-card-img" />
                 </div>
                 <span className="action-card-label">My Favorites</span>
               </div>
@@ -921,7 +940,7 @@ function ProfileSidebar({ isOpen, onClose }) {
             }}
           >
             <div className="promo-card-image">
-              <img src="/images/sidebar/5efa06bd-abeb-4110-96e1-cb4d034c4da8.avif" alt="" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }} />
+              <img src="/images/planbeau-platform-assets/sidebar/5efa06bd-abeb-4110-96e1-cb4d034c4da8.avif" alt="" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }} />
               <div className="promo-card-icon-fallback" style={{ display: 'none' }}>
                 <i className="fas fa-sync-alt"></i>
               </div>
@@ -941,7 +960,7 @@ function ProfileSidebar({ isOpen, onClose }) {
             }}
           >
             <div className="promo-card-image">
-              <img src="/images/sidebar/5efa06bd-abeb-4110-96e1-cb4d034c4da8.avif" alt="" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }} />
+              <img src="/images/planbeau-platform-assets/sidebar/5efa06bd-abeb-4110-96e1-cb4d034c4da8.avif" alt="" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }} />
               <div className="promo-card-icon-fallback" style={{ display: 'none' }}>
                 <i className="fas fa-store"></i>
               </div>

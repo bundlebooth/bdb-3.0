@@ -94,7 +94,7 @@ const ResetPasswordPage = () => {
     return (
       <div style={styles.container}>
         <div style={styles.card}>
-          <img src="/images/logo.png" alt="Planbeau" style={styles.logo} />
+          <img src="/images/planbeau-platform-assets/branding/logo.png" alt="Planbeau" style={styles.logo} />
           <div style={styles.spinner}></div>
           <h2 style={styles.title}>Verifying Reset Link...</h2>
         </div>
@@ -106,7 +106,7 @@ const ResetPasswordPage = () => {
     return (
       <div style={styles.container}>
         <div style={styles.card}>
-          <img src="/images/logo.png" alt="Planbeau" style={styles.logo} />
+          <img src="/images/planbeau-platform-assets/branding/logo.png" alt="Planbeau" style={styles.logo} />
           <div style={styles.iconError}>
             <i className="fas fa-times-circle"></i>
           </div>
@@ -125,7 +125,7 @@ const ResetPasswordPage = () => {
     return (
       <div style={styles.container}>
         <div style={styles.card}>
-          <img src="/images/logo.png" alt="Planbeau" style={styles.logo} />
+          <img src="/images/planbeau-platform-assets/branding/logo.png" alt="Planbeau" style={styles.logo} />
           <div style={styles.iconSuccess}>
             <i className="fas fa-check-circle"></i>
           </div>
@@ -140,7 +140,7 @@ const ResetPasswordPage = () => {
   return (
     <div style={styles.container}>
       <div style={styles.card}>
-        <img src="/images/logo.png" alt="Planbeau" style={styles.logo} />
+        <img src="/images/planbeau-platform-assets/branding/logo.png" alt="Planbeau" style={styles.logo} />
         <h2 style={styles.title}>Reset Your Password</h2>
         <p style={styles.description}>
           Enter a new password for <strong>{email}</strong>

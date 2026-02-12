@@ -39,10 +39,10 @@ function LandingPage() {
   
   // Hero slideshow data - memoized for performance
   const heroSlides = useMemo(() => [
-    { icon: 'fa-camera', label: 'Photography', image: '/images/landing/slide-photography.jpg' },
-    { icon: 'fa-utensils', label: 'Catering', image: '/images/landing/slide-catering.jpg' },
-    { icon: 'fa-music', label: 'Music & DJ', image: '/images/landing/slide-music.jpg' },
-    { icon: 'fa-users', label: 'Events', image: '/images/landing/slide-events.jpg' }
+    { icon: 'fa-camera', label: 'Photography', image: '/images/planbeau-platform-assets/landing/slide-photography.jpg' },
+    { icon: 'fa-utensils', label: 'Catering', image: '/images/planbeau-platform-assets/landing/slide-catering.jpg' },
+    { icon: 'fa-music', label: 'Music & DJ', image: '/images/planbeau-platform-assets/landing/slide-music.jpg' },
+    { icon: 'fa-users', label: 'Events', image: '/images/planbeau-platform-assets/landing/slide-events.jpg' }
   ], []);
   
   // Search bar state
@@ -471,21 +471,21 @@ function LandingPage() {
   ], []);
 
   const vendorCategories = useMemo(() => [
-    { name: 'Venues', slug: 'Venues', icon: 'fa-building', image: '/images/landing/meeting-venue.jpg', count: 150 },
-    { name: 'Caterers', slug: 'Catering', icon: 'fa-utensils', image: '/images/landing/slide-catering.jpg', count: 85 },
-    { name: 'Photographers', slug: 'Photo/Video', icon: 'fa-camera', image: '/images/landing/slide-photography.jpg', count: 120 },
-    { name: 'DJs & Music', slug: 'Music/DJ', icon: 'fa-music', image: '/images/landing/slide-music.jpg', count: 65 },
-    { name: 'Decorators', slug: 'Decorations', icon: 'fa-palette', image: '/images/landing/creative-space.jpg', count: 45 },
-    { name: 'Event Planners', slug: 'Entertainment', icon: 'fa-clipboard-list', image: '/images/landing/slide-events.jpg', count: 55 }
+    { name: 'Venues', slug: 'Venues', icon: 'fa-building', image: '/images/planbeau-platform-assets/landing/meeting-venue.jpg', count: 150 },
+    { name: 'Caterers', slug: 'Catering', icon: 'fa-utensils', image: '/images/planbeau-platform-assets/landing/slide-catering.jpg', count: 85 },
+    { name: 'Photographers', slug: 'Photo/Video', icon: 'fa-camera', image: '/images/planbeau-platform-assets/landing/slide-photography.jpg', count: 120 },
+    { name: 'DJs & Music', slug: 'Music/DJ', icon: 'fa-music', image: '/images/planbeau-platform-assets/landing/slide-music.jpg', count: 65 },
+    { name: 'Decorators', slug: 'Decorations', icon: 'fa-palette', image: '/images/planbeau-platform-assets/landing/creative-space.jpg', count: 45 },
+    { name: 'Event Planners', slug: 'Entertainment', icon: 'fa-clipboard-list', image: '/images/planbeau-platform-assets/landing/slide-events.jpg', count: 55 }
   ], []);
 
   const cities = useMemo(() => [
-    { name: 'Toronto, ON', shortName: 'Toronto', image: '/images/landing/city-toronto.jpg', vendorCount: 180, description: 'Canada\'s largest city with incredible venues' },
-    { name: 'Vancouver, BC', shortName: 'Vancouver', image: '/images/landing/city-vancouver.jpg', vendorCount: 95, description: 'Beautiful coastal event spaces' },
-    { name: 'Montreal, QC', shortName: 'Montreal', image: '/images/landing/city-montreal.jpg', vendorCount: 75, description: 'Historic charm meets modern elegance' },
-    { name: 'Calgary, AB', shortName: 'Calgary', image: '/images/landing/city-calgary.jpg', vendorCount: 60, description: 'Mountain city celebrations' },
-    { name: 'Ottawa, ON', shortName: 'Ottawa', image: '/images/landing/city-ottawa.jpg', vendorCount: 45, description: 'Capital city sophistication' },
-    { name: 'Edmonton, AB', shortName: 'Edmonton', image: '/images/landing/city-edmonton.jpg', vendorCount: 40, description: 'Festival city venues' }
+    { name: 'Toronto, ON', shortName: 'Toronto', image: '/images/planbeau-platform-assets/landing/city-toronto.jpg', vendorCount: 180, description: 'Canada\'s largest city with incredible venues' },
+    { name: 'Vancouver, BC', shortName: 'Vancouver', image: '/images/planbeau-platform-assets/landing/city-vancouver.jpg', vendorCount: 95, description: 'Beautiful coastal event spaces' },
+    { name: 'Montreal, QC', shortName: 'Montreal', image: '/images/planbeau-platform-assets/landing/city-montreal.jpg', vendorCount: 75, description: 'Historic charm meets modern elegance' },
+    { name: 'Calgary, AB', shortName: 'Calgary', image: '/images/planbeau-platform-assets/landing/city-calgary.jpg', vendorCount: 60, description: 'Mountain city celebrations' },
+    { name: 'Ottawa, ON', shortName: 'Ottawa', image: '/images/planbeau-platform-assets/landing/city-ottawa.jpg', vendorCount: 45, description: 'Capital city sophistication' },
+    { name: 'Edmonton, AB', shortName: 'Edmonton', image: '/images/planbeau-platform-assets/landing/city-edmonton.jpg', vendorCount: 40, description: 'Festival city venues' }
   ], []);
 
   const features = useMemo(() => [
@@ -1044,8 +1044,8 @@ function LandingPage() {
             </div>
             <div className="feature-image-side">
               <div className="feature-image-stack">
-                <img src="/images/landing/slide-photography.jpg" alt="Photography" className="stack-img stack-img-1" />
-                <img src="/images/landing/slide-catering.jpg" alt="Catering" className="stack-img stack-img-2" />
+                <img src="/images/planbeau-platform-assets/landing/slide-photography.jpg" alt="Photography" className="stack-img stack-img-1" />
+                <img src="/images/planbeau-platform-assets/landing/slide-catering.jpg" alt="Catering" className="stack-img stack-img-2" />
                 <div className="floating-stat floating-stat-1">
                   <i className="fas fa-star"></i>
                   <span>4.9 avg rating</span>
@@ -1145,7 +1145,7 @@ function LandingPage() {
             </div>
             <div className="why-planhive-image">
               <img 
-                src="/images/landing/venue-feature.jpg" 
+                src="/images/planbeau-platform-assets/landing/venue-feature.jpg" 
                 alt="Beautiful venue"
               />
             </div>
@@ -1283,7 +1283,7 @@ function LandingPage() {
                   </div>
                   <div className="booking-details">
                     <div className="booking-vendor">
-                      <img src="/images/landing/slide-music.jpg" alt="Vendor" />
+                      <img src="/images/planbeau-platform-assets/landing/slide-music.jpg" alt="Vendor" />
                       <div>
                         <strong>Elite Photography</strong>
                         <span>Wedding Package</span>
@@ -1366,7 +1366,7 @@ function LandingPage() {
             </div>
             <div className="feature-image-side">
               <div className="reviews-collage">
-                <img src="/images/landing/slide-events.jpg" alt="Events" className="collage-main" />
+                <img src="/images/planbeau-platform-assets/landing/slide-events.jpg" alt="Events" className="collage-main" />
                 <div className="review-bubble review-bubble-1">
                   <div className="bubble-stars"><i className="fas fa-star"></i><i className="fas fa-star"></i><i className="fas fa-star"></i><i className="fas fa-star"></i><i className="fas fa-star"></i></div>
                   <span>"Absolutely perfect!"</span>
@@ -1386,7 +1386,7 @@ function LandingPage() {
         <div className="section-container">
           <div className="vendor-cta-content">
             <div className="vendor-cta-image">
-              <img src="/images/landing/venue-feature.jpg" alt="Grow your business" />
+              <img src="/images/planbeau-platform-assets/landing/venue-feature.jpg" alt="Grow your business" />
             </div>
             <div className="vendor-cta-text">
               <h2>List your business for free and get more bookings!</h2>

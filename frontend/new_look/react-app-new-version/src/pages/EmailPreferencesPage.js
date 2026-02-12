@@ -86,7 +86,7 @@ const EmailPreferencesPage = () => {
     return (
       <div style={styles.container}>
         <div style={styles.card}>
-          <img src="/images/logo.png" alt="Planbeau" style={styles.logo} />
+          <img src="/images/planbeau-platform-assets/branding/logo.png" alt="Planbeau" style={styles.logo} />
           <div style={styles.spinner}></div>
           <h2 style={styles.title}>Loading Preferences...</h2>
         </div>
@@ -98,7 +98,7 @@ const EmailPreferencesPage = () => {
     return (
       <div style={styles.container}>
         <div style={styles.card}>
-          <img src="/images/logo.png" alt="Planbeau" style={styles.logo} />
+          <img src="/images/planbeau-platform-assets/branding/logo.png" alt="Planbeau" style={styles.logo} />
           <div style={styles.iconError}>
             <svg width="40" height="40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
@@ -119,7 +119,7 @@ const EmailPreferencesPage = () => {
   return (
     <div style={styles.container}>
       <div style={styles.cardWide}>
-        <img src="/images/logo.png" alt="Planbeau" style={styles.logo} />
+        <img src="/images/planbeau-platform-assets/branding/logo.png" alt="Planbeau" style={styles.logo} />
         <h1 style={styles.title}>Email Preferences</h1>
         <p style={styles.subtitle}>Manage email notifications for <strong>{email}</strong></p>
         

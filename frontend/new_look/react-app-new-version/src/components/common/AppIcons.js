@@ -357,6 +357,8 @@ export const SvgIconPaths = {
 // All icons are 64x64 SVG with blue (#5086E8) background and colored inner icons
 // ============================================================================
 
+// Unified notification icons from /images/planbeau-platform-assets/icons/notification/
+// These icons have light blue circular backgrounds with blue icons
 export const UnifiedNotificationIcons = {
   // Booking notifications
   'booking_request': '/images/planbeau-platform-assets/icons/notification/notif-booking-request.svg',
@@ -371,7 +373,7 @@ export const UnifiedNotificationIcons = {
   'booking_rejected': '/images/planbeau-platform-assets/icons/notification/notif-booking-declined.svg',
   'request_declined': '/images/planbeau-platform-assets/icons/notification/notif-booking-declined.svg',
   'booking_cancelled': '/images/planbeau-platform-assets/icons/notification/notif-booking-cancelled.svg',
-  'booking_reminder': '/images/planbeau-platform-assets/icons/notification/notif-booking-reminder.svg',
+  'booking_reminder': '/images/planbeau-platform-assets/icons/notification/notif-reminder.svg',
   'booking_update': '/images/planbeau-platform-assets/icons/notification/notif-booking-update.svg',
   
   // Message notifications
@@ -419,6 +421,15 @@ export const UnifiedNotificationIcons = {
   'gift': '/images/planbeau-platform-assets/icons/notification/notif-gift.svg',
   'calendar': '/images/planbeau-platform-assets/icons/notification/notif-calendar.svg',
   'support': '/images/planbeau-platform-assets/icons/notification/notif-support.svg',
+  
+  // Support message notifications
+  'support_message': '/images/planbeau-platform-assets/icons/notification/notif-support.svg',
+  'new_support_message': '/images/planbeau-platform-assets/icons/notification/notif-support.svg',
+  'support_reply': '/images/planbeau-platform-assets/icons/notification/notif-support.svg',
+  
+  // Chat/conversation notifications
+  'chat': '/images/planbeau-platform-assets/icons/notification/notif-message.svg',
+  'conversation': '/images/planbeau-platform-assets/icons/notification/notif-message.svg',
 };
 
 // Helper function to get unified notification icon path
