@@ -4,7 +4,7 @@
  * 
  * Each config entry contains:
  * - emailTemplate: Key from EmailTemplates table
- * - icon: Unified SVG icon filename from /images/planbeau-platform-assets/icons/notification/
+ * - icon: Unified SVG icon filename from /images/email-icons/ (same as email templates)
  * - pushTitle: Title for push notification (supports {{variable}} placeholders)
  * - pushBody: Body for push notification (supports {{variable}} placeholders)
  * - inAppTitle: Title for in-app notification
@@ -18,7 +18,7 @@ const NotificationConfig = {
   // ============================================
   'booking_request': {
     emailTemplate: 'booking_request_vendor',
-    icon: 'notif-booking-request.svg',
+    icon: 'icon-calendar-blue.svg',
     pushTitle: 'New Booking Request',
     pushBody: 'You have a new booking request from {{clientName}}',
     inAppTitle: 'New Booking Request',
@@ -27,7 +27,7 @@ const NotificationConfig = {
   },
   'booking_approved': {
     emailTemplate: 'booking_accepted_client',
-    icon: 'notif-booking-approved.svg',
+    icon: 'icon-check-green.svg',
     pushTitle: 'Booking Approved!',
     pushBody: '{{vendorName}} accepted your booking',
     inAppTitle: 'Booking Request Approved!',
@@ -36,7 +36,7 @@ const NotificationConfig = {
   },
   'booking_rejected': {
     emailTemplate: 'booking_rejected_client',
-    icon: 'notif-booking-declined.svg',
+    icon: 'icon-x-red.svg',
     pushTitle: 'Booking Update',
     pushBody: '{{vendorName}} could not accept your booking',
     inAppTitle: 'Booking Request Declined',
@@ -45,7 +45,7 @@ const NotificationConfig = {
   },
   'booking_confirmed': {
     emailTemplate: 'booking_confirmed_client',
-    icon: 'notif-booking-confirmed.svg',
+    icon: 'icon-check-green.svg',
     pushTitle: 'Booking Confirmed!',
     pushBody: 'Your booking with {{vendorName}} is confirmed',
     inAppTitle: 'Booking Confirmed',
@@ -54,7 +54,7 @@ const NotificationConfig = {
   },
   'booking_cancelled': {
     emailTemplate: 'booking_cancelled_client',
-    icon: 'notif-booking-cancelled.svg',
+    icon: 'icon-x-red.svg',
     pushTitle: 'Booking Cancelled',
     pushBody: 'Your booking has been cancelled',
     inAppTitle: 'Booking Cancelled',
@@ -63,7 +63,7 @@ const NotificationConfig = {
   },
   'booking_rescheduled': {
     emailTemplate: 'booking_rescheduled',
-    icon: 'notif-booking-update.svg',
+    icon: 'icon-calendar-blue.svg',
     pushTitle: 'Booking Rescheduled',
     pushBody: 'Your booking has been rescheduled to {{newDate}}',
     inAppTitle: 'Booking Rescheduled',
@@ -72,7 +72,7 @@ const NotificationConfig = {
   },
   'booking_reminder_24h': {
     emailTemplate: 'booking_reminder_24h',
-    icon: 'notif-booking-reminder.svg',
+    icon: 'icon-bell-yellow.svg',
     pushTitle: 'Event Tomorrow!',
     pushBody: 'Your event with {{vendorName}} is tomorrow',
     inAppTitle: 'Event Tomorrow!',
@@ -81,7 +81,7 @@ const NotificationConfig = {
   },
   'booking_reminder_1_week': {
     emailTemplate: 'booking_reminder_1_week',
-    icon: 'notif-booking-reminder.svg',
+    icon: 'icon-bell-yellow.svg',
     pushTitle: 'Event in 1 Week',
     pushBody: 'Your event with {{vendorName}} is in 1 week',
     inAppTitle: 'Event in 1 Week',
@@ -90,7 +90,7 @@ const NotificationConfig = {
   },
   'booking_update': {
     emailTemplate: null,
-    icon: 'notif-booking-update.svg',
+    icon: 'icon-calendar-blue.svg',
     pushTitle: 'Booking Updated',
     pushBody: 'Your booking details have been updated',
     inAppTitle: 'Booking Updated',
@@ -103,7 +103,7 @@ const NotificationConfig = {
   // ============================================
   'message': {
     emailTemplate: 'message_vendor_to_client',
-    icon: 'notif-message.svg',
+    icon: 'icon-message-blue.svg',
     pushTitle: 'New Message',
     pushBody: 'You have a new message from {{senderName}}',
     inAppTitle: 'New Message',
@@ -112,7 +112,7 @@ const NotificationConfig = {
   },
   'new_message': {
     emailTemplate: 'message_client_to_vendor',
-    icon: 'notif-message.svg',
+    icon: 'icon-message-blue.svg',
     pushTitle: 'New Message',
     pushBody: 'You have a new message from {{senderName}}',
     inAppTitle: 'New Message',
@@ -121,7 +121,7 @@ const NotificationConfig = {
   },
   'unread_messages_reminder': {
     emailTemplate: 'unread_messages_reminder',
-    icon: 'notif-message.svg',
+    icon: 'icon-message-blue.svg',
     pushTitle: 'Unread Messages',
     pushBody: 'You have {{unreadCount}} unread message(s)',
     inAppTitle: 'Unread Messages',
@@ -134,7 +134,7 @@ const NotificationConfig = {
   // ============================================
   'payment_received': {
     emailTemplate: 'payment_received_vendor',
-    icon: 'notif-payment-received.svg',
+    icon: 'icon-dollar-green.svg',
     pushTitle: 'Payment Received',
     pushBody: 'You received {{amount}} from {{clientName}}',
     inAppTitle: 'Payment Received',
@@ -143,7 +143,7 @@ const NotificationConfig = {
   },
   'payment_confirmation': {
     emailTemplate: 'payment_confirmation_client',
-    icon: 'notif-payment.svg',
+    icon: 'icon-dollar-green.svg',
     pushTitle: 'Payment Confirmed',
     pushBody: 'Your payment of {{amount}} was successful',
     inAppTitle: 'Payment Confirmed',
@@ -152,7 +152,7 @@ const NotificationConfig = {
   },
   'payment_failed': {
     emailTemplate: 'payment_failed',
-    icon: 'notif-payment-reminder.svg',
+    icon: 'icon-clock-yellow.svg',
     pushTitle: 'Payment Failed',
     pushBody: 'Your payment could not be processed',
     inAppTitle: 'Payment Failed',
@@ -161,7 +161,7 @@ const NotificationConfig = {
   },
   'payment_reminder': {
     emailTemplate: null,
-    icon: 'notif-payment-reminder.svg',
+    icon: 'icon-clock-yellow.svg',
     pushTitle: 'Payment Reminder',
     pushBody: 'You have a pending payment of {{amount}}',
     inAppTitle: 'Payment Reminder',
@@ -170,7 +170,7 @@ const NotificationConfig = {
   },
   'invoice_sent': {
     emailTemplate: 'invoice_sent',
-    icon: 'notif-invoice.svg',
+    icon: 'icon-receipt-green.svg',
     pushTitle: 'Invoice Received',
     pushBody: 'New invoice from {{vendorName}} for {{amount}}',
     inAppTitle: 'Invoice Received',
@@ -179,7 +179,7 @@ const NotificationConfig = {
   },
   'refund_processed': {
     emailTemplate: 'refund_processed',
-    icon: 'notif-payment-received.svg',
+    icon: 'icon-dollar-green.svg',
     pushTitle: 'Refund Processed',
     pushBody: 'Your refund of {{refundAmount}} has been processed',
     inAppTitle: 'Refund Processed',
@@ -188,7 +188,7 @@ const NotificationConfig = {
   },
   'payout_processed': {
     emailTemplate: 'payout_processed',
-    icon: 'notif-payment-received.svg',
+    icon: 'icon-dollar-green.svg',
     pushTitle: 'Payout Sent',
     pushBody: 'Your payout of {{payoutAmount}} is on its way',
     inAppTitle: 'Payout Processed',
@@ -197,7 +197,7 @@ const NotificationConfig = {
   },
   'deposit_due': {
     emailTemplate: 'booking_deposit_due',
-    icon: 'notif-payment-reminder.svg',
+    icon: 'icon-clock-yellow.svg',
     pushTitle: 'Deposit Due',
     pushBody: 'Deposit of {{depositAmount}} due for your booking',
     inAppTitle: 'Deposit Due',
@@ -206,7 +206,7 @@ const NotificationConfig = {
   },
   'final_payment_due': {
     emailTemplate: 'final_payment_due',
-    icon: 'notif-payment-reminder.svg',
+    icon: 'icon-clock-yellow.svg',
     pushTitle: 'Final Payment Due',
     pushBody: 'Final payment of {{amountDue}} due for your event',
     inAppTitle: 'Final Payment Due',
@@ -215,7 +215,7 @@ const NotificationConfig = {
   },
   'receipt': {
     emailTemplate: 'receipt',
-    icon: 'notif-invoice.svg',
+    icon: 'icon-receipt-green.svg',
     pushTitle: 'Receipt Available',
     pushBody: 'Your receipt for {{amount}} is ready',
     inAppTitle: 'Receipt Available',
@@ -228,7 +228,7 @@ const NotificationConfig = {
   // ============================================
   'review_request': {
     emailTemplate: 'review_request',
-    icon: 'notif-review.svg',
+    icon: 'icon-star-yellow.svg',
     pushTitle: 'Share Your Experience',
     pushBody: 'How was your experience with {{vendorName}}?',
     inAppTitle: 'Share Your Experience',
@@ -237,7 +237,7 @@ const NotificationConfig = {
   },
   'review': {
     emailTemplate: 'new_review_received',
-    icon: 'notif-review.svg',
+    icon: 'icon-star-yellow.svg',
     pushTitle: 'New Review!',
     pushBody: '{{clientName}} left you a {{rating}}-star review',
     inAppTitle: 'New Review',
@@ -246,7 +246,7 @@ const NotificationConfig = {
   },
   'new_review': {
     emailTemplate: 'new_review_received',
-    icon: 'notif-review.svg',
+    icon: 'icon-star-yellow.svg',
     pushTitle: 'New Review!',
     pushBody: '{{clientName}} left you a {{rating}}-star review',
     inAppTitle: 'New Review',
@@ -259,7 +259,7 @@ const NotificationConfig = {
   // ============================================
   'account_locked': {
     emailTemplate: 'account_locked',
-    icon: 'notif-lock.svg',
+    icon: 'icon-lock-blue.svg',
     pushTitle: 'Account Locked',
     pushBody: 'Your account has been locked',
     inAppTitle: 'Account Locked',
@@ -268,7 +268,7 @@ const NotificationConfig = {
   },
   'account_unlocked': {
     emailTemplate: 'account_unlocked',
-    icon: 'notif-lock.svg',
+    icon: 'icon-lock-blue.svg',
     pushTitle: 'Account Unlocked',
     pushBody: 'Your account has been unlocked',
     inAppTitle: 'Account Unlocked',
@@ -277,7 +277,7 @@ const NotificationConfig = {
   },
   'account_suspended': {
     emailTemplate: 'account_suspended',
-    icon: 'notif-warning.svg',
+    icon: 'icon-alert-yellow.svg',
     pushTitle: 'Account Suspended',
     pushBody: 'Your account has been suspended',
     inAppTitle: 'Account Suspended',
@@ -286,7 +286,7 @@ const NotificationConfig = {
   },
   'account_reactivated': {
     emailTemplate: 'account_reactivated',
-    icon: 'notif-success.svg',
+    icon: 'icon-check-green.svg',
     pushTitle: 'Account Reactivated',
     pushBody: 'Your account has been reactivated',
     inAppTitle: 'Account Reactivated',
@@ -295,7 +295,7 @@ const NotificationConfig = {
   },
   'account_deletion_requested': {
     emailTemplate: 'account_deletion_requested',
-    icon: 'notif-warning.svg',
+    icon: 'icon-alert-yellow.svg',
     pushTitle: 'Account Deletion Request',
     pushBody: 'Please confirm your account deletion request',
     inAppTitle: 'Account Deletion Requested',
@@ -304,7 +304,7 @@ const NotificationConfig = {
   },
   'password_reset': {
     emailTemplate: 'password_reset',
-    icon: 'notif-lock.svg',
+    icon: 'icon-lock-blue.svg',
     pushTitle: null,
     pushBody: null,
     inAppTitle: null,
@@ -313,7 +313,7 @@ const NotificationConfig = {
   },
   'password_changed': {
     emailTemplate: 'password_changed',
-    icon: 'notif-lock.svg',
+    icon: 'icon-lock-blue.svg',
     pushTitle: 'Password Changed',
     pushBody: 'Your password has been changed',
     inAppTitle: 'Password Changed',
@@ -322,7 +322,7 @@ const NotificationConfig = {
   },
   'email_verification': {
     emailTemplate: 'email_verification',
-    icon: 'notif-message.svg',
+    icon: 'icon-message-blue.svg',
     pushTitle: null,
     pushBody: null,
     inAppTitle: null,
@@ -331,7 +331,7 @@ const NotificationConfig = {
   },
   'login_new_device': {
     emailTemplate: 'login_new_device',
-    icon: 'notif-lock.svg',
+    icon: 'icon-lock-blue.svg',
     pushTitle: 'New Login Detected',
     pushBody: 'New login from {{deviceName}} in {{location}}',
     inAppTitle: 'New Login Detected',
@@ -340,7 +340,7 @@ const NotificationConfig = {
   },
   'auth_2fa': {
     emailTemplate: 'auth_2fa',
-    icon: 'notif-lock.svg',
+    icon: 'icon-lock-blue.svg',
     pushTitle: null,
     pushBody: null,
     inAppTitle: null,
@@ -353,7 +353,7 @@ const NotificationConfig = {
   // ============================================
   'vendor_approved': {
     emailTemplate: 'vendor_approved',
-    icon: 'notif-success.svg',
+    icon: 'icon-check-green.svg',
     pushTitle: 'Profile Approved!',
     pushBody: 'Your vendor profile has been approved',
     inAppTitle: 'Profile Approved!',
@@ -362,7 +362,7 @@ const NotificationConfig = {
   },
   'vendor_rejected': {
     emailTemplate: 'vendor_rejected',
-    icon: 'notif-error.svg',
+    icon: 'icon-x-red.svg',
     pushTitle: 'Profile Review Update',
     pushBody: 'Your vendor profile needs attention',
     inAppTitle: 'Profile Review Update',
@@ -371,7 +371,7 @@ const NotificationConfig = {
   },
   'vendor_featured': {
     emailTemplate: 'vendor_featured',
-    icon: 'notif-gift.svg',
+    icon: 'icon-gift-purple.svg',
     pushTitle: 'You\'re Featured!',
     pushBody: 'Congratulations! You are now a featured vendor',
     inAppTitle: 'You\'re Featured!',
@@ -380,7 +380,7 @@ const NotificationConfig = {
   },
   'vendor_profile_incomplete': {
     emailTemplate: 'vendor_profile_incomplete',
-    icon: 'notif-warning.svg',
+    icon: 'icon-alert-yellow.svg',
     pushTitle: 'Complete Your Profile',
     pushBody: 'Your profile is {{completionPercentage}}% complete',
     inAppTitle: 'Complete Your Profile',
@@ -389,7 +389,7 @@ const NotificationConfig = {
   },
   'vendor_welcome': {
     emailTemplate: 'vendor_welcome',
-    icon: 'notif-user.svg',
+    icon: 'icon-user-blue.svg',
     pushTitle: 'Welcome to PlanBeau!',
     pushBody: 'Your vendor account is ready',
     inAppTitle: 'Welcome to PlanBeau!',
@@ -398,7 +398,7 @@ const NotificationConfig = {
   },
   'vendor_inactivity': {
     emailTemplate: 'vendor_inactivity',
-    icon: 'notif-warning.svg',
+    icon: 'icon-alert-yellow.svg',
     pushTitle: 'We Miss You!',
     pushBody: 'Your profile needs attention',
     inAppTitle: 'We Miss You!',
@@ -407,7 +407,7 @@ const NotificationConfig = {
   },
   'vendor_application_admin': {
     emailTemplate: 'vendor_application_admin',
-    icon: 'notif-user.svg',
+    icon: 'icon-user-blue.svg',
     pushTitle: 'New Vendor Application',
     pushBody: 'New application from {{businessName}}',
     inAppTitle: 'New Vendor Application',
@@ -420,7 +420,7 @@ const NotificationConfig = {
   // ============================================
   'client_welcome': {
     emailTemplate: 'client_welcome',
-    icon: 'notif-user.svg',
+    icon: 'icon-user-blue.svg',
     pushTitle: 'Welcome to PlanBeau!',
     pushBody: 'Start exploring vendors for your event',
     inAppTitle: 'Welcome to PlanBeau!',
@@ -429,7 +429,7 @@ const NotificationConfig = {
   },
   'client_to_vendor_welcome': {
     emailTemplate: 'client_to_vendor_welcome',
-    icon: 'notif-user.svg',
+    icon: 'icon-user-blue.svg',
     pushTitle: 'Welcome as a Vendor!',
     pushBody: 'Your vendor account is ready',
     inAppTitle: 'Welcome as a Vendor!',
@@ -438,7 +438,7 @@ const NotificationConfig = {
   },
   'user_inactivity': {
     emailTemplate: 'user_inactivity',
-    icon: 'notif-heart.svg',
+    icon: 'icon-heart-red.svg',
     pushTitle: 'We Miss You!',
     pushBody: 'Come back and explore new vendors',
     inAppTitle: 'We Miss You!',
@@ -447,7 +447,7 @@ const NotificationConfig = {
   },
   'favorite_vendor_available': {
     emailTemplate: 'favorite_vendor_available',
-    icon: 'notif-heart.svg',
+    icon: 'icon-heart-red.svg',
     pushTitle: 'Favorite Vendor Available!',
     pushBody: '{{vendorName}} has new availability',
     inAppTitle: 'Favorite Vendor Available!',
@@ -460,7 +460,7 @@ const NotificationConfig = {
   // ============================================
   'support_ticket_opened': {
     emailTemplate: 'support_ticket_opened',
-    icon: 'notif-support.svg',
+    icon: 'icon-support-blue.svg',
     pushTitle: 'Ticket Received',
     pushBody: 'Support ticket #{{ticketId}} has been created',
     inAppTitle: 'Support Ticket Created',
@@ -469,7 +469,7 @@ const NotificationConfig = {
   },
   'support_ticket_in_progress': {
     emailTemplate: 'support_ticket_in_progress',
-    icon: 'notif-support.svg',
+    icon: 'icon-support-blue.svg',
     pushTitle: 'Ticket In Progress',
     pushBody: 'Support ticket #{{ticketId}} is being worked on',
     inAppTitle: 'Ticket In Progress',
@@ -478,7 +478,7 @@ const NotificationConfig = {
   },
   'support_ticket_closed': {
     emailTemplate: 'support_ticket_closed',
-    icon: 'notif-success.svg',
+    icon: 'icon-check-green.svg',
     pushTitle: 'Ticket Resolved',
     pushBody: 'Support ticket #{{ticketId}} has been resolved',
     inAppTitle: 'Ticket Resolved',
@@ -487,7 +487,7 @@ const NotificationConfig = {
   },
   'support_ticket_reply': {
     emailTemplate: 'support_ticket_reply',
-    icon: 'notif-support.svg',
+    icon: 'icon-support-blue.svg',
     pushTitle: 'New Reply',
     pushBody: 'New reply on ticket #{{ticketId}}',
     inAppTitle: 'New Reply on Ticket',
@@ -496,7 +496,7 @@ const NotificationConfig = {
   },
   'support_message_received': {
     emailTemplate: 'support_message_received',
-    icon: 'notif-support.svg',
+    icon: 'icon-support-blue.svg',
     pushTitle: 'Support Message',
     pushBody: 'New message from PlanBeau Support',
     inAppTitle: 'Support Message',
@@ -505,7 +505,7 @@ const NotificationConfig = {
   },
   'new_support_message': {
     emailTemplate: 'new_support_message',
-    icon: 'notif-support.svg',
+    icon: 'icon-support-blue.svg',
     pushTitle: 'New Support Message',
     pushBody: 'New message from {{userName}}',
     inAppTitle: 'New Support Message',
@@ -514,7 +514,7 @@ const NotificationConfig = {
   },
   'support_ticket_confirmation': {
     emailTemplate: 'support_ticket_confirmation',
-    icon: 'notif-support.svg',
+    icon: 'icon-support-blue.svg',
     pushTitle: 'Ticket Confirmed',
     pushBody: 'Support ticket {{ticketNumber}} confirmed',
     inAppTitle: 'Ticket Confirmed',
@@ -523,7 +523,7 @@ const NotificationConfig = {
   },
   'support_ticket_admin': {
     emailTemplate: 'support_ticket_admin',
-    icon: 'notif-support.svg',
+    icon: 'icon-support-blue.svg',
     pushTitle: 'New Support Ticket',
     pushBody: 'New ticket: {{ticketNumber}} - {{ticketSubject}}',
     inAppTitle: 'New Support Ticket',
@@ -532,7 +532,7 @@ const NotificationConfig = {
   },
   'chat_summary': {
     emailTemplate: 'chat_summary',
-    icon: 'notif-support.svg',
+    icon: 'icon-support-blue.svg',
     pushTitle: 'Chat Summary',
     pushBody: 'Your support chat summary is ready',
     inAppTitle: 'Chat Summary',
@@ -545,7 +545,7 @@ const NotificationConfig = {
   // ============================================
   'dispute_opened': {
     emailTemplate: 'dispute_opened',
-    icon: 'notif-warning.svg',
+    icon: 'icon-alert-yellow.svg',
     pushTitle: 'Dispute Opened',
     pushBody: 'A dispute has been opened for booking #{{bookingId}}',
     inAppTitle: 'Dispute Opened',
@@ -554,7 +554,7 @@ const NotificationConfig = {
   },
   'dispute_resolved': {
     emailTemplate: 'dispute_resolved',
-    icon: 'notif-success.svg',
+    icon: 'icon-check-green.svg',
     pushTitle: 'Dispute Resolved',
     pushBody: 'Dispute for booking #{{bookingId}} has been resolved',
     inAppTitle: 'Dispute Resolved',
@@ -567,7 +567,7 @@ const NotificationConfig = {
   // ============================================
   'promotional_offer': {
     emailTemplate: 'promotional_offer',
-    icon: 'notif-promotion.svg',
+    icon: 'icon-gift-purple.svg',
     pushTitle: '{{offerTitle}}',
     pushBody: '{{offerDescription}}',
     inAppTitle: 'Special Offer!',
@@ -576,7 +576,7 @@ const NotificationConfig = {
   },
   'newsletter': {
     emailTemplate: 'newsletter',
-    icon: 'notif-newsletter.svg',
+    icon: 'icon-message-blue.svg',
     pushTitle: '{{newsletterTitle}}',
     pushBody: 'New newsletter from PlanBeau',
     inAppTitle: 'Newsletter',
@@ -585,7 +585,7 @@ const NotificationConfig = {
   },
   'announcement': {
     emailTemplate: null,
-    icon: 'notif-announcement.svg',
+    icon: 'icon-bell-yellow.svg',
     pushTitle: 'Announcement',
     pushBody: '{{announcementMessage}}',
     inAppTitle: 'Announcement',
@@ -598,7 +598,7 @@ const NotificationConfig = {
   // ============================================
   'referral_invitation': {
     emailTemplate: 'referral_invitation',
-    icon: 'notif-gift.svg',
+    icon: 'icon-gift-purple.svg',
     pushTitle: 'You\'re Invited!',
     pushBody: '{{referrerName}} invited you to PlanBeau',
     inAppTitle: 'Referral Invitation',
@@ -607,7 +607,7 @@ const NotificationConfig = {
   },
   'referral_reward': {
     emailTemplate: 'referral_reward',
-    icon: 'notif-gift.svg',
+    icon: 'icon-gift-purple.svg',
     pushTitle: 'Referral Reward!',
     pushBody: 'You earned {{rewardAmount}} from a referral',
     inAppTitle: 'Referral Reward!',
@@ -620,7 +620,7 @@ const NotificationConfig = {
   // ============================================
   'subscription_renewal_reminder': {
     emailTemplate: 'subscription_renewal_reminder',
-    icon: 'notif-calendar.svg',
+    icon: 'icon-calendar-blue.svg',
     pushTitle: 'Subscription Renewal',
     pushBody: 'Your {{planName}} subscription renews on {{renewalDate}}',
     inAppTitle: 'Subscription Renewal Reminder',
@@ -629,7 +629,7 @@ const NotificationConfig = {
   },
   'subscription_cancelled': {
     emailTemplate: 'subscription_cancelled',
-    icon: 'notif-warning.svg',
+    icon: 'icon-alert-yellow.svg',
     pushTitle: 'Subscription Cancelled',
     pushBody: 'Your {{planName}} subscription has been cancelled',
     inAppTitle: 'Subscription Cancelled',
@@ -642,7 +642,7 @@ const NotificationConfig = {
   // ============================================
   'quote_received': {
     emailTemplate: 'quote_received',
-    icon: 'notif-invoice.svg',
+    icon: 'icon-receipt-green.svg',
     pushTitle: 'New Quote',
     pushBody: 'New quote from {{vendorName}} for {{quoteAmount}}',
     inAppTitle: 'New Quote Received',
@@ -655,7 +655,7 @@ const NotificationConfig = {
   // ============================================
   'event_reminder': {
     emailTemplate: 'event_reminder',
-    icon: 'notif-booking-reminder.svg',
+    icon: 'icon-bell-yellow.svg',
     pushTitle: 'Event Reminder',
     pushBody: 'Your event is in {{daysUntilEvent}}',
     inAppTitle: 'Event Reminder',
@@ -664,7 +664,7 @@ const NotificationConfig = {
   },
   'booking_action_reminder': {
     emailTemplate: 'booking_action_reminder',
-    icon: 'notif-booking-reminder.svg',
+    icon: 'icon-bell-yellow.svg',
     pushTitle: 'Action Required',
     pushBody: '{{actionSubject}}',
     inAppTitle: 'Action Required',
@@ -677,7 +677,7 @@ const NotificationConfig = {
   // ============================================
   'analytics_summary': {
     emailTemplate: 'analytics_summary',
-    icon: 'notif-info.svg',
+    icon: 'icon-message-blue.svg',
     pushTitle: 'Performance Summary',
     pushBody: 'Your {{periodLabel}} performance summary is ready',
     inAppTitle: 'Performance Summary',
@@ -690,7 +690,7 @@ const NotificationConfig = {
   // ============================================
   'policy_warning': {
     emailTemplate: 'policy_warning',
-    icon: 'notif-warning.svg',
+    icon: 'icon-alert-yellow.svg',
     pushTitle: 'Policy Warning',
     pushBody: 'Your message was blocked',
     inAppTitle: 'Policy Warning',
@@ -703,7 +703,7 @@ const NotificationConfig = {
   // ============================================
   'general': {
     emailTemplate: null,
-    icon: 'notif-general.svg',
+    icon: 'icon-bell-yellow.svg',
     pushTitle: 'Notification',
     pushBody: '{{message}}',
     inAppTitle: 'Notification',
@@ -712,7 +712,7 @@ const NotificationConfig = {
   },
   'info': {
     emailTemplate: null,
-    icon: 'notif-info.svg',
+    icon: 'icon-message-blue.svg',
     pushTitle: 'Information',
     pushBody: '{{message}}',
     inAppTitle: 'Information',
@@ -721,7 +721,7 @@ const NotificationConfig = {
   },
   'success': {
     emailTemplate: null,
-    icon: 'notif-success.svg',
+    icon: 'icon-check-green.svg',
     pushTitle: 'Success',
     pushBody: '{{message}}',
     inAppTitle: 'Success',
@@ -730,7 +730,7 @@ const NotificationConfig = {
   },
   'warning': {
     emailTemplate: null,
-    icon: 'notif-warning.svg',
+    icon: 'icon-alert-yellow.svg',
     pushTitle: 'Warning',
     pushBody: '{{message}}',
     inAppTitle: 'Warning',
@@ -739,7 +739,7 @@ const NotificationConfig = {
   },
   'error': {
     emailTemplate: null,
-    icon: 'notif-error.svg',
+    icon: 'icon-x-red.svg',
     pushTitle: 'Error',
     pushBody: '{{message}}',
     inAppTitle: 'Error',
