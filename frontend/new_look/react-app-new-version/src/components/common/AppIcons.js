@@ -347,6 +347,81 @@ export const SvgIconPaths = {
 // Paths to email-specific icons with colored backgrounds (64x64 circular)
 // ============================================================================
 
+// ============================================================================
+// UNIFIED NOTIFICATION ICON PATHS
+// These icons have colored circular backgrounds and can be used across:
+// - Email templates
+// - Notification dropdowns
+// - Profile activity feeds
+// - Modals with status icons
+// All icons are 64x64 SVG with blue (#5086E8) background and colored inner icons
+// ============================================================================
+
+export const UnifiedNotificationIcons = {
+  // Booking notifications
+  'booking_request': '/images/planbeau-platform-assets/icons/notification/notif-booking-request.svg',
+  'new_booking_request': '/images/planbeau-platform-assets/icons/notification/notif-booking-request.svg',
+  'booking': '/images/planbeau-platform-assets/icons/notification/notif-calendar.svg',
+  'booking_approved': '/images/planbeau-platform-assets/icons/notification/notif-booking-approved.svg',
+  'booking_confirmed': '/images/planbeau-platform-assets/icons/notification/notif-booking-confirmed.svg',
+  'booking_declined': '/images/planbeau-platform-assets/icons/notification/notif-booking-declined.svg',
+  'booking_rejected': '/images/planbeau-platform-assets/icons/notification/notif-booking-declined.svg',
+  'booking_cancelled': '/images/planbeau-platform-assets/icons/notification/notif-booking-cancelled.svg',
+  'booking_reminder': '/images/planbeau-platform-assets/icons/notification/notif-booking-reminder.svg',
+  'booking_update': '/images/planbeau-platform-assets/icons/notification/notif-booking-update.svg',
+  
+  // Message notifications
+  'message': '/images/planbeau-platform-assets/icons/notification/notif-message.svg',
+  'new_message': '/images/planbeau-platform-assets/icons/notification/notif-message.svg',
+  
+  // Payment notifications
+  'payment': '/images/planbeau-platform-assets/icons/notification/notif-payment.svg',
+  'payment_received': '/images/planbeau-platform-assets/icons/notification/notif-payment-received.svg',
+  'payment_reminder': '/images/planbeau-platform-assets/icons/notification/notif-payment-reminder.svg',
+  
+  // Invoice notifications
+  'invoice': '/images/planbeau-platform-assets/icons/notification/notif-invoice.svg',
+  'new_invoice': '/images/planbeau-platform-assets/icons/notification/notif-invoice.svg',
+  
+  // Review notifications
+  'review': '/images/planbeau-platform-assets/icons/notification/notif-review.svg',
+  'new_review': '/images/planbeau-platform-assets/icons/notification/notif-review.svg',
+  
+  // Promotion notifications
+  'promotion': '/images/planbeau-platform-assets/icons/notification/notif-promotion.svg',
+  'promotions': '/images/planbeau-platform-assets/icons/notification/notif-promotion.svg',
+  
+  // Newsletter
+  'newsletter': '/images/planbeau-platform-assets/icons/notification/notif-newsletter.svg',
+  
+  // Announcement
+  'announcement': '/images/planbeau-platform-assets/icons/notification/notif-announcement.svg',
+  
+  // General/default
+  'notification': '/images/planbeau-platform-assets/icons/notification/notif-general.svg',
+  'general': '/images/planbeau-platform-assets/icons/notification/notif-general.svg',
+  
+  // Status icons (for modals, banners, etc.)
+  'success': '/images/planbeau-platform-assets/icons/notification/notif-success.svg',
+  'error': '/images/planbeau-platform-assets/icons/notification/notif-error.svg',
+  'warning': '/images/planbeau-platform-assets/icons/notification/notif-warning.svg',
+  'info': '/images/planbeau-platform-assets/icons/notification/notif-info.svg',
+  
+  // Additional icons
+  'user': '/images/planbeau-platform-assets/icons/notification/notif-user.svg',
+  'heart': '/images/planbeau-platform-assets/icons/notification/notif-heart.svg',
+  'favorite': '/images/planbeau-platform-assets/icons/notification/notif-heart.svg',
+  'lock': '/images/planbeau-platform-assets/icons/notification/notif-lock.svg',
+  'gift': '/images/planbeau-platform-assets/icons/notification/notif-gift.svg',
+  'calendar': '/images/planbeau-platform-assets/icons/notification/notif-calendar.svg',
+  'support': '/images/planbeau-platform-assets/icons/notification/notif-support.svg',
+};
+
+// Helper function to get unified notification icon path
+export const getUnifiedNotificationIcon = (type) => {
+  return UnifiedNotificationIcons[type] || UnifiedNotificationIcons['notification'];
+};
+
 export const EmailIconPaths = {
   'check-green': '/images/email-icons/icon-check-green.svg',
   'calendar-blue': '/images/email-icons/icon-calendar-blue.svg',

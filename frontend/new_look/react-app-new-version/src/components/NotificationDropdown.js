@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getUserNotifications, markNotificationAsRead, markAllNotificationsAsRead } from '../utils/notifications';
 import { useAuth } from '../context/AuthContext';
+import { getUnifiedNotificationIcon } from './common/AppIcons';
 
 function NotificationDropdown({ isOpen, onClose, anchorEl, onBadgeCountChange }) {
   const navigate = useNavigate();
@@ -349,18 +350,19 @@ function NotificationDropdown({ isOpen, onClose, anchorEl, onBadgeCountChange })
                   e.currentTarget.style.backgroundColor = isUnread ? '#fafbfc' : 'white';
                 }}
               >
-                {/* Icon - Blue background with distinctive icon colors */}
+                {/* Icon - Unified SVG notification icon */}
                 <div style={{
                   width: '40px',
                   height: '40px',
                   borderRadius: '50%',
-                  backgroundColor: badge.bgColor,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
+                  overflow: 'hidden',
                   flexShrink: 0
                 }}>
-                  <i className={`fas ${badge.icon}`} style={{ color: badge.iconColor, fontSize: '16px' }}></i>
+                  <img 
+                    src={getUnifiedNotificationIcon(notification.type)} 
+                    alt={notification.type}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
                 </div>
                 
                 {/* Content */}

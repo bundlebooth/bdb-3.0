@@ -21,6 +21,7 @@ BEGIN
 	[Title] [nvarchar](200) NOT NULL,
 	[Message] [nvarchar](max) NOT NULL,
 	[Type] [nvarchar](50) NULL,
+	[IconType] [nvarchar](100) NULL,
 	[IsRead] [bit] NULL,
 	[ReadAt] [datetime] NULL,
 	[RelatedID] [int] NULL,

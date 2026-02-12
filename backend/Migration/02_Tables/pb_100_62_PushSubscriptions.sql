@@ -9,7 +9,11 @@ BEGIN
         SubscriptionID INT IDENTITY(1,1) PRIMARY KEY,
         UserID INT NOT NULL,
         Endpoint NVARCHAR(500) NOT NULL,
+        P256dhKey NVARCHAR(500) NULL,
+        AuthKey NVARCHAR(500) NULL,
         Subscription NVARCHAR(MAX) NOT NULL,
+        DeviceName NVARCHAR(255) NULL,
+        IsActive BIT NOT NULL DEFAULT 1,
         CreatedAt DATETIME2 DEFAULT GETDATE(),
         UpdatedAt DATETIME2 DEFAULT GETDATE(),
         CONSTRAINT FK_PushSubscriptions_Users FOREIGN KEY (UserID) REFERENCES users.Users(UserID) ON DELETE CASCADE,
@@ -17,6 +21,7 @@ BEGIN
     );
     
     CREATE INDEX IX_PushSubscriptions_UserID ON users.PushSubscriptions(UserID);
+    CREATE INDEX IX_PushSubscriptions_IsActive ON users.PushSubscriptions(IsActive);
     
     PRINT 'Table users.PushSubscriptions created successfully';
 END

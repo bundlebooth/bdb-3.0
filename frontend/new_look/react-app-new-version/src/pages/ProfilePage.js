@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
+import { getUnifiedNotificationIcon } from '../components/common/AppIcons';
 import { PageLayout } from '../components/PageWrapper';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
@@ -736,27 +737,24 @@ function ProfilePage() {
                           }}
                           onClick={() => activity.TargetURL && navigate(activity.TargetURL)}
                         >
-                          {/* Activity Icon */}
+                          {/* Activity Icon - Unified SVG */}
                           <div style={{
                             width: '36px',
                             height: '36px',
                             borderRadius: '50%',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            flexShrink: 0,
-                            background: '#f3f4f6',
-                            color: activity.ActivityType === 'review' ? '#f59e0b' :
-                                  activity.ActivityType === 'forum_post' ? '#3b82f6' :
-                                  activity.ActivityType === 'forum_comment' ? '#8b5cf6' :
-                                  activity.ActivityType === 'favorite' ? '#ef4444' : '#6b7280'
+                            overflow: 'hidden',
+                            flexShrink: 0
                           }}>
-                            <i className={`fas ${
-                              activity.ActivityType === 'review' ? 'fa-star' :
-                              activity.ActivityType === 'forum_post' ? 'fa-comments' :
-                              activity.ActivityType === 'forum_comment' ? 'fa-reply' :
-                              activity.ActivityType === 'favorite' ? 'fa-heart' : 'fa-circle'
-                            }`} style={{ fontSize: '0.85rem' }}></i>
+                            <img
+                              src={getUnifiedNotificationIcon(
+                                activity.ActivityType === 'review' ? 'review' :
+                                activity.ActivityType === 'forum_post' ? 'support' :
+                                activity.ActivityType === 'forum_comment' ? 'message' :
+                                activity.ActivityType === 'favorite' ? 'heart' : 'general'
+                              )}
+                              alt={activity.ActivityType}
+                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            />
                           </div>
 
                           {/* Activity Content */}

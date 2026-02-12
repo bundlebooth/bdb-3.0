@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { getUnifiedNotificationIcon } from './common/AppIcons';
 import { API_BASE_URL } from '../config';
 import { useTranslation } from '../hooks/useTranslation';
 import { buildBecomeVendorUrl } from '../utils/urlHelpers';
@@ -585,8 +586,12 @@ function ProfileSidebar({ isOpen, onClose }) {
                         borderLeft: (!notification.IsRead && !notification.isRead) ? '3px solid #5086E8' : '3px solid transparent'
                       }}
                     >
-                      <div className="notification-icon" style={{ background: 'rgba(80, 134, 232, 0.15)' }}>
-                        <i className={`fas ${notifStyle.icon}`} style={{ color: notifStyle.iconColor }}></i>
+                      <div className="notification-icon" style={{ background: 'transparent', padding: 0, overflow: 'hidden' }}>
+                        <img 
+                          src={getUnifiedNotificationIcon(notificationType)} 
+                          alt={notificationType}
+                          style={{ width: 40, height: 40, borderRadius: '50%' }}
+                        />
                       </div>
                       <div className="notification-content">
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
