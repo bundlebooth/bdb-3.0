@@ -4,6 +4,7 @@ const { poolPromise, sql } = require('../config/db');
 const { serializeDates, serializeRecords } = require('../utils/helpers');
 const { notifyOfNewMessage } = require('../services/emailService');
 const contentFilter = require('../services/contentFilterService');
+const { sendTemplatedEmail } = require('../services/email');
 
 // Handle Socket.IO events
 const handleSocketIO = (io) => {
@@ -352,6 +353,30 @@ router.post('/conversation', async (req, res) => {
           io.to(`user_${userId}`).emit('new-message', messageResult.recordset[0]);
         }
       }
+    }
+
+    // Send client_to_vendor welcome email for first contact
+    if (result.recordset[0]?.ConversationID) {
+      try {
+        // Get vendor and client details for email
+        const detailsRequest = pool.request();
+        detailsRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+        detailsRequest.input('UserID', sql.Int, userId);
+        const details = await detailsRequest.execute('messages.sp_GetConversationEmailDetails');
+        
+        if (details.recordset.length > 0) {
+          const { BusinessName, ContactEmail, ClientFirstName, ClientLastName, ClientEmail } = details.recordset[0];
+          const clientName = `${ClientFirstName || ''} ${ClientLastName || ''}`.trim() || 'A client';
+          const dashboardUrl = `${process.env.FRONTEND_URL || 'https://www.planbeau.com'}/dashboard?tab=messages`;
+          
+          // Send email to vendor about new client contact
+          await sendTemplatedEmail('client_to_vendor', ContactEmail, BusinessName, {
+            vendorName: BusinessName,
+            clientName,
+            dashboardUrl
+          }, null, null, null, 'messages');
+        }
+      } catch (emailErr) { console.error('Failed to send client_to_vendor email:', emailErr.message); }
     }
 
     res.json({ 
@@ -797,14 +822,7 @@ router.post('/conversations/end-chat', async (req, res) => {
     // Get all messages from the conversation
     const messagesResult = await pool.request()
       .input('ConversationID', sql.Int, conversationId)
-      .query(`
-        SELECT m.MessageID, m.ConversationID, m.SenderID, m.SenderType, m.Content, m.CreatedAt,
-               u.FirstName + ' ' + u.LastName AS SenderName
-        FROM messages.Messages m
-        LEFT JOIN users.Users u ON m.SenderID = u.UserID AND m.SenderType NOT IN ('support', 'guest')
-        WHERE m.ConversationID = @ConversationID
-        ORDER BY m.CreatedAt ASC
-      `);
+      .execute('messages.sp_GetConversationMessagesForSummary');
     
     const messages = messagesResult.recordset;
     
@@ -818,13 +836,7 @@ router.post('/conversations/end-chat', async (req, res) => {
     if (!emailRecipient || !chatSubject) {
       const convResult = await pool.request()
         .input('ConversationID', sql.Int, conversationId)
-        .query(`
-          SELECT c.Subject, c.Category, c.GuestName, c.GuestEmail, c.ReferenceNumber, c.UserID,
-                 u.Email AS UserEmail, u.FirstName + ' ' + u.LastName AS UserName
-          FROM messages.Conversations c
-          LEFT JOIN dbo.Users u ON c.UserID = u.UserID
-          WHERE c.ConversationID = @ConversationID
-        `);
+        .execute('messages.sp_GetConversationInfo');
       
       if (convResult.recordset.length > 0) {
         const conv = convResult.recordset[0];
@@ -851,11 +863,7 @@ router.post('/conversations/end-chat', async (req, res) => {
     // Update conversation status to closed
     await pool.request()
       .input('ConversationID', sql.Int, conversationId)
-      .query(`
-        UPDATE messages.Conversations 
-        SET UpdatedAt = GETDATE()
-        WHERE ConversationID = @ConversationID
-      `);
+      .execute('messages.sp_CloseConversation');
 
     res.json({
       success: true,

@@ -4,7 +4,7 @@ const { poolPromise, sql } = require('../config/db');
 const { serializeDates, serializeRecords } = require('../utils/helpers');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { sendTwoFactorCode, sendTemplatedEmail, sendAccountSuspended } = require('../services/email');
+const { sendTwoFactorCode, sendTemplatedEmail, sendAccountSuspended, sendAccountDeletionRequested, sendReferralInvitation, sendReferralReward } = require('../services/email');
 const { processUnsubscribe, generateUnsubscribeHtml, getUserPreferences, updateUserPreferences, verifyUnsubscribeToken, resubscribeUser } = require('../services/unsubscribeService');
 const crypto = require('crypto');
 const { upload } = require('../middlewares/uploadMiddleware');
@@ -250,12 +250,7 @@ router.post('/login', authRateLimiter, async (req, res) => {
         await pool.request()
           .input('UserID', sql.Int, user.UserID)
           .input('FailedAttempts', sql.Int, failedAttempts)
-          .query(`
-            UPDATE users.Users 
-            SET FailedLoginAttempts = @FailedAttempts,
-                LastFailedLoginAt = GETDATE()
-            WHERE UserID = @UserID
-          `);
+          .execute('users.sp_UpdateFailedLoginAttempts');
         
         // Lock account if max attempts reached
         if (failedAttempts >= maxAttempts) {
@@ -263,13 +258,7 @@ router.post('/login', authRateLimiter, async (req, res) => {
           await pool.request()
             .input('UserID', sql.Int, user.UserID)
             .input('LockExpiresAt', sql.DateTime, lockExpiry)
-            .query(`
-              UPDATE users.Users 
-              SET IsLocked = 1, 
-                  LockExpiresAt = @LockExpiresAt,
-                  LockReason = 'Too many failed login attempts'
-              WHERE UserID = @UserID
-            `);
+            .execute('users.sp_LockUserAccount');
           
           // Send account locked email notification using existing account_suspended template
           try {
@@ -328,14 +317,7 @@ router.post('/login', authRateLimiter, async (req, res) => {
     try {
       await pool.request()
         .input('UserID', sql.Int, user.UserID)
-        .query(`
-          UPDATE users.Users 
-          SET FailedLoginAttempts = 0,
-              IsLocked = 0,
-              LockExpiresAt = NULL,
-              LockReason = NULL
-          WHERE UserID = @UserID
-        `);
+        .execute('users.sp_ResetLoginAttempts');
     } catch (resetErr) { console.error('Failed to reset login attempts:', resetErr.message); }
 
     // Check 2FA settings from database (SecuritySettings table - key-value pairs)
@@ -1199,22 +1181,7 @@ router.put('/:id/notification-preferences', async (req, res) => {
       const unsubRequest = pool.request();
       unsubRequest.input('UserID', sql.Int, parseInt(id));
       unsubRequest.input('UnsubscribedFromAll', sql.Bit, unsubscribeFromAll ? 1 : 0);
-      
-      if (unsubscribeFromAll) {
-        await unsubRequest.query(`
-          UPDATE users.Users 
-          SET UnsubscribedFromAll = @UnsubscribedFromAll, 
-              UnsubscribedAt = GETUTCDATE() 
-          WHERE UserID = @UserID
-        `);
-      } else {
-        await unsubRequest.query(`
-          UPDATE users.Users 
-          SET UnsubscribedFromAll = @UnsubscribedFromAll, 
-              UnsubscribedAt = NULL 
-          WHERE UserID = @UserID
-        `);
-      }
+      await unsubRequest.execute('users.sp_UpdateUnsubscribeStatus');
     }
 
     res.json({
@@ -1876,16 +1843,7 @@ router.post('/reset-password/complete/:token', async (req, res) => {
     await pool.request()
       .input('UserID', sql.Int, decoded.userId)
       .input('PasswordHash', sql.NVarChar(255), hashedPassword)
-      .query(`
-        UPDATE users.Users 
-        SET PasswordHash = @PasswordHash,
-            FailedLoginAttempts = 0,
-            IsLocked = 0,
-            LockExpiresAt = NULL,
-            LockReason = NULL,
-            UpdatedAt = GETUTCDATE()
-        WHERE UserID = @UserID
-      `);
+      .execute('users.sp_UpdatePasswordAfterReset');
     
     // Log the password reset
     await pool.request()
@@ -1900,7 +1858,7 @@ router.post('/reset-password/complete/:token', async (req, res) => {
     
     // Send confirmation email
     try {
-      await sendTemplatedEmail(decoded.email, 'password_changed', {
+      await sendTemplatedEmail('password_changed', decoded.email, decoded.email.split('@')[0], {
         userName: decoded.email.split('@')[0]
       });
     } catch (emailErr) {
@@ -1968,6 +1926,11 @@ router.delete('/:userId/delete-account', async (req, res) => {
           .input('details', sql.NVarChar, reason || 'User requested account deletion')
           .execute('users.sp_InsertSecurityLog');
       } catch (logErr) { console.error('Failed to log deletion:', logErr.message); }
+      
+      // Send account deletion confirmation email
+      try {
+        await sendAccountDeletionRequested(decoded.email, decoded.firstName || 'User', `${process.env.FRONTEND_URL || 'https://www.planbeau.com'}/contact`, userId);
+      } catch (emailErr) { console.error('Failed to send deletion email:', emailErr.message); }
       
       res.json({ success: true, message: 'Account deleted successfully' });
     } else {
@@ -2353,11 +2316,7 @@ router.get('/:id/privacy-settings', async (req, res) => {
 
     const result = await pool.request()
       .input('UserID', sql.Int, parseInt(id))
-      .query(`
-        SELECT ShowReviews, ShowForumPosts, ShowForumComments, ShowFavorites, ShowOnlineStatus
-        FROM users.UserPrivacySettings
-        WHERE UserID = @UserID
-      `);
+      .execute('users.sp_GetPrivacySettings');
 
     if (result.recordset.length > 0) {
       res.json(result.recordset[0]);
@@ -2399,20 +2358,7 @@ router.put('/:id/privacy-settings', async (req, res) => {
       .input('ShowForumComments', sql.Bit, showForumComments !== false)
       .input('ShowFavorites', sql.Bit, showFavorites !== false)
       .input('ShowOnlineStatus', sql.Bit, showOnlineStatus !== false)
-      .query(`
-        IF EXISTS (SELECT 1 FROM users.UserPrivacySettings WHERE UserID = @UserID)
-          UPDATE users.UserPrivacySettings
-          SET ShowReviews = @ShowReviews,
-              ShowForumPosts = @ShowForumPosts,
-              ShowForumComments = @ShowForumComments,
-              ShowFavorites = @ShowFavorites,
-              ShowOnlineStatus = @ShowOnlineStatus,
-              UpdatedAt = GETDATE()
-          WHERE UserID = @UserID
-        ELSE
-          INSERT INTO users.UserPrivacySettings (UserID, ShowReviews, ShowForumPosts, ShowForumComments, ShowFavorites, ShowOnlineStatus)
-          VALUES (@UserID, @ShowReviews, @ShowForumPosts, @ShowForumComments, @ShowFavorites, @ShowOnlineStatus)
-      `);
+      .execute('users.sp_UpsertPrivacySettings');
 
     res.json({ success: true, message: 'Privacy settings updated' });
   } catch (err) {
@@ -2615,16 +2561,133 @@ router.post('/report', async (req, res) => {
       .input('Reason', sql.NVarChar(100), reason)
       .input('Details', sql.NVarChar(sql.MAX), details || null)
       .input('ReportedBy', sql.Int, reportedBy ? parseInt(reportedBy) : null)
-      .query(`
-        INSERT INTO users.UserReports (ReportedUserID, Reason, Details, ReportedBy, CreatedAt, Status)
-        VALUES (@ReportedUserID, @Reason, @Details, @ReportedBy, GETDATE(), 'pending')
-      `);
+      .execute('users.sp_InsertUserReport');
 
     res.json({ success: true, message: 'Report submitted successfully' });
   } catch (err) {
     console.error('Report user error:', err);
     // If table doesn't exist, still return success to not break the UI
     res.json({ success: true, message: 'Report submitted' });
+  }
+});
+
+// ============================================================
+// REFERRAL SYSTEM ENDPOINTS
+// ============================================================
+
+// POST /users/referrals/send - Send referral invitation email
+router.post('/referrals/send', async (req, res) => {
+  try {
+    const { userId, refereeEmail, refereeName, customMessage } = req.body;
+    
+    if (!userId || !refereeEmail) {
+      return res.status(400).json({ success: false, message: 'userId and refereeEmail are required' });
+    }
+    
+    const pool = await poolPromise;
+    
+    // Get referrer details
+    const userResult = await pool.request()
+      .input('UserID', sql.Int, userId)
+      .execute('users.sp_GetUserByID');
+    
+    if (userResult.recordset.length === 0) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+    
+    const referrer = userResult.recordset[0];
+    const referrerName = `${referrer.FirstName || ''} ${referrer.LastName || ''}`.trim() || 'A friend';
+    
+    // Generate referral code
+    const referralCode = `REF${userId}${Date.now().toString(36).toUpperCase()}`;
+    const referralUrl = `${process.env.FRONTEND_URL || 'https://www.planbeau.com'}/register?ref=${referralCode}`;
+    
+    // Store referral in database
+    await pool.request()
+      .input('ReferrerUserID', sql.Int, userId)
+      .input('RefereeEmail', sql.NVarChar(255), refereeEmail)
+      .input('RefereeName', sql.NVarChar(255), refereeName || null)
+      .input('ReferralCode', sql.NVarChar(50), referralCode)
+      .input('CustomMessage', sql.NVarChar(sql.MAX), customMessage || null)
+      .execute('users.sp_InsertReferral');
+    
+    // Send referral invitation email
+    await sendReferralInvitation(
+      refereeEmail,
+      refereeName || 'Friend',
+      referrerName,
+      referralUrl,
+      customMessage || `${referrerName} thinks you'd love PlanBeau for finding amazing event vendors!`
+    );
+    
+    res.json({ success: true, message: 'Referral invitation sent', referralCode });
+  } catch (err) {
+    console.error('Send referral error:', err);
+    // If table doesn't exist, create it and retry
+    if (err.message.includes('Invalid object name')) {
+      res.status(500).json({ success: false, message: 'Referral system not configured' });
+    } else {
+      res.status(500).json({ success: false, message: 'Failed to send referral invitation' });
+    }
+  }
+});
+
+// POST /users/referrals/complete - Complete referral and send reward emails
+router.post('/referrals/complete', async (req, res) => {
+  try {
+    const { referralCode, newUserId } = req.body;
+    
+    if (!referralCode || !newUserId) {
+      return res.status(400).json({ success: false, message: 'referralCode and newUserId are required' });
+    }
+    
+    const pool = await poolPromise;
+    
+    // Find the referral
+    const referralResult = await pool.request()
+      .input('ReferralCode', sql.NVarChar(50), referralCode)
+      .execute('users.sp_GetReferralByCode');
+    
+    if (referralResult.recordset.length === 0) {
+      return res.status(404).json({ success: false, message: 'Referral not found or already completed' });
+    }
+    
+    const referral = referralResult.recordset[0];
+    const referrerName = `${referral.FirstName || ''} ${referral.LastName || ''}`.trim() || 'User';
+    
+    // Get new user details
+    const newUserResult = await pool.request()
+      .input('UserID', sql.Int, newUserId)
+      .execute('users.sp_GetUserByID');
+    
+    if (newUserResult.recordset.length === 0) {
+      return res.status(404).json({ success: false, message: 'New user not found' });
+    }
+    
+    const newUser = newUserResult.recordset[0];
+    const newUserName = `${newUser.FirstName || ''} ${newUser.LastName || ''}`.trim() || 'New user';
+    
+    // Update referral status
+    await pool.request()
+      .input('ReferralCode', sql.NVarChar(50), referralCode)
+      .input('RefereeUserID', sql.Int, newUserId)
+      .execute('users.sp_CompleteReferral');
+    
+    // Send reward email to referrer
+    const dashboardUrl = `${process.env.FRONTEND_URL || 'https://www.planbeau.com'}/dashboard`;
+    await sendReferralReward(
+      referral.ReferrerEmail,
+      referrerName,
+      newUserName,
+      '$10 credit', // Reward amount - can be configured
+      dashboardUrl,
+      referral.ReferrerUserID
+    );
+    
+    res.json({ success: true, message: 'Referral completed and reward sent' });
+  } catch (err) {
+    console.error('Complete referral error:', err);
+    res.status(500).json({ success: false, message: 'Failed to complete referral' });
   }
 });
 

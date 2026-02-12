@@ -14,6 +14,7 @@ const {
   notifyClientOfPayment, 
   notifyOfBookingConfirmation 
 } = require('../services/emailService');
+const { sendRefundProcessed, sendPaymentFailed, sendPayoutProcessed, sendDisputeOpened, sendDisputeResolved } = require('../services/email');
 const { decodeBookingId, encodeBookingId, isPublicId } = require('../utils/hashIds');
 
 // Helper to resolve booking ID (handles both public ID and numeric ID)
@@ -935,23 +936,7 @@ router.post('/payment-intent', async (req, res) => {
       try {
         const bookingRequest = pool.request();
         bookingRequest.input('BookingID', sql.Int, bookingId);
-        const bookingRes = await bookingRequest.query(`
-          SELECT 
-            b.Subtotal,
-            b.PlatformFee,
-            b.TaxAmount,
-            b.TaxPercent,
-            b.TaxLabel,
-            b.ProcessingFee,
-            b.GrandTotal,
-            b.EventLocation,
-            b.TotalAmount,
-            b.EventTime,
-            b.EventEndTime,
-            b.Services
-          FROM bookings.Bookings b
-          WHERE b.BookingID = @BookingID
-        `);
+        const bookingRes = await bookingRequest.execute('payments.sp_GetBookingFinancials');
         
         if (bookingRes.recordset.length > 0) {
           const bookingData = bookingRes.recordset[0];
@@ -1060,20 +1045,7 @@ router.post('/payment-intent', async (req, res) => {
       try {
         const reqRequest = pool.request();
         reqRequest.input('RequestID', sql.Int, requestId);
-        const reqRes = await reqRequest.query(`
-          SELECT 
-            r.Subtotal,
-            r.PlatformFee,
-            r.TaxAmount,
-            r.TaxPercent,
-            r.TaxLabel,
-            r.ProcessingFee,
-            r.GrandTotal,
-            r.EventLocation,
-            r.Budget
-          FROM bookings.Requests r
-          WHERE r.RequestID = @RequestID
-        `);
+        const reqRes = await reqRequest.execute('payments.sp_GetRequestFinancials');
         
         if (reqRes.recordset.length > 0) {
           const reqData = reqRes.recordset[0];
@@ -1662,6 +1634,22 @@ router.post('/cancel-booking/:bookingId', async (req, res) => {
         .input('StripeRefundStatus', sql.NVarChar(50), stripeRefundStatus)
         .input('RefundStatus', sql.NVarChar(50), stripeRefundStatus === 'succeeded' ? 'completed' : 'processing')
         .execute('bookings.sp_UpdateCancellationRefund');
+    }
+
+    // Send refund confirmation email to client
+    if (refundAmount > 0 && booking.ClientEmail) {
+      try {
+        await sendRefundProcessed(
+          booking.ClientEmail,
+          booking.ClientName || 'Customer',
+          booking.VendorName || 'Vendor',
+          booking.ServiceName || 'Service',
+          `$${refundAmount.toFixed(2)}`,
+          `${process.env.FRONTEND_URL || 'https://www.planbeau.com'}/dashboard?tab=bookings`,
+          booking.ClientUserID,
+          bookingId
+        );
+      } catch (emailErr) { console.error('Failed to send refund email:', emailErr.message); }
     }
 
     res.json({
@@ -2322,6 +2310,28 @@ const webhook = async (req, res) => {
           request.input('Status', sql.NVarChar(20), 'payment_failed');
           
           await request.execute('payments.sp_MarkBookingFailed');
+          
+          // Send payment_failed email to client
+          try {
+            const bookingInfo = await pool.request()
+              .input('BookingID', sql.Int, failedCharge.metadata.booking_id)
+              .execute('payments.sp_GetBookingEmailInfo');
+            
+            if (bookingInfo.recordset.length > 0) {
+              const bi = bookingInfo.recordset[0];
+              const clientName = `${bi.FirstName || ''} ${bi.LastName || ''}`.trim() || 'Customer';
+              await sendPaymentFailed(
+                bi.Email,
+                clientName,
+                bi.BusinessName,
+                bi.ServiceName || 'Service',
+                bi.TotalAmount ? `$${bi.TotalAmount}` : 'Amount',
+                `${process.env.FRONTEND_URL || 'https://www.planbeau.com'}/dashboard?tab=bookings`,
+                bi.UserID,
+                parseInt(failedCharge.metadata.booking_id)
+              );
+            }
+          } catch (emailErr) { console.error('Failed to send payment_failed email:', emailErr.message); }
         }
         break;
 
@@ -2345,6 +2355,82 @@ const webhook = async (req, res) => {
         
         // You can update vendor account status in your database here
         // This is useful for tracking when vendors complete their onboarding
+        break;
+
+      case 'payout.paid':
+        const payout = event.data.object;
+        
+        // Send payout_processed email to vendor
+        try {
+          const pool = await poolPromise;
+          // Find vendor by Stripe account ID
+          const vendorInfo = await pool.request()
+            .input('StripeAccountID', sql.NVarChar(100), payout.destination)
+            .execute('payments.sp_GetVendorByStripeAccount');
+          
+          if (vendorInfo.recordset.length > 0) {
+            const vi = vendorInfo.recordset[0];
+            await sendPayoutProcessed(
+              vi.ContactEmail,
+              vi.BusinessName,
+              `$${(payout.amount / 100).toFixed(2)}`,
+              new Date(payout.arrival_date * 1000).toLocaleDateString(),
+              `${process.env.FRONTEND_URL || 'https://www.planbeau.com'}/dashboard?tab=payments`,
+              vi.UserID
+            );
+          }
+        } catch (emailErr) { console.error('Failed to send payout_processed email:', emailErr.message); }
+        break;
+
+      case 'charge.dispute.created':
+        const dispute = event.data.object;
+        
+        // Send dispute_opened emails to both client and vendor
+        try {
+          const pool = await poolPromise;
+          if (dispute.metadata && dispute.metadata.booking_id) {
+            const bookingInfo = await pool.request()
+              .input('BookingID', sql.Int, dispute.metadata.booking_id)
+              .execute('payments.sp_GetBookingDisputeInfo');
+            
+            if (bookingInfo.recordset.length > 0) {
+              const bi = bookingInfo.recordset[0];
+              const clientName = `${bi.FirstName || ''} ${bi.LastName || ''}`.trim() || 'Customer';
+              const dashboardUrl = `${process.env.FRONTEND_URL || 'https://www.planbeau.com'}/dashboard?tab=bookings`;
+              
+              // Email to client
+              await sendDisputeOpened(bi.ClientEmail, clientName, bi.BusinessName, bi.ServiceName || 'Service', dispute.reason || 'Dispute opened', dashboardUrl, bi.ClientUserID, parseInt(dispute.metadata.booking_id));
+              // Email to vendor
+              await sendDisputeOpened(bi.VendorEmail, bi.BusinessName, clientName, bi.ServiceName || 'Service', dispute.reason || 'Dispute opened', dashboardUrl, bi.VendorUserID, parseInt(dispute.metadata.booking_id));
+            }
+          }
+        } catch (emailErr) { console.error('Failed to send dispute_opened email:', emailErr.message); }
+        break;
+
+      case 'charge.dispute.closed':
+        const closedDispute = event.data.object;
+        
+        // Send dispute_resolved emails
+        try {
+          const pool = await poolPromise;
+          if (closedDispute.metadata && closedDispute.metadata.booking_id) {
+            const bookingInfo = await pool.request()
+              .input('BookingID', sql.Int, closedDispute.metadata.booking_id)
+              .execute('payments.sp_GetBookingDisputeInfo');
+            
+            if (bookingInfo.recordset.length > 0) {
+              const bi = bookingInfo.recordset[0];
+              const clientName = `${bi.FirstName || ''} ${bi.LastName || ''}`.trim() || 'Customer';
+              const dashboardUrl = `${process.env.FRONTEND_URL || 'https://www.planbeau.com'}/dashboard?tab=bookings`;
+              const resolution = closedDispute.status === 'won' ? 'Resolved in your favor' : closedDispute.status === 'lost' ? 'Resolved against you' : 'Dispute closed';
+              
+              // Email to client
+              await sendDisputeResolved(bi.ClientEmail, clientName, bi.BusinessName, bi.ServiceName || 'Service', resolution, dashboardUrl, bi.ClientUserID, parseInt(closedDispute.metadata.booking_id));
+              // Email to vendor
+              await sendDisputeResolved(bi.VendorEmail, bi.BusinessName, clientName, bi.ServiceName || 'Service', resolution, dashboardUrl, bi.VendorUserID, parseInt(closedDispute.metadata.booking_id));
+            }
+          }
+        } catch (emailErr) { console.error('Failed to send dispute_resolved email:', emailErr.message); }
         break;
 
       default:

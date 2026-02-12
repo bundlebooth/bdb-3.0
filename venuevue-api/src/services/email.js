@@ -54,15 +54,7 @@ async function checkEmailCooldown(templateKey, recipientEmail, userId = null) {
       .input('TemplateKey', sql.NVarChar(50), templateKey)
       .input('RecipientEmail', sql.NVarChar(255), recipientEmail)
       .input('CooldownMinutes', sql.Int, cooldownMinutes)
-      .query(`
-        SELECT TOP 1 SentAt 
-        FROM admin.EmailLogs 
-        WHERE TemplateKey = @TemplateKey 
-          AND RecipientEmail = @RecipientEmail 
-          AND Status = 'sent'
-          AND SentAt > DATEADD(MINUTE, -@CooldownMinutes, GETDATE())
-        ORDER BY SentAt DESC
-      `);
+      .execute('admin.sp_CheckEmailCooldown');
     
     if (result.recordset.length > 0) {
       const lastSentAt = result.recordset[0].SentAt;
@@ -823,76 +815,16 @@ async function sendPolicyWarningEmail(userEmail, userName, violationType, violat
   
   // Determine warning level based on violation count
   const isSecondWarning = violationCount >= 2;
-  const subject = isSecondWarning 
-    ? 'Second Warning: Your Message Was Blocked - Planbeau'
-    : 'Warning: Your Message Was Blocked - Planbeau';
-  
   const warningMessage = isSecondWarning
     ? `This is your second warning. Your account will be locked if you continue to violate our community guidelines.`
     : `This is a warning. Continued violations may result in your account being suspended.`;
   
-  // Build HTML content using existing email patterns
-  const htmlContent = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-      <div style="background: linear-gradient(135deg, #D4A574 0%, #C4956A 100%); padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
-        <h1 style="color: white; margin: 0; font-size: 24px;">⚠️ Message Blocked</h1>
-      </div>
-      <div style="background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 8px 8px;">
-        <p style="font-size: 16px; color: #333;">Hi ${userName},</p>
-        <p style="font-size: 16px; color: #333;">Your recent message could not be sent because it violated our community guidelines.</p>
-        
-        <div style="background: #FFF3CD; border-left: 4px solid #FFC107; padding: 15px; margin: 20px 0; border-radius: 4px;">
-          <p style="margin: 0; font-weight: bold; color: #856404;">Violation Type: ${violationText}</p>
-          <p style="margin: 10px 0 0 0; color: #856404;">${warningMessage}</p>
-        </div>
-        
-        <p style="font-size: 16px; color: #333;">At Planbeau, we're committed to maintaining a safe and professional environment for all users. Please review our <a href="https://www.planbeau.com/community-guidelines" style="color: #D4A574;">Community Guidelines</a> to ensure your future messages comply with our policies.</p>
-        
-        <p style="font-size: 14px; color: #666; margin-top: 30px;">If you believe this was a mistake, please contact our support team at <a href="mailto:${supportEmail}" style="color: #D4A574;">${supportEmail}</a>.</p>
-        
-        <p style="font-size: 16px; color: #333; margin-top: 20px;">Thank you for your understanding,<br><strong>The Planbeau Team</strong></p>
-      </div>
-    </div>
-  `;
-  
-  const textContent = `
-Hi ${userName},
-
-Your recent message could not be sent because it violated our community guidelines.
-
-Violation Type: ${violationText}
-${warningMessage}
-
-At Planbeau, we're committed to maintaining a safe and professional environment for all users. Please review our Community Guidelines at https://www.planbeau.com/community-guidelines.
-
-If you believe this was a mistake, please contact our support team at ${supportEmail}.
-
-Thank you for your understanding,
-The Planbeau Team
-  `;
-  
-  // Log the email before sending
-  await logEmail('policy_warning', userEmail, userName, subject, 'pending', null, userId, null, { violationType, violationCount });
-  
-  try {
-    await sendEmail({ 
-      to: userEmail, 
-      subject, 
-      html: htmlContent, 
-      text: textContent,
-      templateKey: 'policy_warning',
-      emailCategory: 'admin'
-    });
-    
-    // Update log to sent
-    await logEmail('policy_warning', userEmail, userName, subject, 'sent', null, userId, null, { violationType, violationCount }, htmlContent);
-    console.log(`[Email] Policy warning email sent to ${userEmail}`);
-    return { success: true };
-  } catch (error) {
-    console.error(`[Email] Failed to send policy warning email to ${userEmail}:`, error.message);
-    await logEmail('policy_warning', userEmail, userName, subject, 'failed', error.message, userId, null, { violationType, violationCount });
-    return { success: false, error: error.message };
-  }
+  return sendTemplatedEmail('policy_warning', userEmail, userName, {
+    userName,
+    violationType: violationText,
+    warningMessage,
+    supportEmail
+  }, userId, null, { violationType, violationCount }, 'admin', adminBcc);
 }
 
 /**
@@ -911,11 +843,8 @@ async function sendChatSummaryEmail(recipientEmail, recipientName, referenceNumb
     return { success: false, error: 'No email provided' };
   }
   
-  const supportEmail = process.env.EMAIL_SUPPORT || 'support@planbeau.com';
-  const emailSubject = `Your Support Chat Summary - ${referenceNumber}`;
-  
-  // Format messages for email
-  const formattedMessages = messages.map(msg => {
+  // Format messages for email HTML
+  const conversationHtml = messages.map(msg => {
     const senderName = msg.SenderType === 'support' ? 'Planbeau Support' : 
                        msg.SenderType === 'guest' ? recipientName : 
                        msg.SenderName || 'You';
@@ -924,77 +853,8 @@ async function sendChatSummaryEmail(recipientEmail, recipientName, referenceNumb
     });
     const isSupport = msg.SenderType === 'support';
     
-    return `
-      <div style="margin-bottom: 16px; padding: 12px; background: ${isSupport ? '#f0f4ff' : '#f9fafb'}; border-radius: 8px; border-left: 3px solid ${isSupport ? '#5e72e4' : '#d1d5db'};">
-        <div style="font-size: 12px; color: #6b7280; margin-bottom: 4px;">
-          <strong>${senderName}</strong> • ${time}
-        </div>
-        <div style="font-size: 14px; color: #374151; white-space: pre-wrap;">${msg.Content}</div>
-      </div>
-    `;
+    return `<div style="margin-bottom:16px;padding:12px;background:${isSupport ? '#f0f4ff' : '#f9fafb'};border-radius:8px;border-left:3px solid ${isSupport ? '#2563eb' : '#d1d5db'}"><div style="font-size:12px;color:#6b7280;margin-bottom:4px"><strong>${senderName}</strong> • ${time}</div><div style="font-size:14px;color:#374151;white-space:pre-wrap">${msg.Content}</div></div>`;
   }).join('');
-  
-  const htmlContent = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-      <div style="background: linear-gradient(135deg, #5e72e4 0%, #4c63d2 100%); padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
-        <h1 style="color: white; margin: 0; font-size: 24px;">💬 Chat Summary</h1>
-        <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 14px;">Reference: ${referenceNumber}</p>
-      </div>
-      <div style="background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 8px 8px;">
-        <p style="font-size: 16px; color: #333;">Hi ${recipientName},</p>
-        <p style="font-size: 16px; color: #333;">Thank you for contacting Planbeau Support. Here's a summary of your conversation:</p>
-        
-        <div style="background: #f9fafb; border-radius: 8px; padding: 16px; margin: 20px 0;">
-          <p style="margin: 0 0 8px 0; font-size: 14px;"><strong>Subject:</strong> ${subject}</p>
-          <p style="margin: 0 0 8px 0; font-size: 14px;"><strong>Category:</strong> ${category}</p>
-          <p style="margin: 0; font-size: 14px;"><strong>Reference:</strong> ${referenceNumber}</p>
-        </div>
-        
-        <h3 style="font-size: 16px; color: #111; margin: 24px 0 16px 0; border-bottom: 1px solid #e5e7eb; padding-bottom: 8px;">Conversation</h3>
-        ${formattedMessages}
-        
-        <div style="background: #FFF9E6; border-left: 4px solid #F59E0B; padding: 15px; margin: 24px 0; border-radius: 4px;">
-          <p style="margin: 0; font-size: 14px; color: #92400E;">
-            <strong>Need more help?</strong><br>
-            Reply to this email or start a new chat at <a href="https://www.planbeau.com" style="color: #5e72e4;">planbeau.com</a>. 
-            Use your reference number <strong>${referenceNumber}</strong> to continue this conversation.
-          </p>
-        </div>
-        
-        <p style="font-size: 16px; color: #333; margin-top: 20px;">Thank you for choosing Planbeau!<br><strong>The Planbeau Support Team</strong></p>
-      </div>
-      <div style="text-align: center; padding: 20px; color: #9ca3af; font-size: 12px;">
-        <p>© ${new Date().getFullYear()} Planbeau. All rights reserved.</p>
-      </div>
-    </div>
-  `;
-  
-  const textContent = `
-Hi ${recipientName},
-
-Thank you for contacting Planbeau Support. Here's a summary of your conversation:
-
-Subject: ${subject}
-Category: ${category}
-Reference: ${referenceNumber}
-
---- Conversation ---
-${messages.map(msg => {
-  const senderName = msg.SenderType === 'support' ? 'Planbeau Support' : 
-                     msg.SenderType === 'guest' ? recipientName : 
-                     msg.SenderName || 'You';
-  const time = new Date(msg.CreatedAt).toLocaleString('en-US', {
-    month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true
-  });
-  return `[${senderName} - ${time}]\n${msg.Content}\n`;
-}).join('\n')}
-
-Need more help? Reply to this email or start a new chat at planbeau.com.
-Use your reference number ${referenceNumber} to continue this conversation.
-
-Thank you for choosing Planbeau!
-The Planbeau Support Team
-  `;
   
   // Create text file attachment with full conversation transcript
   const transcriptContent = `PLANBEAU SUPPORT CHAT TRANSCRIPT
@@ -1036,23 +896,518 @@ Thank you for choosing Planbeau!
     content: transcriptBase64
   }];
   
-  try {
-    await sendEmail({ 
-      to: recipientEmail, 
-      subject: emailSubject, 
-      html: htmlContent, 
-      text: textContent,
-      templateKey: 'chat_summary',
-      emailCategory: 'support',
-      attachments
-    });
-    
-    console.log(`[Email] Chat summary email sent to ${recipientEmail} with transcript attachment`);
-    return { success: true };
-  } catch (error) {
-    console.error(`[Email] Failed to send chat summary email to ${recipientEmail}:`, error.message);
-    return { success: false, error: error.message };
-  }
+  const adminBcc = 'admin@planbeau.com';
+  
+  return sendTemplatedEmail('chat_summary', recipientEmail, recipientName, {
+    recipientName,
+    referenceNumber,
+    subject,
+    category,
+    conversationHtml
+  }, null, null, null, 'support', adminBcc, attachments);
+}
+
+// =============================================
+// Additional Email Helper Functions
+// =============================================
+
+/**
+ * Send email verification email
+ */
+async function sendEmailVerification(userEmail, userName, verificationUrl, userId = null) {
+  return sendTemplatedEmail('email_verification', userEmail, userName, {
+    userName,
+    verificationUrl
+  }, userId);
+}
+
+/**
+ * Send login from new device notification
+ */
+async function sendLoginNewDevice(userEmail, userName, deviceName, location, loginTime, secureAccountUrl, userId = null) {
+  return sendTemplatedEmail('login_new_device', userEmail, userName, {
+    userName,
+    deviceName,
+    location,
+    loginTime,
+    secureAccountUrl
+  }, userId);
+}
+
+/**
+ * Send booking rescheduled notification
+ */
+async function sendBookingRescheduled(recipientEmail, recipientName, serviceName, originalDate, originalTime, newDate, newTime, dashboardUrl, userId = null) {
+  return sendTemplatedEmail('booking_rescheduled', recipientEmail, recipientName, {
+    recipientName,
+    serviceName,
+    originalDate,
+    originalTime,
+    newDate,
+    newTime,
+    dashboardUrl
+  }, userId);
+}
+
+/**
+ * Send invoice to client
+ */
+async function sendInvoice(clientEmail, clientName, vendorName, invoiceNumber, serviceName, eventDate, amount, dueDate, paymentUrl, userId = null) {
+  return sendTemplatedEmail('invoice_sent', clientEmail, clientName, {
+    clientName,
+    vendorName,
+    invoiceNumber,
+    serviceName,
+    eventDate,
+    amount,
+    dueDate,
+    paymentUrl
+  }, userId);
+}
+
+/**
+ * Send refund processed notification
+ */
+async function sendRefundProcessed(recipientEmail, recipientName, refundAmount, serviceName, refundMethod, dashboardUrl, userId = null) {
+  return sendTemplatedEmail('refund_processed', recipientEmail, recipientName, {
+    recipientName,
+    refundAmount,
+    serviceName,
+    refundMethod,
+    dashboardUrl
+  }, userId);
+}
+
+/**
+ * Send payout processed notification to vendor
+ */
+async function sendPayoutProcessed(vendorEmail, vendorName, payoutAmount, lastFourDigits, arrivalDate, dashboardUrl, userId = null) {
+  return sendTemplatedEmail('payout_processed', vendorEmail, vendorName, {
+    vendorName,
+    payoutAmount,
+    lastFourDigits,
+    arrivalDate,
+    dashboardUrl
+  }, userId);
+}
+
+/**
+ * Send new review received notification to vendor
+ */
+async function sendNewReviewReceived(vendorEmail, vendorName, clientName, rating, reviewPreview, reviewUrl, userId = null) {
+  const starsHtml = '★'.repeat(rating) + '☆'.repeat(5 - rating);
+  return sendTemplatedEmail('new_review_received', vendorEmail, vendorName, {
+    vendorName,
+    clientName,
+    rating,
+    starsHtml,
+    reviewPreview,
+    reviewUrl
+  }, userId);
+}
+
+/**
+ * Send quote received notification to client
+ */
+async function sendQuoteReceived(clientEmail, clientName, vendorName, serviceName, eventDate, quoteAmount, validUntil, quoteUrl, userId = null) {
+  return sendTemplatedEmail('quote_received', clientEmail, clientName, {
+    clientName,
+    vendorName,
+    serviceName,
+    eventDate,
+    quoteAmount,
+    validUntil,
+    quoteUrl
+  }, userId);
+}
+
+/**
+ * Send payment receipt to client
+ */
+async function sendReceipt(clientEmail, clientName, receiptNumber, paymentDate, vendorName, serviceName, amount, paymentMethod, receiptUrl, userId = null) {
+  return sendTemplatedEmail('receipt', clientEmail, clientName, {
+    clientName,
+    receiptNumber,
+    paymentDate,
+    vendorName,
+    serviceName,
+    amount,
+    paymentMethod,
+    receiptUrl
+  }, userId);
+}
+
+/**
+ * Send dispute opened notification
+ */
+async function sendDisputeOpened(recipientEmail, recipientName, bookingId, serviceName, disputeReason, filedBy, disputeUrl, userId = null) {
+  return sendTemplatedEmail('dispute_opened', recipientEmail, recipientName, {
+    recipientName,
+    bookingId,
+    serviceName,
+    disputeReason,
+    filedBy,
+    disputeUrl
+  }, userId);
+}
+
+/**
+ * Send dispute resolved notification
+ */
+async function sendDisputeResolved(recipientEmail, recipientName, bookingId, resolution, resolutionDetails, disputeUrl, userId = null) {
+  return sendTemplatedEmail('dispute_resolved', recipientEmail, recipientName, {
+    recipientName,
+    bookingId,
+    resolution,
+    resolutionDetails,
+    disputeUrl
+  }, userId);
+}
+
+/**
+ * Send vendor featured notification
+ */
+async function sendVendorFeatured(vendorEmail, vendorName, dashboardUrl, userId = null) {
+  return sendTemplatedEmail('vendor_featured', vendorEmail, vendorName, {
+    vendorName,
+    dashboardUrl
+  }, userId);
+}
+
+/**
+ * Send event completed notification (request review)
+ */
+async function sendEventCompleted(clientEmail, clientName, vendorName, serviceName, eventDate, reviewUrl, userId = null) {
+  return sendTemplatedEmail('event_completed', clientEmail, clientName, {
+    clientName,
+    vendorName,
+    serviceName,
+    eventDate,
+    reviewUrl
+  }, userId);
+}
+
+/**
+ * Send payment failed notification
+ */
+async function sendPaymentFailed(recipientEmail, recipientName, amount, vendorName, retryUrl, userId = null) {
+  return sendTemplatedEmail('payment_failed', recipientEmail, recipientName, {
+    recipientName,
+    amount,
+    vendorName,
+    retryUrl
+  }, userId);
+}
+
+/**
+ * Send booking deposit due reminder
+ */
+async function sendBookingDepositDue(clientEmail, clientName, vendorName, serviceName, eventDate, depositAmount, dueDate, paymentUrl, userId = null) {
+  return sendTemplatedEmail('booking_deposit_due', clientEmail, clientName, {
+    clientName,
+    vendorName,
+    serviceName,
+    eventDate,
+    depositAmount,
+    dueDate,
+    paymentUrl
+  }, userId);
+}
+
+/**
+ * Send final payment due reminder
+ */
+async function sendFinalPaymentDue(clientEmail, clientName, vendorName, serviceName, eventDate, amountDue, dueDate, paymentUrl, userId = null) {
+  return sendTemplatedEmail('final_payment_due', clientEmail, clientName, {
+    clientName,
+    vendorName,
+    serviceName,
+    eventDate,
+    amountDue,
+    dueDate,
+    paymentUrl
+  }, userId);
+}
+
+/**
+ * Send password reset email
+ */
+async function sendPasswordReset(userEmail, userName, resetUrl, userId = null) {
+  return sendTemplatedEmail('password_reset', userEmail, userName, {
+    userName,
+    resetUrl
+  }, userId);
+}
+
+/**
+ * Send password changed confirmation
+ */
+async function sendPasswordChanged(userEmail, userName, changeTime, secureAccountUrl, userId = null) {
+  return sendTemplatedEmail('password_changed', userEmail, userName, {
+    userName,
+    changeTime,
+    secureAccountUrl
+  }, userId);
+}
+
+/**
+ * Send booking reminder (24h or 1 week)
+ */
+async function sendBookingReminder(recipientEmail, recipientName, serviceName, eventDate, eventTime, location, otherPartyName, otherPartyLabel, dashboardUrl, reminderType = '24h', userId = null) {
+  const templateKey = reminderType === '1_week' ? 'booking_reminder_1_week' : 'booking_reminder_24h';
+  return sendTemplatedEmail(templateKey, recipientEmail, recipientName, {
+    recipientName,
+    serviceName,
+    eventDate,
+    eventTime,
+    location,
+    otherPartyName,
+    otherPartyLabel,
+    dashboardUrl
+  }, userId);
+}
+
+/**
+ * Send review request to client after event
+ */
+async function sendReviewRequest(clientEmail, clientName, vendorName, serviceName, eventDate, reviewUrl, userId = null) {
+  return sendTemplatedEmail('review_request', clientEmail, clientName, {
+    clientName,
+    vendorName,
+    serviceName,
+    eventDate,
+    reviewUrl
+  }, userId);
+}
+
+/**
+ * Send favorite vendor available notification
+ */
+async function sendFavoriteVendorAvailable(clientEmail, clientName, vendorName, vendorCategory, availableDates, vendorProfileUrl, userId = null) {
+  return sendTemplatedEmail('favorite_vendor_available', clientEmail, clientName, {
+    clientName,
+    vendorName,
+    vendorCategory,
+    availableDates,
+    vendorProfileUrl
+  }, userId);
+}
+
+/**
+ * Send vendor profile incomplete reminder
+ */
+async function sendVendorProfileIncomplete(vendorEmail, vendorName, completionPercentage, incompleteSectionsHtml, dashboardUrl, userId = null) {
+  return sendTemplatedEmail('vendor_profile_incomplete', vendorEmail, vendorName, {
+    vendorName,
+    completionPercentage,
+    incompleteSectionsHtml,
+    dashboardUrl
+  }, userId);
+}
+
+/**
+ * Send account deletion requested confirmation
+ */
+async function sendAccountDeletionRequested(userEmail, userName, confirmDeletionUrl, userId = null) {
+  return sendTemplatedEmail('account_deletion_requested', userEmail, userName, {
+    userName,
+    confirmDeletionUrl
+  }, userId);
+}
+
+/**
+ * Send unread messages reminder
+ */
+async function sendUnreadMessagesReminder(recipientEmail, recipientName, unreadCount, messagePreviewsHtml, messagesUrl, userId = null) {
+  return sendTemplatedEmail('unread_messages_reminder', recipientEmail, recipientName, {
+    recipientName,
+    unreadCount,
+    messagePreviewsHtml,
+    messagesUrl
+  }, userId);
+}
+
+/**
+ * Send user inactivity reminder
+ */
+async function sendUserInactivity(userEmail, userName, searchUrl, userId = null) {
+  return sendTemplatedEmail('user_inactivity', userEmail, userName, {
+    recipientName: userName,
+    searchUrl
+  }, userId);
+}
+
+/**
+ * Send vendor inactivity reminder
+ */
+async function sendVendorInactivity(vendorEmail, vendorName, lastActiveDate, dashboardUrl, userId = null) {
+  return sendTemplatedEmail('vendor_inactivity', vendorEmail, vendorName, {
+    recipientName: vendorName,
+    lastActiveDate,
+    dashboardUrl
+  }, userId);
+}
+
+/**
+ * Send subscription renewal reminder
+ */
+async function sendSubscriptionRenewalReminder(userEmail, userName, planName, amount, renewalDate, subscriptionUrl, userId = null) {
+  return sendTemplatedEmail('subscription_renewal_reminder', userEmail, userName, {
+    userName,
+    planName,
+    amount,
+    renewalDate,
+    subscriptionUrl
+  }, userId);
+}
+
+/**
+ * Send subscription cancelled notification
+ */
+async function sendSubscriptionCancelled(userEmail, userName, planName, accessEndDate, subscriptionUrl, userId = null) {
+  return sendTemplatedEmail('subscription_cancelled', userEmail, userName, {
+    userName,
+    planName,
+    accessEndDate,
+    subscriptionUrl
+  }, userId);
+}
+
+/**
+ * Send promotional offer email
+ */
+async function sendPromotionalOffer(recipientEmail, recipientName, offerTitle, offerDescription, discountAmount, promoCode, expiryDate, offerUrl, userId = null) {
+  return sendTemplatedEmail('promotional_offer', recipientEmail, recipientName, {
+    recipientName,
+    offerTitle,
+    offerDescription,
+    discountAmount,
+    promoCode,
+    expiryDate,
+    offerUrl
+  }, userId);
+}
+
+/**
+ * Send newsletter email
+ */
+async function sendNewsletter(recipientEmail, recipientName, newsletterContent, userId = null) {
+  return sendTemplatedEmail('newsletter', recipientEmail, recipientName, {
+    recipientName,
+    ...newsletterContent
+  }, userId);
+}
+
+/**
+ * Send referral invitation
+ */
+async function sendReferralInvitation(recipientEmail, referrerName, referralBonus, referralUrl) {
+  return sendTemplatedEmail('referral_invitation', recipientEmail, 'Friend', {
+    referrerName,
+    referralBonus,
+    referralUrl
+  });
+}
+
+/**
+ * Send referral reward notification
+ */
+async function sendReferralReward(userEmail, userName, referredName, rewardAmount, dashboardUrl, userId = null) {
+  return sendTemplatedEmail('referral_reward', userEmail, userName, {
+    userName,
+    referredName,
+    rewardAmount,
+    dashboardUrl
+  }, userId);
+}
+
+/**
+ * Send support ticket confirmation
+ */
+async function sendSupportTicketConfirmation(userEmail, userName, ticketId, ticketSubject, ticketCategory, dashboardUrl, userId = null) {
+  return sendTemplatedEmail('support_ticket_confirmation', userEmail, userName, {
+    userName,
+    ticketId,
+    ticketSubject,
+    ticketCategory,
+    dashboardUrl
+  }, userId);
+}
+
+/**
+ * Send support ticket to admin
+ */
+async function sendSupportTicketAdmin(ticketId, userName, userEmail, ticketSubject, ticketCategory, adminUrl) {
+  return sendTemplatedEmail('support_ticket_admin', 'admin@planbeau.com', 'Admin', {
+    ticketId,
+    userName,
+    userEmail,
+    ticketSubject,
+    ticketCategory,
+    adminUrl
+  });
+}
+
+/**
+ * Send support ticket opened notification
+ */
+async function sendSupportTicketOpened(userEmail, userName, ticketId, ticketSubject, ticketCategory, dashboardUrl, userId = null) {
+  return sendTemplatedEmail('support_ticket_opened', userEmail, userName, {
+    userName,
+    ticketId,
+    ticketSubject,
+    ticketCategory,
+    dashboardUrl
+  }, userId, null, null, 'support');
+}
+
+/**
+ * Send support ticket reply notification
+ */
+async function sendSupportTicketReply(userEmail, userName, ticketId, ticketSubject, replyContent, dashboardUrl, userId = null) {
+  return sendTemplatedEmail('support_ticket_reply', userEmail, userName, {
+    userName,
+    ticketId,
+    ticketSubject,
+    replyContent,
+    dashboardUrl
+  }, userId, null, null, 'support');
+}
+
+/**
+ * Send support ticket in progress notification
+ */
+async function sendSupportTicketInProgress(userEmail, userName, ticketId, ticketSubject, dashboardUrl, userId = null) {
+  return sendTemplatedEmail('support_ticket_in_progress', userEmail, userName, {
+    userName,
+    ticketId,
+    ticketSubject,
+    dashboardUrl
+  }, userId, null, null, 'support');
+}
+
+/**
+ * Send support ticket closed notification
+ */
+async function sendSupportTicketClosed(userEmail, userName, ticketId, ticketSubject, resolution, dashboardUrl, userId = null) {
+  return sendTemplatedEmail('support_ticket_closed', userEmail, userName, {
+    userName,
+    ticketId,
+    ticketSubject,
+    resolution,
+    dashboardUrl
+  }, userId, null, null, 'support');
+}
+
+/**
+ * Send client to vendor welcome email
+ */
+async function sendClientToVendorWelcomeEmail(clientEmail, clientName, vendorName, dashboardUrl, userId = null) {
+  return sendTemplatedEmail('client_to_vendor_welcome', clientEmail, clientName, {
+    clientName,
+    vendorName,
+    dashboardUrl
+  }, userId, null, null, 'welcome');
 }
 
 module.exports = {
@@ -1088,7 +1443,48 @@ module.exports = {
   sendPolicyWarningEmail,
   sendChatSummaryEmail,
   checkEmailCooldown,
-  renderEmailPreview
+  renderEmailPreview,
+  // New helper functions
+  sendEmailVerification,
+  sendLoginNewDevice,
+  sendBookingRescheduled,
+  sendInvoice,
+  sendRefundProcessed,
+  sendPayoutProcessed,
+  sendNewReviewReceived,
+  sendQuoteReceived,
+  sendReceipt,
+  sendDisputeOpened,
+  sendDisputeResolved,
+  sendVendorFeatured,
+  sendEventCompleted,
+  sendPaymentFailed,
+  sendBookingDepositDue,
+  sendFinalPaymentDue,
+  // Additional helper functions
+  sendPasswordReset,
+  sendPasswordChanged,
+  sendBookingReminder,
+  sendReviewRequest,
+  sendFavoriteVendorAvailable,
+  sendVendorProfileIncomplete,
+  sendAccountDeletionRequested,
+  sendUnreadMessagesReminder,
+  sendUserInactivity,
+  sendVendorInactivity,
+  sendSubscriptionRenewalReminder,
+  sendSubscriptionCancelled,
+  sendPromotionalOffer,
+  sendNewsletter,
+  sendReferralInvitation,
+  sendReferralReward,
+  sendSupportTicketConfirmation,
+  sendSupportTicketAdmin,
+  sendSupportTicketOpened,
+  sendSupportTicketReply,
+  sendSupportTicketInProgress,
+  sendSupportTicketClosed,
+  sendClientToVendorWelcomeEmail
 };
 
 // Render email preview without sending - for admin preview functionality

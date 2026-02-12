@@ -11,6 +11,7 @@ const {
   notifyClientOfRejection,
   notifyOfBookingCancellation
 } = require('../services/emailService');
+const { sendQuoteReceived } = require('../services/email');
 const { 
   getProvinceFromLocation, 
   getTaxInfoForProvince 
@@ -278,20 +279,7 @@ router.get('/validate/:bookingId', async (req, res) => {
     const pool = await poolPromise;
     const result = await pool.request()
       .input('BookingID', sql.Int, bookingId)
-      .query(`
-        SELECT 
-          b.BookingID,
-          b.UserID,
-          b.VendorProfileID,
-          b.Status,
-          b.EventDate,
-          b.CreatedAt,
-          b.CancelledAt,
-          vp.UserID AS VendorUserID
-        FROM bookings.Bookings b
-        LEFT JOIN vendors.VendorProfiles vp ON b.VendorProfileID = vp.VendorProfileID
-        WHERE b.BookingID = @BookingID
-      `);
+      .execute('bookings.sp_ValidateBookingAccess');
 
     if (result.recordset.length === 0) {
       return res.status(404).json({ 
@@ -1229,6 +1217,29 @@ router.post('/requests/:requestId/approve', async (req, res) => {
 
     // Send email notification to client (using centralized notification service)
     notifyClientOfApproval(requestId);
+
+    // Send quote_received email with approval details
+    try {
+      const clientDetails = await pool.request()
+        .input('RequestID', sql.Int, requestId)
+        .execute('bookings.sp_GetClientDetailsForQuote');
+      
+      if (clientDetails.recordset.length > 0) {
+        const cd = clientDetails.recordset[0];
+        const clientName = `${cd.FirstName || ''} ${cd.LastName || ''}`.trim() || 'Customer';
+        await sendQuoteReceived(
+          cd.Email,
+          clientName,
+          cd.BusinessName,
+          cd.ServiceName || 'Service',
+          cd.TotalAmount ? `$${cd.TotalAmount}` : 'Quote provided',
+          cd.EventDate ? new Date(cd.EventDate).toLocaleDateString() : 'TBD',
+          `${process.env.FRONTEND_URL || 'https://www.planbeau.com'}/dashboard?tab=bookings`,
+          userId,
+          requestId
+        );
+      }
+    } catch (emailErr) { console.error('Failed to send quote_received email:', emailErr.message); }
 
     res.json({
       success: true,
