@@ -93,6 +93,10 @@ function CheckoutForm({ booking, onSuccess, onCancel, clientProvince }) {
         <span>Tax calculated based on your location: {taxInfo.label}</span>
       </div>
 
+      <p style={{ fontSize: '11px', color: '#9ca3af', textAlign: 'center', margin: '12px 0' }}>
+        By proceeding, you agree to our <a href="/terms-of-service" style={{ color: '#5086E8' }}>Terms of Service</a> and <a href="/privacy-policy" style={{ color: '#5086E8' }}>Privacy Policy</a>
+      </p>
+
       <div className="payment-actions">
         <button 
           type="button" 

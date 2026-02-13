@@ -145,7 +145,9 @@ const PaymentForm = ({
 
               <p className="payment-terms">
                 By providing your card information, you allow Planbeau Canada Inc. to charge your card 
-                for future payments in accordance with their terms.
+                for future payments in accordance with their terms. By proceeding, you agree to our{' '}
+                <a href="/terms-of-service" style={{ color: '#5086E8' }}>Terms of Service</a> and{' '}
+                <a href="/privacy-policy" style={{ color: '#5086E8' }}>Privacy Policy</a>.
               </p>
 
               {error && (

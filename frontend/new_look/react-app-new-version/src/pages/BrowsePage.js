@@ -901,6 +901,15 @@ function BrowsePage() {
     }
   }, []);
 
+  // Reload favorites when user logs in
+  useEffect(() => {
+    if (currentUser?.id) {
+      loadFavorites();
+    } else {
+      setFavorites([]);
+    }
+  }, [currentUser?.id, loadFavorites]);
+
   // Reload when filters change (including query params)
   useEffect(() => {
     if (hasLoadedRef.current) {

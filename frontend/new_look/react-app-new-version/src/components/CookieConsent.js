@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ToggleSwitch } from './common/FormComponents';
 import UniversalModal from './UniversalModal';
+import { API_BASE_URL } from '../config';
 
 const COOKIE_CONSENT_KEY = 'planbeau_cookie_consent';
 const COOKIE_PREFERENCES_KEY = 'planbeau_cookie_preferences';
@@ -90,7 +91,7 @@ function CookieConsent() {
         `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       localStorage.setItem('planbeau_session_id', sessionId);
       
-      await fetch('/api/users/cookie-consent', {
+      await fetch(`${API_BASE_URL}/users/cookie-consent`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

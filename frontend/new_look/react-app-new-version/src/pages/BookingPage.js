@@ -261,6 +261,9 @@ function InlinePaymentForm({ onSubmit, isProcessing, error, totalAmount, current
         <i className="fas fa-shield-alt" style={{ fontSize: '0.75rem', color: '#9ca3af' }}></i>
         <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>Secure payment powered by Stripe</span>
       </div>
+      <p style={{ fontSize: '11px', color: '#9ca3af', textAlign: 'center', marginTop: '8px', marginBottom: 0 }}>
+        By proceeding, you agree to our <a href="/terms-of-service" style={{ color: '#5086E8' }}>Terms of Service</a> and <a href="/privacy-policy" style={{ color: '#5086E8' }}>Privacy Policy</a>
+      </p>
     </form>
   );
 }
@@ -1917,9 +1920,13 @@ function BookingPage() {
                         >
                           {submitting ? 'Sending...' : 'Send Booking Request'}
                         </button>
+                        <p style={{ fontSize: '11px', color: '#9ca3af', textAlign: 'center', marginTop: '12px', marginBottom: 0 }}>
+                          By proceeding, you agree to our <a href="/terms-of-service" style={{ color: '#5086E8' }}>Terms of Service</a> and <a href="/privacy-policy" style={{ color: '#5086E8' }}>Privacy Policy</a>
+                        </p>
                       </div>
                     </>
                   ) : (
+                    <>
                     <button
                       onClick={() => {
                         if (!currentUser || !currentUser.id) {
@@ -1944,6 +1951,10 @@ function BookingPage() {
                     >
                       {submitting ? 'Sending...' : 'Send Booking Request'}
                     </button>
+                    <p style={{ fontSize: '11px', color: '#9ca3af', textAlign: 'center', marginTop: '12px', marginBottom: 0 }}>
+                      By proceeding, you agree to our <a href="/terms-of-service" style={{ color: '#5086E8' }}>Terms of Service</a> and <a href="/privacy-policy" style={{ color: '#5086E8' }}>Privacy Policy</a>
+                    </p>
+                    </>
                   )}
                 </div>
               )}

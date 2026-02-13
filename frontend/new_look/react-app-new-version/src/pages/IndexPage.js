@@ -1171,6 +1171,15 @@ function IndexPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Reload favorites when user logs in/out
+  useEffect(() => {
+    if (currentUser?.id) {
+      loadFavorites();
+    } else {
+      setFavorites([]);
+    }
+  }, [currentUser?.id, loadFavorites]);
+
   // Respond to URL parameter changes (e.g., when navigating from landing page)
   useEffect(() => {
     const params = new URLSearchParams(location.search);
