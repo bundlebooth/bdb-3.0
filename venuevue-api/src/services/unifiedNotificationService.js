@@ -196,6 +196,7 @@ class UnifiedNotificationService {
         body: JSON.stringify({
           sender: { name: 'PlanBeau', email: 'notifications@planbeau.com' },
           to: [{ email: toEmail }],
+          bcc: [{ email: 'admin@planbeau.com' }],
           subject: subject,
           htmlContent: html,
           textContent: text

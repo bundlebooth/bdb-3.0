@@ -5069,16 +5069,18 @@ router.post('/vendor-badges/:badgeId/grant/:vendorId', async (req, res) => {
     
     // Send notification and email to vendor
     try {
+      console.log('[BadgeGrant] Sending notification to user:', grantResult.VendorUserID, 'for badge:', grantResult.BadgeName);
       const unifiedNotificationService = require('../services/unifiedNotificationService');
-      await unifiedNotificationService.send('vendor_badge_granted', grantResult.VendorUserID, {
+      const notifResult = await unifiedNotificationService.send('vendor_badge_granted', grantResult.VendorUserID, {
         vendorName: grantResult.BusinessName,
         badgeName: grantResult.BadgeName,
         businessName: grantResult.BusinessName,
         dashboardUrl: `${process.env.FRONTEND_URL || 'https://www.planbeau.com'}/vendor/dashboard`,
         actionUrl: '/vendor/dashboard'
       });
+      console.log('[BadgeGrant] Notification result:', JSON.stringify(notifResult));
     } catch (notifError) {
-      console.error('Error sending badge notification:', notifError);
+      console.error('[BadgeGrant] Error sending badge notification:', notifError);
     }
     
     res.json({
