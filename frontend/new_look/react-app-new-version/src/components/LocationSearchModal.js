@@ -401,51 +401,6 @@ const LocationSearchModal = ({ isOpen, onClose, onApply, onUseCurrentLocation, i
         <div ref={mapRef} className="map"></div>
       </div>
 
-      {/* Step Indicator Dots */}
-      {showStepIndicator && (
-        <div style={{
-          display: 'flex',
-          justifyContent: 'center',
-          gap: '8px',
-          marginTop: '16px',
-          paddingTop: '16px',
-          borderTop: '1px solid #e5e7eb'
-        }}>
-          <button
-            onClick={() => {}}
-            style={{
-              width: '10px',
-              height: '10px',
-              borderRadius: '50%',
-              border: 'none',
-              background: currentStep === 1 ? '#5086E8' : '#d1d5db',
-              cursor: 'pointer',
-              padding: 0,
-              transition: 'background 0.2s'
-            }}
-            title="Location"
-          />
-          <button
-            onClick={() => {
-              if (onSwitchToDate) {
-                onClose();
-                onSwitchToDate();
-              }
-            }}
-            style={{
-              width: '10px',
-              height: '10px',
-              borderRadius: '50%',
-              border: 'none',
-              background: currentStep === 2 ? '#5086E8' : '#d1d5db',
-              cursor: onSwitchToDate ? 'pointer' : 'default',
-              padding: 0,
-              transition: 'background 0.2s'
-            }}
-            title="Date & Time"
-          />
-        </div>
-      )}
     </UniversalModal>
   );
 };

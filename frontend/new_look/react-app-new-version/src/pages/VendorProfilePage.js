@@ -2233,6 +2233,89 @@ function VendorProfilePage() {
   if (loading) {
     const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
     
+    // Mobile: Simple skeleton matching the reference design
+    if (isMobile) {
+      return (
+        <div style={{ 
+          display: 'flex', 
+          flexDirection: 'column', 
+          minHeight: '100vh',
+          background: '#fff',
+          position: 'relative'
+        }}>
+          {/* Back button - white circle with arrow */}
+          <button 
+            onClick={() => navigate(-1)}
+            style={{ 
+              position: 'absolute',
+              top: '16px',
+              left: '16px',
+              zIndex: 10,
+              width: '40px',
+              height: '40px',
+              borderRadius: '50%',
+              background: '#fff',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              border: 'none',
+              cursor: 'pointer'
+            }}
+          >
+            <i className="fas fa-arrow-left" style={{ color: '#222', fontSize: '14px' }}></i>
+          </button>
+          
+          {/* Gray image area - approximately 47% of viewport height */}
+          <div style={{ 
+            height: '47vh', 
+            width: '100%', 
+            background: '#e8e8e8'
+          }}></div>
+          
+          {/* White content area with skeleton bars - curved top overlapping image */}
+          <div style={{ 
+            flex: 1,
+            background: '#fff',
+            padding: '32px 24px 24px 24px',
+            marginTop: '-20px',
+            borderRadius: '20px 20px 0 0',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '12px',
+            position: 'relative',
+            zIndex: 1
+          }}>
+            {/* First bar - widest, rounded ends */}
+            <div className="skeleton" style={{ 
+              height: '20px', 
+              width: '90%', 
+              maxWidth: '340px',
+              borderRadius: '10px'
+            }}></div>
+            
+            {/* Second bar - medium width */}
+            <div className="skeleton" style={{ 
+              height: '16px', 
+              width: '75%', 
+              maxWidth: '280px',
+              borderRadius: '8px'
+            }}></div>
+            
+            {/* Third bar - shortest */}
+            <div className="skeleton" style={{ 
+              height: '14px', 
+              width: '55%', 
+              maxWidth: '200px',
+              borderRadius: '7px'
+            }}></div>
+          </div>
+        </div>
+      );
+    }
+    
+    // Desktop: Full skeleton with header and content
     return (
       <>
         <Header 
@@ -2245,64 +2328,46 @@ function VendorProfilePage() {
         <div style={{ background: '#ffffff', minHeight: '100vh' }}>
           <div className="profile-container" style={{ background: '#ffffff' }}>
             {/* Breadcrumb Skeleton */}
-            <div className="skeleton" style={{ width: isMobile ? '200px' : '300px', height: '20px', borderRadius: '6px', marginBottom: '1rem' }}></div>
+            <div className="skeleton" style={{ width: '300px', height: '20px', borderRadius: '6px', marginBottom: '1rem' }}></div>
 
-            {/* Image Gallery Skeleton - Responsive */}
-            {isMobile ? (
-              /* Mobile: Single image */
-              <div style={{ 
-                aspectRatio: '16/10',
-                borderRadius: '12px',
-                overflow: 'hidden',
-                marginBottom: '1rem'
-              }}>
-                <div className="skeleton" style={{ 
-                  width: '100%', 
-                  height: '100%',
-                  borderRadius: '12px'
-                }}></div>
+            {/* Image Gallery Skeleton - Desktop Grid layout */}
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: '1fr 1fr', 
+              gap: '8px', 
+              borderRadius: '12px', 
+              overflow: 'hidden',
+              marginBottom: '1.5rem',
+              height: '400px'
+            }}>
+              <div className="skeleton" style={{ 
+                height: '100%',
+                borderRadius: '12px 0 0 12px'
+              }}></div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: '1fr 1fr', gap: '8px' }}>
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="skeleton" style={{ 
+                    borderRadius: i === 2 ? '0 12px 0 0' : i === 4 ? '0 0 12px 0' : '0'
+                  }}></div>
+                ))}
               </div>
-            ) : (
-              /* Desktop: Grid layout */
-              <div style={{ 
-                display: 'grid', 
-                gridTemplateColumns: '1fr 1fr', 
-                gap: '8px', 
-                borderRadius: '12px', 
-                overflow: 'hidden',
-                marginBottom: '1.5rem',
-                height: '400px'
-              }}>
-                <div className="skeleton" style={{ 
-                  height: '100%',
-                  borderRadius: '12px 0 0 12px'
-                }}></div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: '1fr 1fr', gap: '8px' }}>
-                  {[1, 2, 3, 4].map((i) => (
-                    <div key={i} className="skeleton" style={{ 
-                      borderRadius: i === 2 ? '0 12px 0 0' : i === 4 ? '0 0 12px 0' : '0'
-                    }}></div>
-                  ))}
-                </div>
-              </div>
-            )}
+            </div>
 
             {/* Header Skeleton */}
-            <div style={{ marginBottom: isMobile ? '1rem' : '2rem' }}>
-              <div className="skeleton" style={{ width: isMobile ? '80%' : '60%', height: isMobile ? '28px' : '36px', marginBottom: '0.5rem' }}></div>
-              <div className="skeleton" style={{ width: isMobile ? '60%' : '40%', height: '18px', marginBottom: '0.5rem' }}></div>
+            <div style={{ marginBottom: '2rem' }}>
+              <div className="skeleton" style={{ width: '60%', height: '36px', marginBottom: '0.5rem' }}></div>
+              <div className="skeleton" style={{ width: '40%', height: '18px', marginBottom: '0.5rem' }}></div>
               <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem' }}>
                 <div className="skeleton" style={{ width: '60px', height: '24px', borderRadius: '12px' }}></div>
                 <div className="skeleton" style={{ width: '100px', height: '24px', borderRadius: '12px' }}></div>
               </div>
             </div>
 
-            {/* Content Layout Skeleton - Responsive */}
+            {/* Content Layout Skeleton */}
             <div style={{ 
-              display: isMobile ? 'flex' : 'grid',
-              flexDirection: 'column',
-              gridTemplateColumns: isMobile ? '1fr' : '1fr 320px',
-              gap: isMobile ? '1.5rem' : '3rem'
+              display: 'grid',
+              gridTemplateColumns: '1fr 320px',
+              gap: '3rem'
             }}>
               {/* Main Content */}
               <div>
@@ -2337,20 +2402,18 @@ function VendorProfilePage() {
                 </div>
               </div>
 
-              {/* Sidebar Skeleton - Hidden on mobile (shown as sticky bar) */}
-              {!isMobile && (
-                <div>
-                  <div style={{ 
-                    padding: '1.5rem', 
-                    border: '1px solid #e5e7eb', 
-                    borderRadius: '12px',
-                    boxShadow: '0 6px 16px rgba(0,0,0,0.12)'
-                  }}>
-                    <div className="skeleton" style={{ width: '100%', height: '44px', borderRadius: '8px', marginBottom: '1rem' }}></div>
-                    <div className="skeleton" style={{ width: '100%', height: '44px', borderRadius: '8px' }}></div>
-                  </div>
+              {/* Sidebar Skeleton */}
+              <div>
+                <div style={{ 
+                  padding: '1.5rem', 
+                  border: '1px solid #e5e7eb', 
+                  borderRadius: '12px',
+                  boxShadow: '0 6px 16px rgba(0,0,0,0.12)'
+                }}>
+                  <div className="skeleton" style={{ width: '100%', height: '44px', borderRadius: '8px', marginBottom: '1rem' }}></div>
+                  <div className="skeleton" style={{ width: '100%', height: '44px', borderRadius: '8px' }}></div>
                 </div>
-              )}
+              </div>
             </div>
           </div>
         </div>
@@ -3406,7 +3469,7 @@ function VendorProfilePage() {
             width: '100%',
             height: '100%',
             background: '#000',
-            zIndex: 9999,
+            zIndex: 99999,
             display: 'flex',
             flexDirection: 'column'
           }}
@@ -3687,16 +3750,7 @@ function VendorProfilePage() {
                               borderRadius: '8px', 
                               overflow: 'hidden',
                               border: '1px solid #ddd',
-                              cursor: 'pointer',
-                              transition: 'transform 0.2s, box-shadow 0.2s'
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.transform = 'scale(1.05)';
-                              e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.transform = 'scale(1)';
-                              e.currentTarget.style.boxShadow = 'none';
+                              cursor: 'pointer'
                             }}
                           >
                             <img 
@@ -3920,16 +3974,7 @@ function VendorProfilePage() {
                               borderRadius: '8px', 
                               overflow: 'hidden',
                               border: '1px solid #ddd',
-                              cursor: 'pointer',
-                              transition: 'transform 0.2s, box-shadow 0.2s'
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.transform = 'scale(1.05)';
-                              e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.transform = 'scale(1)';
-                              e.currentTarget.style.boxShadow = 'none';
+                              cursor: 'pointer'
                             }}
                           >
                             <img 

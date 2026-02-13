@@ -453,7 +453,7 @@ const ProfileVendorWidget = ({
           {displayPrice ? (
             <>
               <span className="gbw-price-prefix">Starting from </span>
-              <span className="gbw-price">${displayPrice.toFixed(0)}</span>
+              <span className="gbw-price">{formatCurrency(displayPrice, null, { showCents: false })}</span>
               <span className="gbw-price-suffix">/hr</span>
             </>
           ) : (

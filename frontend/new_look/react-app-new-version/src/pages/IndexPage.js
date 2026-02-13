@@ -956,12 +956,16 @@ function IndexPage() {
   // Radius levels for progressive expansion (in miles)
   const RADIUS_LEVELS = useMemo(() => [50, 100, 200, 400, 800], []);
   
+  // Default location for expand search when user location is not available (Toronto, Canada)
+  const DEFAULT_EXPAND_LOCATION = useMemo(() => ({ lat: 43.6532, lng: -79.3832 }), []);
+  
   // Handle "Load More Vendors" - expands map radius and fetches vendors from surrounding cities
+  // Works with or without user location permission
   const handleLoadMoreVendors = useCallback(async () => {
-    if (!userLocation?.lat || !userLocation?.lng) {
-      showBanner('Location required to expand search', 'info');
-      return;
-    }
+    // Use user location if available, otherwise use default location
+    const searchLocation = (userLocation?.lat && userLocation?.lng) 
+      ? userLocation 
+      : DEFAULT_EXPAND_LOCATION;
     
     const nextLevel = currentRadiusLevel + 1;
     if (nextLevel >= RADIUS_LEVELS.length) {
@@ -984,14 +988,14 @@ function IndexPage() {
       window.dispatchEvent(new CustomEvent('expandMapRadius', { 
         detail: { 
           zoom: newZoom,
-          center: { lat: userLocation.lat, lng: userLocation.lng }
+          center: { lat: searchLocation.lat, lng: searchLocation.lng }
         }
       }));
       
       // Fetch vendors in the expanded radius (excluding already loaded ones)
       const qp = new URLSearchParams();
-      qp.set('latitude', String(userLocation.lat));
-      qp.set('longitude', String(userLocation.lng));
+      qp.set('latitude', String(searchLocation.lat));
+      qp.set('longitude', String(searchLocation.lng));
       qp.set('radiusMiles', String(newRadius));
       qp.set('minRadiusMiles', String(prevRadius)); // Exclude inner radius already loaded
       qp.set('pageSize', '300');
@@ -1123,12 +1127,13 @@ function IndexPage() {
     } finally {
       setLoadingExpansion(false);
     }
-  }, [userLocation, currentRadiusLevel, RADIUS_LEVELS, currentCategory, filters, showBanner]);
+  }, [userLocation, currentRadiusLevel, RADIUS_LEVELS, currentCategory, filters, showBanner, DEFAULT_EXPAND_LOCATION]);
 
   // Check if we can load more vendors (haven't reached max radius)
+  // Now works without location permission - always show if not at max radius
   const canLoadMoreVendors = useMemo(() => {
-    return userLocation?.lat && userLocation?.lng && currentRadiusLevel < RADIUS_LEVELS.length - 1;
-  }, [userLocation, currentRadiusLevel, RADIUS_LEVELS]);
+    return currentRadiusLevel < RADIUS_LEVELS.length - 1;
+  }, [currentRadiusLevel, RADIUS_LEVELS]);
 
   const initializePage = useCallback(async () => {
     if (hasLoadedOnce.current) {
@@ -2434,8 +2439,8 @@ function IndexPage() {
       </div>
       </div>
       
-      {/* Mobile Map Button - Floating - Only show when no modals are open */}
-      {!profileModalOpen && (
+      {/* Mobile Map Button - Floating - Only show on Explore page when no modals/map are open */}
+      {!profileModalOpen && !mobileMapOpen && (
         <button 
           className="mobile-map-button"
           onClick={() => setMobileMapOpen(true)}

@@ -71,21 +71,26 @@ const EnhancedSearchBar = ({ onSearch, isScrolled }) => {
         if (response.ok) {
           const data = await response.json();
           const parsed = service.parse(data);
-          if (parsed && parsed.lat && parsed.lng) {
+          if (parsed && parsed.formattedLocation) {
+            console.log('[EnhancedSearchBar] IP location detected:', parsed.formattedLocation);
             setDetectedCity(parsed.formattedLocation); // Store for placeholder
-            setLocation(parsed.formattedLocation);
-            setUserLocation({
-              latitude: parsed.lat,
-              longitude: parsed.lng,
-              city: parsed.formattedLocation
-            });
+            // Set user location if coordinates available
+            if (parsed.lat && parsed.lng) {
+              setUserLocation({
+                latitude: parsed.lat,
+                longitude: parsed.lng,
+                city: parsed.formattedLocation
+              });
+            }
             return; // Success
           }
         }
       } catch (error) {
+        console.warn('[EnhancedSearchBar] IP geolocation service failed:', service.name, error);
         continue;
       }
     }
+    console.warn('[EnhancedSearchBar] All IP geolocation services failed');
   };
 
   useEffect(() => {
@@ -96,10 +101,8 @@ const EnhancedSearchBar = ({ onSearch, isScrolled }) => {
       loadGoogleMapsAPI();
     }
     
-    // Auto-detect city from IP on mount (only if no location already set)
-    if (!location) {
-      detectCityFromIP();
-    }
+    // Auto-detect city from IP on mount (always run to populate detectedCity for display)
+    detectCityFromIP();
     
     // Listen for expandSearchBar event from edit icon click
     const handleExpandSearchBar = (event) => {
@@ -448,7 +451,14 @@ const EnhancedSearchBar = ({ onSearch, isScrolled }) => {
 
   // Format location for compact display
   const formatLocationDisplay = (locationString, compact = false) => {
-    if (!locationString) return compact ? 'Location' : 'Search cities in Canada';
+    // Use detected city as fallback when no location is set
+    if (!locationString) {
+      if (compact && detectedCity) {
+        // Show detected city in compact view
+        return detectedCity.length > 18 ? detectedCity.substring(0, 15) + '...' : detectedCity;
+      }
+      return compact ? (detectedCity || 'Location') : 'Search cities in Canada';
+    }
     // Truncate for compact view
     if (compact && locationString.length > 18) {
       return locationString.substring(0, 15) + '...';
@@ -493,7 +503,7 @@ const EnhancedSearchBar = ({ onSearch, isScrolled }) => {
           <div className="compact-view">
             <div className="compact-field compact-location" onClick={(e) => { e.stopPropagation(); setShowLocationModal(true); }}>
               <span className="compact-label">LOCATION</span>
-              <span className="compact-value">{formatLocationDisplay(location, true) || 'Location'}</span>
+              <span className="compact-value">{location || detectedCity || 'Location'}</span>
             </div>
             <div className="compact-separator">|</div>
             <div className="compact-field compact-date" onClick={(e) => { e.stopPropagation(); setShowDateModal(true); }}>

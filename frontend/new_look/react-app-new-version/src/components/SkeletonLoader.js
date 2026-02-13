@@ -151,6 +151,82 @@ function SkeletonLoader({ variant = 'card', count = 1, height = null, width = nu
     );
   }
 
+  // Mobile vendor profile skeleton - exact match to reference image
+  if (variant === 'mobile-profile') {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        flexDirection: 'column', 
+        minHeight: '100vh',
+        background: '#fff',
+        position: 'relative'
+      }}>
+        {/* Back button - white circle with arrow */}
+        <div style={{ 
+          position: 'absolute',
+          top: '16px',
+          left: '16px',
+          zIndex: 10,
+          width: '40px',
+          height: '40px',
+          borderRadius: '50%',
+          background: '#fff',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}>
+          <i className="fas fa-arrow-left" style={{ color: '#222', fontSize: '14px' }}></i>
+        </div>
+        
+        {/* Gray image area - approximately 47% of viewport height */}
+        <div style={{ 
+          height: '47vh', 
+          width: '100%', 
+          background: '#e8e8e8'
+        }}></div>
+        
+        {/* White content area with skeleton bars */}
+        <div style={{ 
+          flex: 1,
+          background: '#fff',
+          padding: '32px 24px',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '12px'
+        }}>
+          {/* First bar - widest, rounded ends */}
+          <div style={{ 
+            height: '20px', 
+            width: '90%', 
+            maxWidth: '340px',
+            background: '#e8e8e8',
+            borderRadius: '10px'
+          }}></div>
+          
+          {/* Second bar - medium width */}
+          <div style={{ 
+            height: '16px', 
+            width: '75%', 
+            maxWidth: '280px',
+            background: '#e8e8e8',
+            borderRadius: '8px'
+          }}></div>
+          
+          {/* Third bar - shortest */}
+          <div style={{ 
+            height: '14px', 
+            width: '55%', 
+            maxWidth: '200px',
+            background: '#e8e8e8',
+            borderRadius: '7px'
+          }}></div>
+        </div>
+      </div>
+    );
+  }
+
   // Default card skeleton
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>

@@ -386,9 +386,7 @@ body.overlay-open {
     height: 48px !important;
 }
 
-.category-item:hover {
-    color: var(--primary);
-}
+/* Category hover animation removed per user request */
 
 .category-item.active {
     color: var(--primary);
@@ -5679,7 +5677,25 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
     
     .search-container {
         margin: 0 1rem !important;
-        max-width: 400px !important;
+        max-width: 450px !important;
+    }
+    
+    /* Search bar tablet fixes */
+    .enhanced-search-container .compact-field {
+        min-width: 0 !important;
+        flex: 1 !important;
+    }
+    
+    .enhanced-search-container .compact-location {
+        min-width: 0 !important;
+    }
+    
+    .enhanced-search-container .compact-date {
+        min-width: 0 !important;
+    }
+    
+    .enhanced-search-container .compact-value {
+        max-width: none !important;
     }
     
     .user-nav {
@@ -9061,33 +9077,82 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
         background: #f7f7f7 !important;
     }
     
+    .enhanced-search-container .enhanced-search-bar {
+        background: white !important;
+        border: 1px solid #ddd !important;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.05) !important;
+    }
+    
     .enhanced-search-container .compact-view {
-        padding: 6px 6px 6px 12px !important;
+        padding: 6px 8px 6px 16px !important;
         gap: 0 !important;
+        min-height: 48px !important;
+        align-items: center !important;
     }
     
     .enhanced-search-container .compact-field {
-        padding: 4px 8px !important;
+        padding: 4px 12px !important;
+        min-width: 0 !important;
+        flex: 1 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: center !important;
+    }
+    
+    .enhanced-search-container .compact-location {
+        min-width: 0 !important;
+        padding-left: 12px !important;
+    }
+    
+    .enhanced-search-container .compact-date {
+        min-width: 0 !important;
+    }
+    
+    .enhanced-search-container .compact-label {
+        font-size: 10px !important;
+        font-weight: 600 !important;
+        color: #717171 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
+        margin-bottom: 2px !important;
+        line-height: 1 !important;
     }
     
     .enhanced-search-container .compact-value {
-        font-size: 13px !important;
+        font-size: 14px !important;
         color: #222 !important;
         font-weight: 400 !important;
+        max-width: none !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        white-space: nowrap !important;
+        line-height: 1.2 !important;
     }
     
     .enhanced-search-container .compact-separator {
-        color: #ccc !important;
+        color: #ddd !important;
         padding: 0 4px !important;
-        font-size: 12px !important;
+        font-size: 16px !important;
+        font-weight: 300 !important;
     }
     
     .enhanced-search-container .search-btn-compact {
-        width: 28px !important;
-        height: 28px !important;
-        font-size: 12px !important;
+        width: 36px !important;
+        height: 36px !important;
+        min-width: 36px !important;
+        min-height: 36px !important;
+        font-size: 14px !important;
         background: var(--primary, #4F86E8) !important;
         flex-shrink: 0 !important;
+        border-radius: 50% !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+    
+    /* Hide Show Map button on mobile - it's redundant */
+    .mobile-map-button {
+        display: none !important;
     }
     
     /* Expanded search bar on mobile - Compact professional design */
@@ -9292,12 +9357,12 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
     display: none;
 }
 
-/* Show floating map button and hide sidebar map (under 1400px to prevent squished map) */
-@media (max-width: 1400px) {
+/* Show floating map button on tablet only (769px-1400px), hide on mobile */
+@media (max-width: 1400px) and (min-width: 769px) {
     .mobile-map-button {
         display: flex !important;
         position: fixed !important;
-        bottom: 75px !important; /* Position above bottom nav (56px + 19px spacing) */
+        bottom: 75px !important;
         left: 50% !important;
         transform: translateX(-50%) !important;
         background: #4F86E8 !important;
@@ -9309,7 +9374,7 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
         align-items: center !important;
         gap: 8px !important;
         box-shadow: 0 4px 12px rgba(79, 134, 232, 0.4) !important;
-        z-index: 999998 !important; /* Below bottom nav (999999) but above content */
+        z-index: 999998 !important;
         border: none !important;
         cursor: pointer !important;
         transition: all 0.2s ease !important;
@@ -11261,7 +11326,9 @@ html, body {
     }
     
     .calendar-header {
-        flex-direction: column !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: space-between !important;
         gap: 8px !important;
     }
     
@@ -12193,27 +12260,52 @@ html, body {
     }
 }
 
-/* 5. SHOW FLOATING MAP BUTTON on mobile/tablet - opens map modal */
+/* 5. HIDE FLOATING MAP BUTTON on mobile - redundant with bottom nav */
 @media (max-width: 768px) {
     .mobile-map-button {
-        display: flex !important;
-        position: fixed !important;
-        bottom: 80px !important; /* Above bottom nav */
-        left: 50% !important;
-        transform: translateX(-50%) !important;
-        z-index: 9998 !important; /* Below bottom nav but above content */
-        background: #4F86E8 !important;
-        color: white !important;
-        padding: 12px 20px !important;
-        border-radius: 24px !important;
-        font-size: 14px !important;
-        font-weight: 600 !important;
-        align-items: center !important;
-        gap: 8px !important;
-        box-shadow: 0 4px 12px rgba(79, 134, 232, 0.4) !important;
-        border: none !important;
-        cursor: pointer !important;
+        display: none !important;
     }
+}
+
+/* Hide Show Map button when any modal is open - at all screen sizes */
+body.modal-open .mobile-map-button,
+body.modal-open .show-map-btn,
+body.modal-open [class*="map-button"] {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
+/* Step indicator dots in modals - integrated at bottom of modal content */
+.modal-step-dots {
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    gap: 6px !important;
+    padding: 12px 0 8px 0 !important;
+    margin-top: auto !important;
+    background: transparent !important;
+}
+
+.modal-step-dots button {
+    width: 6px !important;
+    height: 6px !important;
+    min-width: 6px !important;
+    min-height: 6px !important;
+    max-width: 6px !important;
+    max-height: 6px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    border-radius: 50% !important;
+    cursor: pointer !important;
+}
+
+/* Ensure modal body uses flexbox to push dots to bottom */
+.um-body {
+    display: flex !important;
+    flex-direction: column !important;
 }
 
 /* 6. MAIN VENDOR GRID - Force 2 cards per row on mobile (FINAL OVERRIDE) */

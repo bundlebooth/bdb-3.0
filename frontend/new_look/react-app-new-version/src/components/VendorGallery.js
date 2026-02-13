@@ -128,7 +128,7 @@ function VendorGallery({ images, onBack, onShare, onFavorite, isFavorite }) {
             position: 'relative',
             width: '100vw',
             marginLeft: 'calc(-50vw + 50%)',
-            aspectRatio: '4 / 3',
+            height: '55vh',
             backgroundColor: '#f3f4f6',
             overflow: 'hidden'
           }}
@@ -173,102 +173,7 @@ function VendorGallery({ images, onBack, onShare, onFavorite, isFavorite }) {
             ))}
           </div>
 
-          {/* Top Navigation Overlay - Back, Share, Favorite */}
-          <div
-            className="mobile-gallery-top-overlay"
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              padding: '12px 16px',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              zIndex: 2,
-              pointerEvents: 'none'
-            }}
-          >
-            {/* Back Button */}
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                if (onBack) onBack();
-                else window.history.back();
-              }}
-              style={{
-                width: '36px',
-                height: '36px',
-                borderRadius: '50%',
-                background: 'rgba(0, 0, 0, 0.25)',
-                backdropFilter: 'blur(4px)',
-                WebkitBackdropFilter: 'blur(4px)',
-                border: 'none',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                color: 'white',
-                fontSize: '16px',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                pointerEvents: 'auto'
-              }}
-            >
-              <i className="fas fa-arrow-left"></i>
-            </button>
-
-            {/* Right Actions - Share & Favorite */}
-            <div style={{ display: 'flex', gap: '8px', pointerEvents: 'auto' }}>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (onShare) onShare();
-                }}
-                style={{
-                  width: '36px',
-                  height: '36px',
-                  borderRadius: '50%',
-                  background: 'rgba(0, 0, 0, 0.25)',
-                  backdropFilter: 'blur(4px)',
-                  WebkitBackdropFilter: 'blur(4px)',
-                  border: 'none',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  color: 'white',
-                  fontSize: '14px',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-                }}
-              >
-                <i className="fas fa-share-alt"></i>
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (onFavorite) onFavorite();
-                }}
-                style={{
-                  width: '36px',
-                  height: '36px',
-                  borderRadius: '50%',
-                  background: 'rgba(0, 0, 0, 0.25)',
-                  backdropFilter: 'blur(4px)',
-                  WebkitBackdropFilter: 'blur(4px)',
-                  border: 'none',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  color: isFavorite ? '#e31c5f' : 'white',
-                  fontSize: '14px',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-                }}
-              >
-                <i className={isFavorite ? 'fas fa-heart' : 'far fa-heart'}></i>
-              </button>
-            </div>
-          </div>
+          {/* Top Navigation Overlay removed - buttons already exist in header (Save/Share) */}
 
           {/* Bottom-Right Image Counter - positioned above where panel overlaps */}
           {validImages.length > 1 && (

@@ -252,7 +252,7 @@ function VendorSection({
                 navigate(browseUrl);
               }}
             >
-              Show all ({vendors.length})
+              Show all
             </button>
 {/* Nav buttons for carousel navigation */}
             <div className="vendor-section-nav">

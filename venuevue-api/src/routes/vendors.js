@@ -7343,20 +7343,20 @@ router.get('/:id/badges', async (req, res) => {
     const result = await request.execute('vendors.sp_GetVendorBadges');
     let badges = result.recordset || [];
     
-    // Badge image mapping - images stored in /images/badges/
+    // Badge image mapping - images stored in /images/planbeau-platform-assets/badges/
     // Include variations of badge type names
     const badgeImages = {
-      'new_vendor': '/images/badges/new_vendor_2026.png',
-      'newvendor': '/images/badges/new_vendor_2026.png',
-      'new vendor': '/images/badges/new_vendor_2026.png',
-      'featured': '/images/badges/featured_2026.png',
-      'verified': '/images/badges/verified_2026.png',
-      'choice_award': '/images/badges/choice_award_2026.png',
-      'choiceaward': '/images/badges/choice_award_2026.png',
-      'choice award': '/images/badges/choice_award_2026.png',
-      'top_rated': '/images/badges/top_rated_2026.png',
-      'toprated': '/images/badges/top_rated_2026.png',
-      'top rated': '/images/badges/top_rated_2026.png'
+      'new_vendor': '/images/planbeau-platform-assets/badges/new_vendor_2026.png',
+      'newvendor': '/images/planbeau-platform-assets/badges/new_vendor_2026.png',
+      'new vendor': '/images/planbeau-platform-assets/badges/new_vendor_2026.png',
+      'featured': '/images/planbeau-platform-assets/badges/featured_2026.png',
+      'verified': '/images/planbeau-platform-assets/badges/verified_2026.png',
+      'choice_award': '/images/planbeau-platform-assets/badges/choice_award_2026.png',
+      'choiceaward': '/images/planbeau-platform-assets/badges/choice_award_2026.png',
+      'choice award': '/images/planbeau-platform-assets/badges/choice_award_2026.png',
+      'top_rated': '/images/planbeau-platform-assets/badges/top_rated_2026.png',
+      'toprated': '/images/planbeau-platform-assets/badges/top_rated_2026.png',
+      'top rated': '/images/planbeau-platform-assets/badges/top_rated_2026.png'
     };
     
     // Add image URLs to badges if not already set

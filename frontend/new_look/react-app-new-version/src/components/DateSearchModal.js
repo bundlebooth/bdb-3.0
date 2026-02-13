@@ -466,51 +466,6 @@ const DateSearchModal = ({
           </div>
         </div>
 
-        {/* Step Indicator Dots */}
-        {showStepIndicator && (
-          <div style={{
-            display: 'flex',
-            justifyContent: 'center',
-            gap: '8px',
-            marginTop: '16px',
-            paddingTop: '16px',
-            borderTop: '1px solid #e5e7eb'
-          }}>
-            <button
-              onClick={() => {
-                if (onSwitchToLocation) {
-                  onClose();
-                  onSwitchToLocation();
-                }
-              }}
-              style={{
-                width: '10px',
-                height: '10px',
-                borderRadius: '50%',
-                border: 'none',
-                background: currentStep === 1 ? '#5086E8' : '#d1d5db',
-                cursor: onSwitchToLocation ? 'pointer' : 'default',
-                padding: 0,
-                transition: 'background 0.2s'
-              }}
-              title="Location"
-            />
-            <button
-              onClick={() => {}}
-              style={{
-                width: '10px',
-                height: '10px',
-                borderRadius: '50%',
-                border: 'none',
-                background: currentStep === 2 ? '#5086E8' : '#d1d5db',
-                cursor: 'pointer',
-                padding: 0,
-                transition: 'background 0.2s'
-              }}
-              title="Date & Time"
-            />
-          </div>
-        )}
       </div>
     </UniversalModal>
   );
