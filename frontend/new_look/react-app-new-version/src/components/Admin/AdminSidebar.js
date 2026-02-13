@@ -25,7 +25,8 @@ const adminMenuGroups = [
     items: [
       { id: 'users', label: 'User Management', icon: 'fa-users' },
       { id: 'vendors', label: 'Vendor Management', icon: 'fa-store' },
-      { id: 'guest-favorites', label: 'Badges & Favorites', icon: 'fa-award' }
+      { id: 'guest-favorites', label: 'Guest Favorites', icon: 'fa-heart' },
+      { id: 'vendor-badges', label: 'Vendor Badges', icon: 'fa-award' }
     ]
   },
   {

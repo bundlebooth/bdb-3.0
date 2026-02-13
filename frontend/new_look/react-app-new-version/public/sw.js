@@ -15,8 +15,8 @@ self.addEventListener('push', function(event) {
   
   const options = {
     body: data.body || data.message,
-    icon: '/images/logo.png',
-    badge: '/images/logo.png',
+    icon: data.icon || '/images/planbeau-platform-assets/branding/logo.png',
+    badge: '/images/planbeau-platform-assets/branding/badge-72.png',
     vibrate: [100, 50, 100],
     data: {
       url: data.url || '/',

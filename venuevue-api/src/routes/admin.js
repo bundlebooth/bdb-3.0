@@ -4985,4 +4985,155 @@ router.get('/forum/stats', async (req, res) => {
   }
 });
 
+// ==================== VENDOR BADGES ====================
+
+// GET /admin/vendor-badges - Get all badge definitions
+router.get('/vendor-badges', async (req, res) => {
+  try {
+    const pool = await getPool();
+    const result = await pool.request().execute('vendors.sp_VendorBadges_GetAll');
+    
+    res.json({
+      success: true,
+      badges: result.recordset
+    });
+  } catch (error) {
+    console.error('Error fetching vendor badges:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch vendor badges' });
+  }
+});
+
+// GET /admin/vendor-badges/:badgeId/vendors - Get vendors with eligibility for a specific badge
+router.get('/vendor-badges/:badgeId/vendors', async (req, res) => {
+  try {
+    const { badgeId } = req.params;
+    const pool = await getPool();
+    
+    // Get badge info
+    const badgeResult = await pool.request()
+      .input('BadgeID', sql.Int, parseInt(badgeId))
+      .query(`SELECT * FROM vendors.VendorBadges WHERE BadgeID = @BadgeID`);
+    
+    if (badgeResult.recordset.length === 0) {
+      return res.status(404).json({ success: false, message: 'Badge not found' });
+    }
+    
+    const badge = badgeResult.recordset[0];
+    
+    // Get vendors with eligibility
+    const vendorsResult = await pool.request()
+      .input('BadgeID', sql.Int, parseInt(badgeId))
+      .execute('vendors.sp_VendorBadges_GetVendorsWithEligibility');
+    
+    res.json({
+      success: true,
+      badge: badge,
+      vendors: vendorsResult.recordset,
+      eligibilityCriteria: {
+        minRating: badge.EligibilityMinRating,
+        minReviews: badge.EligibilityMinReviews,
+        minBookings: badge.EligibilityMinBookings,
+        minResponseRate: badge.EligibilityMinResponseRate,
+        maxDaysOld: badge.EligibilityMaxDaysOld,
+        minResponseTimeMinutes: badge.EligibilityMinResponseTimeMinutes
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching vendors for badge:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch vendors' });
+  }
+});
+
+// POST /admin/vendor-badges/:badgeId/grant/:vendorId - Grant badge to vendor
+router.post('/vendor-badges/:badgeId/grant/:vendorId', async (req, res) => {
+  try {
+    const { badgeId, vendorId } = req.params;
+    const { notes, expiresAt } = req.body;
+    const grantedByUserId = req.user?.id || req.user?.userId;
+    
+    const pool = await getPool();
+    
+    const result = await pool.request()
+      .input('VendorProfileID', sql.Int, parseInt(vendorId))
+      .input('BadgeID', sql.Int, parseInt(badgeId))
+      .input('GrantedByUserID', sql.Int, grantedByUserId)
+      .input('Notes', sql.NVarChar(500), notes || null)
+      .input('ExpiresAt', sql.DateTime2, expiresAt ? new Date(expiresAt) : null)
+      .execute('vendors.sp_VendorBadges_Grant');
+    
+    const grantResult = result.recordset[0];
+    
+    if (!grantResult.Success) {
+      return res.json({ success: false, message: grantResult.Message });
+    }
+    
+    // Send notification and email to vendor
+    try {
+      const unifiedNotificationService = require('../services/unifiedNotificationService');
+      await unifiedNotificationService.send('vendor_badge_granted', grantResult.VendorUserID, {
+        badgeName: grantResult.BadgeName,
+        businessName: grantResult.BusinessName,
+        actionUrl: '/dashboard'
+      });
+    } catch (notifError) {
+      console.error('Error sending badge notification:', notifError);
+    }
+    
+    res.json({
+      success: true,
+      message: grantResult.Message,
+      grantId: grantResult.GrantID
+    });
+  } catch (error) {
+    console.error('Error granting badge:', error);
+    res.status(500).json({ success: false, message: 'Failed to grant badge' });
+  }
+});
+
+// POST /admin/vendor-badges/:badgeId/revoke/:vendorId - Revoke badge from vendor
+router.post('/vendor-badges/:badgeId/revoke/:vendorId', async (req, res) => {
+  try {
+    const { badgeId, vendorId } = req.params;
+    const revokedByUserId = req.user?.id || req.user?.userId;
+    
+    const pool = await getPool();
+    
+    const result = await pool.request()
+      .input('VendorProfileID', sql.Int, parseInt(vendorId))
+      .input('BadgeID', sql.Int, parseInt(badgeId))
+      .input('RevokedByUserID', sql.Int, revokedByUserId)
+      .execute('vendors.sp_VendorBadges_Revoke');
+    
+    const revokeResult = result.recordset[0];
+    
+    res.json({
+      success: revokeResult.Success === 1,
+      message: revokeResult.Message
+    });
+  } catch (error) {
+    console.error('Error revoking badge:', error);
+    res.status(500).json({ success: false, message: 'Failed to revoke badge' });
+  }
+});
+
+// GET /admin/vendor-badges/vendor/:vendorId - Get all badges for a specific vendor
+router.get('/vendor-badges/vendor/:vendorId', async (req, res) => {
+  try {
+    const { vendorId } = req.params;
+    const pool = await getPool();
+    
+    const result = await pool.request()
+      .input('VendorProfileID', sql.Int, parseInt(vendorId))
+      .execute('vendors.sp_VendorBadges_GetByVendor');
+    
+    res.json({
+      success: true,
+      badges: result.recordset
+    });
+  } catch (error) {
+    console.error('Error fetching vendor badges:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch vendor badges' });
+  }
+});
+
 module.exports = router;

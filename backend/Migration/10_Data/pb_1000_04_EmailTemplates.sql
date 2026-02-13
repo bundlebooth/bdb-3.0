@@ -94,10 +94,11 @@ BEGIN
     INSERT [admin].[EmailTemplates] ([TemplateID], [TemplateKey], [TemplateName], [HeaderComponentID], [BodyComponentID], [FooterComponentID], [Subject], [Category], [AvailableVariables], [IsActive], [CreatedAt], [UpdatedAt]) VALUES (68, N'booking_deposit_due', N'Booking Deposit Due', 1, 78, 2, N'Deposit Due for Your Booking with {{vendorName}}', N'payment', N'["clientName","vendorName","serviceName","eventDate","depositAmount","dueDate","paymentUrl","platformName","currentYear"]', 1, CAST(N'2026-02-11 21:46:35.802' AS DateTime), CAST(N'2026-02-11 21:46:35.802' AS DateTime));
     INSERT [admin].[EmailTemplates] ([TemplateID], [TemplateKey], [TemplateName], [HeaderComponentID], [BodyComponentID], [FooterComponentID], [Subject], [Category], [AvailableVariables], [IsActive], [CreatedAt], [UpdatedAt]) VALUES (69, N'final_payment_due', N'Final Payment Due', 1, 79, 2, N'Final Payment Due for Your Event with {{vendorName}}', N'payment', N'["clientName","vendorName","serviceName","eventDate","amountDue","dueDate","paymentUrl","platformName","currentYear"]', 1, CAST(N'2026-02-11 21:46:35.802' AS DateTime), CAST(N'2026-02-11 21:46:35.802' AS DateTime));
     INSERT [admin].[EmailTemplates] ([TemplateID], [TemplateKey], [TemplateName], [HeaderComponentID], [BodyComponentID], [FooterComponentID], [Subject], [Category], [AvailableVariables], [IsActive], [CreatedAt], [UpdatedAt]) VALUES (70, N'event_completed', N'Event Completed', 1, 80, 2, N'Your Event with {{vendorName}} is Complete!', N'booking', N'["clientName","vendorName","serviceName","eventDate","reviewUrl","platformName","currentYear"]', 1, CAST(N'2026-02-11 21:46:35.802' AS DateTime), CAST(N'2026-02-11 21:46:35.802' AS DateTime));
+    INSERT [admin].[EmailTemplates] ([TemplateID], [TemplateKey], [TemplateName], [HeaderComponentID], [BodyComponentID], [FooterComponentID], [Subject], [Category], [AvailableVariables], [IsActive], [CreatedAt], [UpdatedAt]) VALUES (71, N'vendor_badge_granted', N'Vendor Badge Granted', 1, 81, 2, N'Congratulations! You''ve Earned the {{badgeName}} Badge!', N'vendor', N'["vendorName","badgeName","businessName","dashboardUrl","platformName","platformUrl","currentYear"]', 1, CAST(N'2026-02-12 22:15:00.000' AS DateTime), CAST(N'2026-02-12 22:15:00.000' AS DateTime));
 
     SET IDENTITY_INSERT [admin].[EmailTemplates] OFF;
 
-    PRINT 'Inserted 69 records into [admin].[EmailTemplates].';
+    PRINT 'Inserted 70 records into [admin].[EmailTemplates].';
 END
 ELSE
 BEGIN

@@ -1128,6 +1128,21 @@ The {{platformName}} Team', N'Post-event review request email sent the morning a
 </td></tr></table>
 </td></tr></table></td></tr></table>', N'Hello {{clientName}}, Your event with {{vendorName}} is complete! Leave a review: {{reviewUrl}}', N'Event completed notification', 1, CAST(N'2026-02-11 15:46:26.900' AS DateTime), CAST(N'2026-02-12 03:12:15.990' AS DateTime));
 
+    INSERT [admin].[EmailTemplateComponents] ([ComponentID], [ComponentType], [ComponentName], [HtmlContent], [TextContent], [Description], [IsActive], [CreatedAt], [UpdatedAt]) VALUES (81, N'body', N'Vendor Badge Granted', N'<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#ffffff"><tr><td align="center" style="padding:0 20px"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;background-color:#ffffff;border-left:1px solid #ebebeb;border-right:1px solid #ebebeb"><tr><td style="padding:40px 40px 32px 40px">
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:0 auto 24px"><tr><td style="width:64px;height:64px"><img src="https://www.planbeau.com/images/email-icons/icon-trophy-gold.svg" alt="" width="64" height="64" style="display:block;border:0" /></td></tr></table>
+<h1 style="color:#222222;font-size:24px;font-weight:600;margin:0 0 24px 0;text-align:center;font-family:-apple-system,BlinkMacSystemFont,''Segoe UI'',Roboto,Helvetica,Arial,sans-serif">Congratulations!</h1>
+<p style="color:#484848;font-size:16px;line-height:24px;margin:0 0 8px 0;font-family:-apple-system,BlinkMacSystemFont,''Segoe UI'',Roboto,Helvetica,Arial,sans-serif">Hello {{vendorName}},</p>
+<p style="color:#484848;font-size:16px;line-height:24px;margin:0 0 24px 0;font-family:-apple-system,BlinkMacSystemFont,''Segoe UI'',Roboto,Helvetica,Arial,sans-serif">We''re thrilled to inform you that your vendor profile has been awarded a new badge!</p>
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#fffbeb;border:2px solid #f59e0b;border-radius:8px;margin-bottom:24px"><tr><td style="padding:24px;text-align:center">
+<p style="margin:0 0 8px;font-size:24px;font-weight:700;color:#92400e;font-family:-apple-system,BlinkMacSystemFont,''Segoe UI'',Roboto,Helvetica,Arial,sans-serif">{{badgeName}}</p>
+<p style="margin:0;font-size:14px;color:#78350f;font-family:-apple-system,BlinkMacSystemFont,''Segoe UI'',Roboto,Helvetica,Arial,sans-serif">for {{businessName}}</p>
+</td></tr></table>
+<p style="color:#717171;font-size:14px;line-height:22px;margin:0 0 24px 0;text-align:center;font-family:-apple-system,BlinkMacSystemFont,''Segoe UI'',Roboto,Helvetica,Arial,sans-serif">This badge will now be displayed on your profile, helping potential clients see your achievements!</p>
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr><td align="center">
+<a href="{{dashboardUrl}}" style="display:inline-block;background-color:#222222;color:#ffffff;font-size:16px;font-weight:600;text-decoration:none;padding:14px 32px;border-radius:8px;font-family:-apple-system,BlinkMacSystemFont,''Segoe UI'',Roboto,Helvetica,Arial,sans-serif">View Your Profile</a>
+</td></tr></table>
+</td></tr></table></td></tr></table>', N'Congratulations {{vendorName}}! You''ve earned the {{badgeName}} badge for {{businessName}}. View your profile: {{dashboardUrl}}', N'Vendor badge granted notification', 1, CAST(N'2026-02-12 22:15:00.000' AS DateTime), CAST(N'2026-02-12 22:15:00.000' AS DateTime));
+
 GO
 
 SET IDENTITY_INSERT [admin].[EmailTemplateComponents] OFF;

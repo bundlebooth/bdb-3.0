@@ -793,12 +793,20 @@ function ProfileSidebar({ isOpen, onClose }) {
                 src={profilePic} 
                 alt="Profile"
                 className="profile-sidebar-avatar"
+                onError={(e) => {
+                  e.target.style.display = 'none';
+                  if (e.target.nextSibling) {
+                    e.target.nextSibling.style.display = 'flex';
+                  }
+                }}
               />
-            ) : (
-              <div className="profile-sidebar-avatar-placeholder">
-                {currentUser?.name?.charAt(0)?.toUpperCase() || 'U'}
-              </div>
-            )}
+            ) : null}
+            <div 
+              className="profile-sidebar-avatar-placeholder"
+              style={{ display: profilePic ? 'none' : 'flex' }}
+            >
+              {currentUser?.name?.charAt(0)?.toUpperCase() || 'U'}
+            </div>
           </div>
           <div className="profile-sidebar-user-name">{currentUser?.name}</div>
           <div className="profile-sidebar-view-profile">View your profile</div>

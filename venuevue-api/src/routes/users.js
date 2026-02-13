@@ -1430,12 +1430,17 @@ router.get('/favorites/user/:userId', async (req, res) => {
     // Get favorites using stored procedure
     const result = await request.execute('users.sp_GetFavorites');
     
-    res.json(result.recordset);
+    // Return in expected format - extract VendorProfileIDs for quick lookup in frontend
+    // Frontend checks: favorites.includes(vendorId)
+    res.json({
+      favorites: result.recordset.map(f => f.VendorProfileID),
+      vendorDetails: result.recordset
+    });
 
   } catch (err) {
     console.error('Database error:', err);
-    // Return empty array on error instead of 500
-    res.json([]);
+    // Return empty favorites on error instead of 500
+    res.json({ favorites: [] });
   }
 });
 

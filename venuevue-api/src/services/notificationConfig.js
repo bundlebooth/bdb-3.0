@@ -414,6 +414,24 @@ const NotificationConfig = {
     inAppMessage: 'New vendor application received from {{businessName}}.',
     channels: ['email', 'notification', 'push'],
   },
+  'vendor_badge_granted': {
+    emailTemplate: 'vendor_badge_granted',
+    icon: 'notif-gift.svg',
+    pushTitle: 'Congratulations! New Badge Earned!',
+    pushBody: 'You\'ve earned the {{badgeName}} badge',
+    inAppTitle: 'New Badge Earned!',
+    inAppMessage: 'Congratulations! You\'ve earned the {{badgeName}} badge for {{businessName}}.',
+    channels: ['email', 'notification', 'push'],
+  },
+  'vendor_badge_revoked': {
+    emailTemplate: null,
+    icon: 'notif-warning.svg',
+    pushTitle: 'Badge Status Update',
+    pushBody: 'Your {{badgeName}} badge has been updated',
+    inAppTitle: 'Badge Status Update',
+    inAppMessage: 'Your {{badgeName}} badge status has been updated.',
+    channels: ['notification'],
+  },
 
   // ============================================
   // CLIENT EVENTS

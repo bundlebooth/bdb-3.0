@@ -25,6 +25,7 @@ import AutomationSection from './sections/AutomationSection';
 import ToolsSection from './sections/ToolsSection';
 import AnalyticsSection from './sections/AnalyticsSection';
 import GuestFavoritesSection from './sections/GuestFavoritesSection';
+import VendorBadgesSection from './sections/VendorBadgesSection';
 import ForumSection from './sections/ForumSection';
 
 const sectionTitles = {
@@ -43,10 +44,11 @@ const sectionTitles = {
   settings: { title: 'Platform Settings', subtitle: 'Commission, fees, and maintenance' },
   automation: { title: 'Automation & Email', subtitle: 'Automated workflows and email management' },
   tools: { title: 'Search & Impersonation', subtitle: 'Quick search and user impersonation tools' },
-  'guest-favorites': { title: 'Badges & Favorites', subtitle: 'Manage vendor badges and Guest Favorite status' }
+  'guest-favorites': { title: 'Guest Favorites', subtitle: 'Manage Guest Favorite status for vendors' },
+  'vendor-badges': { title: 'Vendor Badges', subtitle: 'Manage vendor badges like Top Rated, New Vendor, etc.' }
 };
 
-const validSections = ['dashboard', 'analytics', 'users', 'vendors', 'bookings', 'payments', 'reviews', 'content', 'forum', 'support', 'chat', 'security', 'settings', 'automation', 'tools', 'guest-favorites'];
+const validSections = ['dashboard', 'analytics', 'users', 'vendors', 'bookings', 'payments', 'reviews', 'content', 'forum', 'support', 'chat', 'security', 'settings', 'automation', 'tools', 'guest-favorites', 'vendor-badges'];
 
 function AdminDashboard() {
   const navigate = useNavigate();
@@ -124,6 +126,8 @@ function AdminDashboard() {
         return <ToolsSection />;
       case 'guest-favorites':
         return <GuestFavoritesSection />;
+      case 'vendor-badges':
+        return <VendorBadgesSection />;
       default:
         return <DashboardSection />;
     }
