@@ -701,9 +701,7 @@ router.get('/', async (req, res) => {
       isCertified: vendor.IsCertified || false,
       isInsured: vendor.IsInsured || false,
       isMobile: vendor.IsMobile || false,
-      yearsInBusiness: vendor.YearsInBusiness || null,
-      // Vendor badges
-      ActiveBadges: vendor.ActiveBadges || null
+      yearsInBusiness: vendor.YearsInBusiness || null
     }));
 
     // Apply attribute-based filters (post-query filtering for attributes not in SP)
@@ -1150,8 +1148,7 @@ router.get('/map', async (req, res) => {
       IsGuestFavorite: vendor.IsGuestFavorite || false,
       categories: vendor.Categories || '',
       distanceFromEvent: vendor.DistanceMiles ? parseFloat(vendor.DistanceMiles).toFixed(2) : null,
-      fullAddress: `${vendor.Address || ''}, ${vendor.City || ''}, ${vendor.State || ''} ${vendor.PostalCode || ''}`.replace(/^,\s*|,\s*$/g, '').replace(/,\s*,/g, ','),
-      ActiveBadges: vendor.ActiveBadges || null
+      fullAddress: `${vendor.Address || ''}, ${vendor.City || ''}, ${vendor.State || ''} ${vendor.PostalCode || ''}`.replace(/^,\s*|,\s*$/g, '').replace(/,\s*,/g, ',')
     }));
 
     // Enhance with images if needed (limit to first 20 for performance)
@@ -1344,9 +1341,7 @@ router.get('/search-by-categories', async (req, res) => {
         avgResponseMinutes: vendor.AvgResponseMinutes || null,
         profileViews: vendor.ProfileViews || 0,
         // Google reviews data
-        googlePlaceId: vendor.GooglePlaceId || vendor.GooglePlaceID || null,
-        // Vendor badges
-        ActiveBadges: vendor.ActiveBadges || null
+        googlePlaceId: vendor.GooglePlaceId || vendor.GooglePlaceID || null
       }));
 
       // City filtering is now handled by the stored procedure

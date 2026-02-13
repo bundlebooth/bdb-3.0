@@ -68,29 +68,6 @@ const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavori
   // Only check IsGuestFavorite field (admin-controlled), do NOT fall back to IsPremium
   const isGuestFavorite = vendor.IsGuestFavorite === true || vendor.isGuestFavorite === true;
   
-  // Vendor badges - array of badge objects or comma-separated string of badge keys
-  const vendorBadges = React.useMemo(() => {
-    if (vendor.badges && Array.isArray(vendor.badges)) {
-      return vendor.badges;
-    }
-    if (vendor.ActiveBadges && typeof vendor.ActiveBadges === 'string') {
-      return vendor.ActiveBadges.split(',').map(key => ({ BadgeKey: key.trim() }));
-    }
-    return [];
-  }, [vendor.badges, vendor.ActiveBadges]);
-  
-  // Badge display config
-  const badgeConfig = {
-    'top_rated': { label: 'Top Rated', icon: '⭐', color: '#FFB400' },
-    'new_vendor': { label: 'New', icon: '✨', color: '#10B981' },
-    'quick_responder': { label: 'Quick Responder', icon: '⚡', color: '#00A699' },
-    'most_booked': { label: 'Popular', icon: '🔥', color: '#EC4899' },
-    'eco_friendly': { label: 'Eco-Friendly', icon: '🌿', color: '#22C55E' },
-    'award_winner': { label: 'Award Winner', icon: '🏆', color: '#F59E0B' },
-    'verified': { label: 'Verified', icon: '✓', color: '#3B82F6' },
-    'premium_partner': { label: 'Premium', icon: '👑', color: '#8B5CF6' }
-  };
-  
   // Price resolution
   const rawPrice = vendor.startingPrice ?? vendor.MinPriceNumeric ?? vendor.MinPrice ?? 
                    vendor.price ?? vendor.Price ?? vendor.minPrice ?? vendor.starting_price ?? 
@@ -527,48 +504,6 @@ const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavori
         }}>
           {locationText || 'Location not specified'}
         </div>
-        
-        {/* Vendor Badges Row - Show up to 2 badges */}
-        {vendorBadges.length > 0 && (
-          <div className="vendor-card-badges" style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            flexWrap: 'wrap',
-            marginTop: '2px'
-          }}>
-            {vendorBadges.slice(0, 2).map((badge, idx) => {
-              const key = badge.BadgeKey || badge.badgeKey || badge.key;
-              const config = badgeConfig[key];
-              if (!config) return null;
-              return (
-                <span 
-                  key={idx}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '3px',
-                    padding: '2px 8px',
-                    borderRadius: '12px',
-                    fontSize: '10px',
-                    fontWeight: 600,
-                    background: `${config.color}15`,
-                    color: config.color,
-                    border: `1px solid ${config.color}30`
-                  }}
-                >
-                  <span style={{ fontSize: '10px' }}>{config.icon}</span>
-                  {config.label}
-                </span>
-              );
-            })}
-            {vendorBadges.length > 2 && (
-              <span style={{ fontSize: '10px', color: '#717171' }}>
-                +{vendorBadges.length - 2} more
-              </span>
-            )}
-          </div>
-        )}
         
         {/* Line 3: Starting from price · ★ Rating (count) - Single line */}
         <div className="vendor-card-price-row" style={{ 

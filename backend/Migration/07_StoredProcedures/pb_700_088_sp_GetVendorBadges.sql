@@ -16,18 +16,22 @@ BEGIN
     SET NOCOUNT ON;
     
     SELECT 
-        BadgeID,
-        VendorProfileID,
-        BadgeType,
-        BadgeName,
-        [Year],
-        ImageURL,
-        Description,
-        IsActive,
-        CreatedAt,
-        UpdatedAt
-    FROM [vendors].[VendorBadges]
-    WHERE VendorProfileID = @VendorProfileID AND IsActive = 1
-    ORDER BY CreatedAt DESC;
+        b.BadgeID,
+        bg.VendorProfileID,
+        b.BadgeKey AS BadgeType,
+        b.BadgeName,
+        YEAR(bg.GrantedAt) AS [Year],
+        NULL AS ImageURL,
+        b.BadgeDescription AS Description,
+        bg.IsActive,
+        bg.GrantedAt AS CreatedAt,
+        bg.GrantedAt AS UpdatedAt
+    FROM [vendors].[VendorBadgeGrants] bg
+    JOIN [vendors].[VendorBadges] b ON bg.BadgeID = b.BadgeID
+    WHERE bg.VendorProfileID = @VendorProfileID 
+      AND bg.IsActive = 1 
+      AND b.IsActive = 1
+      AND (bg.ExpiresAt IS NULL OR bg.ExpiresAt > GETDATE())
+    ORDER BY bg.GrantedAt DESC;
 END
 GO
