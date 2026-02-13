@@ -251,10 +251,8 @@ async function processUnsubscribe(token, category = null) {
  */
 function generateUnsubscribeHtml(success, email, category = null) {
   const platformName = process.env.PLATFORM_NAME || 'PlanBeau';
-  // Always use production URL in production
-  const frontendUrl = process.env.NODE_ENV === 'production' 
-    ? 'https://www.planbeau.com' 
-    : (process.env.FRONTEND_URL || 'http://localhost:3000');
+  // Use environment variable for frontend URL with production fallback
+  const frontendUrl = process.env.FRONTEND_URL || 'https://www.planbeau.com';
   
   if (success) {
     return `

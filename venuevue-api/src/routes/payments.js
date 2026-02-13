@@ -137,7 +137,7 @@ router.post('/connect', async (req, res) => {
     }
 
     // Create account link for onboarding
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const frontendUrl = process.env.FRONTEND_URL || 'https://www.planbeau.com';
     const accountLink = await stripe.accountLinks.create({
       account: stripeAccountId,
       refresh_url: `${frontendUrl}/become-a-vendor?stripe=refresh`,
@@ -293,7 +293,7 @@ function hasStripeSecret() {
 }
 
 // URL helpers for Checkout Session redirects
-const DEFAULT_FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:8080';
+const DEFAULT_FRONTEND_URL = process.env.FRONTEND_URL || 'https://www.planbeau.com';
 
 function isValidHttpUrl(urlStr) {
   try {
@@ -321,9 +321,8 @@ function toAbsoluteUrl(pathOrUrl, base = DEFAULT_FRONTEND_URL) {
 
 function getRequestBaseUrl(req) {
   try {
-    // Prefer a configured stable frontend URL to avoid deploy-preview subdomain issues
-    const configured = process.env.FRONTEND_URL;
-    if (configured && isValidHttpUrl(configured)) return configured;
+    // Prefer configured frontend URL
+    if (DEFAULT_FRONTEND_URL) return DEFAULT_FRONTEND_URL;
 
     const origin = req.headers.origin || (req.get && req.get('Origin'));
     if (origin && isValidHttpUrl(origin)) return origin;
@@ -530,7 +529,7 @@ router.get('/connect/redirect', async (req, res) => {
     const { code, state, error } = req.query;
 
     if (error) {
-      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:8080';
+      const frontendUrl = process.env.FRONTEND_URL || 'https://www.planbeau.com';
       return res.redirect(`${frontendUrl}?stripe_connect=error&message=${encodeURIComponent(`Stripe authorization failed: ${error}`)}`);
     }
 
@@ -571,7 +570,7 @@ router.get('/connect/redirect', async (req, res) => {
     }
 
     // Redirect to frontend with success message
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:8080';
+    const frontendUrl = process.env.FRONTEND_URL || 'https://www.planbeau.com';
     res.redirect(`${frontendUrl}?stripe_connect=success&vendor=${vendorProfileId}&message=Successfully connected to Stripe!`);
 
   } catch (error) {
@@ -665,8 +664,8 @@ router.post('/connect/refresh-onboarding/:vendorProfileId', async (req, res) => 
     // Create account link for onboarding
     const accountLink = await stripe.accountLinks.create({
       account: stripeAccountId,
-      refresh_url: `${process.env.FRONTEND_URL || 'http://localhost:8080'}/vendor/stripe-setup?refresh=true`,
-      return_url: `${process.env.FRONTEND_URL || 'http://localhost:8080'}/vendor/stripe-setup?success=true`,
+      refresh_url: `${process.env.FRONTEND_URL || 'https://www.planbeau.com'}/vendor/stripe-setup?refresh=true`,
+      return_url: `${process.env.FRONTEND_URL || 'https://www.planbeau.com'}/vendor/stripe-setup?success=true`,
       type: 'account_onboarding',
     });
 

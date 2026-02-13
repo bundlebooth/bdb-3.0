@@ -14,10 +14,8 @@ const {
   sendPaymentReceivedToVendor
 } = require('./email');
 
-// Always use production URL for emails in production
-const FRONTEND_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://www.planbeau.com' 
-  : (process.env.FRONTEND_URL || 'http://localhost:3000');
+// Use environment variable for frontend URL with production fallback
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://www.planbeau.com';
 
 /**
  * Send email notification when a new booking request is created
