@@ -550,6 +550,120 @@ router.post('/login/resend-2fa', async (req, res) => {
   }
 });
 
+// Facebook OAuth code exchange endpoint
+router.post('/facebook-auth', async (req, res) => {
+  try {
+    const { code, redirectUri } = req.body;
+
+    if (!code || !redirectUri) {
+      return res.status(400).json({
+        success: false,
+        message: 'Authorization code and redirect URI are required.'
+      });
+    }
+
+    const FACEBOOK_APP_ID = process.env.FACEBOOK_APP_ID;
+    const FACEBOOK_APP_SECRET = process.env.FACEBOOK_APP_SECRET;
+
+    if (!FACEBOOK_APP_ID || !FACEBOOK_APP_SECRET) {
+      return res.status(500).json({
+        success: false,
+        message: 'Facebook OAuth is not configured on the server.'
+      });
+    }
+
+    // Exchange code for access token
+    const tokenResponse = await fetch(
+      `https://graph.facebook.com/v18.0/oauth/access_token?client_id=${FACEBOOK_APP_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&client_secret=${FACEBOOK_APP_SECRET}&code=${code}`
+    );
+
+    if (!tokenResponse.ok) {
+      const errorData = await tokenResponse.json();
+      console.error('Facebook token exchange error:', errorData);
+      return res.status(400).json({
+        success: false,
+        message: errorData.error?.message || 'Failed to exchange authorization code.'
+      });
+    }
+
+    const tokenData = await tokenResponse.json();
+    const accessToken = tokenData.access_token;
+
+    // Get user data from Facebook
+    const userResponse = await fetch(
+      `https://graph.facebook.com/me?fields=id,name,email,picture.type(large)&access_token=${accessToken}`
+    );
+
+    if (!userResponse.ok) {
+      const errorData = await userResponse.json();
+      console.error('Facebook user data error:', errorData);
+      return res.status(400).json({
+        success: false,
+        message: 'Failed to retrieve user data from Facebook.'
+      });
+    }
+
+    const fbUser = await userResponse.json();
+
+    if (!fbUser.email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email permission is required for Facebook login.'
+      });
+    }
+
+    // Now use the existing social-login logic
+    const pool = await poolPromise;
+    const request = pool.request();
+    request.input('Email', sql.NVarChar(100), fbUser.email.toLowerCase().trim());
+    
+    const nameParts = (fbUser.name || '').trim().split(' ');
+    const firstName = nameParts[0] || '';
+    const lastName = nameParts.slice(1).join(' ') || '';
+    request.input('FirstName', sql.NVarChar(100), firstName);
+    request.input('LastName', sql.NVarChar(100), lastName);
+    request.input('AuthProvider', sql.NVarChar(20), 'facebook');
+    request.input('ProfileImageURL', sql.NVarChar(255), fbUser.picture?.data?.url || '');
+    request.input('IsVendor', sql.Bit, false); // Default to client, can be changed later
+
+    const result = await request.execute('users.sp_RegisterSocialUser');
+    const user = result.recordset[0];
+
+    if (!user) {
+      throw new Error('Failed to create or retrieve user from Facebook login.');
+    }
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { id: user.UserID, email: user.Email, isVendor: user.IsVendor, isAdmin: user.IsAdmin || false },
+      process.env.JWT_SECRET,
+      { expiresIn: '30d' }
+    );
+
+    res.json({
+      success: true,
+      userId: user.UserID,
+      name: user.Name,
+      email: user.Email,
+      isVendor: user.IsVendor,
+      isAdmin: user.IsAdmin || false,
+      isNewUser: user.IsNewUser || false,
+      vendorProfileId: user.VendorProfileID || null,
+      authProvider: 'facebook',
+      profilePicture: fbUser.picture?.data?.url || user.ProfileImageURL || null,
+      token
+    });
+
+  } catch (err) {
+    console.error('Facebook auth error:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Facebook authentication failed',
+      error: err.message
+    });
+  }
+});
+
 // NEW: Endpoint for social login with account type selection
 router.post('/social-login', async (req, res) => {
   try {
@@ -2635,6 +2749,115 @@ router.post('/referrals/send', async (req, res) => {
     } else {
       res.status(500).json({ success: false, message: 'Failed to send referral invitation' });
     }
+  }
+});
+
+// ============================================
+// PUSH SUBSCRIPTION ENDPOINTS
+// ============================================
+
+// POST /users/:userId/push-subscription - Create or update push subscription
+router.post('/:id/push-subscription', async (req, res) => {
+  try {
+    const userId = resolveUserId(req.params.id);
+    const { endpoint, p256dhKey, authKey, subscription, deviceName } = req.body;
+    
+    if (!endpoint || !p256dhKey || !authKey) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Missing required fields: endpoint, p256dhKey, authKey' 
+      });
+    }
+    
+    const pool = await poolPromise;
+    
+    const result = await pool.request()
+      .input('UserID', sql.Int, userId)
+      .input('Endpoint', sql.NVarChar(500), endpoint)
+      .input('P256dhKey', sql.NVarChar(500), p256dhKey)
+      .input('AuthKey', sql.NVarChar(500), authKey)
+      .input('Subscription', sql.NVarChar(sql.MAX), subscription || JSON.stringify({ endpoint, keys: { p256dh: p256dhKey, auth: authKey } }))
+      .input('DeviceName', sql.NVarChar(255), deviceName || null)
+      .execute('[users].[sp_PushSubscription_Upsert]');
+    
+    const subscriptionResult = result.recordset[0];
+    
+    res.json({
+      success: true,
+      subscriptionId: subscriptionResult?.SubscriptionID,
+      action: subscriptionResult?.Action || 'created'
+    });
+    
+  } catch (error) {
+    console.error('[Push Subscription] POST Error:', error.message);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to save push subscription',
+      error: error.message 
+    });
+  }
+});
+
+// DELETE /users/:userId/push-subscription - Remove push subscription
+router.delete('/:id/push-subscription', async (req, res) => {
+  try {
+    const userId = resolveUserId(req.params.id);
+    const { endpoint } = req.body;
+    
+    if (!endpoint) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Missing required field: endpoint' 
+      });
+    }
+    
+    const pool = await poolPromise;
+    
+    await pool.request()
+      .input('UserID', sql.Int, userId)
+      .input('Endpoint', sql.NVarChar(500), endpoint)
+      .execute('[users].[sp_PushSubscription_Deactivate]');
+    
+    res.json({
+      success: true,
+      message: 'Push subscription removed'
+    });
+    
+  } catch (error) {
+    console.error('[Push Subscription] DELETE Error:', error.message);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to remove push subscription',
+      error: error.message 
+    });
+  }
+});
+
+// GET /users/:userId/push-subscriptions - Get all push subscriptions for a user
+router.get('/:id/push-subscriptions', async (req, res) => {
+  try {
+    const userId = resolveUserId(req.params.id);
+    const { activeOnly } = req.query;
+    
+    const pool = await poolPromise;
+    
+    const result = await pool.request()
+      .input('UserID', sql.Int, userId)
+      .input('ActiveOnly', sql.Bit, activeOnly !== 'false' ? 1 : 0)
+      .execute('[users].[sp_PushSubscription_GetByUser]');
+    
+    res.json({
+      success: true,
+      subscriptions: result.recordset
+    });
+    
+  } catch (error) {
+    console.error('[Push Subscription] GET Error:', error.message);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to get push subscriptions',
+      error: error.message 
+    });
   }
 });
 
