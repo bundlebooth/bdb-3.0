@@ -2,6 +2,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { GOOGLE_MAPS_API_KEY } from '../config';
 import { formatFromGooglePlace } from '../utils/locationUtils';
+import {
+  LayoutGrid, School, Camera, Video, Music, Headphones, Utensils,
+  PartyPopper, Star, Ribbon, Scissors, Cake, Car, ClipboardList,
+  ShoppingBag, Mail
+} from 'lucide-react';
 import './LandingSearchBar.css';
 
 const LandingSearchBar = ({ detectedCity }) => {
@@ -25,18 +30,24 @@ const LandingSearchBar = ({ detectedCity }) => {
   const locationInputRef = useRef(null);
   const autocompleteRef = useRef(null);
 
-  // Categories - IDs match DB directly
+  // Categories - IDs match DB directly, icons match CategoriesNav (Lucide)
   const categories = [
-    { name: 'Venues', slug: 'venue', icon: 'fa-building' },
-    { name: 'Photography', slug: 'photo', icon: 'fa-camera' },
-    { name: 'Videography', slug: 'video', icon: 'fa-video' },
-    { name: 'Music', slug: 'music', icon: 'fa-music' },
-    { name: 'DJ', slug: 'dj', icon: 'fa-headphones' },
-    { name: 'Catering', slug: 'catering', icon: 'fa-utensils' },
-    { name: 'Decorations', slug: 'decorations', icon: 'fa-palette' },
-    { name: 'Planners', slug: 'planners', icon: 'fa-clipboard-list' },
-    { name: 'Entertainment', slug: 'entertainment', icon: 'fa-theater-masks' },
-    { name: 'Beauty', slug: 'beauty', icon: 'fa-cut' }
+    { name: 'All Categories', slug: '', icon: <LayoutGrid size={18} /> },
+    { name: 'Venues', slug: 'venue', icon: <School size={18} /> },
+    { name: 'Photography', slug: 'photo', icon: <Camera size={18} /> },
+    { name: 'Videography', slug: 'video', icon: <Video size={18} /> },
+    { name: 'Music', slug: 'music', icon: <Music size={18} /> },
+    { name: 'DJ', slug: 'dj', icon: <Headphones size={18} /> },
+    { name: 'Catering', slug: 'catering', icon: <Utensils size={18} /> },
+    { name: 'Entertainment', slug: 'entertainment', icon: <PartyPopper size={18} /> },
+    { name: 'Experiences', slug: 'experiences', icon: <Star size={18} /> },
+    { name: 'Decorations', slug: 'decorations', icon: <Ribbon size={18} /> },
+    { name: 'Beauty', slug: 'beauty', icon: <Scissors size={18} /> },
+    { name: 'Cake', slug: 'cake', icon: <Cake size={18} /> },
+    { name: 'Transportation', slug: 'transportation', icon: <Car size={18} /> },
+    { name: 'Planners', slug: 'planners', icon: <ClipboardList size={18} /> },
+    { name: 'Fashion', slug: 'fashion', icon: <ShoppingBag size={18} /> },
+    { name: 'Stationery', slug: 'stationery', icon: <Mail size={18} /> }
   ];
 
   // When options
@@ -311,7 +322,7 @@ const LandingSearchBar = ({ detectedCity }) => {
                   onClick={() => handleCategorySelect(cat)}
                 >
                   <div className="category-icon">
-                    <i className={`fas ${cat.icon}`}></i>
+                    {cat.icon}
                   </div>
                   <span>{cat.name}</span>
                 </div>

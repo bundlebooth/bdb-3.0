@@ -190,9 +190,9 @@ const BecomeVendorPage = () => {
   const availableCategories = [
     { id: 'venue', name: 'Venues', icon: '🏛️', description: 'Event spaces and locations' },
     { id: 'photo', name: 'Photography', icon: '📸', description: 'Photography services' },
-    { id: 'video', name: 'Videography', icon: '�', description: 'Videography services' },
+    { id: 'video', name: 'Videography', icon: '🎬', description: 'Videography services' },
     { id: 'music', name: 'Music', icon: '🎵', description: 'Live music and bands' },
-    { id: 'dj', name: 'DJ', icon: '�', description: 'DJ services' },
+    { id: 'dj', name: 'DJ', icon: '🎧', description: 'DJ services' },
     { id: 'catering', name: 'Catering', icon: '🍽️', description: 'Food and beverage services' },
     { id: 'entertainment', name: 'Entertainment', icon: '🎭', description: 'Performers and entertainers' },
     { id: 'experiences', name: 'Experiences', icon: '⭐', description: 'Unique event experiences' },

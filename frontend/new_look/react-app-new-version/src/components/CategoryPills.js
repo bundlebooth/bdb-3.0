@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { 
-  LayoutGrid, School, Camera, Music, Utensils, PartyPopper, 
+  LayoutGrid, School, Camera, Video, Music, Headphones, Utensils, PartyPopper, 
   Star, Ribbon, Scissors, Cake, Car, ClipboardList, ShoppingBag, Mail 
 } from 'lucide-react';
 
@@ -8,9 +8,9 @@ const categories = [
   { key: 'all', icon: <LayoutGrid size={16} />, label: 'All', color: '#6366f1' },
   { key: 'venue', icon: <School size={16} />, label: 'Venues', color: '#a855f7' },
   { key: 'photo', icon: <Camera size={16} />, label: 'Photography', color: '#06b6d4' },
-  { key: 'video', icon: <Camera size={16} />, label: 'Videography', color: '#0891b2' },
+  { key: 'video', icon: <Video size={16} />, label: 'Videography', color: '#0891b2' },
   { key: 'music', icon: <Music size={16} />, label: 'Music', color: '#10b981' },
-  { key: 'dj', icon: <Music size={16} />, label: 'DJ', color: '#059669' },
+  { key: 'dj', icon: <Headphones size={16} />, label: 'DJ', color: '#059669' },
   { key: 'catering', icon: <Utensils size={16} />, label: 'Catering', color: '#f59e0b' },
   { key: 'entertainment', icon: <PartyPopper size={16} />, label: 'Entertainment', color: '#ef4444' },
   { key: 'experiences', icon: <Star size={16} />, label: 'Experiences', color: '#f97316' },

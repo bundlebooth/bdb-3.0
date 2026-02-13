@@ -2,6 +2,11 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL, GOOGLE_MAPS_API_KEY } from '../config';
+import {
+  LayoutGrid, School, Camera, Video, Music, Headphones, Utensils,
+  PartyPopper, Star, Ribbon, Scissors, Cake, Car, ClipboardList,
+  ShoppingBag, Mail
+} from 'lucide-react';
 import { apiGet, apiPost, apiDelete } from '../utils/api';
 import { PageLayout } from '../components/PageWrapper';
 import Header from '../components/Header';
@@ -68,22 +73,22 @@ function LandingPage() {
   
   // Categories - IDs match DB directly
   const categories = useMemo(() => [
-    { name: 'All Categories', slug: 'all', icon: 'fa-th-large' },
-    { name: 'Venues', slug: 'venue', icon: 'fa-building' },
-    { name: 'Photography', slug: 'photo', icon: 'fa-camera' },
-    { name: 'Videography', slug: 'video', icon: 'fa-video' },
-    { name: 'Music', slug: 'music', icon: 'fa-music' },
-    { name: 'DJ', slug: 'dj', icon: 'fa-headphones' },
-    { name: 'Catering', slug: 'catering', icon: 'fa-utensils' },
-    { name: 'Entertainment', slug: 'entertainment', icon: 'fa-theater-masks' },
-    { name: 'Experiences', slug: 'experiences', icon: 'fa-star' },
-    { name: 'Decorations', slug: 'decorations', icon: 'fa-ribbon' },
-    { name: 'Beauty', slug: 'beauty', icon: 'fa-cut' },
-    { name: 'Cake', slug: 'cake', icon: 'fa-birthday-cake' },
-    { name: 'Transportation', slug: 'transportation', icon: 'fa-car' },
-    { name: 'Planners', slug: 'planners', icon: 'fa-clipboard-list' },
-    { name: 'Fashion', slug: 'fashion', icon: 'fa-shopping-bag' },
-    { name: 'Stationery', slug: 'stationery', icon: 'fa-envelope' }
+    { name: 'All Categories', slug: 'all', icon: <LayoutGrid size={20} /> },
+    { name: 'Venues', slug: 'venue', icon: <School size={20} /> },
+    { name: 'Photography', slug: 'photo', icon: <Camera size={20} /> },
+    { name: 'Videography', slug: 'video', icon: <Video size={20} /> },
+    { name: 'Music', slug: 'music', icon: <Music size={20} /> },
+    { name: 'DJ', slug: 'dj', icon: <Headphones size={20} /> },
+    { name: 'Catering', slug: 'catering', icon: <Utensils size={20} /> },
+    { name: 'Entertainment', slug: 'entertainment', icon: <PartyPopper size={20} /> },
+    { name: 'Experiences', slug: 'experiences', icon: <Star size={20} /> },
+    { name: 'Decorations', slug: 'decorations', icon: <Ribbon size={20} /> },
+    { name: 'Beauty', slug: 'beauty', icon: <Scissors size={20} /> },
+    { name: 'Cake', slug: 'cake', icon: <Cake size={20} /> },
+    { name: 'Transportation', slug: 'transportation', icon: <Car size={20} /> },
+    { name: 'Planners', slug: 'planners', icon: <ClipboardList size={20} /> },
+    { name: 'Fashion', slug: 'fashion', icon: <ShoppingBag size={20} /> },
+    { name: 'Stationery', slug: 'stationery', icon: <Mail size={20} /> }
   ], []);
 
   // Handle scroll for header transparency
@@ -631,7 +636,7 @@ function LandingPage() {
                           className={`hero-dropdown-item ${(searchCategory === cat.slug) || (!searchCategory && cat.slug === 'all') ? 'selected' : ''}`}
                           onClick={() => handleCategorySelect(cat)}
                         >
-                          <i className={`fas ${cat.icon}`}></i>
+                          <span className="hero-dropdown-icon">{cat.icon}</span>
                           <span>{cat.name}</span>
                         </div>
                       ))}
@@ -895,7 +900,7 @@ function LandingPage() {
                         setMobileSearchStep(1);
                       }}
                     >
-                      <i className={`fas ${cat.icon}`}></i>
+                      <span className="mobile-search-icon">{cat.icon}</span>
                       <span>{cat.name}</span>
                       {((searchCategory === cat.slug) || (!searchCategory && cat.slug === 'all')) && (
                         <i className="fas fa-check mobile-check"></i>
