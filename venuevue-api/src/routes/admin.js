@@ -5071,10 +5071,30 @@ router.post('/vendor-badges/:badgeId/grant/:vendorId', async (req, res) => {
     try {
       console.log('[BadgeGrant] Sending notification to user:', grantResult.VendorUserID, 'for badge:', grantResult.BadgeName);
       const unifiedNotificationService = require('../services/unifiedNotificationService');
+      // Badge image mapping for email - only include if image file exists
+      const badgeImages = {
+        'top_rated': 'https://www.planbeau.com/images/planbeau-platform-assets/badges/top_rated_2026.png',
+        'new_vendor': 'https://www.planbeau.com/images/planbeau-platform-assets/badges/new_vendor_2026.png',
+        'quick_responder': 'https://www.planbeau.com/images/planbeau-platform-assets/badges/quick_responder_2026.png',
+        'choice_award': 'https://www.planbeau.com/images/planbeau-platform-assets/badges/choice_award_2026.png',
+        'eco_friendly': 'https://www.planbeau.com/images/planbeau-platform-assets/badges/eco_friendly_2026.png',
+        'premium_partner': 'https://www.planbeau.com/images/planbeau-platform-assets/badges/premium_partner_2026.png',
+        'verified': 'https://www.planbeau.com/images/planbeau-platform-assets/badges/verified_2026.png',
+        'featured': 'https://www.planbeau.com/images/planbeau-platform-assets/badges/featured_2026.png'
+      };
+      const badgeKey = (grantResult.BadgeKey || grantResult.BadgeName || '').toLowerCase().replace(/\s+/g, '_');
+      const badgeImageUrl = badgeImages[badgeKey] || null;
+      
+      // Build badge image HTML only if image exists, otherwise empty string
+      const badgeImageHtml = badgeImageUrl 
+        ? '<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:0 auto 24px"><tr><td style="text-align:center"><img src="' + badgeImageUrl + '" alt="' + grantResult.BadgeName + ' Badge" width="120" height="120" style="display:block;border:0;margin:0 auto" /></td></tr></table>'
+        : '';
+      
       const notifResult = await unifiedNotificationService.send('vendor_badge_granted', grantResult.VendorUserID, {
         vendorName: grantResult.BusinessName,
         badgeName: grantResult.BadgeName,
         businessName: grantResult.BusinessName,
+        badgeImageHtml: badgeImageHtml,
         dashboardUrl: `${process.env.FRONTEND_URL || 'https://www.planbeau.com'}/vendor/dashboard`,
         actionUrl: '/vendor/dashboard'
       });

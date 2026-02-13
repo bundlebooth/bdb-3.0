@@ -28,11 +28,12 @@ BEGIN
     
     DECLARE @GrantID INT;
     DECLARE @BadgeName NVARCHAR(100);
+    DECLARE @BadgeKey NVARCHAR(50);
     DECLARE @VendorUserID INT;
     DECLARE @BusinessName NVARCHAR(255);
     
-    -- Get badge name
-    SELECT @BadgeName = BadgeName FROM [vendors].[VendorBadges] WHERE BadgeID = @BadgeID;
+    -- Get badge name and key
+    SELECT @BadgeName = BadgeName, @BadgeKey = BadgeKey FROM [vendors].[VendorBadges] WHERE BadgeID = @BadgeID;
     
     -- Get vendor info
     SELECT @VendorUserID = UserID, @BusinessName = BusinessName 
@@ -62,6 +63,7 @@ BEGIN
         'Badge granted successfully' AS Message,
         @GrantID AS GrantID,
         @BadgeName AS BadgeName,
+        @BadgeKey AS BadgeKey,
         @VendorUserID AS VendorUserID,
         @BusinessName AS BusinessName;
 END
