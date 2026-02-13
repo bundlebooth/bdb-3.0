@@ -9062,92 +9062,22 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
     }
     
     /* ----------------------------------------
-       2. SEARCH BAR - Compact & Aesthetic
+       2. SEARCH BAR - Use desktop styling on mobile
        ---------------------------------------- */
     .enhanced-search-container {
         padding: 0 !important;
         max-width: 100% !important;
     }
     
+    /* Keep desktop styling - only adjust container width */
     .enhanced-search-container .enhanced-search-bar {
         max-width: 100% !important;
-        border-radius: 24px !important;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
-        border: 1px solid #e0e0e0 !important;
-        background: #f7f7f7 !important;
     }
     
-    .enhanced-search-container .enhanced-search-bar {
-        background: white !important;
-        border: 1px solid #ddd !important;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.05) !important;
-    }
-    
-    .enhanced-search-container .compact-view {
-        padding: 6px 8px 6px 16px !important;
-        gap: 0 !important;
-        min-height: 48px !important;
-        align-items: center !important;
-    }
-    
-    .enhanced-search-container .compact-field {
-        padding: 4px 12px !important;
-        min-width: 0 !important;
-        flex: 1 !important;
-        display: flex !important;
-        flex-direction: column !important;
-        justify-content: center !important;
-    }
-    
-    .enhanced-search-container .compact-location {
-        min-width: 0 !important;
-        padding-left: 12px !important;
-    }
-    
+    /* Allow fields to shrink on mobile */
+    .enhanced-search-container .compact-location,
     .enhanced-search-container .compact-date {
         min-width: 0 !important;
-    }
-    
-    .enhanced-search-container .compact-label {
-        font-size: 10px !important;
-        font-weight: 600 !important;
-        color: #717171 !important;
-        text-transform: uppercase !important;
-        letter-spacing: 0.5px !important;
-        margin-bottom: 2px !important;
-        line-height: 1 !important;
-    }
-    
-    .enhanced-search-container .compact-value {
-        font-size: 14px !important;
-        color: #222 !important;
-        font-weight: 400 !important;
-        max-width: none !important;
-        overflow: hidden !important;
-        text-overflow: ellipsis !important;
-        white-space: nowrap !important;
-        line-height: 1.2 !important;
-    }
-    
-    .enhanced-search-container .compact-separator {
-        color: #ddd !important;
-        padding: 0 4px !important;
-        font-size: 16px !important;
-        font-weight: 300 !important;
-    }
-    
-    .enhanced-search-container .search-btn-compact {
-        width: 36px !important;
-        height: 36px !important;
-        min-width: 36px !important;
-        min-height: 36px !important;
-        font-size: 14px !important;
-        background: var(--primary, #4F86E8) !important;
-        flex-shrink: 0 !important;
-        border-radius: 50% !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
     }
     
     /* Hide Show Map button on mobile - it's redundant */
@@ -12042,8 +11972,8 @@ html, body {
     .search-container {
         flex: 1 !important;
         min-width: 0 !important;
-        max-width: calc(100% - 100px) !important;
-        margin: 0 8px !important;
+        max-width: calc(100% - 80px) !important;
+        margin: 0 4px !important;
     }
     
     /* User nav - keep compact */

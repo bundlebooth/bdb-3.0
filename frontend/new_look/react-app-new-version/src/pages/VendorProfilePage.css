@@ -826,6 +826,11 @@
         display: none !important;
     }
     
+    /* Hide Guest Favourite description text on mobile */
+    .guest-favourite-description {
+        display: none !important;
+    }
+    
     /* Prevent horizontal scroll on entire page */
     .profile-container {
         padding: 0;

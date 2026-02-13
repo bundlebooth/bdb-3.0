@@ -495,7 +495,7 @@ body:not(:has(.enhanced-search-container.expanded)) .pac-container {
 @media (max-width: 768px) {
   .enhanced-search-container {
     max-width: 100%;
-    padding: 0 16px;
+    padding: 0 8px;
   }
   
   /* Keep compact view as pill style - no changes needed, use default styles */
@@ -504,37 +504,46 @@ body:not(:has(.enhanced-search-container.expanded)) .pac-container {
   }
   
   .compact-view {
-    padding: 6px 8px 6px 12px;
+    padding: 4px 6px 4px 8px;
     min-width: unset;
     width: 100%;
     gap: 0;
   }
   
   .compact-field {
-    padding: 8px 10px;
+    padding: 6px 8px;
     min-width: 0;
     flex: 1;
   }
   
   .compact-location {
     min-width: 0;
-    padding-left: 12px;
+    padding-left: 8px;
+    flex: 0 1 auto;
+    max-width: 45%;
   }
   
   .compact-date {
     min-width: 0;
+    flex: 1 1 auto;
+  }
+  
+  .compact-separator {
+    padding: 0 4px;
+    font-size: 12px;
+    flex-shrink: 0;
   }
   
   .compact-value {
-    font-size: 13px;
-    max-width: none;
+    font-size: 12px;
+    max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
   
   .compact-label {
-    font-size: 9px;
+    font-size: 8px;
     margin-bottom: 1px;
   }
   
@@ -544,6 +553,13 @@ body:not(:has(.enhanced-search-container.expanded)) .pac-container {
   
   .compact-field::before {
     display: none;
+  }
+  
+  .search-btn-compact {
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
+    margin-left: 4px;
   }
   
   /* Only expanded view gets the stacked mobile layout */
@@ -633,11 +649,39 @@ body:not(:has(.enhanced-search-container.expanded)) .pac-container {
 
 @media (max-width: 480px) {
   .enhanced-search-container {
-    padding: 0 16px;
+    padding: 0 6px;
+  }
+  
+  .compact-view {
+    padding: 4px 4px 4px 6px;
   }
   
   .compact-field {
-    padding: 14px 18px;
+    padding: 6px 6px;
+  }
+  
+  .compact-location {
+    padding-left: 6px;
+    max-width: 40%;
+  }
+  
+  .compact-value {
+    font-size: 11px;
+  }
+  
+  .compact-label {
+    font-size: 7px;
+  }
+  
+  .compact-separator {
+    padding: 0 2px;
+  }
+  
+  .search-btn-compact {
+    width: 26px;
+    height: 26px;
+    font-size: 11px;
+    margin-left: 2px;
   }
   
   .search-field {

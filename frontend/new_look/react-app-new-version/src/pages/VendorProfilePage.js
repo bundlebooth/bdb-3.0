@@ -1188,7 +1188,7 @@ function VendorProfilePage() {
                   msUserSelect: 'none'
                 }}
               >
-                {/* Badge image only - no background */}
+                {/* Badge image display */}
                 {badge.ImageURL ? (
                   <img 
                     src={badge.ImageURL} 
@@ -1738,25 +1738,11 @@ function VendorProfilePage() {
               fontSize: '0.9rem', 
               color: '#717171',
               maxWidth: '280px',
-              margin: '0 auto 1rem',
+              margin: '0 auto',
               lineHeight: 1.5
             }}>
-              This vendor is a guest favourite based on ratings, reviews, and reliability
+              Highly rated for exceptional service, quality, and client satisfaction
             </div>
-
-            {/* How reviews work link */}
-            <a 
-              href="#reviews-section" 
-              style={{ 
-                fontSize: '0.85rem', 
-                color: '#222222',
-                textDecoration: 'underline',
-                fontWeight: 500,
-                cursor: 'pointer'
-              }}
-            >
-              How reviews work
-            </a>
           </div>
         )}
 
@@ -2737,8 +2723,8 @@ function VendorProfilePage() {
                   />
                 </div>
                 
-                {/* Description text */}
-                <div style={{ 
+                {/* Description text - hidden on mobile */}
+                <div className="guest-favourite-description" style={{ 
                   fontSize: '14px', 
                   color: '#222', 
                   maxWidth: '180px',

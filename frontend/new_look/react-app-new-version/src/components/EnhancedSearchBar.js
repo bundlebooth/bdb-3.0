@@ -454,14 +454,17 @@ const EnhancedSearchBar = ({ onSearch, isScrolled }) => {
     // Use detected city as fallback when no location is set
     if (!locationString) {
       if (compact && detectedCity) {
-        // Show detected city in compact view
-        return detectedCity.length > 18 ? detectedCity.substring(0, 15) + '...' : detectedCity;
+        // Show detected city in compact view - truncate for mobile
+        if (detectedCity.length > 15) {
+          return detectedCity.substring(0, 12) + '...';
+        }
+        return detectedCity;
       }
       return compact ? (detectedCity || 'Location') : 'Search cities in Canada';
     }
-    // Truncate for compact view
-    if (compact && locationString.length > 18) {
-      return locationString.substring(0, 15) + '...';
+    // Truncate for compact view - shorter for mobile fit
+    if (compact && locationString.length > 15) {
+      return locationString.substring(0, 12) + '...';
     }
     return locationString;
   };
@@ -503,7 +506,7 @@ const EnhancedSearchBar = ({ onSearch, isScrolled }) => {
           <div className="compact-view">
             <div className="compact-field compact-location" onClick={(e) => { e.stopPropagation(); setShowLocationModal(true); }}>
               <span className="compact-label">LOCATION</span>
-              <span className="compact-value">{location || detectedCity || 'Location'}</span>
+              <span className="compact-value">{formatLocationDisplay(location, true)}</span>
             </div>
             <div className="compact-separator">|</div>
             <div className="compact-field compact-date" onClick={(e) => { e.stopPropagation(); setShowDateModal(true); }}>
