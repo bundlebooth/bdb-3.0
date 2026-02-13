@@ -20,20 +20,22 @@ import { encodeVendorId } from '../utils/hashIds';
 import { getIPGeolocationServices } from '../utils/locationUtils';
 import './BrowsePage.css';
 
-// Category key to label mapping
+// Category key to label mapping - IDs match DB directly
 const categoryLabels = {
   'all': 'All Categories',
   'venue': 'Venues',
-  'photo': 'Photo/Video',
-  'music': 'Music/DJ',
+  'photo': 'Photography',
+  'video': 'Videography',
+  'music': 'Music',
+  'dj': 'DJ',
   'catering': 'Catering',
   'entertainment': 'Entertainment',
   'experiences': 'Experiences',
-  'decor': 'Decorations',
+  'decorations': 'Decorations',
   'beauty': 'Beauty',
   'cake': 'Cake',
-  'transport': 'Transportation',
-  'planner': 'Planners',
+  'transportation': 'Transportation',
+  'planners': 'Planners',
   'fashion': 'Fashion',
   'stationery': 'Stationery'
 };

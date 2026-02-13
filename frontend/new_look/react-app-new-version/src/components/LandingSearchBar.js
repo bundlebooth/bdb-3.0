@@ -25,16 +25,18 @@ const LandingSearchBar = ({ detectedCity }) => {
   const locationInputRef = useRef(null);
   const autocompleteRef = useRef(null);
 
-  // Categories with icons
+  // Categories - IDs match DB directly
   const categories = [
     { name: 'Venues', slug: 'venue', icon: 'fa-building' },
-    { name: 'Photographers', slug: 'photo', icon: 'fa-camera' },
-    { name: 'Caterers', slug: 'catering', icon: 'fa-utensils' },
-    { name: 'DJs & Music', slug: 'music', icon: 'fa-music' },
-    { name: 'Decorators', slug: 'decor', icon: 'fa-palette' },
-    { name: 'Event Planners', slug: 'planner', icon: 'fa-clipboard-list' },
+    { name: 'Photography', slug: 'photo', icon: 'fa-camera' },
+    { name: 'Videography', slug: 'video', icon: 'fa-video' },
+    { name: 'Music', slug: 'music', icon: 'fa-music' },
+    { name: 'DJ', slug: 'dj', icon: 'fa-headphones' },
+    { name: 'Catering', slug: 'catering', icon: 'fa-utensils' },
+    { name: 'Decorations', slug: 'decorations', icon: 'fa-palette' },
+    { name: 'Planners', slug: 'planners', icon: 'fa-clipboard-list' },
     { name: 'Entertainment', slug: 'entertainment', icon: 'fa-theater-masks' },
-    { name: 'Beauty & Makeup', slug: 'beauty', icon: 'fa-cut' }
+    { name: 'Beauty', slug: 'beauty', icon: 'fa-cut' }
   ];
 
   // When options

@@ -2490,8 +2490,17 @@ function VendorProfilePage() {
               path: `/browse/${encodeURIComponent(profile.City || 'City')}` 
             },
             { 
-              label: categories[0]?.CategoryName || categories[0]?.Category || profile.CategoryName || profile.PrimaryCategory || profile.Category || 'Services',
-              path: `/browse/${encodeURIComponent(profile.City || 'City')}/${(categories[0]?.CategoryKey || profile.CategoryKey || 'all').toLowerCase()}`
+              label: (() => {
+                const categoryDisplayNames = {
+                  'venue': 'Venues', 'photo': 'Photography', 'video': 'Videography',
+                  'music': 'Music', 'dj': 'DJ', 'catering': 'Catering', 'entertainment': 'Entertainment',
+                  'experiences': 'Experiences', 'decorations': 'Decorations', 'beauty': 'Beauty', 'cake': 'Cake',
+                  'transportation': 'Transportation', 'planners': 'Planners', 'fashion': 'Fashion', 'stationery': 'Stationery'
+                };
+                const catId = categories[0]?.Category || profile.PrimaryCategory || profile.Category || '';
+                return categoryDisplayNames[catId] || categories[0]?.CategoryName || profile.CategoryName || catId || 'Services';
+              })(),
+              path: `/browse/${encodeURIComponent(profile.City || 'City')}/${(categories[0]?.Category || categories[0]?.CategoryKey || profile.CategoryKey || 'all').toLowerCase()}`
             },
             profile.BusinessName || profile.DisplayName || 'Vendor Name',
             'Profile'

@@ -29,19 +29,21 @@ function VendorApprovalPreview({ vendorId, vendor, onApprove, onReject, onClose 
     { id: 'policies', name: 'Policies', icon: 'fa-file-contract' }
   ];
 
-  // Available categories for display
+  // Available categories - IDs match DB directly
   const availableCategories = [
     { id: 'venue', name: 'Venues' },
-    { id: 'photo', name: 'Photo/Video' },
-    { id: 'music', name: 'Music/DJ' },
+    { id: 'photo', name: 'Photography' },
+    { id: 'video', name: 'Videography' },
+    { id: 'music', name: 'Music' },
+    { id: 'dj', name: 'DJ' },
     { id: 'catering', name: 'Catering' },
     { id: 'entertainment', name: 'Entertainment' },
     { id: 'experiences', name: 'Experiences' },
-    { id: 'decor', name: 'Decorations' },
+    { id: 'decorations', name: 'Decorations' },
     { id: 'beauty', name: 'Beauty' },
     { id: 'cake', name: 'Cake' },
-    { id: 'transport', name: 'Transportation' },
-    { id: 'planner', name: 'Planners' },
+    { id: 'transportation', name: 'Transportation' },
+    { id: 'planners', name: 'Planners' },
     { id: 'fashion', name: 'Fashion' },
     { id: 'stationery', name: 'Stationery' }
   ];

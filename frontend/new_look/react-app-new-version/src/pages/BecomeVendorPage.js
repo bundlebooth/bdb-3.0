@@ -186,36 +186,21 @@ const BecomeVendorPage = () => {
     stripeConnected: false
   });
 
-  // Map category names (from DB) to IDs (used in frontend)
-  const CATEGORY_NAME_TO_ID = {
-    'Venues': 'venue',
-    'Photo/Video': 'photo',
-    'Music/DJ': 'music',
-    'Catering': 'catering',
-    'Entertainment': 'entertainment',
-    'Experiences': 'experiences',
-    'Decorations': 'decor',
-    'Beauty': 'beauty',
-    'Cake': 'cake',
-    'Transportation': 'transport',
-    'Planners': 'planner',
-    'Fashion': 'fashion',
-    'Stationery': 'stationery'
-  };
-
-  // Available categories - matching BusinessInformationPanel IDs
+  // Available categories - IDs match DB directly, no mapping needed
   const availableCategories = [
     { id: 'venue', name: 'Venues', icon: '🏛️', description: 'Event spaces and locations' },
-    { id: 'photo', name: 'Photo/Video', icon: '📸', description: 'Photography and videography' },
-    { id: 'music', name: 'Music/DJ', icon: '🎵', description: 'Music and DJ services' },
+    { id: 'photo', name: 'Photography', icon: '📸', description: 'Photography services' },
+    { id: 'video', name: 'Videography', icon: '�', description: 'Videography services' },
+    { id: 'music', name: 'Music', icon: '🎵', description: 'Live music and bands' },
+    { id: 'dj', name: 'DJ', icon: '�', description: 'DJ services' },
     { id: 'catering', name: 'Catering', icon: '🍽️', description: 'Food and beverage services' },
     { id: 'entertainment', name: 'Entertainment', icon: '🎭', description: 'Performers and entertainers' },
     { id: 'experiences', name: 'Experiences', icon: '⭐', description: 'Unique event experiences' },
-    { id: 'decor', name: 'Decorations', icon: '🎨', description: 'Event decorations and styling' },
+    { id: 'decorations', name: 'Decorations', icon: '🎨', description: 'Event decorations and styling' },
     { id: 'beauty', name: 'Beauty', icon: '💄', description: 'Hair, makeup, and beauty services' },
     { id: 'cake', name: 'Cake', icon: '🎂', description: 'Wedding and event cakes' },
-    { id: 'transport', name: 'Transportation', icon: '🚗', description: 'Event transportation services' },
-    { id: 'planner', name: 'Planners', icon: '📋', description: 'Event planning and coordination' },
+    { id: 'transportation', name: 'Transportation', icon: '🚗', description: 'Event transportation services' },
+    { id: 'planners', name: 'Planners', icon: '📋', description: 'Event planning and coordination' },
     { id: 'fashion', name: 'Fashion', icon: '👗', description: 'Wedding and event fashion' },
     { id: 'stationery', name: 'Stationery', icon: '✉️', description: 'Invitations and stationery' }
   ];
@@ -1306,24 +1291,28 @@ const BecomeVendorPage = () => {
     }
     
     // Only validate if step is required and not skippable
+    // Step order: 0=account, 1=categories, 2=service-details, 3=category-questions, 
+    // 4=business-details, 5=contact, 6=location, 7=services, 8=business-hours, etc.
     if (currentStepData?.required && !currentStepData?.skippable) {
       if (currentStep === 1 && !formData.primaryCategory) {
         showBanner('Please select a primary category', 'error');
         return;
       }
-      if (currentStep === 2) {
+      // Step 4 = business-details
+      if (currentStep === 4) {
         if (!formData.businessName.trim() || !formData.displayName.trim()) {
           showBanner('Please enter business name and display name', 'error');
           return;
         }
       }
-      if (currentStep === 3 && !formData.businessPhone.trim()) {
+      // Step 5 = contact
+      if (currentStep === 5 && !formData.businessPhone.trim()) {
         showBanner('Please enter your business phone number', 'error');
         return;
       }
       
-      // Validation for location step (step 4)
-      if (currentStep === 4) {
+      // Validation for location step (step 6)
+      if (currentStep === 6) {
         if (!formData.city.trim()) {
           showBanner('Please enter your city', 'error');
           return;

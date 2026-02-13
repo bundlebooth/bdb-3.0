@@ -15,14 +15,16 @@ const BrowseByCity = () => {
     { name: 'Edmonton', province: 'AB' }
   ];
 
-  // Categories to show under each city
+  // Categories - IDs match DB directly
   const categories = [
     { name: 'Venues', slug: 'venue' },
-    { name: 'Photographers', slug: 'photo' },
-    { name: 'Caterers', slug: 'catering' },
-    { name: 'DJs & Music', slug: 'music' },
-    { name: 'Decorators', slug: 'decor' },
-    { name: 'Event Planners', slug: 'planner' }
+    { name: 'Photography', slug: 'photo' },
+    { name: 'Videography', slug: 'video' },
+    { name: 'Music', slug: 'music' },
+    { name: 'DJ', slug: 'dj' },
+    { name: 'Catering', slug: 'catering' },
+    { name: 'Decorations', slug: 'decorations' },
+    { name: 'Planners', slug: 'planners' }
   ];
 
   const handleCityClick = (cityName) => {

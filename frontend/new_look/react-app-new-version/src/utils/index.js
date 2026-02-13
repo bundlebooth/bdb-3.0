@@ -25,7 +25,6 @@ export {
   generateSessionId,
   getCategoryIcon,
   getCategoryIconHtml,
-  mapTypeToCategory,
   showBanner,
   showSuccess,
   showError,

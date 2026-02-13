@@ -16,20 +16,22 @@ import {
   Mail 
 } from 'lucide-react';
 
-// Category definitions with pill-style colors
+// Category definitions - IDs match DB directly
 const categories = [
   { key: 'all', icon: <LayoutGrid size={16} />, label: 'All', color: '#6366f1' },
   { key: 'venue', icon: <School size={16} />, label: 'Venues', color: '#a855f7' },
-  { key: 'photo', icon: <Camera size={16} />, label: 'Photo/Video', color: '#06b6d4' },
-  { key: 'music', icon: <Music size={16} />, label: 'Music/DJ', color: '#10b981' },
+  { key: 'photo', icon: <Camera size={16} />, label: 'Photography', color: '#06b6d4' },
+  { key: 'video', icon: <Camera size={16} />, label: 'Videography', color: '#0891b2' },
+  { key: 'music', icon: <Music size={16} />, label: 'Music', color: '#10b981' },
+  { key: 'dj', icon: <Music size={16} />, label: 'DJ', color: '#059669' },
   { key: 'catering', icon: <Utensils size={16} />, label: 'Catering', color: '#f59e0b' },
   { key: 'entertainment', icon: <PartyPopper size={16} />, label: 'Entertainment', color: '#ef4444' },
   { key: 'experiences', icon: <Star size={16} />, label: 'Experiences', color: '#f97316' },
-  { key: 'decor', icon: <Ribbon size={16} />, label: 'Decor', color: '#ec4899' },
+  { key: 'decorations', icon: <Ribbon size={16} />, label: 'Decorations', color: '#ec4899' },
   { key: 'beauty', icon: <Scissors size={16} />, label: 'Beauty', color: '#be185d' },
   { key: 'cake', icon: <Cake size={16} />, label: 'Cake', color: '#a855f7' },
-  { key: 'transport', icon: <Car size={16} />, label: 'Transport', color: '#3b82f6' },
-  { key: 'planner', icon: <ClipboardList size={16} />, label: 'Planners', color: '#64748b' },
+  { key: 'transportation', icon: <Car size={16} />, label: 'Transportation', color: '#3b82f6' },
+  { key: 'planners', icon: <ClipboardList size={16} />, label: 'Planners', color: '#64748b' },
   { key: 'fashion', icon: <ShoppingBag size={16} />, label: 'Fashion', color: '#7c3aed' },
   { key: 'stationery', icon: <Mail size={16} />, label: 'Stationery', color: '#8b5cf6' }
 ];

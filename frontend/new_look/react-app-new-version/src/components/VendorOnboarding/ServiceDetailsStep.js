@@ -2,41 +2,42 @@ import React, { useState, useEffect } from 'react';
 import { API_BASE_URL } from '../../config';
 import SelectableTile, { SelectableTileGroup } from '../common/SelectableTile';
 
-// Map category IDs to names for API calls
+// Category ID to display name - IDs match DB directly, no mapping needed
 const CATEGORY_ID_TO_NAME = {
   'venue': 'Venues',
-  'photo': 'Photo/Video',
-  'music': 'Music/DJ',
+  'photo': 'Photography',
+  'video': 'Videography',
+  'music': 'Music',
+  'dj': 'DJ',
   'catering': 'Catering',
   'entertainment': 'Entertainment',
+  'experiences': 'Experiences',
   'decorations': 'Decorations',
-  'decor': 'Decorations',
   'beauty': 'Beauty',
   'cake': 'Cake',
   'transportation': 'Transportation',
-  'transport': 'Transportation',
   'planners': 'Planners',
-  'planner': 'Planners',
   'fashion': 'Fashion',
-  'stationery': 'Stationery',
-  'experiences': 'Experiences'
+  'stationery': 'Stationery'
 };
 
-// Map vendor category names to feature category names
+// Map vendor category IDs to feature category names
 const CATEGORY_TO_FEATURE_MAP = {
-  'Venues': ['Venue Features'],
-  'Photo/Video': ['Photography & Video'],
-  'Music/DJ': ['Music & Entertainment'],
-  'Catering': ['Catering & Bar'],
-  'Entertainment': ['Music & Entertainment', 'Experience Services'],
-  'Experiences': ['Experience Services'],
-  'Decorations': ['Floral & Decor'],
-  'Beauty': ['Beauty & Fashion Services'],
-  'Cake': ['Cake & Desserts'],
-  'Transportation': ['Transportation'],
-  'Planners': ['Event Planning', 'Event Services'],
-  'Fashion': ['Fashion & Attire', 'Beauty & Fashion Services'],
-  'Stationery': ['Stationery & Paper Goods']
+  'venue': ['Venue Features'],
+  'photo': ['Photography & Video'],
+  'video': ['Photography & Video'],
+  'music': ['Music & Entertainment'],
+  'dj': ['Music & Entertainment'],
+  'catering': ['Catering & Bar'],
+  'entertainment': ['Music & Entertainment', 'Experience Services'],
+  'experiences': ['Experience Services'],
+  'decorations': ['Floral & Decor'],
+  'beauty': ['Beauty & Fashion Services'],
+  'cake': ['Cake & Desserts'],
+  'transportation': ['Transportation'],
+  'planners': ['Event Planning', 'Event Services'],
+  'fashion': ['Fashion & Attire', 'Beauty & Fashion Services'],
+  'stationery': ['Stationery & Paper Goods']
 };
 
 /**

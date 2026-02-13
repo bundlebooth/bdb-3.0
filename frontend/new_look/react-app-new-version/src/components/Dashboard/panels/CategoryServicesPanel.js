@@ -3,28 +3,16 @@ import { API_BASE_URL } from '../../../config';
 import { showBanner } from '../../../utils/helpers';
 import { FormRow, ToggleSwitch, MultiSelectTags, SelectDropdown, ChipButton, SectionHeader } from '../../common/FormFields';
 
-// Map category names to IDs
-const CATEGORY_NAME_TO_ID = {
-  'Venues': 'venue',
-  'Photo/Video': 'photo',
-  'Music/DJ': 'music',
-  'Catering': 'catering',
-  'Entertainment': 'entertainment',
-  'Decorations': 'decorations',
-  'Beauty': 'beauty',
-  'Cake': 'cake',
-  'Transportation': 'transportation',
-  'Planners': 'planners',
-  'Fashion': 'fashion',
-  'Stationery': 'stationery'
-};
-
+// Category ID to display name - IDs match DB directly, no mapping needed
 const CATEGORY_ID_TO_NAME = {
   'venue': 'Venues',
-  'photo': 'Photo/Video',
-  'music': 'Music/DJ',
+  'photo': 'Photography',
+  'video': 'Videography',
+  'music': 'Music',
+  'dj': 'DJ',
   'catering': 'Catering',
   'entertainment': 'Entertainment',
+  'experiences': 'Experiences',
   'decorations': 'Decorations',
   'beauty': 'Beauty',
   'cake': 'Cake',
@@ -34,37 +22,23 @@ const CATEGORY_ID_TO_NAME = {
   'stationery': 'Stationery'
 };
 
-// Map vendor category names to feature category names (handle variations)
+// Map vendor category IDs to feature category names
 const CATEGORY_TO_FEATURE_MAP = {
-  'Venues': ['Venue Features'],
-  'Venue': ['Venue Features'],
-  'Photo/Video': ['Photography & Video'],
-  'Photo': ['Photography & Video'],
-  'Video': ['Photography & Video'],
-  'Photography': ['Photography & Video'],
-  'Music/DJ': ['Music & Entertainment'],
-  'Music': ['Music & Entertainment'],
-  'DJ': ['Music & Entertainment'],
-  'Catering': ['Catering & Bar'],
-  'Entertainment': ['Music & Entertainment', 'Experience Services'],
-  'Experiences': ['Experience Services'],
-  'Experience': ['Experience Services'],
-  'Decorations': ['Floral & Decor'],
-  'Decor': ['Floral & Decor'],
-  'Florist': ['Floral & Decor'],
-  'Beauty': ['Beauty & Fashion Services'],
-  'Cake': ['Cake & Desserts'],
-  'Cakes': ['Cake & Desserts'],
-  'Desserts': ['Cake & Desserts'],
-  'Transportation': ['Transportation'],
-  'Transport': ['Transportation'],
-  'Planners': ['Event Planning', 'Event Services'],
-  'Planner': ['Event Planning', 'Event Services'],
-  'Planning': ['Event Planning', 'Event Services'],
-  'Fashion': ['Fashion & Attire', 'Beauty & Fashion Services'],
-  'Attire': ['Fashion & Attire', 'Beauty & Fashion Services'],
-  'Stationery': ['Stationery & Paper Goods'],
-  'Invitations': ['Stationery & Paper Goods']
+  'venue': ['Venue Features'],
+  'photo': ['Photography & Video'],
+  'video': ['Photography & Video'],
+  'music': ['Music & Entertainment'],
+  'dj': ['Music & Entertainment'],
+  'catering': ['Catering & Bar'],
+  'entertainment': ['Music & Entertainment', 'Experience Services'],
+  'experiences': ['Experience Services'],
+  'decorations': ['Floral & Decor'],
+  'beauty': ['Beauty & Fashion Services'],
+  'cake': ['Cake & Desserts'],
+  'transportation': ['Transportation'],
+  'planners': ['Event Planning', 'Event Services'],
+  'fashion': ['Fashion & Attire', 'Beauty & Fashion Services'],
+  'stationery': ['Stationery & Paper Goods']
 };
 
 function CategoryServicesPanel({ onBack, vendorProfileId }) {

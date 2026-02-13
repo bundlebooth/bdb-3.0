@@ -36,23 +36,7 @@ function ServicesStep({ formData, setFormData }) {
     };
   }, [showModal, showEditModal]);
 
-  // Map frontend category IDs to database category names
-  const categoryToDbMapping = {
-    'venue': ['Wedding', 'Event Planning'],
-    'photo': ['Photography'],
-    'music': ['Music & Entertainment'],
-    'catering': ['Catering'],
-    'entertainment': ['Music & Entertainment', 'Event Planning'],
-    'experiences': ['Event Planning'],
-    'florist': ['Wedding'],
-    'beauty': ['Wedding'],
-    'stationery': ['Wedding'],
-    'rentals': ['Event Planning'],
-    'transport': ['Wedding', 'Event Planning'],
-    'officiant': ['Wedding'],
-    'planner': ['Event Planning', 'Wedding']
-  };
-
+  // Category IDs now match database directly - no mapping needed
   const loadServices = async () => {
     try {
       setLoading(true);
@@ -76,19 +60,16 @@ function ServicesStep({ formData, setFormData }) {
         const filteredServices = [];
         const addedServiceIds = new Set();
         
-        allCategories.forEach(frontendCategory => {
-          const dbCategories = categoryToDbMapping[frontendCategory] || [frontendCategory];
-          
-          dbCategories.forEach(dbCategory => {
-            if (servicesByCategory[dbCategory]) {
-              servicesByCategory[dbCategory].forEach(service => {
-                if (!addedServiceIds.has(service.id)) {
-                  addedServiceIds.add(service.id);
-                  filteredServices.push({ ...service, category: frontendCategory });
-                }
-              });
-            }
-          });
+        // Categories match DB directly - no mapping needed
+        allCategories.forEach(category => {
+          if (servicesByCategory[category]) {
+            servicesByCategory[category].forEach(service => {
+              if (!addedServiceIds.has(service.id)) {
+                addedServiceIds.add(service.id);
+                filteredServices.push({ ...service, category });
+              }
+            });
+          }
         });
         
         setAvailableServices(filteredServices);

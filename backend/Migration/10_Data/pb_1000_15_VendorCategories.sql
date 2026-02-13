@@ -18,15 +18,16 @@ IF NOT EXISTS (SELECT TOP 1 1 FROM [vendors].[VendorCategories])
 BEGIN
     SET IDENTITY_INSERT [vendors].[VendorCategories] ON;
 
+    -- Updated to use separate category IDs (2026-02-13): photo, video, music, dj
     INSERT [vendors].[VendorCategories] ([VendorCategoryID], [VendorProfileID], [Category]) VALUES (238, 1, N'catering');
     INSERT [vendors].[VendorCategories] ([VendorCategoryID], [VendorProfileID], [Category]) VALUES (4, 3, N'photo');
-    INSERT [vendors].[VendorCategories] ([VendorCategoryID], [VendorProfileID], [Category]) VALUES (5, 3, N'videography');
+    -- Removed duplicate videography row (5, 3) - now separate video category available
     INSERT [vendors].[VendorCategories] ([VendorCategoryID], [VendorProfileID], [Category]) VALUES (6, 4, N'photo');
     INSERT [vendors].[VendorCategories] ([VendorCategoryID], [VendorProfileID], [Category]) VALUES (9, 5, N'photo');
     INSERT [vendors].[VendorCategories] ([VendorCategoryID], [VendorProfileID], [Category]) VALUES (10, 7, N'photo');
     INSERT [vendors].[VendorCategories] ([VendorCategoryID], [VendorProfileID], [Category]) VALUES (13, 8, N'photo');
     INSERT [vendors].[VendorCategories] ([VendorCategoryID], [VendorProfileID], [Category]) VALUES (15, 10, N'photo');
-    INSERT [vendors].[VendorCategories] ([VendorCategoryID], [VendorProfileID], [Category]) VALUES (16, 11, N'decor');
+    INSERT [vendors].[VendorCategories] ([VendorCategoryID], [VendorProfileID], [Category]) VALUES (16, 11, N'decorations');
     INSERT [vendors].[VendorCategories] ([VendorCategoryID], [VendorProfileID], [Category]) VALUES (17, 12, N'photo');
     INSERT [vendors].[VendorCategories] ([VendorCategoryID], [VendorProfileID], [Category]) VALUES (18, 13, N'photo');
     INSERT [vendors].[VendorCategories] ([VendorCategoryID], [VendorProfileID], [Category]) VALUES (19, 14, N'photo');
@@ -70,7 +71,7 @@ BEGIN
     INSERT [vendors].[VendorCategories] ([VendorCategoryID], [VendorProfileID], [Category]) VALUES (81, 66, N'beauty');
     INSERT [vendors].[VendorCategories] ([VendorCategoryID], [VendorProfileID], [Category]) VALUES (82, 67, N'photo');
     INSERT [vendors].[VendorCategories] ([VendorCategoryID], [VendorProfileID], [Category]) VALUES (83, 68, N'fashion');
-    INSERT [vendors].[VendorCategories] ([VendorCategoryID], [VendorProfileID], [Category]) VALUES (84, 69, N'decor');
+    INSERT [vendors].[VendorCategories] ([VendorCategoryID], [VendorProfileID], [Category]) VALUES (84, 69, N'decorations');
     INSERT [vendors].[VendorCategories] ([VendorCategoryID], [VendorProfileID], [Category]) VALUES (85, 70, N'experiences');
     INSERT [vendors].[VendorCategories] ([VendorCategoryID], [VendorProfileID], [Category]) VALUES (86, 71, N'photo');
     INSERT [vendors].[VendorCategories] ([VendorCategoryID], [VendorProfileID], [Category]) VALUES (87, 72, N'photo');
@@ -93,7 +94,7 @@ BEGIN
     INSERT [vendors].[VendorCategories] ([VendorCategoryID], [VendorProfileID], [Category]) VALUES (106, 91, N'photo');
     INSERT [vendors].[VendorCategories] ([VendorCategoryID], [VendorProfileID], [Category]) VALUES (107, 92, N'photo');
     INSERT [vendors].[VendorCategories] ([VendorCategoryID], [VendorProfileID], [Category]) VALUES (108, 93, N'music');
-    INSERT [vendors].[VendorCategories] ([VendorCategoryID], [VendorProfileID], [Category]) VALUES (110, 94, N'planner');
+    INSERT [vendors].[VendorCategories] ([VendorCategoryID], [VendorProfileID], [Category]) VALUES (110, 94, N'planners');
     INSERT [vendors].[VendorCategories] ([VendorCategoryID], [VendorProfileID], [Category]) VALUES (111, 95, N'entertainment');
     INSERT [vendors].[VendorCategories] ([VendorCategoryID], [VendorProfileID], [Category]) VALUES (113, 96, N'photo');
     INSERT [vendors].[VendorCategories] ([VendorCategoryID], [VendorProfileID], [Category]) VALUES (115, 98, N'photo');
@@ -131,10 +132,10 @@ BEGIN
     INSERT [vendors].[VendorCategories] ([VendorCategoryID], [VendorProfileID], [Category]) VALUES (163, 135, N'photo');
     INSERT [vendors].[VendorCategories] ([VendorCategoryID], [VendorProfileID], [Category]) VALUES (164, 136, N'photo');
     INSERT [vendors].[VendorCategories] ([VendorCategoryID], [VendorProfileID], [Category]) VALUES (165, 137, N'photo');
-    INSERT [vendors].[VendorCategories] ([VendorCategoryID], [VendorProfileID], [Category]) VALUES (612, 138, N'Catering');
-    INSERT [vendors].[VendorCategories] ([VendorCategoryID], [VendorProfileID], [Category]) VALUES (613, 138, N'Entertainment');
-    INSERT [vendors].[VendorCategories] ([VendorCategoryID], [VendorProfileID], [Category]) VALUES (614, 138, N'Music');
-    INSERT [vendors].[VendorCategories] ([VendorCategoryID], [VendorProfileID], [Category]) VALUES (615, 138, N'Photography');
+    INSERT [vendors].[VendorCategories] ([VendorCategoryID], [VendorProfileID], [Category]) VALUES (612, 138, N'catering');
+    INSERT [vendors].[VendorCategories] ([VendorCategoryID], [VendorProfileID], [Category]) VALUES (613, 138, N'entertainment');
+    INSERT [vendors].[VendorCategories] ([VendorCategoryID], [VendorProfileID], [Category]) VALUES (614, 138, N'music');
+    INSERT [vendors].[VendorCategories] ([VendorCategoryID], [VendorProfileID], [Category]) VALUES (615, 138, N'photo');
     INSERT [vendors].[VendorCategories] ([VendorCategoryID], [VendorProfileID], [Category]) VALUES (167, 139, N'photo');
     INSERT [vendors].[VendorCategories] ([VendorCategoryID], [VendorProfileID], [Category]) VALUES (168, 140, N'photo');
     INSERT [vendors].[VendorCategories] ([VendorCategoryID], [VendorProfileID], [Category]) VALUES (169, 141, N'photo');
@@ -167,7 +168,7 @@ BEGIN
 
     SET IDENTITY_INSERT [vendors].[VendorCategories] OFF;
 
-    PRINT 'Inserted 146 records into [vendors].[VendorCategories].';
+    PRINT 'Inserted 145 records into [vendors].[VendorCategories].';
 END
 ELSE
 BEGIN

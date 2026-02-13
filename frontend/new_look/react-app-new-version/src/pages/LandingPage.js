@@ -66,20 +66,22 @@ function LandingPage() {
   const [mobileSearchStep, setMobileSearchStep] = useState(0); // 0: category, 1: location, 2: date
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   
-  // Categories - memoized for performance
+  // Categories - IDs match DB directly
   const categories = useMemo(() => [
     { name: 'All Categories', slug: 'all', icon: 'fa-th-large' },
     { name: 'Venues', slug: 'venue', icon: 'fa-building' },
-    { name: 'Photo/Video', slug: 'photo', icon: 'fa-camera' },
-    { name: 'Music/DJ', slug: 'music', icon: 'fa-music' },
+    { name: 'Photography', slug: 'photo', icon: 'fa-camera' },
+    { name: 'Videography', slug: 'video', icon: 'fa-video' },
+    { name: 'Music', slug: 'music', icon: 'fa-music' },
+    { name: 'DJ', slug: 'dj', icon: 'fa-headphones' },
     { name: 'Catering', slug: 'catering', icon: 'fa-utensils' },
     { name: 'Entertainment', slug: 'entertainment', icon: 'fa-theater-masks' },
     { name: 'Experiences', slug: 'experiences', icon: 'fa-star' },
-    { name: 'Decor', slug: 'decor', icon: 'fa-ribbon' },
+    { name: 'Decorations', slug: 'decorations', icon: 'fa-ribbon' },
     { name: 'Beauty', slug: 'beauty', icon: 'fa-cut' },
     { name: 'Cake', slug: 'cake', icon: 'fa-birthday-cake' },
-    { name: 'Transport', slug: 'transport', icon: 'fa-car' },
-    { name: 'Planners', slug: 'planner', icon: 'fa-clipboard-list' },
+    { name: 'Transportation', slug: 'transportation', icon: 'fa-car' },
+    { name: 'Planners', slug: 'planners', icon: 'fa-clipboard-list' },
     { name: 'Fashion', slug: 'fashion', icon: 'fa-shopping-bag' },
     { name: 'Stationery', slug: 'stationery', icon: 'fa-envelope' }
   ], []);

@@ -72,12 +72,13 @@ function Footer() {
           <h4>{t('footer.vendors')}</h4>
           <ul className="vv-links">
             <li><a href="#" onClick={(e) => { e.preventDefault(); handleCategoryClick('venue'); }}>{t('categories.venue')}</a></li>
-            <li><a href="#" onClick={(e) => { e.preventDefault(); handleCategoryClick('catering'); }}>{t('categories.catering')}</a></li>
-            <li><a href="#" onClick={(e) => { e.preventDefault(); handleCategoryClick('planner'); }}>{t('categories.planner')}</a></li>
             <li><a href="#" onClick={(e) => { e.preventDefault(); handleCategoryClick('photo'); }}>{t('categories.photo')}</a></li>
+            <li><a href="#" onClick={(e) => { e.preventDefault(); handleCategoryClick('video'); }}>Videography</a></li>
             <li><a href="#" onClick={(e) => { e.preventDefault(); handleCategoryClick('music'); }}>{t('categories.music')}</a></li>
-            <li><a href="#" onClick={(e) => { e.preventDefault(); handleCategoryClick('decor'); }}>{t('categories.decor')}</a></li>
-            <li><a href="#" onClick={(e) => { e.preventDefault(); handleCategoryClick('entertainment'); }}>{t('categories.entertainment')}</a></li>
+            <li><a href="#" onClick={(e) => { e.preventDefault(); handleCategoryClick('dj'); }}>DJ</a></li>
+            <li><a href="#" onClick={(e) => { e.preventDefault(); handleCategoryClick('catering'); }}>{t('categories.catering')}</a></li>
+            <li><a href="#" onClick={(e) => { e.preventDefault(); handleCategoryClick('decorations'); }}>{t('categories.decor')}</a></li>
+            <li><a href="#" onClick={(e) => { e.preventDefault(); handleCategoryClick('planners'); }}>{t('categories.planner')}</a></li>
           </ul>
         </div>
 

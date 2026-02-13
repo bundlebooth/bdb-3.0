@@ -1,23 +1,22 @@
 import React from 'react';
 
-// Map category IDs to names for API calls
+// Category ID to display name - IDs match DB directly, no mapping needed
 const CATEGORY_ID_TO_NAME = {
   'venue': 'Venues',
-  'photo': 'Photo/Video',
-  'music': 'Music/DJ',
+  'photo': 'Photography',
+  'video': 'Videography',
+  'music': 'Music',
+  'dj': 'DJ',
   'catering': 'Catering',
   'entertainment': 'Entertainment',
+  'experiences': 'Experiences',
   'decorations': 'Decorations',
-  'decor': 'Decorations',
   'beauty': 'Beauty',
   'cake': 'Cake',
   'transportation': 'Transportation',
-  'transport': 'Transportation',
   'planners': 'Planners',
-  'planner': 'Planners',
   'fashion': 'Fashion',
-  'stationery': 'Stationery',
-  'experiences': 'Experiences'
+  'stationery': 'Stationery'
 };
 
 /**

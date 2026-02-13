@@ -400,24 +400,3 @@ export function getCategoryIconHtml(category) {
   return `<i class="fas ${icon}" style="font-size: 12px;"></i>`;
 }
 
-// Map type to category
-export function mapTypeToCategory(type) {
-  const mapping = {
-    'Venue': 'venue',
-    'Photography': 'photo',
-    'Videography': 'photo',
-    'Music': 'music',
-    'DJ': 'music',
-    'Catering': 'catering',
-    'Entertainment': 'entertainment',
-    'Experiences': 'experiences',
-    'Decorations': 'decor',
-    'Beauty': 'beauty',
-    'Cake': 'cake',
-    'Transportation': 'transport',
-    'Event Planner': 'planner',
-    'Fashion': 'fashion',
-    'Stationery': 'stationery'
-  };
-  return mapping[type] || type.toLowerCase();
-}

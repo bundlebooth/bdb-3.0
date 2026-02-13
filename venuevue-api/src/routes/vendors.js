@@ -1239,24 +1239,11 @@ router.get('/search-by-categories', async (req, res) => {
       catch { categoryList = [category.trim()]; }
     }
 
-    // Expand combined labels like "Music/DJ" and map friendly labels to DB values
+    // No mapping needed - categories are passed directly as stored in DB
+    // Valid categories: venue, photo, video, music, dj, catering, entertainment, 
+    // experiences, decorations, beauty, cake, transportation, planners, fashion, stationery
     if (categoryList.length > 0) {
-      const expanded = [];
-      for (let raw of categoryList) {
-        const label = (raw || '').trim();
-        if (!label) continue;
-        const parts = label.includes('/') ? label.split('/').map(s => s.trim()).filter(Boolean) : [label];
-        for (let p of parts) {
-          const lower = p.toLowerCase();
-          if (lower === 'video') { expanded.push('Videography'); continue; }
-          if (lower === 'photo') { expanded.push('Photo'); expanded.push('Photography'); continue; }
-          if (lower === 'venues') { expanded.push('Venue'); expanded.push('Hotel'); continue; }
-          if (lower === 'decorations') { expanded.push('Decor'); expanded.push('Florist'); continue; }
-          expanded.push(p);
-        }
-      }
-      // Deduplicate and replace categoryList
-      categoryList = Array.from(new Set(expanded));
+      categoryList = categoryList.map(c => (c || '').trim()).filter(Boolean);
     }
 
     if (categoryList.length === 0) {
@@ -5516,51 +5503,10 @@ router.get('/category-questions/:category', async (req, res) => {
       });
     }
 
-    // Map display names to database category keys
-    const categoryKeyMap = {
-      'Photography': 'photo',
-      'Photography & Videography': 'photo',
-      'Photo & Video': 'photo',
-      'Photo/Video': 'photo',
-      'Videography': 'photo',
-      'Venues': 'venue',
-      'Venue': 'venue',
-      'Music': 'music',
-      'Music & Entertainment': 'music',
-      'Music/DJ': 'music',
-      'DJ': 'music',
-      'Band': 'music',
-      'Catering': 'catering',
-      'Catering & Bar': 'catering',
-      'Food & Beverage': 'catering',
-      'Entertainment': 'entertainment',
-      'Experiences': 'experiences',
-      'Decor': 'decor',
-      'Decoration': 'decor',
-      'Decorations': 'decor',
-      'Floral': 'decor',
-      'Flowers': 'decor',
-      'Beauty': 'beauty',
-      'Beauty & Fashion': 'beauty',
-      'Hair & Makeup': 'beauty',
-      'Cake': 'cake',
-      'Bakery': 'cake',
-      'Cakes & Desserts': 'cake',
-      'Transportation': 'transportation',
-      'Transport': 'transportation',
-      'Planner': 'planner',
-      'Planners': 'planner',
-      'Planning': 'planner',
-      'Event Planning': 'planner',
-      'Wedding Planner': 'planner',
-      'Fashion': 'fashion',
-      'Attire': 'fashion',
-      'Stationery': 'stationery',
-      'Invitations': 'stationery'
-    };
-
-    // Use mapped key or original value (lowercase)
-    const categoryKey = categoryKeyMap[category] || category.toLowerCase();
+    // No mapping needed - category is passed directly as stored in DB
+    // Valid categories: venue, photo, video, music, dj, catering, entertainment, 
+    // experiences, decorations, beauty, cake, transportation, planners, fashion, stationery
+    const categoryKey = category;
 
     const pool = await poolPromise;
     const request = new sql.Request(pool);
@@ -7095,29 +7041,10 @@ router.put('/:id/categories', async (req, res) => {
 
     const { primaryCategoryId, primaryCategory, subcategoryIds } = req.body;
     
-    // primaryCategoryId might be a string like "photo" or a category name like "Photo/Video"
-    // We need to handle both cases
-    let categoryName = primaryCategory || primaryCategoryId;
-    
-    // Map category IDs to names if needed
-    const categoryIdToName = {
-      'venue': 'Venues',
-      'photo': 'Photo/Video',
-      'music': 'Music/DJ',
-      'catering': 'Catering',
-      'entertainment': 'Entertainment',
-      'decorations': 'Decorations',
-      'beauty': 'Beauty',
-      'cake': 'Cake',
-      'transportation': 'Transportation',
-      'planners': 'Planners',
-      'fashion': 'Fashion',
-      'stationery': 'Stationery'
-    };
-    
-    if (categoryIdToName[categoryName]) {
-      categoryName = categoryIdToName[categoryName];
-    }
+    // No mapping needed - category is passed directly as stored in DB
+    // Valid categories: venue, photo, video, music, dj, catering, entertainment, 
+    // experiences, decorations, beauty, cake, transportation, planners, fashion, stationery
+    const categoryName = primaryCategory || primaryCategoryId;
 
     const pool = await poolPromise;
     

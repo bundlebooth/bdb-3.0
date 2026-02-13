@@ -112,19 +112,21 @@ function IndexPage() {
   const vendorsPerPage = 12;
   const serverPageSize = 200;
 
-  // Category metadata for category-based carousels
+  // Category metadata for category-based carousels - IDs match DB directly
   const categoryMeta = useMemo(() => ({
     'venue': { label: 'Venues', icon: 'fa-building', color: '#a855f7' },
-    'photo': { label: 'Photographers & Videographers', icon: 'fa-camera', color: '#06b6d4' },
-    'music': { label: 'DJs & Musicians', icon: 'fa-music', color: '#10b981' },
+    'photo': { label: 'Photographers', icon: 'fa-camera', color: '#06b6d4' },
+    'video': { label: 'Videographers', icon: 'fa-video', color: '#0891b2' },
+    'music': { label: 'Musicians', icon: 'fa-music', color: '#10b981' },
+    'dj': { label: 'DJs', icon: 'fa-headphones', color: '#059669' },
     'catering': { label: 'Caterers', icon: 'fa-utensils', color: '#f59e0b' },
     'entertainment': { label: 'Entertainment', icon: 'fa-theater-masks', color: '#ef4444' },
     'experiences': { label: 'Experiences', icon: 'fa-star', color: '#f97316' },
-    'decor': { label: 'Decorators', icon: 'fa-palette', color: '#ec4899' },
+    'decorations': { label: 'Decorators', icon: 'fa-palette', color: '#ec4899' },
     'beauty': { label: 'Beauty & Makeup', icon: 'fa-cut', color: '#be185d' },
     'cake': { label: 'Cakes & Desserts', icon: 'fa-birthday-cake', color: '#a855f7' },
-    'transport': { label: 'Transportation', icon: 'fa-car', color: '#3b82f6' },
-    'planner': { label: 'Event Planners', icon: 'fa-clipboard-list', color: '#64748b' },
+    'transportation': { label: 'Transportation', icon: 'fa-car', color: '#3b82f6' },
+    'planners': { label: 'Event Planners', icon: 'fa-clipboard-list', color: '#64748b' },
     'fashion': { label: 'Fashion & Attire', icon: 'fa-tshirt', color: '#7c3aed' },
     'stationery': { label: 'Stationery & Invitations', icon: 'fa-envelope', color: '#8b5cf6' }
   }), []);

@@ -71,29 +71,15 @@ function BusinessInformationPanel({ onBack, vendorProfileId }) {
     }
   }, [vendorProfileId]);
 
-  // Category ID to name mapping for subcategories lookup
-  const categoryIdToName = {
-    'venue': 'Venues',
-    'photo': 'Photo/Video',
-    'music': 'Music/DJ',
-    'catering': 'Catering',
-    'entertainment': 'Entertainment',
-    'experiences': 'Experiences',
-    'decor': 'Decorations',
-    'beauty': 'Beauty',
-    'cake': 'Cake',
-    'transport': 'Transportation',
-    'planner': 'Planners',
-    'fashion': 'Fashion',
-    'stationery': 'Stationery'
-  };
+  // Category IDs match DB directly - no mapping needed, just pass through
+  // Valid categories: venue, photo, video, music, dj, catering, entertainment, 
+  // experiences, decorations, beauty, cake, transportation, planners, fashion, stationery
 
   // Load subcategories when primary category changes
   useEffect(() => {
     if (formData.category) {
-      // Convert category ID to name for API lookup
-      const categoryName = categoryIdToName[formData.category] || formData.category;
-      loadSubcategoriesForCategory(categoryName);
+      // Category ID matches DB directly - no mapping needed
+      loadSubcategoriesForCategory(formData.category);
     } else {
       setSubcategoriesOptions([]);
     }

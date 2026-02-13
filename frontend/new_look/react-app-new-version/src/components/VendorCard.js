@@ -1,5 +1,5 @@
 import React, { memo } from 'react';
-import { getCategoryIconHtml, mapTypeToCategory, formatLocationShort } from '../utils/helpers';
+import { getCategoryIconHtml, formatLocationShort } from '../utils/helpers';
 import { buildVendorProfileUrl } from '../utils/urlHelpers';
 import { useLocalization } from '../context/LocalizationContext';
 import './common/LoadingSpinner.css';
@@ -115,10 +115,10 @@ const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavori
   const viewCount = vendor.viewCount || 0;
   const avgResponseMinutes = vendor.avgResponseMinutes || 0;
   
-  // Category
+  // Category - DB now returns snake_case directly, no mapping needed
   const primaryCategory = vendor.PrimaryCategory || vendor.primaryCategory || 
                          vendor.Category || vendor.category || '';
-  const categoryKey = mapTypeToCategory(primaryCategory);
+  const categoryKey = primaryCategory.toLowerCase();
   const categoryIconHtml = getCategoryIconHtml(categoryKey);
   
   // Bio/Description - truncate to ~100 chars for card display

@@ -14,7 +14,7 @@
     - Number: Numeric input
     - Text: Free text input
     
-    Categories covered: photo, venue, music, catering, entertainment, experiences, decor, beauty, cake, transport, planner, fashion, stationery
+    Categories covered: photo_video, venue, music_dj, catering, entertainment, experiences, decorations, beauty, cake, transportation, planners, fashion, stationery
 */
 
 SET NOCOUNT ON;
@@ -31,7 +31,7 @@ SET IDENTITY_INSERT [admin].[CategoryQuestions] ON;
 GO
 
 -- =============================================
--- PHOTO / VIDEO CATEGORY (photo)
+-- PHOTOGRAPHY CATEGORY (photo)
 -- =============================================
 INSERT [admin].[CategoryQuestions] ([QuestionID], [Category], [QuestionText], [QuestionType], [Options], [IsRequired], [DisplayOrder], [IsActive], [CreatedAt], [UpdatedAt]) VALUES 
 (1, N'photo', N'What photography styles do you specialize in?', N'MultiSelect', N'Traditional,Photojournalistic,Fine Art,Editorial,Candid,Documentary,Lifestyle,Dramatic,Moody,Light & Airy,Dark & Moody,Film', 1, 1, 1, GETUTCDATE(), GETUTCDATE()),
@@ -79,7 +79,7 @@ INSERT [admin].[CategoryQuestions] ([QuestionID], [Category], [QuestionText], [Q
 (38, N'venue', N'Do you have an event coordinator on-site?', N'YesNo', NULL, 0, 21, 1, GETUTCDATE(), GETUTCDATE());
 
 -- =============================================
--- MUSIC / DJ CATEGORY (music)
+-- MUSIC CATEGORY (music)
 -- =============================================
 INSERT [admin].[CategoryQuestions] ([QuestionID], [Category], [QuestionText], [QuestionType], [Options], [IsRequired], [DisplayOrder], [IsActive], [CreatedAt], [UpdatedAt]) VALUES 
 (39, N'music', N'What type of music services do you offer?', N'MultiSelect', N'DJ,Live Band,Solo Musician,Duo/Trio,String Quartet,Jazz Ensemble,Acoustic,Electronic/EDM,Classical,Cultural/Traditional', 1, 1, 1, GETUTCDATE(), GETUTCDATE()),
@@ -152,21 +152,21 @@ INSERT [admin].[CategoryQuestions] ([QuestionID], [Category], [QuestionText], [Q
 (91, N'experiences', N'Is there a weather contingency plan?', N'YesNo', NULL, 0, 12, 1, GETUTCDATE(), GETUTCDATE());
 
 -- =============================================
--- DECOR & RENTALS CATEGORY (decor)
+-- DECOR & RENTALS CATEGORY (decorations)
 -- =============================================
 INSERT [admin].[CategoryQuestions] ([QuestionID], [Category], [QuestionText], [QuestionType], [Options], [IsRequired], [DisplayOrder], [IsActive], [CreatedAt], [UpdatedAt]) VALUES 
-(92, N'decor', N'What decor services do you offer?', N'MultiSelect', N'Floral Design,Centerpieces,Backdrops,Arches/Arbors,Drapery,Balloon Decor,Lighting Design,Table Settings,Signage,Props,Ceiling Installations,Aisle Decor,Ceremony Decor,Reception Decor', 1, 1, 1, GETUTCDATE(), GETUTCDATE()),
-(93, N'decor', N'What rental items do you offer?', N'MultiSelect', N'Tables,Chairs,Linens,Tableware,Glassware,Chargers,Centerpiece Vessels,Candles/Votives,Lanterns,Lounge Furniture,Bars,Tents/Canopies,Dance Floors,Stages,Lighting,Backdrops,Arches,Photo Frames', 1, 2, 1, GETUTCDATE(), GETUTCDATE()),
-(94, N'decor', N'What design styles do you specialize in?', N'MultiSelect', N'Modern/Contemporary,Classic/Traditional,Rustic/Bohemian,Glamorous/Luxe,Minimalist,Romantic,Industrial,Garden/Natural,Cultural/Traditional,Whimsical,Vintage,Tropical', 1, 3, 1, GETUTCDATE(), GETUTCDATE()),
-(95, N'decor', N'Do you offer custom designs?', N'YesNo', NULL, 1, 4, 1, GETUTCDATE(), GETUTCDATE()),
-(96, N'decor', N'Is setup included?', N'YesNo', NULL, 1, 5, 1, GETUTCDATE(), GETUTCDATE()),
-(97, N'decor', N'Is teardown/pickup included?', N'YesNo', NULL, 1, 6, 1, GETUTCDATE(), GETUTCDATE()),
-(98, N'decor', N'Do you offer delivery?', N'YesNo', NULL, 1, 7, 1, GETUTCDATE(), GETUTCDATE()),
-(99, N'decor', N'What is your delivery radius?', N'Select', N'Within city,Up to 25km,Up to 50km,Up to 100km,Province-wide,Nationwide', 0, 8, 1, GETUTCDATE(), GETUTCDATE()),
-(100, N'decor', N'Do you use eco-friendly/sustainable materials?', N'YesNo', NULL, 0, 9, 1, GETUTCDATE(), GETUTCDATE()),
-(101, N'decor', N'Do you offer day-of coordination for decor?', N'YesNo', NULL, 0, 10, 1, GETUTCDATE(), GETUTCDATE()),
-(102, N'decor', N'Do you provide design consultations?', N'YesNo', NULL, 0, 11, 1, GETUTCDATE(), GETUTCDATE()),
-(103, N'decor', N'Is there a consultation fee?', N'Select', N'Free,Complimentary with booking,Fee applies,Fee credited to booking', 0, 12, 1, GETUTCDATE(), GETUTCDATE());
+(92, N'decorations', N'What decor services do you offer?', N'MultiSelect', N'Floral Design,Centerpieces,Backdrops,Arches/Arbors,Drapery,Balloon Decor,Lighting Design,Table Settings,Signage,Props,Ceiling Installations,Aisle Decor,Ceremony Decor,Reception Decor', 1, 1, 1, GETUTCDATE(), GETUTCDATE()),
+(93, N'decorations', N'What rental items do you offer?', N'MultiSelect', N'Tables,Chairs,Linens,Tableware,Glassware,Chargers,Centerpiece Vessels,Candles/Votives,Lanterns,Lounge Furniture,Bars,Tents/Canopies,Dance Floors,Stages,Lighting,Backdrops,Arches,Photo Frames', 1, 2, 1, GETUTCDATE(), GETUTCDATE()),
+(94, N'decorations', N'What design styles do you specialize in?', N'MultiSelect', N'Modern/Contemporary,Classic/Traditional,Rustic/Bohemian,Glamorous/Luxe,Minimalist,Romantic,Industrial,Garden/Natural,Cultural/Traditional,Whimsical,Vintage,Tropical', 1, 3, 1, GETUTCDATE(), GETUTCDATE()),
+(95, N'decorations', N'Do you offer custom designs?', N'YesNo', NULL, 1, 4, 1, GETUTCDATE(), GETUTCDATE()),
+(96, N'decorations', N'Is setup included?', N'YesNo', NULL, 1, 5, 1, GETUTCDATE(), GETUTCDATE()),
+(97, N'decorations', N'Is teardown/pickup included?', N'YesNo', NULL, 1, 6, 1, GETUTCDATE(), GETUTCDATE()),
+(98, N'decorations', N'Do you offer delivery?', N'YesNo', NULL, 1, 7, 1, GETUTCDATE(), GETUTCDATE()),
+(99, N'decorations', N'What is your delivery radius?', N'Select', N'Within city,Up to 25km,Up to 50km,Up to 100km,Province-wide,Nationwide', 0, 8, 1, GETUTCDATE(), GETUTCDATE()),
+(100, N'decorations', N'Do you use eco-friendly/sustainable materials?', N'YesNo', NULL, 0, 9, 1, GETUTCDATE(), GETUTCDATE()),
+(101, N'decorations', N'Do you offer day-of coordination for decor?', N'YesNo', NULL, 0, 10, 1, GETUTCDATE(), GETUTCDATE()),
+(102, N'decorations', N'Do you provide design consultations?', N'YesNo', NULL, 0, 11, 1, GETUTCDATE(), GETUTCDATE()),
+(103, N'decorations', N'Is there a consultation fee?', N'Select', N'Free,Complimentary with booking,Fee applies,Fee credited to booking', 0, 12, 1, GETUTCDATE(), GETUTCDATE());
 
 -- =============================================
 -- BEAUTY & WELLNESS CATEGORY (beauty)
@@ -202,36 +202,36 @@ INSERT [admin].[CategoryQuestions] ([QuestionID], [Category], [QuestionText], [Q
 (126, N'cake', N'How far in advance should orders be placed?', N'Select', N'1 week,2 weeks,1 month,2 months,3+ months', 1, 11, 1, GETUTCDATE(), GETUTCDATE());
 
 -- =============================================
--- TRANSPORTATION CATEGORY (transport)
+-- TRANSPORTATION CATEGORY (transportation)
 -- =============================================
 INSERT [admin].[CategoryQuestions] ([QuestionID], [Category], [QuestionText], [QuestionType], [Options], [IsRequired], [DisplayOrder], [IsActive], [CreatedAt], [UpdatedAt]) VALUES 
-(127, N'transport', N'What types of vehicles do you offer?', N'MultiSelect', N'Limousine,Stretch Limo,SUV Limo,Party Bus,Vintage/Classic Car,Luxury Sedan,Rolls Royce,Bentley,Mercedes,BMW,Tesla,Exotic/Sports Car,Horse & Carriage,Trolley,Shuttle Bus,Coach Bus', 1, 1, 1, GETUTCDATE(), GETUTCDATE()),
-(128, N'transport', N'What is the passenger capacity?', N'Select', N'2-4,5-8,9-14,15-20,21-30,31-50,50+', 1, 2, 1, GETUTCDATE(), GETUTCDATE()),
-(129, N'transport', N'Is a chauffeur/driver included?', N'YesNo', NULL, 1, 3, 1, GETUTCDATE(), GETUTCDATE()),
-(130, N'transport', N'What is included in the service?', N'MultiSelect', N'Professional Driver,Red Carpet,Champagne/Beverages,Ice/Cooler,Decorations,Music System,TV/Entertainment,WiFi,Privacy Partition,Refreshments', 1, 4, 1, GETUTCDATE(), GETUTCDATE()),
-(131, N'transport', N'Can the vehicle be decorated?', N'YesNo', NULL, 0, 5, 1, GETUTCDATE(), GETUTCDATE()),
-(132, N'transport', N'Is alcohol allowed in the vehicle?', N'YesNo', NULL, 0, 6, 1, GETUTCDATE(), GETUTCDATE()),
-(133, N'transport', N'What is your minimum booking duration?', N'Select', N'1 hour,2 hours,3 hours,4 hours,5 hours,No minimum', 1, 7, 1, GETUTCDATE(), GETUTCDATE()),
-(134, N'transport', N'Do you offer airport transfers?', N'YesNo', NULL, 0, 8, 1, GETUTCDATE(), GETUTCDATE()),
-(135, N'transport', N'Do you offer guest shuttle services?', N'YesNo', NULL, 0, 9, 1, GETUTCDATE(), GETUTCDATE()),
-(136, N'transport', N'What is your service area?', N'Select', N'City only,Metropolitan area,Province-wide,Multi-province,Nationwide', 1, 10, 1, GETUTCDATE(), GETUTCDATE()),
-(137, N'transport', N'Is overtime available?', N'YesNo', NULL, 0, 11, 1, GETUTCDATE(), GETUTCDATE());
+(127, N'transportation', N'What types of vehicles do you offer?', N'MultiSelect', N'Limousine,Stretch Limo,SUV Limo,Party Bus,Vintage/Classic Car,Luxury Sedan,Rolls Royce,Bentley,Mercedes,BMW,Tesla,Exotic/Sports Car,Horse & Carriage,Trolley,Shuttle Bus,Coach Bus', 1, 1, 1, GETUTCDATE(), GETUTCDATE()),
+(128, N'transportation', N'What is the passenger capacity?', N'Select', N'2-4,5-8,9-14,15-20,21-30,31-50,50+', 1, 2, 1, GETUTCDATE(), GETUTCDATE()),
+(129, N'transportation', N'Is a chauffeur/driver included?', N'YesNo', NULL, 1, 3, 1, GETUTCDATE(), GETUTCDATE()),
+(130, N'transportation', N'What is included in the service?', N'MultiSelect', N'Professional Driver,Red Carpet,Champagne/Beverages,Ice/Cooler,Decorations,Music System,TV/Entertainment,WiFi,Privacy Partition,Refreshments', 1, 4, 1, GETUTCDATE(), GETUTCDATE()),
+(131, N'transportation', N'Can the vehicle be decorated?', N'YesNo', NULL, 0, 5, 1, GETUTCDATE(), GETUTCDATE()),
+(132, N'transportation', N'Is alcohol allowed in the vehicle?', N'YesNo', NULL, 0, 6, 1, GETUTCDATE(), GETUTCDATE()),
+(133, N'transportation', N'What is your minimum booking duration?', N'Select', N'1 hour,2 hours,3 hours,4 hours,5 hours,No minimum', 1, 7, 1, GETUTCDATE(), GETUTCDATE()),
+(134, N'transportation', N'Do you offer airport transfers?', N'YesNo', NULL, 0, 8, 1, GETUTCDATE(), GETUTCDATE()),
+(135, N'transportation', N'Do you offer guest shuttle services?', N'YesNo', NULL, 0, 9, 1, GETUTCDATE(), GETUTCDATE()),
+(136, N'transportation', N'What is your service area?', N'Select', N'City only,Metropolitan area,Province-wide,Multi-province,Nationwide', 1, 10, 1, GETUTCDATE(), GETUTCDATE()),
+(137, N'transportation', N'Is overtime available?', N'YesNo', NULL, 0, 11, 1, GETUTCDATE(), GETUTCDATE());
 
 -- =============================================
--- PLANNING & COORDINATION CATEGORY (planner)
+-- PLANNING & COORDINATION CATEGORY (planners)
 -- =============================================
 INSERT [admin].[CategoryQuestions] ([QuestionID], [Category], [QuestionText], [QuestionType], [Options], [IsRequired], [DisplayOrder], [IsActive], [CreatedAt], [UpdatedAt]) VALUES 
-(138, N'planner', N'What planning services do you offer?', N'MultiSelect', N'Full Planning,Partial Planning,Day-of Coordination,Month-of Coordination,Destination Planning,Elopement Planning,Corporate Event Planning,Social Event Planning,Virtual Event Planning', 1, 1, 1, GETUTCDATE(), GETUTCDATE()),
-(139, N'planner', N'What is included in your full planning service?', N'MultiSelect', N'Venue Selection,Vendor Sourcing,Budget Management,Timeline Creation,Design/Styling,Contract Review,RSVP Management,Seating Charts,Rehearsal Coordination,Day-of Coordination,Guest Management,Vendor Payments', 0, 2, 1, GETUTCDATE(), GETUTCDATE()),
-(140, N'planner', N'What event types do you specialize in?', N'MultiSelect', N'Weddings,Corporate Events,Social Events,Galas,Fundraisers,Birthday Parties,Anniversary Parties,Baby Showers,Bridal Showers,Engagement Parties,Holiday Parties,Cultural Events', 1, 3, 1, GETUTCDATE(), GETUTCDATE()),
-(141, N'planner', N'How many events do you take per weekend?', N'Select', N'1,2,3,Varies', 0, 4, 1, GETUTCDATE(), GETUTCDATE()),
-(142, N'planner', N'Do you have a preferred vendor list?', N'YesNo', NULL, 0, 5, 1, GETUTCDATE(), GETUTCDATE()),
-(143, N'planner', N'Do you attend vendor meetings with clients?', N'YesNo', NULL, 0, 6, 1, GETUTCDATE(), GETUTCDATE()),
-(144, N'planner', N'Do you create custom timelines?', N'YesNo', NULL, 1, 7, 1, GETUTCDATE(), GETUTCDATE()),
-(145, N'planner', N'Do you handle vendor contracts and payments?', N'YesNo', NULL, 0, 8, 1, GETUTCDATE(), GETUTCDATE()),
-(146, N'planner', N'How many hours of day-of coordination are included?', N'Select', N'6 hours,8 hours,10 hours,12 hours,Unlimited', 0, 9, 1, GETUTCDATE(), GETUTCDATE()),
-(147, N'planner', N'Do you provide an assistant on event day?', N'YesNo', NULL, 0, 10, 1, GETUTCDATE(), GETUTCDATE()),
-(148, N'planner', N'Do you offer virtual planning consultations?', N'YesNo', NULL, 0, 11, 1, GETUTCDATE(), GETUTCDATE());
+(138, N'planners', N'What planning services do you offer?', N'MultiSelect', N'Full Planning,Partial Planning,Day-of Coordination,Month-of Coordination,Destination Planning,Elopement Planning,Corporate Event Planning,Social Event Planning,Virtual Event Planning', 1, 1, 1, GETUTCDATE(), GETUTCDATE()),
+(139, N'planners', N'What is included in your full planning service?', N'MultiSelect', N'Venue Selection,Vendor Sourcing,Budget Management,Timeline Creation,Design/Styling,Contract Review,RSVP Management,Seating Charts,Rehearsal Coordination,Day-of Coordination,Guest Management,Vendor Payments', 0, 2, 1, GETUTCDATE(), GETUTCDATE()),
+(140, N'planners', N'What event types do you specialize in?', N'MultiSelect', N'Weddings,Corporate Events,Social Events,Galas,Fundraisers,Birthday Parties,Anniversary Parties,Baby Showers,Bridal Showers,Engagement Parties,Holiday Parties,Cultural Events', 1, 3, 1, GETUTCDATE(), GETUTCDATE()),
+(141, N'planners', N'How many events do you take per weekend?', N'Select', N'1,2,3,Varies', 0, 4, 1, GETUTCDATE(), GETUTCDATE()),
+(142, N'planners', N'Do you have a preferred vendor list?', N'YesNo', NULL, 0, 5, 1, GETUTCDATE(), GETUTCDATE()),
+(143, N'planners', N'Do you attend vendor meetings with clients?', N'YesNo', NULL, 0, 6, 1, GETUTCDATE(), GETUTCDATE()),
+(144, N'planners', N'Do you create custom timelines?', N'YesNo', NULL, 1, 7, 1, GETUTCDATE(), GETUTCDATE()),
+(145, N'planners', N'Do you handle vendor contracts and payments?', N'YesNo', NULL, 0, 8, 1, GETUTCDATE(), GETUTCDATE()),
+(146, N'planners', N'How many hours of day-of coordination are included?', N'Select', N'6 hours,8 hours,10 hours,12 hours,Unlimited', 0, 9, 1, GETUTCDATE(), GETUTCDATE()),
+(147, N'planners', N'Do you provide an assistant on event day?', N'YesNo', NULL, 0, 10, 1, GETUTCDATE(), GETUTCDATE()),
+(148, N'planners', N'Do you offer virtual planning consultations?', N'YesNo', NULL, 0, 11, 1, GETUTCDATE(), GETUTCDATE());
 
 -- =============================================
 -- FASHION & ATTIRE CATEGORY (fashion)

@@ -134,16 +134,18 @@ export const getCityHeroImage = async (cityName) => {
 export const getCategoryHeroImage = async (category) => {
   const categoryQueries = {
     'photo': 'wedding photography camera',
+    'video': 'wedding videography filming',
     'venue': 'wedding venue elegant',
-    'music': 'wedding dj party music',
+    'music': 'wedding live music band',
+    'dj': 'wedding dj party music',
     'catering': 'wedding catering food elegant',
     'entertainment': 'wedding entertainment party',
     'experiences': 'event experience celebration',
-    'decor': 'wedding decoration flowers',
+    'decorations': 'wedding decoration flowers',
     'beauty': 'bridal makeup beauty',
     'cake': 'wedding cake elegant',
-    'transport': 'wedding car limousine',
-    'planner': 'wedding planner event',
+    'transportation': 'wedding car limousine',
+    'planners': 'wedding planner event',
     'fashion': 'wedding dress fashion',
     'stationery': 'wedding invitation stationery'
   };
