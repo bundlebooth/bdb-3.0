@@ -97,6 +97,8 @@ BEGIN
 	-- Guest Favorite status (admin-controlled)
 	[IsGuestFavorite] [bit] NOT NULL CONSTRAINT DF_VendorProfiles_IsGuestFavorite DEFAULT 0,
 	[GuestFavoriteGrantedAt] [datetime] NULL,
+	-- Admin review notes
+	[AdminNotes] [nvarchar](max) NULL,
 PRIMARY KEY CLUSTERED 
 (
 	[VendorProfileID] ASC

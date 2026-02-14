@@ -174,7 +174,7 @@ const BecomeVendorPage = () => {
     tiktok: '',
     
     // Policies & FAQs
-    cancellationPolicy: '',
+    cancellationPolicy: { policyType: 'flexible', fullRefundDays: 1, partialRefundDays: 0, partialRefundPercent: 0, noRefundDays: 0 },
     depositPercentage: '',
     paymentTerms: '',
     faqs: [],
@@ -185,6 +185,25 @@ const BecomeVendorPage = () => {
     // Stripe
     stripeConnected: false
   });
+
+  // Reverse mapping: display name to category ID (for loading existing vendor data)
+  const CATEGORY_NAME_TO_ID = {
+    'Venues': 'venue',
+    'Photography': 'photo',
+    'Videography': 'video',
+    'Music': 'music',
+    'DJ': 'dj',
+    'Catering': 'catering',
+    'Entertainment': 'entertainment',
+    'Experiences': 'experiences',
+    'Decorations': 'decorations',
+    'Beauty': 'beauty',
+    'Cake': 'cake',
+    'Transportation': 'transportation',
+    'Planners': 'planners',
+    'Fashion': 'fashion',
+    'Stationery': 'stationery'
+  };
 
   // Available categories - IDs match DB directly, no mapping needed
   const availableCategories = [
@@ -248,7 +267,8 @@ const BecomeVendorPage = () => {
       title: 'Service Details',
       subtitle: 'Select your services, event types, cultures served, and features',
       component: ServiceDetailsStep,
-      required: true
+      required: false,
+      skippable: true
     },
     {
       id: 'category-questions',
@@ -461,6 +481,11 @@ const BecomeVendorPage = () => {
           const serviceAreas = data.serviceAreas || [];
           const features = data.features || [];
           
+          // Load vendor's selected subcategories, event types, and cultures (admin review mode)
+          const adminSubcategories = data.subcategories || [];
+          const adminEventTypes = data.eventTypes || [];
+          const adminCultures = data.cultures || [];
+          
           // Categories now stored as snake_case IDs directly in DB - no mapping needed
           const primaryCat = categories.find(c => c.IsPrimary) || categories[0];
           const primaryCategoryId = primaryCat ? (primaryCat.Category || primaryCat.CategoryName || '') : '';
@@ -488,7 +513,9 @@ const BecomeVendorPage = () => {
           setFormData(prev => ({
             ...prev,
             primaryCategory: primaryCategoryId,
-            selectedSubcategories: categories.filter(c => !c.IsPrimary).map(c => c.SubcategoryName || c.Category),
+            selectedSubcategories: adminSubcategories.map(s => s.SubcategoryID),
+            selectedEventTypes: adminEventTypes.map(e => e.EventTypeID),
+            selectedCultures: adminCultures.map(c => c.CultureID),
             businessName: profile.BusinessName || '',
             displayName: profile.DisplayName || profile.BusinessName || '',
             businessDescription: profile.Description || '',
@@ -610,6 +637,11 @@ const BecomeVendorPage = () => {
           const selectedFeatures = result.data.selectedFeatures || [];
           const faqs = result.data.faqs || [];
           
+          // Load vendor's selected subcategories, event types, and cultures
+          const vendorSubcategories = result.data.subcategories || [];
+          const vendorEventTypes = result.data.eventTypes || [];
+          const vendorCultures = result.data.cultures || [];
+          
           // Social media - convert from array format to object format
           let socialMedia = {};
           if (result.data.socialMedia?.length > 0) {
@@ -683,7 +715,9 @@ const BecomeVendorPage = () => {
             ...formData,
             // Categories
             primaryCategory: primaryCat,
-            selectedSubcategories: [], // Will be loaded separately via vendor attributes API
+            selectedSubcategories: vendorSubcategories.map(s => s.SubcategoryID),
+            selectedEventTypes: vendorEventTypes.map(e => e.EventTypeID),
+            selectedCultures: vendorCultures.map(c => c.CultureID),
             
             // Business Details
             businessName: profile.BusinessName || '',
@@ -790,6 +824,27 @@ const BecomeVendorPage = () => {
               updatedFormData.linkedin = socialData.linkedin || '';
               updatedFormData.youtube = socialData.youtube || '';
               updatedFormData.tiktok = socialData.tiktok || '';
+            }
+          } catch (e) {
+          }
+
+          // Fetch cancellation policy from dedicated endpoint
+          try {
+            const policyRes = await fetch(`${API_BASE_URL}/payments/vendor/${currentUser.vendorProfileId}/cancellation-policy`, {
+              headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+            });
+            if (policyRes.ok) {
+              const policyData = await policyRes.json();
+              if (policyData.policy) {
+                updatedFormData.cancellationPolicy = {
+                  policyType: policyData.policy.PolicyType || 'flexible',
+                  fullRefundDays: policyData.policy.FullRefundDays || 1,
+                  partialRefundDays: policyData.policy.PartialRefundDays || 0,
+                  partialRefundPercent: policyData.policy.PartialRefundPercent || 0,
+                  noRefundDays: policyData.policy.NoRefundDays || 0,
+                  customTerms: policyData.policy.CustomTerms || ''
+                };
+              }
             }
           } catch (e) {
           }
@@ -1101,6 +1156,25 @@ const BecomeVendorPage = () => {
           }
         }
 
+        // Save cancellation policy to dedicated endpoint
+        if (formData.cancellationPolicy && typeof formData.cancellationPolicy === 'object') {
+          try {
+            const policyResponse = await fetch(`${API_BASE_URL}/payments/vendor/${vendorProfileId}/cancellation-policy`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+              },
+              body: JSON.stringify(formData.cancellationPolicy)
+            });
+            if (!policyResponse.ok) {
+              console.error('[Save] Failed to save cancellation policy:', await policyResponse.text());
+            }
+          } catch (policyError) {
+            console.error('[Save] Error saving cancellation policy:', policyError);
+          }
+        }
+
         // Save category answers to dedicated endpoint if any are provided
         if (formData.categoryAnswers && Object.keys(formData.categoryAnswers).length > 0) {
           try {
@@ -1261,8 +1335,11 @@ const BecomeVendorPage = () => {
         // Optional - FAQs
         return !!(formData.faqs && formData.faqs.length > 0);
       case 'cancellation-policy':
-        // Optional - cancellation policy
-        return !!(formData.cancellationPolicy);
+        // Required - cancellation policy (check for object with policyType or string)
+        if (typeof formData.cancellationPolicy === 'object' && formData.cancellationPolicy !== null) {
+          return !!formData.cancellationPolicy.policyType;
+        }
+        return !!formData.cancellationPolicy;
       case 'review':
         // Review step is always complete (it's just a summary view)
         return true;

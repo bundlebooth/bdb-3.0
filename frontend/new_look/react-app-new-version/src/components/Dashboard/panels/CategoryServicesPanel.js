@@ -22,6 +22,25 @@ const CATEGORY_ID_TO_NAME = {
   'stationery': 'Stationery'
 };
 
+// Reverse mapping: display name to category ID
+const CATEGORY_NAME_TO_ID = {
+  'Venues': 'venue',
+  'Photography': 'photo',
+  'Videography': 'video',
+  'Music': 'music',
+  'DJ': 'dj',
+  'Catering': 'catering',
+  'Entertainment': 'entertainment',
+  'Experiences': 'experiences',
+  'Decorations': 'decorations',
+  'Beauty': 'beauty',
+  'Cake': 'cake',
+  'Transportation': 'transportation',
+  'Planners': 'planners',
+  'Fashion': 'fashion',
+  'Stationery': 'stationery'
+};
+
 // Map vendor category IDs to feature category names
 const CATEGORY_TO_FEATURE_MAP = {
   'venue': ['Venue Features'],

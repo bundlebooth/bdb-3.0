@@ -175,3 +175,54 @@ BEGIN
     PRINT 'Subcategories table already has data. Skipping seed.';
 END
 GO
+
+-- =============================================
+-- UPDATE: Convert old category names to new format (2026-02-13)
+-- This ensures subcategories work with the new snake_case category system
+-- =============================================
+PRINT 'Updating subcategory categories to new format...';
+
+-- Photo/Video -> Photography (for photo category)
+UPDATE [admin].[Subcategories] SET Category = 'Photography' WHERE Category = 'Photo/Video';
+
+-- Add Videography subcategories (split from Photo/Video)
+IF NOT EXISTS (SELECT 1 FROM [admin].[Subcategories] WHERE Category = 'Videography')
+BEGIN
+    INSERT INTO [admin].[Subcategories] (Category, SubcategoryKey, SubcategoryName, Description, DisplayOrder, IsActive)
+    VALUES 
+        ('Videography', 'wedding-videography', 'Wedding Videography', 'Professional wedding video coverage', 1, 1),
+        ('Videography', 'event-videography', 'Event Videography', 'Corporate and event video coverage', 2, 1),
+        ('Videography', 'highlight-reel', 'Highlight Reel', 'Short highlight video editing', 3, 1),
+        ('Videography', 'drone-videography', 'Drone Videography', 'Aerial drone video capture', 4, 1),
+        ('Videography', 'live-streaming', 'Live Streaming', 'Live event streaming services', 5, 1),
+        ('Videography', 'cinematic-film', 'Cinematic Film', 'Cinematic style video production', 6, 1);
+    PRINT '  Added Videography subcategories';
+END
+
+-- Music/DJ -> Music (for music category)
+UPDATE [admin].[Subcategories] SET Category = 'Music' WHERE Category = 'Music/DJ';
+
+-- Add DJ subcategories (split from Music/DJ)
+IF NOT EXISTS (SELECT 1 FROM [admin].[Subcategories] WHERE Category = 'DJ')
+BEGIN
+    INSERT INTO [admin].[Subcategories] (Category, SubcategoryKey, SubcategoryName, Description, DisplayOrder, IsActive)
+    VALUES 
+        ('DJ', 'wedding-dj', 'Wedding DJ', 'DJ services for weddings', 1, 1),
+        ('DJ', 'event-dj', 'Event DJ', 'DJ for corporate and private events', 2, 1),
+        ('DJ', 'club-dj', 'Club DJ', 'Nightclub and party DJ', 3, 1),
+        ('DJ', 'mc-services', 'MC Services', 'Master of ceremonies and hosting', 4, 1),
+        ('DJ', 'karaoke-dj', 'Karaoke DJ', 'Karaoke hosting and equipment', 5, 1);
+    PRINT '  Added DJ subcategories';
+END
+
+-- Officiants & Ceremony -> Officiants
+UPDATE [admin].[Subcategories] SET Category = 'Officiants' WHERE Category = 'Officiants & Ceremony';
+
+-- Jewellery & Accessories -> Jewelry
+UPDATE [admin].[Subcategories] SET Category = 'Jewelry' WHERE Category = 'Jewellery & Accessories';
+
+-- Favours & Gifts -> Favors
+UPDATE [admin].[Subcategories] SET Category = 'Favors' WHERE Category = 'Favours & Gifts';
+
+PRINT 'Subcategory categories updated to new format.';
+GO
