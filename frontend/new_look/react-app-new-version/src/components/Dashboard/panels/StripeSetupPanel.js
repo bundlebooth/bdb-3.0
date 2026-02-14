@@ -39,7 +39,8 @@ function StripeSetupPanel({ onBack, vendorProfileId }) {
 
   const handleConnectStripe = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/payments/connect/onboard/${vendorProfileId}`, {
+      // Pass origin=dashboard so redirect comes back to dashboard after Stripe setup
+      const response = await fetch(`${API_BASE_URL}/payments/connect/onboard/${vendorProfileId}?origin=dashboard`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -48,7 +49,9 @@ function StripeSetupPanel({ onBack, vendorProfileId }) {
       if (response.ok) {
         const data = await response.json();
         if (data.authUrl || data.url) {
-          window.location.href = data.authUrl || data.url;
+          // Open Stripe in new tab - user will be redirected back after completing setup
+          window.open(data.authUrl || data.url, '_blank');
+          showBanner('Stripe setup opened in a new tab. Complete the setup there, then return here.', 'info');
         }
       } else {
         throw new Error('Failed to start onboarding');

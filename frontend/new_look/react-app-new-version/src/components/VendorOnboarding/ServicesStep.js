@@ -37,10 +37,14 @@ function ServicesStep({ formData, setFormData }) {
   }, [showModal, showEditModal]);
 
   // Category IDs now match database directly - no mapping needed
+  // Only use primaryCategory - selectedSubcategories are subcategories within the primary, not separate categories
   const loadServices = async () => {
     try {
       setLoading(true);
-      const allCategories = [formData.primaryCategory, ...formData.additionalCategories].filter(Boolean);
+      const allCategories = [formData.primaryCategory].filter(Boolean);
+      
+      console.log('ServicesStep - Loading services for categories:', allCategories);
+      console.log('ServicesStep - formData.primaryCategory:', formData.primaryCategory);
       
       if (allCategories.length === 0) {
         console.warn('ServicesStep - No categories selected yet');
@@ -53,15 +57,21 @@ function ServicesStep({ formData, setFormData }) {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       
+      console.log('ServicesStep - API response status:', response.status);
+      
       if (response.ok) {
         const data = await response.json();
         const servicesByCategory = data.servicesByCategory || {};
+        
+        console.log('ServicesStep - Categories from API:', Object.keys(servicesByCategory));
+        console.log('ServicesStep - Total services from API:', data.totalServices);
         
         const filteredServices = [];
         const addedServiceIds = new Set();
         
         // Categories match DB directly - no mapping needed
         allCategories.forEach(category => {
+          console.log('ServicesStep - Looking for category:', category, 'Found:', !!servicesByCategory[category]);
           if (servicesByCategory[category]) {
             servicesByCategory[category].forEach(service => {
               if (!addedServiceIds.has(service.id)) {
@@ -72,7 +82,10 @@ function ServicesStep({ formData, setFormData }) {
           }
         });
         
+        console.log('ServicesStep - Filtered services count:', filteredServices.length);
         setAvailableServices(filteredServices);
+      } else {
+        console.error('ServicesStep - API error:', response.status, await response.text());
       }
     } catch (error) {
       console.error('Error loading services:', error);

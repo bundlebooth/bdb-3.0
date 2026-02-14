@@ -173,6 +173,23 @@ function DashboardPage() {
       const newUrl = params.toString() ? `${location.pathname}?${params.toString()}` : location.pathname;
       window.history.replaceState({}, '', newUrl);
     }
+    
+    // Handle Stripe connect success/error redirect
+    const stripeConnect = params.get('stripe_connect');
+    if (stripeConnect === 'success') {
+      showBanner('Successfully connected to Stripe! Your account is now ready to accept payments.', 'success');
+      // Clean up URL params
+      params.delete('stripe_connect');
+      const newUrl = params.toString() ? `${location.pathname}?${params.toString()}` : location.pathname;
+      window.history.replaceState({}, '', newUrl);
+    } else if (stripeConnect === 'error') {
+      const message = params.get('message') || 'Failed to connect Stripe';
+      showBanner(decodeURIComponent(message), 'error');
+      params.delete('stripe_connect');
+      params.delete('message');
+      const newUrl = params.toString() ? `${location.pathname}?${params.toString()}` : location.pathname;
+      window.history.replaceState({}, '', newUrl);
+    }
   }, [location.search]);
 
   // Load notification counts

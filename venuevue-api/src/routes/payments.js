@@ -432,8 +432,10 @@ router.get('/connect/onboard/:vendorProfileId', async (req, res) => {
       });
     }
 
-    // Generate secure state parameter
-    const state = `vendor_${vendorProfileId}_${Date.now()}`;
+    // Generate secure state parameter with origin tracking
+    // Origin can be 'onboarding' (become-a-vendor) or 'dashboard' (business profile)
+    const origin = req.query.origin || 'dashboard';
+    const state = `vendor_${vendorProfileId}_${origin}_${Date.now()}`;
     const redirectUri = process.env.STRIPE_REDIRECT_URI || 'http://localhost:8080/stripe/redirect';
 
     const stripeAuthUrl = `https://connect.stripe.com/oauth/authorize?response_type=code&client_id=${process.env.STRIPE_CLIENT_ID}&scope=read_write&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}`;
@@ -530,7 +532,8 @@ router.get('/connect/redirect', async (req, res) => {
 
     if (error) {
       const frontendUrl = process.env.FRONTEND_URL || 'https://www.planbeau.com';
-      return res.redirect(`${frontendUrl}?stripe_connect=error&message=${encodeURIComponent(`Stripe authorization failed: ${error}`)}`);
+      // Default to dashboard on error since we can't reliably parse origin from failed state
+      return res.redirect(`${frontendUrl}/dashboard?section=vendor-profile&panel=stripe&stripe_connect=error&message=${encodeURIComponent(`Stripe authorization failed: ${error}`)}`);
     }
 
     if (!code || !state) {
@@ -548,8 +551,10 @@ router.get('/connect/redirect', async (req, res) => {
       });
     }
 
-    // Extract vendor profile ID from state
-    const vendorProfileId = state.split('_')[1];
+    // Extract vendor profile ID and origin from state (format: vendor_{id}_{origin}_{timestamp})
+    const stateParts = state.split('_');
+    const vendorProfileId = stateParts[1];
+    const origin = stateParts[2] || 'dashboard'; // 'onboarding' or 'dashboard'
 
     // Exchange code for access token
     const tokenResponse = await stripe.oauth.token({
@@ -569,9 +574,12 @@ router.get('/connect/redirect', async (req, res) => {
       });
     }
 
-    // Redirect to frontend with success message
+    // Redirect to appropriate page based on origin
     const frontendUrl = process.env.FRONTEND_URL || 'https://www.planbeau.com';
-    res.redirect(`${frontendUrl}?stripe_connect=success&vendor=${vendorProfileId}&message=Successfully connected to Stripe!`);
+    const redirectPath = origin === 'onboarding' 
+      ? `/become-a-vendor/setup?step=stripe&stripe_connect=success`
+      : `/dashboard?section=vendor-profile&panel=stripe&stripe_connect=success`;
+    res.redirect(`${frontendUrl}${redirectPath}`);
 
   } catch (error) {
     console.error('Stripe token exchange error:', error);

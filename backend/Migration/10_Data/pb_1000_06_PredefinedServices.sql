@@ -275,6 +275,132 @@ BEGIN
 END
 ELSE
 BEGIN
-    PRINT 'Table [admin].[PredefinedServices] already contains data. Skipping.';
+    PRINT 'Table [admin].[PredefinedServices] already contains data. Skipping initial insert.';
 END
+GO
+
+-- =============================================
+-- UPDATE: Convert old category names to snake_case (2026-02-13)
+-- =============================================
+PRINT 'Updating categories to snake_case format...';
+
+UPDATE admin.PredefinedServices SET Category = 'photo' WHERE Category IN ('Photography', 'photo_video');
+UPDATE admin.PredefinedServices SET Category = 'catering' WHERE Category = 'Catering';
+UPDATE admin.PredefinedServices SET Category = 'planners' WHERE Category = 'Event Planning';
+UPDATE admin.PredefinedServices SET Category = 'music' WHERE Category IN ('Music & Entertainment', 'music_dj');
+UPDATE admin.PredefinedServices SET Category = 'beauty' WHERE Category = 'Beauty & Wellness';
+UPDATE admin.PredefinedServices SET Category = 'venue' WHERE Category IN ('Venue', 'Venues');
+UPDATE admin.PredefinedServices SET Category = 'decorations' WHERE Category = 'Floral & Decor';
+UPDATE admin.PredefinedServices SET Category = 'transportation' WHERE Category = 'Transportation';
+
+PRINT 'Category names updated to snake_case.';
+GO
+
+-- =============================================
+-- ADD: Services for new split categories (video, dj, entertainment, etc.)
+-- =============================================
+PRINT 'Adding services for new categories...';
+
+-- VIDEO CATEGORY (split from photo_video)
+IF NOT EXISTS (SELECT 1 FROM admin.PredefinedServices WHERE Category = 'video')
+BEGIN
+    INSERT INTO admin.PredefinedServices (Category, ServiceName, IsActive) VALUES
+    ('video', 'Wedding Videography', 1),
+    ('video', 'Highlight Reel', 1),
+    ('video', 'Full Ceremony Coverage', 1),
+    ('video', 'Drone Footage', 1),
+    ('video', 'Same-Day Edit', 1),
+    ('video', 'Documentary Style Video', 1),
+    ('video', 'Cinematic Film', 1),
+    ('video', 'Raw Footage Package', 1),
+    ('video', 'Social Media Clips', 1),
+    ('video', 'Live Streaming', 1);
+    PRINT '  Added 10 video services';
+END
+
+-- DJ CATEGORY (split from music_dj)
+IF NOT EXISTS (SELECT 1 FROM admin.PredefinedServices WHERE Category = 'dj')
+BEGIN
+    INSERT INTO admin.PredefinedServices (Category, ServiceName, IsActive) VALUES
+    ('dj', 'DJ Services', 1),
+    ('dj', 'MC/Emcee Services', 1),
+    ('dj', 'Sound System Rental', 1),
+    ('dj', 'Lighting Package', 1),
+    ('dj', 'Ceremony Music', 1),
+    ('dj', 'Cocktail Hour Music', 1),
+    ('dj', 'Reception Entertainment', 1),
+    ('dj', 'Karaoke Setup', 1);
+    PRINT '  Added 8 dj services';
+END
+
+-- ENTERTAINMENT CATEGORY
+IF NOT EXISTS (SELECT 1 FROM admin.PredefinedServices WHERE Category = 'entertainment')
+BEGIN
+    INSERT INTO admin.PredefinedServices (Category, ServiceName, IsActive) VALUES
+    ('entertainment', 'Live Band', 1),
+    ('entertainment', 'Solo Musician', 1),
+    ('entertainment', 'String Quartet', 1),
+    ('entertainment', 'Jazz Ensemble', 1),
+    ('entertainment', 'Magician', 1),
+    ('entertainment', 'Photo Booth', 1),
+    ('entertainment', 'Caricature Artist', 1),
+    ('entertainment', 'Dance Performance', 1),
+    ('entertainment', 'Fireworks Display', 1),
+    ('entertainment', 'Fire Performer', 1);
+    PRINT '  Added 10 entertainment services';
+END
+
+-- EXPERIENCES CATEGORY
+IF NOT EXISTS (SELECT 1 FROM admin.PredefinedServices WHERE Category = 'experiences')
+BEGIN
+    INSERT INTO admin.PredefinedServices (Category, ServiceName, IsActive) VALUES
+    ('experiences', 'Wine Tasting', 1),
+    ('experiences', 'Cooking Class', 1),
+    ('experiences', 'Spa Services', 1),
+    ('experiences', 'Adventure Activities', 1),
+    ('experiences', 'Cultural Experience', 1),
+    ('experiences', 'VIP Experience', 1);
+    PRINT '  Added 6 experiences services';
+END
+
+-- CAKE CATEGORY
+IF NOT EXISTS (SELECT 1 FROM admin.PredefinedServices WHERE Category = 'cake')
+BEGIN
+    INSERT INTO admin.PredefinedServices (Category, ServiceName, IsActive) VALUES
+    ('cake', 'Wedding Cake', 1),
+    ('cake', 'Cupcake Tower', 1),
+    ('cake', 'Dessert Table', 1),
+    ('cake', 'Grooms Cake', 1),
+    ('cake', 'Cake Cutting Service', 1),
+    ('cake', 'Custom Cake Design', 1);
+    PRINT '  Added 6 cake services';
+END
+
+-- FASHION CATEGORY
+IF NOT EXISTS (SELECT 1 FROM admin.PredefinedServices WHERE Category = 'fashion')
+BEGIN
+    INSERT INTO admin.PredefinedServices (Category, ServiceName, IsActive) VALUES
+    ('fashion', 'Bridal Gown', 1),
+    ('fashion', 'Bridesmaid Dresses', 1),
+    ('fashion', 'Groom Attire', 1),
+    ('fashion', 'Groomsmen Attire', 1),
+    ('fashion', 'Accessories', 1),
+    ('fashion', 'Alterations', 1);
+    PRINT '  Added 6 fashion services';
+END
+
+-- STATIONERY CATEGORY
+IF NOT EXISTS (SELECT 1 FROM admin.PredefinedServices WHERE Category = 'stationery')
+BEGIN
+    INSERT INTO admin.PredefinedServices (Category, ServiceName, IsActive) VALUES
+    ('stationery', 'Wedding Invitations', 1),
+    ('stationery', 'Save the Dates', 1),
+    ('stationery', 'Programs', 1),
+    ('stationery', 'Menu Cards', 1),
+    ('stationery', 'Place Cards', 1),
+    ('stationery', 'Thank You Cards', 1);
+    PRINT '  Added 6 stationery services';
+END
+
+PRINT 'New category services added.';
 GO

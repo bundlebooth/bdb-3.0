@@ -374,6 +374,31 @@ const BecomeVendorPage = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [currentStep]);
 
+  // Handle Stripe connect success redirect
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const stripeConnect = params.get('stripe_connect');
+    
+    if (stripeConnect === 'success') {
+      showBanner('Successfully connected to Stripe! Your account is now ready to accept payments.', 'success');
+      // Clean up URL params
+      params.delete('stripe_connect');
+      const newUrl = params.toString() 
+        ? `${window.location.pathname}?${params.toString()}` 
+        : window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
+    } else if (stripeConnect === 'error') {
+      const message = params.get('message') || 'Failed to connect Stripe';
+      showBanner(decodeURIComponent(message), 'error');
+      params.delete('stripe_connect');
+      params.delete('message');
+      const newUrl = params.toString() 
+        ? `${window.location.pathname}?${params.toString()}` 
+        : window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, []);
+
   // Handle profile status - redirect approved vendors to dashboard, block pending review
   // BUT allow URL step param to override this for direct navigation
   useEffect(() => {
@@ -436,16 +461,9 @@ const BecomeVendorPage = () => {
           const serviceAreas = data.serviceAreas || [];
           const features = data.features || [];
           
-          // Map category names to IDs
-          const categoryNameToId = {
-            'Venues': 'venue', 'Photo/Video': 'photo', 'Music/DJ': 'music',
-            'Catering': 'catering', 'Entertainment': 'entertainment', 'Experiences': 'experiences',
-            'Decorations': 'decor', 'Beauty': 'beauty', 'Cake': 'cake',
-            'Transportation': 'transport', 'Planners': 'planner', 'Fashion': 'fashion', 'Stationery': 'stationery'
-          };
-          
+          // Categories now stored as snake_case IDs directly in DB - no mapping needed
           const primaryCat = categories.find(c => c.IsPrimary) || categories[0];
-          const primaryCategoryId = primaryCat ? (categoryNameToId[primaryCat.Category || primaryCat.CategoryName] || '') : '';
+          const primaryCategoryId = primaryCat ? (primaryCat.Category || primaryCat.CategoryName || '') : '';
           
           // Transform business hours
           const hoursMap = {};

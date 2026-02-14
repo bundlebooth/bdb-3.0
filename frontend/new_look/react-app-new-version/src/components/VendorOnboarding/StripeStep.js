@@ -52,7 +52,9 @@ function StripeStep({ formData, setFormData, currentUser }) {
 
     setConnecting(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/payments/connect/onboard/${currentUser.vendorProfileId}`, {
+      // Determine origin based on current URL path
+      const origin = window.location.pathname.includes('become-a-vendor') ? 'onboarding' : 'dashboard';
+      const response = await fetch(`${API_BASE_URL}/payments/connect/onboard/${currentUser.vendorProfileId}?origin=${origin}`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
 
@@ -60,7 +62,9 @@ function StripeStep({ formData, setFormData, currentUser }) {
         const data = await response.json();
         // Check for authUrl or url (dashboard uses both)
         if (data.authUrl || data.url) {
-          window.location.href = data.authUrl || data.url;
+          // Open Stripe in new tab - user will be redirected back after completing setup
+          window.open(data.authUrl || data.url, '_blank');
+          showBanner('Stripe setup opened in a new tab. Complete the setup there, then return here.', 'info');
         } else {
           showBanner('Stripe Connect is not configured yet. Please contact support.', 'warning');
         }
