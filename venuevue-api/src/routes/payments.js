@@ -435,12 +435,16 @@ router.get('/connect/onboard/:vendorProfileId', async (req, res) => {
     // Generate secure state parameter with origin tracking
     // Origin can be 'onboarding' (become-a-vendor) or 'dashboard' (business profile)
     const origin = req.query.origin || 'dashboard';
-    const state = `vendor_${vendorProfileId}_${origin}_${Date.now()}`;
     
-    // Determine redirect URI based on environment
+    // Determine if we're in dev environment
     const isDev = process.env.NODE_ENV === 'development' || 
                   (req.headers.referer && req.headers.referer.includes('localhost')) ||
                   (req.headers.origin && req.headers.origin.includes('localhost'));
+    
+    // Encode environment in state so we know where to redirect after Stripe callback
+    const env = isDev ? 'dev' : 'prod';
+    const state = `vendor_${vendorProfileId}_${origin}_${env}_${Date.now()}`;
+    
     const redirectUri = isDev 
       ? (process.env.STRIPE_REDIRECT_URI_DEV || 'http://localhost:5000/api/payments/connect/redirect')
       : (process.env.STRIPE_REDIRECT_URI || 'https://api.planbeau.com/api/payments/connect/redirect');
@@ -571,10 +575,11 @@ router.get('/connect/redirect', async (req, res) => {
       });
     }
 
-    // Extract vendor profile ID and origin from state (format: vendor_{id}_{origin}_{timestamp})
+    // Extract vendor profile ID, origin, and env from state (format: vendor_{id}_{origin}_{env}_{timestamp})
     const stateParts = state.split('_');
     const vendorProfileId = stateParts[1];
     const origin = stateParts[2] || 'dashboard'; // 'onboarding' or 'dashboard'
+    const env = stateParts[3] || 'prod'; // 'dev' or 'prod'
 
     // Exchange code for access token
     const tokenResponse = await stripe.oauth.token({
@@ -594,8 +599,10 @@ router.get('/connect/redirect', async (req, res) => {
       });
     }
 
-    // Redirect to appropriate page based on origin
-    const frontendUrl = getFrontendUrl(req);
+    // Redirect to appropriate page based on origin - use env from state to determine frontend URL
+    const frontendUrl = env === 'dev' 
+      ? (process.env.FRONTEND_URL_DEV || 'http://localhost:3000')
+      : (process.env.FRONTEND_URL || 'https://www.planbeau.com');
     const redirectPath = origin === 'onboarding' 
       ? `/become-a-vendor/setup?step=stripe&stripe_connect=success`
       : `/dashboard?section=vendor-profile&panel=stripe&stripe_connect=success`;
