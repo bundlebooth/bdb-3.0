@@ -436,7 +436,14 @@ router.get('/connect/onboard/:vendorProfileId', async (req, res) => {
     // Origin can be 'onboarding' (become-a-vendor) or 'dashboard' (business profile)
     const origin = req.query.origin || 'dashboard';
     const state = `vendor_${vendorProfileId}_${origin}_${Date.now()}`;
-    const redirectUri = process.env.STRIPE_REDIRECT_URI || 'http://localhost:8080/stripe/redirect';
+    
+    // Determine redirect URI based on environment
+    const isDev = process.env.NODE_ENV === 'development' || 
+                  (req.headers.referer && req.headers.referer.includes('localhost')) ||
+                  (req.headers.origin && req.headers.origin.includes('localhost'));
+    const redirectUri = isDev 
+      ? (process.env.STRIPE_REDIRECT_URI_DEV || 'http://localhost:5000/api/payments/connect/redirect')
+      : (process.env.STRIPE_REDIRECT_URI || 'https://api.planbeau.com/api/payments/connect/redirect');
 
     const stripeAuthUrl = `https://connect.stripe.com/oauth/authorize?response_type=code&client_id=${process.env.STRIPE_CLIENT_ID}&scope=read_write&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}`;
 
@@ -525,13 +532,26 @@ router.get('/receipt/:bookingId', async (req, res) => {
   }
 });
 
+// Helper to determine frontend URL based on environment
+function getFrontendUrl(req) {
+  // Check if we're in development mode
+  const isDev = process.env.NODE_ENV === 'development' || 
+                (req.headers.referer && req.headers.referer.includes('localhost')) ||
+                (req.headers.origin && req.headers.origin.includes('localhost'));
+  
+  if (isDev) {
+    return process.env.FRONTEND_URL_DEV || 'http://localhost:3000';
+  }
+  return process.env.FRONTEND_URL || 'https://www.planbeau.com';
+}
+
 // 2. HANDLE STRIPE OAUTH REDIRECT
 router.get('/connect/redirect', async (req, res) => {
   try {
     const { code, state, error } = req.query;
 
     if (error) {
-      const frontendUrl = process.env.FRONTEND_URL || 'https://www.planbeau.com';
+      const frontendUrl = getFrontendUrl(req);
       // Default to dashboard on error since we can't reliably parse origin from failed state
       return res.redirect(`${frontendUrl}/dashboard?section=vendor-profile&panel=stripe&stripe_connect=error&message=${encodeURIComponent(`Stripe authorization failed: ${error}`)}`);
     }
@@ -575,7 +595,7 @@ router.get('/connect/redirect', async (req, res) => {
     }
 
     // Redirect to appropriate page based on origin
-    const frontendUrl = process.env.FRONTEND_URL || 'https://www.planbeau.com';
+    const frontendUrl = getFrontendUrl(req);
     const redirectPath = origin === 'onboarding' 
       ? `/become-a-vendor/setup?step=stripe&stripe_connect=success`
       : `/dashboard?section=vendor-profile&panel=stripe&stripe_connect=success`;
