@@ -331,7 +331,7 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
     <header className="header">
       <div className="header-inner page-wrapper" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
       <div className="header-left" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <div className="logo" style={{ cursor: 'pointer', marginRight: '8px' }} onClick={() => window.location.href = '/'}>
+        <div className="logo" style={{ cursor: 'pointer', marginRight: '8px' }} onClick={() => window.location.href = '/explore'}>
           <img src="/images/planbeau-platform-assets/branding/logo.png" alt="Planbeau" className="header-logo-img" />
         </div>
         
@@ -501,6 +501,29 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
               </div>
             );
           })()}
+          {/* Notification badge on user icon - show when there are unread notifications */}
+          {notificationsBadge > 0 && (
+            <div
+              style={{
+                position: 'absolute',
+                top: '-4px',
+                right: '-4px',
+                minWidth: '16px',
+                height: '16px',
+                borderRadius: '8px',
+                backgroundColor: '#5086E8',
+                color: 'white',
+                fontSize: '9px',
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '0 4px'
+              }}
+            >
+              {notificationsBadge > 99 ? '99+' : notificationsBadge}
+            </div>
+          )}
           {/* Exclamation mark indicator for incomplete profile - only show if NOT live */}
           {profileIncomplete && profileStatus !== 'live' && (
             <div

@@ -31,10 +31,13 @@ function DeleteAccountPanel({ onBack, embedded = false }) {
       });
 
       if (response.ok) {
-        showBanner('Your account has been deleted. We\'re sorry to see you go.', 'success');
+        showBanner('Your account has been deleted. A confirmation email has been sent. We\'re sorry to see you go.', 'success');
         // Log out the user
         logout();
-        window.location.href = '/';
+        // Delay redirect so user sees the banner
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 2500);
       } else {
         const data = await response.json();
         showBanner(data.message || 'Failed to delete account', 'error');

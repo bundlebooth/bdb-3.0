@@ -34,7 +34,7 @@ import './BecomeVendorPage.css';
 const BecomeVendorPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { currentUser, setCurrentUser } = useAuth();
+  const { currentUser, setCurrentUser, loading: authLoading } = useAuth();
   
   // Check for admin review mode - admin viewing vendor's profile
   const urlParams = new URLSearchParams(window.location.search);
@@ -340,7 +340,7 @@ const BecomeVendorPage = () => {
       title: 'Connect Stripe for Payments',
       subtitle: 'Set up payment processing to accept online payments',
       component: StripeStep,
-      required: false
+      required: true
     },
     {
       id: 'google-reviews',
@@ -401,6 +401,27 @@ const BecomeVendorPage = () => {
     
     if (stripeConnect === 'success') {
       showBanner('Successfully connected to Stripe! Your account is now ready to accept payments.', 'success');
+      
+      // Fetch the Stripe account ID to update formData
+      const fetchStripeStatus = async () => {
+        if (currentUser?.vendorProfileId) {
+          try {
+            const response = await fetch(`${API_BASE_URL}/payments/connect/status/${currentUser.vendorProfileId}`, {
+              headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+            });
+            if (response.ok) {
+              const data = await response.json();
+              if (data.connected && data.accountId) {
+                setFormData(prev => ({ ...prev, stripeConnected: true, stripeAccountId: data.accountId }));
+              }
+            }
+          } catch (error) {
+            console.error('Error fetching Stripe status:', error);
+          }
+        }
+      };
+      fetchStripeStatus();
+      
       // Clean up URL params
       params.delete('stripe_connect');
       const newUrl = params.toString() 
@@ -417,7 +438,7 @@ const BecomeVendorPage = () => {
         : window.location.pathname;
       window.history.replaceState({}, '', newUrl);
     }
-  }, []);
+  }, [currentUser?.vendorProfileId]);
 
   // Handle profile status - redirect approved vendors to dashboard, block pending review
   // BUT allow URL step param to override this for direct navigation
@@ -441,11 +462,12 @@ const BecomeVendorPage = () => {
   }, [currentUser]);
 
   // Redirect unauthenticated users to the landing page (skip in admin review mode)
+  // Wait for auth to finish loading before redirecting
   useEffect(() => {
-    if (!currentUser && !loadingProfile && !isAdminReviewMode) {
+    if (!authLoading && !currentUser && !loadingProfile && !isAdminReviewMode) {
       navigate('/become-a-vendor');
     }
-  }, [currentUser, loadingProfile, navigate, isAdminReviewMode]);
+  }, [authLoading, currentUser, loadingProfile, navigate, isAdminReviewMode]);
 
   // Fetch vendor data for admin review mode
   useEffect(() => {
@@ -1326,8 +1348,8 @@ const BecomeVendorPage = () => {
         // Optional - at least one social media link
         return !!(formData.facebook || formData.instagram || formData.twitter || formData.linkedin);
       case 'stripe':
-        // OPTIONAL (temporarily bypassed): Stripe connection not required for submission
-        return true;
+        // MANDATORY: Stripe connection required - check if Stripe account ID is populated
+        return !!(formData.stripeAccountId || existingVendorData?.stripeAccountId || existingVendorData?.StripeAccountID);
       case 'google-reviews':
         // Optional - Google reviews
         return !!(formData.googlePlaceId && formData.googlePlaceId.trim().length > 0);

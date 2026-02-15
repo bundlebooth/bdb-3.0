@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
 import { useTranslation } from '../hooks/useTranslation';
 import { ICONS } from '../utils/sidebarIcons';
+import { getUnreadNotificationCount } from '../utils/notifications';
 
 function MobileBottomNav({ onOpenDashboard, onOpenProfile, onOpenMessages, onOpenMap, onCloseDashboard }) {
   const navigate = useNavigate();
@@ -15,6 +16,7 @@ function MobileBottomNav({ onOpenDashboard, onOpenProfile, onOpenMessages, onOpe
   const [isVisible, setIsVisible] = useState(true);
   const [vendorLogoUrl, setVendorLogoUrl] = useState(null);
   const [userProfilePic, setUserProfilePic] = useState(null);
+  const [notificationCount, setNotificationCount] = useState(0);
   const lastScrollY = useRef(0);
   const scrollTimeout = useRef(null);
   
@@ -82,6 +84,66 @@ function MobileBottomNav({ onOpenDashboard, onOpenProfile, onOpenMessages, onOpe
     };
     
     fetchUserProfile();
+  }, [currentUser?.id]);
+
+  // Fetch notification count (includes unread notifications + unread messages + pending bookings)
+  useEffect(() => {
+    if (!currentUser?.id) {
+      setNotificationCount(0);
+      return;
+    }
+    
+    const loadNotifications = async () => {
+      try {
+        let totalCount = 0;
+        
+        // Get unread notifications
+        try {
+          const notifCount = await getUnreadNotificationCount(currentUser.id);
+          totalCount += notifCount || 0;
+        } catch (e) { console.error('Failed to load notifications:', e); }
+        
+        // Also get unread messages count
+        try {
+          const msgResp = await fetch(`${API_BASE_URL}/messages/conversations/user/${currentUser.id}`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+          });
+          if (msgResp.ok) {
+            const data = await msgResp.json();
+            const convs = data.conversations || data || [];
+            const unreadMsgs = convs.reduce((sum, c) => {
+              const count = c.unreadCount || c.UnreadCount || c.unread_count || c.Unread || 0;
+              return sum + (typeof count === 'number' ? count : parseInt(count) || 0);
+            }, 0);
+            totalCount += unreadMsgs;
+          }
+        } catch (e) { console.error('Failed to load messages:', e); }
+        
+        // Get pending bookings count
+        try {
+          const bookingsResp = await fetch(`${API_BASE_URL}/users/${currentUser.id}/bookings/all`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+          });
+          if (bookingsResp.ok) {
+            const bookings = await bookingsResp.json();
+            const pendingCount = (bookings || []).filter(b => 
+              b.status === 'pending' || b.Status === 'pending' || 
+              b.status === 'Pending' || b.Status === 'Pending'
+            ).length;
+            totalCount += pendingCount;
+          }
+        } catch (e) { console.error('Failed to load bookings:', e); }
+        
+        setNotificationCount(totalCount);
+      } catch (error) {
+        console.error('Failed to load notification count:', error);
+      }
+    };
+    
+    loadNotifications();
+    // Refresh every 30 seconds
+    const interval = setInterval(loadNotifications, 30000);
+    return () => clearInterval(interval);
   }, [currentUser?.id]);
 
   // Pages where bottom nav should be visible
@@ -326,6 +388,7 @@ function MobileBottomNav({ onOpenDashboard, onOpenProfile, onOpenMessages, onOpe
         type="button"
         className={`mobile-nav-item ${activeTab === 'account' && !mobileMapOpen ? 'active' : ''}`}
         onClick={handleAccountClick}
+        style={{ position: 'relative' }}
       >
         {currentUser ? (
           (() => {
@@ -336,22 +399,47 @@ function MobileBottomNav({ onOpenDashboard, onOpenProfile, onOpenMessages, onOpe
             const shouldShowVendorLogo = isOnVendorDashboard && vendorLogoUrl;
             const profilePicToShow = shouldShowVendorLogo ? vendorLogoUrl : (userProfilePic || currentUser?.profilePicture || currentUser?.profileImageURL);
             
-            return profilePicToShow ? (
-              <img
-                src={profilePicToShow}
-                alt="Profile"
-                className="nav-user-avatar-img"
-                style={{
-                  width: '24px',
-                  height: '24px',
-                  borderRadius: '50%',
-                  objectFit: 'cover',
-                  border: '1px solid #e0e0e0'
-                }}
-              />
-            ) : (
-              <div className="nav-user-avatar">
-                {currentUser.name?.charAt(0).toUpperCase() || 'U'}
+            return (
+              <div style={{ position: 'relative', display: 'inline-block' }}>
+                {profilePicToShow ? (
+                  <img
+                    src={profilePicToShow}
+                    alt="Profile"
+                    className="nav-user-avatar-img"
+                    style={{
+                      width: '24px',
+                      height: '24px',
+                      borderRadius: '50%',
+                      objectFit: 'cover',
+                      border: '1px solid #e0e0e0'
+                    }}
+                  />
+                ) : (
+                  <div className="nav-user-avatar">
+                    {currentUser.name?.charAt(0).toUpperCase() || 'U'}
+                  </div>
+                )}
+                {/* Notification badge */}
+                {notificationCount > 0 && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '-4px',
+                    right: '-6px',
+                    minWidth: '16px',
+                    height: '16px',
+                    borderRadius: '8px',
+                    backgroundColor: '#5086E8',
+                    color: 'white',
+                    fontSize: '9px',
+                    fontWeight: 600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '0 4px'
+                  }}>
+                    {notificationCount > 99 ? '99+' : notificationCount}
+                  </div>
+                )}
               </div>
             );
           })()

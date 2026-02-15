@@ -5,6 +5,8 @@ import { showBanner } from '../../utils/helpers';
 function StripeStep({ formData, setFormData, currentUser }) {
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState(false);
+  const [waitingForStripe, setWaitingForStripe] = useState(false);
+  const [pollIntervalId, setPollIntervalId] = useState(null);
   const [stripeStatus, setStripeStatus] = useState({
     connected: false,
     accountId: null,
@@ -20,6 +22,13 @@ function StripeStep({ formData, setFormData, currentUser }) {
     } else {
       setLoading(false);
     }
+    
+    // Cleanup polling on unmount
+    return () => {
+      if (pollIntervalId) {
+        clearInterval(pollIntervalId);
+      }
+    };
   }, [currentUser?.vendorProfileId]);
 
   const loadStripeStatus = async () => {
@@ -33,15 +42,59 @@ function StripeStep({ formData, setFormData, currentUser }) {
         const data = await response.json();
         setStripeStatus(data);
         // Update formData so step completion can check it
-        if (data.connected) {
-          setFormData(prev => ({ ...prev, stripeConnected: true }));
+        if (data.connected && data.accountId) {
+          setFormData(prev => ({ ...prev, stripeConnected: true, stripeAccountId: data.accountId }));
         }
+        return data;
       }
+      return null;
     } catch (error) {
       console.error('Error checking Stripe status:', error);
+      return null;
     } finally {
       setLoading(false);
     }
+  };
+
+  // Start polling for Stripe connection status
+  const startPolling = () => {
+    setWaitingForStripe(true);
+    
+    // Poll every 5 seconds
+    const intervalId = setInterval(async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/payments/connect/status/${currentUser.vendorProfileId}`, {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setStripeStatus(data);
+          
+          // Check if connection is complete
+          if (data.connected && data.detailsSubmitted) {
+            clearInterval(intervalId);
+            setPollIntervalId(null);
+            setWaitingForStripe(false);
+            setFormData(prev => ({ ...prev, stripeConnected: true, stripeAccountId: data.accountId }));
+            showBanner('Successfully connected to Stripe! Your account is ready to accept payments.', 'success');
+          }
+        }
+      } catch (error) {
+        console.error('Polling error:', error);
+      }
+    }, 5000);
+    
+    setPollIntervalId(intervalId);
+    
+    // Stop polling after 10 minutes
+    setTimeout(() => {
+      if (intervalId) {
+        clearInterval(intervalId);
+        setPollIntervalId(null);
+        setWaitingForStripe(false);
+      }
+    }, 600000);
   };
 
   const handleConnectStripe = async () => {
@@ -62,9 +115,9 @@ function StripeStep({ formData, setFormData, currentUser }) {
         const data = await response.json();
         // Check for authUrl or url (dashboard uses both)
         if (data.authUrl || data.url) {
-          // Open Stripe in new tab - user will be redirected back after completing setup
-          window.open(data.authUrl || data.url, '_blank');
-          showBanner('Stripe setup opened in a new tab. Complete the setup there, then return here.', 'info');
+          // Redirect to Stripe setup - user will be redirected back after completing setup
+          showBanner('Redirecting to Stripe setup...', 'info');
+          window.location.href = data.authUrl || data.url;
         } else {
           showBanner('Stripe Connect is not configured yet. Please contact support.', 'warning');
         }
@@ -129,6 +182,45 @@ function StripeStep({ formData, setFormData, currentUser }) {
         {loading && (
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '200px' }}>
             <div className="spinner"></div>
+          </div>
+        )}
+
+        {/* Waiting for Stripe Connection State */}
+        {waitingForStripe && (
+          <div style={{ 
+            padding: '24px', 
+            background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)', 
+            borderRadius: '16px', 
+            textAlign: 'center',
+            marginBottom: '20px',
+            border: '1px solid #bae6fd'
+          }}>
+            <div className="spinner" style={{ 
+              margin: '0 auto 16px', 
+              width: '40px', 
+              height: '40px',
+              borderWidth: '3px'
+            }}></div>
+            <h4 style={{ fontWeight: 600, color: '#0369a1', marginBottom: '8px', fontSize: '1.1rem' }}>
+              Waiting for Stripe Connection...
+            </h4>
+            <p style={{ fontSize: '14px', color: '#0c4a6e', marginBottom: '12px', lineHeight: 1.6 }}>
+              Complete the Stripe setup in the new tab that opened.<br />
+              This page will automatically update when connected.
+            </p>
+            <div style={{ 
+              display: 'inline-flex', 
+              alignItems: 'center', 
+              gap: '8px', 
+              padding: '8px 16px', 
+              background: 'white', 
+              borderRadius: '8px',
+              fontSize: '13px',
+              color: '#6b7280'
+            }}>
+              <i className="fas fa-info-circle"></i>
+              Don't close this page
+            </div>
           </div>
         )}
 

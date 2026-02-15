@@ -855,7 +855,7 @@ function ProfileSidebar({ isOpen, onClose }) {
                 </div>
                 <span className="action-card-label">My Bookings</span>
                 {notificationCounts.pendingBookings > 0 && (
-                  <span className="action-card-badge">NEW</span>
+                  <span className="action-card-badge">{notificationCounts.pendingBookings}</span>
                 )}
               </div>
               <div 
