@@ -4,7 +4,7 @@ const { poolPromise, sql } = require('../config/db');
 const { serializeDates, serializeRecords } = require('../utils/helpers');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { sendTwoFactorCode, sendTemplatedEmail, sendAccountSuspended, sendAccountDeletionRequested, sendReferralInvitation, sendReferralReward } = require('../services/email');
+const { sendTwoFactorCode, sendTemplatedEmail, sendAccountSuspended, sendAccountDeletionRequested, sendReferralInvitation, sendReferralReward, sendClientWelcome, sendVendorWelcome } = require('../services/email');
 const { processUnsubscribe, generateUnsubscribeHtml, getUserPreferences, updateUserPreferences, verifyUnsubscribeToken, resubscribeUser } = require('../services/unsubscribeService');
 const crypto = require('crypto');
 const { upload } = require('../middlewares/uploadMiddleware');
@@ -104,6 +104,19 @@ router.post('/register', decryptMiddleware, async (req, res) => {
         .input('details', sql.NVarChar, isVendorFlag ? 'Vendor account created' : 'Client account created')
         .execute('users.sp_InsertSecurityLog');
     } catch (logErr) { console.error('Failed to log security event:', logErr.message); }
+
+    // Send welcome email
+    try {
+      const dashboardUrl = `${process.env.FRONTEND_URL || 'https://www.planbeau.com'}/dashboard`;
+      if (isVendorFlag) {
+        await sendVendorWelcome(email.toLowerCase().trim(), firstName.trim(), dashboardUrl, userId);
+      } else {
+        await sendClientWelcome(email.toLowerCase().trim(), firstName.trim(), dashboardUrl, userId);
+      }
+      console.log(`✅ Welcome email sent to ${email}`);
+    } catch (emailErr) { 
+      console.error('Failed to send welcome email:', emailErr.message); 
+    }
 
     // Generate JWT token
     const token = jwt.sign(

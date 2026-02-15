@@ -1,1 +1,54 @@
+# Dependencies
+node_modules/
 
+# Environment files (contains secrets)
+.env
+.env.local
+.env.production
+
+# Uploads and temp folders
+uploads/
+temp/
+
+# One-time fix/migration scripts (not needed in production)
+fix_*.js
+fix_*.sql
+check_*.js
+deploy_*.js
+find_*.js
+sync_*.js
+update_*.js
+generate_*.js
+test_*.js
+cleanup_*.js
+compare_*.js
+audit_*.js
+drop_*.js
+verify_*.js
+send_all_*.js
+list_templates.js
+generate_preview.js
+renumber_sps.js
+add_subtle_borders.js
+archive_duplicate_sps.js
+column_analysis.js
+comprehensive_sync_report.js
+final_sync_report.js
+full_migration_audit.js
+get_broken_views.js
+get_sp_search_def.js
+create_missing_sp_migrations.js
+
+# Logs
+*.log
+npm-debug.log*
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
