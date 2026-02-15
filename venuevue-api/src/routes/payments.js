@@ -445,9 +445,8 @@ router.get('/connect/onboard/:vendorProfileId', async (req, res) => {
     const env = isDev ? 'dev' : 'prod';
     const state = `vendor_${vendorProfileId}_${origin}_${env}_${Date.now()}`;
     
-    const redirectUri = isDev 
-      ? (process.env.STRIPE_REDIRECT_URI_DEV || 'http://localhost:5000/api/payments/connect/redirect')
-      : (process.env.STRIPE_REDIRECT_URI || 'https://api.planbeau.com/api/payments/connect/redirect');
+    // Always use production redirect URI - localhost is not registered in Stripe
+    const redirectUri = process.env.STRIPE_REDIRECT_URI || 'https://api.planbeau.com/api/payments/connect/redirect';
 
     const stripeAuthUrl = `https://connect.stripe.com/oauth/authorize?response_type=code&client_id=${process.env.STRIPE_CLIENT_ID}&scope=read_write&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}`;
 
